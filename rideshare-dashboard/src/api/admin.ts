@@ -163,7 +163,7 @@ export async function getDriverVehicle(driverId: string): Promise<Vehicle | null
  * Get trip by ID
  */
 export async function getTripById(tripId: string): Promise<Trip> {
-  const response = await apiClient.get<ApiResponse<Trip>>(`/api/v1/trips/${tripId}`)
+  const response = await apiClient.get<ApiResponse<Trip>>(`/trips/${tripId}`)
   return response.data.data
 }
 
@@ -171,15 +171,50 @@ export async function getTripById(tripId: string): Promise<Trip> {
  * Get trip seats
  */
 export async function getTripSeats(tripId: string): Promise<Seat[]> {
-  const response = await apiClient.get<ApiResponse<Seat[]>>(`/api/v1/trips/${tripId}/seats`)
-  return response.data.data
+  const response = await apiClient.get<ApiResponse<unknown>>(`/trips/${tripId}/seats`)
+  const payload = response.data.data
+
+  if (Array.isArray(payload)) {
+    return payload as Seat[]
+  }
+
+  if (payload && typeof payload === "object") {
+    const record = payload as Record<string, unknown>
+    const rawSeats = record.seats
+    if (Array.isArray(rawSeats)) {
+      return rawSeats.map((rawSeat) => {
+        const seatRecord = (rawSeat ?? {}) as Record<string, unknown>
+        const passengerGenderSource =
+          typeof seatRecord.passengerGender === "string"
+            ? seatRecord.passengerGender
+            : typeof seatRecord.gender === "string"
+              ? seatRecord.gender
+              : undefined
+
+        return {
+          seatNumber: Number(seatRecord.seatNumber ?? 0),
+          status: String(seatRecord.status ?? "available") as Seat["status"],
+          passengerId:
+            typeof seatRecord.passengerId === "string" ? seatRecord.passengerId : undefined,
+          passengerGender:
+            passengerGenderSource === "male" || passengerGenderSource === "female"
+              ? passengerGenderSource
+              : undefined,
+        }
+      })
+    }
+  }
+
+  return []
 }
 
 /**
  * Get bookings for a trip
  */
 export async function getBookingsForTrip(tripId: string): Promise<PaginatedResult<Booking>> {
-  const response = await apiClient.get<ApiResponse<PaginatedResult<Booking>>>(`/bookings/trip/${tripId}`)
+  const response = await apiClient.get<ApiResponse<PaginatedResult<Booking>>>("/admin/bookings", {
+    params: { tripId, page: 1, limit: 100 },
+  })
   return response.data.data
 }
 

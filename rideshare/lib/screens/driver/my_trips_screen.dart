@@ -7,6 +7,7 @@ import '../../models/trip_model.dart';
 import '../../core/constants/route_names.dart';
 import '../../widgets/notification_icon_button.dart';
 import '../../core/theme/colors.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
 
 class MyTripsScreen extends StatefulWidget {
   const MyTripsScreen({super.key});
@@ -60,7 +61,9 @@ class _MyTripsScreenState extends State<MyTripsScreen>
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Text(
-              userModel != null && userModel.isDriver && !userModel.isDriverApproved
+              userModel != null &&
+                      userModel.isDriver &&
+                      !userModel.isDriverApproved
                   ? 'حسابك كسائق قيد المراجعة. لا يمكنك إنشاء أو إدارة رحلات حتى تتم الموافقة عليه.'
                   : 'يجب أن تكون سائقاً معتمداً لعرض الرحلات.',
               textAlign: TextAlign.center,
@@ -71,26 +74,36 @@ class _MyTripsScreenState extends State<MyTripsScreen>
     }
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('رحلاتي'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        title: const Text(
+          'رحلاتي',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+          ),
+        ),
         actions: [
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 8.0),
-            child: NotificationIconButton(
-              backgroundColor: Colors.transparent,
-              iconColor: AppColors.textPrimary,
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () {
-              Navigator.pushNamed(context, RouteNames.createTrip);
-            },
-            tooltip: 'إنشاء رحلة جديدة',
+            child: NotificationIconButton(iconColor: AppColors.textPrimary),
           ),
         ],
         bottom: TabBar(
           controller: _tabController,
+          labelColor: AppColors.primary,
+          unselectedLabelColor: AppColors.textSecondary,
+          indicatorColor: AppColors.primary,
+          labelStyle: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+          indicatorWeight: 3,
+          dividerColor: Colors.transparent,
           tabs: const [
             Tab(text: 'نشطة'),
             Tab(text: 'مخفية'),
@@ -166,7 +179,7 @@ class _MyTripsScreenState extends State<MyTripsScreen>
           }
 
           return ListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
             itemCount: trips.length,
             itemBuilder: (context, index) {
               final trip = trips[index];
@@ -174,6 +187,17 @@ class _MyTripsScreenState extends State<MyTripsScreen>
             },
           );
         },
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.pushNamed(context, RouteNames.createTrip);
+        },
+        backgroundColor: AppColors.primary,
+        icon: const Icon(IconsaxPlusBold.add, color: Colors.white),
+        label: const Text(
+          'رحلة جديدة',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }
@@ -194,42 +218,45 @@ class _TripCard extends StatelessWidget {
     Color getStatusColor() {
       switch (trip.status) {
         case 'active':
-          return const Color(0xFF10B981); // Emerald
+          return AppColors.success;
         case 'hidden':
-          return const Color(0xFFF59E0B); // Amber
+          return AppColors.warning;
         case 'completed':
-          return const Color(0xFF3B82F6); // Blue
+          return AppColors.info;
         default:
-          return const Color(0xFF6B7280); // Gray
+          return AppColors.textSecondary;
       }
     }
 
     final statusColor = getStatusColor();
 
+    // Get actual name or address fallback
+    final String fromName = trip.from.name.isNotEmpty
+        ? trip.from.name
+        : (trip.from.address ?? 'موقع غير معروف');
+    final String toName = trip.to.name.isNotEmpty
+        ? trip.to.name
+        : (trip.to.address ?? 'موقع غير معروف');
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withOpacity(0.06),
             blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            offset: const Offset(0, 8),
           ),
         ],
-        border: Border.all(color: Colors.grey.withOpacity(0.1), width: 1),
+        border: Border.all(color: Colors.grey.withOpacity(0.1), width: 1.5),
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         child: InkWell(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
           onTap: () {
             // Navigate to trip management
             Navigator.pushNamed(
@@ -240,92 +267,15 @@ class _TripCard extends StatelessWidget {
           },
           splashColor: statusColor.withOpacity(0.1),
           highlightColor: statusColor.withOpacity(0.05),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header with route and status
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          child: Column(
+            children: [
+              // ---------------- TOP PART: Status & Time ----------------
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Route information
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // From location
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFDCFCE7), // Light green
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.trip_origin,
-                                  size: 18,
-                                  color: Color(0xFF166534), // Dark green
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    trip.from.name,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 15,
-                                      color: Color(0xFF166534),
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          // To location
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFEE2E2), // Light red
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.location_on,
-                                  size: 18,
-                                  color: Color(0xFFDC2626), // Dark red
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    trip.to.name,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 15,
-                                      color: Color(0xFFDC2626),
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    // Status badge
+                    // Status Badge
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 14,
@@ -333,10 +283,10 @@ class _TripCard extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: statusColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(30),
                         border: Border.all(
                           color: statusColor.withOpacity(0.2),
-                          width: 1,
+                          width: 1.5,
                         ),
                       ),
                       child: Row(
@@ -348,10 +298,10 @@ class _TripCard extends StatelessWidget {
                                 : trip.status == 'hidden'
                                 ? Icons.visibility_off
                                 : Icons.check_circle,
-                            size: 14,
+                            size: 10,
                             color: statusColor,
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 8),
                           Text(
                             trip.status == 'active'
                                 ? 'نشطة'
@@ -360,167 +310,289 @@ class _TripCard extends StatelessWidget {
                                 : 'مكتملة',
                             style: TextStyle(
                               color: statusColor,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
                             ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Date & Time
+                    Row(
+                      children: [
+                        const Icon(
+                          IconsaxPlusLinear.clock,
+                          color: AppColors.textSecondary,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${dateFormat.format(trip.departureTime)} • ${timeFormat.format(trip.departureTime)}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // ---------------- MIDDLE PART: Route (Horizontal) ----------------
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 4,
+                ),
+                child: Row(
+                  children: [
+                    // FROM
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'من',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            fromName,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                              height: 1.2,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    // CAR ICON Divider
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        children: [
+                          const Icon(
+                            IconsaxPlusBold.car,
+                            color: AppColors.primary,
+                            size: 28,
+                          ),
+                          Container(
+                            width: 60,
+                            height: 2,
+                            margin: const EdgeInsets.symmetric(vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // TO
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          const Text(
+                            'إلى',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            toName,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                              height: 1.2,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.end,
                           ),
                         ],
                       ),
                     ),
                   ],
                 ),
+              ),
 
-                const SizedBox(height: 20),
+              const SizedBox(height: 24),
 
-                // Trip details in modern layout
+              // Dotted Divider
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: List.generate(
+                        (constraints.constrainWidth() / 10).floor(),
+                        (index) => Expanded(
+                          child: Container(
+                            height: 1.5,
+                            color: index % 2 == 0
+                                ? Colors.grey.withOpacity(0.3)
+                                : Colors.transparent,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+
+              // ---------------- BOTTOM PART: Price & Seats ----------------
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.background.withOpacity(0.6),
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(24),
+                    bottomRight: Radius.circular(24),
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 16,
+                  horizontal: 20,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Price
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.success.withOpacity(0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            IconsaxPlusBold.wallet_1,
+                            color: AppColors.success,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'سعر المقعد',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              '${trip.price} ${trip.currency}',
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.success,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    // Seats
+                    Row(
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            const Text(
+                              'المقاعد',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              '${trip.availableSeats} من ${trip.totalSeats}',
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            IconsaxPlusBold.people,
+                            color: AppColors.primary,
+                            size: 22,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // Warning for past trips
+              if (isPast) ...[
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 20,
+                  ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC), // Very light gray
-                    borderRadius: BorderRadius.circular(16),
+                    color: AppColors.warning.withOpacity(0.15),
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(24),
+                      bottomRight: Radius.circular(24),
+                    ),
                   ),
                   child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Departure time
-                      Expanded(
-                        child: _ModernInfoItem(
-                          icon: Icons.access_time_rounded,
-                          label: 'الانطلاق',
-                          value:
-                              '${dateFormat.format(trip.departureTime)}\n${timeFormat.format(trip.departureTime)}',
-                          color: const Color(0xFF6366F1), // Indigo
-                        ),
+                      const Icon(
+                        IconsaxPlusBold.info_circle,
+                        size: 18,
+                        color: AppColors.warning,
                       ),
-                      Container(
-                        height: 40,
-                        width: 1,
-                        color: Colors.grey.withOpacity(0.3),
-                        margin: const EdgeInsets.symmetric(horizontal: 12),
-                      ),
-                      // Price
-                      Expanded(
-                        child: _ModernInfoItem(
-                          icon: Icons.attach_money_rounded,
-                          label: 'السعر',
-                          value: '${trip.price} ${trip.currency}',
-                          color: const Color(0xFF10B981), // Emerald
-                        ),
-                      ),
-                      Container(
-                        height: 40,
-                        width: 1,
-                        color: Colors.grey.withOpacity(0.3),
-                        margin: const EdgeInsets.symmetric(horizontal: 12),
-                      ),
-                      // Seats
-                      Expanded(
-                        child: _ModernInfoItem(
-                          icon: Icons.event_seat_rounded,
-                          label: 'المقاعد',
-                          value: '${trip.availableSeats}/${trip.totalSeats}',
-                          color: const Color(0xFFF59E0B), // Amber
+                      const SizedBox(width: 8),
+                      const Text(
+                        'هذه الرحلة في الماضي',
+                        style: TextStyle(
+                          color: AppColors.warning,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],
                   ),
                 ),
-
-                // Warning for past trips
-                if (isPast) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEF3C7), // Light yellow
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFFF59E0B).withOpacity(0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.warning_amber_rounded,
-                          size: 16,
-                          color: Color(0xFFD97706), // Dark amber
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'الرحلة في الماضي',
-                          style: const TextStyle(
-                            color: Color(0xFFD97706),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
               ],
-            ),
+            ],
           ),
         ),
       ),
-    );
-  }
-}
-
-class _ModernInfoItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  const _ModernInfoItem({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Icon with circular background
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, size: 20, color: color),
-        ),
-        const SizedBox(height: 8),
-        // Label
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            color: Colors.grey[600],
-            fontWeight: FontWeight.w500,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 4),
-        // Value
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: color,
-            height: 1.2,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
     );
   }
 }

@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { QUERY_KEYS, ROUTES } from "@/lib/constants"
-import { formatDate, formatCurrency, getPaymentTypeLabel } from "@/lib/utils"
+import { formatDate, formatCurrency, getPaymentTypeLabel, getTripLocationName } from "@/lib/utils"
 import { PaymentType } from "@/types/enums"
 import type { Payment, UserSummary, TripSummary } from "@/types/models"
 import { Wallet, AlertCircle, ArrowLeftRight, Clock } from "lucide-react"
@@ -109,9 +109,9 @@ export default function WalletsListPage() {
           {isPopulatedTrip(payment.tripId) ? (
             <>
               <div className="font-medium flex items-center gap-1">
-                {payment.tripId.from.name}
+                {getTripLocationName(payment.tripId as unknown as Record<string, unknown>, "from")}
                 <ArrowLeftRight className="w-3 h-3 text-muted-foreground" />
-                {payment.tripId.to.name}
+                {getTripLocationName(payment.tripId as unknown as Record<string, unknown>, "to")}
               </div>
               <div className="text-xs font-medium text-muted-foreground mt-0.5">
                 {formatDate(payment.tripId.departureTime)}

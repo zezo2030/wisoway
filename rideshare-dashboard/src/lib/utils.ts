@@ -136,3 +136,83 @@ export function getGenderLabel(gender: Gender): string {
   }
   return labels[gender] || gender
 }
+
+function normalizeLocationText(value: string): string {
+  return value
+    .replace(/[_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+function toTitleCaseLatin(value: string): string {
+  const hasArabicChars = /[\u0600-\u06FF]/.test(value)
+  if (hasArabicChars) {
+    return value
+  }
+
+  return value
+    .split(" ")
+    .map((word) => {
+      if (!word) return word
+      const [first, ...rest] = word
+      return `${first.toUpperCase()}${rest.join("").toLowerCase()}`
+    })
+    .join(" ")
+}
+
+function formatCoordinate(value: unknown): string | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null
+  }
+  return value.toFixed(4).replace(/\.?0+$/, "")
+}
+
+export function formatLocationName(value: unknown, fallback = "Location not set"): string {
+  if (typeof value !== "string") {
+    return fallback
+  }
+  const normalized = normalizeLocationText(value)
+  if (!normalized) {
+    return fallback
+  }
+  return toTitleCaseLatin(normalized)
+}
+
+export function getTripLocationName(
+  trip: Record<string, unknown>,
+  side: "from" | "to",
+  fallback = "Location not set",
+): string {
+  const locationValue = trip[side]
+  if (typeof locationValue === "object" && locationValue !== null) {
+    const location = locationValue as Record<string, unknown>
+    const fromName = formatLocationName(location.name, "")
+    if (fromName) {
+      return fromName
+    }
+
+    const fromAddress = formatLocationName(location.address, "")
+    if (fromAddress) {
+      return fromAddress
+    }
+
+    const lat = formatCoordinate(location.latitude)
+    const lng = formatCoordinate(location.longitude)
+    if (lat && lng) {
+      return `${lat}, ${lng}`
+    }
+  }
+
+  const fromValue = formatLocationName(locationValue, "")
+  if (fromValue) {
+    return fromValue
+  }
+
+  const fallbackKey = side === "from" ? "fromName" : "toName"
+  const fallbackValue = formatLocationName(trip[fallbackKey], "")
+  if (fallbackValue) {
+    return fallbackValue
+  }
+
+  return fallback
+}

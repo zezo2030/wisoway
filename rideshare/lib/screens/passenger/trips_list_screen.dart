@@ -55,9 +55,7 @@ class _TripsListScreenState extends State<TripsListScreen> {
         builder: (context) => LocationPickerWidget(
           title: 'اختر موقعك',
           initialLocation: _userLocation,
-          onLocationSelected: (location) {
-            Navigator.pop(context, location);
-          },
+          onLocationSelected: (location) {},
         ),
       ),
     );

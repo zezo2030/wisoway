@@ -1,6 +1,7 @@
 import 'location_model.dart';
 import 'seat_layout_config.dart';
 import 'seat_data.dart';
+import '../core/utils/backend_url_resolver.dart';
 
 class TripModel {
   final String id;
@@ -66,6 +67,23 @@ class TripModel {
     required this.updatedAt,
   });
 
+  static double _parseDouble(dynamic value, {double fallback = 0.0}) {
+    if (value is num) return value.toDouble();
+    if (value is String) {
+      return double.tryParse(value) ?? fallback;
+    }
+    return fallback;
+  }
+
+  static int _parseInt(dynamic value, {int fallback = 0}) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) {
+      return int.tryParse(value) ?? fallback;
+    }
+    return fallback;
+  }
+
   factory TripModel.fromJson(Map<String, dynamic> json) {
     final fromMap = json['from'] as Map<String, dynamic>? ?? {};
     final toMap = json['to'] as Map<String, dynamic>? ?? {};
@@ -102,13 +120,15 @@ class TripModel {
       departureTime: json['departureTime'] != null
           ? DateTime.parse(json['departureTime'])
           : DateTime.now(),
-      price: (json['price'] ?? 0).toDouble(),
+      price: _parseDouble(json['price']),
       currency: json['currency'] ?? 'EGP',
-      totalSeats: json['totalSeats'] ?? 0,
-      availableSeats: json['availableSeats'] ?? 0,
+      totalSeats: _parseInt(json['totalSeats']),
+      availableSeats: _parseInt(json['availableSeats']),
       seatLayout: seatLayout,
       seats: seats,
-      carImageUrl: json['carImageUrl'],
+      carImageUrl: BackendUrlResolver.normalize(
+        (json['carImageUrl'] ?? json['carImage'])?.toString(),
+      ),
       status: json['status'] ?? 'active',
       isVisible: json['isVisible'] ?? true,
       communicationFeeStatus: json['communicationFeeStatus'] ?? 'not_paid',

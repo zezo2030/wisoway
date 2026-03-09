@@ -1,8 +1,15 @@
+import 'dart:ui';
+
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import '../../models/location_model.dart';
 
 class LocationService {
+  static final RegExp _plusCodeRegex = RegExp(
+    r'^[23456789CFGHJMPQRVWX]{2,}\+[23456789CFGHJMPQRVWX]{2,}$',
+    caseSensitive: false,
+  );
+
   // Check if location services are enabled
   Future<bool> isLocationServiceEnabled() async {
     return await Geolocator.isLocationServiceEnabled();
@@ -55,31 +62,49 @@ class LocationService {
 
       if (placemarks.isNotEmpty) {
         final place = placemarks.first;
-        // Build address string
+        final cleanedCountry = _sanitizeAddressPart(place.country);
+        // Build a readable address and ignore noisy plus-code fragments.
+        final candidateParts = <String?>[
+          if (!_hasText(place.subLocality) && !_hasText(place.locality))
+            place.street,
+          place.subLocality,
+          place.locality,
+          place.subAdministrativeArea,
+          place.administrativeArea,
+          place.country,
+        ];
+
+        final seen = <String>{};
         final addressParts = <String>[];
-        if (place.street != null && place.street!.isNotEmpty) {
-          addressParts.add(place.street!);
-        }
-        if (place.subLocality != null && place.subLocality!.isNotEmpty) {
-          addressParts.add(place.subLocality!);
-        }
-        if (place.locality != null && place.locality!.isNotEmpty) {
-          addressParts.add(place.locality!);
-        }
-        if (place.administrativeArea != null && place.administrativeArea!.isNotEmpty) {
-          addressParts.add(place.administrativeArea!);
-        }
-        if (place.country != null && place.country!.isNotEmpty) {
-          addressParts.add(place.country!);
+        for (final rawPart in candidateParts) {
+          final cleanedPart = _sanitizeAddressPart(rawPart);
+          if (cleanedPart == null) continue;
+
+          final dedupeKey = cleanedPart.toLowerCase();
+          if (seen.add(dedupeKey)) {
+            addressParts.add(cleanedPart);
+          }
         }
 
-        return addressParts.isNotEmpty ? addressParts.join(', ') : 'Unknown location';
+        if (cleanedCountry != null && addressParts.length > 2) {
+          addressParts.removeWhere(
+            (part) => part.toLowerCase() == cleanedCountry.toLowerCase(),
+          );
+        }
+
+        if (addressParts.length > 3) {
+          addressParts.removeRange(3, addressParts.length);
+        }
+
+        return addressParts.isNotEmpty
+            ? addressParts.join('، ')
+            : _unknownLocationLabel;
       }
 
-      return 'Unknown location';
+      return _unknownLocationLabel;
     } catch (e) {
       print('❌ Error getting address from coordinates: $e');
-      return 'Unknown location';
+      return _unknownLocationLabel;
     }
   }
 
@@ -144,6 +169,44 @@ class LocationService {
       lat2: loc2.latitude,
       lon2: loc2.longitude,
     );
+  }
+
+  String? _sanitizeAddressPart(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return null;
+    }
+
+    final segments = value
+        .split(',')
+        .map((segment) => segment.trim())
+        .where((segment) => segment.isNotEmpty)
+        .where((segment) => !_looksLikePlusCode(segment));
+
+    final cleaned = segments.join(' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (cleaned.isEmpty) {
+      return null;
+    }
+
+    return cleaned;
+  }
+
+  bool _looksLikePlusCode(String value) {
+    final compact = value.replaceAll(' ', '').toUpperCase();
+    return _plusCodeRegex.hasMatch(compact);
+  }
+
+  bool _hasText(String? value) {
+    return value != null && value.trim().isNotEmpty;
+  }
+
+  bool get _isArabicLocale {
+    final languageCode =
+        PlatformDispatcher.instance.locale.languageCode.toLowerCase();
+    return languageCode.startsWith('ar');
+  }
+
+  String get _unknownLocationLabel {
+    return _isArabicLocale ? 'موقع غير معروف' : 'Unknown location';
   }
 }
 

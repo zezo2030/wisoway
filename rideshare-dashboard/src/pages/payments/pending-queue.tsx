@@ -19,7 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { QUERY_KEYS, DASHBOARD_REFRESH_INTERVAL } from "@/lib/constants"
-import { formatDate, formatCurrency, getPaymentTypeLabel, cn } from "@/lib/utils"
+import { formatDate, formatCurrency, getPaymentTypeLabel, cn, getTripLocationName } from "@/lib/utils"
 import type { Payment, UserSummary, TripSummary } from "@/types/models"
 import { CheckCircle, XCircle, AlertCircle, ArrowLeftRight, Clock, Info, User } from "lucide-react"
 import { toast } from "sonner"
@@ -155,9 +155,9 @@ export default function PendingQueuePage() {
           {isPopulatedTrip(payment.tripId) ? (
             <>
               <div className="font-medium flex items-center gap-1">
-                {payment.tripId.from.name}
+                {getTripLocationName(payment.tripId as unknown as Record<string, unknown>, "from")}
                 <ArrowLeftRight className="w-3 h-3 text-muted-foreground" />
-                {payment.tripId.to.name}
+                {getTripLocationName(payment.tripId as unknown as Record<string, unknown>, "to")}
               </div>
               <div className="text-xs font-medium text-muted-foreground mt-0.5 flex flex-col sm:flex-row gap-1">
                 <span className="bg-muted px-1.5 py-0.5 rounded border border-border/40 inline-flex w-fit items-center">

@@ -8,7 +8,10 @@ class TripService {
   final ApiClient _api = ApiClient();
 
   List<TripModel> _extractTrips(dynamic response) {
-    final payload = response['data'] ?? response;
+    dynamic payload = response;
+    if (response is Map<String, dynamic>) {
+      payload = response['data'] ?? response;
+    }
 
     if (payload is List) {
       return payload
@@ -17,11 +20,19 @@ class TripService {
           .toList();
     }
 
-    if (payload is Map<String, dynamic> && payload['data'] is List) {
-      return (payload['data'] as List)
-          .whereType<Map<String, dynamic>>()
-          .map((json) => TripModel.fromJson(json))
-          .toList();
+    if (payload is Map<String, dynamic>) {
+      final dynamic listPayload =
+          payload['data'] ??
+          payload['trips'] ??
+          payload['items'] ??
+          payload['results'];
+
+      if (listPayload is List) {
+        return listPayload
+            .whereType<Map<String, dynamic>>()
+            .map((json) => TripModel.fromJson(json))
+            .toList();
+      }
     }
 
     return [];
@@ -73,19 +84,70 @@ class TripService {
   }
 
   // Get driver's trips
-  Future<List<TripModel>> getDriverTrips({String? status}) async {
+  Future<List<TripModel>> getDriverTrips({
+    String? status,
+    String? driverId,
+    String? driverName,
+  }) async {
+    bool sameDriverName(TripModel trip) {
+      if (driverName == null || driverName.trim().isEmpty) return false;
+      final a = trip.driverName?.trim().toLowerCase();
+      final b = driverName.trim().toLowerCase();
+      return a != null && a.isNotEmpty && a == b;
+    }
+
+    bool sameDriver(TripModel trip) {
+      final hasDriverId = driverId != null && driverId.isNotEmpty;
+      if (hasDriverId && trip.driverId == driverId) return true;
+      return sameDriverName(trip);
+    }
+
+    Future<List<TripModel>> fallbackFromPublicTrips() async {
+      final Map<String, dynamic> fallbackQuery = {};
+      if (status != null && status.isNotEmpty) {
+        fallbackQuery['status'] = status;
+      }
+      final fallbackResponse = await _api.get(
+        ApiEndpoints.trips,
+        queryParameters: fallbackQuery.isEmpty ? null : fallbackQuery,
+      );
+      final fallbackTrips = _extractTrips(fallbackResponse);
+      if ((driverId == null || driverId.isEmpty) &&
+          (driverName == null || driverName.trim().isEmpty)) {
+        return fallbackTrips;
+      }
+      return fallbackTrips.where(sameDriver).toList();
+    }
+
     try {
-      Map<String, dynamic>? query;
-      if (status != null) {
-        query = {'status': status};
+      final Map<String, dynamic> query = {};
+      if (status != null && status.isNotEmpty) {
+        query['status'] = status;
       }
       final response = await _api.get(
         ApiEndpoints.myTrips,
-        queryParameters: query,
+        queryParameters: query.isEmpty ? null : query,
       );
-      return _extractTrips(response);
+      final trips = _extractTrips(response);
+      // Some backend versions ignore status on /trips/my; enforce locally.
+      final filteredTrips = (status == null || status.isEmpty)
+          ? trips
+          : trips.where((trip) => trip.status == status).toList();
+      if (filteredTrips.isNotEmpty ||
+          ((driverId == null || driverId.isEmpty) &&
+              (driverName == null || driverName.trim().isEmpty))) {
+        return filteredTrips;
+      }
+      return fallbackFromPublicTrips();
     } catch (e) {
       print('❌ Error getting driver trips: $e');
+      if (driverId != null && driverId.isNotEmpty) {
+        try {
+          return await fallbackFromPublicTrips();
+        } catch (_) {
+          return [];
+        }
+      }
       return [];
     }
   }

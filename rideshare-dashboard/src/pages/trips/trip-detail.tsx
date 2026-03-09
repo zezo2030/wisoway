@@ -3,7 +3,7 @@
 
 import { useParams, useNavigate } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { getTripById, getTripSeats, getBookingsForTrip } from "@/api/admin"
+import { getTripById, getTripSeats, getBookingsForTrip, getUserById } from "@/api/admin"
 import { SeatMap } from "@/components/seat-map"
 import { StatusBadge } from "@/components/status-badge"
 import { Button } from "@/components/ui/button"
@@ -17,7 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { QUERY_KEYS } from "@/lib/constants"
-import { formatDateTime, formatCurrency, cn } from "@/lib/utils"
+import { formatDateTime, formatCurrency, cn, getTripLocationName } from "@/lib/utils"
 import type { UserSummary } from "@/types/models"
 import { ArrowLeft, MapPin, User, Calendar, DollarSign, Car, Users, ArrowLeftRight, Activity, CreditCard, ShieldCheck } from "lucide-react"
 
@@ -51,6 +51,13 @@ export default function TripDetailPage() {
     enabled: !!id,
   })
 
+  const driverId = trip && typeof trip.driverId === "string" ? trip.driverId : undefined
+  const { data: driverUser } = useQuery({
+    queryKey: [QUERY_KEYS.ADMIN.USER, driverId],
+    queryFn: () => getUserById(driverId!),
+    enabled: !!driverId,
+  })
+
   if (isLoadingTrip) {
     return (
       <div className="space-y-6 animate-in fade-in duration-500">
@@ -81,6 +88,15 @@ export default function TripDetailPage() {
     )
   }
 
+  const fromName = getTripLocationName(trip as unknown as Record<string, unknown>, "from")
+  const toName = getTripLocationName(trip as unknown as Record<string, unknown>, "to")
+  const driverDisplayName = isPopulatedDriver(trip.driverId)
+    ? trip.driverId.name
+    : trip.driverName || driverUser?.name || "Unknown Driver"
+  const driverDisplayContact = isPopulatedDriver(trip.driverId)
+    ? trip.driverId.email
+    : driverUser?.email || "No email provided"
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 pb-10">
 
@@ -96,9 +112,9 @@ export default function TripDetailPage() {
             </div>
             <div>
               <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
-                <span>{trip.from.name}</span>
+                <span>{fromName}</span>
                 <ArrowLeftRight className="w-4 h-4 text-muted-foreground" />
-                <span>{trip.to.name}</span>
+                <span>{toName}</span>
               </h1>
             </div>
           </div>
@@ -166,14 +182,14 @@ export default function TripDetailPage() {
             <CardContent>
               <div className="flex items-center gap-4 bg-muted/30 p-4 rounded-xl border border-border/40">
                 <div className="h-12 w-12 rounded-full bg-primary/20 flex flex-shrink-0 items-center justify-center text-primary font-bold shadow-inner">
-                  {isPopulatedDriver(trip.driverId) ? trip.driverId.name.charAt(0).toUpperCase() : "?"}
+                  {driverDisplayName.charAt(0).toUpperCase()}
                 </div>
                 <div>
                   <p className="font-bold text-foreground">
-                    {isPopulatedDriver(trip.driverId) ? trip.driverId.name : "Unknown Driver"}
+                    {driverDisplayName}
                   </p>
                   <p className="text-sm font-medium text-muted-foreground">
-                    {isPopulatedDriver(trip.driverId) ? trip.driverId.email : trip.driverId}
+                    {driverDisplayContact}
                   </p>
                 </div>
               </div>
@@ -200,7 +216,7 @@ export default function TripDetailPage() {
                     <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                       <MapPin className="w-3.5 h-3.5" /> Departure Location
                     </p>
-                    <p className="font-bold text-xl mt-1 text-foreground">{trip.from.name}</p>
+                    <p className="font-bold text-xl mt-1 text-foreground">{fromName}</p>
                     <p className="text-sm font-medium text-primary mt-2 flex items-center gap-2 bg-primary/5 w-fit px-3 py-1.5 rounded-md border border-primary/20">
                       <Calendar className="w-4 h-4" />
                       {formatDateTime(trip.departureTime)}
@@ -216,7 +232,7 @@ export default function TripDetailPage() {
                     <p className="text-xs font-bold text-emerald-600/70 uppercase tracking-wider flex items-center gap-1.5">
                       <MapPin className="w-3.5 h-3.5" /> Destination
                     </p>
-                    <p className="font-bold text-xl mt-1 text-foreground">{trip.to.name}</p>
+                    <p className="font-bold text-xl mt-1 text-foreground">{toName}</p>
                   </div>
                 </div>
               </div>

@@ -29,6 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   LocationModel? _userLocation;
   bool _isLoadingLocation = false;
+  bool _didFetchDriverTrips = false;
   final LocationService _locationService = LocationService();
   late final DateTime _activeTripsMinDepartureTime;
   late final DateTime _bookingsMinDepartureTime;
@@ -82,9 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (context) => LocationPickerWidget(
           title: 'اختر موقعك',
           initialLocation: _userLocation,
-          onLocationSelected: (location) {
-            Navigator.pop(context, location);
-          },
+          onLocationSelected: (location) {},
         ),
       ),
     );
@@ -205,6 +204,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDriverTripsPage(BuildContext context, user) {
+    if (!_didFetchDriverTrips) {
+      _didFetchDriverTrips = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        context.read<TripProvider>().fetchDriverTrips(
+          driverId: user.id,
+          driverName: user.name,
+        );
+      });
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -243,7 +253,7 @@ class _HomeScreenState extends State<HomeScreen> {
         stream: Provider.of<TripProvider>(
           context,
           listen: false,
-        ).getDriverTripsStream(user!.id, status: 'active'),
+        ).getDriverTripsStream(user.id, driverName: user.name),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(
@@ -265,8 +275,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
           return RefreshIndicator(
             onRefresh: () async {
-              // Refresh trips
-              await Future.delayed(const Duration(milliseconds: 500));
+              await context.read<TripProvider>().fetchDriverTrips(
+                driverId: user.id,
+                driverName: user.name,
+              );
             },
             color: AppColors.primary,
             child: ListView.builder(
@@ -673,7 +685,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 32),
             Text(
-              'لا توجد رحلات نشطة',
+              'لا توجد رحلات',
               style: GoogleFonts.tajawal(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -1107,17 +1119,26 @@ class _HomeScreenState extends State<HomeScreen> {
               CircleAvatar(
                 radius: 60,
                 backgroundColor: AppColors.primary,
-                backgroundImage:
-                    user?.photoUrl != null && user!.photoUrl!.isNotEmpty
-                    ? NetworkImage(user.photoUrl!)
-                    : null,
-                child: user?.photoUrl == null || user!.photoUrl!.isEmpty
-                    ? const Icon(
+                child: user?.photoUrl != null && user!.photoUrl!.isNotEmpty
+                    ? ClipOval(
+                        child: Image.network(
+                          user.photoUrl!,
+                          fit: BoxFit.cover,
+                          width: 120,
+                          height: 120,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(
+                                IconsaxPlusBold.profile,
+                                size: 60,
+                                color: Colors.white,
+                              ),
+                        ),
+                      )
+                    : const Icon(
                         IconsaxPlusBold.profile,
                         size: 60,
                         color: Colors.white,
-                      )
-                    : null,
+                      ),
               ),
               const SizedBox(height: 16),
               Text(
@@ -2190,19 +2211,29 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: CircleAvatar(
                           radius: 50,
                           backgroundColor: Colors.white,
-                          backgroundImage:
-                              user?.photoUrl != null &&
-                                  user!.photoUrl!.isNotEmpty
-                              ? NetworkImage(user.photoUrl!)
-                              : null,
                           child:
-                              user?.photoUrl == null || user!.photoUrl!.isEmpty
-                              ? const Icon(
+                              user?.photoUrl != null &&
+                                  user.photoUrl!.isNotEmpty
+                              ? ClipOval(
+                                  child: Image.network(
+                                    user.photoUrl!,
+                                    fit: BoxFit.cover,
+                                    width: 100,
+                                    height: 100,
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            const Icon(
+                                              IconsaxPlusBold.profile,
+                                              size: 50,
+                                              color: AppColors.primary,
+                                            ),
+                                  ),
+                                )
+                              : const Icon(
                                   IconsaxPlusBold.profile,
                                   size: 50,
                                   color: AppColors.primary,
-                                )
-                              : null,
+                                ),
                         ),
                       ),
                       // Status Badge
@@ -2341,6 +2372,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         setState(() {
                           _currentIndex = 2;
                         });
+                      },
+                    ),
+                    _buildDrawerMenuItem(
+                      icon: IconsaxPlusLinear.wallet,
+                      title: 'محفظتي',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, RouteNames.driverWallet);
                       },
                     ),
                   ],

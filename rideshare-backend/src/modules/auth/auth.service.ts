@@ -133,10 +133,11 @@ export class AuthService {
   }
 
   async login(signInDto: SignInDto): Promise<AuthResponse> {
-    const { email, password } = signInDto;
+    const normalizedEmail = signInDto.email.trim().toLowerCase();
+    const password = signInDto.password;
 
     // Find user
-    const user = await this.usersService.findByEmailWithPassword(email);
+    const user = await this.usersService.findByEmailWithPassword(normalizedEmail);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -148,8 +149,22 @@ export class AuthService {
       );
     }
 
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    // Verify password. Support legacy plaintext passwords and migrate them
+    // to bcrypt after first successful login.
+    let isPasswordValid = false;
+    const isBcryptHash =
+      user.passwordHash.startsWith('$2b$') ||
+      user.passwordHash.startsWith('$2a$') ||
+      user.passwordHash.startsWith('$2y$');
+
+    if (isBcryptHash) {
+      isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    } else {
+      isPasswordValid = password === user.passwordHash;
+      if (isPasswordValid) {
+        await this.usersService.updatePasswordHash(user.id, password);
+      }
+    }
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }

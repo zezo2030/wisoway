@@ -15,9 +15,10 @@ interface SeatMapProps {
 
 export function SeatMap({ seatLayout, seats, preventGenderMixing = false, className }: SeatMapProps) {
   const { rows, seatsPerRow } = seatLayout
+  const normalizedSeats = Array.isArray(seats) ? seats : []
 
   // Create a map of seat number to seat data
-  const seatMap = new Map(seats.map((seat) => [seat.seatNumber, seat]))
+  const seatMap = new Map(normalizedSeats.map((seat) => [seat.seatNumber, seat]))
 
   // Get seat status color
   const getSeatColor = (seat: Seat | undefined) => {

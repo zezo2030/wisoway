@@ -72,10 +72,13 @@ export interface Seat {
 
 export interface Trip {
   _id: string
+  id?: string
   driverId: string | UserSummary
   driverName?: string
-  from: Location
-  to: Location
+  from?: Location | string
+  to?: Location | string
+  fromName?: string
+  toName?: string
   departureTime: string
   price: number
   currency: Currency
@@ -220,8 +223,11 @@ export interface UserSummary {
 
 export interface TripSummary {
   _id: string
-  from: Location
-  to: Location
+  id?: string
+  from?: Location | string
+  to?: Location | string
+  fromName?: string
+  toName?: string
   departureTime: string
 }
 

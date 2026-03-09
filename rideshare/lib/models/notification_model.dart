@@ -36,6 +36,7 @@ class NotificationModel {
     final pUserId = json['userId'] is Map
         ? (json['userId']['_id'] ?? json['userId']['id'])?.toString() ?? ''
         : (json['userId'] ?? '').toString();
+    final rawData = json['data'];
 
     return NotificationModel(
       id: (json['_id'] ?? json['id'])?.toString() ?? '',
@@ -43,7 +44,9 @@ class NotificationModel {
       type: json['type'] ?? '',
       title: json['title'] ?? '',
       body: json['body'] ?? '',
-      data: json['data'] as Map<String, dynamic>?,
+      data: rawData is Map<String, dynamic>
+          ? rawData
+          : (rawData is Map ? Map<String, dynamic>.from(rawData) : null),
       isRead: json['isRead'] ?? false,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])

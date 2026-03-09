@@ -41,14 +41,17 @@ export class UsersService {
   }
 
   async findByEmail(email: string): Promise<UserEntity | null> {
-    return this.userRepo.findOne({ where: { email } });
+    return this.userRepo
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = LOWER(:email)', { email: email.trim() })
+      .getOne();
   }
 
   async findByEmailWithPassword(email: string): Promise<UserEntity | null> {
     return this.userRepo
       .createQueryBuilder('user')
       .addSelect('user.passwordHash')
-      .where('user.email = :email', { email })
+      .where('LOWER(user.email) = LOWER(:email)', { email: email.trim() })
       .getOne();
   }
 
@@ -90,6 +93,13 @@ export class UsersService {
 
   async updateFcmToken(id: string, fcmToken: string): Promise<void> {
     await this.userRepo.update(id, { fcmToken });
+  }
+
+  async updatePasswordHash(id: string, passwordHash: string): Promise<void> {
+    const nextPasswordHash = this.shouldHashPassword(passwordHash)
+      ? await bcrypt.hash(passwordHash, 12)
+      : passwordHash;
+    await this.userRepo.update(id, { passwordHash: nextPasswordHash });
   }
 
   async linkPhone(id: string, phoneNumber: string): Promise<UserEntity> {

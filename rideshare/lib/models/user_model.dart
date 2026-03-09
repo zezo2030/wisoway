@@ -1,4 +1,5 @@
 import '../core/constants/app_constants.dart';
+import '../core/utils/backend_url_resolver.dart';
 
 class UserModel {
   final String id;
@@ -64,7 +65,7 @@ class UserModel {
       rating: double.tryParse((json['rating'] ?? 0).toString()) ?? 0.0,
       totalRatings: int.tryParse((json['totalRatings'] ?? 0).toString()) ?? 0,
       fcmToken: json['fcmToken']?.toString(),
-      photoUrl: json['photoUrl']?.toString(),
+      photoUrl: BackendUrlResolver.normalize(json['photoUrl']?.toString()),
       provider: json['provider']?.toString(),
       createdAt: _parseDateTime(json['createdAt']),
       updatedAt: _parseDateTime(json['updatedAt']),

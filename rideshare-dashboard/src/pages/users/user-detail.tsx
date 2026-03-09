@@ -29,7 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { QUERY_KEYS } from "@/lib/constants"
-import { cn, formatDate, getUserRoleLabel, formatNumber } from "@/lib/utils"
+import { cn, formatDate, formatLocationName, getUserRoleLabel, getTripLocationName } from "@/lib/utils"
 import { UserRole } from "@/types/enums"
 import {
   ArrowLeft,
@@ -289,6 +289,34 @@ export default function UserDetailPage() {
       .slice(0, 2)
   }
 
+  const getUserLocationText = (): string => {
+    const userRecord = user as unknown as Record<string, unknown>
+    const directFields = ["address", "city", "currentCity", "currentLocation"]
+
+    for (const field of directFields) {
+      const value = formatLocationName(userRecord[field], "")
+      if (value) {
+        return value
+      }
+    }
+
+    const nestedLocation = userRecord.location
+    if (typeof nestedLocation === "object" && nestedLocation !== null) {
+      const locationRecord = nestedLocation as Record<string, unknown>
+      const locationName = formatLocationName(locationRecord.name, "")
+      if (locationName) {
+        return locationName
+      }
+
+      const locationAddress = formatLocationName(locationRecord.address, "")
+      if (locationAddress) {
+        return locationAddress
+      }
+    }
+
+    return "Location not provided"
+  }
+
   if (isLoadingUser) {
     return (
       <div className="space-y-6 animate-in fade-in duration-500">
@@ -471,8 +499,8 @@ export default function UserDetailPage() {
             <h2 className="text-3xl font-bold tracking-tight mb-2 text-foreground/90">{user.name}</h2>
 
             <div className="flex items-center gap-1.5 mb-6 text-muted-foreground/80 font-medium">
-              <MapPin className="w-4 h-4" />
-              <span>{user.isEmailVerified ? "Verified Account" : "Unverified"}</span> • <span className="capitalize">{user.gender || "Not specified"}</span>
+              <Shield className="w-4 h-4" />
+              <span>{user.isEmailVerified || user.isPhoneVerified ? "Verified Account" : "Account Not Verified"}</span> • <span className="capitalize">{user.gender || "Not specified"}</span>
             </div>
 
             <div className="flex flex-wrap gap-2 justify-center mb-6">
@@ -546,6 +574,11 @@ export default function UserDetailPage() {
                   <Calendar className="w-16 h-16 absolute -right-4 -bottom-4 opacity-[0.03] text-foreground" />
                   <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2"><Calendar className="w-3.5 h-3.5" /> Exact Registration</p>
                   <p className="font-medium text-sm text-foreground">{formatDate(user.createdAt)}</p>
+                </div>
+                <div className="space-y-1 p-4 rounded-xl relative overflow-hidden bg-muted/20 border border-border/40 hover:bg-muted/40 transition-colors sm:col-span-2">
+                  <MapPin className="w-16 h-16 absolute -right-4 -bottom-4 opacity-[0.03] text-foreground" />
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2"><MapPin className="w-3.5 h-3.5" /> Location</p>
+                  <p className="font-semibold text-foreground">{getUserLocationText()}</p>
                 </div>
               </div>
             </CardContent>
@@ -646,10 +679,10 @@ export default function UserDetailPage() {
           {/* User Metrics Summary */}
           {stats ? (
             <div className="grid grid-cols-2 gap-4">
-              {statCardsData.map((stat, i) => {
-                const Icon = stat.icon;
+              {statCardsData.map((stat) => {
+                const Icon = stat.icon
                 return (
-                  <Card key={i} className="border-none shadow-md overflow-hidden relative group">
+                  <Card key={stat.title} className="border-none shadow-md overflow-hidden relative group">
                     <div className={cn("absolute inset-0 bg-gradient-to-br opacity-50 transition-opacity duration-300 group-hover:opacity-70", stat.color)} />
                     <CardContent className="p-5 flex items-center justify-between relative z-10">
                       <div>
@@ -705,15 +738,15 @@ export default function UserDetailPage() {
                     </CardHeader>
                     <div className="p-0">
                       <div className="divide-y divide-border/50">
-                        {trips.data.map((trip) => (
-                          <div key={trip._id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-muted/30 transition-colors">
+                        {trips.data.map((trip, index) => (
+                          <div key={trip._id || trip.id || `${trip.departureTime}-${index}`} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-muted/30 transition-colors">
                             <div className="flex items-start gap-4">
                               <div className="bg-primary/10 p-3 rounded-xl border border-primary/20 shadow-inner mt-1 sm:mt-0">
                                 <Car className="w-5 h-5 text-primary" />
                               </div>
                               <div>
                                 <p className="font-bold text-base text-foreground mb-1 flex items-center">
-                                  {trip.from.name} <ArrowLeft className="w-4 h-4 mx-2 text-muted-foreground rotate-180" /> {trip.to.name}
+                                  {getTripLocationName(trip as unknown as Record<string, unknown>, "from")} <ArrowLeft className="w-4 h-4 mx-2 text-muted-foreground rotate-180" /> {getTripLocationName(trip as unknown as Record<string, unknown>, "to")}
                                 </p>
                                 <p className="text-sm font-medium text-muted-foreground flex items-center">
                                   <Calendar className="w-3.5 h-3.5 mr-1.5" /> {formatDate(trip.departureTime)}

@@ -129,13 +129,22 @@ class TripProvider extends ChangeNotifier {
     return await _tripService.getTrip(tripId);
   }
 
-  Future<void> fetchDriverTrips({String? status}) async {
+  Future<void> fetchDriverTrips({
+    String? status,
+    String? driverId,
+    String? driverName,
+  }) async {
     try {
       _setLoading(true);
-      _driverTrips = await _tripService.getDriverTrips(status: status);
+      _driverTrips = await _tripService.getDriverTrips(
+        status: status,
+        driverId: driverId,
+        driverName: driverName,
+      );
       _driverTripsController.add(_driverTrips);
       _setError(null);
     } catch (e) {
+      _driverTripsController.add(_driverTrips);
       _setError(e.toString());
     } finally {
       _setLoading(false);
@@ -145,22 +154,30 @@ class TripProvider extends ChangeNotifier {
   Stream<List<TripModel>> getDriverTripsStream(
     String driverId, {
     String? status,
-  }) {
+    String? driverName,
+  }) async* {
     final key = status ?? 'all';
     if (!_loadedDriverTripsKeys.contains(key)) {
       _loadedDriverTripsKeys.add(key);
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        unawaited(fetchDriverTrips(status: status));
+        unawaited(
+          fetchDriverTrips(
+            status: status,
+            driverId: driverId,
+            driverName: driverName,
+          ),
+        );
       });
     }
-    return _driverTripsController.stream;
+    yield _driverTrips;
+    yield* _driverTripsController.stream;
   }
 
   Stream<List<TripModel>> getActiveTripsStream({
     LocationModel? from,
     LocationModel? to,
     DateTime? minDepartureTime,
-  }) {
+  }) async* {
     final key = _buildActiveTripsKey(
       from: from,
       to: to,
@@ -178,7 +195,8 @@ class TripProvider extends ChangeNotifier {
         );
       });
     }
-    return _activeTripsController.stream;
+    yield _activeTrips;
+    yield* _activeTripsController.stream;
   }
 
   String _buildActiveTripsKey({
@@ -226,6 +244,7 @@ class TripProvider extends ChangeNotifier {
       _activeTripsController.add(_activeTrips);
       _setError(null);
     } catch (e) {
+      _activeTripsController.add(_activeTrips);
       _setError(e.toString());
     } finally {
       _setLoading(false);

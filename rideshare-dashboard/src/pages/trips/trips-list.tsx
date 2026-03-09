@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { QUERY_KEYS } from "@/lib/constants"
-import { formatDate, formatCurrency } from "@/lib/utils"
+import { formatDate, formatCurrency, getTripLocationName } from "@/lib/utils"
 import { TripStatus } from "@/types/enums"
 import type { Trip, UserSummary } from "@/types/models"
 import { Car, Navigation, Filter, MapPin, Calendar, Users, DollarSign, ArrowLeftRight } from "lucide-react"
@@ -23,6 +23,19 @@ import { Car, Navigation, Filter, MapPin, Calendar, Users, DollarSign, ArrowLeft
 // Type guard for populated fields
 function isPopulatedDriver(driverId: string | UserSummary): driverId is UserSummary {
   return typeof driverId === "object" && driverId !== null && "name" in driverId
+}
+
+function getTripId(trip: Trip): string | null {
+  const candidate = (trip as Trip & { id?: string })._id ?? (trip as Trip & { id?: string }).id
+  return typeof candidate === "string" && candidate.trim().length > 0 ? candidate : null
+}
+
+function getDriverName(driverId: string | UserSummary): string | null {
+  if (!isPopulatedDriver(driverId)) {
+    return null
+  }
+  const name = driverId.name?.trim()
+  return name || null
 }
 
 export default function TripsListPage() {
@@ -63,7 +76,11 @@ export default function TripsListPage() {
   }
 
   const handleRowClick = (trip: Trip) => {
-    navigate(`/trips/${trip._id}`)
+    const tripId = getTripId(trip)
+    if (!tripId) {
+      return
+    }
+    navigate(`/trips/${tripId}`)
   }
 
   // Table columns
@@ -71,36 +88,43 @@ export default function TripsListPage() {
     {
       key: "route",
       header: "Route",
-      cell: (trip) => (
-        <div className="flex items-center gap-2 py-1">
-          <div className="bg-primary/10 p-2 rounded-lg border border-primary/20 shadow-inner flex-shrink-0">
-            <Navigation className="w-4 h-4 text-primary" />
-          </div>
-          <div>
-            <div className="font-bold text-foreground flex items-center gap-1.5 flex-wrap">
-              {trip.from.name} <ArrowLeftRight className="w-3 h-3 text-muted-foreground" /> {trip.to.name}
+      cell: (trip) => {
+        const fromName = getTripLocationName(trip as Record<string, unknown>, "from")
+        const toName = getTripLocationName(trip as Record<string, unknown>, "to")
+        return (
+          <div className="flex items-center gap-2 py-1">
+            <div className="bg-primary/10 p-2 rounded-lg border border-primary/20 shadow-inner flex-shrink-0">
+              <Navigation className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <div className="font-bold text-foreground flex items-center gap-1.5 flex-wrap">
+                {fromName} <ArrowLeftRight className="w-3 h-3 text-muted-foreground" /> {toName}
+              </div>
             </div>
           </div>
-        </div>
-      ),
+        )
+      },
     },
     {
       key: "driver",
       header: "Driver",
-      cell: (trip) => (
-        <div className="flex items-center gap-2">
-          {isPopulatedDriver(trip.driverId) ? (
-            <>
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground font-bold text-xs shadow-sm border border-border/40 flex-shrink-0">
-                {trip.driverId.name.charAt(0).toUpperCase()}
-              </div>
-              <div className="font-semibold">{trip.driverId.name}</div>
-            </>
-          ) : (
-            <span className="text-muted-foreground font-mono text-xs">ID: {trip.driverId}</span>
-          )}
-        </div>
-      ),
+      cell: (trip) => {
+        const driverName = getDriverName(trip.driverId)
+        return (
+          <div className="flex items-center gap-2">
+            {driverName ? (
+              <>
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground font-bold text-xs shadow-sm border border-border/40 flex-shrink-0">
+                  {driverName.charAt(0).toUpperCase()}
+                </div>
+                <div className="font-semibold">{driverName}</div>
+              </>
+            ) : (
+              <span className="text-muted-foreground font-mono text-xs">ID: {trip.driverId}</span>
+            )}
+          </div>
+        )
+      },
     },
     {
       key: "departure",
