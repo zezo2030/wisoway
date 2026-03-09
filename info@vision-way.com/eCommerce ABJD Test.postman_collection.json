@@ -1,0 +1,1025 @@
+{
+	"info": {
+		"_postman_id": "91e61150-564d-4658-b495-3d0e70aaece8",
+		"name": "eCommerce ABJD Test",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "29920096"
+	},
+	"item": [
+		{
+			"name": "Get Token",
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {}
+			},
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI2ZGViNmQ5Zi0wMTg5LTQ5NGItYTBhMC0zMjQxM2FhNDNhNTEiLCJNZXJjaGFudElEIjoiQVJBQlRIRVJBUCIsImV4cCI6MTc0NDI4MzE4OSwiaXNzIjoiQTJBIiwiYXVkIjoiQTJBIn0.18BjXV-j9GkqWU2N6fyXzi95PKNbBDosb1_5GObqvBo",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "CorrelationID",
+						"value": "ARABTHERAP",
+						"type": "text"
+					},
+					{
+						"key": "MerchantID",
+						"value": "ARABTHERAP",
+						"type": "text"
+					},
+					{
+						"key": "UserID",
+						"value": "UWallet_UAT",
+						"type": "text"
+					},
+					{
+						"key": "Password",
+						"value": "uWLt@uAt",
+						"type": "text"
+					},
+					{
+						"key": "",
+						"value": "",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n\"SecurityKey\":\"LZ!gfE6DAp64\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://testapi.uwallet.jo/A2AMerchantInterface/GetToken",
+					"protocol": "https",
+					"host": [
+						"testapi",
+						"uwallet",
+						"jo"
+					],
+					"path": [
+						"A2AMerchantInterface",
+						"GetToken"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Get Token",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "CorrelationID",
+								"value": "ARABTHERAP",
+								"type": "text"
+							},
+							{
+								"key": "MerchantID",
+								"value": "ARABTHERAP",
+								"type": "text"
+							},
+							{
+								"key": "UserID",
+								"value": "UWallet",
+								"type": "text"
+							},
+							{
+								"key": "Password",
+								"value": "wyxthKzbGn",
+								"type": "text"
+							},
+							{
+								"key": "",
+								"value": "",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n\"SecurityKey\":\"LZ!gfE6DAp64\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://testapi.uwallet.jo/A2AMerchantInterface/GetToken",
+							"protocol": "https",
+							"host": [
+								"testapi",
+								"uwallet",
+								"jo"
+							],
+							"path": [
+								"A2AMerchantInterface",
+								"GetToken"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Cache-Control",
+							"value": "no-cache"
+						},
+						{
+							"key": "Pragma",
+							"value": "no-cache"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Expires",
+							"value": "-1"
+						},
+						{
+							"key": "Date",
+							"value": "Wed, 16 Apr 2025 12:24:30 GMT"
+						},
+						{
+							"key": "Content-Length",
+							"value": "342"
+						},
+						{
+							"key": "Strict-Transport-Security",
+							"value": "max-age=16070400; includeSubDomains; preload"
+						},
+						{
+							"key": "Set-Cookie",
+							"value": "TS01dbdc56=01c9d2e4ae2044ed49da806e681f660013e7ad4c20727ed7e036222a68c1b5496e7c94e31828f05f9f0a8f5d7c4e343fb8c82d60c7; Path=/; Domain=.testapi.uwallet.jo; Secure; HTTPOnly"
+						},
+						{
+							"key": "X-Frame-Options",
+							"value": "(DENY || SAMEORIGIN)"
+						},
+						{
+							"key": "X-XSS-Protection",
+							"value": "1; mode=block"
+						},
+						{
+							"key": "X-Content-Type-Options",
+							"value": "nosniff"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Access-Control-Allow-Credentials",
+							"value": "true"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"TokenInfo\": {\n        \"Token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIwODViMzI3OS1kYjk2LTRjNzEtYmMyYi1hODFjZDBhMTM3YzgiLCJNZXJjaGFudElEIjoiQVJBQlRIRVJBUCIsImV4cCI6MTc0NDgwNjU2OSwiaXNzIjoiQTJBIiwiYXVkIjoiQTJBIn0.zgU8HRKUqY7KN8ldZ2v_m8uuwaNkLygpgAit1AcRCmg\",\n        \"ExpiryDate\": \"2025-04-16T15:29:29\"\n    },\n    \"Result\": {\n        \"errorCode\": 0,\n        \"description\": \"Success\"\n    }\n}"
+				}
+			]
+		},
+		{
+			"name": "Purchase",
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {}
+			},
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI4ZmY0ZWI2Yy1jNGY5LTRhNzctYTdjZS0yN2U5MzFiZTlmNWEiLCJNZXJjaGFudElEIjoiQVJBQlRIRVJBUCIsImV4cCI6MTc2NjkyMDU0MiwiaXNzIjoiQTJBIiwiYXVkIjoiQTJBIn0.--fpm_cAMvKXiErAo_v9YOTGIWxYEN2KXdls-5KVrlY",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "CorrelationID",
+						"value": "ARABTHERAP",
+						"type": "text"
+					},
+					{
+						"key": "MerchantID",
+						"value": "ARABTHERAP",
+						"type": "text"
+					},
+					{
+						"key": "",
+						"value": "",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n\"MessageTrxID\":\"54442T673435843444498\",\r\n\"MerchantID\":\"ARABTHERAP\",\r\n\"RAliasType\":\"ALIAS\", // ALIAS // MOBL \r\n\"RAliasValue\":\"ELDHO\",  // m1elayyan\r\n\"Amount\":0.18,\r\n\"CallBackURL\": \"dgdgfdggdfg\"\r\n}\r\n\r\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://testapi.uwallet.jo/A2AMerchantInterface/Purchase",
+					"protocol": "https",
+					"host": [
+						"testapi",
+						"uwallet",
+						"jo"
+					],
+					"path": [
+						"A2AMerchantInterface",
+						"Purchase"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Purchase",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "CorrelationID",
+								"value": "ARABTHERAP",
+								"type": "text"
+							},
+							{
+								"key": "MerchantID",
+								"value": "ARABTHERAP",
+								"type": "text"
+							},
+							{
+								"key": "",
+								"value": "",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n\"MessageTrxID\":\"54442T673434743444379\",\r\n\"MerchantID\":\"ARABTHERAP\",\r\n\"RAliasType\":\"MOBL\",\r\n\"RAliasValue\":\"962789001167\",\r\n\"Amount\":0.15\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://testapi.uwallet.jo/A2AMerchantInterface/Purchase",
+							"protocol": "https",
+							"host": [
+								"testapi",
+								"uwallet",
+								"jo"
+							],
+							"path": [
+								"A2AMerchantInterface",
+								"Purchase"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Cache-Control",
+							"value": "no-cache"
+						},
+						{
+							"key": "Pragma",
+							"value": "no-cache"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Expires",
+							"value": "-1"
+						},
+						{
+							"key": "Date",
+							"value": "Wed, 16 Apr 2025 12:29:03 GMT"
+						},
+						{
+							"key": "Content-Length",
+							"value": "139"
+						},
+						{
+							"key": "Strict-Transport-Security",
+							"value": "max-age=16070400; includeSubDomains; preload"
+						},
+						{
+							"key": "X-Frame-Options",
+							"value": "(DENY || SAMEORIGIN)"
+						},
+						{
+							"key": "X-XSS-Protection",
+							"value": "1; mode=block"
+						},
+						{
+							"key": "X-Content-Type-Options",
+							"value": "nosniff"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Access-Control-Allow-Credentials",
+							"value": "true"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"errorCode\": \"310\",\n    \"description\": \"Rejected - No response from PSP\",\n    \"description_ar\": \"عملية غير ناجحه - Rejected\",\n    \"MSGID\": null\n}"
+				}
+			]
+		},
+		{
+			"name": "Inquire",
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {}
+			},
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI4NDczZmIyNS1kYTk4LTQ2NjAtYTBhYi1jZTg3MmFkNTNmOWYiLCJNZXJjaGFudElEIjoiQVJBQlRIRVJBUCIsImV4cCI6MTc2Mjg5MTU4NiwiaXNzIjoiQTJBIiwiYXVkIjoiQTJBIn0.QbMr1zp_x272fhifcWgc0T7agHgeyQ9VJ9ILKIc-tvs",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "CorrelationID",
+						"value": "ARABTHERAP",
+						"type": "text"
+					},
+					{
+						"key": "MerchantID",
+						"value": "ARABTHERAP",
+						"type": "text"
+					},
+					{
+						"key": "",
+						"value": "",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n\"MessageTrxID\":\"54442T673434843444445\"\r\n}\r\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://testapi.uwallet.jo/A2AMerchantInterface/PaymentInquiry",
+					"protocol": "https",
+					"host": [
+						"testapi",
+						"uwallet",
+						"jo"
+					],
+					"path": [
+						"A2AMerchantInterface",
+						"PaymentInquiry"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Inquire",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "CorrelationID",
+								"value": "ARABTHERAP",
+								"type": "text"
+							},
+							{
+								"key": "MerchantID",
+								"value": "ARABTHERAP",
+								"type": "text"
+							},
+							{
+								"key": "",
+								"value": "",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n\"MessageTrxID\":\"54442T673434743444378\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://testapi.uwallet.jo/A2AMerchantInterface/PaymentInquiry",
+							"protocol": "https",
+							"host": [
+								"testapi",
+								"uwallet",
+								"jo"
+							],
+							"path": [
+								"A2AMerchantInterface",
+								"PaymentInquiry"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Cache-Control",
+							"value": "no-cache"
+						},
+						{
+							"key": "Pragma",
+							"value": "no-cache"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Expires",
+							"value": "-1"
+						},
+						{
+							"key": "Date",
+							"value": "Wed, 16 Apr 2025 12:25:13 GMT"
+						},
+						{
+							"key": "Content-Length",
+							"value": "320"
+						},
+						{
+							"key": "Strict-Transport-Security",
+							"value": "max-age=16070400; includeSubDomains; preload"
+						},
+						{
+							"key": "X-Frame-Options",
+							"value": "(DENY || SAMEORIGIN)"
+						},
+						{
+							"key": "X-XSS-Protection",
+							"value": "1; mode=block"
+						},
+						{
+							"key": "X-Content-Type-Options",
+							"value": "nosniff"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Access-Control-Allow-Credentials",
+							"value": "true"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"MessageTrxID\": \"54442T673434743444378\",\n    \"RAliasValue\": \"00962789001167\",\n    \"Amount\": 0.15,\n    \"StatusCode\": \"300\",\n    \"StatusDescription\": \"EP252 Query rejected by timeout\",\n    \"StatusDescription_ar\": \"عملية غير ناجحه - EP252 Query rejected by timeout\",\n    \"MSGID\": \"UWLT140411334612965ab1d50\",\n    \"errorCode\": 0,\n    \"description\": \"Success\"\n}"
+				},
+				{
+					"name": "Inquire",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "CorrelationID",
+								"value": "ARABTHERAP",
+								"type": "text"
+							},
+							{
+								"key": "MerchantID",
+								"value": "ARABTHERAP",
+								"type": "text"
+							},
+							{
+								"key": "",
+								"value": "",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n\"MessageTrxID\":\"54442T673434843444442\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://testapi.uwallet.jo/A2AMerchantInterface/PaymentInquiry",
+							"protocol": "https",
+							"host": [
+								"testapi",
+								"uwallet",
+								"jo"
+							],
+							"path": [
+								"A2AMerchantInterface",
+								"PaymentInquiry"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": null,
+					"header": [
+						{
+							"key": "Cache-Control",
+							"value": "no-cache"
+						},
+						{
+							"key": "Pragma",
+							"value": "no-cache"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Expires",
+							"value": "-1"
+						},
+						{
+							"key": "Date",
+							"value": "Thu, 25 Sep 2025 11:03:43 GMT"
+						},
+						{
+							"key": "Content-Length",
+							"value": "297"
+						},
+						{
+							"key": "Strict-Transport-Security",
+							"value": "max-age=16070400; includeSubDomains; preload"
+						},
+						{
+							"key": "X-Frame-Options",
+							"value": "(DENY || SAMEORIGIN)"
+						},
+						{
+							"key": "X-XSS-Protection",
+							"value": "1; mode=block"
+						},
+						{
+							"key": "X-Content-Type-Options",
+							"value": "nosniff"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Access-Control-Allow-Credentials",
+							"value": "true"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"MessageTrxID\": \"54442T673434843444442\",\n    \"RAliasValue\": \"00962786005357\",\n    \"Amount\": 0.16,\n    \"StatusCode\": \"310\",\n    \"StatusDescription\": \"Rejected - No response from PSP\",\n    \"StatusDescription_ar\": \"عملية غير ناجحه - Rejected\",\n    \"MSGID\": \"UWLT25090203217173880bbac\",\n    \"errorCode\": 0,\n    \"description\": \"Success\"\n}"
+				},
+				{
+					"name": "Inquire",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "CorrelationID",
+								"value": "ARABTHERAP",
+								"type": "text"
+							},
+							{
+								"key": "MerchantID",
+								"value": "ARABTHERAP",
+								"type": "text"
+							},
+							{
+								"key": "",
+								"value": "",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n\"MessageTrxID\":\"54442T673434843444442\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://testapi.uwallet.jo/A2AMerchantInterface/PaymentInquiry",
+							"protocol": "https",
+							"host": [
+								"testapi",
+								"uwallet",
+								"jo"
+							],
+							"path": [
+								"A2AMerchantInterface",
+								"PaymentInquiry"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": null,
+					"header": [
+						{
+							"key": "Cache-Control",
+							"value": "no-cache"
+						},
+						{
+							"key": "Pragma",
+							"value": "no-cache"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Expires",
+							"value": "-1"
+						},
+						{
+							"key": "Date",
+							"value": "Thu, 25 Sep 2025 11:05:24 GMT"
+						},
+						{
+							"key": "Content-Length",
+							"value": "292"
+						},
+						{
+							"key": "Strict-Transport-Security",
+							"value": "max-age=16070400; includeSubDomains; preload"
+						},
+						{
+							"key": "X-Frame-Options",
+							"value": "(DENY || SAMEORIGIN)"
+						},
+						{
+							"key": "X-XSS-Protection",
+							"value": "1; mode=block"
+						},
+						{
+							"key": "X-Content-Type-Options",
+							"value": "nosniff"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Access-Control-Allow-Credentials",
+							"value": "true"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"MessageTrxID\": \"54442T673434843444442\",\n    \"RAliasValue\": \"00962786005357\",\n    \"Amount\": 0.16,\n    \"StatusCode\": \"300\",\n    \"StatusDescription\": \"WRAM Wrong Amount\",\n    \"StatusDescription_ar\": \"عملية غير ناجحه - WRAM Wrong Amount\",\n    \"MSGID\": \"UWLT25090203217173880bbac\",\n    \"errorCode\": 0,\n    \"description\": \"Success\"\n}"
+				},
+				{
+					"name": "Inquire",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "CorrelationID",
+								"value": "ARABTHERAP",
+								"type": "text"
+							},
+							{
+								"key": "MerchantID",
+								"value": "ARABTHERAP",
+								"type": "text"
+							},
+							{
+								"key": "",
+								"value": "",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n\"MessageTrxID\":\"54442T673434843444443\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://testapi.uwallet.jo/A2AMerchantInterface/PaymentInquiry",
+							"protocol": "https",
+							"host": [
+								"testapi",
+								"uwallet",
+								"jo"
+							],
+							"path": [
+								"A2AMerchantInterface",
+								"PaymentInquiry"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": null,
+					"header": [
+						{
+							"key": "Cache-Control",
+							"value": "no-cache"
+						},
+						{
+							"key": "Pragma",
+							"value": "no-cache"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Expires",
+							"value": "-1"
+						},
+						{
+							"key": "Date",
+							"value": "Thu, 25 Sep 2025 11:08:16 GMT"
+						},
+						{
+							"key": "Content-Length",
+							"value": "297"
+						},
+						{
+							"key": "Strict-Transport-Security",
+							"value": "max-age=16070400; includeSubDomains; preload"
+						},
+						{
+							"key": "X-Frame-Options",
+							"value": "(DENY || SAMEORIGIN)"
+						},
+						{
+							"key": "X-XSS-Protection",
+							"value": "1; mode=block"
+						},
+						{
+							"key": "X-Content-Type-Options",
+							"value": "nosniff"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Access-Control-Allow-Credentials",
+							"value": "true"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"MessageTrxID\": \"54442T673434843444443\",\n    \"RAliasValue\": \"00962786005357\",\n    \"Amount\": 0.16,\n    \"StatusCode\": \"310\",\n    \"StatusDescription\": \"Rejected - No response from PSP\",\n    \"StatusDescription_ar\": \"عملية غير ناجحه - Rejected\",\n    \"MSGID\": \"UWLT25090207056309793c5cb\",\n    \"errorCode\": 0,\n    \"description\": \"Success\"\n}"
+				},
+				{
+					"name": "Inquire",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "CorrelationID",
+								"value": "ARABTHERAP",
+								"type": "text"
+							},
+							{
+								"key": "MerchantID",
+								"value": "ARABTHERAP",
+								"type": "text"
+							},
+							{
+								"key": "",
+								"value": "",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n\"MessageTrxID\":\"54442T673434843444443\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://testapi.uwallet.jo/A2AMerchantInterface/PaymentInquiry",
+							"protocol": "https",
+							"host": [
+								"testapi",
+								"uwallet",
+								"jo"
+							],
+							"path": [
+								"A2AMerchantInterface",
+								"PaymentInquiry"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": null,
+					"header": [
+						{
+							"key": "Cache-Control",
+							"value": "no-cache"
+						},
+						{
+							"key": "Pragma",
+							"value": "no-cache"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Expires",
+							"value": "-1"
+						},
+						{
+							"key": "Date",
+							"value": "Thu, 25 Sep 2025 11:11:58 GMT"
+						},
+						{
+							"key": "Content-Length",
+							"value": "298"
+						},
+						{
+							"key": "Strict-Transport-Security",
+							"value": "max-age=16070400; includeSubDomains; preload"
+						},
+						{
+							"key": "X-Frame-Options",
+							"value": "(DENY || SAMEORIGIN)"
+						},
+						{
+							"key": "X-XSS-Protection",
+							"value": "1; mode=block"
+						},
+						{
+							"key": "X-Content-Type-Options",
+							"value": "nosniff"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Access-Control-Allow-Credentials",
+							"value": "true"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"MessageTrxID\": \"54442T673434843444443\",\n    \"RAliasValue\": \"00962786005357\",\n    \"Amount\": 0.16,\n    \"StatusCode\": \"300\",\n    \"StatusDescription\": \"No response from PSP\",\n    \"StatusDescription_ar\": \"عملية غير ناجحه - No response from PSP\",\n    \"MSGID\": \"UWLT25090207056309793c5cb\",\n    \"errorCode\": 0,\n    \"description\": \"Success\"\n}"
+				},
+				{
+					"name": "Inquire",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "CorrelationID",
+								"value": "ARABTHERAP",
+								"type": "text"
+							},
+							{
+								"key": "MerchantID",
+								"value": "ARABTHERAP",
+								"type": "text"
+							},
+							{
+								"key": "",
+								"value": "",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n\"MessageTrxID\":\"54442T673434843444443\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://testapi.uwallet.jo/A2AMerchantInterface/PaymentInquiry",
+							"protocol": "https",
+							"host": [
+								"testapi",
+								"uwallet",
+								"jo"
+							],
+							"path": [
+								"A2AMerchantInterface",
+								"PaymentInquiry"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": null,
+					"header": [
+						{
+							"key": "Cache-Control",
+							"value": "no-cache"
+						},
+						{
+							"key": "Pragma",
+							"value": "no-cache"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Expires",
+							"value": "-1"
+						},
+						{
+							"key": "Date",
+							"value": "Thu, 25 Sep 2025 11:13:31 GMT"
+						},
+						{
+							"key": "Content-Length",
+							"value": "264"
+						},
+						{
+							"key": "Strict-Transport-Security",
+							"value": "max-age=16070400; includeSubDomains; preload"
+						},
+						{
+							"key": "X-Frame-Options",
+							"value": "(DENY || SAMEORIGIN)"
+						},
+						{
+							"key": "X-XSS-Protection",
+							"value": "1; mode=block"
+						},
+						{
+							"key": "X-Content-Type-Options",
+							"value": "nosniff"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Access-Control-Allow-Credentials",
+							"value": "true"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"MessageTrxID\": \"54442T673434843444443\",\n    \"RAliasValue\": \"00962786005357\",\n    \"Amount\": 0.16,\n    \"StatusCode\": \"0\",\n    \"StatusDescription\": \"Success\",\n    \"StatusDescription_ar\": \"تمت العملية بنجاح\",\n    \"MSGID\": \"UWLT25090207056309793c5cb\",\n    \"errorCode\": 0,\n    \"description\": \"Success\"\n}"
+				}
+			]
+		}
+	]
+}

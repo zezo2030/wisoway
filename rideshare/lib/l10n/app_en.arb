@@ -1,0 +1,143 @@
+{
+  "@@locale": "en",
+  "appName": "RideShare",
+  "phoneAuth": "Sign In",
+  "@phoneAuth": {
+    "description": "Phone authentication screen title"
+  },
+  "phoneNumber": "Phone Number",
+  "@phoneNumber": {
+    "description": "Phone number field label"
+  },
+  "phoneNumberHint": "+201234567890",
+  "@phoneNumberHint": {
+    "description": "Phone number field hint"
+  },
+  "phoneNumberRequired": "Please enter phone number",
+  "@phoneNumberRequired": {
+    "description": "Error message when phone number is not entered"
+  },
+  "sendOTP": "Send Verification Code",
+  "@sendOTP": {
+    "description": "Send OTP button text"
+  },
+  "otpVerification": "Verify Code",
+  "@otpVerification": {
+    "description": "OTP verification screen title"
+  },
+  "enterOTP": "Enter verification code",
+  "@enterOTP": {
+    "description": "OTP fields hint text"
+  },
+  "resendOTP": "Resend Code",
+  "@resendOTP": {
+    "description": "Resend OTP button text"
+  },
+  "resendOTPIn": "Resend code in {seconds} seconds",
+  "@resendOTPIn": {
+    "description": "Resend OTP countdown text",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "profileSetup": "Profile Setup",
+  "@profileSetup": {
+    "description": "Profile setup screen title"
+  },
+  "name": "Name",
+  "@name": {
+    "description": "Name field label"
+  },
+  "nameRequired": "Please enter name",
+  "@nameRequired": {
+    "description": "Error message when name is not entered"
+  },
+  "gender": "Gender",
+  "@gender": {
+    "description": "Gender field label"
+  },
+  "genderRequired": "Please select gender",
+  "@genderRequired": {
+    "description": "Error message when gender is not selected"
+  },
+  "male": "Male",
+  "@male": {
+    "description": "Gender option - Male"
+  },
+  "female": "Female",
+  "@female": {
+    "description": "Gender option - Female"
+  },
+  "role": "Role",
+  "@role": {
+    "description": "Role field label"
+  },
+  "roleRequired": "Please select role",
+  "@roleRequired": {
+    "description": "Error message when role is not selected"
+  },
+  "passenger": "Passenger",
+  "@passenger": {
+    "description": "Role option - Passenger"
+  },
+  "driver": "Driver",
+  "@driver": {
+    "description": "Role option - Driver"
+  },
+  "save": "Save",
+  "@save": {
+    "description": "Save button text"
+  },
+  "loading": "Loading...",
+  "@loading": {
+    "description": "Loading state text"
+  },
+  "error": "Error",
+  "@error": {
+    "description": "Error message title"
+  },
+  "ok": "OK",
+  "@ok": {
+    "description": "OK button text"
+  },
+  "cancel": "Cancel",
+  "@cancel": {
+    "description": "Cancel button text"
+  },
+  "home": "Home",
+  "@home": {
+    "description": "Home screen title"
+  },
+  "welcome": "Welcome",
+  "@welcome": {
+    "description": "Welcome message"
+  },
+  "signOut": "Sign Out",
+  "@signOut": {
+    "description": "Sign out button text"
+  },
+  "invalidPhoneNumber": "Invalid phone number",
+  "@invalidPhoneNumber": {
+    "description": "Error message for invalid phone number"
+  },
+  "otpSent": "Verification code sent",
+  "@otpSent": {
+    "description": "Success message for OTP sent"
+  },
+  "otpVerified": "Verified successfully",
+  "@otpVerified": {
+    "description": "Success message for OTP verification"
+  },
+  "invalidOTP": "Invalid verification code",
+  "@invalidOTP": {
+    "description": "Error message for invalid OTP"
+  },
+  "profileSaved": "Profile saved successfully",
+  "@profileSaved": {
+    "description": "Success message for profile saved"
+  }
+}
+
+

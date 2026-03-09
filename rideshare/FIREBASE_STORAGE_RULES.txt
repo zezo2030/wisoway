@@ -1,0 +1,11 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow authenticated users to read/write/delete
+    match /{allPaths=**} {
+      allow read, write, delete: if request.auth != null;
+    }
+  }
+}
+

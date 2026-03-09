@@ -1,0 +1,178 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../core/constants/route_names.dart';
+import '../../core/constants/app_constants.dart';
+
+class PhoneAuthScreen extends StatefulWidget {
+  /// When true, user is already logged in and we are linking/confirming phone (OTP will call linkPhone).
+  final bool isLinkPhone;
+
+  const PhoneAuthScreen({super.key, this.isLinkPhone = false});
+
+  @override
+  State<PhoneAuthScreen> createState() => _PhoneAuthScreenState();
+}
+
+class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _phoneController = TextEditingController();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendOTP() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final phoneNumber = _phoneController.text.trim();
+
+      // Clean phone number
+      String cleanedPhone = phoneNumber;
+      if (!phoneNumber.startsWith('+') && phoneNumber.startsWith('0')) {
+        cleanedPhone = phoneNumber.substring(1);
+      }
+
+      final formattedPhone = cleanedPhone.startsWith('+')
+          ? cleanedPhone
+          : '${AppConstants.defaultCountryCode}$cleanedPhone';
+
+      // In development mode with skipOTP, go directly to OTP screen
+      // (backend will accept any code in dev mode, or code is shown in console)
+      await authProvider.sendOTP(formattedPhone);
+
+      if (mounted) {
+        final routeArgs =
+            ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+        final otpArgs = <String, dynamic>{
+          'phoneNumber': formattedPhone,
+          'isSignIn': !widget.isLinkPhone,
+          'isLinkPhone': widget.isLinkPhone,
+        };
+        if (routeArgs != null) {
+          otpArgs.addAll({
+            'afterVerifyRoute': routeArgs['afterVerifyRoute'],
+            'firstName': routeArgs['firstName'],
+            'lastName': routeArgs['lastName'],
+            'email': routeArgs['email'],
+            'gender': routeArgs['gender'],
+          });
+        }
+        // الانتقال لصفحة إدخال OTP بعد إرسال رمز التحقق بنجاح
+        Navigator.pushReplacementNamed(
+          context,
+          RouteNames.otpVerification,
+          arguments: otpArgs,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطأ: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.isLinkPhone ? 'تأكيد رقم الهاتف' : 'تسجيل الدخول'),
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Icon(Icons.phone_android, size: 80, color: Colors.blue),
+                const SizedBox(height: 32),
+                Text(
+                  widget.isLinkPhone ? 'أدخل رقم هاتفك للتأكيد' : 'أدخل رقم هاتفك',
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  widget.isLinkPhone
+                      ? 'سنرسل رمز تحقق لتأكيد رقمك. يجب التأكيد لاستخدام التطبيق.'
+                      : (AppConstants.skipOTP
+                          ? 'وضع التطوير: سيتم الدخول مباشرة'
+                          : 'سنرسل لك رمز التحقق عبر SMS'),
+                  style: const TextStyle(fontSize: 16, color: Colors.grey),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                TextFormField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: 'رقم الهاتف',
+                    hintText: '+201234567890',
+                    prefixIcon: Icon(Icons.phone),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'يرجى إدخال رقم الهاتف';
+                    }
+                    // Basic phone validation
+                    final phone = value.trim();
+                    final formattedPhone = phone.startsWith('+')
+                        ? phone
+                        : '${AppConstants.defaultCountryCode}$phone';
+                    if (formattedPhone.length < 10) {
+                      return 'رقم الهاتف غير صحيح';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _sendOTP,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
+                      : Text(
+                          AppConstants.skipOTP ? 'دخول' : 'إرسال رمز التحقق',
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

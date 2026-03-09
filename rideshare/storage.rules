@@ -1,0 +1,88 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user owns the file
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // ============================================
+    // Profile Pictures
+    // ============================================
+    match /profiles/{userId}/{fileName} {
+      // Users can upload their own profile picture
+      allow write: if isOwner(userId) && 
+                     request.resource.size < 5 * 1024 * 1024 && // 5MB max
+                     request.resource.contentType.matches('image/.*');
+      
+      // Anyone authenticated can read profile pictures
+      allow read: if isAuthenticated();
+      
+      // Users can delete their own profile picture
+      allow delete: if isOwner(userId);
+    }
+    
+    // ============================================
+    // Driver Licenses
+    // ============================================
+    match /driver_licenses/{userId}/{fileName} {
+      // Users can upload their own driver license
+      allow write: if isOwner(userId) && 
+                     request.resource.size < 5 * 1024 * 1024 && // 5MB max
+                     request.resource.contentType.matches('image/.*');
+      
+      // Only the owner and admins can read driver licenses
+      allow read: if isOwner(userId);
+      
+      // Users can delete their own driver license
+      allow delete: if isOwner(userId);
+    }
+    
+    // ============================================
+    // Vehicle Licenses
+    // ============================================
+    match /vehicle_licenses/{userId}/{fileName} {
+      // Users can upload their own vehicle license
+      allow write: if isOwner(userId) && 
+                     request.resource.size < 5 * 1024 * 1024 && // 5MB max
+                     request.resource.contentType.matches('image/.*');
+      
+      // Only the owner and admins can read vehicle licenses
+      allow read: if isOwner(userId);
+      
+      // Users can delete their own vehicle license
+      allow delete: if isOwner(userId);
+    }
+    
+    // ============================================
+    // Trip Images (for future use)
+    // ============================================
+    match /trips/{tripId}/{fileName} {
+      // Trip creators can upload images
+      allow write: if isAuthenticated() && 
+                     request.resource.size < 10 * 1024 * 1024 && // 10MB max
+                     request.resource.contentType.matches('image/.*');
+      
+      // Anyone authenticated can read trip images
+      allow read: if isAuthenticated();
+      
+      // Trip creators can delete images
+      allow delete: if isAuthenticated();
+    }
+    
+    // ============================================
+    // Default: Deny all other paths
+    // ============================================
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

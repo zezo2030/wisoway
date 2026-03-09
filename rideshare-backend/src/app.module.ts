@@ -1,0 +1,119 @@
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { appConfig } from './config/app.config';
+import { databaseConfig } from './config/database.config';
+import { jwtConfig } from './config/jwt.config';
+import { s3Config } from './config/s3.config';
+import { redisConfig } from './config/redis.config';
+import { twilioConfig } from './config/twilio.config';
+import { stripeConfig } from './config/stripe.config';
+import { a2aCliqConfig } from './config/a2a-cliq.config';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { RolesGuard } from './common/guards/roles.guard';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { ValidationPipe } from './common/pipes/validation.pipe';
+import { HealthModule } from './modules/health/health.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { UsersModule } from './modules/users/users.module';
+import { UploadsModule } from './modules/uploads/uploads.module';
+import { VehiclesModule } from './modules/vehicles/vehicles.module';
+import { TripsModule } from './modules/trips/trips.module';
+import { LocationsModule } from './modules/locations/locations.module';
+import { BookingsModule } from './modules/bookings/bookings.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+// TODO: re-enable after TypeORM migration: ChatModule, RatingsModule, JobsModule, AdminModule
+// import { ChatModule } from './modules/chat/chat.module';
+// import { RatingsModule } from './modules/ratings/ratings.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+// import { JobsModule } from './jobs/jobs.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { PostgresModule } from './database/postgres.module';
+import { TrackingModule } from './modules/tracking/tracking.module';
+import { WalletModule } from './modules/wallet/wallet.module';
+import { SecurityModule } from './modules/security/security.module';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [
+        appConfig,
+        databaseConfig,
+        jwtConfig,
+        s3Config,
+        redisConfig,
+        twilioConfig,
+        stripeConfig,
+        a2aCliqConfig,
+      ],
+      envFilePath: '.env',
+    }),
+    PostgresModule,
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000, // 1 minute
+        limit: 100, // 100 requests per minute for authenticated users
+      },
+      {
+        ttl: 60000,
+        limit: 20, // 20 requests per minute for public endpoints
+      },
+    ]),
+    HealthModule,
+    AuthModule,
+    UsersModule,
+    UploadsModule,
+    VehiclesModule,
+    TripsModule,
+    LocationsModule,
+    BookingsModule,
+    PaymentsModule,
+    // ChatModule,
+    // RatingsModule,
+    NotificationsModule,
+    // JobsModule,
+    AdminModule,
+    TrackingModule,
+    WalletModule,
+    SecurityModule,
+  ],
+  controllers: [AppController],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: HttpExceptionFilter,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TransformInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: LoggingInterceptor,
+    },
+    {
+      provide: APP_PIPE,
+      useClass: ValidationPipe,
+    },
+  ],
+})
+export class AppModule {}

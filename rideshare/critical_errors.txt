@@ -1,0 +1,181 @@
+Found 96 Critical Errors:
+- lib/main.dart:64 -> The method 'initialize' isn't defined for the type 'NotificationService'.
+Try correcting the name to the name of an existing method, or defining a method named 'initialize'.
+- lib/screens/auth/driver_complete_profile_screen.dart:95 -> The method 'getUserProfile' isn't defined for the type 'AuthService'.
+Try correcting the name to the name of an existing method, or defining a method named 'getUserProfile'.
+- lib/screens/auth/driver_complete_profile_screen.dart:243 -> This expression has a type of 'void' so its value can't be used.
+Try checking to see if you're using the correct API; there might be a function or call that returns void you didn't expect. Also check type parameters and variables which might also be void.
+- lib/screens/auth/driver_sign_up_screen.dart:72 -> The named parameter 'name' is required, but there's no corresponding argument.
+Try adding the required argument.
+- lib/screens/auth/otp_verification_screen.dart:114 -> The named parameter 'verificationId' isn't defined.
+Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'verificationId'.
+- lib/screens/auth/otp_verification_screen.dart:133 -> The method 'linkPhoneNumber' isn't defined for the type 'AuthProvider'.
+Try correcting the name to the name of an existing method, or defining a method named 'linkPhoneNumber'.
+- lib/screens/auth/otp_verification_screen.dart:248 -> The method 'linkPhoneNumber' isn't defined for the type 'AuthProvider'.
+Try correcting the name to the name of an existing method, or defining a method named 'linkPhoneNumber'.
+- lib/screens/auth/otp_verification_screen.dart:382 -> This expression has a type of 'void' so its value can't be used.
+Try checking to see if you're using the correct API; there might be a function or call that returns void you didn't expect. Also check type parameters and variables which might also be void.
+- lib/screens/auth/otp_verification_screen.dart:113 -> The named parameter 'phoneNumber' is required, but there's no corresponding argument.
+Try adding the required argument.
+- lib/screens/auth/otp_verification_screen.dart:183 -> The named parameter 'name' is required, but there's no corresponding argument.
+Try adding the required argument.
+- lib/screens/auth/otp_verification_screen.dart:241 -> The named parameter 'name' is required, but there's no corresponding argument.
+Try adding the required argument.
+- lib/screens/auth/sign_up_screen.dart:74 -> This expression has a type of 'void' so its value can't be used.
+Try checking to see if you're using the correct API; there might be a function or call that returns void you didn't expect. Also check type parameters and variables which might also be void.
+- lib/screens/auth/sign_up_screen.dart:103 -> The named parameter 'name' is required, but there's no corresponding argument.
+Try adding the required argument.
+- lib/screens/driver/chat_screen.dart:55 -> The method 'getChatByTripId' isn't defined for the type 'ChatService'.
+Try correcting the name to the name of an existing method, or defining a method named 'getChatByTripId'.
+- lib/screens/driver/chat_screen.dart:94 -> The method 'getOrCreateChat' isn't defined for the type 'ChatService'.
+Try correcting the name to the name of an existing method, or defining a method named 'getOrCreateChat'.
+- lib/screens/driver/chat_screen.dart:107 -> The named parameter 'chatId' isn't defined.
+Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'chatId'.
+- lib/screens/driver/chat_screen.dart:108 -> The named parameter 'senderId' isn't defined.
+Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'senderId'.
+- lib/screens/driver/chat_screen.dart:109 -> The named parameter 'senderName' isn't defined.
+Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'senderName'.
+- lib/screens/driver/chat_screen.dart:248 -> The method 'getChatStream' isn't defined for the type 'ChatService'.
+Try correcting the name to the name of an existing method, or defining a method named 'getChatStream'.
+- lib/screens/driver/chat_screen.dart:106 -> The named parameter 'roomId' is required, but there's no corresponding argument.
+Try adding the required argument.
+- lib/screens/driver/create_trip_screen.dart:50 -> The method 'getDriverVehicle' isn't defined for the type 'TripService'.
+Try correcting the name to the name of an existing method, or defining a method named 'getDriverVehicle'.
+- lib/screens/driver/create_trip_screen.dart:220 -> The named parameter 'driverId' isn't defined.
+Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'driverId'.
+- lib/screens/driver/create_trip_screen.dart:221 -> The named parameter 'driverName' isn't defined.
+Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'driverName'.
+- lib/screens/driver/create_trip_screen.dart:222 -> The named parameter 'driverPhone' isn't defined.
+Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'driverPhone'.
+- lib/screens/driver/edit_trip_screen.dart:279 -> The getter 'values' isn't defined for the type 'List<SeatData>'.
+Try importing the library that defines 'values', correcting the name to the name of an existing getter, or defining a getter or field named 'values'.
+- lib/screens/driver/edit_trip_screen.dart:342 -> The getter 'values' isn't defined for the type 'List<SeatData>'.
+Try importing the library that defines 'values', correcting the name to the name of an existing getter, or defining a getter or field named 'values'.
+- lib/screens/driver/edit_trip_screen.dart:357 -> The method 'updateTrip' isn't defined for the type 'TripProvider'.
+Try correcting the name to the name of an existing method, or defining a method named 'updateTrip'.
+- lib/screens/driver/my_trips_screen.dart:94 -> The method 'getDriverTripsStream' isn't defined for the type 'TripProvider'.
+Try correcting the name to the name of an existing method, or defining a method named 'getDriverTripsStream'.
+- lib/screens/driver/trip_management_screen.dart:149 -> The method 'deleteTrip' isn't defined for the type 'TripProvider'.
+Try correcting the name to the name of an existing method, or defining a method named 'deleteTrip'.
+- lib/screens/driver/trip_management_screen.dart:165 -> The getter 'values' isn't defined for the type 'List<SeatData>'.
+Try importing the library that defines 'values', correcting the name to the name of an existing getter, or defining a getter or field named 'values'.
+- lib/screens/driver/trip_management_screen.dart:268 -> The argument type 'Future<List<BookingModel>>' can't be assigned to the parameter type 'Stream<List<BookingModel>>?'. 
+- lib/screens/driver/trip_management_screen.dart:895 -> The argument type 'String' can't be assigned to the parameter type 'int'. 
+- lib/screens/driver/trip_management_screen.dart:895 -> 1 positional argument expected by 'empty', but 0 found.
+Try adding the missing argument.
+- lib/screens/driver/trip_management_screen.dart:1070 -> The getter 'userGender' isn't defined for the type 'BookingModel'.
+Try importing the library that defines 'userGender', correcting the name to the name of an existing getter, or defining a getter or field named 'userGender'.
+- lib/screens/driver/trip_management_screen.dart:1074 -> The getter 'userGender' isn't defined for the type 'BookingModel'.
+Try importing the library that defines 'userGender', correcting the name to the name of an existing getter, or defining a getter or field named 'userGender'.
+- lib/screens/driver/trip_management_screen.dart:1075 -> The getter 'userGender' isn't defined for the type 'BookingModel'.
+Try importing the library that defines 'userGender', correcting the name to the name of an existing getter, or defining a getter or field named 'userGender'.
+- lib/screens/driver/trip_management_screen.dart:1087 -> The getter 'userName' isn't defined for the type 'BookingModel'.
+Try importing the library that defines 'userName', correcting the name to the name of an existing getter, or defining a getter or field named 'userName'.
+- lib/screens/driver/trip_management_screen.dart:1115 -> The getter 'userPhone' isn't defined for the type 'BookingModel'.
+Try importing the library that defines 'userPhone', correcting the name to the name of an existing getter, or defining a getter or field named 'userPhone'.
+- lib/screens/driver/trip_management_screen.dart:1282 -> The getter 'firebaseUser' isn't defined for the type 'AuthProvider'.
+Try importing the library that defines 'firebaseUser', correcting the name to the name of an existing getter, or defining a getter or field named 'firebaseUser'.
+- lib/screens/driver/trip_management_screen.dart:1292 -> The named parameter 'userId' isn't defined.
+Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'userId'.
+- lib/screens/home/home_screen.dart:241 -> The method 'getDriverTripsStream' isn't defined for the type 'TripProvider'.
+Try correcting the name to the name of an existing method, or defining a method named 'getDriverTripsStream'.
+- lib/screens/home/home_screen.dart:320 -> The method 'getActiveTripsStream' isn't defined for the type 'TripProvider'.
+Try correcting the name to the name of an existing method, or defining a method named 'getActiveTripsStream'.
+- lib/screens/home/home_screen.dart:327 -> The method 'getUserBookings' isn't defined for the type 'BookingService'.
+Try correcting the name to the name of an existing method, or defining a method named 'getUserBookings'.
+- lib/screens/home/home_screen.dart:348 -> The getter 'isEmpty' isn't defined for the type 'Object'.
+Try importing the library that defines 'isEmpty', correcting the name to the name of an existing getter, or defining a getter or field named 'isEmpty'.
+- lib/screens/home/home_screen.dart:403 -> The method 'map' isn't defined for the type 'Object'.
+Try correcting the name to the name of an existing method, or defining a method named 'map'.
+- lib/screens/home/home_screen.dart:421 -> The getter 'length' isn't defined for the type 'Object'.
+Try importing the library that defines 'length', correcting the name to the name of an existing getter, or defining a getter or field named 'length'.
+- lib/screens/home/home_screen.dart:423 -> The operator '[]' isn't defined for the type 'Object'.
+Try defining the operator '[]'.
+- lib/screens/home/home_screen.dart:1661 -> The method 'getActiveTripsStream' isn't defined for the type 'TripProvider'.
+Try correcting the name to the name of an existing method, or defining a method named 'getActiveTripsStream'.
+- lib/screens/notifications/notifications_screen.dart:74 -> The method 'deleteNotification' isn't defined for the type 'NotificationProvider'.
+Try correcting the name to the name of an existing method, or defining a method named 'deleteNotification'.
+- lib/screens/notifications/notifications_screen.dart:110 -> The method 'getNotificationsStream' isn't defined for the type 'NotificationProvider'.
+Try correcting the name to the name of an existing method, or defining a method named 'getNotificationsStream'.
+- lib/screens/notifications/notifications_screen.dart:147 -> The method 'getNotificationsStream' isn't defined for the type 'NotificationProvider'.
+Try correcting the name to the name of an existing method, or defining a method named 'getNotificationsStream'.
+- lib/screens/passenger/chat_screen.dart:59 -> The method 'checkIfChatEnabled' isn't defined for the type 'ChatService'.
+Try correcting the name to the name of an existing method, or defining a method named 'checkIfChatEnabled'.
+- lib/screens/passenger/chat_screen.dart:74 -> The method 'getOrCreateChat' isn't defined for the type 'ChatService'.
+Try correcting the name to the name of an existing method, or defining a method named 'getOrCreateChat'.
+- lib/screens/passenger/chat_screen.dart:105 -> The named parameter 'chatId' isn't defined.
+Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'chatId'.
+- lib/screens/passenger/chat_screen.dart:106 -> The named parameter 'senderId' isn't defined.
+Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'senderId'.
+- lib/screens/passenger/chat_screen.dart:107 -> The named parameter 'senderName' isn't defined.
+Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'senderName'.
+- lib/screens/passenger/chat_screen.dart:217 -> The method 'getChatStream' isn't defined for the type 'ChatService'.
+Try correcting the name to the name of an existing method, or defining a method named 'getChatStream'.
+- lib/screens/passenger/chat_screen.dart:104 -> The named parameter 'roomId' is required, but there's no corresponding argument.
+Try adding the required argument.
+- lib/screens/passenger/rating_screen.dart:66 -> The method 'hasUserRatedTrip' isn't defined for the type 'RatingService'.
+Try correcting the name to the name of an existing method, or defining a method named 'hasUserRatedTrip'.
+- lib/screens/passenger/rating_screen.dart:87 -> The method 'createRating' isn't defined for the type 'RatingService'.
+Try correcting the name to the name of an existing method, or defining a method named 'createRating'.
+- lib/screens/passenger/trips_list_screen.dart:190 -> The method 'getActiveTripsStream' isn't defined for the type 'TripProvider'.
+Try correcting the name to the name of an existing method, or defining a method named 'getActiveTripsStream'.
+- lib/screens/passenger/trips_list_screen.dart:428 -> The argument type 'String?' can't be assigned to the parameter type 'String'. 
+- lib/screens/passenger/trip_details_screen.dart:274 -> The argument type 'String?' can't be assigned to the parameter type 'String'. 
+- lib/screens/passenger/trip_details_screen.dart:280 -> The getter 'driverPhone' isn't defined for the type 'TripModel'.
+Try importing the library that defines 'driverPhone', correcting the name to the name of an existing getter, or defining a getter or field named 'driverPhone'.
+- lib/screens/passenger/trip_details_screen.dart:417 -> The method 'checkIfChatEnabled' isn't defined for the type 'ChatService'.
+Try correcting the name to the name of an existing method, or defining a method named 'checkIfChatEnabled'.
+- lib/screens/passenger/trip_details_screen.dart:456 -> The method 'hasUserRatedTrip' isn't defined for the type 'RatingService'.
+Try correcting the name to the name of an existing method, or defining a method named 'hasUserRatedTrip'.
+- lib/screens/payment/manual_payment_screen.dart:55 -> The method 'getPayment' isn't defined for the type 'PaymentService'.
+Try correcting the name to the name of an existing method, or defining a method named 'getPayment'.
+- lib/screens/payment/manual_payment_screen.dart:118 -> The method 'uploadProofImage' isn't defined for the type 'PaymentService'.
+Try correcting the name to the name of an existing method, or defining a method named 'uploadProofImage'.
+- lib/screens/payment/manual_payment_screen.dart:125 -> The method 'ManualPayment' isn't defined for the type '_ManualPaymentScreenState'.
+Try correcting the name to the name of an existing method, or defining a method named 'ManualPayment'.
+- lib/screens/payment/manual_payment_screen.dart:135 -> The method 'updateManualPayment' isn't defined for the type 'PaymentService'.
+Try correcting the name to the name of an existing method, or defining a method named 'updateManualPayment'.
+- lib/screens/payment/payment_history_screen.dart:97 -> The method 'getPaymentHistoryStream' isn't defined for the type 'PaymentService'.
+Try correcting the name to the name of an existing method, or defining a method named 'getPaymentHistoryStream'.
+- lib/screens/payment/payment_history_screen.dart:349 -> The getter 'manualPayment' isn't defined for the type 'PaymentModel'.
+Try importing the library that defines 'manualPayment', correcting the name to the name of an existing getter, or defining a getter or field named 'manualPayment'.
+- lib/screens/payment/payment_history_screen.dart:353 -> The getter 'manualPayment' isn't defined for the type 'PaymentModel'.
+Try importing the library that defines 'manualPayment', correcting the name to the name of an existing getter, or defining a getter or field named 'manualPayment'.
+- lib/screens/payment/payment_history_screen.dart:365 -> The getter 'manualPayment' isn't defined for the type 'PaymentModel'.
+Try importing the library that defines 'manualPayment', correcting the name to the name of an existing getter, or defining a getter or field named 'manualPayment'.
+- lib/screens/payment/payment_history_screen.dart:374 -> The getter 'manualPayment' isn't defined for the type 'PaymentModel'.
+Try importing the library that defines 'manualPayment', correcting the name to the name of an existing getter, or defining a getter or field named 'manualPayment'.
+- lib/screens/payment/payment_history_screen.dart:387 -> The getter 'manualPayment' isn't defined for the type 'PaymentModel'.
+Try importing the library that defines 'manualPayment', correcting the name to the name of an existing getter, or defining a getter or field named 'manualPayment'.
+- lib/screens/payment/payment_history_screen.dart:177 -> The type 'PaymentStatus' isn't exhaustively matched by the switch cases since it doesn't match the pattern 'PaymentStatus.refunded'.
+Try adding a default case or cases that match 'PaymentStatus.refunded'.
+- lib/screens/payment/payment_history_screen.dart:199 -> The type 'PaymentMethod' isn't exhaustively matched by the switch cases since it doesn't match the pattern 'PaymentMethod.communication_fee'.
+Try adding a default case or cases that match 'PaymentMethod.communication_fee'.
+- lib/widgets/chat_bubble_widget.dart:76 -> The getter 'timestamp' isn't defined for the type 'MessageModel'.
+Try importing the library that defines 'timestamp', correcting the name to the name of an existing getter, or defining a getter or field named 'timestamp'.
+- lib/widgets/notification_icon_button.dart:35 -> The method 'getUnreadCountStream' isn't defined for the type 'NotificationProvider'.
+Try correcting the name to the name of an existing method, or defining a method named 'getUnreadCountStream'.
+- lib/screens/passenger/seat_selection_screen.dart:151 -> The getter 'driverPhone' isn't defined for the type 'TripModel'.
+Try importing the library that defines 'driverPhone', correcting the name to the name of an existing getter, or defining a getter or field named 'driverPhone'.
+- lib/screens/passenger/seat_selection_screen.dart:149 -> The named parameter 'driverId' isn't defined.
+Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'driverId'.
+- lib/screens/passenger/seat_selection_screen.dart:150 -> The named parameter 'driverName' isn't defined.
+Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'driverName'.
+- lib/screens/passenger/seat_selection_screen.dart:151 -> The named parameter 'driverPhone' isn't defined.
+Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'driverPhone'.
+- lib/screens/passenger/seat_selection_screen.dart:152 -> The named parameter 'userId' isn't defined.
+Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'userId'.
+- lib/screens/passenger/seat_selection_screen.dart:153 -> The named parameter 'userName' isn't defined.
+Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'userName'.
+- lib/screens/passenger/seat_selection_screen.dart:154 -> The named parameter 'userPhone' isn't defined.
+Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'userPhone'.
+- lib/screens/passenger/seat_selection_screen.dart:155 -> The named parameter 'userGender' isn't defined.
+Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'userGender'.
+- lib/screens/passenger/seat_selection_screen.dart:156 -> The argument type 'int' can't be assigned to the parameter type 'String'. 
+- lib/utils/seat_validation.dart:17 -> The argument type 'String' can't be assigned to the parameter type 'int'. 
+- lib/utils/seat_validation.dart:47 -> The argument type 'String' can't be assigned to the parameter type 'int'. 
+- lib/utils/seat_validation.dart:61 -> The argument type 'String' can't be assigned to the parameter type 'int'. 
+- lib/utils/seat_validation.dart:75 -> The argument type 'String' can't be assigned to the parameter type 'int'. 
+- lib/utils/seat_validation.dart:89 -> The argument type 'String' can't be assigned to the parameter type 'int'. 
+- lib/utils/seat_validation.dart:148 -> The argument type 'String' can't be assigned to the parameter type 'int'. 
+- lib/widgets/seat_layout_widget.dart:65 -> The argument type 'String' can't be assigned to the parameter type 'int'. 

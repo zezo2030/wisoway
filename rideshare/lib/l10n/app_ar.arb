@@ -1,0 +1,143 @@
+{
+  "@@locale": "ar",
+  "appName": "RideShare",
+  "phoneAuth": "تسجيل الدخول",
+  "@phoneAuth": {
+    "description": "عنوان شاشة تسجيل الدخول"
+  },
+  "phoneNumber": "رقم الهاتف",
+  "@phoneNumber": {
+    "description": "تسمية حقل رقم الهاتف"
+  },
+  "phoneNumberHint": "+201234567890",
+  "@phoneNumberHint": {
+    "description": "نص توضيحي لحقل رقم الهاتف"
+  },
+  "phoneNumberRequired": "يرجى إدخال رقم الهاتف",
+  "@phoneNumberRequired": {
+    "description": "رسالة خطأ عند عدم إدخال رقم الهاتف"
+  },
+  "sendOTP": "إرسال رمز التحقق",
+  "@sendOTP": {
+    "description": "نص زر إرسال رمز التحقق"
+  },
+  "otpVerification": "التحقق من الرمز",
+  "@otpVerification": {
+    "description": "عنوان شاشة التحقق من OTP"
+  },
+  "enterOTP": "أدخل رمز التحقق",
+  "@enterOTP": {
+    "description": "نص توضيحي لحقول OTP"
+  },
+  "resendOTP": "إعادة إرسال الرمز",
+  "@resendOTP": {
+    "description": "نص زر إعادة إرسال OTP"
+  },
+  "resendOTPIn": "إعادة إرسال الرمز خلال {seconds} ثانية",
+  "@resendOTPIn": {
+    "description": "نص العد التنازلي لإعادة إرسال OTP",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "profileSetup": "إعداد الملف الشخصي",
+  "@profileSetup": {
+    "description": "عنوان شاشة إعداد الملف الشخصي"
+  },
+  "name": "الاسم",
+  "@name": {
+    "description": "تسمية حقل الاسم"
+  },
+  "nameRequired": "يرجى إدخال الاسم",
+  "@nameRequired": {
+    "description": "رسالة خطأ عند عدم إدخال الاسم"
+  },
+  "gender": "الجنس",
+  "@gender": {
+    "description": "تسمية حقل الجنس"
+  },
+  "genderRequired": "يرجى اختيار الجنس",
+  "@genderRequired": {
+    "description": "رسالة خطأ عند عدم اختيار الجنس"
+  },
+  "male": "ذكر",
+  "@male": {
+    "description": "خيار الجنس - ذكر"
+  },
+  "female": "أنثى",
+  "@female": {
+    "description": "خيار الجنس - أنثى"
+  },
+  "role": "الدور",
+  "@role": {
+    "description": "تسمية حقل الدور"
+  },
+  "roleRequired": "يرجى اختيار الدور",
+  "@roleRequired": {
+    "description": "رسالة خطأ عند عدم اختيار الدور"
+  },
+  "passenger": "راكب",
+  "@passenger": {
+    "description": "خيار الدور - راكب"
+  },
+  "driver": "سائق",
+  "@driver": {
+    "description": "خيار الدور - سائق"
+  },
+  "save": "حفظ",
+  "@save": {
+    "description": "نص زر الحفظ"
+  },
+  "loading": "جاري التحميل...",
+  "@loading": {
+    "description": "نص حالة التحميل"
+  },
+  "error": "خطأ",
+  "@error": {
+    "description": "عنوان رسالة الخطأ"
+  },
+  "ok": "موافق",
+  "@ok": {
+    "description": "نص زر الموافقة"
+  },
+  "cancel": "إلغاء",
+  "@cancel": {
+    "description": "نص زر الإلغاء"
+  },
+  "home": "الرئيسية",
+  "@home": {
+    "description": "عنوان شاشة الرئيسية"
+  },
+  "welcome": "مرحباً",
+  "@welcome": {
+    "description": "رسالة الترحيب"
+  },
+  "signOut": "تسجيل الخروج",
+  "@signOut": {
+    "description": "نص زر تسجيل الخروج"
+  },
+  "invalidPhoneNumber": "رقم الهاتف غير صحيح",
+  "@invalidPhoneNumber": {
+    "description": "رسالة خطأ عند إدخال رقم هاتف غير صحيح"
+  },
+  "otpSent": "تم إرسال رمز التحقق",
+  "@otpSent": {
+    "description": "رسالة نجاح إرسال OTP"
+  },
+  "otpVerified": "تم التحقق بنجاح",
+  "@otpVerified": {
+    "description": "رسالة نجاح التحقق من OTP"
+  },
+  "invalidOTP": "رمز التحقق غير صحيح",
+  "@invalidOTP": {
+    "description": "رسالة خطأ عند إدخال OTP غير صحيح"
+  },
+  "profileSaved": "تم حفظ الملف الشخصي بنجاح",
+  "@profileSaved": {
+    "description": "رسالة نجاح حفظ الملف الشخصي"
+  }
+}
+
+

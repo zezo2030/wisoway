@@ -1,0 +1,173 @@
+{
+	"info": {
+		"_postman_id": "90f83596-b40b-40da-9495-ca9915015644",
+		"name": "fees cal",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "29920096"
+	},
+	"item": [
+		{
+			"name": "Token merchant",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"A2ARequest\": {\r\n        \"header\": {\r\n            \"channel\": \"ITBEEB\",\r\n            \"srvID\": \"GenerateToken\",\r\n            \"DeviceID\": \"4566\",\r\n            \"UserID\": \"ITBEEB\",\r\n            \"Password\": \"Cx/PQu8EPIW7sL180gff+w==\"\r\n        },\r\n        \"body\": {},\r\n        \"footer\": {\r\n            \"signature\": null\r\n        }\r\n    }\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://testapi.uwallet.jo/Global.eWalletAPI.UAT.WithoutSession/api/base/A2AProcess",
+					"protocol": "https",
+					"host": [
+						"testapi",
+						"uwallet",
+						"jo"
+					],
+					"path": [
+						"Global.eWalletAPI.UAT.WithoutSession",
+						"api",
+						"base",
+						"A2AProcess"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Login merchant",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"a2ARequest\": {\r\n        \"header\": {\r\n            \"channel\": \"ITBEEB\",\r\n            \"DeviceID\": \"4566\",\r\n            \"UserID\": \"ITBEEB\",\r\n            \"Password\": \"Cx/PQu8EPIW7sL180gff+w==\",\r\n            \"srvID\": \"LoginCustomerMRZ\",\r\n            \"Token\": \"zwsZWg75/+fyyNYBZg0dsHfiLQHNsD7ZCkeDFk2FwSxQdPu6UGL2PUezKb97AVVE6Vm2OSVaHiS932E/eDLzVD3DhZoqyYCS+TZ2w++gxHIxR7wVY1o7I/g4zj5XQ+FzP3VSsrszniD3zabDjz/nDbEnBphJEqJi+xQfRESVTo8z+mNFZVOrKfMXUQidDMOFSR64gFpgqN/A5ZaP/jKn6DtywRDgmjj4efSssaNVafAl5czom+KDrEWpVJS82q+o\"\r\n        },\r\n        \"body\": {\r\n            \"CustProfile\": {\r\n                \"IsMerchant\": \"1\",\r\n                \"Usernmae\": \"NiTeam\",\r\n                \"Password\": \"Gg3#Gg3#\" // 6DWjRV+z3EKRfh0iS7t+i72p98NR+k1/VBmpcPzFfY0=\r\n            }\r\n        }\r\n    }\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://testapi.uwallet.jo/Global.eWalletAPI.UAT.WithoutSession/api/base/A2AProcess",
+					"protocol": "https",
+					"host": [
+						"testapi",
+						"uwallet",
+						"jo"
+					],
+					"path": [
+						"Global.eWalletAPI.UAT.WithoutSession",
+						"api",
+						"base",
+						"A2AProcess"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "acc",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"A2ARequest\": {\r\n        \"Header\": {\r\n            \"Token\": \"5xgNEwnp6L3xz8oBXmgnvlr1F0PhlR+UDH2LCGG72j1vSue1bFv5YWyjHK98XU0N0D+iPwxeDXy+8g08V2znUjz5gd4v47aP+X9c0MKz6n82epJQY2w8fvg4zj5XQ+FzP3VSsrszniD3zabDjz/nDbEnBphJEqJi+xQfRESVTo8z+mNFZVTaa/IHfwmdDNubShmwzFterNnB27Ta4jHVzCcExQLgmTfBecqo+6Xu9Y6xSuBTFzLUgYM+Vug=\",\r\n            \"Channel\": \"ITBEEB\",\r\n            \"SrvID\": \"GetCustomerAccount\",\r\n            \"DeviceID\": \"4566\",\r\n            \"SessionID\": \"\"\r\n        },\r\n        \"Body\": {\r\n            \"CustProfile\": {\r\n                \"OPID\": \"2721\"\r\n            }\r\n        },\r\n        \"Footer\": {\r\n            \"Signature\": \"\"\r\n        }\r\n    },\r\n    \"A2AResponse\": {\r\n        \"Header\": {\r\n            \"SrvID\": 0,\r\n            \"GuidID\": \"360419ea-36c4-4184-a6a1-3a7bb50acc96\",\r\n            \"TimeStamp\": \"2024-10-30T12:52:36.5000208+03:00\",\r\n            \"Result\": {\r\n                \"ErrorCode\": 0,\r\n                \"EDesc\": \"\",\r\n                \"ADesc\": \"\"\r\n            },\r\n            \"Status\": 0\r\n        },\r\n        \"Body\": {},\r\n        \"Footer\": {\r\n            \"Signature\": \"\"\r\n        }\r\n    },\r\n    \"ErrorMsg\": {\r\n        \"ErrorCode\": 0,\r\n        \"EDesc\": \"\",\r\n        \"ADesc\": \"\"\r\n    }\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://testapi.uwallet.jo/Global.eWalletAPI.UAT.WithoutSession/api/base/A2AProcess",
+					"protocol": "https",
+					"host": [
+						"testapi",
+						"uwallet",
+						"jo"
+					],
+					"path": [
+						"Global.eWalletAPI.UAT.WithoutSession",
+						"api",
+						"base",
+						"A2AProcess"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "fees cal",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"A2ARequest\": {\r\n        \"Header\": {\r\n            \"Token\": \"5xgNEwnp6L3xz8oBXmgnvlr1F0PhlR+UDH2LCGG72j1vSue1bFv5YWyjHK98XU0N0D+iPwxeDXy+8g08V2znUjz5gd4v47aP+X9c0MKz6n82epJQY2w8fvg4zj5XQ+FzP3VSsrszniD3zabDjz/nDbEnBphJEqJi+xQfRESVTo8z+mNFZVTaa/IHfwmdDNubShmwzFterNnB27Ta4jHVzCcExQLgmTfBecqo+6Xu9Y6xSuBTFzLUgYM+Vug=\", //\r\n            \"SrvID\": \"FeesCalc\", //\r\n            \"Channel\": \"ITBEEB\", //\r\n            \"DeviceID\": \"4566\", //\r\n            \"UserID\": \"ITBEEB\", // \r\n            \"Password\": \"Cx/PQu8EPIW7sL180gff+w==\", // \r\n            \"SessionID\": \" \"\r\n        },\r\n        \"Body\": {\r\n            \"CustProfile\": {\r\n                \"CdtrAccID\": \"\",\r\n                \"CdtrAlias\": \"ALIAS\",  \r\n                \"CdtrValue\": \"ARABTHERAP\",\r\n                \"OPID\": 2721,\r\n                \"ServiceBIC\": \"\"\r\n            },\r\n            \"Transaction\": {\r\n                \"Amount\": \"1\"\r\n            }\r\n        },\r\n        \"Footer\": {\r\n            \"Signature\": \"\"\r\n        }\r\n    }\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://testapi.uwallet.jo/Global.eWalletAPI.UAT.WithoutSession/api/base/A2AProcess",
+					"protocol": "https",
+					"host": [
+						"testapi",
+						"uwallet",
+						"jo"
+					],
+					"path": [
+						"Global.eWalletAPI.UAT.WithoutSession",
+						"api",
+						"base",
+						"A2AProcess"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "M2P/m/B/sender normal",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": " \r\n {\r\n  \"A2ARequest\": {\r\n    \"Header\": {\r\n      \"Token\": \"5xgNEwnp6L3xz8oBXmgnvlr1F0PhlR+UDH2LCGG72j1vSue1bFv5YWyjHK98XU0N0D+iPwxeDXy+8g08V2znUjz5gd4v47aP+X9c0MKz6n82epJQY2w8fvg4zj5XQ+FzP3VSsrszniD3zabDjz/nDbEnBphJEqJi+xQfRESVTo8z+mNFZVTaa/IHfwmdDNubShmwzFterNnB27Ta4jHVzCcExQLgmTfBecqo+6Xu9Y6xSuBTFzLUgYM+Vug=\", \r\n      \"SrvID\": \"M2B\",  \r\n      //             \"SrvID\": \"M2M\",\r\n      \"UserID\": \"ITBEEB\",\r\n      \"Password\": \"Cx/PQu8EPIW7sL180gff+w==\",\r\n      \"Channel\": \"ITBEEB\",  \r\n      \"DeviceID\": \"4566\",  \r\n      \"SessionID\": \" \"   \r\n\r\n    },\r\n    \"Body\": {\r\n      \"Authenticate\": {\r\n        \"LWTD\": false,\r\n        \"PIN\": \"2024\"\r\n      },\r\n      \"CustProfile\": {\r\n        \"CdtrValue\": \"KHATEEBBE\",\r\n        \"DdtrAccID\": \"UWLTW48110004000101\",\r\n        \"OPID\": \"2721\"\r\n      },\r\n      \"ReceiverProfile\": {\r\n        \"CdtrAcct\": \"UWLTW48120004000101\" \r\n      },\r\n      \"Transaction\": {\r\n        \"Amount\": \"100.000\",  \r\n        \"FullTTC\": \"111313110\"\r\n      }\r\n    },\r\n    \"Footer\": {\r\n      \"Signature\": \"\"\r\n    }\r\n  }\r\n }\r\n ",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://testapi.uwallet.jo/Global.eWalletAPI.UAT.WithoutSession/api/base/A2AProcess",
+					"protocol": "https",
+					"host": [
+						"testapi",
+						"uwallet",
+						"jo"
+					],
+					"path": [
+						"Global.eWalletAPI.UAT.WithoutSession",
+						"api",
+						"base",
+						"A2AProcess"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
