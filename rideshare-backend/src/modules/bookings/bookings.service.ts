@@ -252,6 +252,50 @@ export class BookingsService {
     return booking;
   }
 
+  /** Admin-only: cancel any booking without ownership check */
+  async cancelAsAdmin(bookingId: string): Promise<BookingEntity> {
+    const booking = await this.bookingRepo.findOne({
+      where: { id: bookingId },
+      relations: ['trip'],
+    });
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+    if (booking.status === 'cancelled') {
+      throw new BadRequestException('Booking is already cancelled');
+    }
+    if (booking.status === 'completed') {
+      throw new BadRequestException('Cannot cancel a completed booking');
+    }
+
+    booking.status = 'cancelled';
+    booking.cancellationReason = 'Cancelled by admin';
+    booking.cancelledAt = new Date();
+    booking.cancelledBy = 'admin';
+    await this.bookingRepo.save(booking);
+
+    await this.tripsService.releaseSeat(booking.tripId, booking.seatNumber);
+
+    await this.tripsGateway.emitSeatReleased(
+      booking.tripId,
+      booking.seatNumber,
+    );
+
+    const trip = booking.trip || (await this.tripRepo.findOne({ where: { id: booking.tripId } }));
+    if (trip) {
+      await this.notificationsService.create({
+        userId: booking.userId,
+        type: 'booking_cancelled',
+        title: 'Booking Cancelled',
+        body: `Your booking for seat ${booking.seatNumber} has been cancelled by admin`,
+        data: { tripId: booking.tripId, bookingId },
+      });
+    }
+
+    this.logger.log(`Booking cancelled by admin: ${bookingId}`);
+    return booking;
+  }
+
   async findByUser(
     userId: string,
     options: { page: number; limit: number; status?: string },

@@ -21,6 +21,10 @@ export class ChatRoomEntity {
   @Column({ type: 'uuid' })
   tripId: string;
 
+  /** For 1:1 rooms: the passenger in this driver-passenger chat. Null = legacy group room. */
+  @Column({ type: 'uuid', nullable: true })
+  passengerId: string | null;
+
   @ManyToOne(() => TripEntity, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'tripId' })
   trip: TripEntity;

@@ -25,6 +25,7 @@ import {
 import type { DashboardStats, ReportResponse } from './dto/admin-query.dto';
 import type { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 import { NotificationsService } from '../notifications/notifications.service';
+import { BookingsService } from '../bookings/bookings.service';
 
 export interface AdminUsersQuery {
   page?: number;
@@ -109,6 +110,7 @@ export class AdminDashboardService {
     @InjectRepository(MessageEntity)
     private messageRepo: Repository<MessageEntity>,
     private notificationsService: NotificationsService,
+    private bookingsService: BookingsService,
   ) {}
 
   private readonly logger = new Logger(AdminDashboardService.name);
@@ -429,7 +431,7 @@ export class AdminDashboardService {
 
   async getBookings(
     query: AdminBookingsQuery,
-  ): Promise<PaginatedResult<BookingEntity>> {
+  ): Promise<PaginatedResult<Record<string, unknown>>> {
     const page = Math.max(1, query.page ?? 1);
     const limit = Math.min(100, Math.max(1, query.limit ?? 20));
     const skip = (page - 1) * limit;
@@ -450,7 +452,39 @@ export class AdminDashboardService {
       if (query.tripId) {
         qb.andWhere('b.tripId = :tripId', { tripId: query.tripId });
       }
-      const [data, total] = await qb.getManyAndCount();
+      const [entities, total] = await qb.getManyAndCount();
+      const data = entities.map((b) => ({
+        _id: b.id,
+        id: b.id,
+        seatNumber: b.seatNumber,
+        status: b.status,
+        hasDriverPaidToContact: b.hasDriverPaidToContact,
+        sharePhoneWithDriver: b.sharePhoneWithDriver,
+        cancellationReason: b.cancellationReason,
+        cancelledAt: b.cancelledAt,
+        cancelledBy: b.cancelledBy,
+        createdAt: b.createdAt,
+        updatedAt: b.updatedAt,
+        userId: b.user
+          ? {
+              _id: b.user.id,
+              name: b.user.name,
+              email: b.user.email ?? '',
+              phoneNumber: b.user.phoneNumber ?? undefined,
+            }
+          : b.userId,
+        tripId: b.trip
+          ? {
+              _id: b.trip.id,
+              fromName: b.trip.fromName,
+              toName: b.trip.toName,
+              from: { name: b.trip.fromName },
+              to: { name: b.trip.toName },
+              departureTime: b.trip.departureTime,
+              seatLayout: b.trip.seatLayout ?? undefined,
+            }
+          : b.tripId,
+      }));
       return {
         data,
         meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
@@ -458,6 +492,10 @@ export class AdminDashboardService {
     } catch {
       return { data: [], meta: { page, limit, total: 0, totalPages: 0 } };
     }
+  }
+
+  async cancelBooking(bookingId: string): Promise<BookingEntity> {
+    return this.bookingsService.cancelAsAdmin(bookingId);
   }
 
   async getRatings(

@@ -31,7 +31,7 @@ class ChatService {
   Future<ChatModel> getOrCreateChat(String tripId) =>
       getOrCreateRoomForTrip(tripId);
 
-  // Get or Create a chat room for a specific trip
+  // Get or Create a chat room for a specific trip (passenger: 1:1 with driver)
   Future<ChatModel> getOrCreateRoomForTrip(String tripId) async {
     try {
       final response = await _api.get(ApiEndpoints.chatRoomByTrip(tripId));
@@ -43,12 +43,38 @@ class ChatService {
     }
   }
 
+  /// غرفة 1:1 بين السائق وراكب معين (من صفحة تفاصيل الراكب)
+  Future<ChatModel> getOrCreateRoomForDriverPassenger(
+    String tripId,
+    String passengerId,
+  ) async {
+    try {
+      final response = await _api.get(
+        ApiEndpoints.chatRoomByTripAndPassenger(tripId, passengerId),
+      );
+      final data = response['data'] ?? response;
+      return ChatModel.fromJson(data);
+    } catch (e) {
+      print('❌ Error getting driver-passenger chat room: $e');
+      rethrow;
+    }
+  }
+
   // Get messages for a specific room
   Future<List<MessageModel>> getMessages(String roomId) async {
     try {
       final response = await _api.get(ApiEndpoints.chatMessages(roomId));
-      final data = response['data'] as List? ?? [];
-      return data.map((json) => MessageModel.fromJson(json)).toList();
+      final raw = response['data'];
+      List<dynamic> list;
+      if (raw is List) {
+        list = raw;
+      } else if (raw is Map) {
+        final inner = raw['data'];
+        list = inner is List ? inner : [];
+      } else {
+        list = [];
+      }
+      return list.map((json) => MessageModel.fromJson(json)).toList();
     } catch (e) {
       print('❌ Error getting messages: $e');
       return [];

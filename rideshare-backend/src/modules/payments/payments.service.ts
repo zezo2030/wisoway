@@ -191,6 +191,7 @@ export class PaymentsService {
           {
             driverWalletChargeApplied: true,
             driverWalletChargeAt: new Date(),
+            communicationFeeStatus: 'paid',
           },
         );
         await qr.commitTransaction();
@@ -232,6 +233,7 @@ export class PaymentsService {
         {
           driverWalletChargeApplied: true,
           driverWalletChargeAt: new Date(),
+          communicationFeeStatus: 'paid',
         },
       );
       await qr.commitTransaction();

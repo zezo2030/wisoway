@@ -112,12 +112,27 @@ export class TripsService {
     return this.tripRepo.save(trip);
   }
 
-  async findById(tripId: string): Promise<TripEntity> {
-    const trip = await this.tripRepo.findOne({ where: { id: tripId } });
+  async findById(tripId: string): Promise<TripEntity & { distanceKm?: number }> {
+    const result = await this.tripRepo
+      .createQueryBuilder('trip')
+      .where('trip.id = :id', { id: tripId })
+      .addSelect(
+        `ST_Distance(trip."fromPoint", trip."toPoint") / 1000`,
+        'distance_km',
+      )
+      .getRawAndEntities();
+
+    const trip = result.entities[0];
     if (!trip) {
       throw new NotFoundException('Trip not found');
     }
-    return trip;
+
+    const distanceKm = result.raw[0]?.distance_km;
+    return {
+      ...trip,
+      distanceKm:
+        distanceKm != null ? Number(distanceKm) : undefined,
+    };
   }
 
   /** Internal: book a seat (used by BookingsService in transaction) */
@@ -428,8 +443,9 @@ export class TripsService {
       seatLayout: trip.seatLayout,
       seats: (trip.seats || []).map((seat: any) => ({
         seatNumber: seat.seatNumber,
-        status: seat.status,
+        status: seat.status ?? 'available',
         gender: seat.gender,
+        passengerGender: seat.gender ?? undefined,
       })),
     };
   }

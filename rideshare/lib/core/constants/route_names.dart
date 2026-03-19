@@ -19,6 +19,7 @@ class RouteNames {
   static const String editTrip = '/edit-trip';
   static const String myTrips = '/my-trips';
   static const String tripManagement = '/trip-management';
+  static const String passengerDetails = '/passenger-details';
   
   // Passenger Routes
   static const String tripsList = '/trips-list';

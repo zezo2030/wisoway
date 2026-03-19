@@ -30,6 +30,7 @@ import 'screens/driver/create_trip_screen.dart';
 import 'screens/driver/edit_trip_screen.dart';
 import 'screens/driver/my_trips_screen.dart';
 import 'screens/driver/trip_management_screen.dart';
+import 'screens/driver/passenger_details_screen.dart';
 import 'screens/driver/driver_wallet_screen.dart';
 import 'screens/driver/driver_wallet_topup_screen.dart';
 import 'screens/passenger/trips_list_screen.dart';
@@ -37,6 +38,7 @@ import 'screens/passenger/trip_details_screen.dart';
 import 'screens/passenger/seat_selection_screen.dart';
 import 'screens/passenger/trip_route_map_screen.dart';
 import 'models/trip_model.dart';
+import 'models/booking_model.dart';
 import 'screens/payment/manual_payment_screen.dart';
 import 'screens/payment/payment_history_screen.dart';
 import 'screens/notifications/notifications_screen.dart';
@@ -219,6 +221,8 @@ class MyApp extends StatelessWidget {
                         builder: (context) => driver_chat.DriverChatScreen(
                           tripId: args['tripId'],
                           trip: args['trip'],
+                          passengerId: args['passengerId'],
+                          passengerName: args['passengerName'],
                         ),
                       );
                     }
@@ -231,6 +235,13 @@ class MyApp extends StatelessWidget {
                           driverId: args['driverId'],
                           driverName: args['driverName'],
                         ),
+                      );
+                    }
+                    if (settings.name == RouteNames.passengerDetails) {
+                      final booking = settings.arguments as BookingModel;
+                      return MaterialPageRoute(
+                        builder: (context) =>
+                            PassengerDetailsScreen(booking: booking),
                       );
                     }
                     return null;

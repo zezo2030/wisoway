@@ -919,6 +919,15 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
             ],
           ),
           const SizedBox(height: 20),
+          if (trip.distanceKm != null) ...[
+            _buildDetailRow(
+              icon: IconsaxPlusBold.routing_2,
+              label: 'مسافة الرحلة',
+              value: '${trip.distanceKm!.toStringAsFixed(1)} كم',
+              color: Colors.teal,
+            ),
+            const Divider(height: 32),
+          ],
           _buildDetailRow(
             icon: IconsaxPlusBold.clock,
             label: 'وقت الانطلاق',
@@ -1255,10 +1264,17 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
   }
 
   Widget _buildPassengerItem(BookingModel booking) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+    return InkWell(
+      onTap: () => Navigator.pushNamed(
+        context,
+        RouteNames.passengerDetails,
+        arguments: booking,
+      ),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
         color: Colors.grey[50],
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey[200]!),
@@ -1327,11 +1343,14 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                         color: Colors.grey[600],
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        booking.userPopulated?.phoneNumber ?? '',
-                        style: GoogleFonts.cairo(
-                          fontSize: 12,
-                          color: Colors.grey[600],
+                      Expanded(
+                        child: Text(
+                          booking.userPopulated?.phoneNumber ?? '',
+                          style: GoogleFonts.cairo(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -1353,6 +1372,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -1513,25 +1533,6 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                       // Reload trip after successful edit
                       _loadTrip();
                     }
-                  },
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildActionButton(
-                  icon: IconsaxPlusLinear.message,
-                  label: 'المحادثة',
-                  color: Colors.green,
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      RouteNames.driverChat,
-                      arguments: {'tripId': widget.tripId, 'trip': _trip},
-                    );
                   },
                 ),
               ),

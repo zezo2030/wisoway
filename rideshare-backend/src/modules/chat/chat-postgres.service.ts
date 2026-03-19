@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -34,34 +35,93 @@ export class ChatPostgresService {
     private notificationsService: NotificationsService,
   ) {}
 
+  /** Get or create 1:1 room between driver and passenger for a trip */
+  async getOrCreateRoomForDriverPassenger(
+    tripId: string,
+    driverId: string,
+    passengerId: string,
+  ): Promise<ChatRoomEntity> {
+    const trip = await this.tripRepo.findOne({ where: { id: tripId } });
+    if (!trip) throw new NotFoundException('Trip not found');
+    if (trip.driverId !== driverId) {
+      throw new ForbiddenException('You are not the driver of this trip');
+    }
+    const booking = await this.bookingRepo.findOne({
+      where: { tripId, userId: passengerId, status: 'confirmed' },
+    });
+    if (!booking) {
+      throw new ForbiddenException(
+        'Passenger must have a confirmed booking for this trip',
+      );
+    }
+    const hasPaidFee =
+      booking.hasDriverPaidToContact ??
+      (await this.paymentsService.hasUserPaidCommunicationFee(
+        booking.id,
+        driverId,
+      ));
+    if (!hasPaidFee) {
+      throw new ForbiddenException(
+        'Driver has not paid the communication fee to unlock chat',
+      );
+    }
+
+    let room = await this.chatRoomRepo.findOne({
+      where: { tripId, passengerId },
+      relations: ['trip'],
+    });
+    if (room) return room;
+
+    room = this.chatRoomRepo.create({
+      tripId,
+      passengerId,
+      participants: [
+        { userId: driverId, joinedAt: new Date() },
+        { userId: passengerId, joinedAt: new Date() },
+      ],
+    });
+    room = await this.chatRoomRepo.save(room);
+    this.logger.log(
+      `1:1 Chat room created: ${room.id} for trip ${tripId}, passenger ${passengerId}`,
+    );
+    return room;
+  }
+
+  /** Get or create room - for passenger: 1:1 with driver. For backward compat. */
   async getOrCreateRoom(
     tripId: string,
     userId: string,
   ): Promise<ChatRoomEntity | null> {
-    let room = await this.chatRoomRepo.findOne({
-      where: { tripId },
-      relations: ['trip'],
-    });
+    const trip = await this.tripRepo.findOne({ where: { id: tripId } });
+    if (!trip) throw new NotFoundException('Trip not found');
 
-    if (room) {
-      const isParticipant = (room.participants ?? []).some(
-        (p: { userId: string }) => p.userId === userId,
+    const isDriver = trip.driverId === userId;
+    if (isDriver) {
+      throw new BadRequestException(
+        'Driver must use trip+passenger endpoint to open 1:1 chat',
       );
-      if (!isParticipant) {
-        await this.validateTripParticipation(tripId, userId);
-        room = await this.addParticipant(room.id, userId);
-      }
-      return room;
     }
 
     await this.validateTripParticipation(tripId, userId);
 
+    let room = await this.chatRoomRepo.findOne({
+      where: { tripId, passengerId: userId },
+      relations: ['trip'],
+    });
+    if (room) return room;
+
     room = this.chatRoomRepo.create({
       tripId,
-      participants: [{ userId, joinedAt: new Date() }],
+      passengerId: userId,
+      participants: [
+        { userId: trip.driverId, joinedAt: new Date() },
+        { userId, joinedAt: new Date() },
+      ],
     });
     room = await this.chatRoomRepo.save(room);
-    this.logger.log(`Chat room created: ${room.id} for trip ${tripId}`);
+    this.logger.log(
+      `1:1 Chat room created: ${room.id} for trip ${tripId}, passenger ${userId}`,
+    );
     return room;
   }
 
@@ -268,7 +328,7 @@ export class ChatPostgresService {
     return room;
   }
 
-  /** Get room by ID or by trip ID (create if not exists for trip) */
+  /** Get room by ID or by trip ID (for passenger: 1:1 room with driver) */
   async getRoomByIdOrTripId(
     idOrTripId: string,
     userId: string,

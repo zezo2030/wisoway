@@ -282,6 +282,14 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
+                    if (trip.distanceKm != null) ...[
+                      _DetailRow(
+                        icon: Icons.straighten,
+                        label: 'مسافة الرحلة',
+                        value: '${trip.distanceKm!.toStringAsFixed(1)} كم',
+                      ),
+                      const Divider(),
+                    ],
                     _DetailRow(
                       icon: Icons.access_time,
                       label: 'وقت الانطلاق',

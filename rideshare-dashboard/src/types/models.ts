@@ -90,6 +90,7 @@ export interface Trip {
   communicationFeeStatus: 'not_paid' | 'paid'
   carImageUrl?: string
   isVisible: boolean
+  distanceKm?: number
   createdAt: string
   updatedAt: string
 }
@@ -229,6 +230,8 @@ export interface TripSummary {
   fromName?: string
   toName?: string
   departureTime: string
+  /** Present on admin booking list so seat "row-col" can be shown as linear # */
+  seatLayout?: SeatLayout
 }
 
 export interface BookingSummary {

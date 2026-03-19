@@ -41,6 +41,9 @@ class TripModel {
   // Communication Fee Status
   final String communicationFeeStatus; // 'not_paid', 'paid'
 
+  // Distance (km, from PostGIS)
+  final double? distanceKm;
+
   // Metadata
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -63,6 +66,7 @@ class TripModel {
     this.status = 'active',
     this.isVisible = true,
     this.communicationFeeStatus = 'not_paid',
+    this.distanceKm,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -154,6 +158,9 @@ class TripModel {
       status: json['status'] ?? 'active',
       isVisible: json['isVisible'] ?? true,
       communicationFeeStatus: json['communicationFeeStatus'] ?? 'not_paid',
+      distanceKm: json['distanceKm'] != null
+          ? _parseDouble(json['distanceKm'])
+          : null,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
@@ -181,6 +188,7 @@ class TripModel {
       'status': status,
       'isVisible': isVisible,
       'communicationFeeStatus': communicationFeeStatus,
+      if (distanceKm != null) 'distanceKm': distanceKm,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
@@ -205,6 +213,7 @@ class TripModel {
     String? status,
     bool? isVisible,
     String? communicationFeeStatus,
+    double? distanceKm,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -226,6 +235,7 @@ class TripModel {
       isVisible: isVisible ?? this.isVisible,
       communicationFeeStatus:
           communicationFeeStatus ?? this.communicationFeeStatus,
+      distanceKm: distanceKm ?? this.distanceKm,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

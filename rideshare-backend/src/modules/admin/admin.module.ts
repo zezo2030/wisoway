@@ -13,6 +13,7 @@ import { MessageEntity } from '../../database/entities/message.entity';
 import { AdminDashboardController } from './admin-dashboard.controller';
 import { AdminDashboardService } from './admin-dashboard.service';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { BookingsModule } from '../bookings/bookings.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
       MessageEntity,
     ]),
     NotificationsModule,
+    BookingsModule,
   ],
   controllers: [AdminDashboardController],
   providers: [AdminDashboardService],

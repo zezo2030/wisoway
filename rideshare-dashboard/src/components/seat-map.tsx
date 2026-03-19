@@ -60,7 +60,8 @@ export function SeatMap({ seatLayout, seats, preventGenderMixing = false, classN
     ) : null
   }
 
-  // Generate seat grid
+  // Generate seat grid (matches Flutter SeatLayoutWidget: row-major order, no aisle gap).
+  // App uses RTL for Arabic: first column (seat 1) is on the visual right — mirror via dir="rtl".
   const generateSeats = () => {
     const grid = []
     let seatNumber = 1
@@ -69,13 +70,6 @@ export function SeatMap({ seatLayout, seats, preventGenderMixing = false, classN
       const rowSeats = []
       for (let col = 0; col < seatsPerRow; col++) {
         const seat = seatMap.get(seatNumber)
-        const isAisle = col === Math.floor(seatsPerRow / 2) && seatsPerRow > 2
-
-        if (isAisle) {
-          rowSeats.push(
-            <div key={`aisle-${row}-${col}`} className="w-4" />
-          )
-        }
 
         rowSeats.push(
           <Tooltip key={seatNumber}>
@@ -98,7 +92,7 @@ export function SeatMap({ seatLayout, seats, preventGenderMixing = false, classN
         seatNumber++
       }
       grid.push(
-        <div key={row} className="flex items-center justify-center gap-2">
+        <div key={row} className="flex flex-row items-center justify-center gap-2">
           {rowSeats}
         </div>
       )
@@ -110,7 +104,7 @@ export function SeatMap({ seatLayout, seats, preventGenderMixing = false, classN
   return (
     <TooltipProvider>
       <div className={cn("space-y-4", className)}>
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2" dir="rtl">
           {generateSeats()}
         </div>
 

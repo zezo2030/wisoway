@@ -10,8 +10,16 @@ import '../../core/theme/colors.dart';
 class DriverChatScreen extends StatefulWidget {
   final String tripId;
   final TripModel? trip;
+  final String? passengerId;
+  final String? passengerName;
 
-  const DriverChatScreen({super.key, required this.tripId, this.trip});
+  const DriverChatScreen({
+    super.key,
+    required this.tripId,
+    this.trip,
+    this.passengerId,
+    this.passengerName,
+  });
 
   @override
   State<DriverChatScreen> createState() => _DriverChatScreenState();
@@ -46,9 +54,15 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
         return;
       }
 
-      // Driver can always access chat if it exists
-      // Get existing chat or create new one
-      final chat = await _chatService.getOrCreateRoomForTrip(widget.tripId);
+      ChatModel chat;
+      if (widget.passengerId != null) {
+        chat = await _chatService.getOrCreateRoomForDriverPassenger(
+          widget.tripId,
+          widget.passengerId!,
+        );
+      } else {
+        chat = await _chatService.getOrCreateRoomForTrip(widget.tripId);
+      }
       setState(() {
         _chatId = chat.id;
         _isLoading = false;
@@ -74,11 +88,16 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
     try {
       String chatId = _chatId ?? '';
 
-      // If chat doesn't exist, create it
-      if (chatId.isEmpty && widget.trip != null) {
-        // Get first confirmed booking to create chat with
-        // For now, we'll create chat with driver only, passengers will be added when they send messages
-        final chat = await _chatService.getOrCreateRoomForTrip(widget.tripId);
+      if (chatId.isEmpty) {
+        ChatModel chat;
+        if (widget.passengerId != null) {
+          chat = await _chatService.getOrCreateRoomForDriverPassenger(
+            widget.tripId,
+            widget.passengerId!,
+          );
+        } else {
+          chat = await _chatService.getOrCreateRoomForTrip(widget.tripId);
+        }
         chatId = chat.id;
         setState(() => _chatId = chatId);
       }
@@ -174,8 +193,10 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('محادثة الرحلة'),
-            if (widget.trip != null)
+            Text(widget.passengerName != null
+                ? 'محادثة مع ${widget.passengerName}'
+                : 'محادثة الرحلة'),
+            if (widget.trip != null && widget.passengerName == null)
               Text(
                 '${widget.trip!.from.name} → ${widget.trip!.to.name}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(

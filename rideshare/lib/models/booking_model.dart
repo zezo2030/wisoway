@@ -50,20 +50,24 @@ class BookingModel {
       v == null ? '' : (v is Map ? (v['_id'] ?? v['id'])?.toString() ?? '' : v.toString());
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
+    // TypeORM returns relation as 'trip', Mongoose may use 'tripId' when populated
+    final tripJson = json['trip'] ?? json['tripId'];
     String pTripId = '';
     TripModel? pTripObj;
-    if (json['tripId'] is Map) {
-      pTripId = _str(json['tripId']);
-      pTripObj = TripModel.fromJson(json['tripId'] as Map<String, dynamic>);
+    if (tripJson is Map) {
+      pTripId = _str(tripJson);
+      pTripObj = TripModel.fromJson(tripJson as Map<String, dynamic>);
     } else {
       pTripId = _str(json['tripId']);
     }
 
+    // TypeORM returns relation as 'user', Mongoose may use 'userId' when populated
+    final userJson = json['user'] ?? json['userId'];
     String pUserId = '';
     UserModel? pUserObj;
-    if (json['userId'] is Map) {
-      pUserId = _str(json['userId']);
-      pUserObj = UserModel.fromJson(json['userId'] as Map<String, dynamic>);
+    if (userJson is Map) {
+      pUserId = _str(userJson);
+      pUserObj = UserModel.fromJson(userJson as Map<String, dynamic>);
     } else {
       pUserId = _str(json['userId']);
     }

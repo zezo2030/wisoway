@@ -143,10 +143,16 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
 
     setState(() => _isBooking = true);
 
+    // تحويل رقم المقعد (1-based) إلى تنسيق الباكند row-col (0-based)
+    final seatsPerRow = _trip!.seatLayout.seatsPerRow;
+    final row = (_selectedSeat! - 1) ~/ seatsPerRow;
+    final col = (_selectedSeat! - 1) % seatsPerRow;
+    final backendSeatNumber = '$row-$col';
+
     try {
       final bookingId = await _bookingService.createBooking(
         tripId: _trip!.id,
-        seatNumber: _selectedSeat!.toString(),
+        seatNumber: backendSeatNumber,
         sharePhoneWithDriver: _sharePhoneWithDriver,
       );
 

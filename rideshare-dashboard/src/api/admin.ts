@@ -168,6 +168,28 @@ export async function getTripById(tripId: string): Promise<Trip> {
 }
 
 /**
+ * Backend stores seats as "row-col" (0-based); SeatMap uses linear 1-based index
+ * (same as mobile: linear = row * seatsPerRow + col + 1).
+ */
+function normalizeSeatNumberForLayout(
+  raw: unknown,
+  seatsPerRow: number
+): number {
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    return raw
+  }
+  const s = String(raw ?? "")
+  const m = /^(\d+)-(\d+)$/.exec(s)
+  if (m && seatsPerRow > 0) {
+    const row = parseInt(m[1], 10)
+    const col = parseInt(m[2], 10)
+    return row * seatsPerRow + col + 1
+  }
+  const n = Number(s)
+  return Number.isFinite(n) ? n : 0
+}
+
+/**
  * Get trip seats
  */
 export async function getTripSeats(tripId: string): Promise<Seat[]> {
@@ -180,6 +202,12 @@ export async function getTripSeats(tripId: string): Promise<Seat[]> {
 
   if (payload && typeof payload === "object") {
     const record = payload as Record<string, unknown>
+    const layout = record.seatLayout as { seatsPerRow?: number } | undefined
+    const seatsPerRow =
+      typeof layout?.seatsPerRow === "number" && layout.seatsPerRow > 0
+        ? layout.seatsPerRow
+        : 4
+
     const rawSeats = record.seats
     if (Array.isArray(rawSeats)) {
       return rawSeats.map((rawSeat) => {
@@ -192,7 +220,7 @@ export async function getTripSeats(tripId: string): Promise<Seat[]> {
               : undefined
 
         return {
-          seatNumber: Number(seatRecord.seatNumber ?? 0),
+          seatNumber: normalizeSeatNumberForLayout(seatRecord.seatNumber, seatsPerRow),
           status: String(seatRecord.status ?? "available") as Seat["status"],
           passengerId:
             typeof seatRecord.passengerId === "string" ? seatRecord.passengerId : undefined,

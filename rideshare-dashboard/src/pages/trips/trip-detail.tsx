@@ -17,9 +17,10 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { QUERY_KEYS } from "@/lib/constants"
+import { formatSeatDisplay } from "@/lib/seat-format"
 import { formatDateTime, formatCurrency, cn, getTripLocationName } from "@/lib/utils"
 import type { UserSummary } from "@/types/models"
-import { ArrowLeft, MapPin, User, Calendar, DollarSign, Car, Users, ArrowLeftRight, Activity, CreditCard, ShieldCheck } from "lucide-react"
+import { ArrowLeft, MapPin, User, Calendar, DollarSign, Car, Users, ArrowLeftRight, Activity, CreditCard, ShieldCheck, Route } from "lucide-react"
 
 // Type guard for populated fields
 function isPopulatedDriver(driverId: string | UserSummary): driverId is UserSummary {
@@ -151,6 +152,15 @@ export default function TripDetailPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-3">
+                {trip.distanceKm != null && (
+                  <div className="bg-muted/40 p-4 rounded-2xl border border-border/40 flex flex-col items-center justify-center text-center">
+                    <Route className="w-6 h-6 text-muted-foreground/50 mb-2" />
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Distance</p>
+                    <p className="font-bold text-lg text-foreground mt-0.5 whitespace-nowrap">
+                      {trip.distanceKm.toFixed(1)} km
+                    </p>
+                  </div>
+                )}
                 <div className="bg-muted/40 p-4 rounded-2xl border border-border/40 flex flex-col items-center justify-center text-center">
                   <Users className="w-6 h-6 text-muted-foreground/50 mb-2" />
                   <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Seats</p>
@@ -291,8 +301,15 @@ export default function TripDetailPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-center">
-                          <span className="font-black text-sm bg-muted/60 border border-border/50 px-2.5 py-1 rounded shadow-sm inline-block min-w-[32px]">
-                            {booking.seatNumber}
+                          <span
+                            className="font-black text-sm bg-muted/60 border border-border/50 px-2.5 py-1 rounded shadow-sm inline-block min-w-[32px]"
+                            title={
+                              trip.seatLayout?.seatsPerRow
+                                ? `Server seat id: ${booking.seatNumber}`
+                                : undefined
+                            }
+                          >
+                            #{formatSeatDisplay(booking.seatNumber, trip.seatLayout?.seatsPerRow)}
                           </span>
                         </TableCell>
                         <TableCell className="text-center">

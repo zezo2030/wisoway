@@ -204,6 +204,15 @@ export class AdminDashboardController {
     });
   }
 
+  @Patch('bookings/:id/cancel')
+  @ApiOperation({ summary: 'Cancel a booking (admin)' })
+  @ApiParam({ name: 'id', description: 'Booking ID' })
+  @ApiResponse({ status: 200, description: 'Booking cancelled successfully' })
+  @ApiResponse({ status: 404, description: 'Booking not found' })
+  async cancelBooking(@Param('id') bookingId: string) {
+    return this.adminDashboardService.cancelBooking(bookingId);
+  }
+
   @Get('bookings')
   @ApiOperation({ summary: 'Get paginated bookings with filters' })
   @ApiQuery({ name: 'page', required: false, type: Number })

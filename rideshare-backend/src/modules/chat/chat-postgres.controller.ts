@@ -45,9 +45,32 @@ export class ChatPostgresController {
     return this.chatService.getRoomsByUser(userId, query);
   }
 
+  @Get('rooms/trip/:tripId/passenger/:passengerId')
+  @ApiOperation({
+    summary: 'Get or create 1:1 chat room between driver and passenger (Driver only)',
+  })
+  @ApiParam({ name: 'tripId', description: 'Trip ID' })
+  @ApiParam({ name: 'passengerId', description: 'Passenger user ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns the 1:1 chat room',
+  })
+  @ApiResponse({ status: 403, description: 'Not driver or fee not paid' })
+  async getRoomForDriverPassenger(
+    @Param('tripId') tripId: string,
+    @Param('passengerId') passengerId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.chatService.getOrCreateRoomForDriverPassenger(
+      tripId,
+      userId,
+      passengerId,
+    );
+  }
+
   @Get('rooms/:idOrTripId')
   @ApiOperation({
-    summary: 'Get chat room by room ID or trip ID (creates if not exists for trip)',
+    summary: 'Get chat room by room ID or trip ID (for passenger: 1:1 with driver)',
   })
   @ApiParam({
     name: 'idOrTripId',

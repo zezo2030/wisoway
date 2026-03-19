@@ -7,7 +7,7 @@ class ApiEndpoints {
   static const String baseUrl = String.fromEnvironment(
     'BASE_URL',
     // defaultValue: 'http://localhost:3003/api/v1',
-    defaultValue: 'http://192.168.1.4:3003/api/v1',
+    defaultValue: 'http://192.168.1.12:3003/api/v1',
   );
 
   // Auth
@@ -72,6 +72,8 @@ class ApiEndpoints {
   // Chat
   static const String chatRooms = '/chat/rooms';
   static String chatRoomByTrip(String tripId) => '/chat/rooms/$tripId';
+  static String chatRoomByTripAndPassenger(String tripId, String passengerId) =>
+      '/chat/rooms/trip/$tripId/passenger/$passengerId';
   static String chatMessages(String roomId) => '/chat/rooms/$roomId/messages';
   static String sendMessage(String roomId) => '/chat/rooms/$roomId/messages';
 

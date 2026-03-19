@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { QUERY_KEYS, DASHBOARD_REFRESH_INTERVAL, BOOKING_STATUS_LABELS } from "@/lib/constants"
 import { formatDate } from "@/lib/utils"
+import { formatSeatDisplay } from "@/lib/seat-format"
 import type { Booking, UserSummary, TripSummary } from "@/types/models"
 import { BookOpen, XCircle, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
@@ -117,11 +118,20 @@ export default function BookingsListPage() {
         {
             key: "seat",
             header: "Seat",
-            cell: (booking) => (
-                <div className="font-mono font-bold tracking-wider text-sm bg-muted/60 px-2.5 py-1 rounded w-fit border border-border/40 text-foreground">
-                    #{booking.seatNumber}
-                </div>
-            ),
+            cell: (booking) => {
+                const seatsPerRow = isPopulatedTrip(booking.tripId)
+                    ? booking.tripId.seatLayout?.seatsPerRow
+                    : undefined
+                const label = formatSeatDisplay(booking.seatNumber, seatsPerRow)
+                return (
+                    <div
+                        className="font-mono font-bold tracking-wider text-sm bg-muted/60 px-2.5 py-1 rounded w-fit border border-border/40 text-foreground"
+                        title={seatsPerRow ? `Server seat id: ${booking.seatNumber}` : booking.seatNumber}
+                    >
+                        #{label}
+                    </div>
+                )
+            },
         },
         {
             key: "status",
