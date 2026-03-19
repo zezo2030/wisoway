@@ -115,6 +115,19 @@ DEVELOPER_ERROR
 ```
 **الحل**: أضف SHA-1 fingerprint في Google Cloud Console
 
+#### Geocoding: Service not Available (IO_ERROR):
+```
+PlatformException(IO_ERROR, Service not Available, null, null)
+```
+**السبب**: خدمة العناوين (Geocoder) غير متوفرة على الجهاز.
+**الحل**:
+- استخدم **جهازاً حقيقياً** أو **محاكي (AVD) بنظام Google Play** (صورة النظام: "Google APIs" أو "Google Play" وليس "Google APIs (no Play)").
+- تأكد من وجود اتصال إنترنت.
+- على الجهاز الحقيقي: تأكد من تفعيل وتحديث Google Play Services.
+
+#### MapsInitializer: preferredRenderer: null
+هذه رسالة معلوماتية من خرائط Google؛ لا تؤثر على عمل الخريطة عادة. إذا كانت الخريطة تعمل، يمكن تجاهلها.
+
 #### خطأ الاتصال:
 ```
 Network error

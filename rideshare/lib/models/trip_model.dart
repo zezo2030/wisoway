@@ -85,8 +85,30 @@ class TripModel {
   }
 
   factory TripModel.fromJson(Map<String, dynamic> json) {
-    final fromMap = json['from'] as Map<String, dynamic>? ?? {};
-    final toMap = json['to'] as Map<String, dynamic>? ?? {};
+    Map<String, dynamic> fromMap = json['from'] as Map<String, dynamic>? ?? {};
+    if (fromMap.isEmpty && json['fromName'] != null) {
+      final fromPoint = json['fromPoint'] as Map<String, dynamic>?;
+      final coords = fromPoint?['coordinates'] as List<dynamic>?;
+      fromMap = {
+        'name': json['fromName'],
+        'address': json['fromAddress'],
+        'longitude': coords != null && coords.isNotEmpty ? coords[0] : 0.0,
+        'latitude': coords != null && coords.length > 1 ? coords[1] : 0.0,
+      };
+    }
+
+    Map<String, dynamic> toMap = json['to'] as Map<String, dynamic>? ?? {};
+    if (toMap.isEmpty && json['toName'] != null) {
+      final toPoint = json['toPoint'] as Map<String, dynamic>?;
+      final coords = toPoint?['coordinates'] as List<dynamic>?;
+      toMap = {
+        'name': json['toName'],
+        'address': json['toAddress'],
+        'longitude': coords != null && coords.isNotEmpty ? coords[0] : 0.0,
+        'latitude': coords != null && coords.length > 1 ? coords[1] : 0.0,
+      };
+    }
+
     final from = LocationModel.fromMap(fromMap);
     final to = LocationModel.fromMap(toMap);
 

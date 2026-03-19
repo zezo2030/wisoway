@@ -5,17 +5,17 @@ import {
   IsOptional,
   IsPositive,
   MaxLength,
-  IsMongoId,
+  IsUUID,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateCommunicationFeeDto {
   @ApiProperty({
     description: 'Booking ID to pay communication fee for',
-    example: '507f1f77bcf86cd799439012',
+    example: '123e4567-e89b-12d3-a456-426614174000',
   })
   @IsString()
-  @IsMongoId()
+  @IsUUID()
   bookingId: string;
 
   @ApiProperty({

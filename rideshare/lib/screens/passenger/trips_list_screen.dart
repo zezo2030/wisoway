@@ -34,17 +34,53 @@ class _TripsListScreenState extends State<TripsListScreen> {
   }
 
   Future<void> _loadUserLocation() async {
+    if (!mounted) return;
     setState(() => _isLoadingLocation = true);
     try {
       final location = await _locationService.getCurrentLocation();
+      if (!mounted) return;
       setState(() {
         _userLocation = location;
         _isLoadingLocation = false;
       });
       _reloadTrips();
     } catch (e) {
+      if (!mounted) return;
       print('❌ Error loading location: $e');
       setState(() => _isLoadingLocation = false);
+
+      String message = 'تعذر الحصول على الموقع.';
+      String actionLabel = 'إغلاق';
+      VoidCallback? onAction;
+
+      final errorStr = e.toString();
+      if (errorStr.contains('LOCATION_SERVICE_DISABLED')) {
+        message = 'خدمات الموقع معطلة.';
+        actionLabel = 'تفعيل';
+        onAction = () => _locationService.openLocationSettings();
+      } else if (errorStr.contains('LOCATION_PERMISSION_DENIED')) {
+        message = 'تصريح الموقع مطلوب.';
+        actionLabel = 'منح';
+        onAction = () => _loadUserLocation();
+      } else if (errorStr.contains('LOCATION_PERMISSION_PERMANENTLY_DENIED')) {
+        message = 'تم رفض التصريح بشكل دائم.';
+        actionLabel = 'الإعدادات';
+        onAction = () => _locationService.openAppSettings();
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.orange,
+          action: onAction != null
+              ? SnackBarAction(
+                  label: actionLabel,
+                  textColor: Colors.white,
+                  onPressed: onAction,
+                )
+              : null,
+        ),
+      );
     }
   }
 

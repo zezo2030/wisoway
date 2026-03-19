@@ -234,6 +234,37 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+            // View Route on Map Button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pushNamed(
+                      context,
+                      RouteNames.tripRouteMap,
+                      arguments: trip,
+                    );
+                  },
+                  icon: const Icon(Icons.map_outlined, size: 20),
+                  label: const Text(
+                    'عرض المسار على الخريطة',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1565C0),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                  ),
+                ),
+              ),
+            ),
             const SizedBox(height: 16),
             // Trip Details Card
             Card(

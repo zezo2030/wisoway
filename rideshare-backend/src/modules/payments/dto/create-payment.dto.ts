@@ -6,23 +6,23 @@ import {
   IsPositive,
   Min,
   MaxLength,
-  IsMongoId,
+  IsUUID,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreatePaymentDto {
-  @ApiProperty({ description: 'Trip ID', example: '507f1f77bcf86cd799439011' })
+  @ApiProperty({ description: 'Trip ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @IsString()
-  @IsMongoId()
+  @IsUUID()
   @IsOptional()
   tripId?: string;
 
   @ApiProperty({
     description: 'Booking ID',
-    example: '507f1f77bcf86cd799439012',
+    example: '123e4567-e89b-12d3-a456-426614174000',
   })
   @IsString()
-  @IsMongoId()
+  @IsUUID()
   @IsOptional()
   bookingId?: string;
 

@@ -1,14 +1,14 @@
-import { IsString, IsNotEmpty, IsMongoId } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, IsUUID, IsBoolean, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateBookingDto {
   @ApiProperty({
     description: 'The ID of the trip to book',
-    example: '507f1f77bcf86cd799439011',
+    example: '123e4567-e89b-12d3-a456-426614174000',
   })
   @IsString()
   @IsNotEmpty()
-  @IsMongoId()
+  @IsUUID()
   tripId: string;
 
   @ApiProperty({
@@ -18,4 +18,12 @@ export class CreateBookingDto {
   @IsString()
   @IsNotEmpty()
   seatNumber: string;
+
+  @ApiPropertyOptional({
+    description: 'Whether the passenger wants to share their phone number with the driver immediately',
+    example: true,
+  })
+  @IsBoolean()
+  @IsOptional()
+  sharePhoneWithDriver?: boolean;
 }

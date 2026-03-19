@@ -54,16 +54,47 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadUserLocation() async {
+    if (!mounted) return;
     setState(() => _isLoadingLocation = true);
     try {
       final location = await _locationService.getCurrentLocation();
+      if (!mounted) return;
       setState(() {
         _userLocation = location;
         _isLoadingLocation = false;
       });
     } catch (e) {
+      if (!mounted) return;
       print('❌ Error loading location: $e');
       setState(() => _isLoadingLocation = false);
+      
+      final errorStr = e.toString();
+      if (errorStr.contains('LOCATION_SERVICE_DISABLED')) {
+        _showLocationRequirementDialog(
+          title: 'خدمات الموقع معطلة',
+          message: 'يرجى تفعيل خدمات الموقع (GPS) لتتمكن من استخدام التطبيق ومشاركة موقعك.',
+          onAction: () async {
+            await _locationService.openLocationSettings();
+            _loadUserLocation();
+          },
+          actionLabel: 'تفعيل',
+        );
+      } else if (errorStr.contains('LOCATION_PERMISSION_DENIED') || 
+                 errorStr.contains('LOCATION_PERMISSION_PERMANENTLY_DENIED')) {
+        _showLocationRequirementDialog(
+          title: 'تصريح الموقع مطلوب',
+          message: 'يحتاج التطبيق إلى تصريح الوصول للموقع لتتمكن من مشاركة رحلاتك.',
+          onAction: () async {
+            if (errorStr.contains('PERMANENTLY_DENIED')) {
+              await _locationService.openAppSettings();
+            } else {
+              _loadUserLocation();
+            }
+          },
+          actionLabel: 'منح التصريح',
+        );
+      }
+
       // Default to Cairo if GPS fails
       setState(() {
         _userLocation = LocationModel(
@@ -74,6 +105,36 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       });
     }
+  }
+
+  void _showLocationRequirementDialog({
+    required String title,
+    required String message,
+    required VoidCallback onAction,
+    required String actionLabel,
+  }) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text(title, style: GoogleFonts.tajawal(fontWeight: FontWeight.bold)),
+        content: Text(message, style: GoogleFonts.tajawal()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('لاحقاً', style: GoogleFonts.tajawal(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onAction();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            child: Text(actionLabel, style: GoogleFonts.tajawal(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _changeLocation() async {
@@ -812,163 +873,99 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildTripCard(BuildContext context, TripModel trip) {
-    final dateFormat = DateFormat('yyyy-MM-dd', 'ar');
-    final timeFormat = DateFormat('HH:mm', 'ar');
+    final dateFormat = DateFormat('EEEE، d MMMM yyyy', 'ar');
+    final timeFormat = DateFormat('hh:mm a', 'ar');
     final isPast = trip.departureTime.isBefore(DateTime.now());
+
+    Color statusColor;
+    String statusText;
+    IconData statusIcon;
+
+    if (trip.status == 'active') {
+      statusColor = AppColors.success;
+      statusText = 'نشطة';
+      statusIcon = IconsaxPlusBold.tick_circle;
+    } else if (trip.status == 'hidden') {
+      statusColor = AppColors.warning;
+      statusText = 'مخفية';
+      statusIcon = IconsaxPlusBold.eye_slash;
+    } else {
+      statusColor = AppColors.primary;
+      statusText = 'مكتملة';
+      statusIcon = IconsaxPlusBold.task_square;
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: AppColors.primary.withOpacity(0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
+        border: Border.all(color: AppColors.border.withOpacity(0.4), width: 1),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            Navigator.pushNamed(
+             Navigator.pushNamed(
               context,
               RouteNames.tripManagement,
               arguments: trip.id,
             );
           },
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header with Status
-                Row(
+          borderRadius: BorderRadius.circular(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top Section: Date & Status
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.05),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    topRight: Radius.circular(24),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // From Location
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: AppColors.success.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  IconsaxPlusBold.location,
-                                  size: 16,
-                                  color: AppColors.success,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  trip.from.name,
-                                  style: GoogleFonts.tajawal(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
+                    Row(
+                      children: [
+                        Icon(IconsaxPlusBold.calendar, size: 16, color: statusColor),
+                        const SizedBox(width: 8),
+                        Text(
+                          dateFormat.format(trip.departureTime),
+                          style: GoogleFonts.tajawal(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: statusColor.withOpacity(0.9),
                           ),
-                          const SizedBox(height: 16),
-                          // To Location
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: AppColors.error.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  IconsaxPlusBold.location,
-                                  size: 16,
-                                  color: AppColors.error,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  trip.to.name,
-                                  style: GoogleFonts.tajawal(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Status Badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: trip.status == 'active'
-                            ? AppColors.success.withOpacity(0.1)
-                            : trip.status == 'hidden'
-                            ? AppColors.warning.withOpacity(0.1)
-                            : AppColors.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: trip.status == 'active'
-                              ? AppColors.success
-                              : trip.status == 'hidden'
-                              ? AppColors.warning
-                              : AppColors.primary,
-                          width: 1.5,
                         ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
-                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            trip.status == 'active'
-                                ? IconsaxPlusBold.tick_circle
-                                : trip.status == 'hidden'
-                                ? IconsaxPlusBold.eye_slash
-                                : IconsaxPlusBold.tick_circle,
-                            size: 14,
-                            color: trip.status == 'active'
-                                ? AppColors.success
-                                : trip.status == 'hidden'
-                                ? AppColors.warning
-                                : AppColors.primary,
-                          ),
-                          const SizedBox(width: 6),
+                          Icon(statusIcon, size: 12, color: statusColor),
+                          const SizedBox(width: 4),
                           Text(
-                            trip.status == 'active'
-                                ? 'نشطة'
-                                : trip.status == 'hidden'
-                                ? 'مخفية'
-                                : 'مكتملة',
+                            statusText,
                             style: GoogleFonts.tajawal(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: trip.status == 'active'
-                                  ? AppColors.success
-                                  : trip.status == 'hidden'
-                                  ? AppColors.warning
-                                  : AppColors.primary,
+                              color: statusColor,
                             ),
                           ),
                         ],
@@ -976,79 +973,163 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
-                const Divider(height: 1),
-                const SizedBox(height: 16),
-                // Trip Details
-                Row(
+              ),
+              
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
                   children: [
-                    Expanded(
-                      child: _buildTripInfoItem(
-                        icon: IconsaxPlusBold.calendar,
-                        label: 'التاريخ',
-                        value: dateFormat.format(trip.departureTime),
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    Expanded(
-                      child: _buildTripInfoItem(
-                        icon: IconsaxPlusBold.clock,
-                        label: 'الوقت',
-                        value: timeFormat.format(trip.departureTime),
-                        color: AppColors.secondary,
-                      ),
-                    ),
-                    Expanded(
-                      child: _buildTripInfoItem(
-                        icon: IconsaxPlusBold.dollar_circle,
-                        label: 'السعر',
-                        value: '${trip.price} ${trip.currency}',
-                        color: AppColors.success,
-                      ),
-                    ),
-                    Expanded(
-                      child: _buildTripInfoItem(
-                        icon: IconsaxPlusBold.profile_2user,
-                        label: 'المقاعد',
-                        value: '${trip.availableSeats}/${trip.totalSeats}',
-                        color: AppColors.warning,
-                      ),
-                    ),
-                  ],
-                ),
-                if (isPast)
-                  Container(
-                    margin: const EdgeInsets.only(top: 16),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.warning.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppColors.warning.withOpacity(0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
+                    // Route Section
+                    Row(
                       children: [
-                        Icon(
-                          IconsaxPlusBold.danger,
-                          size: 18,
-                          color: AppColors.warning,
+                        // Timeline Indicator with Icons
+                        Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: AppColors.success.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(IconsaxPlusBold.location, size: 16, color: AppColors.success),
+                            ),
+                            Container(
+                              width: 3,
+                              height: 30,
+                              color: AppColors.textSecondary,
+                              margin: const EdgeInsets.symmetric(vertical: 4),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: AppColors.error.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(IconsaxPlusBold.location, size: 16, color: AppColors.error),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'الرحلة في الماضي',
-                          style: GoogleFonts.tajawal(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.warning,
+                        const SizedBox(width: 16),
+                        // Addresses
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                trip.from.name,
+                                style: GoogleFonts.tajawal(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 28),
+                              Text(
+                                trip.to.name,
+                                style: GoogleFonts.tajawal(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Price
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.success.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.success.withOpacity(0.3), width: 1),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                '${trip.price}',
+                                style: GoogleFonts.tajawal(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.success,
+                                  height: 1,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                trip.currency,
+                                style: GoogleFonts.tajawal(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.success.withOpacity(0.8),
+                                  height: 1,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
-                  ),
-              ],
-            ),
+                    
+                    const SizedBox(height: 20),
+                    const Divider(height: 1),
+                    const SizedBox(height: 20),
+                    
+                    // Info Row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildTripInfoItem(
+                          icon: IconsaxPlusBold.clock,
+                          label: 'انطلاق',
+                          value: timeFormat.format(trip.departureTime),
+                          color: AppColors.primary,
+                        ),
+                        Container(width: 1, height: 35, color: AppColors.border.withOpacity(0.5)),
+                        _buildTripInfoItem(
+                          icon: IconsaxPlusBold.profile_2user,
+                          label: 'المقاعد',
+                          value: '${trip.availableSeats} من ${trip.totalSeats}',
+                          color: AppColors.secondary,
+                        ),
+                        Container(width: 1, height: 35, color: AppColors.border.withOpacity(0.5)),
+                        _buildTripInfoItem(
+                          icon: IconsaxPlusBold.money_tick,
+                          label: 'العمولة',
+                          value: trip.communicationFeeStatus == 'paid' ? 'مدفوعة' : 'مستحقة',
+                          color: trip.communicationFeeStatus == 'paid' ? AppColors.success : AppColors.error,
+                        ),
+                      ],
+                    ),
+                    
+                    if (isPast)
+                      Container(
+                        margin: const EdgeInsets.only(top: 20),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.error.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(IconsaxPlusBold.danger, size: 16, color: AppColors.error),
+                            const SizedBox(width: 8),
+                            Text(
+                              'تاريخ الرحلة قد انقضى',
+                              style: GoogleFonts.tajawal(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.error,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1061,40 +1142,42 @@ class _HomeScreenState extends State<HomeScreen> {
     required String value,
     required Color color,
   }) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10),
+    return Expanded(
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 14, color: color.withOpacity(0.8)),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: GoogleFonts.tajawal(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
-          child: Icon(icon, size: 20, color: color),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: GoogleFonts.tajawal(
-            fontSize: 11,
-            color: AppColors.textSecondary,
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: GoogleFonts.tajawal(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: GoogleFonts.tajawal(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
-          ),
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
+        ],
+      ),
     );
   }
-
   Widget _buildProfilePage(BuildContext context, user) {
     return Scaffold(
       appBar: AppBar(

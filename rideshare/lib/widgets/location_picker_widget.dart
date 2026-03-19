@@ -40,14 +40,15 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
   Future<void> _initializeLocation() async {
     try {
       LatLng initialPosition;
-      
+
       if (widget.initialLocation != null) {
         initialPosition = LatLng(
           widget.initialLocation!.latitude,
           widget.initialLocation!.longitude,
         );
         _selectedLocation = initialPosition;
-        _selectedAddress = widget.initialLocation!.address ?? widget.initialLocation!.name;
+        _selectedAddress =
+            widget.initialLocation!.address ?? widget.initialLocation!.name;
         _searchController.text = widget.initialLocation!.name;
       } else {
         // Get current location
@@ -79,14 +80,40 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
         _selectedAddress = 'القاهرة، مصر';
         _isLoading = false;
       });
-      
-      // Show error message if it's a critical error
+
+      // Show user-friendly error message
       if (mounted) {
+        String message = 'تعذر الحصول على الموقع الحالي.';
+        String actionLabel = 'إغلاق';
+        VoidCallback? onAction;
+
+        final errorStr = e.toString();
+        if (errorStr.contains('LOCATION_SERVICE_DISABLED')) {
+          message = 'خدمات الموقع معطلة. يرجى تفعيل GPS.';
+          actionLabel = 'تفعيل';
+          onAction = () => _locationService.openLocationSettings();
+        } else if (errorStr.contains('LOCATION_PERMISSION_DENIED')) {
+          message = 'تصريح الموقع مطلوب.';
+          actionLabel = 'منح التصريح';
+          onAction = () => _initializeLocation();
+        } else if (errorStr.contains('LOCATION_PERMISSION_PERMANENTLY_DENIED')) {
+          message = 'تم رفض تصريح الموقع بشكل دائم. افتح الإعدادات لمنحه.';
+          actionLabel = 'الإعدادات';
+          onAction = () => _locationService.openAppSettings();
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('تعذر الحصول على الموقع الحالي. استخدم الخريطة لتحديد موقعك.'),
+            content: Text(message),
             backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 3),
+            action: onAction != null
+                ? SnackBarAction(
+                    label: actionLabel,
+                    textColor: Colors.white,
+                    onPressed: onAction,
+                  )
+                : null,
+            duration: const Duration(seconds: 5),
           ),
         );
       }
@@ -98,7 +125,7 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
     setState(() {
       _mapError = null;
     });
-    
+
     if (_selectedLocation != null) {
       controller.animateCamera(
         CameraUpdate.newLatLngZoom(_selectedLocation!, 15),
@@ -159,17 +186,43 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
         _isLoading = false;
       });
 
-      _mapController?.animateCamera(
-        CameraUpdate.newLatLngZoom(position, 15),
-      );
+      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(position, 15));
     } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      String message = 'خطأ في الحصول على الموقع.';
+      String actionLabel = 'إغلاق';
+      VoidCallback? onAction;
+
+      final errorStr = e.toString();
+      if (errorStr.contains('LOCATION_SERVICE_DISABLED')) {
+        message = 'خدمات الموقع معطلة.';
+        actionLabel = 'تفعيل';
+        onAction = () => _locationService.openLocationSettings();
+      } else if (errorStr.contains('LOCATION_PERMISSION_DENIED')) {
+        message = 'تصريح الموقع مطلوب.';
+        actionLabel = 'منح';
+        onAction = () => _useCurrentLocation();
+      } else if (errorStr.contains('LOCATION_PERMISSION_PERMANENTLY_DENIED')) {
+        message = 'تم رفض التصريح بشكل دائم.';
+        actionLabel = 'الإعدادات';
+        onAction = () => _locationService.openAppSettings();
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('خطأ في الحصول على الموقع الحالي: ${e.toString()}'),
+          content: Text(message),
           backgroundColor: Colors.red,
+          action: onAction != null
+              ? SnackBarAction(
+                  label: actionLabel,
+                  textColor: Colors.white,
+                  onPressed: onAction,
+                )
+              : null,
         ),
       );
-      setState(() => _isLoading = false);
     }
   }
 
@@ -188,15 +241,15 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
           _selectedAddress = location.address ?? location.name;
           _isSearching = false;
         });
-        _mapController?.animateCamera(
-          CameraUpdate.newLatLngZoom(position, 15),
-        );
+        _mapController?.animateCamera(CameraUpdate.newLatLngZoom(position, 15));
         _searchController.text = location.name;
       } else {
         setState(() => _isSearching = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('لم يتم العثور على نتائج. جرّب اسم مكان أو عنوان أوضح.'),
+            content: Text(
+              'لم يتم العثور على نتائج. جرّب اسم مكان أو عنوان أوضح.',
+            ),
             backgroundColor: Colors.orange,
           ),
         );
@@ -273,127 +326,131 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
             ),
           Expanded(
             child: _isLoading
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('جاري تحميل الخريطة...'),
-                ],
-              ),
-            )
-          : _mapError != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.error_outline,
-                        size: 64,
-                        color: Colors.red,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'خطأ في تحميل الخريطة',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 8),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
-                        child: Text(
-                          _mapError!,
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyMedium,
+                ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text('جاري تحميل الخريطة...'),
+                      ],
+                    ),
+                  )
+                : _mapError != null
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          size: 64,
+                          color: Colors.red,
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          setState(() {
-                            _mapError = null;
-                            _isLoading = true;
-                          });
-                          _initializeLocation();
+                        const SizedBox(height: 16),
+                        Text(
+                          'خطأ في تحميل الخريطة',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          child: Text(
+                            _mapError!,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _mapError = null;
+                              _isLoading = true;
+                            });
+                            _initializeLocation();
+                          },
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('إعادة المحاولة'),
+                        ),
+                      ],
+                    ),
+                  )
+                : Stack(
+                    children: [
+                      GoogleMap(
+                        onMapCreated: _onMapCreated,
+                        initialCameraPosition: CameraPosition(
+                          target:
+                              _selectedLocation ??
+                              const LatLng(30.0444, 31.2357),
+                          zoom: 15,
+                        ),
+                        onTap: _onMapTap,
+                        myLocationEnabled: true,
+                        myLocationButtonEnabled: false,
+                        mapType: MapType.normal,
+                        zoomControlsEnabled: false,
+                        compassEnabled: true,
+                        markers: _selectedLocation != null
+                            ? {
+                                Marker(
+                                  markerId: const MarkerId('selected_location'),
+                                  position: _selectedLocation!,
+                                  draggable: true,
+                                  onDragEnd: (newPosition) {
+                                    _onMapTap(newPosition);
+                                  },
+                                ),
+                              }
+                            : {},
+                        onCameraMoveStarted: () {
+                          // Optional: Handle camera movement
                         },
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('إعادة المحاولة'),
+                      ),
+                      // Address Card
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 10,
+                                offset: const Offset(0, -5),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (_isGettingAddress)
+                                const LinearProgressIndicator()
+                              else
+                                Text(
+                                  _selectedAddress ?? 'اختر موقعاً على الخريطة',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: _selectedLocation != null
+                                    ? _confirmSelection
+                                    : null,
+                                child: const Text('تأكيد الموقع'),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                )
-              : Stack(
-                  children: [
-                    GoogleMap(
-                      onMapCreated: _onMapCreated,
-                      initialCameraPosition: CameraPosition(
-                        target: _selectedLocation ?? const LatLng(30.0444, 31.2357),
-                        zoom: 15,
-                      ),
-                      onTap: _onMapTap,
-                      myLocationEnabled: true,
-                      myLocationButtonEnabled: false,
-                      mapType: MapType.normal,
-                      zoomControlsEnabled: false,
-                      compassEnabled: true,
-                      markers: _selectedLocation != null
-                          ? {
-                              Marker(
-                                markerId: const MarkerId('selected_location'),
-                                position: _selectedLocation!,
-                                draggable: true,
-                                onDragEnd: (newPosition) {
-                                  _onMapTap(newPosition);
-                                },
-                              ),
-                            }
-                          : {},
-                      onCameraMoveStarted: () {
-                        // Optional: Handle camera movement
-                      },
-                    ),
-                // Address Card
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 10,
-                          offset: const Offset(0, -5),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (_isGettingAddress)
-                          const LinearProgressIndicator()
-                        else
-                          Text(
-                            _selectedAddress ?? 'اختر موقعاً على الخريطة',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _selectedLocation != null ? _confirmSelection : null,
-                          child: const Text('تأكيد الموقع'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
@@ -408,4 +465,3 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
     super.dispose();
   }
 }
-

@@ -24,6 +24,7 @@ class RouteNames {
   static const String tripsList = '/trips-list';
   static const String tripDetails = '/trip-details';
   static const String seatSelection = '/seat-selection';
+  static const String tripRouteMap = '/trip-route-map';
   
   // Payment Routes
   static const String manualPayment = '/manual-payment';

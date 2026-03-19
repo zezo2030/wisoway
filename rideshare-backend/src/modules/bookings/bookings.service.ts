@@ -43,7 +43,7 @@ export class BookingsService {
     createBookingDto: CreateBookingDto,
     userId: string,
   ): Promise<BookingEntity> {
-    const { tripId, seatNumber } = createBookingDto;
+    const { tripId, seatNumber, sharePhoneWithDriver = false } = createBookingDto;
 
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
     if (!trip) {
@@ -121,7 +121,7 @@ export class BookingsService {
         seatNumber,
         status: 'pending',
         hasDriverPaidToContact: false,
-        sharePhoneWithDriver: false,
+        sharePhoneWithDriver,
       });
       const savedBooking = await qr.manager.save(BookingEntity, booking);
 

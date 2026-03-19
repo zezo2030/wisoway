@@ -2,12 +2,12 @@
 /// - محاكي أندرويد: 10.0.2.2
 /// - محاكي iOS: 127.0.0.1 أو localhost
 /// - جهاز حقيقي: IP الكمبيوتر على الشبكة (مثل 192.168.1.5)
-/// للتخصيص: flutter run --dart-define=BASE_URL=http://IP:3003/api/v1
+/// للتخصيص: flutter run --dart-define=BASE_URL=http://IP:3003/api/v1S
 class ApiEndpoints {
   static const String baseUrl = String.fromEnvironment(
     'BASE_URL',
-    // defaultValue: 'http://10.0.2.2:3003/api/v1',
-    defaultValue: 'http://192.168.1.12:3003/api/v1',
+    // defaultValue: 'http://localhost:3003/api/v1',
+    defaultValue: 'http://192.168.1.4:3003/api/v1',
   );
 
   // Auth
@@ -65,7 +65,8 @@ class ApiEndpoints {
   static const String walletV2Transactions = '/wallet/transactions';
   static const String walletV2Topup = '/wallet/topup';
   static const String walletDriverTripCharge = '/wallet/driver/trip-charge';
-  static const String walletDriverPayoutRequests = '/wallet/driver/payout-requests';
+  static const String walletDriverPayoutRequests =
+      '/wallet/driver/payout-requests';
   static const String walletRiderPayTrip = '/wallet/rider/pay-trip';
 
   // Chat

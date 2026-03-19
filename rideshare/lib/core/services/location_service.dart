@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import '../../models/location_model.dart';
@@ -29,24 +30,36 @@ class LocationService {
   Future<Position> getCurrentPosition() async {
     bool serviceEnabled = await isLocationServiceEnabled();
     if (!serviceEnabled) {
-      throw Exception('Location services are disabled');
+      // On some Android devices, we can check this, but we can't force it open without user intervention
+      throw Exception('LOCATION_SERVICE_DISABLED');
     }
 
     LocationPermission permission = await checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await requestPermission();
       if (permission == LocationPermission.denied) {
-        throw Exception('Location permissions are denied');
+        throw Exception('LOCATION_PERMISSION_DENIED');
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
-      throw Exception('Location permissions are permanently denied');
+      throw Exception('LOCATION_PERMISSION_PERMANENTLY_DENIED');
     }
 
     return await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high,
+      timeLimit: const Duration(seconds: 10),
     );
+  }
+
+  // Open location settings
+  Future<bool> openLocationSettings() async {
+    return await Geolocator.openLocationSettings();
+  }
+
+  // Open app settings
+  Future<bool> openAppSettings() async {
+    return await Geolocator.openAppSettings();
   }
 
   // Get address from coordinates (Geocoding)
@@ -101,6 +114,15 @@ class LocationService {
             : _unknownLocationLabel;
       }
 
+      return _unknownLocationLabel;
+    } on PlatformException catch (e) {
+      // IO_ERROR / "Service not Available" = Geocoder backend unavailable
+      // (e.g. emulator without Google Play, no network, or Play Services disabled)
+      if (e.code == 'IO_ERROR' || (e.message?.contains('Service not Available') ?? false)) {
+        print('⚠️ Geocoding unavailable (Google Play Services or network). Using fallback.');
+      } else {
+        print('❌ Error getting address from coordinates: $e');
+      }
       return _unknownLocationLabel;
     } catch (e) {
       print('❌ Error getting address from coordinates: $e');

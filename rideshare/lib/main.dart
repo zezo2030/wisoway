@@ -35,6 +35,8 @@ import 'screens/driver/driver_wallet_topup_screen.dart';
 import 'screens/passenger/trips_list_screen.dart';
 import 'screens/passenger/trip_details_screen.dart';
 import 'screens/passenger/seat_selection_screen.dart';
+import 'screens/passenger/trip_route_map_screen.dart';
+import 'models/trip_model.dart';
 import 'screens/payment/manual_payment_screen.dart';
 import 'screens/payment/payment_history_screen.dart';
 import 'screens/notifications/notifications_screen.dart';
@@ -183,6 +185,12 @@ class MyApp extends StatelessWidget {
                       return MaterialPageRoute(
                         builder: (context) =>
                             SeatSelectionScreen(tripId: tripId),
+                      );
+                    }
+                    if (settings.name == RouteNames.tripRouteMap) {
+                      final trip = settings.arguments as TripModel;
+                      return MaterialPageRoute(
+                        builder: (context) => TripRouteMapScreen(trip: trip),
                       );
                     }
                     if (settings.name == RouteNames.manualPayment) {
