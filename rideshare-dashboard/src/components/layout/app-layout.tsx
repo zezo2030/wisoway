@@ -1,10 +1,13 @@
 import { Outlet } from "react-router-dom"
 import { Sidebar } from "./sidebar"
 import { Header } from "./header"
+import { useLanguage } from "@/providers/language-provider"
 
 export function AppLayout() {
+  const { dir } = useLanguage()
+
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
+    <div className="flex min-h-screen bg-background text-foreground" dir={dir}>
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex sticky top-0 h-screen">
         <Sidebar className="h-full" />

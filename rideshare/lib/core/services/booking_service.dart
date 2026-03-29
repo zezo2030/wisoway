@@ -10,19 +10,24 @@ class BookingService {
     required String tripId,
     required String seatNumber, // Changed to String "X-Y"
     required bool sharePhoneWithDriver,
+    String? paymentIntentId,
   }) async {
     try {
+      final payload = <String, dynamic>{
+        'tripId': tripId,
+        'seatNumber': seatNumber,
+        'sharePhoneWithDriver': sharePhoneWithDriver,
+      };
+      if (paymentIntentId != null && paymentIntentId.isNotEmpty) {
+        payload['paymentIntentId'] = paymentIntentId;
+      }
       final response = await _api.post(
         ApiEndpoints.bookings,
-        data: {
-          'tripId': tripId,
-          'seatNumber': seatNumber,
-          'sharePhoneWithDriver': sharePhoneWithDriver,
-        },
+        data: payload,
       );
 
-      final data = response['data'] ?? response;
-      return data['_id'] ?? data['id'];
+      final res = response['data'] ?? response;
+      return res['_id'] ?? res['id'];
     } catch (e) {
       print('❌ Error creating booking: $e');
       rethrow;

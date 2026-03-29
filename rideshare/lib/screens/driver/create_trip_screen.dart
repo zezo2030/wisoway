@@ -21,7 +21,8 @@ class CreateTripScreen extends StatefulWidget {
   State<CreateTripScreen> createState() => _CreateTripScreenState();
 }
 
-class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerProviderStateMixin {
+class _CreateTripScreenState extends State<CreateTripScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _fromController = TextEditingController();
   final _toController = TextEditingController();
@@ -35,6 +36,8 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
   File? _carImage;
   int _rows = 2;
   int _seatsPerRow = 2;
+  bool _isCustomLayout = false;
+  List<int> _customRowConfigs = [1, 3];
   bool _preventGenderMixing = true;
   bool _isLoading = false;
 
@@ -44,8 +47,14 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
   @override
   void initState() {
     super.initState();
-    _fadeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
-    _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeOut,
+    );
     _fadeController.forward();
     _loadVehicleInfo();
   }
@@ -75,7 +84,9 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
   }
 
   Future<void> _pickCarImage() async {
-    final XFile? image = await _storageService.pickImage(source: ImageSource.gallery);
+    final XFile? image = await _storageService.pickImage(
+      source: ImageSource.gallery,
+    );
     if (image != null) {
       setState(() => _carImage = File(image.path));
     }
@@ -146,11 +157,11 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
         builder: (context, child) {
           return Theme(
             data: Theme.of(context).copyWith(
-               colorScheme: ColorScheme.light(
-              primary: const Color(0xFF6C63FF),
-              onPrimary: Colors.white,
-              onSurface: Colors.black87,
-            ),
+              colorScheme: ColorScheme.light(
+                primary: const Color(0xFF6C63FF),
+                onPrimary: Colors.white,
+                onSurface: Colors.black87,
+              ),
             ),
             child: child!,
           );
@@ -160,7 +171,11 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
       if (time != null) {
         setState(() {
           _departureTime = DateTime(
-            picked.year, picked.month, picked.day, time.hour, time.minute,
+            picked.year,
+            picked.month,
+            picked.day,
+            time.hour,
+            time.minute,
           );
         });
       }
@@ -169,7 +184,9 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
 
   Future<void> _createTrip() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_fromLocation == null || _toLocation == null || _departureTime == null) {
+    if (_fromLocation == null ||
+        _toLocation == null ||
+        _departureTime == null) {
       _showError('الرجاء إكمال بيانات المواقع والوقت');
       return;
     }
@@ -190,6 +207,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
       final seatLayout = SeatLayoutConfig(
         rows: _rows,
         seatsPerRow: _seatsPerRow,
+        seatsPerRowList: _isCustomLayout ? _customRowConfigs : null,
         preventGenderMixing: _preventGenderMixing,
       );
 
@@ -216,40 +234,48 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
   }
 
   void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      behavior: SnackBarBehavior.floating,
-      backgroundColor: Colors.redAccent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      content: Row(
-        children: [
-          const Icon(Icons.error_outline, color: Colors.white),
-          const SizedBox(width: 12),
-          Expanded(child: Text(msg, style: GoogleFonts.cairo(color: Colors.white))),
-        ],
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.redAccent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(msg, style: GoogleFonts.cairo(color: Colors.white)),
+            ),
+          ],
+        ),
       ),
-    ));
+    );
   }
 
   void _showSuccess(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      behavior: SnackBarBehavior.floating,
-      backgroundColor: Colors.green,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      content: Row(
-        children: [
-          const Icon(Icons.check_circle_outline, color: Colors.white),
-          const SizedBox(width: 12),
-          Expanded(child: Text(msg, style: GoogleFonts.cairo(color: Colors.white))),
-        ],
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.green,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_outline, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(msg, style: GoogleFonts.cairo(color: Colors.white)),
+            ),
+          ],
+        ),
       ),
-    ));
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final user = authProvider.userModel;
-    
+
     if (user != null && !user.canCreateTrips) {
       return Scaffold(
         backgroundColor: Colors.white,
@@ -259,29 +285,49 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(IconsaxPlusBold.timer, size: 80, color: const Color(0xFF6C63FF)),
+                Icon(
+                  IconsaxPlusBold.timer,
+                  size: 80,
+                  color: const Color(0xFF6C63FF),
+                ),
                 const SizedBox(height: 24),
                 Text(
                   'حسابك كسائق قيد المراجعة',
-                  style: GoogleFonts.cairo(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
+                  style: GoogleFonts.cairo(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'لا يمكنك إنشاء رحلات حتى تتم الموافقة على بياناتك من الإدارة. يمكنك حالياً تصفح الرحلات والحجز كراكب.',
-                  style: GoogleFonts.cairo(fontSize: 15, color: Colors.black54, height: 1.5),
+                  style: GoogleFonts.cairo(
+                    fontSize: 15,
+                    color: Colors.black54,
+                    height: 1.5,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
                 ElevatedButton.icon(
                   onPressed: () => Navigator.maybePop(context),
                   icon: const Icon(Icons.arrow_back),
-                  label: Text('العودة للرئيسية', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                  label: Text(
+                    'العودة للرئيسية',
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF6C63FF),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 16,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
                   ),
                 ),
               ],
@@ -297,7 +343,13 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
         backgroundColor: const Color(0xFF6C63FF),
         elevation: 0,
         centerTitle: true,
-        title: Text('إنشاء رحلة جديدة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: Text(
+          'إنشاء رحلة جديدة',
+          style: GoogleFonts.cairo(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
           onPressed: () => Navigator.pop(context),
@@ -305,32 +357,32 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
       ),
       body: SafeArea(
         child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      _buildHeaderIllustration(),
-                      const SizedBox(height: 30),
-                      _buildLocationsCard(),
-                      const SizedBox(height: 20),
-                      _buildDetailsCard(),
-                      const SizedBox(height: 20),
-                      _buildSeatingCard(),
-                      const SizedBox(height: 20),
-                      _buildCarImageCard(),
-                      const SizedBox(height: 40),
-                      _buildSubmitButton(),
-                      const SizedBox(height: 20),
-                    ],
-                  ),
-                ),
+          opacity: _fadeAnimation,
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  _buildHeaderIllustration(),
+                  const SizedBox(height: 30),
+                  _buildLocationsCard(),
+                  const SizedBox(height: 20),
+                  _buildDetailsCard(),
+                  const SizedBox(height: 20),
+                  _buildSeatingCard(),
+                  const SizedBox(height: 20),
+                  _buildCarImageCard(),
+                  const SizedBox(height: 40),
+                  _buildSubmitButton(),
+                  const SizedBox(height: 20),
+                ],
               ),
             ),
           ),
+        ),
+      ),
     );
   }
 
@@ -342,7 +394,11 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.grey.shade100),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 15, offset: const Offset(0, 5))
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
         ],
       ),
       child: Column(
@@ -353,18 +409,30 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
               color: const Color(0xFF6C63FF).withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(IconsaxPlusBold.car, color: Color(0xFF6C63FF), size: 48),
+            child: const Icon(
+              IconsaxPlusBold.car,
+              color: Color(0xFF6C63FF),
+              size: 48,
+            ),
           ),
           const SizedBox(height: 16),
           Text(
             'شارك رحلتك القادمة',
-            style: GoogleFonts.cairo(fontSize: 22, fontWeight: FontWeight.w800, color: const Color(0xFF2D3142)),
+            style: GoogleFonts.cairo(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF2D3142),
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             'قم بتحديد وجهتك ووقت الانطلاق لتبدأ مشاركة رحلتك مع الركاب.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.cairo(fontSize: 14, color: const Color(0xFF9098B1), height: 1.4),
+            style: GoogleFonts.cairo(
+              fontSize: 14,
+              color: const Color(0xFF9098B1),
+              height: 1.4,
+            ),
           ),
         ],
       ),
@@ -376,7 +444,14 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('مسار الرحلة', style: GoogleFonts.cairo(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF2D3142))),
+          Text(
+            'مسار الرحلة',
+            style: GoogleFonts.cairo(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF2D3142),
+            ),
+          ),
           const SizedBox(height: 20),
           Stack(
             children: [
@@ -384,10 +459,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
                 left: 23,
                 top: 30,
                 bottom: 30,
-                child: Container(
-                  width: 2,
-                  color: Colors.grey.withOpacity(0.3),
-                ),
+                child: Container(width: 2, color: Colors.grey.withOpacity(0.3)),
               ),
               Column(
                 children: [
@@ -420,11 +492,20 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('تفاصيل الانطلاق والسعر', style: GoogleFonts.cairo(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF2D3142))),
+          Text(
+            'تفاصيل الانطلاق والسعر',
+            style: GoogleFonts.cairo(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF2D3142),
+            ),
+          ),
           const SizedBox(height: 20),
           _buildInteractiveField(
             controller: TextEditingController(
-              text: _departureTime != null ? DateFormat('yyyy-MM-dd hh:mm a').format(_departureTime!) : '',
+              text: _departureTime != null
+                  ? DateFormat('yyyy-MM-dd hh:mm a').format(_departureTime!)
+                  : '',
             ),
             hint: 'وقت الانطلاق',
             icon: IconsaxPlusBroken.calendar_1,
@@ -441,14 +522,38 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
               fillColor: Colors.white,
               hintText: 'السعر لكل مقعد',
               hintStyle: GoogleFonts.cairo(color: Colors.grey.shade400),
-              prefixIcon: const Icon(IconsaxPlusBroken.wallet_1, color: Color(0xFF2D3142)),
-              suffixIcon: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                child: Text('EGP', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: const Color(0xFF6C63FF))),
+              prefixIcon: const Icon(
+                IconsaxPlusBroken.wallet_1,
+                color: Color(0xFF2D3142),
               ),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2)),
+              suffixIcon: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 14,
+                  horizontal: 16,
+                ),
+                child: Text(
+                  'EGP',
+                  style: GoogleFonts.cairo(
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF6C63FF),
+                  ),
+                ),
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.grey.shade200),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(
+                  color: Color(0xFF6C63FF),
+                  width: 2,
+                ),
+              ),
             ),
             validator: (v) {
               if (v == null || v.isEmpty) return 'أدخل السعر';
@@ -462,7 +567,10 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
   }
 
   Widget _buildSeatingCard() {
-    int totalSeats = _rows * _seatsPerRow;
+    int totalSeats = _isCustomLayout 
+        ? _customRowConfigs.fold(0, (sum, item) => sum + item)
+        : _rows * _seatsPerRow;
+        
     return _buildGlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -470,68 +578,230 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('إعدادات المقاعد', style: GoogleFonts.cairo(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF2D3142))),
+              Text(
+                'إعدادات المقاعد',
+                style: GoogleFonts.cairo(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF2D3142),
+                ),
+              ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: const Color(0xFF6C63FF).withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
-                child: Text('$totalSeats مقعد', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: const Color(0xFF6C63FF))),
-              )
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6C63FF).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '$totalSeats مقعد',
+                  style: GoogleFonts.cairo(
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF6C63FF),
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 20),
+          
+          // Layout Mode Toggle
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildModeToggle(
+                    title: 'نظام الشبكة',
+                    isActive: !_isCustomLayout,
+                    onTap: () => setState(() => _isCustomLayout = false),
+                  ),
+                ),
+                Expanded(
+                  child: _buildModeToggle(
+                    title: 'توزيع مخصص',
+                    isActive: _isCustomLayout,
+                    onTap: () => setState(() => _isCustomLayout = true),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 20),
+          
+          if (!_isCustomLayout) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCounter(
+                    label: 'الصفوف',
+                    value: _rows,
+                    icon: IconsaxPlusBroken.row_vertical,
+                    onDecrease: _rows > 1 ? () => setState(() => _rows--) : null,
+                    onIncrease: _rows < 10 ? () => setState(() => _rows++) : null,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildCounter(
+                    label: 'بكل صف',
+                    value: _seatsPerRow,
+                    icon: Icons.airline_seat_recline_normal_rounded,
+                    onDecrease: _seatsPerRow > 1
+                        ? () => setState(() => _seatsPerRow--)
+                        : null,
+                    onIncrease: _seatsPerRow < 10
+                        ? () => setState(() => _seatsPerRow++)
+                        : null,
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
+            Text(
+              'حدد عدد المقاعد في كل صف:',
+              style: GoogleFonts.cairo(
+                fontSize: 14,
+                color: Colors.black54,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...List.generate(_customRowConfigs.length, (index) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6C63FF).withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${index + 1}',
+                          style: GoogleFonts.cairo(
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF6C63FF),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildCounter(
+                        label: index == 0 ? 'بجانب السائق' : 'الصف ${index + 1}',
+                        value: _customRowConfigs[index],
+                        icon: Icons.airline_seat_recline_normal_rounded,
+                        onDecrease: _customRowConfigs[index] > 0
+                            ? () => setState(() => _customRowConfigs[index]--)
+                            : null,
+                        onIncrease: _customRowConfigs[index] < 4
+                            ? () => setState(() => _customRowConfigs[index]++)
+                            : null,
+                      ),
+                    ),
+                    if (_customRowConfigs.length > 1)
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
+                        onPressed: () => setState(() => _customRowConfigs.removeAt(index)),
+                      ),
+                  ],
+                ),
+              );
+            }),
+            TextButton.icon(
+              onPressed: () => setState(() => _customRowConfigs.add(3)),
+              icon: const Icon(Icons.add_circle_outline, color: Color(0xFF6C63FF)),
+              label: Text('إضافة صف جديد', style: GoogleFonts.cairo(color: const Color(0xFF6C63FF))),
+            ),
+          ],
+          
+          const SizedBox(height: 16),
+          _buildMixingToggle(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModeToggle({required String title, required bool isActive, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isActive ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: isActive ? [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            )
+          ] : null,
+        ),
+        child: Center(
+          child: Text(
+            title,
+            style: GoogleFonts.cairo(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: isActive ? const Color(0xFF6C63FF) : Colors.black45,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMixingToggle() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
           Row(
             children: [
-              Expanded(
-                child: _buildCounter(
-                  label: 'الصفوف',
-                  value: _rows,
-                  icon: IconsaxPlusBroken.row_vertical,
-                  onDecrease: _rows > 1 ? () => setState(() => _rows--) : null,
-                  onIncrease: _rows < 10 ? () => setState(() => _rows++) : null,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFB8500).withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.people_outline,
+                  color: Color(0xFFFB8500),
+                  size: 20,
                 ),
               ),
               const SizedBox(width: 12),
-              Expanded(
-                child: _buildCounter(
-                  label: 'بكل صف',
-                  value: _seatsPerRow,
-                  icon: Icons.airline_seat_recline_normal_rounded,
-                  onDecrease: _seatsPerRow > 1 ? () => setState(() => _seatsPerRow--) : null,
-                  onIncrease: _seatsPerRow < 10 ? () => setState(() => _seatsPerRow++) : null,
+              Text(
+                'منع الاختلاط',
+                style: GoogleFonts.cairo(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.shade200),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: const Color(0xFFFB8500).withOpacity(0.1), shape: BoxShape.circle),
-                      child: const Icon(Icons.people_outline, color: Color(0xFFFB8500), size: 20),
-                    ),
-                    const SizedBox(width: 12),
-                    Text('منع الاختلاط', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 15)),
-                  ],
-                ),
-                Switch(
-                  value: _preventGenderMixing,
-                  activeColor: const Color(0xFF6C63FF),
-                  onChanged: (v) => setState(() => _preventGenderMixing = v),
-                )
-              ],
-            ),
-          )
+          Switch(
+            value: _preventGenderMixing,
+            activeThumbColor: const Color(0xFF6C63FF),
+            activeColor: const Color(0xFF6C63FF).withOpacity(0.3),
+            onChanged: (v) => setState(() => _preventGenderMixing = v),
+          ),
         ],
       ),
     );
@@ -545,8 +815,18 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('صورة السيارة', style: GoogleFonts.cairo(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF2D3142))),
-              Text('اختياري', style: GoogleFonts.cairo(fontSize: 14, color: Colors.grey)),
+              Text(
+                'صورة السيارة',
+                style: GoogleFonts.cairo(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF2D3142),
+                ),
+              ),
+              Text(
+                'اختياري',
+                style: GoogleFonts.cairo(fontSize: 14, color: Colors.grey),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -558,8 +838,19 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _carImage != null ? const Color(0xFF6C63FF) : Colors.grey.shade300, width: 2, style: BorderStyle.solid),
-                image: _carImage != null ? DecorationImage(image: FileImage(_carImage!), fit: BoxFit.cover) : null,
+                border: Border.all(
+                  color: _carImage != null
+                      ? const Color(0xFF6C63FF)
+                      : Colors.grey.shade300,
+                  width: 2,
+                  style: BorderStyle.solid,
+                ),
+                image: _carImage != null
+                    ? DecorationImage(
+                        image: FileImage(_carImage!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
               ),
               child: _carImage == null
                   ? Column(
@@ -567,11 +858,24 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
                       children: [
                         Container(
                           padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(color: const Color(0xFF6C63FF).withOpacity(0.1), shape: BoxShape.circle),
-                          child: const Icon(IconsaxPlusBroken.camera, color: Color(0xFF6C63FF), size: 32),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF6C63FF).withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            IconsaxPlusBroken.camera,
+                            color: Color(0xFF6C63FF),
+                            size: 32,
+                          ),
                         ),
                         const SizedBox(height: 12),
-                        Text('انقر لإضافة صورة لسيارتك', style: GoogleFonts.cairo(color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+                        Text(
+                          'انقر لإضافة صورة لسيارتك',
+                          style: GoogleFonts.cairo(
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ],
                     )
                   : Align(
@@ -580,8 +884,15 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
                         padding: const EdgeInsets.all(12),
                         child: Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
-                          child: const Icon(Icons.edit, color: Colors.white, size: 20),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.5),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.edit,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                         ),
                       ),
                     ),
@@ -600,19 +911,39 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
         borderRadius: BorderRadius.circular(16),
         color: const Color(0xFF6C63FF),
         boxShadow: [
-          BoxShadow(color: const Color(0xFF6C63FF).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 5)),
+          BoxShadow(
+            color: const Color(0xFF6C63FF).withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
         ],
       ),
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
         ),
         onPressed: _isLoading ? null : _createTrip,
         child: _isLoading
-            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
-            : Text('تأكيد ونشر الرحلة', style: GoogleFonts.cairo(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 3,
+                ),
+              )
+            : Text(
+                'تأكيد ونشر الرحلة',
+                style: GoogleFonts.cairo(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
       ),
     );
   }
@@ -625,7 +956,11 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.grey.shade100),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 15, offset: const Offset(0, 5)),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
         ],
       ),
       child: child,
@@ -652,7 +987,10 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
           children: [
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: iconColor.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
               child: Icon(icon, color: iconColor, size: 20),
             ),
             const SizedBox(width: 16),
@@ -661,8 +999,12 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
                 controller.text.isEmpty ? hint : controller.text,
                 style: GoogleFonts.cairo(
                   fontSize: 15,
-                  fontWeight: controller.text.isEmpty ? FontWeight.normal : FontWeight.w600,
-                  color: controller.text.isEmpty ? Colors.grey.shade500 : const Color(0xFF2D3142),
+                  fontWeight: controller.text.isEmpty
+                      ? FontWeight.normal
+                      : FontWeight.w600,
+                  color: controller.text.isEmpty
+                      ? Colors.grey.shade500
+                      : const Color(0xFF2D3142),
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -699,7 +1041,10 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
               Flexible(
                 child: Text(
                   label,
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+                  style: GoogleFonts.cairo(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -714,20 +1059,50 @@ class _CreateTripScreenState extends State<CreateTripScreen> with SingleTickerPr
                 onTap: onDecrease,
                 child: Container(
                   padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(color: onDecrease == null ? Colors.grey.shade100 : Colors.white, border: Border.all(color: Colors.grey.shade300), shape: BoxShape.circle),
-                  child: Icon(Icons.remove, size: 16, color: onDecrease == null ? Colors.grey.shade400 : const Color(0xFF2D3142)),
+                  decoration: BoxDecoration(
+                    color: onDecrease == null
+                        ? Colors.grey.shade100
+                        : Colors.white,
+                    border: Border.all(color: Colors.grey.shade300),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.remove,
+                    size: 16,
+                    color: onDecrease == null
+                        ? Colors.grey.shade400
+                        : const Color(0xFF2D3142),
+                  ),
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text('$value', style: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: Text(
+                  '$value',
+                  style: GoogleFonts.cairo(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
               GestureDetector(
                 onTap: onIncrease,
                 child: Container(
                   padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(color: onIncrease == null ? Colors.grey.shade100 : Colors.white, border: Border.all(color: Colors.grey.shade300), shape: BoxShape.circle),
-                  child: Icon(Icons.add, size: 16, color: onIncrease == null ? Colors.grey.shade400 : const Color(0xFF2D3142)),
+                  decoration: BoxDecoration(
+                    color: onIncrease == null
+                        ? Colors.grey.shade100
+                        : Colors.white,
+                    border: Border.all(color: Colors.grey.shade300),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.add,
+                    size: 16,
+                    color: onIncrease == null
+                        ? Colors.grey.shade400
+                        : const Color(0xFF2D3142),
+                  ),
                 ),
               ),
             ],

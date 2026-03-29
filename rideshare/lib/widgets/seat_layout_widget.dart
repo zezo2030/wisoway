@@ -20,8 +20,6 @@ class SeatLayoutWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final seatLayout = trip.seatLayout;
-    final rows = seatLayout.rows;
-    final seatsPerRow = seatLayout.seatsPerRow;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -51,37 +49,52 @@ class SeatLayoutWidget extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         // Seat layout grid
-        ...List.generate(rows, (rowIndex) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(seatsPerRow, (colIndex) {
-                final seatNumber = rowIndex * seatsPerRow + colIndex + 1;
+        Builder(
+          builder: (context) {
+            final List<int> rowConfigs = seatLayout.seatsPerRowList ??
+                List.generate(seatLayout.rows, (_) => seatLayout.seatsPerRow);
+
+            var currentSeatCount = 0;
+
+            return Column(
+              children: rowConfigs.asMap().entries.map((entry) {
+                final seatsInThisRow = entry.value;
+
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: _SeatWidget(
-                    seatNumber: seatNumber,
-                    seatData: (seatNumber >= 1 && seatNumber <= trip.seats.length)
-        ? trip.seats[seatNumber - 1]
-        : null,
-                    isSelected: selectedSeat == seatNumber,
-                    status: userGender != null
-                        ? SeatValidation.getSeatStatus(
-                            trip: trip,
-                            seatNumber: seatNumber,
-                            userGender: userGender,
-                          )
-                        : SeatStatus.available,
-                    onTap: onSeatTap != null
-                        ? () => onSeatTap!(seatNumber)
-                        : null,
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(seatsInThisRow, (colIndex) {
+                      currentSeatCount++;
+                      final seatNumber = currentSeatCount;
+                      
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: _SeatWidget(
+                          seatNumber: seatNumber,
+                          seatData: (seatNumber >= 1 && seatNumber <= trip.seats.length)
+                              ? trip.seats[seatNumber - 1]
+                              : null,
+                          isSelected: selectedSeat == seatNumber,
+                          status: userGender != null
+                              ? SeatValidation.getSeatStatus(
+                                  trip: trip,
+                                  seatNumber: seatNumber,
+                                  userGender: userGender,
+                                )
+                              : SeatStatus.available,
+                          onTap: onSeatTap != null
+                              ? () => onSeatTap!(seatNumber)
+                              : null,
+                        ),
+                      );
+                    }),
                   ),
                 );
-              }),
-            ),
-          );
-        }),
+              }).toList(),
+            );
+          },
+        ),
         const SizedBox(height: 16),
         // Legend
         _SeatLegend(),
@@ -125,6 +138,11 @@ class _SeatWidget extends StatelessWidget {
           backgroundColor = Colors.red[300]!;
           textColor = Colors.white;
           icon = Icons.person;
+          break;
+        case SeatStatus.locked:
+          backgroundColor = Colors.amber.shade200;
+          textColor = Colors.amber.shade900;
+          icon = Icons.lock_outline;
           break;
         case SeatStatus.unavailable:
           backgroundColor = Colors.orange[200]!;
@@ -197,6 +215,10 @@ class _SeatLegend extends StatelessWidget {
           _LegendItem(
             color: Colors.red[300]!,
             label: 'محجوز',
+          ),
+          _LegendItem(
+            color: Colors.amber.shade200,
+            label: 'مقفل (خارج التطبيق)',
           ),
           _LegendItem(
             color: Colors.orange[200]!,

@@ -83,6 +83,20 @@ class TripService {
     }
   }
 
+  /// Passenger platform fee preview (per seat) + driver wallet unlock formula.
+  Future<Map<String, dynamic>?> getTripPricingPreview(String tripId) async {
+    try {
+      final response = await _api.get(ApiEndpoints.tripPricingPreview(tripId));
+      final data = response['data'] ?? response;
+      if (data is Map<String, dynamic>) return data;
+      if (data is Map) return Map<String, dynamic>.from(data);
+      return null;
+    } catch (e) {
+      print('❌ Error getting pricing preview: $e');
+      return null;
+    }
+  }
+
   // Get driver's trips
   Future<List<TripModel>> getDriverTrips({
     String? status,
@@ -244,5 +258,17 @@ class TripService {
   // Complete trip
   Future<void> completeTrip(String tripId) async {
     await _api.patch(ApiEndpoints.completeTrip(tripId));
+  }
+
+  /// Driver: lock seat (external booking) or unlock back to available.
+  Future<void> setSeatLock(
+    String tripId, {
+    required String seatNumber,
+    required bool locked,
+  }) async {
+    await _api.patch(
+      ApiEndpoints.tripSeatLock(tripId),
+      data: {'seatNumber': seatNumber, 'locked': locked},
+    );
   }
 }

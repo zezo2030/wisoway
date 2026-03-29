@@ -17,9 +17,10 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { QUERY_KEYS } from "@/lib/constants"
-import { formatDate, formatCurrency, getPaymentTypeLabel, getTripLocationName } from "@/lib/utils"
+import { formatDate, formatCurrency, getTripLocationName, cn } from "@/lib/utils"
 import { PaymentStatus, PaymentMethod, PaymentType } from "@/types/enums"
 import type { Payment, UserSummary, TripSummary } from "@/types/models"
+import { useLanguage } from "@/providers/language-provider"
 import { CreditCard, Filter, AlertCircle, ArrowLeftRight } from "lucide-react"
 
 // Type guard for populated fields
@@ -32,6 +33,7 @@ function isPopulatedTrip(tripId: string | TripSummary | undefined): tripId is Tr
 }
 
 export default function PaymentsListPage() {
+  const { t, language } = useLanguage()
   const [searchParams, setSearchParams] = useSearchParams()
   const page = parseInt(searchParams.get("page") || "1", 10)
   const limit = 20
@@ -79,7 +81,7 @@ export default function PaymentsListPage() {
   const columns: Column<Payment>[] = [
     {
       key: "user",
-      header: "User",
+      header: t("passenger"),
       cell: (payment) => (
         <div className="flex items-center gap-3 py-1">
           {isPopulatedUser(payment.userId) ? (
@@ -100,7 +102,7 @@ export default function PaymentsListPage() {
     },
     {
       key: "trip",
-      header: "Trip",
+      header: t("nav_trips"),
       cell: (payment) => (
         <div>
           {isPopulatedTrip(payment.tripId) ? (
@@ -124,7 +126,7 @@ export default function PaymentsListPage() {
     },
     {
       key: "amount",
-      header: "Amount",
+      header: t("amount"),
       cell: (payment) => (
         <div className="font-black text-emerald-600 dark:text-emerald-400">
           {formatCurrency(payment.amount, payment.currency)}
@@ -133,37 +135,37 @@ export default function PaymentsListPage() {
     },
     {
       key: "method",
-      header: "Method",
+      header: t("paymentMethod"),
       cell: (payment) => <StatusBadge status={payment.method} type="payment" className="shadow-sm" />,
     },
     {
       key: "type",
-      header: "Type",
+      header: t("paymentType"),
       cell: (payment) => (
-        <span className="text-xs font-semibold px-2 py-1 rounded-full bg-muted text-muted-foreground border border-border/40 object-cover">
-          {getPaymentTypeLabel(payment.paymentType)}
+        <span className="text-xs font-semibold px-2 py-1 rounded-full bg-muted text-muted-foreground border border-border/40">
+          {payment.paymentType === PaymentType.TRIP ? t("paymentType_trip") : t("paymentType_fee")}
         </span>
       ),
     },
     {
       key: "status",
-      header: "Status",
+      header: t("status"),
       cell: (payment) => <StatusBadge status={payment.status} type="payment" className="shadow-sm" />,
     },
     {
       key: "proof",
-      header: "Proof",
+      header: t("proof"),
       cell: (payment) => (
         <ImagePreview
           imageUrl={payment.proofImageUrl}
-          alt="Payment proof"
+          alt={t("proof")}
           thumbnailClassName="h-10 w-10 sm:h-12 sm:w-12 rounded-lg shadow-sm border border-border/50 object-cover"
         />
       ),
     },
     {
       key: "adminNote",
-      header: "Admin Note",
+      header: t("adminNote"),
       cell: (payment) => (
         <div className="max-w-[150px] truncate text-xs font-medium text-muted-foreground bg-muted/40 px-2 py-1 rounded-md border border-border/30" title={payment.adminNote || ""}>
           {payment.adminNote || "-"}
@@ -172,7 +174,7 @@ export default function PaymentsListPage() {
     },
     {
       key: "date",
-      header: "Date",
+      header: t("date"),
       cell: (payment) => <div className="text-sm font-medium text-muted-foreground">{formatDate(payment.createdAt)}</div>,
     },
   ]
@@ -180,10 +182,10 @@ export default function PaymentsListPage() {
   if (error) {
     return (
       <div className="space-y-4 animate-in fade-in duration-500">
-        <h1 className="text-4xl font-extrabold tracking-tight">Payments</h1>
+        <h1 className="text-4xl font-extrabold tracking-tight">{t("nav_payments")}</h1>
         <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-6 text-destructive flex items-center shadow-sm">
-          <AlertCircle className="w-6 h-6 mr-3" />
-          <span className="font-semibold text-lg">Failed to load payments. Please try again.</span>
+          <AlertCircle className={cn("w-6 h-6", language === "ar" ? "ml-3" : "mr-3")} />
+          <span className="font-semibold text-lg">{t("failedToFetchStats")}</span>
         </div>
       </div>
     )
@@ -197,9 +199,9 @@ export default function PaymentsListPage() {
             <CreditCard className="w-8 h-8 text-primary" />
           </div>
           <div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-foreground/90 leading-tight">All Payments</h1>
+            <h1 className="text-4xl font-extrabold tracking-tight text-foreground/90 leading-tight">{t("allPayments")}</h1>
             <p className="text-muted-foreground mt-1 text-lg font-medium">
-              View, filter, and track all payment transactions across the platform.
+              {t("paymentsSubtitle")}
             </p>
           </div>
         </div>
@@ -220,32 +222,32 @@ export default function PaymentsListPage() {
               >
                 <TabsList className="bg-background/80 p-1.5 rounded-2xl border border-border/40 shadow-sm">
                   <TabsTrigger value="all" className="rounded-xl px-5 py-2 font-semibold text-sm transition-all flex-1">
-                    All Transactions
+                    {t("allTransactions")}
                   </TabsTrigger>
                   <TabsTrigger value="pending" className="rounded-xl px-5 py-2 font-semibold text-sm transition-all flex-1">
-                    Pending Queue
+                    {t("pendingQueue")}
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center text-sm font-semibold text-muted-foreground mr-1">
-                <Filter className="w-4 h-4 mr-1.5" /> Filters:
+              <div className="flex items-center text-sm font-semibold text-muted-foreground">
+                <Filter className={cn("w-4 h-4", language === "ar" ? "ml-1.5" : "mr-1.5")} /> {t("filter")}:
               </div>
               <Select
                 value={statusFilter || "all"}
                 onValueChange={(value) => updateSearchParams({ status: value === "all" ? null : value })}
               >
-                <SelectTrigger className="w-[140px] bg-background/80 border-border/50 rounded-full font-medium shadow-sm">
-                  <SelectValue placeholder="All Status" />
+                <SelectTrigger className="w-[140px] bg-background/80 border-border/50 rounded-full font-medium shadow-sm px-4">
+                  <SelectValue placeholder={t("allStatus")} />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl shadow-lg border-border/50">
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value={PaymentStatus.PENDING}>Pending</SelectItem>
-                  <SelectItem value={PaymentStatus.APPROVED}>Approved</SelectItem>
-                  <SelectItem value={PaymentStatus.REJECTED}>Rejected</SelectItem>
-                  <SelectItem value={PaymentStatus.REFUNDED}>Refunded</SelectItem>
+                  <SelectItem value="all">{t("allStatus")}</SelectItem>
+                  <SelectItem value={PaymentStatus.PENDING}>{t("pending")}</SelectItem>
+                  <SelectItem value={PaymentStatus.APPROVED}>{t("approved")}</SelectItem>
+                  <SelectItem value={PaymentStatus.REJECTED}>{t("rejected")}</SelectItem>
+                  <SelectItem value={PaymentStatus.REFUNDED}>{t("refunded")}</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -253,15 +255,15 @@ export default function PaymentsListPage() {
                 value={methodFilter || "all"}
                 onValueChange={(value) => updateSearchParams({ method: value === "all" ? null : value })}
               >
-                <SelectTrigger className="w-[140px] bg-background/80 border-border/50 rounded-full font-medium shadow-sm">
-                  <SelectValue placeholder="All Methods" />
+                <SelectTrigger className="w-[140px] bg-background/80 border-border/50 rounded-full font-medium shadow-sm px-4">
+                  <SelectValue placeholder={t("allMethods")} />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl shadow-lg border-border/50">
-                  <SelectItem value="all">All Methods</SelectItem>
+                  <SelectItem value="all">{t("allMethods")}</SelectItem>
                   <SelectItem value={PaymentMethod.STRIPE}>Stripe</SelectItem>
                   <SelectItem value={PaymentMethod.PAYMOB}>Paymob</SelectItem>
                   <SelectItem value={PaymentMethod.MANUAL}>Manual</SelectItem>
-                  <SelectItem value={PaymentMethod.COMMUNICATION_FEE}>Communication Fee</SelectItem>
+                  <SelectItem value={PaymentMethod.COMMUNICATION_FEE}>{t("paymentType_fee")}</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -269,13 +271,13 @@ export default function PaymentsListPage() {
                 value={typeFilter || "all"}
                 onValueChange={(value) => updateSearchParams({ type: value === "all" ? null : value })}
               >
-                <SelectTrigger className="w-[140px] bg-background/80 border-border/50 rounded-full font-medium shadow-sm">
-                  <SelectValue placeholder="All Types" />
+                <SelectTrigger className="w-[140px] bg-background/80 border-border/50 rounded-full font-medium shadow-sm px-4">
+                  <SelectValue placeholder={t("allTypes")} />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl shadow-lg border-border/50">
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value={PaymentType.TRIP}>Trip</SelectItem>
-                  <SelectItem value={PaymentType.COMMUNICATION_FEE}>Communication Fee</SelectItem>
+                  <SelectItem value="all">{t("allTypes")}</SelectItem>
+                  <SelectItem value={PaymentType.TRIP}>{t("paymentType_trip")}</SelectItem>
+                  <SelectItem value={PaymentType.COMMUNICATION_FEE}>{t("paymentType_fee")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -292,7 +294,7 @@ export default function PaymentsListPage() {
               onPageChange={handlePageChange}
               pageSize={limit}
               loading={isLoading}
-              emptyMessage="No payments found matching criteria."
+              emptyMessage={t("noPaymentsFound")}
             />
           </div>
         </CardContent>

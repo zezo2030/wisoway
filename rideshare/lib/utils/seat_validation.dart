@@ -1,5 +1,6 @@
 import '../models/trip_model.dart';
 import '../models/seat_data.dart';
+import 'seat_layout_helpers.dart';
 
 class SeatValidation {
   static SeatData? _seatAt(TripModel trip, int oneBasedSeatNumber) {
@@ -21,7 +22,7 @@ class SeatValidation {
     }
 
     final seatData = _seatAt(trip, seatNumber);
-    if (seatData == null || seatData.isBooked) {
+    if (seatData == null || seatData.isBooked || seatData.isLocked) {
       return false;
     }
 
@@ -41,81 +42,69 @@ class SeatValidation {
     String userGender,
   ) {
     final seatLayout = trip.seatLayout;
-    final row = _getRow(seatNumber, seatLayout.seatsPerRow);
-    final col = _getColumn(seatNumber, seatLayout.seatsPerRow);
+    final coords =
+        SeatLayoutHelpers.displayIndexToBackendCoords(seatNumber, seatLayout);
+    if (coords == null) return false;
 
-    // Check left seat
-    if (col > 1) {
-      final leftSeatNumber = _getSeatNumber(row, col - 1, seatLayout.seatsPerRow);
-      if (leftSeatNumber <= trip.totalSeats) {
-        final leftSeat = _seatAt(trip, leftSeatNumber);
-        if (leftSeat != null && leftSeat.isBooked) {
-          final leftGender = leftSeat.gender;
-          if (leftGender != null && leftGender != userGender) {
-            return true; // Gender conflict
-          }
-        }
+    final configs = SeatLayoutHelpers.rowSeatCounts(seatLayout);
+    final row = coords.row;
+    final col = coords.col;
+
+    bool bookedOpposite(int? idx) {
+      if (idx == null || idx > trip.totalSeats) return false;
+      final s = _seatAt(trip, idx);
+      if (s == null || !s.isBooked) return false;
+      final g = s.gender;
+      return g != null && g != userGender;
+    }
+
+    // Left (same row)
+    if (col > 0) {
+      final leftIdx = SeatLayoutHelpers.backendCoordsToDisplayIndex(
+        seatLayout,
+        row,
+        col - 1,
+      );
+      if (bookedOpposite(leftIdx)) return true;
+    }
+
+    // Right (same row)
+    if (col < configs[row] - 1) {
+      final rightIdx = SeatLayoutHelpers.backendCoordsToDisplayIndex(
+        seatLayout,
+        row,
+        col + 1,
+      );
+      if (bookedOpposite(rightIdx)) return true;
+    }
+
+    // Front row, same column index when that seat exists
+    if (row > 0) {
+      final prevCount = configs[row - 1];
+      if (col < prevCount) {
+        final frontIdx = SeatLayoutHelpers.backendCoordsToDisplayIndex(
+          seatLayout,
+          row - 1,
+          col,
+        );
+        if (bookedOpposite(frontIdx)) return true;
       }
     }
 
-    // Check right seat
-    if (col < seatLayout.seatsPerRow) {
-      final rightSeatNumber = _getSeatNumber(row, col + 1, seatLayout.seatsPerRow);
-      if (rightSeatNumber <= trip.totalSeats) {
-        final rightSeat = _seatAt(trip, rightSeatNumber);
-        if (rightSeat != null && rightSeat.isBooked) {
-          final rightGender = rightSeat.gender;
-          if (rightGender != null && rightGender != userGender) {
-            return true; // Gender conflict
-          }
-        }
+    // Back row, same column index when that seat exists
+    if (row < configs.length - 1) {
+      final nextCount = configs[row + 1];
+      if (col < nextCount) {
+        final backIdx = SeatLayoutHelpers.backendCoordsToDisplayIndex(
+          seatLayout,
+          row + 1,
+          col,
+        );
+        if (bookedOpposite(backIdx)) return true;
       }
     }
 
-    // Check front seat (same column, previous row)
-    if (row > 1) {
-      final frontSeatNumber = _getSeatNumber(row - 1, col, seatLayout.seatsPerRow);
-      if (frontSeatNumber <= trip.totalSeats) {
-        final frontSeat = _seatAt(trip, frontSeatNumber);
-        if (frontSeat != null && frontSeat.isBooked) {
-          final frontGender = frontSeat.gender;
-          if (frontGender != null && frontGender != userGender) {
-            return true; // Gender conflict (if seats are very close)
-          }
-        }
-      }
-    }
-
-    // Check back seat (same column, next row)
-    if (row < seatLayout.rows) {
-      final backSeatNumber = _getSeatNumber(row + 1, col, seatLayout.seatsPerRow);
-      if (backSeatNumber <= trip.totalSeats) {
-        final backSeat = _seatAt(trip, backSeatNumber);
-        if (backSeat != null && backSeat.isBooked) {
-          final backGender = backSeat.gender;
-          if (backGender != null && backGender != userGender) {
-            return true; // Gender conflict (if seats are very close)
-          }
-        }
-      }
-    }
-
-    return false; // No gender conflict
-  }
-
-  // Get row number from seat number (1-based)
-  static int _getRow(int seatNumber, int seatsPerRow) {
-    return ((seatNumber - 1) ~/ seatsPerRow) + 1;
-  }
-
-  // Get column number from seat number (1-based)
-  static int _getColumn(int seatNumber, int seatsPerRow) {
-    return ((seatNumber - 1) % seatsPerRow) + 1;
-  }
-
-  // Get seat number from row and column (1-based)
-  static int _getSeatNumber(int row, int col, int seatsPerRow) {
-    return (row - 1) * seatsPerRow + col;
+    return false;
   }
 
   // Get available seats for a user based on gender
@@ -155,6 +144,9 @@ class SeatValidation {
     if (seatData.isBooked) {
       return SeatStatus.booked;
     }
+    if (seatData.isLocked) {
+      return SeatStatus.locked;
+    }
 
     // Check if seat can be selected
     if (userGender != null) {
@@ -174,9 +166,10 @@ class SeatValidation {
 }
 
 enum SeatStatus {
-  available,    // Available for booking
-  booked,       // Already booked
-  unavailable,  // Not available (gender conflict or other reason)
-  invalid,      // Invalid seat number
+  available, // Available for booking
+  booked, // Already booked
+  locked, // Blocked by driver (external sale)
+  unavailable, // Not available (gender conflict or other reason)
+  invalid, // Invalid seat number
 }
 

@@ -16,9 +16,10 @@ import {
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { QUERY_KEYS, ROUTES } from "@/lib/constants"
-import { formatDate, formatCurrency, getPaymentTypeLabel, getTripLocationName } from "@/lib/utils"
+import { formatDate, formatCurrency, getTripLocationName, cn } from "@/lib/utils"
 import { PaymentType } from "@/types/enums"
 import type { Payment, UserSummary, TripSummary } from "@/types/models"
+import { useLanguage } from "@/providers/language-provider"
 import { Wallet, AlertCircle, ArrowLeftRight, Clock } from "lucide-react"
 
 function isPopulatedUser(userId: string | UserSummary): userId is UserSummary {
@@ -32,6 +33,7 @@ function isPopulatedTrip(
 }
 
 export default function WalletsListPage() {
+  const { t, language } = useLanguage()
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const page = parseInt(searchParams.get("page") || "1", 10)
@@ -76,7 +78,7 @@ export default function WalletsListPage() {
   const columns: Column<Payment>[] = [
     {
       key: "user",
-      header: "User",
+      header: t("passenger"),
       cell: (payment) => (
         <div className="flex items-center gap-3 py-1">
           {isPopulatedUser(payment.userId) ? (
@@ -103,7 +105,7 @@ export default function WalletsListPage() {
     },
     {
       key: "trip",
-      header: "Trip",
+      header: t("nav_trips"),
       cell: (payment) => (
         <div>
           {isPopulatedTrip(payment.tripId) ? (
@@ -129,7 +131,7 @@ export default function WalletsListPage() {
     },
     {
       key: "amount",
-      header: "Amount",
+      header: t("amount"),
       cell: (payment) => (
         <div className="font-black text-emerald-600 dark:text-emerald-400">
           {formatCurrency(payment.amount, payment.currency)}
@@ -138,34 +140,34 @@ export default function WalletsListPage() {
     },
     {
       key: "type",
-      header: "Type",
+      header: t("paymentType"),
       cell: (payment) => (
         <span className="text-xs font-semibold px-2 py-1 rounded-full bg-muted text-muted-foreground border border-border/40 object-cover">
-          {getPaymentTypeLabel(payment.paymentType)}
+          {payment.paymentType === PaymentType.WALLET_TOPUP ? t("walletTopup") : t("walletTripCharge")}
         </span>
       ),
     },
     {
       key: "status",
-      header: "Status",
+      header: t("status"),
       cell: (payment) => (
         <StatusBadge status={payment.status} type="payment" className="shadow-sm" />
       ),
     },
     {
       key: "proof",
-      header: "Proof",
+      header: t("proof"),
       cell: (payment) => (
         <ImagePreview
           imageUrl={payment.proofImageUrl}
-          alt="Payment proof"
+          alt={t("proof")}
           thumbnailClassName="h-10 w-10 sm:h-12 sm:w-12 rounded-lg shadow-sm border border-border/50 object-cover"
         />
       ),
     },
     {
       key: "adminNote",
-      header: "Admin Note",
+      header: t("adminNote"),
       cell: (payment) => (
         <div
           className="max-w-[150px] truncate text-xs font-medium text-muted-foreground bg-muted/40 px-2 py-1 rounded-md border border-border/30"
@@ -177,7 +179,7 @@ export default function WalletsListPage() {
     },
     {
       key: "date",
-      header: "Date",
+      header: t("date"),
       cell: (payment) => (
         <div className="text-sm font-medium text-muted-foreground">
           {formatDate(payment.createdAt)}
@@ -189,11 +191,11 @@ export default function WalletsListPage() {
   if (error) {
     return (
       <div className="space-y-4 animate-in fade-in duration-500">
-        <h1 className="text-4xl font-extrabold tracking-tight">Wallets</h1>
+        <h1 className="text-4xl font-extrabold tracking-tight">{t("walletsTitle")}</h1>
         <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-6 text-destructive flex items-center shadow-sm">
-          <AlertCircle className="w-6 h-6 mr-3" />
+          <AlertCircle className={cn("w-6 h-6", language === "ar" ? "ml-3" : "mr-3")} />
           <span className="font-semibold text-lg">
-            Failed to load wallet transactions. Please try again.
+            {t("noWalletTransactionsFound")}
           </span>
         </div>
       </div>
@@ -209,10 +211,10 @@ export default function WalletsListPage() {
           </div>
           <div>
             <h1 className="text-4xl font-extrabold tracking-tight text-foreground/90 leading-tight">
-              Wallets
+              {t("walletsTitle")}
             </h1>
             <p className="text-muted-foreground mt-1 text-lg font-medium">
-              View wallet top-ups and trip charge transactions.
+              {t("walletsSubtitle")}
             </p>
           </div>
         </div>
@@ -227,8 +229,8 @@ export default function WalletsListPage() {
                 className="rounded-xl border-border/50 shadow-sm font-semibold"
                 onClick={() => navigate(ROUTES.PAYMENTS_PENDING)}
               >
-                <Clock className="w-4 h-4 mr-2" />
-                Pending top-ups
+                <Clock className={cn("w-4 h-4", language === "ar" ? "ml-2" : "mr-2")} />
+                {t("pendingTopups")}
               </Button>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -238,16 +240,16 @@ export default function WalletsListPage() {
                   updateSearchParams({ type: value === "all" ? null : value })
                 }
               >
-                <SelectTrigger className="w-[180px] bg-background/80 border-border/50 rounded-full font-medium shadow-sm">
-                  <SelectValue placeholder="Transaction type" />
+                <SelectTrigger className="w-[180px] bg-background/80 border-border/50 rounded-full font-medium shadow-sm px-4">
+                  <SelectValue placeholder={t("transactionType")} />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl shadow-lg border-border/50">
-                  <SelectItem value="all">All wallet transactions</SelectItem>
+                  <SelectItem value="all">{t("allWalletTransactions")}</SelectItem>
                   <SelectItem value={PaymentType.WALLET_TOPUP}>
-                    Wallet Top-up
+                    {t("walletTopup")}
                   </SelectItem>
                   <SelectItem value={PaymentType.WALLET_TRIP_CHARGE}>
-                    Wallet Trip Charge
+                    {t("walletTripCharge")}
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -265,7 +267,7 @@ export default function WalletsListPage() {
               onPageChange={handlePageChange}
               pageSize={limit}
               loading={isLoading}
-              emptyMessage="No wallet transactions found."
+              emptyMessage={t("noWalletTransactionsFound")}
             />
           </div>
         </CardContent>

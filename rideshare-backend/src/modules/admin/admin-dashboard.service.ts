@@ -16,6 +16,7 @@ import { RatingEntity } from '../../database/entities/rating.entity';
 import { NotificationEntity } from '../../database/entities/notification.entity';
 import { ChatRoomEntity } from '../../database/entities/chat-room.entity';
 import { MessageEntity } from '../../database/entities/message.entity';
+import { CommunicationFeeEntity } from '../../database/entities/communication-fee.entity';
 import {
   PgUserRole,
   TripStatus,
@@ -26,6 +27,7 @@ import type { DashboardStats, ReportResponse } from './dto/admin-query.dto';
 import type { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BookingsService } from '../bookings/bookings.service';
+import { AdminPatchPricingSettingsDto } from './dto/admin-pricing-settings.dto';
 
 export interface AdminUsersQuery {
   page?: number;
@@ -109,11 +111,52 @@ export class AdminDashboardService {
     private chatRoomRepo: Repository<ChatRoomEntity>,
     @InjectRepository(MessageEntity)
     private messageRepo: Repository<MessageEntity>,
+    @InjectRepository(CommunicationFeeEntity)
+    private communicationFeeRepo: Repository<CommunicationFeeEntity>,
     private notificationsService: NotificationsService,
     private bookingsService: BookingsService,
   ) {}
 
   private readonly logger = new Logger(AdminDashboardService.name);
+
+  async getPlatformPricingSettings(countryCode: string = 'EG') {
+    let row = await this.communicationFeeRepo.findOne({
+      where: { countryCode },
+    });
+    if (!row) {
+      row = this.communicationFeeRepo.create({
+        countryCode,
+        feeAmount: 0,
+        currency: 'EGP',
+        isActive: true,
+        passengerPlatformPercent: 0,
+        driverUnlockPercent: 0,
+        lifetimeFreeTripEnabled: true,
+      });
+      await this.communicationFeeRepo.save(row);
+    }
+    return row;
+  }
+
+  async patchPlatformPricingSettings(
+    countryCode: string,
+    dto: AdminPatchPricingSettingsDto,
+  ): Promise<CommunicationFeeEntity> {
+    const row = await this.getPlatformPricingSettings(countryCode);
+    if (dto.feeAmount !== undefined) row.feeAmount = dto.feeAmount;
+    if (dto.currency !== undefined) row.currency = dto.currency;
+    if (dto.isActive !== undefined) row.isActive = dto.isActive;
+    if (dto.passengerPlatformPercent !== undefined) {
+      row.passengerPlatformPercent = dto.passengerPlatformPercent;
+    }
+    if (dto.driverUnlockPercent !== undefined) {
+      row.driverUnlockPercent = dto.driverUnlockPercent;
+    }
+    if (dto.lifetimeFreeTripEnabled !== undefined) {
+      row.lifetimeFreeTripEnabled = dto.lifetimeFreeTripEnabled;
+    }
+    return this.communicationFeeRepo.save(row);
+  }
 
   async getDashboardStats(): Promise<DashboardStats> {
     const [

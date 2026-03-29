@@ -1,7 +1,9 @@
 // SeatMap: Visual seat layout grid component
 // T030: Renders seat layout with color-coded status
 
+import type { ReactNode } from "react"
 import { cn } from "@/lib/utils"
+import { rowSeatCounts } from "@/lib/seat-layout"
 import type { Seat, SeatLayout } from "@/types/models"
 import { SeatStatus, Gender } from "@/types/enums"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -14,10 +16,10 @@ interface SeatMapProps {
 }
 
 export function SeatMap({ seatLayout, seats, preventGenderMixing = false, className }: SeatMapProps) {
-  const { rows, seatsPerRow } = seatLayout
   const normalizedSeats = Array.isArray(seats) ? seats : []
+  const rowWidths = rowSeatCounts(seatLayout)
 
-  // Create a map of seat number to seat data
+  // Create a map of linear 1-based seat index to seat data (matches getTripSeats normalization)
   const seatMap = new Map(normalizedSeats.map((seat) => [seat.seatNumber, seat]))
 
   // Get seat status color
@@ -63,33 +65,35 @@ export function SeatMap({ seatLayout, seats, preventGenderMixing = false, classN
   // Generate seat grid (matches Flutter SeatLayoutWidget: row-major order, no aisle gap).
   // App uses RTL for Arabic: first column (seat 1) is on the visual right — mirror via dir="rtl".
   const generateSeats = () => {
-    const grid = []
-    let seatNumber = 1
+    const grid: ReactNode[] = []
+    let displayIndex = 0
 
-    for (let row = 0; row < rows; row++) {
-      const rowSeats = []
-      for (let col = 0; col < seatsPerRow; col++) {
-        const seat = seatMap.get(seatNumber)
+    for (let row = 0; row < rowWidths.length; row++) {
+      const cols = rowWidths[row]
+      const rowSeats: ReactNode[] = []
+      for (let col = 0; col < cols; col++) {
+        displayIndex++
+        const seat = seatMap.get(displayIndex)
 
         rowSeats.push(
-          <Tooltip key={seatNumber}>
+          <Tooltip key={`${row}-${col}-${displayIndex}`}>
             <TooltipTrigger asChild>
               <div
                 className={cn(
-                  "w-10 h-10 rounded-md flex items-center justify-center cursor-pointer transition-colors",
-                  getSeatColor(seat)
+                  "w-10 h-10 rounded-md flex flex-col items-center justify-center cursor-pointer transition-colors gap-0.5",
+                  getSeatColor(seat),
+                  seat ? "text-white" : "text-gray-700 text-[10px] font-bold"
                 )}
               >
                 {getGenderIndicator(seat)}
+                <span className="text-[9px] font-bold tabular-nums leading-none opacity-95">{displayIndex}</span>
               </div>
             </TooltipTrigger>
             <TooltipContent>
-              <p>{getSeatTooltip(seat, seatNumber)}</p>
+              <p>{getSeatTooltip(seat, displayIndex)}</p>
             </TooltipContent>
           </Tooltip>
         )
-
-        seatNumber++
       }
       grid.push(
         <div key={row} className="flex flex-row items-center justify-center gap-2">

@@ -10,6 +10,7 @@ import { BookingsModule } from '../bookings/bookings.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { VehiclesModule } from '../vehicles/vehicles.module';
 import { UsersModule } from '../users/users.module';
+import { PaymentsModule } from '../payments/payments.module';
 import { WsAuthGuard } from '../../common/guards/ws-auth.guard';
 import { WsRateLimitGuard } from '../../common/guards/ws-rate-limit.guard';
 
@@ -28,6 +29,7 @@ import { WsRateLimitGuard } from '../../common/guards/ws-rate-limit.guard';
     }),
     forwardRef(() => BookingsModule),
     forwardRef(() => NotificationsModule),
+    forwardRef(() => PaymentsModule),
     VehiclesModule,
     UsersModule,
   ],

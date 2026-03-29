@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -87,8 +88,18 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
 }
+
+[dir="rtl"] body,
+[dir="rtl"] {
+  font-family: 'Cairo', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* RTL spacing utilities */
+[dir="rtl"] .rtl\:mr-0 { margin-right: 0; }
+[dir="rtl"] .rtl\:ml-2 { margin-left: 0.5rem; }
+[dir="rtl"] .rtl\:ml-auto { margin-left: auto; margin-right: 0; }
 
 .dark {
   --background: oklch(0.129 0.042 264.695);

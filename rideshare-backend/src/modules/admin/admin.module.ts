@@ -10,6 +10,7 @@ import { RatingEntity } from '../../database/entities/rating.entity';
 import { NotificationEntity } from '../../database/entities/notification.entity';
 import { ChatRoomEntity } from '../../database/entities/chat-room.entity';
 import { MessageEntity } from '../../database/entities/message.entity';
+import { CommunicationFeeEntity } from '../../database/entities/communication-fee.entity';
 import { AdminDashboardController } from './admin-dashboard.controller';
 import { AdminDashboardService } from './admin-dashboard.service';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -28,6 +29,7 @@ import { BookingsModule } from '../bookings/bookings.module';
       NotificationEntity,
       ChatRoomEntity,
       MessageEntity,
+      CommunicationFeeEntity,
     ]),
     NotificationsModule,
     BookingsModule,

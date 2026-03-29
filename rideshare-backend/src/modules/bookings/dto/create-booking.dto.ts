@@ -1,4 +1,11 @@
-import { IsString, IsNotEmpty, IsUUID, IsBoolean, IsOptional } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsUUID,
+  IsBoolean,
+  IsOptional,
+  MaxLength,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateBookingDto {
@@ -26,4 +33,14 @@ export class CreateBookingDto {
   @IsBoolean()
   @IsOptional()
   sharePhoneWithDriver?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Stripe PaymentIntent id (pi_...) after successful pay; required when platform fee > 0',
+    example: 'pi_xxx',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  paymentIntentId?: string;
 }

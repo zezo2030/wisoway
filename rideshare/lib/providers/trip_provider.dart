@@ -129,6 +129,26 @@ class TripProvider extends ChangeNotifier {
     return await _tripService.getTrip(tripId);
   }
 
+  /// Driver: lock/unlock seat (external booking).
+  Future<bool> setSeatLock(
+    String tripId, {
+    required String seatNumber,
+    required bool locked,
+  }) async {
+    try {
+      await _tripService.setSeatLock(
+        tripId,
+        seatNumber: seatNumber,
+        locked: locked,
+      );
+      await fetchDriverTrips();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    }
+  }
+
   Future<void> fetchDriverTrips({
     String? status,
     String? driverId,

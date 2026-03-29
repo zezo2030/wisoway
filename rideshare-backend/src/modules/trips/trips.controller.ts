@@ -20,6 +20,7 @@ import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { SearchTripsDto } from './dto/search-trips.dto';
 import { LocationBasedTripsDto } from './dto/location-based-trips.dto';
+import { SetSeatLockDto } from './dto/set-seat-lock.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -85,6 +86,16 @@ export class TripsController {
     });
   }
 
+  @Get(':id/pricing-preview')
+  @ApiOperation({
+    summary: 'Passenger/driver platform pricing preview for one seat and driver unlock fee',
+  })
+  @ApiResponse({ status: 200, description: 'Pricing breakdown' })
+  @ApiResponse({ status: 404, description: 'Trip not found' })
+  async pricingPreview(@Param('id') id: string) {
+    return this.tripsService.getPricingPreview(id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get trip by ID' })
   @ApiResponse({ status: 200, description: 'Trip found' })
@@ -99,6 +110,28 @@ export class TripsController {
   @ApiResponse({ status: 404, description: 'Trip not found' })
   async getSeats(@Param('id') id: string) {
     return this.tripsService.getSeats(id);
+  }
+
+  @Patch(':id/seats/lock')
+  @UseGuards(RolesGuard)
+  @Roles('driver')
+  @ApiOperation({
+    summary: 'Lock or unlock a seat (e.g. external booking)',
+  })
+  @ApiResponse({ status: 200, description: 'Trip seats updated' })
+  @ApiResponse({ status: 400, description: 'Invalid state or seat' })
+  @ApiResponse({ status: 403, description: 'Not the owner' })
+  async setSeatLock(
+    @Param('id') id: string,
+    @Body() dto: SetSeatLockDto,
+    @CurrentUser('id') driverId: string,
+  ) {
+    return this.tripsService.setSeatLock(
+      id,
+      dto.seatNumber,
+      dto.locked,
+      driverId,
+    );
   }
 
   @Patch(':id')

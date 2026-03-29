@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table"
 import { QUERY_KEYS } from "@/lib/constants"
 import { formatSeatDisplay } from "@/lib/seat-format"
+import { layoutSummaryText } from "@/lib/seat-layout"
 import { formatDateTime, formatCurrency, cn, getTripLocationName } from "@/lib/utils"
 import type { UserSummary } from "@/types/models"
 import { ArrowLeft, MapPin, User, Calendar, DollarSign, Car, Users, ArrowLeftRight, Activity, CreditCard, ShieldCheck, Route } from "lucide-react"
@@ -303,13 +304,9 @@ export default function TripDetailPage() {
                         <TableCell className="text-center">
                           <span
                             className="font-black text-sm bg-muted/60 border border-border/50 px-2.5 py-1 rounded shadow-sm inline-block min-w-[32px]"
-                            title={
-                              trip.seatLayout?.seatsPerRow
-                                ? `Server seat id: ${booking.seatNumber}`
-                                : undefined
-                            }
+                            title={`Server seat id: ${booking.seatNumber}`}
                           >
-                            #{formatSeatDisplay(booking.seatNumber, trip.seatLayout?.seatsPerRow)}
+                            #{formatSeatDisplay(booking.seatNumber, trip.seatLayout)}
                           </span>
                         </TableCell>
                         <TableCell className="text-center">
@@ -351,7 +348,8 @@ export default function TripDetailPage() {
                 <Users className="w-5 h-5 mr-2 text-primary" /> Visual Seat Layout
               </CardTitle>
               <CardDescription className="text-sm font-medium mt-1">
-                Current visual representation of {trip.seatLayout.preventGenderMixing ? "gender-restricted" : "unrestricted"} seats.
+                Layout: {layoutSummaryText(trip.seatLayout)} —{" "}
+                {trip.seatLayout.preventGenderMixing ? "gender-restricted" : "unrestricted"} seating.
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-6 flex-1 bg-gradient-to-b from-background to-muted/20">

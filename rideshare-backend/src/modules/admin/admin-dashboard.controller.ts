@@ -31,6 +31,7 @@ import {
   ApproveDriverDto,
   VerifyVehicleDto,
 } from './dto/admin-query.dto';
+import { AdminPatchPricingSettingsDto } from './dto/admin-pricing-settings.dto';
 
 @ApiTags('Admin')
 @ApiBearerAuth()
@@ -301,6 +302,34 @@ export class AdminDashboardController {
       startDate: query.startDate,
       endDate: query.endDate,
     });
+  }
+
+  @Get('pricing-settings')
+  @ApiOperation({
+    summary:
+      'Get pricing row: passenger % (platform share per seat) and driver % (unlock fee on capacity), plus legacy flat fee',
+  })
+  @ApiQuery({ name: 'countryCode', required: false, example: 'EG' })
+  async getPricingSettings(@Query('countryCode') countryCode?: string) {
+    return this.adminDashboardService.getPlatformPricingSettings(
+      countryCode || 'EG',
+    );
+  }
+
+  @Patch('pricing-settings')
+  @ApiOperation({
+    summary:
+      'Update passenger and driver pricing for a country (separate percentages; passenger 0 disables Stripe for bookings)',
+  })
+  @ApiQuery({ name: 'countryCode', required: false, example: 'EG' })
+  async patchPricingSettings(
+    @Query('countryCode') countryCode: string | undefined,
+    @Body() dto: AdminPatchPricingSettingsDto,
+  ) {
+    return this.adminDashboardService.patchPlatformPricingSettings(
+      countryCode || 'EG',
+      dto,
+    );
   }
 
   @Get('dashboard/stats')

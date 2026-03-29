@@ -7,7 +7,7 @@ class ApiEndpoints {
   static const String baseUrl = String.fromEnvironment(
     'BASE_URL',
     // defaultValue: 'http://localhost:3003/api/v1',
-    defaultValue: 'http://192.168.1.12:3003/api/v1',
+    defaultValue: 'http://192.168.1.4:3003/api/v1',
   );
 
   // Auth
@@ -32,7 +32,9 @@ class ApiEndpoints {
   static const String nearbyTrips = '/trips/nearby';
   static const String preferredTrips = '/trips/preferred';
   static String tripById(String id) => '/trips/$id';
+  static String tripPricingPreview(String id) => '/trips/$id/pricing-preview';
   static String tripSeats(String id) => '/trips/$id/seats';
+  static String tripSeatLock(String id) => '/trips/$id/seats/lock';
   static String hideTrip(String id) => '/trips/$id/hide';
   static String showTrip(String id) => '/trips/$id/show';
   static String completeTrip(String id) => '/trips/$id/complete';
@@ -56,6 +58,7 @@ class ApiEndpoints {
   static String approvePayment(String id) => '/payments/$id/approve';
   static String rejectPayment(String id) => '/payments/$id/reject';
   static const String stripeIntent = '/payments/stripe/create-intent';
+  static const String stripePassengerIntent = '/payments/stripe/passenger-intent';
 
   // Driver wallet
   static const String walletMe = '/payments/wallet/me';

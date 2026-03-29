@@ -437,9 +437,9 @@ describe('TripsService', () => {
     });
   });
 
-  describe('generateSeats', () => {
+  describe('generateSeatsGrid', () => {
     it('should generate seat layout array', () => {
-      const seats = service['generateSeats'](2, 2);
+      const seats = service['generateSeatsGrid'](2, 2);
 
       expect(seats).toHaveLength(4);
       expect(seats[0].seatNumber).toBe('0-0');

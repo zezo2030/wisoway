@@ -9,6 +9,7 @@ import { PaymentsController } from './payments.controller';
 import { PaymentsService } from './payments.service';
 import { StripeService } from './stripe.service';
 import { A2aCliqService } from './a2a-cliq.service';
+import { PlatformPricingService } from './platform-pricing.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
@@ -23,7 +24,17 @@ import { NotificationsModule } from '../notifications/notifications.module';
     forwardRef(() => NotificationsModule),
   ],
   controllers: [PaymentsController],
-  providers: [PaymentsService, StripeService, A2aCliqService],
-  exports: [PaymentsService, StripeService, A2aCliqService],
+  providers: [
+    PaymentsService,
+    StripeService,
+    A2aCliqService,
+    PlatformPricingService,
+  ],
+  exports: [
+    PaymentsService,
+    StripeService,
+    A2aCliqService,
+    PlatformPricingService,
+  ],
 })
 export class PaymentsModule {}

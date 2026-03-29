@@ -11,6 +11,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { BookingEntity } from '../../database/entities/booking.entity';
 import { TripEntity } from '../../database/entities/trip.entity';
+import { PaymentEntity } from '../../database/entities/payment.entity';
 import { TripStatus } from '../../database/entities/shared.enums';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { CancelBookingDto } from './dto/cancel-booking.dto';
@@ -18,6 +19,7 @@ import { PaginatedResult } from '../../common/interfaces/paginated-result.interf
 import { TripsGateway } from '../trips/trips.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PaymentsService } from '../payments/payments.service';
+import { PlatformPricingService } from '../payments/platform-pricing.service';
 import { UsersService } from '../users/users.service';
 import { TripsService } from '../trips/trips.service';
 
@@ -35,6 +37,7 @@ export class BookingsService {
     private notificationsService: NotificationsService,
     @Inject(forwardRef(() => PaymentsService))
     private paymentsService: PaymentsService,
+    private platformPricing: PlatformPricingService,
     private usersService: UsersService,
     @Inject(forwardRef(() => TripsService)) private tripsService: TripsService,
   ) {}
@@ -43,7 +46,12 @@ export class BookingsService {
     createBookingDto: CreateBookingDto,
     userId: string,
   ): Promise<BookingEntity> {
-    const { tripId, seatNumber, sharePhoneWithDriver = false } = createBookingDto;
+    const {
+      tripId,
+      seatNumber,
+      sharePhoneWithDriver = false,
+      paymentIntentId,
+    } = createBookingDto;
 
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
     if (!trip) {
@@ -94,6 +102,35 @@ export class BookingsService {
       }
     }
 
+    const countryCode = 'EG';
+    const feeRow = await this.platformPricing.getActiveFeeRow(countryCode);
+    const seatPricing = this.platformPricing.passengerSeatPricing(
+      Number(trip.price ?? 0),
+      trip.currency ?? 'EGP',
+      feeRow,
+    );
+
+    let passengerPaymentId: string | null = null;
+    if (seatPricing.requiresOnlinePayment) {
+      if (!paymentIntentId?.trim()) {
+        throw new BadRequestException(
+          'paymentIntentId is required when a platform fee applies to this trip',
+        );
+      }
+      const resolved = await this.paymentsService.resolvePassengerPaymentIntentForBooking({
+        paymentIntentId: paymentIntentId.trim(),
+        userId,
+        tripId,
+        seatNumber,
+        countryCode,
+      });
+      passengerPaymentId = resolved.payment.id;
+    } else if (paymentIntentId?.trim()) {
+      throw new BadRequestException(
+        'Do not send paymentIntentId when no platform fee is configured',
+      );
+    }
+
     const qr = this.dataSource.createQueryRunner();
     await qr.connect();
     await qr.startTransaction();
@@ -103,7 +140,11 @@ export class BookingsService {
       });
       if (!tripInTx) throw new NotFoundException('Trip not found');
       const newSeats = [...(tripInTx.seats || [])];
-      newSeats[seatIndex] = {
+      const idx = newSeats.findIndex((s: any) => s.seatNumber === seatNumber);
+      if (idx === -1 || newSeats[idx].status !== 'available') {
+        throw new BadRequestException('Seat is no longer available');
+      }
+      newSeats[idx] = {
         seatNumber,
         userId,
         userName: user.name,
@@ -122,8 +163,20 @@ export class BookingsService {
         status: 'pending',
         hasDriverPaidToContact: false,
         sharePhoneWithDriver,
+        seatPriceAtBooking: String(seatPricing.seatPrice),
+        platformAmount: String(seatPricing.platformAmount),
+        driverAmount: String(seatPricing.driverAmount),
+        passengerPaymentId,
       });
       const savedBooking = await qr.manager.save(BookingEntity, booking);
+
+      if (passengerPaymentId) {
+        await qr.manager.update(
+          PaymentEntity,
+          { id: passengerPaymentId },
+          { bookingId: savedBooking.id },
+        );
+      }
 
       await qr.commitTransaction();
 

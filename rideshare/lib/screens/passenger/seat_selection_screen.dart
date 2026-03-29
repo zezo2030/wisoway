@@ -4,8 +4,13 @@ import '../../providers/auth_provider.dart';
 import '../../providers/trip_provider.dart';
 import '../../models/trip_model.dart';
 import '../../core/services/booking_service.dart';
+import '../../core/services/trip_service.dart';
+import '../../core/services/payment_service.dart';
+import '../../core/config/stripe_config.dart';
 import '../../widgets/seat_layout_widget.dart';
+import '../../utils/seat_layout_helpers.dart';
 import '../../utils/seat_validation.dart';
+import 'package:flutter_stripe/flutter_stripe.dart' hide Card;
 
 class SeatSelectionScreen extends StatefulWidget {
   final String tripId;
@@ -18,7 +23,10 @@ class SeatSelectionScreen extends StatefulWidget {
 
 class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   final BookingService _bookingService = BookingService();
+  final TripService _tripService = TripService();
+  final PaymentService _paymentService = PaymentService();
   TripModel? _trip;
+  Map<String, dynamic>? _pricingPreview;
   int? _selectedSeat;
   bool _sharePhoneWithDriver = true;
   bool _isLoading = true;
@@ -34,8 +42,13 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     try {
       final tripProvider = Provider.of<TripProvider>(context, listen: false);
       final trip = await tripProvider.getTrip(widget.tripId);
+      Map<String, dynamic>? preview;
+      if (trip != null) {
+        preview = await _tripService.getTripPricingPreview(trip.id);
+      }
       setState(() {
         _trip = trip;
+        _pricingPreview = preview;
         _isLoading = false;
       });
     } catch (e) {
@@ -143,17 +156,51 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
 
     setState(() => _isBooking = true);
 
-    // تحويل رقم المقعد (1-based) إلى تنسيق الباكند row-col (0-based)
-    final seatsPerRow = _trip!.seatLayout.seatsPerRow;
-    final row = (_selectedSeat! - 1) ~/ seatsPerRow;
-    final col = (_selectedSeat! - 1) % seatsPerRow;
-    final backendSeatNumber = '$row-$col';
+    // تحويل الترتيب المعروض (1..n) إلى id الباكند row-col (يشمل التخطيط المخصص)
+    final backendSeatNumber = SeatLayoutHelpers.displayIndexToBackendSeatId(
+      _selectedSeat!,
+      _trip!.seatLayout,
+    );
 
     try {
+      final passenger = _pricingPreview?['passenger'];
+      final requiresOnline = passenger is Map &&
+          passenger['requiresOnlinePayment'] == true;
+
+      String? paymentIntentId;
+      if (requiresOnline) {
+        if (kStripePublishableKey.isEmpty) {
+          throw Exception(
+            'مفتاح Stripe غير مضبوط. شغّل التطبيق مع STRIPE_PUBLISHABLE_KEY',
+          );
+        }
+        final intent = await _paymentService.createPassengerSeatPaymentIntent(
+          tripId: _trip!.id,
+          seatNumber: backendSeatNumber,
+        );
+        final clientSecret = intent['clientSecret'] as String?;
+        final piId = intent['paymentIntentId'] as String?;
+        if (clientSecret == null ||
+            clientSecret.isEmpty ||
+            piId == null ||
+            piId.isEmpty) {
+          throw Exception('استجابة الدفع غير صالحة');
+        }
+        await Stripe.instance.initPaymentSheet(
+          paymentSheetParameters: SetupPaymentSheetParameters(
+            paymentIntentClientSecret: clientSecret,
+            merchantDisplayName: 'Rideshare',
+          ),
+        );
+        await Stripe.instance.presentPaymentSheet();
+        paymentIntentId = piId;
+      }
+
       final bookingId = await _bookingService.createBooking(
         tripId: _trip!.id,
         seatNumber: backendSeatNumber,
         sharePhoneWithDriver: _sharePhoneWithDriver,
+        paymentIntentId: paymentIntentId,
       );
 
       if (mounted) {
@@ -164,6 +211,17 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
           ),
         );
         Navigator.pop(context, bookingId);
+      }
+    } on StripeException catch (e) {
+      if (mounted) {
+        final msg =
+            e.error.localizedMessage ?? e.error.message ?? e.toString();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('الدفع: $msg'),
+            backgroundColor: Colors.orange,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -232,6 +290,40 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                     Text('من: ${_trip!.from.name}'),
                     Text('إلى: ${_trip!.to.name}'),
                     Text('السعر: ${_trip!.price} ${_trip!.currency}'),
+                    if (_pricingPreview != null) ...[
+                      const SizedBox(height: 12),
+                      const Divider(),
+                      Builder(
+                        builder: (context) {
+                          final p = _pricingPreview!['passenger'];
+                          if (p is! Map) return const SizedBox.shrink();
+                          final platform = p['platformAmount'];
+                          final driver = p['driverAmount'];
+                          final online = p['requiresOnlinePayment'] == true;
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                online
+                                    ? 'للتطبيق (دفع إلكتروني): $platform ${_trip!.currency}'
+                                    : 'لا يوجد رسم منصة لهذه الرحلة',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              if (online)
+                                Text(
+                                  'للسائق (نقداً): $driver ${_trip!.currency}',
+                                  style: TextStyle(
+                                    color: Colors.grey[700],
+                                    fontSize: 13,
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
                   ],
                 ),
               ),

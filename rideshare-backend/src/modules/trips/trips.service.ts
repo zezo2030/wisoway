@@ -18,6 +18,8 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { BookingsService } from '../bookings/bookings.service';
 import { VehiclesService } from '../vehicles/vehicles.service';
 import { UsersService } from '../users/users.service';
+import { PlatformPricingService } from '../payments/platform-pricing.service';
+import { TripsGateway } from './trips.gateway';
 
 function getFromLatLng(trip: TripEntity): { lat: number; lng: number } {
   const c = trip.fromPoint?.coordinates;
@@ -39,7 +41,14 @@ export class TripsService {
     private bookingsService: BookingsService,
     private vehiclesService: VehiclesService,
     private usersService: UsersService,
+    private platformPricing: PlatformPricingService,
+    private tripsGateway: TripsGateway,
   ) {}
+
+  async getPricingPreview(tripId: string, countryCode: string = 'EG') {
+    const trip = await this.findById(tripId);
+    return this.platformPricing.pricingPreviewForTrip(trip, countryCode);
+  }
 
   async create(
     createTripDto: CreateTripDto,
@@ -70,10 +79,7 @@ export class TripsService {
       throw new BadRequestException('Departure time must be in the future');
     }
 
-    const seats = this.generateSeats(
-      createTripDto.seatLayout.rows,
-      createTripDto.seatLayout.seatsPerRow,
-    );
+    const seats = this.generateSeatsFromLayout(createTripDto.seatLayout);
 
     const trip = this.tripRepo.create({
       driverId,
@@ -181,6 +187,73 @@ export class TripsService {
     trip.seats = seats;
     trip.availableSeats = (trip.availableSeats ?? 0) + 1;
     await this.tripRepo.save(trip);
+  }
+
+  /**
+   * Driver locks a seat (e.g. sold outside the app) or unlocks it back to available.
+   */
+  async setSeatLock(
+    tripId: string,
+    seatNumber: string,
+    locked: boolean,
+    driverId: string,
+  ): Promise<TripEntity> {
+    const trip = await this.findById(tripId);
+    if (trip.driverId !== driverId) {
+      throw new ForbiddenException('You are not the owner of this trip');
+    }
+    if (trip.status !== TripStatus.ACTIVE) {
+      throw new BadRequestException('Trip is not active');
+    }
+
+    const seats = [...(trip.seats || [])];
+    const seatIndex = seats.findIndex((s: any) => s.seatNumber === seatNumber);
+    if (seatIndex === -1) {
+      throw new BadRequestException('Invalid seat number');
+    }
+
+    const current = seats[seatIndex] as any;
+
+    if (locked) {
+      if (current.status !== 'available') {
+        throw new BadRequestException(
+          'Only available seats can be locked (not booked or already locked)',
+        );
+      }
+      seats[seatIndex] = {
+        seatNumber,
+        userId: null,
+        userName: null,
+        gender: null,
+        bookedAt: null,
+        status: 'locked',
+      };
+      trip.availableSeats = Math.max(0, (trip.availableSeats ?? 0) - 1);
+    } else {
+      if (current.status !== 'locked') {
+        throw new BadRequestException('Only locked seats can be unlocked');
+      }
+      seats[seatIndex] = {
+        seatNumber,
+        userId: null,
+        userName: null,
+        gender: null,
+        bookedAt: null,
+        status: 'available',
+      };
+      trip.availableSeats = (trip.availableSeats ?? 0) + 1;
+    }
+
+    trip.seats = seats;
+    const saved = await this.tripRepo.save(trip);
+
+    if (locked) {
+      await this.tripsGateway.emitSeatBooked(tripId, seatNumber, 'locked');
+    } else {
+      await this.tripsGateway.emitSeatReleased(tripId, seatNumber);
+    }
+
+    return saved;
   }
 
   async search(
@@ -351,10 +424,7 @@ export class TripsService {
     }
     if (updateTripDto.seatLayout != null) {
       trip.seatLayout = updateTripDto.seatLayout;
-      trip.seats = this.generateSeats(
-        updateTripDto.seatLayout.rows,
-        updateTripDto.seatLayout.seatsPerRow,
-      );
+      trip.seats = this.generateSeatsFromLayout(updateTripDto.seatLayout);
     }
     if (updateTripDto.carImageUrl !== undefined)
       trip.carImageUrl = updateTripDto.carImageUrl ?? null;
@@ -640,7 +710,33 @@ export class TripsService {
     return matched.length > 0 ? matched : knownRoutes;
   }
 
-  private generateSeats(rows: number, seatsPerRow: number): any[] {
+  private generateSeatsFromLayout(layout: {
+    rows: number;
+    seatsPerRow: number;
+    seatsPerRowList?: number[];
+  }): any[] {
+    const list = layout.seatsPerRowList;
+    if (list && list.length > 0) {
+      const seats: any[] = [];
+      for (let row = 0; row < list.length; row++) {
+        const count = list[row];
+        for (let col = 0; col < count; col++) {
+          seats.push({
+            seatNumber: `${row}-${col}`,
+            userId: null,
+            userName: null,
+            gender: null,
+            bookedAt: null,
+            status: 'available',
+          });
+        }
+      }
+      return seats;
+    }
+    return this.generateSeatsGrid(layout.rows, layout.seatsPerRow);
+  }
+
+  private generateSeatsGrid(rows: number, seatsPerRow: number): any[] {
     const seats: any[] = [];
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < seatsPerRow; col++) {

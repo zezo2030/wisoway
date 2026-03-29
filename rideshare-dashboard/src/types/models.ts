@@ -61,6 +61,8 @@ export interface SeatLayout {
   rows: number
   seatsPerRow: number
   preventGenderMixing: boolean
+  /** Irregular rows (e.g. [1, 3, 2]); when set, defines row widths instead of uniform seatsPerRow. */
+  seatsPerRowList?: number[] | null
 }
 
 export interface Seat {

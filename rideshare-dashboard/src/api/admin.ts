@@ -10,6 +10,7 @@ import type {
   Vehicle,
   Booking,
   Seat,
+  SeatLayout,
   ReportResponse,
   Rating,
   Notification,
@@ -31,6 +32,7 @@ import type {
   BroadcastNotificationRequest,
 } from "@/types/api"
 import { apiClient } from "./client"
+import { backendSeatIdToDisplayIndex } from "@/lib/seat-layout"
 
 /**
  * Get dashboard statistics
@@ -167,24 +169,16 @@ export async function getTripById(tripId: string): Promise<Trip> {
   return response.data.data
 }
 
-/**
- * Backend stores seats as "row-col" (0-based); SeatMap uses linear 1-based index
- * (same as mobile: linear = row * seatsPerRow + col + 1).
- */
-function normalizeSeatNumberForLayout(
-  raw: unknown,
-  seatsPerRow: number
-): number {
+type TripSeatLayoutPayload = Pick<SeatLayout, "rows" | "seatsPerRow" | "seatsPerRowList">
+
+/** Map API seat id to linear 1-based index for SeatMap (uniform or mixed layout). */
+function normalizeSeatNumberForLayout(raw: unknown, layout: TripSeatLayoutPayload): number {
   if (typeof raw === "number" && Number.isFinite(raw)) {
     return raw
   }
   const s = String(raw ?? "")
-  const m = /^(\d+)-(\d+)$/.exec(s)
-  if (m && seatsPerRow > 0) {
-    const row = parseInt(m[1], 10)
-    const col = parseInt(m[2], 10)
-    return row * seatsPerRow + col + 1
-  }
+  const idx = backendSeatIdToDisplayIndex(layout, s)
+  if (idx != null) return idx
   const n = Number(s)
   return Number.isFinite(n) ? n : 0
 }
@@ -202,11 +196,21 @@ export async function getTripSeats(tripId: string): Promise<Seat[]> {
 
   if (payload && typeof payload === "object") {
     const record = payload as Record<string, unknown>
-    const layout = record.seatLayout as { seatsPerRow?: number } | undefined
+    const rawLayout = record.seatLayout as Record<string, unknown> | undefined
+    const rows =
+      typeof rawLayout?.rows === "number" && rawLayout.rows > 0 ? rawLayout.rows : 1
     const seatsPerRow =
-      typeof layout?.seatsPerRow === "number" && layout.seatsPerRow > 0
-        ? layout.seatsPerRow
+      typeof rawLayout?.seatsPerRow === "number" && rawLayout.seatsPerRow > 0
+        ? rawLayout.seatsPerRow
         : 4
+    const seatsPerRowList = Array.isArray(rawLayout?.seatsPerRowList)
+      ? (rawLayout.seatsPerRowList as unknown[]).map((x) => Number(x)).filter((n) => n > 0)
+      : undefined
+    const layout: TripSeatLayoutPayload = {
+      rows,
+      seatsPerRow,
+      seatsPerRowList: seatsPerRowList && seatsPerRowList.length > 0 ? seatsPerRowList : undefined,
+    }
 
     const rawSeats = record.seats
     if (Array.isArray(rawSeats)) {
@@ -220,7 +224,7 @@ export async function getTripSeats(tripId: string): Promise<Seat[]> {
               : undefined
 
         return {
-          seatNumber: normalizeSeatNumberForLayout(seatRecord.seatNumber, seatsPerRow),
+          seatNumber: normalizeSeatNumberForLayout(seatRecord.seatNumber, layout),
           status: String(seatRecord.status ?? "available") as Seat["status"],
           passengerId:
             typeof seatRecord.passengerId === "string" ? seatRecord.passengerId : undefined,
@@ -333,6 +337,41 @@ export async function getChatRooms(params: GetChatRoomsParams): Promise<Paginate
 export async function getChatMessages(roomId: string, params: GetChatMessagesParams): Promise<PaginatedResult<ChatMessage>> {
   const response = await apiClient.get<ApiResponse<PaginatedResult<ChatMessage>>>(`/admin/chat/rooms/${roomId}/messages`, {
     params,
+  })
+  return response.data.data
+}
+
+export interface PlatformPricingSettings {
+  id: string
+  countryCode: string
+  feeAmount: number | string
+  currency: string
+  isActive: boolean
+  passengerPlatformPercent: number | string
+  driverUnlockPercent: number | string
+  lifetimeFreeTripEnabled: boolean
+}
+
+export async function getPlatformPricingSettings(countryCode = "EG"): Promise<PlatformPricingSettings> {
+  const response = await apiClient.get<ApiResponse<PlatformPricingSettings>>("/admin/pricing-settings", {
+    params: { countryCode },
+  })
+  return response.data.data
+}
+
+export async function patchPlatformPricingSettings(
+  countryCode: string,
+  body: Partial<{
+    feeAmount: number
+    currency: string
+    isActive: boolean
+    passengerPlatformPercent: number
+    driverUnlockPercent: number
+    lifetimeFreeTripEnabled: boolean
+  }>,
+): Promise<PlatformPricingSettings> {
+  const response = await apiClient.patch<ApiResponse<PlatformPricingSettings>>("/admin/pricing-settings", body, {
+    params: { countryCode },
   })
   return response.data.data
 }

@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useLanguage } from "@/providers/language-provider"
 import {
   Select,
   SelectContent,
@@ -25,7 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { QUERY_KEYS, DEFAULT_PAGE_SIZE } from "@/lib/constants"
-import { cn, formatDate, getUserRoleLabel } from "@/lib/utils"
+import { cn, formatDate } from "@/lib/utils"
 import { UserRole } from "@/types/enums"
 import type { User } from "@/types/models"
 import {
@@ -48,6 +49,7 @@ export default function UsersListPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
+  const { t, language } = useLanguage()
 
   // URL state
   const page = parseInt(searchParams.get("page") || "1", 10)
@@ -59,7 +61,7 @@ export default function UsersListPage() {
   // Local state for search input (debounced)
   const [searchInput, setSearchInput] = useState(search)
 
-  // Confirmation dialog state (pendingId used to avoid closure issues)
+  // Confirmation dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean
     title: string
@@ -88,63 +90,59 @@ export default function UsersListPage() {
       }),
   })
 
-  // Change role mutation
+  // Mutations
   const changeRoleMutation = useMutation({
     mutationFn: ({ userId, role }: { userId: string; role: UserRole }) =>
       changeUserRole(userId, role),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.USERS] })
-      toast.success("User role updated successfully")
+      toast.success(t("userRoleUpdated"))
     },
     onError: () => {
       toast.error("Failed to update user role")
     },
   })
 
-  // Toggle ban mutation
   const toggleBanMutation = useMutation({
     mutationFn: ({ userId, isActive }: { userId: string; isActive: boolean }) =>
       toggleUserBan(userId, isActive),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.USERS] })
-      toast.success(variables.isActive ? "User unbanned successfully" : "User banned successfully")
+      toast.success(variables.isActive ? t("userUnbanned") : t("userBanned"))
     },
     onError: () => {
       toast.error("Failed to update user status")
     },
   })
 
-  // Confirm user mutation
   const confirmUserMutation = useMutation({
     mutationFn: (userId: string) => confirmUser(userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.USERS] })
-      toast.success("User confirmed successfully")
+      toast.success(t("userConfirmed"))
     },
     onError: () => {
       toast.error("Failed to confirm user")
     },
   })
 
-  // Delete user mutation
   const deleteUserMutation = useMutation({
     mutationFn: (userId: string) => deleteUser(userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.USERS] })
-      toast.success("User deleted successfully")
+      toast.success(t("userDeleted"))
     },
     onError: () => {
       toast.error("Failed to delete user")
     },
   })
 
-  // Approve/reject driver mutation
   const approveDriverMutation = useMutation({
     mutationFn: ({ userId, approved }: { userId: string; approved: boolean }) =>
       approveDriver(userId, approved),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.USERS] })
-      toast.success(variables.approved ? "Driver approved successfully" : "Driver approval removed")
+      toast.success(variables.approved ? t("driverApproved") : t("driverRejected"))
     },
     onError: () => {
       toast.error("Failed to update driver approval")
@@ -181,10 +179,11 @@ export default function UsersListPage() {
   }
 
   const handleRoleChange = (userId: string, newRole: UserRole) => {
+    const roleLabel = newRole === UserRole.PASSENGER ? t("role_passenger") : newRole === UserRole.DRIVER ? t("role_driver") : t("role_admin");
     setConfirmDialog({
       open: true,
-      title: "Change User Role",
-      description: `Are you sure you want to change this user's role to ${getUserRoleLabel(newRole)}?`,
+      title: t("roleConfirmTitle"),
+      description: `${t("roleConfirmDesc")} ${roleLabel}?`,
       variant: "default",
       onConfirm: () => {
         changeRoleMutation.mutate({ userId, role: newRole })
@@ -197,10 +196,8 @@ export default function UsersListPage() {
     const isBanning = user.isActive
     setConfirmDialog({
       open: true,
-      title: isBanning ? "Ban User" : "Unban User",
-      description: isBanning
-        ? "Are you sure you want to ban this user? They will no longer be able to access the platform."
-        : "Are you sure you want to unban this user? They will regain access to the platform.",
+      title: isBanning ? t("banConfirmTitle") : t("unbanConfirmTitle"),
+      description: isBanning ? t("banConfirmDesc") : t("unbanConfirmDesc"),
       variant: isBanning ? "destructive" : "default",
       onConfirm: () => {
         toggleBanMutation.mutate({ userId: user._id, isActive: !user.isActive })
@@ -217,8 +214,8 @@ export default function UsersListPage() {
     }
     setConfirmDialog({
       open: true,
-      title: "Confirm User",
-      description: "Are you sure you want to confirm this user account?",
+      title: t("confirmUserTitle"),
+      description: t("confirmUserDesc"),
       variant: "default",
       pendingId: userId,
       onConfirm: () => {
@@ -236,9 +233,8 @@ export default function UsersListPage() {
     }
     setConfirmDialog({
       open: true,
-      title: "Delete User",
-      description:
-        "Are you sure you want to permanently delete this user? This action cannot be undone.",
+      title: t("deleteConfirmTitle"),
+      description: t("deleteConfirmDesc"),
       variant: "destructive",
       pendingId: userId,
       onConfirm: () => {
@@ -250,18 +246,13 @@ export default function UsersListPage() {
 
   const handleApproveDriver = (user: User) => {
     const userId = user._id ?? (user as { id?: string }).id
-    if (!userId) {
-      toast.error("Cannot update driver approval: missing user ID")
-      return
-    }
+    if (!userId) return
 
     const approving = !user.isDriverApproved
     setConfirmDialog({
       open: true,
-      title: approving ? "Approve Driver" : "Reject Driver",
-      description: approving
-        ? "Approve this driver to allow creating trips?"
-        : "Reject this driver? They will not be able to create trips.",
+      title: approving ? t("approveDriverTitle") : t("rejectDriverTitle"),
+      description: approving ? t("approveDriverDesc") : t("rejectDriverDesc"),
       variant: approving ? "default" : "destructive",
       pendingId: userId,
       onConfirm: () => {
@@ -280,7 +271,7 @@ export default function UsersListPage() {
   const columns: Column<User>[] = [
     {
       key: "name",
-      header: "Name",
+      header: t("name"),
       cell: (user) => (
         <div className="flex items-center gap-3 py-1">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm shadow-sm border border-primary/20">
@@ -292,24 +283,24 @@ export default function UsersListPage() {
     },
     {
       key: "email",
-      header: "Email",
+      header: t("email"),
       cell: (user) => <div className="text-muted-foreground font-medium">{user.email || "N/A"}</div>,
     },
     {
       key: "phone",
-      header: "Phone",
+      header: t("phone"),
       cell: (user) => <div className="font-medium">{user.phoneNumber || "N/A"}</div>,
     },
     {
       key: "role",
-      header: "Role",
+      header: t("role"),
       cell: (user) => (
         <StatusBadge status={user.role} type="user" />
       ),
     },
     {
       key: "status",
-      header: "Status",
+      header: t("status"),
       cell: (user) => (
         <StatusBadge
           status={user.isActive ? "active" : "banned"}
@@ -319,7 +310,7 @@ export default function UsersListPage() {
     },
     {
       key: "rating",
-      header: "Rating",
+      header: t("rating"),
       cell: (user) => (
         <div className="flex items-center gap-1.5 font-medium">
           <span className="text-amber-500">⭐ {Number(user.rating ?? 0).toFixed(1)}</span>
@@ -329,7 +320,7 @@ export default function UsersListPage() {
     },
     {
       key: "registered",
-      header: "Registered",
+      header: t("registered"),
       cell: (user) => <div className="text-muted-foreground text-sm">{formatDate(user.createdAt)}</div>,
     },
     {
@@ -343,31 +334,31 @@ export default function UsersListPage() {
               <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()} className="w-48 shadow-lg rounded-xl border-border/50 backdrop-blur-md bg-background/95">
-            <div className="text-xs font-semibold px-2 py-1.5 text-muted-foreground uppercase tracking-wider">Roles</div>
+          <DropdownMenuContent align={language === "ar" ? "start" : "end"} onClick={(e) => e.stopPropagation()} className="w-48 shadow-lg rounded-xl border-border/50 backdrop-blur-md bg-background/95">
+            <div className="text-xs font-semibold px-2 py-1.5 text-muted-foreground uppercase tracking-wider">{t("roles")}</div>
             <DropdownMenuItem
               onClick={() => handleRoleChange(user._id, UserRole.PASSENGER)}
               disabled={user.role === UserRole.PASSENGER || changeRoleMutation.isPending}
               className="cursor-pointer font-medium"
             >
-              <UserIcon className="mr-2 h-4 w-4" />
-              Make Passenger
+              <UserIcon className={cn("h-4 w-4", language === "ar" ? "ml-2" : "mr-2")} />
+              {t("makePassenger")}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleRoleChange(user._id, UserRole.DRIVER)}
               disabled={user.role === UserRole.DRIVER || changeRoleMutation.isPending}
               className="cursor-pointer font-medium"
             >
-              <UserCog className="mr-2 h-4 w-4" />
-              Make Driver
+              <UserCog className={cn("h-4 w-4", language === "ar" ? "ml-2" : "mr-2")} />
+              {t("makeDriver")}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleRoleChange(user._id, UserRole.ADMIN)}
               disabled={user.role === UserRole.ADMIN || changeRoleMutation.isPending}
               className="cursor-pointer font-medium"
             >
-              <Shield className="mr-2 h-4 w-4" />
-              Make Admin
+              <Shield className={cn("h-4 w-4", language === "ar" ? "ml-2" : "mr-2")} />
+              {t("makeAdmin")}
             </DropdownMenuItem>
             <div className="h-px bg-border my-1" />
             <DropdownMenuItem
@@ -377,13 +368,13 @@ export default function UsersListPage() {
             >
               {user.isActive ? (
                 <>
-                  <Ban className="mr-2 h-4 w-4" />
-                  Ban User
+                  <Ban className={cn("h-4 w-4", language === "ar" ? "ml-2" : "mr-2")} />
+                  {t("banUser")}
                 </>
               ) : (
                 <>
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Unban User
+                  <CheckCircle className={cn("h-4 w-4", language === "ar" ? "ml-2" : "mr-2")} />
+                  {t("unbanUser")}
                 </>
               )}
             </DropdownMenuItem>
@@ -395,8 +386,8 @@ export default function UsersListPage() {
               }
               className="cursor-pointer font-medium text-blue-600 focus:text-blue-600 focus:bg-blue-50 dark:focus:bg-blue-950/30"
             >
-              <UserCheck className="mr-2 h-4 w-4" />
-              Confirm User
+              <UserCheck className={cn("h-4 w-4", language === "ar" ? "ml-2" : "mr-2")} />
+              {t("confirmUser")}
             </DropdownMenuItem>
             {user.role === UserRole.DRIVER && (
               <DropdownMenuItem
@@ -409,8 +400,8 @@ export default function UsersListPage() {
                     : "text-emerald-600 focus:text-emerald-600 focus:bg-emerald-50 dark:focus:bg-emerald-950/30"
                 )}
               >
-                <Car className="mr-2 h-4 w-4" />
-                {user.isDriverApproved ? "Reject Driver" : "Approve Driver"}
+                <Car className={cn("h-4 w-4", language === "ar" ? "ml-2" : "mr-2")} />
+                {user.isDriverApproved ? t("rejectDriver") : t("approveDriver")}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
@@ -418,8 +409,8 @@ export default function UsersListPage() {
               disabled={deleteUserMutation.isPending || user.role === UserRole.ADMIN}
               className="cursor-pointer font-medium text-rose-600 focus:text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-950/30"
             >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete User
+              <Trash2 className={cn("h-4 w-4", language === "ar" ? "ml-2" : "mr-2")} />
+              {t("deleteUser")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -430,10 +421,10 @@ export default function UsersListPage() {
   if (error) {
     return (
       <div className="space-y-4 animate-in fade-in duration-500">
-        <h1 className="text-4xl font-extrabold tracking-tight">Users Management</h1>
+        <h1 className="text-4xl font-extrabold tracking-tight">{t("usersManagement")}</h1>
         <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-6 text-destructive flex items-center shadow-sm">
-          <Ban className="w-6 h-6 mr-3" />
-          <span className="font-semibold text-lg">Failed to load users. Please try again.</span>
+          <Ban className={cn("w-6 h-6", language === "ar" ? "ml-3" : "mr-3")} />
+          <span className="font-semibold text-lg">{t("failedToLoadUsers")}</span>
         </div>
       </div>
     )
@@ -447,9 +438,9 @@ export default function UsersListPage() {
             <UsersIcon className="w-8 h-8 text-primary" />
           </div>
           <div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-foreground/90 leading-tight">Users</h1>
+            <h1 className="text-4xl font-extrabold tracking-tight text-foreground/90 leading-tight">{t("usersTitle")}</h1>
             <p className="text-muted-foreground mt-1 text-lg font-medium">
-              Manage platform users, verify roles, and handle statuses.
+              {t("usersSubtitle")}
             </p>
           </div>
         </div>
@@ -459,19 +450,19 @@ export default function UsersListPage() {
         <CardHeader className="bg-muted/30 border-b border-border/40 pb-5 pt-6 px-6">
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
             <CardTitle className="text-xl font-bold flex items-center">
-              <Filter className="w-5 h-5 mr-2 text-primary" />
-              Filter Users
+              <Filter className={cn("w-5 h-5 text-primary", language === "ar" ? "ml-2" : "mr-2")} />
+              {t("filterUsers")}
             </CardTitle>
 
             {/* Filters Row */}
             <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3">
               <div className="relative group min-w-[280px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                <Search className={cn("absolute top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors", language === "ar" ? "right-3" : "left-3")} />
                 <Input
-                  placeholder="Search by name or email..."
+                  placeholder={t("searchPlaceholder")}
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  className="pl-9 bg-background/80 border-border/50 focus-visible:ring-primary/30 rounded-full shadow-sm"
+                  className={cn("bg-background/80 border-border/50 focus-visible:ring-primary/30 rounded-full shadow-sm", language === "ar" ? "pr-9" : "pl-9")}
                 />
               </div>
 
@@ -482,14 +473,14 @@ export default function UsersListPage() {
                     updateSearchParams({ role: value === "all" ? null : value, page: "1" })
                   }
                 >
-                  <SelectTrigger className="w-full sm:w-[150px] bg-background/80 border-border/50 rounded-full font-medium shadow-sm">
-                    <SelectValue placeholder="All Roles" />
+                  <SelectTrigger className="w-full sm:w-[150px] bg-background/80 border-border/50 rounded-full font-medium shadow-sm px-4">
+                    <SelectValue placeholder={t("allRoles")} />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl shadow-lg border-border/50">
-                    <SelectItem value="all">All Roles</SelectItem>
-                    <SelectItem value={UserRole.PASSENGER}>Passenger</SelectItem>
-                    <SelectItem value={UserRole.DRIVER}>Driver</SelectItem>
-                    <SelectItem value={UserRole.ADMIN}>Admin</SelectItem>
+                    <SelectItem value="all">{t("allRoles")}</SelectItem>
+                    <SelectItem value={UserRole.PASSENGER}>{t("role_passenger")}</SelectItem>
+                    <SelectItem value={UserRole.DRIVER}>{t("role_driver")}</SelectItem>
+                    <SelectItem value={UserRole.ADMIN}>{t("role_admin")}</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -499,13 +490,13 @@ export default function UsersListPage() {
                     updateSearchParams({ status: value === "all" ? null : value, page: "1" })
                   }
                 >
-                  <SelectTrigger className="w-full sm:w-[150px] bg-background/80 border-border/50 rounded-full font-medium shadow-sm">
-                    <SelectValue placeholder="All Status" />
+                  <SelectTrigger className="w-full sm:w-[150px] bg-background/80 border-border/50 rounded-full font-medium shadow-sm px-4">
+                    <SelectValue placeholder={t("allStatus")} />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl shadow-lg border-border/50">
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="banned">Banned</SelectItem>
+                    <SelectItem value="all">{t("allStatus")}</SelectItem>
+                    <SelectItem value="active">{t("active")}</SelectItem>
+                    <SelectItem value="banned">{t("status_banned")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -524,7 +515,7 @@ export default function UsersListPage() {
               onPageChange={handlePageChange}
               pageSize={limit}
               loading={isLoading}
-              emptyMessage="No users found with the current filters."
+              emptyMessage={t("noUsersFound")}
               onRowClick={handleRowClick}
             />
           </div>

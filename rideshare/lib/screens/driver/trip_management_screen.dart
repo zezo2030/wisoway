@@ -12,6 +12,7 @@ import '../../core/services/payment_service.dart';
 import '../../core/constants/route_names.dart';
 import '../../models/wallet_model.dart';
 import '../../widgets/notification_icon_button.dart';
+import '../../utils/seat_layout_helpers.dart';
 
 class TripManagementScreen extends StatefulWidget {
   final String tripId;
@@ -57,6 +58,142 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _reloadTrip() async {
+    final tripProvider = Provider.of<TripProvider>(context, listen: false);
+    final trip = await tripProvider.getTrip(widget.tripId);
+    if (!mounted) return;
+    setState(() => _trip = trip);
+  }
+
+  Future<void> _onDriverSeatLongPress({
+    required TripModel trip,
+    required SeatData seatData,
+    required String backendSeatId,
+    required int displaySeatNumber,
+  }) async {
+    if (!trip.isActive) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('التعديل متاح للرحلات النشطة فقط'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    if (seatData.isBooked) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'المقاعد المحجوزة عبر التطبيق تُدار من طلبات الحجز',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final tripProvider = Provider.of<TripProvider>(context, listen: false);
+
+    if (seatData.isLocked) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('فتح المقعد'),
+          content: Text(
+            'إلغاء قفل المقعد رقم $displaySeatNumber ليصبح متاحاً للحجز في التطبيق؟',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('فتح المقعد'),
+            ),
+          ],
+        ),
+      );
+      if (ok != true || !mounted) return;
+      tripProvider.clearError();
+      final success = await tripProvider.setSeatLock(
+        trip.id,
+        seatNumber: backendSeatId,
+        locked: false,
+      );
+      if (!mounted) return;
+      if (success) {
+        await _reloadTrip();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم فتح المقعد'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              tripProvider.errorMessage ?? 'فشل فتح المقعد',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('قفل المقعد'),
+        content: Text(
+          'قفل المقعد رقم $displaySeatNumber؟ لن يتمكن الركاب من حجزه في التطبيق (مثلاً إذا بيع خارج التطبيق).',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('قفل'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    tripProvider.clearError();
+    final success = await tripProvider.setSeatLock(
+      trip.id,
+      seatNumber: backendSeatId,
+      locked: true,
+    );
+    if (!mounted) return;
+    if (success) {
+      await _reloadTrip();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تم قفل المقعد'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            tripProvider.errorMessage ?? 'فشل قفل المقعد',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -953,8 +1090,10 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
           _buildDetailRow(
             icon: IconsaxPlusLinear.grid_1,
             label: 'تخطيط المقاعد',
-            value:
-                '${trip.seatLayout.rows} صف × ${trip.seatLayout.seatsPerRow} مقعد',
+            value: trip.seatLayout.seatsPerRowList != null &&
+                    trip.seatLayout.seatsPerRowList!.isNotEmpty
+                ? 'مخصص: ${trip.seatLayout.seatsPerRowList!.join('، ')}'
+                : '${trip.seatLayout.rows} صف × ${trip.seatLayout.seatsPerRow} مقعد',
             color: Colors.indigo,
           ),
           const Divider(height: 32),
@@ -1047,6 +1186,11 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 8),
+          Text(
+            'اضغط مطولاً على مقعد أخضر لقفله (حجز خارجي)، أو على مقعد مقفل لفتحه.',
+            style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey[600]),
+          ),
           const SizedBox(height: 20),
           // Seat Layout Visualization
           Container(
@@ -1089,91 +1233,8 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                     ],
                   ),
                 ),
-                // Seats grid
-                ...List.generate(trip.seatLayout.rows, (rowIndex) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(trip.seatLayout.seatsPerRow, (
-                        seatIndex,
-                      ) {
-                        final seatNumber =
-                            rowIndex * trip.seatLayout.seatsPerRow +
-                            seatIndex +
-                            1;
-                        final seatKey = seatNumber.toString();
-                        final matches = trip.seats.where(
-                          (s) => s.seatNumber == seatKey,
-                        );
-                        final seatData = matches.isNotEmpty
-                            ? matches.first
-                            : SeatData.empty(seatKey);
-                        final isBooked = seatData.isBooked;
-                        final isMale = seatData.gender == 'male';
-                        final isFemale = seatData.gender == 'female';
-
-                        // Determine colors and icon based on seat status
-                        Color seatColor;
-                        Color borderColor;
-                        Color iconColor;
-                        IconData seatIcon;
-
-                        if (!isBooked) {
-                          // Empty seat
-                          seatColor = Colors.green.shade100;
-                          borderColor = Colors.green.shade300;
-                          iconColor = Colors.green.shade700;
-                          seatIcon = IconsaxPlusLinear.profile_2user;
-                        } else if (isMale) {
-                          // Booked by male
-                          seatColor = Colors.blue.shade100;
-                          borderColor = Colors.blue.shade300;
-                          iconColor = Colors.blue.shade700;
-                          seatIcon = IconsaxPlusBold.profile;
-                        } else if (isFemale) {
-                          // Booked by female
-                          seatColor = Colors.pink.shade100;
-                          borderColor = Colors.pink.shade300;
-                          iconColor = Colors.pink.shade700;
-                          seatIcon = IconsaxPlusBold.profile;
-                        } else {
-                          // Fallback (shouldn't happen)
-                          seatColor = Colors.grey.shade100;
-                          borderColor = Colors.grey.shade300;
-                          iconColor = Colors.grey.shade700;
-                          seatIcon = IconsaxPlusBold.profile;
-                        }
-
-                        return Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: seatColor,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: borderColor, width: 2),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(seatIcon, size: 20, color: iconColor),
-                              const SizedBox(height: 2),
-                              Text(
-                                '$seatNumber',
-                                style: GoogleFonts.cairo(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: iconColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-                    ),
-                  );
-                }),
+                // Seats grid (irregular rows use same order as API + passenger UI)
+                ..._driverSeatLayoutRows(trip),
                 const SizedBox(height: 12),
                 // Legend
                 Wrap(
@@ -1182,6 +1243,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                   runSpacing: 8,
                   children: [
                     _buildLegendItem(Colors.green, 'متاح'),
+                    _buildLegendItem(Colors.amber.shade200, 'مقفل'),
                     _buildLegendItem(Colors.blue, 'محجوز - رجل'),
                     _buildLegendItem(Colors.pink, 'محجوز - أنثى'),
                   ],
@@ -1192,6 +1254,102 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         ],
       ),
     );
+  }
+
+  List<Widget> _driverSeatLayoutRows(TripModel trip) {
+    final rowConfigs = SeatLayoutHelpers.rowSeatCounts(trip.seatLayout);
+    var displayIndex = 0;
+    return rowConfigs.map((seatsInRow) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(seatsInRow, (_) {
+            displayIndex++;
+            final seatNumber = displayIndex;
+            final backendId = SeatLayoutHelpers.displayIndexToBackendSeatId(
+              seatNumber,
+              trip.seatLayout,
+            );
+            final matches =
+                trip.seats.where((s) => s.seatNumber == backendId);
+            final seatData = matches.isNotEmpty
+                ? matches.first
+                : SeatData.empty(backendId);
+            final isBooked = seatData.isBooked;
+            final isLocked = seatData.isLocked;
+            final isMale = seatData.gender == 'male';
+            final isFemale = seatData.gender == 'female';
+
+            Color seatColor;
+            Color borderColor;
+            Color iconColor;
+            IconData seatIcon;
+
+            if (isLocked) {
+              seatColor = Colors.amber.shade100;
+              borderColor = Colors.amber.shade400;
+              iconColor = Colors.amber.shade900;
+              seatIcon = IconsaxPlusBold.lock;
+            } else if (!isBooked) {
+              seatColor = Colors.green.shade100;
+              borderColor = Colors.green.shade300;
+              iconColor = Colors.green.shade700;
+              seatIcon = IconsaxPlusLinear.profile_2user;
+            } else if (isMale) {
+              seatColor = Colors.blue.shade100;
+              borderColor = Colors.blue.shade300;
+              iconColor = Colors.blue.shade700;
+              seatIcon = IconsaxPlusBold.profile;
+            } else if (isFemale) {
+              seatColor = Colors.pink.shade100;
+              borderColor = Colors.pink.shade300;
+              iconColor = Colors.pink.shade700;
+              seatIcon = IconsaxPlusBold.profile;
+            } else {
+              seatColor = Colors.grey.shade100;
+              borderColor = Colors.grey.shade300;
+              iconColor = Colors.grey.shade700;
+              seatIcon = IconsaxPlusBold.profile;
+            }
+
+            return GestureDetector(
+              onLongPress: () => _onDriverSeatLongPress(
+                trip: trip,
+                seatData: seatData,
+                backendSeatId: backendId,
+                displaySeatNumber: seatNumber,
+              ),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: seatColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: borderColor, width: 2),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(seatIcon, size: 20, color: iconColor),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$seatNumber',
+                      style: GoogleFonts.cairo(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: iconColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ),
+      );
+    }).toList();
   }
 
   Widget _buildLegendItem(Color color, String label) {

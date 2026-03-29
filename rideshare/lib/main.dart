@@ -46,10 +46,19 @@ import 'screens/passenger/chat_screen.dart';
 import 'screens/driver/chat_screen.dart' as driver_chat;
 import 'screens/passenger/rating_screen.dart';
 import 'screens/profile/edit_profile_screen.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
+import 'core/config/stripe_config.dart';
 // Removed unused notification_service.dart
+
+//admin@rideshare.com
+//Admin@123456
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (kStripePublishableKey.isNotEmpty) {
+    Stripe.publishableKey = kStripePublishableKey;
+  }
 
   // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -119,11 +128,11 @@ class MyApp extends StatelessWidget {
                     RouteNames.signUp: (context) => const SignUpScreen(),
                     RouteNames.driverSignUp: (context) =>
                         const DriverSignUpScreen(),
-                     RouteNames.driverCompleteProfile: (context) =>
-                         const DriverCompleteProfileScreen(),
-                     RouteNames.driverPendingApproval: (context) =>
-                         const DriverPendingApprovalScreen(),
-                     RouteNames.home: (context) => const HomeScreen(),
+                    RouteNames.driverCompleteProfile: (context) =>
+                        const DriverCompleteProfileScreen(),
+                    RouteNames.driverPendingApproval: (context) =>
+                        const DriverPendingApprovalScreen(),
+                    RouteNames.home: (context) => const HomeScreen(),
                     RouteNames.profile: (context) => const HomeScreen(),
                     RouteNames.main: (context) => const MainScreen(),
                     RouteNames.profileSetup: (context) =>
@@ -145,8 +154,7 @@ class MyApp extends StatelessWidget {
                   },
                   onGenerateRoute: (settings) {
                     if (settings.name == RouteNames.phoneAuth) {
-                      final args =
-                          settings.arguments as Map<String, dynamic>?;
+                      final args = settings.arguments as Map<String, dynamic>?;
                       final isLinkPhone = args?['isLinkPhone'] == true;
                       return MaterialPageRoute(
                         settings: settings,

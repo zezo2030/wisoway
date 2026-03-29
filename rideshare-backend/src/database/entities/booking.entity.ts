@@ -55,6 +55,18 @@ export class BookingEntity {
   @Column({ type: 'varchar', nullable: true })
   cancelledBy: string | null;
 
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  seatPriceAtBooking: string | null;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  platformAmount: string | null;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  driverAmount: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  passengerPaymentId: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

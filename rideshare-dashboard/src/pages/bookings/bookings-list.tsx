@@ -119,14 +119,14 @@ export default function BookingsListPage() {
             key: "seat",
             header: "Seat",
             cell: (booking) => {
-                const seatsPerRow = isPopulatedTrip(booking.tripId)
-                    ? booking.tripId.seatLayout?.seatsPerRow
+                const layout = isPopulatedTrip(booking.tripId)
+                    ? booking.tripId.seatLayout
                     : undefined
-                const label = formatSeatDisplay(booking.seatNumber, seatsPerRow)
+                const label = formatSeatDisplay(booking.seatNumber, layout)
                 return (
                     <div
                         className="font-mono font-bold tracking-wider text-sm bg-muted/60 px-2.5 py-1 rounded w-fit border border-border/40 text-foreground"
-                        title={seatsPerRow ? `Server seat id: ${booking.seatNumber}` : booking.seatNumber}
+                        title={layout ? `Server seat id: ${booking.seatNumber}` : booking.seatNumber}
                     >
                         #{label}
                     </div>

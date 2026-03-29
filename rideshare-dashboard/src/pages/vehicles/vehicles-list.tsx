@@ -12,8 +12,9 @@ import { ConfirmDialog } from "@/components/confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { QUERY_KEYS, DASHBOARD_REFRESH_INTERVAL } from "@/lib/constants"
-import { formatDate } from "@/lib/utils"
+import { formatDate, cn } from "@/lib/utils"
 import type { Vehicle, UserSummary } from "@/types/models"
+import { useLanguage } from "@/providers/language-provider"
 import { CheckCircle, XCircle, FileText, AlertCircle, Car, ShieldCheck } from "lucide-react"
 import { toast } from "sonner"
 
@@ -23,6 +24,7 @@ function isPopulatedDriver(driverId: string | UserSummary): driverId is UserSumm
 }
 
 export default function VehiclesListPage() {
+  const { t, language } = useLanguage()
   const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
   const page = parseInt(searchParams.get("page") || "1", 10)
@@ -53,7 +55,7 @@ export default function VehiclesListPage() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.VEHICLES] })
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.DASHBOARD_STATS] })
-      toast.success(variables.isVerified ? "Vehicle verified successfully" : "Vehicle rejected")
+      toast.success(variables.isVerified ? t("userConfirmed") : t("driverRejected"))
       setConfirmDialog({ open: false, vehicle: null, action: null })
     },
     onError: () => {
@@ -96,7 +98,7 @@ export default function VehiclesListPage() {
   const columns: Column<Vehicle>[] = [
     {
       key: "driver",
-      header: "Driver",
+      header: t("driver"),
       cell: (vehicle) => (
         <div className="flex items-center gap-3 py-1">
           {isPopulatedDriver(vehicle.driverId) ? (
@@ -117,7 +119,7 @@ export default function VehiclesListPage() {
     },
     {
       key: "type",
-      header: "Vehicle Info",
+      header: t("vehicleInfo"),
       cell: (vehicle) => (
         <div className="flex flex-col gap-0.5">
           <div className="capitalize font-semibold text-foreground">{vehicle.vehicleType}</div>
@@ -127,7 +129,7 @@ export default function VehiclesListPage() {
     },
     {
       key: "plate",
-      header: "Plate Number",
+      header: t("plateNumber"),
       cell: (vehicle) => (
         <div className="font-mono font-bold tracking-wider text-sm bg-muted/60 px-2.5 py-1 rounded w-fit border border-border/40 text-foreground">
           {vehicle.plateNumber}
@@ -136,12 +138,12 @@ export default function VehiclesListPage() {
     },
     {
       key: "seats",
-      header: "Seats",
+      header: t("seats"),
       cell: (vehicle) => <div className="font-semibold text-foreground">{vehicle.seats}</div>,
     },
     {
       key: "licenseImage",
-      header: "Driver License",
+      header: t("driverLicense"),
       cell: (vehicle) => (
         <div className="flex items-center gap-2">
           {isPdf(vehicle.licenseImageUrl) ? (
@@ -158,7 +160,7 @@ export default function VehiclesListPage() {
           ) : (
             <ImagePreview
               imageUrl={vehicle.licenseImageUrl}
-              alt="Driver License"
+              alt={t("driverLicense")}
               thumbnailClassName="h-12 w-12 sm:h-14 sm:w-14 rounded-lg shadow-sm border border-border/50 object-cover cursor-zoom-in hover:scale-105 transition-transform"
             />
           )}
@@ -167,7 +169,7 @@ export default function VehiclesListPage() {
     },
     {
       key: "vehicleLicense",
-      header: "Vehicle Reg.",
+      header: t("vehicleReg"),
       cell: (vehicle) => (
         <div className="flex items-center gap-2">
           {isPdf(vehicle.vehicleLicenseImageUrl) ? (
@@ -184,7 +186,7 @@ export default function VehiclesListPage() {
           ) : (
             <ImagePreview
               imageUrl={vehicle.vehicleLicenseImageUrl}
-              alt="Vehicle License"
+              alt={t("vehicleReg")}
               thumbnailClassName="h-12 w-12 sm:h-14 sm:w-14 rounded-lg shadow-sm border border-border/50 object-cover cursor-zoom-in hover:scale-105 transition-transform"
             />
           )}
@@ -193,7 +195,7 @@ export default function VehiclesListPage() {
     },
     {
       key: "status",
-      header: "Status",
+      header: t("status"),
       cell: (vehicle) => (
         <StatusBadge
           status={vehicle.isVerified ? "verified" : "unverified"}
@@ -204,12 +206,12 @@ export default function VehiclesListPage() {
     },
     {
       key: "submitted",
-      header: "Submitted",
+      header: t("date"),
       cell: (vehicle) => <div className="text-sm font-medium text-muted-foreground whitespace-nowrap">{formatDate(vehicle.createdAt)}</div>,
     },
     {
       key: "actions",
-      header: "Actions",
+      header: t("actions"),
       className: "w-[170px]",
       cell: (vehicle) => (
         <div className="flex flex-col sm:flex-row gap-2" onClick={(e) => e.stopPropagation()}>
@@ -221,8 +223,8 @@ export default function VehiclesListPage() {
               onClick={() => openConfirmDialog(vehicle, "verify")}
               disabled={verifyMutation.isPending}
             >
-              <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
-              Verify
+              <CheckCircle className={cn("h-3.5 w-3.5", language === "ar" ? "ml-1.5" : "mr-1.5")} />
+              {t("verify")}
             </Button>
           )}
           <Button
@@ -232,8 +234,8 @@ export default function VehiclesListPage() {
             onClick={() => openConfirmDialog(vehicle, vehicle.isVerified ? "reject" : "reject")}
             disabled={verifyMutation.isPending}
           >
-            <XCircle className="mr-1.5 h-3.5 w-3.5" />
-            {vehicle.isVerified ? "Revoke" : "Reject"}
+            <XCircle className={cn("h-3.5 w-3.5", language === "ar" ? "ml-1.5" : "mr-1.5")} />
+            {vehicle.isVerified ? t("revoke") : t("reject")}
           </Button>
         </div>
       ),
@@ -243,10 +245,10 @@ export default function VehiclesListPage() {
   if (error) {
     return (
       <div className="space-y-4 animate-in fade-in duration-500">
-        <h1 className="text-4xl font-extrabold tracking-tight">Vehicles</h1>
+        <h1 className="text-4xl font-extrabold tracking-tight">{t("nav_vehicles")}</h1>
         <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-6 text-destructive flex items-center shadow-sm">
-          <AlertCircle className="w-6 h-6 mr-3" />
-          <span className="font-semibold text-lg">Failed to load vehicles. Please try again.</span>
+          <AlertCircle className={cn("w-6 h-6", language === "ar" ? "ml-3" : "mr-3")} />
+          <span className="font-semibold text-lg">{t("failedToFetchStats")}</span>
         </div>
       </div>
     )
@@ -260,9 +262,9 @@ export default function VehiclesListPage() {
             <ShieldCheck className="w-8 h-8 text-primary" />
           </div>
           <div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-foreground/90 leading-tight">Vehicle Registration</h1>
+            <h1 className="text-4xl font-extrabold tracking-tight text-foreground/90 leading-tight">{t("vehicleRegistration")}</h1>
             <p className="text-muted-foreground mt-1 text-lg font-medium">
-              Review and verify driver vehicle registrations and licenses.
+              {t("vehiclesSubtitle")}
             </p>
           </div>
         </div>
@@ -272,11 +274,11 @@ export default function VehiclesListPage() {
         <CardHeader className="bg-muted/30 border-b border-border/40 pb-5 pt-6 px-6">
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
             <h2 className="text-xl font-bold flex items-center">
-              <Car className="w-5 h-5 mr-3 text-primary" />
-              Verification Queue
+              <Car className={cn("w-5 h-5 text-primary", language === "ar" ? "ml-3" : "mr-3")} />
+              {t("verificationQueue")}
             </h2>
             <div className="text-sm font-semibold bg-background/80 px-3 py-1.5 rounded-full border border-border/50 shadow-sm">
-              <span className="text-muted-foreground">Total Displayed:</span> <span className="text-foreground ml-1">{data?.data?.length || 0}</span>
+              <span className="text-muted-foreground">{t("totalDisplayed")}:</span> <span className="text-foreground ml-1">{data?.data?.length || 0}</span>
             </div>
           </div>
         </CardHeader>
@@ -292,7 +294,7 @@ export default function VehiclesListPage() {
               onPageChange={handlePageChange}
               pageSize={limit}
               loading={isLoading}
-              emptyMessage="Awesome! No vehicles are currently pending verification."
+              emptyMessage={t("noVehiclesPending")}
             />
           </div>
         </CardContent>
@@ -306,17 +308,17 @@ export default function VehiclesListPage() {
         }
         title={
           confirmDialog.action === "verify"
-            ? "Verify Vehicle Request"
+            ? t("verifyConfirmTitle")
             : confirmDialog.vehicle?.isVerified
-              ? "Revoke Vehicle Verification"
-              : "Reject Vehicle Request"
+              ? t("revokeConfirmTitle")
+              : t("rejectConfirmTitle")
         }
         description={
           confirmDialog.action === "verify"
-            ? "Are you sure you want to approve and verify this vehicle? The driver will be notified and can start accepting trips immediately."
+            ? t("verifyConfirmDesc")
             : confirmDialog.vehicle?.isVerified
-              ? "Are you sure you want to revoke the verification for this vehicle? The driver will not be able to use this vehicle for trips until it is verified again."
-              : "Are you sure you want to reject this vehicle submission? The driver will be notified and can resubmit their documents."
+              ? t("revokeConfirmDesc")
+              : t("rejectConfirmDesc")
         }
         variant={confirmDialog.action === "reject" || (confirmDialog.action === "reject" && confirmDialog.vehicle?.isVerified) ? "destructive" : "default"}
         onConfirm={handleConfirmAction}

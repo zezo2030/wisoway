@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query"
 import { getTrips } from "@/api/admin"
 import { DataTable, type Column } from "@/components/data-table"
 import { StatusBadge } from "@/components/status-badge"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Select,
   SelectContent,
@@ -15,10 +15,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { QUERY_KEYS } from "@/lib/constants"
-import { formatDate, formatCurrency, getTripLocationName } from "@/lib/utils"
+import { formatDate, formatCurrency, getTripLocationName, cn } from "@/lib/utils"
 import { TripStatus } from "@/types/enums"
 import type { Trip, UserSummary } from "@/types/models"
-import { Car, Navigation, Filter, MapPin, Calendar, Users, DollarSign, ArrowLeftRight } from "lucide-react"
+import { useLanguage } from "@/providers/language-provider"
+import { Car, Navigation, Filter, MapPin, Calendar, Users, ArrowLeftRight } from "lucide-react"
 
 // Type guard for populated fields
 function isPopulatedDriver(driverId: string | UserSummary): driverId is UserSummary {
@@ -40,6 +41,7 @@ function getDriverName(driverId: string | UserSummary): string | null {
 
 export default function TripsListPage() {
   const navigate = useNavigate()
+  const { t, language } = useLanguage()
   const [searchParams, setSearchParams] = useSearchParams()
   const page = parseInt(searchParams.get("page") || "1", 10)
   const limit = 20
@@ -87,7 +89,7 @@ export default function TripsListPage() {
   const columns: Column<Trip>[] = [
     {
       key: "route",
-      header: "Route",
+      header: t("route"),
       cell: (trip) => {
         const fromName = getTripLocationName(trip as Record<string, unknown>, "from")
         const toName = getTripLocationName(trip as Record<string, unknown>, "to")
@@ -107,7 +109,7 @@ export default function TripsListPage() {
     },
     {
       key: "driver",
-      header: "Driver",
+      header: t("driver"),
       cell: (trip) => {
         const driverName = getDriverName(trip.driverId)
         return (
@@ -128,26 +130,26 @@ export default function TripsListPage() {
     },
     {
       key: "departure",
-      header: "Departure",
+      header: t("departure"),
       cell: (trip) => (
         <div className="flex items-center text-sm font-medium text-muted-foreground">
-          <Calendar className="w-3.5 h-3.5 mr-1.5 opacity-70" />
+          <Calendar className={cn("w-3.5 h-3.5 opacity-70", language === "ar" ? "ml-1.5" : "mr-1.5")} />
           {formatDate(trip.departureTime)}
         </div>
       )
     },
     {
       key: "status",
-      header: "Status",
+      header: t("status"),
       cell: (trip) => <StatusBadge status={trip.status} type="trip" className="shadow-sm" />,
     },
     {
       key: "seats",
-      header: "Available Seats",
+      header: t("seats"),
       cell: (trip) => (
         <div className="flex items-center gap-2">
           <div className="flex items-center bg-muted/60 px-2.5 py-1 rounded-md border border-border/40">
-            <Users className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
+            <Users className={cn("w-3.5 h-3.5 text-muted-foreground", language === "ar" ? "ml-1.5" : "mr-1.5")} />
             <span className="font-bold text-foreground">{trip.availableSeats}</span>
             <span className="text-muted-foreground mx-0.5">/</span>
             <span className="font-bold text-muted-foreground">{trip.totalSeats}</span>
@@ -157,7 +159,7 @@ export default function TripsListPage() {
     },
     {
       key: "price",
-      header: "Price",
+      header: t("price"),
       cell: (trip) => (
         <div className="font-black text-emerald-600 dark:text-emerald-400 flex items-center">
           {formatCurrency(trip.price, trip.currency)}
@@ -166,7 +168,7 @@ export default function TripsListPage() {
     },
     {
       key: "created",
-      header: "Created",
+      header: t("registered"),
       cell: (trip) => <div className="text-sm font-medium text-muted-foreground">{formatDate(trip.createdAt)}</div>,
     },
   ]
@@ -179,9 +181,9 @@ export default function TripsListPage() {
             <Car className="w-8 h-8 text-primary" />
           </div>
           <div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-foreground/90 leading-tight">Trips Overview</h1>
+            <h1 className="text-4xl font-extrabold tracking-tight text-foreground/90 leading-tight">{t("tripsOverview")}</h1>
             <p className="text-muted-foreground mt-1 text-lg font-medium">
-              Monitor, filter, and manage all scheduled and past trips on the platform.
+              {t("tripsSubtitle")}
             </p>
           </div>
         </div>
@@ -192,31 +194,31 @@ export default function TripsListPage() {
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
             <div className="flex items-center gap-2">
               <CardTitle className="text-xl font-bold flex items-center">
-                <MapPin className="w-5 h-5 mr-2 text-primary" />
-                Active Directory
+                <MapPin className={cn("w-5 h-5 text-primary", language === "ar" ? "ml-2" : "mr-2")} />
+                {t("activeDirectory")}
               </CardTitle>
             </div>
 
             {/* Filters Row */}
             <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3 items-center">
               <div className="flex items-center text-sm font-semibold text-muted-foreground mr-1">
-                <Filter className="w-4 h-4 mr-1.5" /> Filters:
+                <Filter className={cn("w-4 h-4", language === "ar" ? "ml-1.5" : "mr-1.5")} /> {t("filter")}:
               </div>
 
               <Select
                 value={statusFilter || "all"}
                 onValueChange={(value) => updateSearchParams({ status: value === "all" ? null : value })}
               >
-                <SelectTrigger className="w-full sm:w-[160px] bg-background/80 border-border/50 rounded-full font-medium shadow-sm">
-                  <SelectValue placeholder="All Status" />
+                <SelectTrigger className="w-full sm:w-[160px] bg-background/80 border-border/50 rounded-full font-medium shadow-sm px-4">
+                  <SelectValue placeholder={t("allStatus")} />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl shadow-lg border-border/50">
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value={TripStatus.ACTIVE}>Active</SelectItem>
-                  <SelectItem value={TripStatus.HIDDEN}>Hidden</SelectItem>
-                  <SelectItem value={TripStatus.COMPLETED}>Completed</SelectItem>
-                  <SelectItem value={TripStatus.CANCELLED}>Cancelled</SelectItem>
-                  <SelectItem value={TripStatus.EXPIRED}>Expired</SelectItem>
+                  <SelectItem value="all">{t("allStatus")}</SelectItem>
+                  <SelectItem value={TripStatus.ACTIVE}>{t("active")}</SelectItem>
+                  <SelectItem value={TripStatus.HIDDEN}>{t("nav_notifications")}</SelectItem>
+                  <SelectItem value={TripStatus.COMPLETED}>{t("completed")}</SelectItem>
+                  <SelectItem value={TripStatus.CANCELLED}>{t("cancelled")}</SelectItem>
+                  <SelectItem value={TripStatus.EXPIRED}>{t("expired")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -234,7 +236,7 @@ export default function TripsListPage() {
               onPageChange={handlePageChange}
               pageSize={limit}
               loading={isLoading}
-              emptyMessage="No trips found matching the current criteria."
+              emptyMessage={t("noTripsFound")}
               onRowClick={handleRowClick}
             />
           </div>

@@ -15,6 +15,7 @@ import VehiclesListPage from "@/pages/vehicles/vehicles-list"
 import TripsListPage from "@/pages/trips/trips-list"
 import TripDetailPage from "@/pages/trips/trip-detail"
 import ReportsPage from "@/pages/reports/reports"
+import PricingSettingsPage from "@/pages/settings/pricing-settings"
 import BookingsListPage from "@/pages/bookings/bookings-list"
 import RatingsListPage from "@/pages/ratings/ratings-list"
 import NotificationsPage from "@/pages/notifications/notifications"
@@ -113,6 +114,10 @@ export function AppRoutes() {
         {
           path: "reports",
           element: <ReportsPage />,
+        },
+        {
+          path: "settings/pricing",
+          element: <PricingSettingsPage />,
         },
       ],
     },

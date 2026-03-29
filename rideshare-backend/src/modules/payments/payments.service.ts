@@ -23,6 +23,8 @@ import { PaginatedResult } from '../../common/interfaces/paginated-result.interf
 import { StripeService } from './stripe.service';
 import { A2aCliqService } from './a2a-cliq.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PlatformPricingService } from './platform-pricing.service';
+import Stripe from 'stripe';
 
 @Injectable()
 export class PaymentsService {
@@ -39,6 +41,7 @@ export class PaymentsService {
     private stripeService: StripeService,
     private notificationsService: NotificationsService,
     private a2aCliqService: A2aCliqService,
+    private platformPricing: PlatformPricingService,
   ) {}
 
   /**
@@ -121,12 +124,26 @@ export class PaymentsService {
   }
 
   async verifyAndHandleStripeWebhook(
-    _rawBody: string | Buffer,
-    _signature: string,
+    rawBody: string | Buffer,
+    signature: string,
   ): Promise<void> {
-    this.logger.log('Stripe webhook not yet migrated to Postgres.');
+    const event = await this.stripeService.handleWebhookEvent(
+      rawBody,
+      signature,
+    );
+    if (event.type === 'payment_intent.succeeded') {
+      const pi = event.data.object as Stripe.PaymentIntent;
+      await this.paymentRepo.update(
+        { paymentGatewayRef: pi.id },
+        { status: 'approved' },
+      );
+      this.logger.log(`Stripe PI ${pi.id} marked approved from webhook`);
+    }
   }
 
+  /**
+   * Legacy / admin: amount supplied by caller. Prefer createPassengerSeatPaymentIntent for bookings.
+   */
   async createStripePaymentIntent(
     amount: number,
     currency: string,
@@ -137,6 +154,148 @@ export class PaymentsService {
       bookingId: bookingId || '',
       paymentType: paymentType || 'trip',
     });
+  }
+
+  async createPassengerSeatPaymentIntent(params: {
+    tripId: string;
+    seatNumber: string;
+    userId: string;
+    countryCode?: string;
+  }): Promise<{
+    clientSecret: string;
+    paymentIntentId: string;
+    platformAmount: number;
+    driverAmount: number;
+    currency: string;
+  }> {
+    const { tripId, seatNumber, userId, countryCode = 'EG' } = params;
+    const trip = await this.tripRepo.findOne({ where: { id: tripId } });
+    if (!trip) {
+      throw new NotFoundException('Trip not found');
+    }
+    if (trip.driverId === userId) {
+      throw new BadRequestException('Cannot book your own trip');
+    }
+    const seats = trip.seats || [];
+    const seat = seats.find((s: { seatNumber?: string }) => s.seatNumber === seatNumber);
+    if (!seat || seat.status !== 'available') {
+      throw new BadRequestException('Seat is not available');
+    }
+
+    const feeRow = await this.platformPricing.getActiveFeeRow(countryCode);
+    const pricing = this.platformPricing.passengerSeatPricing(
+      Number(trip.price ?? 0),
+      trip.currency ?? 'EGP',
+      feeRow,
+    );
+    if (!pricing.requiresOnlinePayment) {
+      throw new BadRequestException(
+        'No platform fee is configured for this region; complete booking without online payment.',
+      );
+    }
+
+    const { clientSecret, paymentIntentId } =
+      await this.stripeService.createPaymentIntent(
+        pricing.platformAmount,
+        trip.currency ?? 'EGP',
+        {
+          tripId,
+          seatNumber,
+          userId,
+          paymentType: 'trip_platform',
+        },
+      );
+
+    const payment = this.paymentRepo.create({
+      userId,
+      tripId,
+      bookingId: null,
+      amount: pricing.platformAmount,
+      currency: pricing.currency,
+      method: 'stripe',
+      status: 'pending',
+      paymentType: 'trip_platform',
+      direction: 'credit',
+      paymentGatewayRef: paymentIntentId,
+    });
+    await this.paymentRepo.save(payment);
+
+    return {
+      clientSecret,
+      paymentIntentId,
+      platformAmount: pricing.platformAmount,
+      driverAmount: pricing.driverAmount,
+      currency: pricing.currency,
+    };
+  }
+
+  /**
+   * After Stripe confirms payment, validate and return the payment row for linking to a booking.
+   */
+  async resolvePassengerPaymentIntentForBooking(params: {
+    paymentIntentId: string;
+    userId: string;
+    tripId: string;
+    seatNumber: string;
+    countryCode?: string;
+  }): Promise<{ payment: PaymentEntity; platformAmount: number; driverAmount: number }> {
+    const { paymentIntentId, userId, tripId, seatNumber, countryCode = 'EG' } =
+      params;
+
+    const trip = await this.tripRepo.findOne({ where: { id: tripId } });
+    if (!trip) {
+      throw new NotFoundException('Trip not found');
+    }
+
+    const feeRow = await this.platformPricing.getActiveFeeRow(countryCode);
+    const pricing = this.platformPricing.passengerSeatPricing(
+      Number(trip.price ?? 0),
+      trip.currency ?? 'EGP',
+      feeRow,
+    );
+    if (!pricing.requiresOnlinePayment) {
+      throw new BadRequestException('Online payment is not required for this trip');
+    }
+
+    const pi = await this.stripeService.retrievePaymentIntent(paymentIntentId);
+    if (pi.status !== 'succeeded') {
+      throw new BadRequestException('Payment has not completed successfully');
+    }
+
+    const meta = pi.metadata || {};
+    if (
+      meta.tripId !== tripId ||
+      meta.seatNumber !== seatNumber ||
+      meta.userId !== userId ||
+      meta.paymentType !== 'trip_platform'
+    ) {
+      throw new BadRequestException('Payment does not match this booking request');
+    }
+
+    const expectedCents = Math.round(pricing.platformAmount * 100);
+    const paid = pi.amount_received ?? pi.amount;
+    if (paid !== expectedCents) {
+      throw new BadRequestException('Paid amount does not match expected platform fee');
+    }
+
+    const payment = await this.paymentRepo.findOne({
+      where: { paymentGatewayRef: paymentIntentId, userId },
+    });
+    if (!payment) {
+      throw new BadRequestException('Payment record not found for this intent');
+    }
+    if (payment.bookingId) {
+      throw new BadRequestException('This payment has already been used for a booking');
+    }
+
+    payment.status = 'approved';
+    await this.paymentRepo.save(payment);
+
+    return {
+      payment,
+      platformAmount: pricing.platformAmount,
+      driverAmount: pricing.driverAmount,
+    };
   }
 
   async chargeDriverWalletForTrip(
@@ -171,15 +330,20 @@ export class PaymentsService {
     const communicationFee = await this.communicationFeeRepo.findOne({
       where: { countryCode, isActive: true },
     });
-    const feeAmount = Number(communicationFee?.feeAmount ?? 0);
-    const currency =
-      communicationFee?.currency ?? driver.walletCurrency ?? 'EGP';
+    const unlock = this.platformPricing.driverUnlockPricing(
+      trip,
+      communicationFee,
+    );
+    const feeAmount = unlock.feeAmount;
+    const currency = unlock.currency ?? driver.walletCurrency ?? 'EGP';
+    const lifetimeFreeEnabled =
+      communicationFee?.lifetimeFreeTripEnabled !== false;
 
     const qr = this.dataSource.createQueryRunner();
     await qr.connect();
     await qr.startTransaction();
     try {
-      if (!driver.hasUsedLifetimeFreeTrip) {
+      if (lifetimeFreeEnabled && !driver.hasUsedLifetimeFreeTrip) {
         await qr.manager.update(
           UserEntity,
           { id: driverId },
@@ -202,11 +366,28 @@ export class PaymentsService {
       }
 
       const balance = Number(driver.walletBalance ?? 0);
-      if (balance < feeAmount) {
+      if (feeAmount > 0 && balance < feeAmount) {
         await qr.rollbackTransaction();
         throw new BadRequestException(
           'Insufficient wallet balance. Please top up your wallet to confirm bookings and view passenger details.',
         );
+      }
+
+      if (feeAmount <= 0) {
+        await qr.manager.update(
+          TripEntity,
+          { id: tripId },
+          {
+            driverWalletChargeApplied: true,
+            driverWalletChargeAt: new Date(),
+            communicationFeeStatus: 'paid',
+          },
+        );
+        await qr.commitTransaction();
+        this.logger.log(
+          `Zero unlock fee for driver ${driverId}, trip ${tripId}; marked paid.`,
+        );
+        return;
       }
 
       await qr.manager

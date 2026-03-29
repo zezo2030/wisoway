@@ -25,6 +25,7 @@ export class ValidationPipe implements PipeTransform<any> {
       const errorMessages = this.flattenValidationErrors(errors);
 
       throw new BadRequestException({
+        message: 'Validation failed',
         success: false,
         error: {
           code: 400,

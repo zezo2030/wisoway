@@ -20,6 +20,7 @@ export const ROUTES = {
   NOTIFICATIONS: "/notifications",
   CHAT: "/chat",
   REPORTS: "/reports",
+  PRICING_SETTINGS: "/settings/pricing",
 } as const
 
 // Navigation Items (for sidebar)
@@ -35,6 +36,7 @@ export const NAV_ITEMS = [
   { path: ROUTES.NOTIFICATIONS, label: "Notifications", icon: "Bell" },
   { path: ROUTES.CHAT, label: "Chat", icon: "MessageSquare" },
   { path: ROUTES.REPORTS, label: "Reports", icon: "BarChart3" },
+  { path: ROUTES.PRICING_SETTINGS, label: "Pricing", icon: "Percent" },
 ] as const
 
 // Page Sizes for Pagination
@@ -79,6 +81,7 @@ export const PAYMENT_METHOD_LABELS = {
 
 export const PAYMENT_TYPE_LABELS = {
   trip: "Trip",
+  trip_platform: "Trip (platform fee)",
   communication_fee: "Communication Fee",
 } as const
 

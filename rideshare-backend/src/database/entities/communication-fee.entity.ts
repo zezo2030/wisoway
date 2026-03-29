@@ -25,6 +25,17 @@ export class CommunicationFeeEntity {
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
+  /** Percent of seat price collected by platform from passenger (0–100). */
+  @Column({ type: 'decimal', precision: 5, scale: 2, default: 0 })
+  passengerPlatformPercent: number;
+
+  /** Percent of (seat price × total seats) charged from driver wallet to unlock passengers. */
+  @Column({ type: 'decimal', precision: 5, scale: 2, default: 0 })
+  driverUnlockPercent: number;
+
+  @Column({ type: 'boolean', default: true })
+  lifetimeFreeTripEnabled: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -11,6 +11,8 @@ import {
   Min,
   Max,
   ValidateNested,
+  IsArray,
+  ArrayMaxSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -47,12 +49,21 @@ export class SeatLayoutDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(6)
+  @Max(10)
   seatsPerRow: number;
 
   @IsOptional()
   @IsBoolean()
   preventGenderMixing?: boolean;
+
+  /** Variable seats per row (mobile app custom layout); when set, used to build the seat grid. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsInt({ each: true })
+  @Min(1, { each: true })
+  @Max(10, { each: true })
+  seatsPerRowList?: number[];
 }
 
 export class CreateTripDto {

@@ -245,6 +245,22 @@ class PaymentService {
     }
   }
 
+  /// Stripe PaymentIntent for passenger platform share (amount computed on server).
+  Future<Map<String, dynamic>> createPassengerSeatPaymentIntent({
+    required String tripId,
+    required String seatNumber,
+  }) async {
+    final response = await _api.post(
+      ApiEndpoints.stripePassengerIntent,
+      data: {
+        'tripId': tripId,
+        'seatNumber': seatNumber,
+      },
+    );
+    final data = response['data'] ?? response;
+    return Map<String, dynamic>.from(data as Map);
+  }
+
   // Helper method for file uploads
   Future<String> uploadFile(File file) async {
     try {
