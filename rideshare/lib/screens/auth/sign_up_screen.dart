@@ -134,108 +134,109 @@ class _SignUpScreenState extends State<SignUpScreen>
             child: Column(
               children: [
                 _buildHeader(roleTitle),
-              Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 480),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        ModernInputField(
-                          controller: _nameController,
-                          label: 'الاسم الكامل',
-                          hint: 'أدخل اسمك بالكامل',
-                          icon: IconsaxPlusLinear.user,
-                          validator: (v) => (v == null || v.length < 3)
-                              ? 'يرجى إدخال اسم صحيح'
-                              : null,
-                      ),
-                      const SizedBox(height: 16),
-                      ModernInputField(
-                        controller: _emailController,
-                        label: 'البريد الإلكتروني',
-                        hint: 'example@email.com',
-                        icon: IconsaxPlusLinear.sms,
-                        keyboardType: TextInputType.emailAddress,
-                        validator: (v) => (v == null || !v.contains('@'))
-                            ? 'بريد إلكتروني غير صحيح'
-                            : null,
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
+                Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 480),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          CountryCodePicker(
-                            selectedCountry: _selectedCountry,
-                            onCountryChanged: (country) =>
-                                setState(() => _selectedCountry = country),
-                            borderColor: T
-                                .primary(context)
-                                .withValues(alpha: 0.3),
+                          ModernInputField(
+                            controller: _nameController,
+                            label: 'الاسم الكامل',
+                            hint: 'أدخل اسمك بالكامل',
+                            icon: IconsaxPlusLinear.user,
+                            validator: (v) => (v == null || v.length < 3)
+                                ? 'يرجى إدخال اسم صحيح'
+                                : null,
                           ),
-                          const SizedBox(width: 12),
-                          // Phone number input
-                          Expanded(
-                            child: ModernInputField(
-                              controller: _phoneController,
-                              label: 'رقم الهاتف',
-                              hint: '1234567890',
-                              icon: IconsaxPlusLinear.call,
-                              keyboardType: TextInputType.phone,
-                              validator: (v) {
-                                if (v == null || v.isEmpty) {
-                                  return 'يرجى إدخال رقم الهاتف';
-                                }
-                                if (!RegExp(r'^\d{7,15}$').hasMatch(v)) {
-                                  return 'رقم هاتف غير صحيح';
-                                }
-                                return null;
-                              },
+                          const SizedBox(height: 16),
+                          ModernInputField(
+                            controller: _emailController,
+                            label: 'البريد الإلكتروني',
+                            hint: 'example@email.com',
+                            icon: IconsaxPlusLinear.sms,
+                            keyboardType: TextInputType.emailAddress,
+                            validator: (v) => (v == null || !v.contains('@'))
+                                ? 'بريد إلكتروني غير صحيح'
+                                : null,
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              CountryCodePicker(
+                                selectedCountry: _selectedCountry,
+                                onCountryChanged: (country) =>
+                                    setState(() => _selectedCountry = country),
+                                borderColor: T
+                                    .primary(context)
+                                    .withValues(alpha: 0.3),
+                              ),
+                              const SizedBox(width: 12),
+                              // Phone number input
+                              Expanded(
+                                child: ModernInputField(
+                                  controller: _phoneController,
+                                  label: 'رقم الهاتف',
+                                  hint: '1234567890',
+                                  icon: IconsaxPlusLinear.call,
+                                  keyboardType: TextInputType.phone,
+                                  validator: (v) {
+                                    if (v == null || v.isEmpty) {
+                                      return 'يرجى إدخال رقم الهاتف';
+                                    }
+                                    if (!RegExp(r'^\d{7,15}$').hasMatch(v)) {
+                                      return 'رقم هاتف غير صحيح';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          ModernInputField(
+                            controller: _passwordController,
+                            label: 'كلمة المرور',
+                            hint: '********',
+                            icon: IconsaxPlusLinear.lock,
+                            obscureText: _obscurePassword,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? IconsaxPlusLinear.eye_slash
+                                    : IconsaxPlusLinear.eye,
+                              ),
+                              tooltip: 'إظهار/إخفاء كلمة المرور',
+                              onPressed: () => setState(
+                                () => _obscurePassword = !_obscurePassword,
+                              ),
                             ),
+                            validator: (v) => (v == null || v.length < 8)
+                                ? '8 أحرف على الأقل'
+                                : null,
                           ),
+                          const SizedBox(height: 24),
+                          const SectionTitle(title: 'الجنس', isRequired: true),
+                          const SizedBox(height: 12),
+                          _buildGenderSelection(),
+                          const SizedBox(height: 32),
+                          PrimaryGradientButton(
+                            onPressed: _isLoading ? null : _signUp,
+                            text: 'إنشاء حساب $roleTitle',
+                            isLoading: _isLoading,
+                          ),
+                          const SizedBox(height: 24),
+                          _buildFooter(),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      ModernInputField(
-                        controller: _passwordController,
-                        label: 'كلمة المرور',
-                        hint: '********',
-                        icon: IconsaxPlusLinear.lock,
-                        obscureText: _obscurePassword,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? IconsaxPlusLinear.eye_slash
-                                : IconsaxPlusLinear.eye,
-                          ),
-                          tooltip: 'إظهار/إخفاء كلمة المرور',
-                          onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword,
-                          ),
-                        ),
-                        validator: (v) => (v == null || v.length < 8)
-                            ? '8 أحرف على الأقل'
-                            : null,
-                      ),
-                      const SizedBox(height: 24),
-                      const SectionTitle(title: 'الجنس', isRequired: true),
-                      const SizedBox(height: 12),
-                      _buildGenderSelection(),
-                      const SizedBox(height: 32),
-                      PrimaryGradientButton(
-                        onPressed: _isLoading ? null : _signUp,
-                        text: 'إنشاء حساب $roleTitle',
-                        isLoading: _isLoading,
-                      ),
-                      const SizedBox(height: 24),
-                      _buildFooter(),
-                    ],
+                    ),
                   ),
                 ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

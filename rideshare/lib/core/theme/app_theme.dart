@@ -112,18 +112,42 @@ class AppTheme {
       ),
       textTheme: GoogleFonts.tajawalTextTheme(
         TextTheme(
-          headlineLarge: AppTextStyles.headlineLarge,
-          headlineMedium: AppTextStyles.headlineMedium,
-          headlineSmall: AppTextStyles.headlineSmall,
-          titleLarge: AppTextStyles.titleLarge,
-          titleMedium: AppTextStyles.titleMedium,
-          titleSmall: AppTextStyles.titleSmall,
-          bodyLarge: AppTextStyles.bodyLarge,
-          bodyMedium: AppTextStyles.bodyMedium,
-          bodySmall: AppTextStyles.bodySmall,
-          labelLarge: AppTextStyles.labelLarge,
-          labelMedium: AppTextStyles.labelMedium,
-          labelSmall: AppTextStyles.labelSmall,
+          headlineLarge: AppTextStyles.headlineLarge.copyWith(
+            color: colors.textPrimary,
+          ),
+          headlineMedium: AppTextStyles.headlineMedium.copyWith(
+            color: colors.textPrimary,
+          ),
+          headlineSmall: AppTextStyles.headlineSmall.copyWith(
+            color: colors.textPrimary,
+          ),
+          titleLarge: AppTextStyles.titleLarge.copyWith(
+            color: colors.textPrimary,
+          ),
+          titleMedium: AppTextStyles.titleMedium.copyWith(
+            color: colors.textPrimary,
+          ),
+          titleSmall: AppTextStyles.titleSmall.copyWith(
+            color: colors.textPrimary,
+          ),
+          bodyLarge: AppTextStyles.bodyLarge.copyWith(
+            color: colors.textPrimary,
+          ),
+          bodyMedium: AppTextStyles.bodyMedium.copyWith(
+            color: colors.textPrimary,
+          ),
+          bodySmall: AppTextStyles.bodySmall.copyWith(
+            color: colors.textSecondary,
+          ),
+          labelLarge: AppTextStyles.labelLarge.copyWith(
+            color: colors.textPrimary,
+          ),
+          labelMedium: AppTextStyles.labelMedium.copyWith(
+            color: colors.textPrimary,
+          ),
+          labelSmall: AppTextStyles.labelSmall.copyWith(
+            color: colors.textSecondary,
+          ),
         ),
       ),
       fontFamily: GoogleFonts.tajawal().fontFamily,

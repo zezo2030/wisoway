@@ -276,22 +276,26 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildScaffoldWithBottomNav(BuildContext context, user) {
-    final pages = [
-      HomeTabContent(
-        user: user,
-        userLocation: _userLocation,
-        isLoadingLocation: _isLoadingLocation,
-        onOpenDrawer: () => Scaffold.of(context).openDrawer(),
-        onRefreshLocation: _loadUserLocation,
-        onChangeLocation: _changeLocation,
-      ),
-      const SearchTab(),
-      BookingsTab(user: user),
-      ProfileTab(user: user),
-    ];
-
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: pages),
+      body: Builder(
+        builder: (scaffoldBodyContext) {
+          final pages = [
+            HomeTabContent(
+              user: user,
+              userLocation: _userLocation,
+              isLoadingLocation: _isLoadingLocation,
+              onOpenDrawer: () =>
+                  Scaffold.of(scaffoldBodyContext).openDrawer(),
+              onRefreshLocation: _loadUserLocation,
+              onChangeLocation: _changeLocation,
+            ),
+            const SearchTab(),
+            BookingsTab(user: user),
+            ProfileTab(user: user),
+          ];
+          return IndexedStack(index: _currentIndex, children: pages);
+        },
+      ),
       bottomNavigationBar: _buildBottomNavigationBar(user),
       drawer: HomeDrawer(
         user: user,
