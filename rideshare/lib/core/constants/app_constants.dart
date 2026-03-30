@@ -69,6 +69,20 @@ class AppConstants {
   static const String keyLanguage = 'language';
   static const String keyTheme = 'theme';
 
+  // Notification Preference Keys
+  static const String keyNotifPushEnabled = 'notif_push_enabled';
+  static const String keyNotifSound = 'notif_sound';
+  static const String keyNotifVibration = 'notif_vibration';
+  static const String keyNotifTrips = 'notif_trips';
+  static const String keyNotifPayments = 'notif_payments';
+  static const String keyNotifMessages = 'notif_messages';
+  static const String keyNotifSystem = 'notif_system';
+
+  // Privacy Preference Keys
+  static const String keyPrivacyLocationSharing = 'privacy_location_sharing';
+  static const String keyPrivacyShowOnline = 'privacy_show_online';
+  static const String keyPrivacyShowRating = 'privacy_show_rating';
+
   // Languages
   static const String langArabic = 'ar';
   static const String langEnglish = 'en';
