@@ -129,24 +129,28 @@ class _SignUpScreenState extends State<SignUpScreen>
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: SingleChildScrollView(
-          child: Column(
-            children: [
-              _buildHeader(roleTitle),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: Column(
+              children: [
+                _buildHeader(roleTitle),
               Padding(
                 padding: const EdgeInsets.all(24.0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      ModernInputField(
-                        controller: _nameController,
-                        label: 'الاسم الكامل',
-                        hint: 'أدخل اسمك بالكامل',
-                        icon: IconsaxPlusLinear.user,
-                        validator: (v) => (v == null || v.length < 3)
-                            ? 'يرجى إدخال اسم صحيح'
-                            : null,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 480),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ModernInputField(
+                          controller: _nameController,
+                          label: 'الاسم الكامل',
+                          hint: 'أدخل اسمك بالكامل',
+                          icon: IconsaxPlusLinear.user,
+                          validator: (v) => (v == null || v.length < 3)
+                              ? 'يرجى إدخال اسم صحيح'
+                              : null,
                       ),
                       const SizedBox(height: 16),
                       ModernInputField(
@@ -228,6 +232,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                       _buildFooter(),
                     ],
                   ),
+                ),
                 ),
               ),
             ],

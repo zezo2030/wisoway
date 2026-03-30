@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/trip_model.dart';
 import '../models/seat_data.dart';
 import '../utils/seat_validation.dart';
+import '../core/theme/colors.dart';
 
 class SeatLayoutWidget extends StatelessWidget {
   final TripModel trip;
@@ -179,8 +180,8 @@ class _SeatWidget extends StatelessWidget {
             color: backgroundColor,
             borderRadius: BorderRadius.circular(8),
             border: isSelected
-                ? Border.all(color: Colors.green[700]!, width: 2)
-                : Border.all(color: Colors.grey[300]!, width: 1),
+                ? Border.all(color: AppColors.success, width: 2)
+                : Border.all(color: AppColors.slate300, width: 1),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -211,7 +212,7 @@ class _SeatLegend extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
+        color: AppColors.slate100,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Wrap(
@@ -219,11 +220,11 @@ class _SeatLegend extends StatelessWidget {
         runSpacing: 8,
         alignment: WrapAlignment.center,
         children: [
-          _LegendItem(color: Colors.grey[200]!, label: 'متاح'),
-          _LegendItem(color: Colors.green, label: 'محدد'),
-          _LegendItem(color: Colors.red[300]!, label: 'محجوز'),
+          _LegendItem(color: AppColors.slate200, label: 'متاح'),
+          _LegendItem(color: AppColors.success, label: 'محدد'),
+          _LegendItem(color: AppColors.errorLight, label: 'محجوز'),
           _LegendItem(
-            color: Colors.amber.shade200,
+            color: AppColors.warningLight,
             label: 'مقفل (خارج التطبيق)',
           ),
           _LegendItem(color: Colors.orange[200]!, label: 'غير متاح'),
@@ -252,11 +253,14 @@ class _LegendItem extends StatelessWidget {
             decoration: BoxDecoration(
               color: color,
               borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: Colors.grey[300]!),
+              border: Border.all(color: AppColors.slate300),
             ),
           ),
           const SizedBox(width: 4),
-          Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+          Text(
+            label,
+            style: TextStyle(fontSize: 12, color: AppColors.slate700),
+          ),
         ],
       ),
     );

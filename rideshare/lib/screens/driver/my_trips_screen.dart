@@ -77,7 +77,7 @@ class _MyTripsScreenState extends State<MyTripsScreen>
     return Scaffold(
       backgroundColor: T.surface(context),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.white,
         elevation: 0,
         centerTitle: true,
         title: Text(
@@ -190,10 +190,13 @@ class _MyTripsScreenState extends State<MyTripsScreen>
           },
           tooltip: 'رحلة جديدة',
           backgroundColor: T.primary(context),
-          icon: const Icon(IconsaxPlusBold.add, color: Colors.white),
+          icon: const Icon(IconsaxPlusBold.add, color: AppColors.white),
           label: const Text(
             'رحلة جديدة',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: AppColors.white,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ),
@@ -237,19 +240,22 @@ class _TripCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: AppColors.black.withValues(alpha: 0.06),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
         ],
-        border: Border.all(color: Colors.grey.withOpacity(0.1), width: 1.5),
+        border: Border.all(
+          color: AppColors.slate200.withValues(alpha: 0.5),
+          width: 1.5,
+        ),
       ),
       child: Material(
-        color: Colors.transparent,
+        color: AppColors.transparent,
         borderRadius: BorderRadius.circular(24),
         child: Semantics(
           button: true,
@@ -443,8 +449,8 @@ class _TripCard extends StatelessWidget {
                             child: Container(
                               height: 1.5,
                               color: index % 2 == 0
-                                  ? Colors.grey.withOpacity(0.3)
-                                  : Colors.transparent,
+                                  ? AppColors.slate400.withValues(alpha: 0.3)
+                                  : AppColors.transparent,
                             ),
                           ),
                         ),

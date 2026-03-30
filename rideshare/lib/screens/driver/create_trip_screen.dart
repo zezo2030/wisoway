@@ -764,7 +764,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
           duration: const Duration(milliseconds: 300),
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isActive ? AppColors.white : Colors.transparent,
+            color: isActive ? AppColors.white : AppColors.transparent,
             borderRadius: BorderRadius.circular(12),
             boxShadow: isActive
                 ? [
@@ -1107,7 +1107,9 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                 child: GestureDetector(
                   onTap: onDecrease,
                   child: Container(
-                    padding: const EdgeInsets.all(6),
+                    width: 44,
+                    height: 44,
+                    alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: onDecrease == null
                           ? AppColors.slate100
@@ -1117,7 +1119,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                     ),
                     child: Icon(
                       Icons.remove,
-                      size: 16,
+                      size: 20,
                       color: onDecrease == null
                           ? AppColors.slate400
                           : T.onSurface(context),
@@ -1140,7 +1142,9 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                 child: GestureDetector(
                   onTap: onIncrease,
                   child: Container(
-                    padding: const EdgeInsets.all(6),
+                    width: 44,
+                    height: 44,
+                    alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: onIncrease == null
                           ? AppColors.slate100
@@ -1150,7 +1154,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                     ),
                     child: Icon(
                       Icons.add,
-                      size: 16,
+                      size: 20,
                       color: onIncrease == null
                           ? AppColors.slate400
                           : T.onSurface(context),

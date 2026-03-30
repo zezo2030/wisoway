@@ -11,7 +11,7 @@ class RatingWidget extends StatefulWidget {
     super.key,
     this.initialRating = 0,
     this.readOnly = false,
-    this.starSize = 32.0,
+    this.starSize = 44.0,
     this.onRatingChanged,
   });
 

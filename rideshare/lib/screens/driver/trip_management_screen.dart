@@ -1539,7 +1539,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     required VoidCallback onTap,
   }) {
     return Material(
-      color: Colors.transparent,
+      color: AppColors.transparent,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),

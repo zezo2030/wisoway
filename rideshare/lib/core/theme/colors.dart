@@ -43,6 +43,22 @@ class AppColors {
   static const Color infoLight = Color(0xFF93C5FD);
   static const Color infoDark = Color(0xFF2563EB);
 
+  static const Color statusPending = Color(0xFFFFA726);
+  static const Color statusPendingLight = Color(0xFFFFCC80);
+  static const Color statusActive = Color(0xFF00C9A7);
+  static const Color statusActiveLight = Color(0xFF80CBC4);
+  static const Color statusCompleted = Color(0xFF22C55E);
+  static const Color statusCompletedLight = Color(0xFFA5D6A7);
+  static const Color statusCancelled = Color(0xFFEF4444);
+  static const Color statusCancelledLight = Color(0xFFEF9A9A);
+  static const Color statusInProgress = Color(0xFF3B82F6);
+  static const Color statusInProgressLight = Color(0xFF90CAF9);
+
+  static const Color accentPink = Color(0xFFE91E63);
+  static const Color accentOrange = Color(0xFFFB8500);
+
+  static const Color surfaceLight = Color(0xFFF8F9FE);
+
   static const Color transparent = Colors.transparent;
 
   static const Color white = Color(0xFFFFFFFF);
@@ -89,9 +105,9 @@ class AppLightColors {
   final Color textPrimary = AppColors.slate900;
   final Color textSecondary = AppColors.slate600;
   final Color textTertiary = AppColors.slate500;
-  final Color textDisabled = AppColors.slate400;
+  final Color textDisabled = AppColors.slate300;
   final Color textHint = AppColors.slate400;
-  final Color textOnPrimary = AppColors.white;
+  final Color textOnPrimary = AppColors.teal950;
 
   final Color border = AppColors.slate200;
   final Color borderStrong = AppColors.slate300;
@@ -115,7 +131,7 @@ class AppLightColors {
 
   final Color iconPrimary = AppColors.slate800;
   final Color iconSecondary = AppColors.slate500;
-  final Color iconDisabled = AppColors.slate400;
+  final Color iconDisabled = AppColors.slate300;
 }
 
 class AppDarkColors {
@@ -175,7 +191,7 @@ class AppDarkColors {
 
   final Color iconPrimary = AppColors.slate100;
   final Color iconSecondary = AppColors.slate400;
-  final Color iconDisabled = AppColors.slate600;
+  final Color iconDisabled = AppColors.slate500;
 }
 
 class T {

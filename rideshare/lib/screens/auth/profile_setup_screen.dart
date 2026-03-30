@@ -161,17 +161,20 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
             child: SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      _buildHeader(),
-                      const SizedBox(height: 32),
-                      _buildFields(),
-                      const SizedBox(height: 40),
-                      _buildSubmitButton(),
-                      const SizedBox(height: 32),
-                    ],
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 480),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        _buildHeader(),
+                        const SizedBox(height: 32),
+                        _buildFields(),
+                        const SizedBox(height: 40),
+                        _buildSubmitButton(),
+                        const SizedBox(height: 32),
+                      ],
+                    ),
                   ),
                 ),
               ),

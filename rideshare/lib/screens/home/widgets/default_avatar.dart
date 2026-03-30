@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
+import '../../../core/theme/colors.dart';
 
 class DefaultAvatar extends StatelessWidget {
   const DefaultAvatar({super.key, this.size = 28});
@@ -8,6 +9,6 @@ class DefaultAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Icon(IconsaxPlusBold.profile, color: Colors.white, size: size);
+    return Icon(IconsaxPlusBold.profile, color: AppColors.white, size: size);
   }
 }

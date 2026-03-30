@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../bloc/auth/auth_bloc.dart';
 import '../../bloc/auth/auth_event.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/theme/colors.dart';
+import '../../core/theme/text_styles.dart';
 
 Future<bool?> showLogoutConfirmationDialog(BuildContext context) {
   return showDialog<bool>(
@@ -14,23 +14,26 @@ Future<bool?> showLogoutConfirmationDialog(BuildContext context) {
       shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusXl),
       title: Text(
         'تسجيل الخروج',
-        style: GoogleFonts.tajawal(fontWeight: FontWeight.bold),
+        style: AppTextStyles.titleMediumWithContext(context),
       ),
       content: Text(
         'هل أنت متأكد من تسجيل الخروج؟',
-        style: GoogleFonts.tajawal(),
+        style: AppTextStyles.bodyMediumWithContext(context),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: Text('إلغاء', style: GoogleFonts.tajawal()),
+          child: Text(
+            'إلغاء',
+            style: AppTextStyles.bodyMediumWithContext(context),
+          ),
         ),
         TextButton(
           onPressed: () => Navigator.pop(context, true),
           style: TextButton.styleFrom(foregroundColor: T.error(context)),
           child: Text(
             'تسجيل الخروج',
-            style: GoogleFonts.tajawal(fontWeight: FontWeight.w600),
+            style: AppTextStyles.labelLargeWithContext(context),
           ),
         ),
       ],

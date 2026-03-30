@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../models/location_model.dart';
 import '../core/services/location_service.dart';
+import '../core/theme/colors.dart';
 
 class LocationPickerWidget extends StatefulWidget {
   final String title;
@@ -107,11 +108,11 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message),
-            backgroundColor: Colors.orange,
+            backgroundColor: AppColors.warning,
             action: onAction != null
                 ? SnackBarAction(
                     label: actionLabel,
-                    textColor: Colors.white,
+                    textColor: AppColors.white,
                     onPressed: onAction,
                   )
                 : null,
@@ -421,10 +422,10 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                         child: Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppColors.white,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
+                                color: AppColors.black.withValues(alpha: 0.1),
                                 blurRadius: 10,
                                 offset: const Offset(0, -5),
                               ),

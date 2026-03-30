@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../core/constants/app_constants.dart';
+import '../core/theme/colors.dart';
 
 /// Widget لعرض جنس المستخدم
 class UserGenderDisplay extends StatelessWidget {
@@ -118,7 +119,7 @@ class UserInfoCard extends StatelessWidget {
                             user.email,
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.grey[600],
+                              color: AppColors.slate600,
                             ),
                           ),
                         ],
@@ -175,11 +176,11 @@ class UserInfoCard extends StatelessWidget {
   }) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: Colors.grey[600]),
+        Icon(icon, size: 20, color: AppColors.slate600),
         const SizedBox(width: 12),
         Text(
           '$label: ',
-          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+          style: TextStyle(fontSize: 14, color: AppColors.slate600),
         ),
         Text(
           value,
