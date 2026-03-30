@@ -1,11 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../core/services/payment_service.dart';
 import '../../core/services/storage_service.dart';
+import '../../core/theme/colors.dart';
+import '../../core/theme/text_styles.dart';
 import '../../models/payment_model.dart';
+import '../../../widgets/common/section_card.dart';
 
 class ManualPaymentScreen extends StatefulWidget {
   final String paymentId;
@@ -34,7 +36,6 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
   bool _isLoading = false;
   PaymentModel? _payment;
 
-  // Wallet types
   final List<Map<String, String>> _walletTypes = [
     {'value': 'zain', 'label': 'Zain Cash', 'country': 'الأردن'},
     {'value': 'orange', 'label': 'Orange Money', 'country': 'الأردن'},
@@ -66,7 +67,7 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تحميل بيانات الدفع: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: T.error(context),
           ),
         );
       }
@@ -96,9 +97,9 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
 
     if (_selectedWalletType == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('يرجى اختيار نوع المحفظة'),
-          backgroundColor: Colors.red,
+        SnackBar(
+          content: const Text('يرجى اختيار نوع المحفظة'),
+          backgroundColor: T.error(context),
         ),
       );
       return;
@@ -106,9 +107,9 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
 
     if (_proofImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('يرجى رفع صورة إثبات الدفع'),
-          backgroundColor: Colors.red,
+        SnackBar(
+          content: const Text('يرجى رفع صورة إثبات الدفع'),
+          backgroundColor: T.error(context),
         ),
       );
       return;
@@ -117,7 +118,9 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final proofImageUrl = await _paymentService.uploadProofImage(_proofImage!);
+      final proofImageUrl = await _paymentService.uploadProofImage(
+        _proofImage!,
+      );
       if (proofImageUrl.isEmpty) {
         throw Exception('فشل رفع صورة الإثبات');
       }
@@ -141,7 +144,7 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: T.error(context),
           ),
         );
       }
@@ -155,14 +158,14 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: T.surface(context),
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        backgroundColor: T.surface(context),
+        foregroundColor: T.onSurface(context),
         title: Text(
           'الدفع اليدوي',
-          style: GoogleFonts.cairo(fontSize: 20, fontWeight: FontWeight.bold),
+          style: AppTextStyles.titleMedium.copyWith(fontSize: 20),
         ),
         centerTitle: true,
       ),
@@ -174,19 +177,18 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Header
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Colors.purple.shade600, Colors.purple.shade400],
+                      colors: [AppColors.teal700, AppColors.teal500],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.purple.withOpacity(0.3),
+                        color: AppColors.teal700.withValues(alpha: 0.3),
                         blurRadius: 15,
                         offset: const Offset(0, 5),
                       ),
@@ -197,22 +199,20 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: AppColors.white.withValues(alpha: 0.2),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
                           IconsaxPlusBold.wallet,
                           size: 48,
-                          color: Colors.white,
+                          color: AppColors.white,
                         ),
                       ),
                       const SizedBox(height: 16),
                       Text(
                         'إتمام الدفع',
-                        style: GoogleFonts.cairo(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                        style: AppTextStyles.titleLarge.copyWith(
+                          color: AppColors.white,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -220,9 +220,8 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
                       if (_payment != null)
                         Text(
                           '${_payment!.amount.toStringAsFixed(2)} ${_payment!.currency}',
-                          style: GoogleFonts.cairo(
-                            fontSize: 18,
-                            color: Colors.white.withOpacity(0.9),
+                          style: AppTextStyles.titleMedium.copyWith(
+                            color: AppColors.white.withValues(alpha: 0.9),
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -231,27 +230,27 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Wallet Type Selection
-                _buildSectionCard(
+                SectionCard(
                   title: 'نوع المحفظة',
                   icon: IconsaxPlusBold.wallet,
-                  color: Colors.purple,
+                  iconColor: T.primary(context),
                   children: [
                     const SizedBox(height: 8),
-                    ..._walletTypes.map((wallet) => _buildWalletTypeOption(
-                      value: wallet['value']!,
-                      label: wallet['label']!,
-                      country: wallet['country']!,
-                    )),
+                    ..._walletTypes.map(
+                      (wallet) => _buildWalletTypeOption(
+                        value: wallet['value']!,
+                        label: wallet['label']!,
+                        country: wallet['country']!,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 20),
 
-                // Wallet Number
-                _buildSectionCard(
+                SectionCard(
                   title: 'رقم المحفظة',
                   icon: IconsaxPlusBold.call,
-                  color: Colors.blue,
+                  iconColor: T.primary(context),
                   children: [
                     const SizedBox(height: 8),
                     TextFormField(
@@ -279,102 +278,103 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Proof Image
-                _buildSectionCard(
+                SectionCard(
                   title: 'صورة إثبات الدفع',
                   icon: IconsaxPlusBold.image,
-                  color: Colors.teal,
+                  iconColor: T.primary(context),
                   subtitle: '(مطلوب)',
                   children: [
                     const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: _pickProofImage,
-                      child: Container(
-                        height: 200,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: _proofImage != null
-                                ? Colors.teal.shade300
-                                : Colors.grey.shade300,
-                            width: 2,
+                    Semantics(
+                      button: true,
+                      label: 'رفع صورة إثبات الدفع',
+                      child: GestureDetector(
+                        onTap: _pickProofImage,
+                        child: Container(
+                          height: 200,
+                          decoration: BoxDecoration(
+                            color: T.surface(context),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: _proofImage != null
+                                  ? AppColors.teal300
+                                  : T.outlineVariant(context),
+                              width: 2,
+                            ),
                           ),
-                        ),
-                        child: _proofImage != null
-                            ? Stack(
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(14),
-                                    child: Image.file(
-                                      _proofImage!,
-                                      fit: BoxFit.cover,
-                                      width: double.infinity,
+                          child: _proofImage != null
+                              ? Stack(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(14),
+                                      child: Image.file(
+                                        _proofImage!,
+                                        fit: BoxFit.cover,
+                                        width: double.infinity,
+                                      ),
                                     ),
-                                  ),
-                                  Positioned(
-                                    top: 8,
-                                    left: 8,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(8),
+                                    Positioned(
+                                      top: 8,
+                                      left: 8,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.black.withValues(
+                                            alpha: 0.6,
+                                          ),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.edit,
+                                          color: AppColors.white,
+                                          size: 20,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(20),
                                       decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(0.6),
+                                        color: AppColors.teal100,
                                         shape: BoxShape.circle,
                                       ),
-                                      child: const Icon(
-                                        Icons.edit,
-                                        color: Colors.white,
-                                        size: 20,
+                                      child: Icon(
+                                        IconsaxPlusBold.image,
+                                        color: AppColors.teal700,
+                                        size: 48,
                                       ),
                                     ),
-                                  ),
-                                ],
-                              )
-                            : Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(20),
-                                    decoration: BoxDecoration(
-                                      color: Colors.teal.shade50,
-                                      shape: BoxShape.circle,
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'اضغط لرفع صورة إثبات الدفع',
+                                      style: AppTextStyles.labelLarge.copyWith(
+                                        color: T.onSurfaceVariant(context),
+                                      ),
                                     ),
-                                    child: Icon(
-                                      IconsaxPlusBold.image,
-                                      color: Colors.teal.shade700,
-                                      size: 48,
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'مطلوب',
+                                      style: AppTextStyles.bodySmall.copyWith(
+                                        color: T.onSurfaceVariant(context),
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'اضغط لرفع صورة إثبات الدفع',
-                                    style: GoogleFonts.cairo(
-                                      fontSize: 14,
-                                      color: Colors.grey.shade600,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'مطلوب',
-                                    style: GoogleFonts.cairo(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade500,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                  ],
+                                ),
+                        ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 20),
 
-                // Notes (Optional)
-                _buildSectionCard(
+                SectionCard(
                   title: 'ملاحظات',
                   icon: IconsaxPlusBold.note,
-                  color: Colors.orange,
+                  iconColor: AppColors.warning,
                   subtitle: '(اختياري)',
                   children: [
                     const SizedBox(height: 8),
@@ -394,54 +394,59 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
                 ),
                 const SizedBox(height: 32),
 
-                // Submit Button
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.purple.withOpacity(0.4),
-                        blurRadius: 15,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _submitPayment,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      backgroundColor: Colors.purple.shade600,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: 0,
+                Semantics(
+                  label: 'إرسال طلب الدفع',
+                  button: true,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.teal700.withValues(alpha: 0.4),
+                          blurRadius: 15,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
                     ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 24,
-                            width: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
-                              ),
-                            ),
-                          )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.check_circle_outline, size: 24),
-                              const SizedBox(width: 12),
-                              Text(
-                                'إرسال طلب الدفع',
-                                style: GoogleFonts.cairo(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _submitPayment,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        backgroundColor: AppColors.teal700,
+                        foregroundColor: AppColors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppColors.white,
                                 ),
                               ),
-                            ],
-                          ),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.check_circle_outline,
+                                  size: 24,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'إرسال طلب الدفع',
+                                  style: AppTextStyles.titleMedium.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -449,71 +454,6 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildSectionCard({
-    required String title,
-    required IconData icon,
-    required Color color,
-    String? subtitle,
-    required List<Widget> children,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 24),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.cairo(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey.shade900,
-                      ),
-                    ),
-                    if (subtitle != null)
-                      Text(
-                        subtitle,
-                        style: GoogleFonts.cairo(
-                          fontSize: 12,
-                          color: Colors.grey.shade500,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          ...children,
-        ],
       ),
     );
   }
@@ -527,72 +467,74 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            _selectedWalletType = value;
-          });
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.purple.shade50 : Colors.grey[50],
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isSelected ? Colors.purple.shade300 : Colors.grey[300]!,
-              width: isSelected ? 2 : 1,
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.purple.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  IconsaxPlusBold.wallet,
-                  color: Colors.purple.shade700,
-                  size: 20,
-                ),
+      child: Semantics(
+        button: true,
+        label: '$label - $country',
+        selected: isSelected,
+        child: InkWell(
+          onTap: () {
+            setState(() {
+              _selectedWalletType = value;
+            });
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isSelected ? AppColors.teal100 : T.surface(context),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected
+                    ? AppColors.teal300
+                    : T.outlineVariant(context),
+                width: isSelected ? 2 : 1,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: GoogleFonts.cairo(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: isSelected ? Colors.purple.shade900 : Colors.grey[900],
-                      ),
-                    ),
-                    if (country.isNotEmpty)
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: T.primary(context).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    IconsaxPlusBold.wallet,
+                    color: AppColors.teal700,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        country,
-                        style: GoogleFonts.cairo(
-                          fontSize: 12,
-                          color: Colors.grey[600],
+                        label,
+                        style: AppTextStyles.titleSmall.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: isSelected
+                              ? AppColors.teal800
+                              : T.onSurface(context),
                         ),
                       ),
-                  ],
+                      if (country.isNotEmpty)
+                        Text(
+                          country,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: T.onSurfaceVariant(context),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-              if (isSelected)
-                Icon(
-                  Icons.check_circle,
-                  color: Colors.purple.shade700,
-                  size: 24,
-                ),
-            ],
+                if (isSelected)
+                  Icon(Icons.check_circle, color: AppColors.teal700, size: 24),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 }
-

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -11,14 +12,12 @@ import '../../widgets/seat_layout_widget.dart';
 import '../../core/services/chat_service.dart';
 import '../../core/services/rating_service.dart';
 import '../../core/api/websocket_service.dart';
+import '../../core/theme/colors.dart';
 
 class TripDetailsScreen extends StatefulWidget {
   final String tripId;
 
-  const TripDetailsScreen({
-    super.key,
-    required this.tripId,
-  });
+  const TripDetailsScreen({super.key, required this.tripId});
 
   @override
   State<TripDetailsScreen> createState() => _TripDetailsScreenState();
@@ -31,6 +30,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   final WebSocketService _socketService = WebSocketService();
   StreamSubscription<Map<String, dynamic>>? _trackingSubscription;
   LatLng? _liveDriverLocation;
+  Set<Marker> _markers = {};
 
   @override
   void initState() {
@@ -52,6 +52,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       if (lat is num && lng is num) {
         setState(() {
           _liveDriverLocation = LatLng(lat.toDouble(), lng.toDouble());
+          _buildMarkers();
         });
       }
     });
@@ -64,6 +65,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       setState(() {
         _trip = trip;
         _isLoading = false;
+        _buildMarkers();
       });
     } catch (e) {
       setState(() => _isLoading = false);
@@ -71,7 +73,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تحميل الرحلة: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: T.error(context),
           ),
         );
       }
@@ -85,13 +87,39 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
   }
 
+  void _buildMarkers() {
+    if (_trip == null) return;
+    _markers = {
+      Marker(
+        markerId: const MarkerId('from'),
+        position: LatLng(_trip!.from.latitude, _trip!.from.longitude),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+        infoWindow: InfoWindow(title: _trip!.from.name),
+      ),
+      Marker(
+        markerId: const MarkerId('to'),
+        position: LatLng(_trip!.to.latitude, _trip!.to.longitude),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+        infoWindow: InfoWindow(title: _trip!.to.name),
+      ),
+      if (_liveDriverLocation != null)
+        Marker(
+          markerId: const MarkerId('driver_live'),
+          position: _liveDriverLocation!,
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueAzure,
+          ),
+          infoWindow: const InfoWindow(title: 'موقع السائق المباشر'),
+        ),
+    };
+  }
+
   void _updateMapBounds() {
     if (_trip == null || _mapController == null) return;
 
     final fromLatLng = LatLng(_trip!.from.latitude, _trip!.from.longitude);
     final toLatLng = LatLng(_trip!.to.latitude, _trip!.to.longitude);
 
-    // Calculate bounds
     final minLat = fromLatLng.latitude < toLatLng.latitude
         ? fromLatLng.latitude
         : toLatLng.latitude;
@@ -125,9 +153,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     if (_trip == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('تفاصيل الرحلة')),
-        body: const Center(
-          child: Text('الرحلة غير موجودة'),
-        ),
+        body: const Center(child: Text('الرحلة غير موجودة')),
       );
     }
 
@@ -138,14 +164,11 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     final timeFormat = DateFormat('HH:mm');
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('تفاصيل الرحلة'),
-      ),
+      appBar: AppBar(title: const Text('تفاصيل الرحلة')),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Route Info Card
             Card(
               margin: const EdgeInsets.all(16),
               child: Padding(
@@ -163,7 +186,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        Icon(Icons.location_on, color: Colors.green),
+                        Icon(Icons.location_on, color: AppColors.success),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -176,7 +199,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(Icons.location_city, color: Colors.red),
+                        Icon(Icons.location_city, color: T.error(context)),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -190,13 +213,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                 ),
               ),
             ),
-            // Map
             Container(
               height: 200,
               margin: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey[300]!),
+                border: Border.all(color: T.outline(context)),
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
@@ -206,67 +228,48 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                     target: LatLng(trip.from.latitude, trip.from.longitude),
                     zoom: 10,
                   ),
-                  markers: {
-                    Marker(
-                      markerId: const MarkerId('from'),
-                      position: LatLng(trip.from.latitude, trip.from.longitude),
-                      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-                      infoWindow: InfoWindow(title: trip.from.name),
-                    ),
-                    Marker(
-                      markerId: const MarkerId('to'),
-                      position: LatLng(trip.to.latitude, trip.to.longitude),
-                      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-                      infoWindow: InfoWindow(title: trip.to.name),
-                    ),
-                    if (_liveDriverLocation != null)
-                      Marker(
-                        markerId: const MarkerId('driver_live'),
-                        position: _liveDriverLocation!,
-                        icon: BitmapDescriptor.defaultMarkerWithHue(
-                          BitmapDescriptor.hueAzure,
-                        ),
-                        infoWindow: const InfoWindow(
-                          title: 'موقع السائق المباشر',
-                        ),
-                      ),
-                  },
+                  markers: _markers,
                 ),
               ),
             ),
             const SizedBox(height: 12),
-            // View Route on Map Button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: SizedBox(
                 width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pushNamed(
-                      context,
-                      RouteNames.tripRouteMap,
-                      arguments: trip,
-                    );
-                  },
-                  icon: const Icon(Icons.map_outlined, size: 20),
-                  label: const Text(
-                    'عرض المسار على الخريطة',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1565C0),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                child: Semantics(
+                  button: true,
+                  label: 'عرض المسار على الخريطة',
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pushNamed(
+                        context,
+                        RouteNames.tripRouteMap,
+                        arguments: trip,
+                      );
+                    },
+                    icon: const Icon(Icons.map_outlined, size: 20),
+                    label: const Text(
+                      'عرض المسار على الخريطة',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    elevation: 2,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: T.primary(context),
+                      foregroundColor: AppColors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 2,
+                    ),
                   ),
                 ),
               ),
             ),
             const SizedBox(height: 16),
-            // Trip Details Card
             Card(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               child: Padding(
@@ -293,7 +296,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                     _DetailRow(
                       icon: Icons.access_time,
                       label: 'وقت الانطلاق',
-                      value: '${dateFormat.format(trip.departureTime)} ${timeFormat.format(trip.departureTime)}',
+                      value:
+                          '${dateFormat.format(trip.departureTime)} ${timeFormat.format(trip.departureTime)}',
                     ),
                     const Divider(),
                     _DetailRow(
@@ -311,7 +315,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                     _DetailRow(
                       icon: Icons.grid_view,
                       label: 'تخطيط المقاعد',
-                      value: '${trip.seatLayout.rows} صف × ${trip.seatLayout.seatsPerRow} مقعد',
+                      value:
+                          '${trip.seatLayout.rows} صف × ${trip.seatLayout.seatsPerRow} مقعد',
                     ),
                     if (trip.seatLayout.preventGenderMixing) ...[
                       const Divider(),
@@ -326,7 +331,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            // Driver Info Card
             Card(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               child: Padding(
@@ -358,7 +362,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            // Seat Layout
             if (userModel != null) ...[
               Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -385,7 +388,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               ),
               const SizedBox(height: 16),
             ],
-            // Car Image
             if (trip.carImageUrl != null) ...[
               Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -404,15 +406,15 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       const SizedBox(height: 16),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          trip.carImageUrl!,
+                        child: CachedNetworkImage(
+                          imageUrl: trip.carImageUrl!,
                           width: double.infinity,
                           height: 200,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
+                          errorWidget: (context, url, error) {
                             return Container(
                               height: 200,
-                              color: Colors.grey[300],
+                              color: T.outlineVariant(context),
                               child: const Center(
                                 child: Icon(Icons.error_outline, size: 48),
                               ),
@@ -426,25 +428,28 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               ),
               const SizedBox(height: 16),
             ],
-            // Book Button
             if (userModel != null && trip.hasAvailableSeats && trip.isUpcoming)
               Padding(
                 padding: const EdgeInsets.all(16),
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushNamed(
-                      context,
-                      RouteNames.seatSelection,
-                      arguments: trip.id,
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    minimumSize: const Size(double.infinity, 50),
-                  ),
-                  child: const Text(
-                    'احجز مقعد',
-                    style: TextStyle(fontSize: 18),
+                child: Semantics(
+                  button: true,
+                  label: 'احجز مقعد',
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pushNamed(
+                        context,
+                        RouteNames.seatSelection,
+                        arguments: trip.id,
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                    child: const Text(
+                      'احجز مقعد',
+                      style: TextStyle(fontSize: 18),
+                    ),
                   ),
                 ),
               )
@@ -454,18 +459,18 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.red[50],
+                    color: T.error(context).withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.info_outline, color: Colors.red[700]),
+                      Icon(Icons.info_outline, color: T.error(context)),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'لا توجد مقاعد متاحة',
                           style: TextStyle(
-                            color: Colors.red[700],
+                            color: T.error(context),
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -474,7 +479,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   ),
                 ),
               ),
-            // Chat and Rating Buttons
             if (userModel != null) ...[
               const SizedBox(height: 16),
               Padding(
@@ -485,23 +489,26 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       child: _ChatRatingButton(
                         icon: Icons.chat_bubble_outline,
                         label: 'المحادثة',
-                        color: Colors.blue,
+                        color: T.primary(context),
                         onTap: () async {
                           final chatService = ChatService();
-                          final chatEnabled = await chatService.checkIfChatEnabled(trip.id);
-                          
+                          final chatEnabled = await chatService
+                              .checkIfChatEnabled(trip.id);
+
                           if (!chatEnabled) {
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('لم يتم تفعيل التواصل بعد. يجب على السائق دفع رسوم التواصل أولاً.'),
-                                  backgroundColor: Colors.orange,
+                                  content: Text(
+                                    'لم يتم تفعيل التواصل بعد. يجب على السائق دفع رسوم التواصل أولاً.',
+                                  ),
+                                  backgroundColor: AppColors.warning,
                                 ),
                               );
                             }
                             return;
                           }
-                          
+
                           Navigator.pushNamed(
                             context,
                             RouteNames.chat,
@@ -520,24 +527,27 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       child: _ChatRatingButton(
                         icon: Icons.star_outline,
                         label: 'تقييم',
-                        color: Colors.orange,
+                        color: AppColors.warning,
                         onTap: () async {
                           if (trip.isPast) {
                             final ratingService = RatingService();
-                            final hasRated = await ratingService.hasUserRatedTrip(trip.id);
-                            
+                            final hasRated = await ratingService
+                                .hasUserRatedTrip(trip.id);
+
                             if (hasRated) {
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text('لقد قمت بتقييم هذه الرحلة بالفعل'),
-                                    backgroundColor: Colors.orange,
+                                    content: Text(
+                                      'لقد قمت بتقييم هذه الرحلة بالفعل',
+                                    ),
+                                    backgroundColor: AppColors.warning,
                                   ),
                                 );
                               }
                               return;
                             }
-                            
+
                             final result = await Navigator.pushNamed(
                               context,
                               RouteNames.rating,
@@ -548,12 +558,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                 'driverName': trip.driverName,
                               },
                             );
-                            
+
                             if (result == true && mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text('شكراً لتقييمك!'),
-                                  backgroundColor: Colors.green,
+                                  backgroundColor: AppColors.success,
                                 ),
                               );
                             }
@@ -561,8 +571,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('يمكنك التقييم بعد انتهاء الرحلة'),
-                                  backgroundColor: Colors.orange,
+                                  content: Text(
+                                    'يمكنك التقييم بعد انتهاء الرحلة',
+                                  ),
+                                  backgroundColor: AppColors.warning,
                                 ),
                               );
                             }
@@ -605,20 +617,12 @@ class _DetailRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: Colors.blue),
+        Icon(icon, size: 20, color: T.primary(context)),
         const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: 14),
-          ),
-        ),
+        Expanded(child: Text(label, style: const TextStyle(fontSize: 14))),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
         ),
       ],
     );
@@ -640,21 +644,18 @@ class _ChatRatingButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, color: color),
-      label: Text(
-        label,
-        style: TextStyle(color: color),
-      ),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        side: BorderSide(color: color),
+    return Semantics(
+      button: true,
+      label: label,
+      child: OutlinedButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon, color: color),
+        label: Text(label, style: TextStyle(color: color)),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          side: BorderSide(color: color),
+        ),
       ),
     );
   }
 }
-
-
-
-

@@ -1,11 +1,9 @@
 import 'dart:io';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/trip_provider.dart';
 import '../../core/services/storage_service.dart';
@@ -13,6 +11,8 @@ import '../../models/location_model.dart';
 import '../../models/seat_layout_config.dart';
 import '../../widgets/location_picker_widget.dart';
 import '../../core/services/vehicle_service.dart';
+import '../../core/theme/text_styles.dart';
+import '../../core/theme/colors.dart';
 
 class CreateTripScreen extends StatefulWidget {
   const CreateTripScreen({super.key});
@@ -37,7 +37,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
   int _rows = 2;
   int _seatsPerRow = 2;
   bool _isCustomLayout = false;
-  List<int> _customRowConfigs = [1, 3];
+  final List<int> _customRowConfigs = [1, 3];
   bool _preventGenderMixing = true;
   bool _isLoading = false;
 
@@ -140,9 +140,9 @@ class _CreateTripScreenState extends State<CreateTripScreen>
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: ColorScheme.light(
-              primary: const Color(0xFF6C63FF),
-              onPrimary: Colors.white,
-              onSurface: Colors.black87,
+              primary: T.primary(context),
+              onPrimary: AppColors.white,
+              onSurface: T.onSurface(context).withValues(alpha: 0.87),
             ),
           ),
           child: child!,
@@ -151,6 +151,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     );
 
     if (picked != null) {
+      if (!mounted) return;
       final TimeOfDay? time = await showTimePicker(
         context: context,
         initialTime: TimeOfDay.now(),
@@ -158,9 +159,9 @@ class _CreateTripScreenState extends State<CreateTripScreen>
           return Theme(
             data: Theme.of(context).copyWith(
               colorScheme: ColorScheme.light(
-                primary: const Color(0xFF6C63FF),
-                onPrimary: Colors.white,
-                onSurface: Colors.black87,
+                primary: T.primary(context),
+                onPrimary: AppColors.white,
+                onSurface: T.onSurface(context).withValues(alpha: 0.87),
               ),
             ),
             child: child!,
@@ -169,6 +170,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
       );
 
       if (time != null) {
+        if (!mounted) return;
         setState(() {
           _departureTime = DateTime(
             picked.year,
@@ -241,10 +243,13 @@ class _CreateTripScreenState extends State<CreateTripScreen>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         content: Row(
           children: [
-            const Icon(Icons.error_outline, color: Colors.white),
+            const Icon(Icons.error_outline, color: AppColors.white),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(msg, style: GoogleFonts.cairo(color: Colors.white)),
+              child: Text(
+                msg,
+                style: AppTextStyles.bodyLarge.copyWith(color: AppColors.white),
+              ),
             ),
           ],
         ),
@@ -260,10 +265,13 @@ class _CreateTripScreenState extends State<CreateTripScreen>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         content: Row(
           children: [
-            const Icon(Icons.check_circle_outline, color: Colors.white),
+            const Icon(Icons.check_circle_outline, color: AppColors.white),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(msg, style: GoogleFonts.cairo(color: Colors.white)),
+              child: Text(
+                msg,
+                style: AppTextStyles.bodyLarge.copyWith(color: AppColors.white),
+              ),
             ),
           ],
         ),
@@ -278,7 +286,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
 
     if (user != null && !user.canCreateTrips) {
       return Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.white,
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -288,25 +296,23 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                 Icon(
                   IconsaxPlusBold.timer,
                   size: 80,
-                  color: const Color(0xFF6C63FF),
+                  color: T.primary(context),
                 ),
                 const SizedBox(height: 24),
                 Text(
                   'حسابك كسائق قيد المراجعة',
-                  style: GoogleFonts.cairo(
-                    fontSize: 22,
+                  style: AppTextStyles.titleLarge.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: T.onSurface(context).withValues(alpha: 0.87),
                   ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'لا يمكنك إنشاء رحلات حتى تتم الموافقة على بياناتك من الإدارة. يمكنك حالياً تصفح الرحلات والحجز كراكب.',
-                  style: GoogleFonts.cairo(
+                  style: AppTextStyles.bodyLarge.copyWith(
                     fontSize: 15,
-                    color: Colors.black54,
-                    height: 1.5,
+                    color: T.onSurface(context).withValues(alpha: 0.54),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -316,11 +322,13 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                   icon: const Icon(Icons.arrow_back),
                   label: Text(
                     'العودة للرئيسية',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+                    style: AppTextStyles.titleMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6C63FF),
-                    foregroundColor: Colors.white,
+                    backgroundColor: T.primary(context),
+                    foregroundColor: AppColors.white,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 32,
                       vertical: 16,
@@ -340,18 +348,19 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FE),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF6C63FF),
+        backgroundColor: T.primary(context),
         elevation: 0,
         centerTitle: true,
         title: Text(
           'إنشاء رحلة جديدة',
-          style: GoogleFonts.cairo(
+          style: AppTextStyles.titleMedium.copyWith(
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: AppColors.white,
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.white),
+          tooltip: 'رجوع',
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -390,12 +399,12 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.grey.shade100),
+        border: Border.all(color: AppColors.slate100),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: AppColors.black.withValues(alpha: 0.02),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -406,32 +415,29 @@ class _CreateTripScreenState extends State<CreateTripScreen>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF6C63FF).withOpacity(0.1),
+              color: T.primary(context).withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               IconsaxPlusBold.car,
-              color: Color(0xFF6C63FF),
+              color: T.primary(context),
               size: 48,
             ),
           ),
           const SizedBox(height: 16),
           Text(
             'شارك رحلتك القادمة',
-            style: GoogleFonts.cairo(
-              fontSize: 22,
+            style: AppTextStyles.titleLarge.copyWith(
               fontWeight: FontWeight.w800,
-              color: const Color(0xFF2D3142),
+              color: T.onSurface(context),
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'قم بتحديد وجهتك ووقت الانطلاق لتبدأ مشاركة رحلتك مع الركاب.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.cairo(
-              fontSize: 14,
-              color: const Color(0xFF9098B1),
-              height: 1.4,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: T.onSurfaceVariant(context),
             ),
           ),
         ],
@@ -446,10 +452,9 @@ class _CreateTripScreenState extends State<CreateTripScreen>
         children: [
           Text(
             'مسار الرحلة',
-            style: GoogleFonts.cairo(
-              fontSize: 18,
+            style: AppTextStyles.titleMedium.copyWith(
               fontWeight: FontWeight.bold,
-              color: const Color(0xFF2D3142),
+              color: T.onSurface(context),
             ),
           ),
           const SizedBox(height: 20),
@@ -459,7 +464,10 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                 left: 23,
                 top: 30,
                 bottom: 30,
-                child: Container(width: 2, color: Colors.grey.withOpacity(0.3)),
+                child: Container(
+                  width: 2,
+                  color: T.outlineVariant(context).withValues(alpha: 0.3),
+                ),
               ),
               Column(
                 children: [
@@ -467,7 +475,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                     controller: _fromController,
                     hint: 'أين أنت الآن؟',
                     icon: Icons.my_location_rounded,
-                    iconColor: const Color(0xFF6C63FF),
+                    iconColor: T.primary(context),
                     onTap: _selectFromLocation,
                   ),
                   const SizedBox(height: 16),
@@ -494,10 +502,9 @@ class _CreateTripScreenState extends State<CreateTripScreen>
         children: [
           Text(
             'تفاصيل الانطلاق والسعر',
-            style: GoogleFonts.cairo(
-              fontSize: 18,
+            style: AppTextStyles.titleMedium.copyWith(
               fontWeight: FontWeight.bold,
-              color: const Color(0xFF2D3142),
+              color: T.onSurface(context),
             ),
           ),
           const SizedBox(height: 20),
@@ -516,15 +523,17 @@ class _CreateTripScreenState extends State<CreateTripScreen>
           TextFormField(
             controller: _priceController,
             keyboardType: TextInputType.number,
-            style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+            style: AppTextStyles.labelLarge.copyWith(),
             decoration: InputDecoration(
               filled: true,
-              fillColor: Colors.white,
+              fillColor: AppColors.white,
               hintText: 'السعر لكل مقعد',
-              hintStyle: GoogleFonts.cairo(color: Colors.grey.shade400),
-              prefixIcon: const Icon(
+              hintStyle: AppTextStyles.bodyLarge.copyWith(
+                color: AppColors.slate400,
+              ),
+              prefixIcon: Icon(
                 IconsaxPlusBroken.wallet_1,
-                color: Color(0xFF2D3142),
+                color: T.onSurface(context),
               ),
               suffixIcon: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -533,9 +542,9 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                 ),
                 child: Text(
                   'EGP',
-                  style: GoogleFonts.cairo(
+                  style: AppTextStyles.titleMedium.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF6C63FF),
+                    color: T.primary(context),
                   ),
                 ),
               ),
@@ -545,14 +554,11 @@ class _CreateTripScreenState extends State<CreateTripScreen>
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(color: Colors.grey.shade200),
+                borderSide: BorderSide(color: AppColors.slate200),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(
-                  color: Color(0xFF6C63FF),
-                  width: 2,
-                ),
+                borderSide: BorderSide(color: T.primary(context), width: 2),
               ),
             ),
             validator: (v) {
@@ -567,10 +573,10 @@ class _CreateTripScreenState extends State<CreateTripScreen>
   }
 
   Widget _buildSeatingCard() {
-    int totalSeats = _isCustomLayout 
+    int totalSeats = _isCustomLayout
         ? _customRowConfigs.fold(0, (sum, item) => sum + item)
         : _rows * _seatsPerRow;
-        
+
     return _buildGlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -580,35 +586,36 @@ class _CreateTripScreenState extends State<CreateTripScreen>
             children: [
               Text(
                 'إعدادات المقاعد',
-                style: GoogleFonts.cairo(
-                  fontSize: 18,
+                style: AppTextStyles.titleMedium.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFF2D3142),
+                  color: T.onSurface(context),
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6C63FF).withOpacity(0.1),
+                  color: T.primary(context).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   '$totalSeats مقعد',
-                  style: GoogleFonts.cairo(
+                  style: AppTextStyles.titleMedium.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF6C63FF),
+                    color: T.primary(context),
                   ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 20),
-          
-          // Layout Mode Toggle
+
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: Colors.grey.shade100,
+              color: AppColors.slate100,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Row(
@@ -630,9 +637,9 @@ class _CreateTripScreenState extends State<CreateTripScreen>
               ],
             ),
           ),
-          
+
           const SizedBox(height: 20),
-          
+
           if (!_isCustomLayout) ...[
             Row(
               children: [
@@ -641,8 +648,12 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                     label: 'الصفوف',
                     value: _rows,
                     icon: IconsaxPlusBroken.row_vertical,
-                    onDecrease: _rows > 1 ? () => setState(() => _rows--) : null,
-                    onIncrease: _rows < 10 ? () => setState(() => _rows++) : null,
+                    onDecrease: _rows > 1
+                        ? () => setState(() => _rows--)
+                        : null,
+                    onIncrease: _rows < 10
+                        ? () => setState(() => _rows++)
+                        : null,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -664,10 +675,8 @@ class _CreateTripScreenState extends State<CreateTripScreen>
           ] else ...[
             Text(
               'حدد عدد المقاعد في كل صف:',
-              style: GoogleFonts.cairo(
-                fontSize: 14,
-                color: Colors.black54,
-                fontWeight: FontWeight.w600,
+              style: AppTextStyles.labelLarge.copyWith(
+                color: T.onSurface(context).withValues(alpha: 0.54),
               ),
             ),
             const SizedBox(height: 12),
@@ -680,15 +689,15 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF6C63FF).withOpacity(0.1),
+                        color: T.primary(context).withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
                       child: Center(
                         child: Text(
                           '${index + 1}',
-                          style: GoogleFonts.cairo(
+                          style: AppTextStyles.titleMedium.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: const Color(0xFF6C63FF),
+                            color: T.primary(context),
                           ),
                         ),
                       ),
@@ -696,7 +705,9 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildCounter(
-                        label: index == 0 ? 'بجانب السائق' : 'الصف ${index + 1}',
+                        label: index == 0
+                            ? 'بجانب السائق'
+                            : 'الصف ${index + 1}',
                         value: _customRowConfigs[index],
                         icon: Icons.airline_seat_recline_normal_rounded,
                         onDecrease: _customRowConfigs[index] > 0
@@ -709,8 +720,12 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                     ),
                     if (_customRowConfigs.length > 1)
                       IconButton(
-                        icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
-                        onPressed: () => setState(() => _customRowConfigs.removeAt(index)),
+                        icon: const Icon(
+                          Icons.remove_circle_outline,
+                          color: Colors.redAccent,
+                        ),
+                        onPressed: () =>
+                            setState(() => _customRowConfigs.removeAt(index)),
                       ),
                   ],
                 ),
@@ -718,11 +733,16 @@ class _CreateTripScreenState extends State<CreateTripScreen>
             }),
             TextButton.icon(
               onPressed: () => setState(() => _customRowConfigs.add(3)),
-              icon: const Icon(Icons.add_circle_outline, color: Color(0xFF6C63FF)),
-              label: Text('إضافة صف جديد', style: GoogleFonts.cairo(color: const Color(0xFF6C63FF))),
+              icon: Icon(Icons.add_circle_outline, color: T.primary(context)),
+              label: Text(
+                'إضافة صف جديد',
+                style: AppTextStyles.bodyLarge.copyWith(
+                  color: T.primary(context),
+                ),
+              ),
             ),
           ],
-          
+
           const SizedBox(height: 16),
           _buildMixingToggle(),
         ],
@@ -730,30 +750,41 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     );
   }
 
-  Widget _buildModeToggle({required String title, required bool isActive, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: isActive ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: isActive ? [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            )
-          ] : null,
-        ),
-        child: Center(
-          child: Text(
-            title,
-            style: GoogleFonts.cairo(
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-              color: isActive ? const Color(0xFF6C63FF) : Colors.black45,
+  Widget _buildModeToggle({
+    required String title,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return Semantics(
+      button: true,
+      label: '$title ${isActive ? "(محدد)" : ""}',
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isActive ? AppColors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: isActive
+                ? [
+                    BoxShadow(
+                      color: AppColors.black.withValues(alpha: 0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Center(
+            child: Text(
+              title,
+              style: AppTextStyles.labelLarge.copyWith(
+                fontWeight: FontWeight.bold,
+                color: isActive
+                    ? T.primary(context)
+                    : T.onSurfaceVariant(context),
+              ),
             ),
           ),
         ),
@@ -765,9 +796,9 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: AppColors.slate200),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -777,7 +808,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFB8500).withOpacity(0.1),
+                  color: const Color(0xFFFB8500).withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -789,18 +820,21 @@ class _CreateTripScreenState extends State<CreateTripScreen>
               const SizedBox(width: 12),
               Text(
                 'منع الاختلاط',
-                style: GoogleFonts.cairo(
-                  fontWeight: FontWeight.bold,
+                style: AppTextStyles.bodyLarge.copyWith(
                   fontSize: 15,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
-          Switch(
-            value: _preventGenderMixing,
-            activeThumbColor: const Color(0xFF6C63FF),
-            activeColor: const Color(0xFF6C63FF).withOpacity(0.3),
-            onChanged: (v) => setState(() => _preventGenderMixing = v),
+          Semantics(
+            label: 'منع الاختلاط: ${_preventGenderMixing ? "مفعّل" : "معطّل"}',
+            child: Switch(
+              value: _preventGenderMixing,
+              activeThumbColor: T.primary(context),
+              activeColor: T.primary(context).withValues(alpha: 0.3),
+              onChanged: (v) => setState(() => _preventGenderMixing = v),
+            ),
           ),
         ],
       ),
@@ -817,85 +851,90 @@ class _CreateTripScreenState extends State<CreateTripScreen>
             children: [
               Text(
                 'صورة السيارة',
-                style: GoogleFonts.cairo(
-                  fontSize: 18,
+                style: AppTextStyles.titleMedium.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFF2D3142),
+                  color: T.onSurface(context),
                 ),
               ),
               Text(
                 'اختياري',
-                style: GoogleFonts.cairo(fontSize: 14, color: Colors.grey),
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: T.outlineVariant(context),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          GestureDetector(
-            onTap: _pickCarImage,
-            child: Container(
-              height: 160,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: _carImage != null
-                      ? const Color(0xFF6C63FF)
-                      : Colors.grey.shade300,
-                  width: 2,
-                  style: BorderStyle.solid,
+          Semantics(
+            button: true,
+            label: 'إضافة صورة للسيارة',
+            child: GestureDetector(
+              onTap: _pickCarImage,
+              child: Container(
+                height: 160,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: _carImage != null
+                        ? T.primary(context)
+                        : AppColors.slate300,
+                    width: 2,
+                    style: BorderStyle.solid,
+                  ),
+                  image: _carImage != null
+                      ? DecorationImage(
+                          image: FileImage(_carImage!),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
                 ),
-                image: _carImage != null
-                    ? DecorationImage(
-                        image: FileImage(_carImage!),
-                        fit: BoxFit.cover,
+                child: _carImage == null
+                    ? Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: T.primary(context).withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              IconsaxPlusBroken.camera,
+                              color: T.primary(context),
+                              size: 32,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'انقر لإضافة صورة لسيارتك',
+                            style: AppTextStyles.labelLarge.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.slate600,
+                            ),
+                          ),
+                        ],
                       )
-                    : null,
-              ),
-              child: _carImage == null
-                  ? Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF6C63FF).withOpacity(0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            IconsaxPlusBroken.camera,
-                            color: Color(0xFF6C63FF),
-                            size: 32,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'انقر لإضافة صورة لسيارتك',
-                          style: GoogleFonts.cairo(
-                            color: Colors.grey.shade600,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    )
-                  : Align(
-                      alignment: Alignment.topRight,
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.5),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.edit,
-                            color: Colors.white,
-                            size: 20,
+                    : Align(
+                        alignment: Alignment.topRight,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.black.withValues(alpha: 0.5),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.edit,
+                              color: AppColors.white,
+                              size: 20,
+                            ),
                           ),
                         ),
                       ),
-                    ),
+              ),
             ),
           ),
         ],
@@ -909,41 +948,44 @@ class _CreateTripScreenState extends State<CreateTripScreen>
       height: 60,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: const Color(0xFF6C63FF),
+        color: T.primary(context),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6C63FF).withOpacity(0.3),
+            color: T.primary(context).withValues(alpha: 0.3),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
         ],
       ),
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+      child: Semantics(
+        button: true,
+        label: 'تأكيد ونشر الرحلة',
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.transparent,
+            shadowColor: AppColors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
           ),
+          onPressed: _isLoading ? null : _createTrip,
+          child: _isLoading
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    color: AppColors.white,
+                    strokeWidth: 3,
+                  ),
+                )
+              : Text(
+                  'تأكيد ونشر الرحلة',
+                  style: AppTextStyles.titleMedium.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.white,
+                  ),
+                ),
         ),
-        onPressed: _isLoading ? null : _createTrip,
-        child: _isLoading
-            ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 3,
-                ),
-              )
-            : Text(
-                'تأكيد ونشر الرحلة',
-                style: GoogleFonts.cairo(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
       ),
     );
   }
@@ -952,12 +994,12 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.grey.shade100),
+        border: Border.all(color: AppColors.slate100),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: AppColors.black.withValues(alpha: 0.02),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -974,44 +1016,51 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     required Color iconColor,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: iconColor, size: 20),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                controller.text.isEmpty ? hint : controller.text,
-                style: GoogleFonts.cairo(
-                  fontSize: 15,
-                  fontWeight: controller.text.isEmpty
-                      ? FontWeight.normal
-                      : FontWeight.w600,
-                  color: controller.text.isEmpty
-                      ? Colors.grey.shade500
-                      : const Color(0xFF2D3142),
+    return Semantics(
+      button: true,
+      label: hint,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.slate200),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                child: Icon(icon, color: iconColor, size: 20),
               ),
-            ),
-            const Icon(Icons.chevron_right_rounded, color: Colors.grey),
-          ],
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  controller.text.isEmpty ? hint : controller.text,
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    fontSize: 15,
+                    fontWeight: controller.text.isEmpty
+                        ? FontWeight.normal
+                        : FontWeight.w600,
+                    color: controller.text.isEmpty
+                        ? AppColors.slate500
+                        : T.onSurface(context),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: T.outlineVariant(context),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1027,24 +1076,21 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: AppColors.slate200),
       ),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: const Color(0xFF6C63FF), size: 18),
+              Icon(icon, color: T.primary(context), size: 18),
               const SizedBox(width: 8),
               Flexible(
                 child: Text(
                   label,
-                  style: GoogleFonts.cairo(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
+                  style: AppTextStyles.labelLarge.copyWith(fontSize: 13),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1055,23 +1101,27 @@ class _CreateTripScreenState extends State<CreateTripScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              GestureDetector(
-                onTap: onDecrease,
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: onDecrease == null
-                        ? Colors.grey.shade100
-                        : Colors.white,
-                    border: Border.all(color: Colors.grey.shade300),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.remove,
-                    size: 16,
-                    color: onDecrease == null
-                        ? Colors.grey.shade400
-                        : const Color(0xFF2D3142),
+              Semantics(
+                button: onDecrease != null,
+                label: 'تقليل $label',
+                child: GestureDetector(
+                  onTap: onDecrease,
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: onDecrease == null
+                          ? AppColors.slate100
+                          : AppColors.white,
+                      border: Border.all(color: AppColors.slate300),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.remove,
+                      size: 16,
+                      color: onDecrease == null
+                          ? AppColors.slate400
+                          : T.onSurface(context),
+                    ),
                   ),
                 ),
               ),
@@ -1079,29 +1129,32 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Text(
                   '$value',
-                  style: GoogleFonts.cairo(
-                    fontSize: 16,
+                  style: AppTextStyles.titleSmall.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
-              GestureDetector(
-                onTap: onIncrease,
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: onIncrease == null
-                        ? Colors.grey.shade100
-                        : Colors.white,
-                    border: Border.all(color: Colors.grey.shade300),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.add,
-                    size: 16,
-                    color: onIncrease == null
-                        ? Colors.grey.shade400
-                        : const Color(0xFF2D3142),
+              Semantics(
+                button: onIncrease != null,
+                label: 'زيادة $label',
+                child: GestureDetector(
+                  onTap: onIncrease,
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: onIncrease == null
+                          ? AppColors.slate100
+                          : AppColors.white,
+                      border: Border.all(color: AppColors.slate300),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.add,
+                      size: 16,
+                      color: onIncrease == null
+                          ? AppColors.slate400
+                          : T.onSurface(context),
+                    ),
                   ),
                 ),
               ),

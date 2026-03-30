@@ -54,14 +54,19 @@ class _RatingWidgetState extends State<RatingWidget> {
         final starIndex = index + 1;
         final isFilled = starIndex <= _currentRating;
 
-        return GestureDetector(
-          onTap: () => _onStarTap(starIndex),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4.0),
-            child: Icon(
-              isFilled ? Icons.star : Icons.star_border,
-              color: isFilled ? AppColors.warning : AppColors.textDisabled,
-              size: widget.starSize,
+        return Semantics(
+          button: !widget.readOnly,
+          label:
+              '$starIndex ${starIndex == 1 ? 'نجمة' : 'نجوم'}${isFilled ? ' (مختارة)' : ''}',
+          child: GestureDetector(
+            onTap: () => _onStarTap(starIndex),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: Icon(
+                isFilled ? Icons.star : Icons.star_border,
+                color: isFilled ? AppColors.warning : T.outlineVariant(context),
+                size: widget.starSize,
+              ),
             ),
           ),
         );
@@ -69,6 +74,3 @@ class _RatingWidgetState extends State<RatingWidget> {
     );
   }
 }
-
-
-

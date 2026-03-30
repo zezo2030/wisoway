@@ -46,8 +46,9 @@ class BookingModel {
     this.cancellationReason,
   });
 
-  static String _str(dynamic v) =>
-      v == null ? '' : (v is Map ? (v['_id'] ?? v['id'])?.toString() ?? '' : v.toString());
+  static String _str(dynamic v) => v == null
+      ? ''
+      : (v is Map ? (v['_id'] ?? v['id'])?.toString() ?? '' : v.toString());
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
     // TypeORM returns relation as 'trip', Mongoose may use 'tripId' when populated
@@ -157,4 +158,46 @@ class BookingModel {
   bool get isCompleted => status == 'completed';
 
   bool get canBeCancelled => isPending || isConfirmed;
+
+  static bool isPastBooking(BookingModel booking, TripModel? trip) {
+    if (booking.isCancelled || booking.isCompleted) return true;
+    if (trip != null) {
+      const ended = {'completed', 'cancelled', 'expired'};
+      if (ended.contains(trip.status)) return true;
+      if (!trip.departureTime.isAfter(DateTime.now())) return true;
+    }
+    return false;
+  }
+
+  static ({List<BookingModel> upcoming, List<BookingModel> past})
+  categorizeBookings(
+    List<BookingModel> bookings,
+    Map<String, TripModel> tripsMap,
+  ) {
+    final upcoming = <BookingModel>[];
+    final past = <BookingModel>[];
+    for (final b in bookings) {
+      final trip = tripsMap[b.tripId] ?? b.tripPopulated;
+      if (isPastBooking(b, trip)) {
+        past.add(b);
+      } else {
+        upcoming.add(b);
+      }
+    }
+    return (upcoming: upcoming, past: past);
+  }
+
+  static Map<String, TripModel> buildTripsMap(
+    List<BookingModel> bookings,
+    List<TripModel> trips,
+  ) {
+    final tripIds = bookings.map((b) => b.tripId).toSet();
+    final tripsMap = <String, TripModel>{};
+    for (var trip in trips) {
+      if (tripIds.contains(trip.id)) {
+        tripsMap[trip.id] = trip;
+      }
+    }
+    return tripsMap;
+  }
 }

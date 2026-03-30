@@ -86,7 +86,7 @@ class _SignInScreenState extends State<SignInScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(msg),
-            backgroundColor: Colors.red,
+            backgroundColor: T.error(context),
             duration: const Duration(seconds: 4),
           ),
         );
@@ -102,7 +102,7 @@ class _SignInScreenState extends State<SignInScreen>
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: T.surface(context),
       body: Stack(
         children: [
           // Background decorative elements
@@ -118,8 +118,8 @@ class _SignInScreenState extends State<SignInScreen>
                   center: Alignment.center,
                   radius: 0.5,
                   colors: [
-                    AppColors.primary.withOpacity(0.2),
-                    Colors.transparent,
+                    T.primary(context).withValues(alpha: 0.2),
+                    AppColors.transparent,
                   ],
                 ),
               ),
@@ -137,8 +137,8 @@ class _SignInScreenState extends State<SignInScreen>
                   center: Alignment.center,
                   radius: 0.5,
                   colors: [
-                    AppColors.primaryDark.withOpacity(0.15),
-                    Colors.transparent,
+                    AppColors.teal700.withValues(alpha: 0.15),
+                    AppColors.transparent,
                   ],
                 ),
               ),
@@ -161,38 +161,38 @@ class _SignInScreenState extends State<SignInScreen>
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: T.surface(context),
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.primary.withOpacity(0.15),
+                              color: T.primary(context).withValues(alpha: 0.15),
                               blurRadius: 24,
                               offset: const Offset(0, 8),
                             ),
                           ],
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.directions_car_rounded,
                           size: 64,
-                          color: AppColors.primary,
+                          color: T.primary(context),
                         ),
                       ),
                       const SizedBox(height: 32),
-                      const Text(
+                      Text(
                         'مرحباً بعودتك!',
                         style: TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF1E293B),
+                          color: T.onSurface(context),
                           letterSpacing: 0.5,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
+                      Text(
                         'سجل دخولك للاستمرار في رحلتك',
                         style: TextStyle(
                           fontSize: 16,
-                          color: Color(0xFF64748B),
+                          color: T.onSurfaceVariant(context),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -200,11 +200,11 @@ class _SignInScreenState extends State<SignInScreen>
                       // Form Section
                       Container(
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: T.surface(context),
                           borderRadius: BorderRadius.circular(24),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
+                              color: AppColors.black.withValues(alpha: 0.04),
                               blurRadius: 24,
                               offset: const Offset(0, 8),
                             ),
@@ -216,154 +216,169 @@ class _SignInScreenState extends State<SignInScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              TextFormField(
-                                controller: _emailController,
-                                keyboardType: TextInputType.emailAddress,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Color(0xFF334155),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                decoration: InputDecoration(
-                                  labelText: 'البريد الإلكتروني',
-                                  labelStyle: const TextStyle(
-                                    color: Color(0xFF94A3B8),
+                              Semantics(
+                                label: 'البريد الإلكتروني',
+                                textField: true,
+                                child: TextFormField(
+                                  controller: _emailController,
+                                  keyboardType: TextInputType.emailAddress,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: T.onSurfaceVariant(context),
+                                    fontWeight: FontWeight.w600,
                                   ),
-                                  hintText: 'example@email.com',
-                                  hintStyle: const TextStyle(
-                                    color: Color(0xFFCBD5E1),
-                                  ),
-                                  filled: true,
-                                  fillColor: const Color(0xFFF8FAFC),
-                                  prefixIcon: const Icon(
-                                    Icons.email_outlined,
-                                    color: AppColors.primary,
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                    borderSide: const BorderSide(
-                                      color: AppColors.primary,
-                                      width: 2,
+                                  decoration: InputDecoration(
+                                    labelText: 'البريد الإلكتروني',
+                                    labelStyle: TextStyle(
+                                      color: T.outlineVariant(context),
+                                    ),
+                                    hintText: 'example@email.com',
+                                    hintStyle: TextStyle(
+                                      color: T.outlineVariant(context),
+                                    ),
+                                    filled: true,
+                                    fillColor: T.surface(context),
+                                    prefixIcon: Icon(
+                                      Icons.email_outlined,
+                                      color: T.primary(context),
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide(
+                                        color: T.primary(context),
+                                        width: 2,
+                                      ),
                                     ),
                                   ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'يرجى إدخال البريد الإلكتروني';
+                                    }
+                                    return null;
+                                  },
                                 ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'يرجى إدخال البريد الإلكتروني';
-                                  }
-                                  return null;
-                                },
                               ),
                               const SizedBox(height: 20),
-                              TextFormField(
-                                controller: _passwordController,
-                                obscureText: _obscurePassword,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Color(0xFF334155),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                decoration: InputDecoration(
-                                  labelText: 'كلمة المرور',
-                                  labelStyle: const TextStyle(
-                                    color: Color(0xFF94A3B8),
+                              Semantics(
+                                label: 'كلمة المرور',
+                                textField: true,
+                                child: TextFormField(
+                                  controller: _passwordController,
+                                  obscureText: _obscurePassword,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: T.onSurfaceVariant(context),
+                                    fontWeight: FontWeight.w600,
                                   ),
-                                  filled: true,
-                                  fillColor: const Color(0xFFF8FAFC),
-                                  prefixIcon: const Icon(
-                                    Icons.lock_outline_rounded,
-                                    color: AppColors.primary,
-                                  ),
-                                  suffixIcon: IconButton(
-                                    icon: Icon(
-                                      _obscurePassword
-                                          ? Icons.visibility_off_outlined
-                                          : Icons.visibility_outlined,
-                                      color: const Color(0xFF94A3B8),
+                                  decoration: InputDecoration(
+                                    labelText: 'كلمة المرور',
+                                    labelStyle: TextStyle(
+                                      color: T.outlineVariant(context),
                                     ),
-                                    onPressed: () {
-                                      setState(
-                                        () => _obscurePassword =
-                                            !_obscurePassword,
-                                      );
-                                    },
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                    borderSide: const BorderSide(
-                                      color: AppColors.primary,
-                                      width: 2,
+                                    filled: true,
+                                    fillColor: T.surface(context),
+                                    prefixIcon: Icon(
+                                      Icons.lock_outline_rounded,
+                                      color: T.primary(context),
+                                    ),
+                                    suffixIcon: IconButton(
+                                      tooltip: 'إظهار/إخفاء كلمة المرور',
+                                      icon: Icon(
+                                        _obscurePassword
+                                            ? Icons.visibility_off_outlined
+                                            : Icons.visibility_outlined,
+                                        color: T.outlineVariant(context),
+                                      ),
+                                      onPressed: () {
+                                        setState(
+                                          () => _obscurePassword =
+                                              !_obscurePassword,
+                                        );
+                                      },
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide(
+                                        color: T.primary(context),
+                                        width: 2,
+                                      ),
                                     ),
                                   ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'يرجى إدخال كلمة المرور';
+                                    }
+                                    return null;
+                                  },
                                 ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'يرجى إدخال كلمة المرور';
-                                  }
-                                  return null;
-                                },
                               ),
                               const SizedBox(height: 32),
                               Container(
                                 height: 56,
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(16),
-                                  gradient: const LinearGradient(
+                                  gradient: LinearGradient(
                                     colors: [
-                                      AppColors.primary,
-                                      AppColors.primaryDark,
+                                      T.primary(context),
+                                      T.primary(context).withValues(alpha: 0.7),
                                     ],
                                     begin: Alignment.centerLeft,
                                     end: Alignment.centerRight,
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: AppColors.primary.withOpacity(0.3),
+                                      color: T
+                                          .primary(context)
+                                          .withValues(alpha: 0.3),
                                       blurRadius: 12,
                                       offset: const Offset(0, 6),
                                     ),
                                   ],
                                 ),
-                                child: ElevatedButton(
-                                  onPressed: _isLoading
-                                      ? null
-                                      : _signInWithEmail,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.transparent,
-                                    shadowColor: Colors.transparent,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
+                                child: Semantics(
+                                  button: true,
+                                  label: 'تسجيل الدخول',
+                                  child: ElevatedButton(
+                                    onPressed: _isLoading
+                                        ? null
+                                        : _signInWithEmail,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.transparent,
+                                      shadowColor: AppColors.transparent,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
                                     ),
+                                    child: _isLoading
+                                        ? const SizedBox(
+                                            height: 24,
+                                            width: 24,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2.5,
+                                              valueColor:
+                                                  AlwaysStoppedAnimation<Color>(
+                                                    AppColors.white,
+                                                  ),
+                                            ),
+                                          )
+                                        : Text(
+                                            'تسجيل الدخول',
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.white,
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
                                   ),
-                                  child: _isLoading
-                                      ? const SizedBox(
-                                          height: 24,
-                                          width: 24,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2.5,
-                                            valueColor:
-                                                AlwaysStoppedAnimation<Color>(
-                                                  Colors.white,
-                                                ),
-                                          ),
-                                        )
-                                      : const Text(
-                                          'تسجيل الدخول',
-                                          style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                            letterSpacing: 0.5,
-                                          ),
-                                        ),
                                 ),
                               ),
                             ],
@@ -374,27 +389,31 @@ class _SignInScreenState extends State<SignInScreen>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text(
+                          Text(
                             'ليس لديك حساب؟ ',
                             style: TextStyle(
-                              color: Color(0xFF64748B),
+                              color: T.onSurfaceVariant(context),
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.pushReplacementNamed(
-                                context,
-                                RouteNames.accountTypeSelection,
-                              );
-                            },
-                            child: const Text(
-                              'إنشاء حساب جديد',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
+                          Semantics(
+                            button: true,
+                            label: 'إنشاء حساب جديد',
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.pushReplacementNamed(
+                                  context,
+                                  RouteNames.accountTypeSelection,
+                                );
+                              },
+                              child: Text(
+                                'إنشاء حساب جديد',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: T.primary(context),
+                                ),
                               ),
                             ),
                           ),

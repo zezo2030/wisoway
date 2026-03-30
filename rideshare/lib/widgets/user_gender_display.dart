@@ -21,31 +21,34 @@ class UserGenderDisplay extends StatelessWidget {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
         final user = authProvider.userModel;
-        
+
         if (user == null) {
           return const SizedBox.shrink();
         }
-        
+
         final isMale = user.isMale;
         final genderText = isMale ? 'ذكر' : 'أنثى';
-        
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // أيقونة الجنس
-            Icon(
-              isMale ? Icons.male : Icons.female,
-              color: isMale ? Colors.blue : Colors.pink,
-              size: iconSize,
-            ),
-            if (showLabel) ...[
-              const SizedBox(width: 8),
-              Text(
-                genderText,
-                style: textStyle ?? const TextStyle(fontSize: 14),
+
+        return Semantics(
+          label: 'الجنس: $genderText',
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isMale ? Icons.male : Icons.female,
+                color: isMale ? Colors.blue : Colors.pink,
+                size: iconSize,
+                semanticLabel: isMale ? 'ذكر' : 'أنثى',
               ),
+              if (showLabel) ...[
+                const SizedBox(width: 8),
+                Text(
+                  genderText,
+                  style: textStyle ?? const TextStyle(fontSize: 14),
+                ),
+              ],
             ],
-          ],
+          ),
         );
       },
     );
@@ -61,7 +64,7 @@ class UserInfoCard extends StatelessWidget {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
         final user = authProvider.userModel;
-        
+
         if (user == null) {
           return const Card(
             child: Padding(
@@ -70,7 +73,7 @@ class UserInfoCard extends StatelessWidget {
             ),
           );
         }
-        
+
         return Card(
           elevation: 2,
           margin: const EdgeInsets.all(16),
@@ -86,9 +89,9 @@ class UserInfoCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: user.isMale 
-                          ? Colors.blue.withOpacity(0.1)
-                          : Colors.pink.withOpacity(0.1),
+                        color: user.isMale
+                            ? Colors.blue.withOpacity(0.1)
+                            : Colors.pink.withOpacity(0.1),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -134,10 +137,10 @@ class UserInfoCard extends StatelessWidget {
                 _buildInfoRow(
                   icon: Icons.badge,
                   label: 'الدور',
-                  value: user.role == AppConstants.rolePassenger 
-                    ? 'راكب' 
-                    : user.role == AppConstants.roleDriver 
-                      ? 'سائق' 
+                  value: user.role == AppConstants.rolePassenger
+                      ? 'راكب'
+                      : user.role == AppConstants.roleDriver
+                      ? 'سائق'
                       : 'مدير',
                 ),
                 if (user.phoneNumber.isNotEmpty) ...[
@@ -153,7 +156,8 @@ class UserInfoCard extends StatelessWidget {
                   _buildInfoRow(
                     icon: Icons.star,
                     label: 'التقييم',
-                    value: '${user.rating.toStringAsFixed(1)} (${user.totalRatings} تقييم)',
+                    value:
+                        '${user.rating.toStringAsFixed(1)} (${user.totalRatings} تقييم)',
                   ),
                 ],
               ],
@@ -175,17 +179,11 @@ class UserInfoCard extends StatelessWidget {
         const SizedBox(width: 12),
         Text(
           '$label: ',
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey[600],
-          ),
+          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
         ),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         ),
       ],
     );
@@ -227,4 +225,3 @@ Color getGenderColor(String gender) {
       return Colors.grey;
   }
 }
-

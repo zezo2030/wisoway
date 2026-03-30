@@ -52,3 +52,50 @@
     );
   }
   ```
+
+## Design Context
+
+### Users
+RedShare serves everyday commuters and occasional inter-city travelers across Arab communities. Arabic-first (RTL), with English support. Two roles: Drivers and Passengers. Mobile-first, often on-the-go.
+
+### Brand Personality
+**Trusted. Simple. Local.** — Confident but approachable, Arabic-first with RTL as default, community-oriented, modern without chasing trends.
+
+### Aesthetic Direction
+- **Clean & Minimal** — whitespace-heavy, restrained palette, content breathes
+- **Reference:** Uber / Careem — map-centric, professional, confident spacing
+- **Anti-reference:** Never Western-only — must respect Arabic/RTL context
+- **Primary color:** Teal `#0D9488` — trustworthy, modern, distinct
+- **Typography:** Tajawal only. No Cairo, no inline GoogleFonts overrides.
+- **Icons:** Iconsax Plus (Linear=inactive, Bold=active)
+- **Light + Dark theme** support required
+- **Consistent radius scale:** 8, 12, 16, 20, 24 (no one-off values)
+- **Subtle shadows:** `black.withOpacity(0.04)`, blur 8-12, offset (0,2-4)
+
+### Design Principles
+1. **Trust through clarity** — Clear hierarchy, no ambiguity in trip/pricing info
+2. **Arabic-first, not Arabic-after** — RTL is default, Tajawal only
+3. **One design system, zero drift** — No hardcoded colors, no inline font overrides. Eliminate purple (#6C63FF) and Tailwind Slate drift.
+4. **Speed of task** — Minimize taps to core actions, remove decorative noise
+5. **Teal as signal** — Brand teal reserved for primary actions and active states only
+
+### Color Tokens (Target)
+| Token | Light | Dark | Usage |
+|-------|-------|------|-------|
+| primary | `#0D9488` | `#2DD4BF` | CTAs, active tabs, brand accents |
+| primaryDark | `#0F766E` | `#14B8A6` | Gradients, pressed states |
+| primaryLight | `#99F6E4` | `#134E4A` | Tinted backgrounds |
+| secondary | `#F59E0B` | `#FBBF24` | Ratings, warnings, accents |
+| success | `#10B981` | `#34D399` | Confirmed, available |
+| error | `#EF4444` | `#F87171` | Errors, unavailable |
+| background | `#F8FAFC` | `#0F172A` | Scaffold |
+| surface | `#FFFFFF` | `#1E293B` | Cards, sheets, inputs |
+| textPrimary | `#0F172A` | `#F1F5F9` | Headings, body |
+| textSecondary | `#64748B` | `#94A3B8` | Captions, muted |
+| border | `#E2E8F0` | `#334155` | Borders, dividers |
+
+### Spacing Scale
+xs=4, sm=8, md=12, lg=16, xl=20, xxl=24, xxxl=32
+
+### Border Radius Scale
+sm=8, md=12, lg=16, xl=20, xxl=24, full=999

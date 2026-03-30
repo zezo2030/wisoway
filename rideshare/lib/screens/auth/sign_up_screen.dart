@@ -59,7 +59,7 @@ class _SignUpScreenState extends State<SignUpScreen>
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedGender == null) {
-      _showSnackBar('يرجى اختيار الجنس', Colors.red);
+      _showSnackBar('يرجى اختيار الجنس', T.error(context));
       return;
     }
 
@@ -69,7 +69,8 @@ class _SignUpScreenState extends State<SignUpScreen>
     final String role = args?['accountType'] ?? AppConstants.rolePassenger;
 
     // Build full phone number
-    final phoneNumber = '${_selectedCountry.dialCode}${_phoneController.text.trim()}';
+    final phoneNumber =
+        '${_selectedCountry.dialCode}${_phoneController.text.trim()}';
 
     setState(() => _isLoading = true);
 
@@ -101,7 +102,7 @@ class _SignUpScreenState extends State<SignUpScreen>
     } catch (e) {
       _showSnackBar(
         AuthErrorFormatter.format(e, action: AuthAction.signUp),
-        Colors.red,
+        T.error(context),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -124,7 +125,7 @@ class _SignUpScreenState extends State<SignUpScreen>
         : 'راكب';
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: T.surface(context),
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: SingleChildScrollView(
@@ -165,7 +166,9 @@ class _SignUpScreenState extends State<SignUpScreen>
                             selectedCountry: _selectedCountry,
                             onCountryChanged: (country) =>
                                 setState(() => _selectedCountry = country),
-                            borderColor: AppColors.primary.withOpacity(0.3),
+                            borderColor: T
+                                .primary(context)
+                                .withValues(alpha: 0.3),
                           ),
                           const SizedBox(width: 12),
                           // Phone number input
@@ -202,6 +205,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                                 ? IconsaxPlusLinear.eye_slash
                                 : IconsaxPlusLinear.eye,
                           ),
+                          tooltip: 'إظهار/إخفاء كلمة المرور',
                           onPressed: () => setState(
                             () => _obscurePassword = !_obscurePassword,
                           ),
@@ -237,27 +241,34 @@ class _SignUpScreenState extends State<SignUpScreen>
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(24, 60, 24, 30),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.primary, AppColors.primaryDark],
+          colors: [
+            T.primary(context),
+            T.primary(context).withValues(alpha: 0.7),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.only(
+        borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(40),
           bottomRight: Radius.circular(40),
         ),
       ),
       child: Column(
         children: [
-          const Icon(IconsaxPlusBold.user_add, size: 60, color: Colors.white),
+          const Icon(
+            IconsaxPlusBold.user_add,
+            size: 60,
+            color: AppColors.white,
+          ),
           const SizedBox(height: 16),
           const Text(
             'إنشاء حساب جديد',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: AppColors.white,
             ),
           ),
           const SizedBox(height: 4),
@@ -265,7 +276,8 @@ class _SignUpScreenState extends State<SignUpScreen>
             'سجل الآن كـ $role وابدأ رحلتك',
             style: TextStyle(
               fontSize: 15,
-              color: Colors.white.withOpacity(0.9),
+              color: AppColors.white.withValues(alpha: 0.2),
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -283,7 +295,7 @@ class _SignUpScreenState extends State<SignUpScreen>
             isSelected: _selectedGender == AppConstants.genderMale,
             onTap: () =>
                 setState(() => _selectedGender = AppConstants.genderMale),
-            color: AppColors.primary,
+            color: T.primary(context),
           ),
         ),
         const SizedBox(width: 12),
@@ -294,7 +306,7 @@ class _SignUpScreenState extends State<SignUpScreen>
             isSelected: _selectedGender == AppConstants.genderFemale,
             onTap: () =>
                 setState(() => _selectedGender = AppConstants.genderFemale),
-            color: const Color(0xFFE91E63),
+            color: T.error(context),
           ),
         ),
       ],
@@ -305,18 +317,22 @@ class _SignUpScreenState extends State<SignUpScreen>
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Text(
+        Text(
           'لديك حساب بالفعل؟ ',
-          style: TextStyle(color: AppColors.textSecondary),
+          style: TextStyle(color: T.onSurfaceVariant(context)),
         ),
-        TextButton(
-          onPressed: () =>
-              Navigator.pushReplacementNamed(context, RouteNames.signIn),
-          child: const Text(
-            'تسجيل الدخول',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary,
+        Semantics(
+          button: true,
+          label: 'تسجيل الدخول',
+          child: TextButton(
+            onPressed: () =>
+                Navigator.pushReplacementNamed(context, RouteNames.signIn),
+            child: Text(
+              'تسجيل الدخول',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: T.primary(context),
+              ),
             ),
           ),
         ),

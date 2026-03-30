@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../core/theme/text_styles.dart';
+import '../../core/theme/colors.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../providers/trip_provider.dart';
 import '../../models/trip_model.dart';
@@ -13,6 +15,7 @@ import '../../core/constants/route_names.dart';
 import '../../models/wallet_model.dart';
 import '../../widgets/notification_icon_button.dart';
 import '../../utils/seat_layout_helpers.dart';
+import '../../../widgets/common/section_card.dart';
 
 class TripManagementScreen extends StatefulWidget {
   final String tripId;
@@ -54,7 +57,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تحميل الرحلة: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -77,9 +80,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     if (!trip.isActive) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('التعديل متاح للرحلات النشطة فقط'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -89,9 +92,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'المقاعد المحجوزة عبر التطبيق تُدار من طلبات الحجز',
-          ),
+          content: Text('المقاعد المحجوزة عبر التطبيق تُدار من طلبات الحجز'),
         ),
       );
       return;
@@ -131,18 +132,16 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         await _reloadTrip();
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('تم فتح المقعد'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              tripProvider.errorMessage ?? 'فشل فتح المقعد',
-            ),
-            backgroundColor: Colors.red,
+            content: Text(tripProvider.errorMessage ?? 'فشل فتح المقعد'),
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -180,18 +179,16 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       await _reloadTrip();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('تم قفل المقعد'),
-          backgroundColor: Colors.green,
+          backgroundColor: AppColors.success,
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            tripProvider.errorMessage ?? 'فشل قفل المقعد',
-          ),
-          backgroundColor: Colors.red,
+          content: Text(tripProvider.errorMessage ?? 'فشل قفل المقعد'),
+          backgroundColor: AppColors.error,
         ),
       );
     }
@@ -219,8 +216,8 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
-              foregroundColor: Colors.white,
+              backgroundColor: AppColors.warning,
+              foregroundColor: AppColors.white,
             ),
             child: const Text('إخفاء'),
           ),
@@ -234,9 +231,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
 
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('تم إخفاء الرحلة بنجاح'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
         Navigator.pop(context);
@@ -252,9 +249,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
 
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('تم إظهار الرحلة بنجاح'),
-          backgroundColor: Colors.green,
+          backgroundColor: AppColors.success,
         ),
       );
       _loadTrip();
@@ -278,8 +275,8 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+              backgroundColor: AppColors.error,
+              foregroundColor: AppColors.white,
             ),
             child: const Text('حذف'),
           ),
@@ -293,9 +290,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
 
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('تم حذف الرحلة بنجاح'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
         Navigator.pop(context);
@@ -317,14 +314,16 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: Colors.grey[50],
+        backgroundColor: AppColors.slate50,
         appBar: AppBar(
           elevation: 0,
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black87,
+          backgroundColor: AppColors.white,
+          foregroundColor: T.onSurface(context).withValues(alpha: 0.87),
           title: Text(
             'إدارة الرحلة',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+            style: AppTextStyles.titleMedium.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         body: const Center(child: CircularProgressIndicator()),
@@ -333,25 +332,33 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
 
     if (_trip == null) {
       return Scaffold(
-        backgroundColor: Colors.grey[50],
+        backgroundColor: AppColors.slate50,
         appBar: AppBar(
           elevation: 0,
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black87,
+          backgroundColor: AppColors.white,
+          foregroundColor: T.onSurface(context).withValues(alpha: 0.87),
           title: Text(
             'إدارة الرحلة',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+            style: AppTextStyles.titleMedium.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(IconsaxPlusLinear.danger, size: 64, color: Colors.grey[400]),
+              Icon(
+                IconsaxPlusLinear.danger,
+                size: 64,
+                color: AppColors.slate300,
+              ),
               const SizedBox(height: 16),
               Text(
                 'الرحلة غير موجودة',
-                style: GoogleFonts.cairo(fontSize: 18, color: Colors.grey[600]),
+                style: AppTextStyles.titleMedium.copyWith(
+                  color: AppColors.slate400,
+                ),
               ),
             ],
           ),
@@ -365,21 +372,23 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     final totalRevenue = _getTotalRevenue();
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppColors.slate50,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        backgroundColor: AppColors.white,
+        foregroundColor: T.onSurface(context).withValues(alpha: 0.87),
         title: Text(
           'إدارة الرحلة',
-          style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+          style: AppTextStyles.titleMedium.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
         ),
         actions: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8.0),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: NotificationIconButton(
-              backgroundColor: Colors.transparent,
-              iconColor: Colors.black87,
+              backgroundColor: AppColors.transparent,
+              iconColor: T.onSurface(context).withValues(alpha: 0.87),
             ),
           ),
           if (_trip!.isActive)
@@ -398,7 +407,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
             icon: const Icon(IconsaxPlusLinear.trash),
             onPressed: _deleteTrip,
             tooltip: 'حذف الرحلة',
-            color: Colors.red,
+            color: AppColors.error,
           ),
         ],
       ),
@@ -407,7 +416,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         builder: (context, bookingsSnapshot) {
           final bookings = bookingsSnapshot.data ?? [];
           final pendingBookings = bookings.where((b) => b.isPending).toList();
-          final confirmedBookings = bookings.where((b) => b.isConfirmed).toList();
+          final confirmedBookings = bookings
+              .where((b) => b.isConfirmed)
+              .toList();
 
           return RefreshIndicator(
             onRefresh: _loadTrip,
@@ -488,7 +499,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.withOpacity(0.3),
+            color: Colors.blue.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -504,12 +515,12 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: AppColors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Icon(
                     IconsaxPlusBold.route_square,
-                    color: Colors.white,
+                    color: AppColors.white,
                     size: 28,
                   ),
                 ),
@@ -520,18 +531,16 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                     children: [
                       Text(
                         'معلومات الرحلة',
-                        style: GoogleFonts.cairo(
+                        style: AppTextStyles.titleMedium.copyWith(
                           fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: AppColors.white,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         '${dateFormat.format(trip.departureTime)} ${timeFormat.format(trip.departureTime)}',
-                        style: GoogleFonts.cairo(
-                          fontSize: 14,
-                          color: Colors.white.withOpacity(0.9),
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.white.withValues(alpha: 0.9),
                         ),
                       ),
                     ],
@@ -544,7 +553,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
+                color: AppColors.white.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
@@ -557,7 +566,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                     ),
                     child: const Icon(
                       IconsaxPlusBold.location,
-                      color: Colors.white,
+                      color: AppColors.white,
                       size: 20,
                     ),
                   ),
@@ -568,18 +577,16 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                       children: [
                         Text(
                           'من',
-                          style: GoogleFonts.cairo(
-                            fontSize: 12,
-                            color: Colors.white.withOpacity(0.8),
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.white.withValues(alpha: 0.8),
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           trip.from.name,
-                          style: GoogleFonts.cairo(
-                            fontSize: 16,
+                          style: AppTextStyles.titleSmall.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: AppColors.white,
                           ),
                         ),
                       ],
@@ -594,7 +601,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
               padding: const EdgeInsets.only(right: 20),
               child: Icon(
                 IconsaxPlusLinear.arrow_down_1,
-                color: Colors.white.withOpacity(0.7),
+                color: AppColors.white.withValues(alpha: 0.7),
                 size: 24,
               ),
             ),
@@ -603,7 +610,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
+                color: AppColors.white.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
@@ -616,7 +623,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                     ),
                     child: const Icon(
                       IconsaxPlusBold.location,
-                      color: Colors.white,
+                      color: AppColors.white,
                       size: 20,
                     ),
                   ),
@@ -627,18 +634,16 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                       children: [
                         Text(
                           'إلى',
-                          style: GoogleFonts.cairo(
-                            fontSize: 12,
-                            color: Colors.white.withOpacity(0.8),
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.white.withValues(alpha: 0.8),
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           trip.to.name,
-                          style: GoogleFonts.cairo(
-                            fontSize: 16,
+                          style: AppTextStyles.titleSmall.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: AppColors.white,
                           ),
                         ),
                       ],
@@ -656,7 +661,10 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
   Widget _buildWalletCard() {
     final w = _wallet!;
     return InkWell(
-      onTap: () => Navigator.pushNamed(context, RouteNames.driverWallet).then((_) => _loadWallet()),
+      onTap: () => Navigator.pushNamed(
+        context,
+        RouteNames.driverWallet,
+      ).then((_) => _loadWallet()),
       borderRadius: BorderRadius.circular(20),
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -673,7 +681,11 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                 color: Colors.orange.shade100,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(IconsaxPlusBold.wallet_3, color: Colors.orange.shade700, size: 24),
+              child: Icon(
+                IconsaxPlusBold.wallet_3,
+                color: Colors.orange.shade700,
+                size: 24,
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -682,16 +694,27 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                 children: [
                   Text(
                     'رصيد المحفظة: ${w.balance.toStringAsFixed(0)} ${w.currency}',
-                    style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.bold),
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   Text(
-                    w.hasUsedLifetimeFreeTrip ? 'تم استخدام الرحلة المجانية' : 'رحلة مجانية متاحة',
-                    style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey[700]),
+                    w.hasUsedLifetimeFreeTrip
+                        ? 'تم استخدام الرحلة المجانية'
+                        : 'رحلة مجانية متاحة',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.slate500,
+                    ),
                   ),
                 ],
               ),
             ),
-            Icon(IconsaxPlusLinear.arrow_left_2, color: Colors.orange.shade700, size: 20),
+            Icon(
+              IconsaxPlusLinear.arrow_left_2,
+              color: Colors.orange.shade700,
+              size: 20,
+            ),
           ],
         ),
       ),
@@ -699,48 +722,18 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
   }
 
   Widget _buildPendingBookingsCard(List<BookingModel> pendingBookings) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.amber.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(IconsaxPlusBold.clock, color: Colors.amber.shade700, size: 24),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'حجوزات قيد التأكيد (${pendingBookings.length})',
-                style: GoogleFonts.cairo(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'تأكيد الحجز يفتح بيانات الراكب (رحلة مجانية أو خصم من المحفظة مرة واحدة للرحلة)',
-            style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey[600]),
-          ),
-          const SizedBox(height: 16),
-          ...pendingBookings.map((b) => _buildPendingBookingItem(b)),
-        ],
-      ),
+    return SectionCard(
+      title: 'حجوزات قيد التأكيد (${pendingBookings.length})',
+      icon: IconsaxPlusBold.clock,
+      iconColor: AppColors.warning,
+      children: [
+        Text(
+          'تأكيد الحجز يفتح بيانات الراكب (رحلة مجانية أو خصم من المحفظة مرة واحدة للرحلة)',
+          style: AppTextStyles.bodySmall.copyWith(color: AppColors.slate400),
+        ),
+        const SizedBox(height: 16),
+        ...pendingBookings.map((b) => _buildPendingBookingItem(b)),
+      ],
     );
   }
 
@@ -750,36 +743,58 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: AppColors.slate50,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(color: AppColors.slate200),
       ),
       child: Row(
         children: [
-          Icon(IconsaxPlusLinear.profile_2user, color: Colors.grey[600], size: 22),
+          Icon(
+            IconsaxPlusLinear.profile_2user,
+            color: AppColors.slate400,
+            size: 22,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('مقعد ${booking.seatNumber}', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-                Text('بانتظار التأكيد', style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey[600])),
+                Text(
+                  'مقعد ${booking.seatNumber}',
+                  style: AppTextStyles.labelLarge,
+                ),
+                Text(
+                  'بانتظار التأكيد',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.slate400,
+                  ),
+                ),
               ],
             ),
           ),
           ElevatedButton(
-            onPressed: isConfirming
-                ? null
-                : () => _confirmBooking(booking.id),
+            onPressed: isConfirming ? null : () => _confirmBooking(booking.id),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green.shade600,
-              foregroundColor: Colors.white,
+              backgroundColor: AppColors.success,
+              foregroundColor: AppColors.white,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: isConfirming
-                ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : Text('تأكيد الحجز', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold)),
+                ? SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.white,
+                    ),
+                  )
+                : Text(
+                    'تأكيد الحجز',
+                    style: AppTextStyles.labelLarge.copyWith(fontSize: 13),
+                  ),
           ),
         ],
       ),
@@ -792,22 +807,34 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       await _bookingService.confirmBooking(bookingId);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم تأكيد الحجز'), backgroundColor: Colors.green),
+        SnackBar(
+          content: Text('تم تأكيد الحجز'),
+          backgroundColor: AppColors.success,
+        ),
       );
       _loadTrip();
     } catch (e) {
       if (!mounted) return;
       final msg = e.toString();
-      final insufficient = msg.contains('Insufficient') || msg.contains('wallet') || msg.contains('balance') || msg.contains('شحن');
+      final insufficient =
+          msg.contains('Insufficient') ||
+          msg.contains('wallet') ||
+          msg.contains('balance') ||
+          msg.contains('شحن');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(insufficient ? 'رصيد المحفظة غير كافٍ. يرجى شحن المحفظة ثم تأكيد الحجز.' : msg),
-          backgroundColor: Colors.red,
+          content: Text(
+            insufficient
+                ? 'رصيد المحفظة غير كافٍ. يرجى شحن المحفظة ثم تأكيد الحجز.'
+                : msg,
+          ),
+          backgroundColor: AppColors.error,
           action: insufficient
               ? SnackBarAction(
                   label: 'شحن المحفظة',
-                  textColor: Colors.white,
-                  onPressed: () => Navigator.pushNamed(context, RouteNames.driverWallet),
+                  textColor: AppColors.white,
+                  onPressed: () =>
+                      Navigator.pushNamed(context, RouteNames.driverWallet),
                 )
               : null,
         ),
@@ -830,7 +857,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
             label: 'المقاعد المحجوزة',
             value: '$bookedSeats',
             subtitle: 'من ${trip.totalSeats}',
-            color: Colors.purple,
+            color: T.primary(context),
           ),
         ),
         const SizedBox(width: 12),
@@ -840,7 +867,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
             label: 'الإيرادات',
             value: totalRevenue.toStringAsFixed(0),
             subtitle: trip.currency,
-            color: Colors.green,
+            color: AppColors.success,
           ),
         ),
       ],
@@ -857,11 +884,11 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: AppColors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -873,7 +900,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: color, size: 24),
@@ -881,20 +908,16 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
           const SizedBox(height: 12),
           Text(
             label,
-            style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey[600]),
+            style: AppTextStyles.bodySmall.copyWith(color: AppColors.slate400),
           ),
           const SizedBox(height: 4),
           Text(
             value,
-            style: GoogleFonts.cairo(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
+            style: AppTextStyles.headlineSmall.copyWith(color: color),
           ),
           Text(
             subtitle,
-            style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey[500]),
+            style: AppTextStyles.labelSmall.copyWith(color: AppColors.slate500),
           ),
         ],
       ),
@@ -908,22 +931,22 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
 
     switch (trip.status) {
       case 'active':
-        statusColor = Colors.green;
+        statusColor = AppColors.success;
         statusText = 'نشطة';
         statusIcon = IconsaxPlusBold.tick_circle;
         break;
       case 'hidden':
-        statusColor = Colors.orange;
+        statusColor = AppColors.warning;
         statusText = 'مخفية';
         statusIcon = IconsaxPlusLinear.eye_slash;
         break;
       case 'completed':
-        statusColor = Colors.blue;
+        statusColor = T.primary(context);
         statusText = 'مكتملة';
         statusIcon = IconsaxPlusBold.tick_circle;
         break;
       default:
-        statusColor = Colors.grey;
+        statusColor = T.outlineVariant(context);
         statusText = 'غير معروف';
         statusIcon = IconsaxPlusLinear.info_circle;
     }
@@ -931,11 +954,11 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: AppColors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -946,7 +969,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.1),
+              color: statusColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(statusIcon, color: statusColor, size: 24),
@@ -958,19 +981,14 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
               children: [
                 Text(
                   'حالة الرحلة',
-                  style: GoogleFonts.cairo(
-                    fontSize: 14,
-                    color: Colors.grey[600],
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.slate400,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   statusText,
-                  style: GoogleFonts.cairo(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: statusColor,
-                  ),
+                  style: AppTextStyles.titleMedium.copyWith(color: statusColor),
                 ),
               ],
             ),
@@ -978,9 +996,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.1),
+              color: statusColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: statusColor.withOpacity(0.3)),
+              border: Border.all(color: statusColor.withValues(alpha: 0.3)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -996,8 +1014,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                 const SizedBox(width: 6),
                 Text(
                   statusText,
-                  style: GoogleFonts.cairo(
-                    fontSize: 12,
+                  style: AppTextStyles.labelMedium.copyWith(
                     fontWeight: FontWeight.bold,
                     color: statusColor,
                   ),
@@ -1015,98 +1032,62 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     DateFormat dateFormat,
     DateFormat timeFormat,
   ) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    return SectionCard(
+      title: 'تفاصيل الرحلة',
+      icon: IconsaxPlusLinear.info_circle,
+      iconColor: T.primary(context),
+      children: [
+        if (trip.distanceKm != null) ...[
+          _buildDetailRow(
+            icon: IconsaxPlusBold.routing_2,
+            label: 'مسافة الرحلة',
+            value: '${trip.distanceKm!.toStringAsFixed(1)} كم',
+            color: T.primary(context),
           ),
+          const Divider(height: 32),
         ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  IconsaxPlusLinear.info_circle,
-                  color: Colors.blue,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'تفاصيل الرحلة',
-                style: GoogleFonts.cairo(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          if (trip.distanceKm != null) ...[
-            _buildDetailRow(
-              icon: IconsaxPlusBold.routing_2,
-              label: 'مسافة الرحلة',
-              value: '${trip.distanceKm!.toStringAsFixed(1)} كم',
-              color: Colors.teal,
-            ),
-            const Divider(height: 32),
-          ],
-          _buildDetailRow(
-            icon: IconsaxPlusBold.clock,
-            label: 'وقت الانطلاق',
-            value:
-                '${dateFormat.format(trip.departureTime)} ${timeFormat.format(trip.departureTime)}',
-            color: Colors.orange,
-          ),
-          const Divider(height: 32),
-          _buildDetailRow(
-            icon: IconsaxPlusBold.dollar_circle,
-            label: 'السعر لكل مقعد',
-            value: '${trip.price} ${trip.currency}',
-            color: Colors.green,
-          ),
-          const Divider(height: 32),
-          _buildDetailRow(
-            icon: IconsaxPlusBold.profile_2user,
-            label: 'المقاعد',
-            value: '${trip.availableSeats} متاح / ${trip.totalSeats} إجمالي',
-            color: Colors.purple,
-          ),
-          const Divider(height: 32),
-          _buildDetailRow(
-            icon: IconsaxPlusLinear.grid_1,
-            label: 'تخطيط المقاعد',
-            value: trip.seatLayout.seatsPerRowList != null &&
-                    trip.seatLayout.seatsPerRowList!.isNotEmpty
-                ? 'مخصص: ${trip.seatLayout.seatsPerRowList!.join('، ')}'
-                : '${trip.seatLayout.rows} صف × ${trip.seatLayout.seatsPerRow} مقعد',
-            color: Colors.indigo,
-          ),
-          const Divider(height: 32),
-          _buildDetailRow(
-            icon: IconsaxPlusLinear.people,
-            label: 'منع الاختلاط',
-            value: trip.seatLayout.preventGenderMixing ? 'نعم' : 'لا',
-            color: trip.seatLayout.preventGenderMixing
-                ? Colors.red
-                : Colors.grey,
-          ),
-        ],
-      ),
+        _buildDetailRow(
+          icon: IconsaxPlusBold.clock,
+          label: 'وقت الانطلاق',
+          value:
+              '${dateFormat.format(trip.departureTime)} ${timeFormat.format(trip.departureTime)}',
+          color: AppColors.warning,
+        ),
+        const Divider(height: 32),
+        _buildDetailRow(
+          icon: IconsaxPlusBold.dollar_circle,
+          label: 'السعر لكل مقعد',
+          value: '${trip.price} ${trip.currency}',
+          color: AppColors.success,
+        ),
+        const Divider(height: 32),
+        _buildDetailRow(
+          icon: IconsaxPlusBold.profile_2user,
+          label: 'المقاعد',
+          value: '${trip.availableSeats} متاح / ${trip.totalSeats} إجمالي',
+          color: T.primary(context),
+        ),
+        const Divider(height: 32),
+        _buildDetailRow(
+          icon: IconsaxPlusLinear.grid_1,
+          label: 'تخطيط المقاعد',
+          value:
+              trip.seatLayout.seatsPerRowList != null &&
+                  trip.seatLayout.seatsPerRowList!.isNotEmpty
+              ? 'مخصص: ${trip.seatLayout.seatsPerRowList!.join('، ')}'
+              : '${trip.seatLayout.rows} صف × ${trip.seatLayout.seatsPerRow} مقعد',
+          color: T.primary(context),
+        ),
+        const Divider(height: 32),
+        _buildDetailRow(
+          icon: IconsaxPlusLinear.people,
+          label: 'منع الاختلاط',
+          value: trip.seatLayout.preventGenderMixing ? 'نعم' : 'لا',
+          color: trip.seatLayout.preventGenderMixing
+              ? AppColors.error
+              : T.outlineVariant(context),
+        ),
+      ],
     );
   }
 
@@ -1121,7 +1102,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, size: 20, color: color),
@@ -1130,15 +1111,18 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         Expanded(
           child: Text(
             label,
-            style: GoogleFonts.cairo(fontSize: 15, color: Colors.grey[700]),
+            style: AppTextStyles.bodyLarge.copyWith(
+              fontSize: 15,
+              color: AppColors.slate500,
+            ),
           ),
         ),
         Text(
           value,
-          style: GoogleFonts.cairo(
+          style: AppTextStyles.bodyLarge.copyWith(
             fontSize: 15,
             fontWeight: FontWeight.bold,
-            color: Colors.grey[900],
+            color: T.onSurface(context),
           ),
         ),
       ],
@@ -1146,113 +1130,74 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
   }
 
   Widget _buildSeatLayoutCard(TripModel trip) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    return SectionCard(
+      title: 'تخطيط المقاعد',
+      icon: IconsaxPlusBold.profile_2user,
+      iconColor: T.primary(context),
+      children: [
+        Text(
+          'اضغط مطولاً على مقعد أخضر لقفله (حجز خارجي)، أو على مقعد مقفل لفتحه.',
+          style: AppTextStyles.bodySmall.copyWith(color: AppColors.slate400),
+        ),
+        const SizedBox(height: 20),
+        // Seat Layout Visualization
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.slate50,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.slate200),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+          child: Column(
             children: [
+              // Driver seat indicator
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 12,
+                ),
+                margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: Colors.purple.withOpacity(0.1),
+                  color: AppColors.teal50,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
-                  IconsaxPlusBold.profile_2user,
-                  color: Colors.purple,
-                  size: 24,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      IconsaxPlusBold.car,
+                      size: 16,
+                      color: T.primary(context),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'مقعد السائق',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: T.primary(context),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 12),
-              Text(
-                'تخطيط المقاعد',
-                style: GoogleFonts.cairo(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+              // Seats grid (irregular rows use same order as API + passenger UI)
+              ..._driverSeatLayoutRows(trip),
+              const SizedBox(height: 12),
+              // Legend
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 16,
+                runSpacing: 8,
+                children: [
+                  _buildLegendItem(AppColors.success, 'متاح'),
+                  _buildLegendItem(Colors.amber.shade200, 'مقفل'),
+                  _buildLegendItem(T.primary(context), 'محجوز - رجل'),
+                  _buildLegendItem(Colors.pink, 'محجوز - أنثى'),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'اضغط مطولاً على مقعد أخضر لقفله (حجز خارجي)، أو على مقعد مقفل لفتحه.',
-            style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey[600]),
-          ),
-          const SizedBox(height: 20),
-          // Seat Layout Visualization
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey[200]!),
-            ),
-            child: Column(
-              children: [
-                // Driver seat indicator
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 8,
-                    horizontal: 12,
-                  ),
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        IconsaxPlusBold.car,
-                        size: 16,
-                        color: Colors.blue.shade700,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'مقعد السائق',
-                        style: GoogleFonts.cairo(
-                          fontSize: 12,
-                          color: Colors.blue.shade700,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Seats grid (irregular rows use same order as API + passenger UI)
-                ..._driverSeatLayoutRows(trip),
-                const SizedBox(height: 12),
-                // Legend
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 16,
-                  runSpacing: 8,
-                  children: [
-                    _buildLegendItem(Colors.green, 'متاح'),
-                    _buildLegendItem(Colors.amber.shade200, 'مقفل'),
-                    _buildLegendItem(Colors.blue, 'محجوز - رجل'),
-                    _buildLegendItem(Colors.pink, 'محجوز - أنثى'),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -1271,8 +1216,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
               seatNumber,
               trip.seatLayout,
             );
-            final matches =
-                trip.seats.where((s) => s.seatNumber == backendId);
+            final matches = trip.seats.where((s) => s.seatNumber == backendId);
             final seatData = matches.isNotEmpty
                 ? matches.first
                 : SeatData.empty(backendId);
@@ -1292,14 +1236,14 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
               iconColor = Colors.amber.shade900;
               seatIcon = IconsaxPlusBold.lock;
             } else if (!isBooked) {
-              seatColor = Colors.green.shade100;
-              borderColor = Colors.green.shade300;
-              iconColor = Colors.green.shade700;
+              seatColor = AppColors.successLight.withValues(alpha: 0.2);
+              borderColor = AppColors.successLight;
+              iconColor = AppColors.success;
               seatIcon = IconsaxPlusLinear.profile_2user;
             } else if (isMale) {
-              seatColor = Colors.blue.shade100;
-              borderColor = Colors.blue.shade300;
-              iconColor = Colors.blue.shade700;
+              seatColor = T.primary(context).withValues(alpha: 0.1);
+              borderColor = AppColors.teal300;
+              iconColor = T.primary(context);
               seatIcon = IconsaxPlusBold.profile;
             } else if (isFemale) {
               seatColor = Colors.pink.shade100;
@@ -1307,9 +1251,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
               iconColor = Colors.pink.shade700;
               seatIcon = IconsaxPlusBold.profile;
             } else {
-              seatColor = Colors.grey.shade100;
-              borderColor = Colors.grey.shade300;
-              iconColor = Colors.grey.shade700;
+              seatColor = AppColors.slate100;
+              borderColor = AppColors.slate300;
+              iconColor = AppColors.slate500;
               seatIcon = IconsaxPlusBold.profile;
             }
 
@@ -1336,8 +1280,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                     const SizedBox(height: 2),
                     Text(
                       '$seatNumber',
-                      style: GoogleFonts.cairo(
-                        fontSize: 10,
+                      style: AppTextStyles.overline.copyWith(
                         fontWeight: FontWeight.bold,
                         color: iconColor,
                       ),
@@ -1359,65 +1302,26 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
           width: 16,
           height: 16,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.2),
+            color: color.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: color.withOpacity(0.5)),
+            border: Border.all(color: color.withValues(alpha: 0.5)),
           ),
         ),
         const SizedBox(width: 6),
         Text(
           label,
-          style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey[700]),
+          style: AppTextStyles.bodySmall.copyWith(color: AppColors.slate500),
         ),
       ],
     );
   }
 
   Widget _buildPassengersCard(List<BookingModel> bookings) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.teal.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  IconsaxPlusBold.profile_2user,
-                  color: Colors.teal,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'الركاب (${bookings.length})',
-                style: GoogleFonts.cairo(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ...bookings.map((booking) => _buildPassengerItem(booking)),
-        ],
-      ),
+    return SectionCard(
+      title: 'الركاب (${bookings.length})',
+      icon: IconsaxPlusBold.profile_2user,
+      iconColor: T.primary(context),
+      children: [...bookings.map((booking) => _buildPassengerItem(booking))],
     );
   }
 
@@ -1433,271 +1337,198 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: booking.userPopulated?.gender == 'male'
-                  ? Colors.blue.shade100
-                  : Colors.pink.shade100,
-              shape: BoxShape.circle,
+          color: AppColors.slate50,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.slate200),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: booking.userPopulated?.gender == 'male'
+                    ? T.primary(context).withValues(alpha: 0.1)
+                    : Colors.pink.shade100,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                booking.userPopulated?.gender == 'male'
+                    ? IconsaxPlusBold.profile
+                    : IconsaxPlusBold.profile,
+                color: booking.userPopulated?.gender == 'male'
+                    ? T.primary(context)
+                    : Colors.pink.shade700,
+                size: 24,
+              ),
             ),
-            child: Icon(
-              booking.userPopulated?.gender == 'male'
-                  ? IconsaxPlusBold.profile
-                  : IconsaxPlusBold.profile,
-              color: booking.userPopulated?.gender == 'male'
-                  ? Colors.blue.shade700
-                  : Colors.pink.shade700,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Show passenger name only if driver has paid to contact
-                Text(
-                  booking.hasDriverPaidToContact
-                      ? (booking.userPopulated?.name ?? 'راكب')
-                      : 'راكب مجهول',
-                  style: GoogleFonts.cairo(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: booking.hasDriverPaidToContact
-                        ? Colors.black87
-                        : Colors.grey[600],
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Show passenger name only if driver has paid to contact
+                  Text(
+                    booking.hasDriverPaidToContact
+                        ? (booking.userPopulated?.name ?? 'راكب')
+                        : 'راكب مجهول',
+                    style: AppTextStyles.titleSmall.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: booking.hasDriverPaidToContact
+                          ? T.onSurface(context).withValues(alpha: 0.87)
+                          : AppColors.slate400,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      IconsaxPlusLinear.profile_2user,
-                      size: 14,
-                      color: Colors.grey[600],
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'مقعد ${booking.seatNumber}',
-                      style: GoogleFonts.cairo(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    // Show phone only if driver has paid AND passenger allows sharing
-                    if (booking.hasDriverPaidToContact &&
-                        booking.sharePhoneWithDriver) ...[
-                      const SizedBox(width: 12),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
                       Icon(
-                        IconsaxPlusLinear.call,
+                        IconsaxPlusLinear.profile_2user,
                         size: 14,
-                        color: Colors.grey[600],
+                        color: AppColors.slate400,
                       ),
                       const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          booking.userPopulated?.phoneNumber ?? '',
-                          style: GoogleFonts.cairo(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                          overflow: TextOverflow.ellipsis,
+                      Text(
+                        'مقعد ${booking.seatNumber}',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.slate400,
                         ),
                       ),
+                      // Show phone only if driver has paid AND passenger allows sharing
+                      if (booking.hasDriverPaidToContact &&
+                          booking.sharePhoneWithDriver) ...[
+                        const SizedBox(width: 12),
+                        Icon(
+                          IconsaxPlusLinear.call,
+                          size: 14,
+                          color: AppColors.slate400,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            booking.userPopulated?.phoneNumber ?? '',
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: AppColors.slate400,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.teal50,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AppColors.successLight.withValues(alpha: 0.4),
                 ),
-              ],
+              ),
+              child: Text(
+                'مؤكد',
+                style: AppTextStyles.labelSmall.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.success,
+                ),
+              ),
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.green.shade50,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.green.shade200),
-            ),
-            child: Text(
-              'مؤكد',
-              style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green.shade700),
-            ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildCarImageCard(TripModel trip) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
+    return SectionCard(
+      title: 'صورة السيارة',
+      icon: IconsaxPlusBold.car,
+      iconColor: T.primary(context),
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: CachedNetworkImage(
+            imageUrl: trip.carImageUrl!,
+            width: double.infinity,
+            height: 200,
+            fit: BoxFit.cover,
+            errorWidget: (context, url, error) {
+              return Container(
+                height: 200,
                 decoration: BoxDecoration(
-                  color: Colors.teal.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.slate200,
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Icon(
-                  IconsaxPlusBold.car,
-                  color: Colors.teal,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'صورة السيارة',
-                style: GoogleFonts.cairo(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Image.network(
-              trip.carImageUrl!,
-              width: double.infinity,
-              height: 200,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  height: 200,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        IconsaxPlusLinear.danger,
-                        size: 48,
-                        color: Colors.grey[400],
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      IconsaxPlusLinear.danger,
+                      size: 48,
+                      color: AppColors.slate300,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'فشل تحميل الصورة',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.slate400,
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'فشل تحميل الصورة',
-                        style: GoogleFonts.cairo(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _buildQuickActionsCard(TripModel trip) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.indigo.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  IconsaxPlusLinear.setting_2,
-                  color: Colors.indigo,
-                  size: 24,
-                ),
+    return SectionCard(
+      title: 'إجراءات سريعة',
+      icon: IconsaxPlusLinear.setting_2,
+      iconColor: T.primary(context),
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionButton(
+                icon: IconsaxPlusLinear.share,
+                label: 'مشاركة',
+                color: T.primary(context),
+                onTap: () {
+                  // TODO: Implement share functionality
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('قريباً: ميزة المشاركة')),
+                  );
+                },
               ),
-              const SizedBox(width: 12),
-              Text(
-                'إجراءات سريعة',
-                style: GoogleFonts.cairo(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildActionButton(
+                icon: IconsaxPlusLinear.edit,
+                label: 'تعديل',
+                color: AppColors.warning,
+                onTap: () async {
+                  final result = await Navigator.pushNamed(
+                    context,
+                    RouteNames.editTrip,
+                    arguments: widget.tripId,
+                  );
+                  if (result == true) {
+                    // Reload trip after successful edit
+                    _loadTrip();
+                  }
+                },
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildActionButton(
-                  icon: IconsaxPlusLinear.share,
-                  label: 'مشاركة',
-                  color: Colors.blue,
-                  onTap: () {
-                    // TODO: Implement share functionality
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('قريباً: ميزة المشاركة')),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildActionButton(
-                  icon: IconsaxPlusLinear.edit,
-                  label: 'تعديل',
-                  color: Colors.orange,
-                  onTap: () async {
-                    final result = await Navigator.pushNamed(
-                      context,
-                      RouteNames.editTrip,
-                      arguments: widget.tripId,
-                    );
-                    if (result == true) {
-                      // Reload trip after successful edit
-                      _loadTrip();
-                    }
-                  },
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -1715,9 +1546,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color.withOpacity(0.3)),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -1726,8 +1557,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
               const SizedBox(width: 8),
               Text(
                 label,
-                style: GoogleFonts.cairo(
-                  fontSize: 14,
+                style: AppTextStyles.labelLarge.copyWith(
                   fontWeight: FontWeight.bold,
                   color: color,
                 ),

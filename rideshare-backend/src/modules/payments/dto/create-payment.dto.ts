@@ -43,10 +43,10 @@ export class CreatePaymentDto {
 
   @ApiProperty({
     description: 'Payment method',
-    enum: ['stripe', 'paymob', 'manual', 'cliq_a2a'],
+    enum: ['wallet', 'paymob', 'manual', 'cliq_a2a'],
     example: 'manual',
   })
-  @IsEnum(['stripe', 'paymob', 'manual', 'cliq_a2a'])
+  @IsEnum(['wallet', 'paymob', 'manual', 'cliq_a2a'])
   method: string;
 
   @ApiPropertyOptional({

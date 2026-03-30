@@ -7,6 +7,7 @@ import '../../providers/notification_provider.dart';
 import '../../models/notification_model.dart';
 import '../../core/theme/colors.dart';
 import '../../core/constants/route_names.dart';
+import '../../widgets/common/empty_state.dart';
 import '../../widgets/notification_card.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -21,18 +22,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<NotificationProvider>(context, listen: false).fetchNotifications();
+      Provider.of<NotificationProvider>(
+        context,
+        listen: false,
+      ).fetchNotifications();
     });
   }
 
   void _handleNotificationTap(NotificationModel notification) {
-    // Mark as read
     Provider.of<NotificationProvider>(
       context,
       listen: false,
     ).markAsRead(notification.id);
 
-    // Navigate based on type
     final data = notification.data;
     final tripId = data?['tripId'] as String?;
 
@@ -88,7 +90,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في حذف الإشعار: $e'),
-            backgroundColor: AppColors.error,
+            backgroundColor: T.error(context),
           ),
         );
       }
@@ -123,22 +125,26 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 return const SizedBox.shrink();
               }
 
-              return TextButton.icon(
-                onPressed: () async {
-                  await provider.markAllAsRead();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('تم قراءة جميع الإشعارات'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                  }
-                },
-                icon: const Icon(IconsaxPlusBold.tick_circle, size: 18),
-                label: Text('قراءة الكل ($unreadCount)'),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.primary,
+              return Semantics(
+                button: true,
+                label: 'قراءة جميع الإشعارات ($unreadCount غير مقروء)',
+                child: TextButton.icon(
+                  onPressed: () async {
+                    await provider.markAllAsRead();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('تم قراءة جميع الإشعارات'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  },
+                  icon: const Icon(IconsaxPlusBold.tick_circle, size: 18),
+                  label: Text('قراءة الكل ($unreadCount)'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: T.primary(context),
+                  ),
                 ),
               );
             },
@@ -155,16 +161,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
           return RefreshIndicator(
             onRefresh: () => provider.fetchNotifications(),
-            color: AppColors.primary,
+            color: T.primary(context),
             child: ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: notifications.length,
               itemBuilder: (context, index) {
                 final notification = notifications[index];
-                return NotificationCard(
-                  notification: notification,
-                  onTap: () => _handleNotificationTap(notification),
-                  onDelete: () => _handleDelete(notification),
+                return Semantics(
+                  button: true,
+                  label: notification.title,
+                  child: NotificationCard(
+                    notification: notification,
+                    onTap: () => _handleNotificationTap(notification),
+                    onDelete: () => _handleDelete(notification),
+                  ),
                 );
               },
             ),
@@ -175,42 +185,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              IconsaxPlusBold.notification,
-              size: 80,
-              color: AppColors.primary.withOpacity(0.6),
-            ),
-          ),
-          const SizedBox(height: 32),
-          Text(
-            'لا توجد إشعارات',
-            style: GoogleFonts.tajawal(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'ستظهر الإشعارات هنا عند وصولها',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.tajawal(
-              fontSize: 16,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
+    return const EmptyState(
+      icon: IconsaxPlusBold.notification,
+      title: 'لا توجد إشعارات',
+      subtitle: 'ستظهر الإشعارات هنا عند وصولها',
     );
   }
 }

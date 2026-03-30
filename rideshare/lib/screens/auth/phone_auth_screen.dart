@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/theme/colors.dart';
 
 class PhoneAuthScreen extends StatefulWidget {
   /// When true, user is already logged in and we are linking/confirming phone (OTP will call linkPhone).
@@ -79,7 +80,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: T.error(context),
             duration: const Duration(seconds: 4),
           ),
         );
@@ -98,77 +99,109 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
         title: Text(widget.isLinkPhone ? 'تأكيد رقم الهاتف' : 'تسجيل الدخول'),
       ),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Form(
             key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Icon(Icons.phone_android, size: 80, color: Colors.blue),
-                const SizedBox(height: 32),
-                Text(
-                  widget.isLinkPhone ? 'أدخل رقم هاتفك للتأكيد' : 'أدخل رقم هاتفك',
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  widget.isLinkPhone
-                      ? 'سنرسل رمز تحقق لتأكيد رقمك. يجب التأكيد لاستخدام التطبيق.'
-                      : (AppConstants.skipOTP
-                          ? 'وضع التطوير: سيتم الدخول مباشرة'
-                          : 'سنرسل لك رمز التحقق عبر SMS'),
-                  style: const TextStyle(fontSize: 16, color: Colors.grey),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 32),
-                TextFormField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    labelText: 'رقم الهاتف',
-                    hintText: '+201234567890',
-                    prefixIcon: Icon(Icons.phone),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight:
+                    MediaQuery.of(context).size.height -
+                    MediaQuery.of(context).padding.top -
+                    MediaQuery.of(context).padding.bottom -
+                    48,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Icon(
+                    Icons.phone_android,
+                    size: 80,
+                    color: T.primary(context),
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'يرجى إدخال رقم الهاتف';
-                    }
-                    // Basic phone validation
-                    final phone = value.trim();
-                    final formattedPhone = phone.startsWith('+')
-                        ? phone
-                        : '${AppConstants.defaultCountryCode}$phone';
-                    if (formattedPhone.length < 10) {
-                      return 'رقم الهاتف غير صحيح';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _sendOTP,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  const SizedBox(height: 32),
+                  Text(
+                    widget.isLinkPhone
+                        ? 'أدخل رقم هاتفك للتأكيد'
+                        : 'أدخل رقم هاتفك',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
+                  const SizedBox(height: 8),
+                  Text(
+                    widget.isLinkPhone
+                        ? 'سنرسل رمز تحقق لتأكيد رقمك. يجب التأكيد لاستخدام التطبيق.'
+                        : (AppConstants.skipOTP
+                              ? 'وضع التطوير: سيتم الدخول مباشرة'
+                              : 'سنرسل لك رمز التحقق عبر SMS'),
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: T.onSurfaceVariant(context),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                  Semantics(
+                    label: 'رقم الهاتف',
+                    textField: true,
+                    child: TextFormField(
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(
+                        labelText: 'رقم الهاتف',
+                        hintText: '+201234567890',
+                        prefixIcon: Icon(Icons.phone),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'يرجى إدخال رقم الهاتف';
+                        }
+                        final phone = value.trim();
+                        final formattedPhone = phone.startsWith('+')
+                            ? phone
+                            : '${AppConstants.defaultCountryCode}$phone';
+                        if (formattedPhone.length < 10) {
+                          return 'رقم الهاتف غير صحيح';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Semantics(
+                    button: true,
+                    label: _isLoading
+                        ? 'جاري التحميل'
+                        : (AppConstants.skipOTP ? 'دخول' : 'إرسال رمز التحقق'),
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _sendOTP,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppColors.white,
+                                ),
+                              ),
+                            )
+                          : Text(
+                              AppConstants.skipOTP
+                                  ? 'دخول'
+                                  : 'إرسال رمز التحقق',
                             ),
-                          ),
-                        )
-                      : Text(
-                          AppConstants.skipOTP ? 'دخول' : 'إرسال رمز التحقق',
-                        ),
-                ),
-              ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

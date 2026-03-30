@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
@@ -105,7 +106,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
-        _showSnackBar(e.toString(), AppColors.error);
+        _showSnackBar(e.toString(), T.error(context));
       }
     }
   }
@@ -129,7 +130,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [AppColors.primary.withOpacity(0.1), Colors.white],
+            colors: [
+              T.primary(context).withValues(alpha: 0.1),
+              T.surface(context),
+            ],
           ),
         ),
         child: SafeArea(
@@ -168,21 +172,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       child: Row(
         children: [
           IconButton(
+            tooltip: 'رجوع',
             onPressed: () => Navigator.pop(context),
             icon: const Icon(IconsaxPlusLinear.arrow_right_2),
             style: IconButton.styleFrom(
-              backgroundColor: Colors.white,
-              shadowColor: Colors.black.withOpacity(0.1),
+              backgroundColor: T.surface(context),
+              shadowColor: AppColors.black.withValues(alpha: 0.1),
               elevation: 2,
             ),
           ),
           const SizedBox(width: 16),
-          const Text(
+          Text(
             'تعديل الملف الشخصي',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+              color: T.onSurface(context),
             ),
           ),
         ],
@@ -193,65 +198,76 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget _buildProfileAvatar() {
     return Stack(
       children: [
-        GestureDetector(
-          onTap: _pickProfileImage,
-          child: Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.primary, width: 4),
-              gradient: _profileImage != null || _currentPhotoUrl != null
-                  ? null
-                  : const LinearGradient(
-                      colors: [AppColors.primary, AppColors.primaryDark],
-                    ),
-              color: _profileImage != null || _currentPhotoUrl != null
-                  ? Colors.white
-                  : null,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withOpacity(0.2),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: ClipOval(
-              child: _profileImage != null
-                  ? Image.file(_profileImage!, fit: BoxFit.cover)
-                  : _currentPhotoUrl != null && _currentPhotoUrl!.isNotEmpty
-                      ? Image.network(_currentPhotoUrl!, fit: BoxFit.cover)
-                      : const Icon(
-                          IconsaxPlusBold.profile,
-                          size: 60,
-                          color: Colors.white,
-                        ),
+        Semantics(
+          button: true,
+          label: 'اختر صورة الملف الشخصي',
+          child: GestureDetector(
+            onTap: _pickProfileImage,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: T.primary(context), width: 4),
+                gradient: _profileImage != null || _currentPhotoUrl != null
+                    ? null
+                    : LinearGradient(
+                        colors: [T.primary(context), AppColors.teal700],
+                      ),
+                color: _profileImage != null || _currentPhotoUrl != null
+                    ? AppColors.white
+                    : null,
+                boxShadow: [
+                  BoxShadow(
+                    color: T.primary(context).withValues(alpha: 0.2),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ClipOval(
+                child: _profileImage != null
+                    ? Image.file(_profileImage!, fit: BoxFit.cover)
+                    : _currentPhotoUrl != null && _currentPhotoUrl!.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: _currentPhotoUrl!,
+                        fit: BoxFit.cover,
+                      )
+                    : const Icon(
+                        IconsaxPlusBold.profile,
+                        size: 60,
+                        color: AppColors.white,
+                      ),
+              ),
             ),
           ),
         ),
         Positioned(
           bottom: 0,
           right: 0,
-          child: GestureDetector(
-            onTap: _pickProfileImage,
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                IconsaxPlusBold.camera,
-                color: AppColors.primary,
-                size: 20,
+          child: Semantics(
+            button: true,
+            label: 'تغيير صورة الملف الشخصي',
+            child: GestureDetector(
+              onTap: _pickProfileImage,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.black.withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  IconsaxPlusBold.camera,
+                  color: T.primary(context),
+                  size: 20,
+                ),
               ),
             ),
           ),
@@ -277,11 +293,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: T.surface(context),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: AppColors.black.withValues(alpha: 0.04),
                 blurRadius: 10,
                 offset: const Offset(0, 2),
               ),
@@ -293,10 +309,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 margin: const EdgeInsets.only(left: 12),
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: T.primary(context).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(IconsaxPlusLinear.sms, color: AppColors.primary, size: 20),
+                child: Icon(
+                  IconsaxPlusLinear.sms,
+                  color: T.primary(context),
+                  size: 20,
+                ),
               ),
               Expanded(
                 child: Column(
@@ -306,15 +326,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       AppStrings.email,
                       style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.textSecondary,
+                        color: T.onSurfaceVariant(context),
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       user?.email ?? '',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
-                        color: AppColors.textPrimary,
+                        color: T.onSurface(context),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -324,7 +344,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               Icon(
                 IconsaxPlusLinear.lock,
                 size: 18,
-                color: AppColors.textSecondary,
+                color: T.onSurfaceVariant(context),
               ),
             ],
           ),
@@ -347,7 +367,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             isSelected: _selectedGender == AppConstants.genderMale,
             onTap: () =>
                 setState(() => _selectedGender = AppConstants.genderMale),
-            color: AppColors.primary,
+            color: T.primary(context),
           ),
         ),
         const SizedBox(width: 12),
@@ -368,11 +388,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget _buildSaveButton() {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
-        return PrimaryGradientButton(
-          onPressed: authProvider.isLoading ? null : _onSavePressed,
-          text: 'حفظ التغييرات',
-          isLoading: authProvider.isLoading,
-          trailingIcon: IconsaxPlusLinear.arrow_left_2,
+        return Semantics(
+          button: true,
+          label: 'حفظ التغييرات',
+          child: PrimaryGradientButton(
+            onPressed: authProvider.isLoading ? null : _onSavePressed,
+            text: 'حفظ التغييرات',
+            isLoading: authProvider.isLoading,
+            trailingIcon: IconsaxPlusLinear.arrow_left_2,
+          ),
         );
       },
     );

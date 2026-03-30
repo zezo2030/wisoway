@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/services/payment_service.dart';
+import '../../core/theme/colors.dart';
+import '../../core/theme/text_styles.dart';
 import '../../models/payment_model.dart';
 import '../../models/wallet_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/common/empty_state.dart';
 
 class DriverWalletScreen extends StatefulWidget {
   const DriverWalletScreen({super.key});
@@ -43,7 +45,7 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
       if (mounted) {
         setState(() => _loading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ: $e'), backgroundColor: T.error(context)),
         );
       }
     }
@@ -55,7 +57,9 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
       final res = await _paymentService.getWalletTransactions();
       final data = res['data'] as List? ?? [];
       final list = data
-          .map((e) => PaymentModel.fromJson(Map<String, dynamic>.from(e as Map)))
+          .map(
+            (e) => PaymentModel.fromJson(Map<String, dynamic>.from(e as Map)),
+          )
           .toList();
       if (mounted) {
         setState(() {
@@ -81,18 +85,28 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
     final authProvider = Provider.of<AuthProvider>(context);
     if (authProvider.userModel == null) {
       return Scaffold(
-        appBar: AppBar(title: Text('المحفظة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold))),
+        appBar: AppBar(
+          title: Text(
+            'المحفظة',
+            style: AppTextStyles.titleMedium.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
         body: const Center(child: Text('يرجى تسجيل الدخول')),
       );
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: T.background(context),
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        title: Text('المحفظة', style: GoogleFonts.cairo(fontSize: 20, fontWeight: FontWeight.bold)),
+        backgroundColor: T.surface(context),
+        foregroundColor: T.onSurface(context),
+        title: Text(
+          'المحفظة',
+          style: AppTextStyles.titleMedium.copyWith(fontSize: 20),
+        ),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -113,12 +127,26 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
                       children: [
                         Text(
                           'سجل الحركات',
-                          style: GoogleFonts.cairo(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: AppTextStyles.titleMedium.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        TextButton.icon(
-                          onPressed: _openTopUp,
-                          icon: const Icon(IconsaxPlusLinear.add_circle, size: 20),
-                          label: Text('شحن المحفظة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                        Semantics(
+                          label: 'شحن المحفظة',
+                          button: true,
+                          child: TextButton.icon(
+                            onPressed: _openTopUp,
+                            icon: const Icon(
+                              IconsaxPlusLinear.add_circle,
+                              size: 20,
+                            ),
+                            label: Text(
+                              'شحن المحفظة',
+                              style: AppTextStyles.titleMedium.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -129,34 +157,44 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
                             child: Center(child: CircularProgressIndicator()),
                           )
                         : _transactions.isEmpty
-                            ? Padding(
-                                padding: const EdgeInsets.all(24),
-                                child: Center(
-                                  child: Text(
-                                    'لا توجد حركات بعد',
-                                    style: GoogleFonts.cairo(color: Colors.grey[600]),
-                                  ),
-                                ),
-                              )
-                            : ListView.separated(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: _transactions.length,
-                                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                                itemBuilder: (context, i) {
-                                  final p = _transactions[i];
-                                  return _buildTransactionTile(p);
-                                },
-                              ),
+                        ? const Padding(
+                            padding: EdgeInsets.all(24),
+                            child: EmptyState(
+                              title: 'لا توجد حركات بعد',
+                              icon: IconsaxPlusLinear.wallet,
+                              showCircleBackground: false,
+                              iconSize: 48,
+                            ),
+                          )
+                        : ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _transactions.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 8),
+                            itemBuilder: (context, i) {
+                              final p = _transactions[i];
+                              return _buildTransactionTile(p);
+                            },
+                          ),
                   ],
                 ),
               ),
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openTopUp,
-        icon: const Icon(IconsaxPlusBold.wallet_add),
-        label: Text('شحن', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.orange.shade600,
+      floatingActionButton: Semantics(
+        label: 'شحن المحفظة',
+        button: true,
+        child: FloatingActionButton.extended(
+          onPressed: _openTopUp,
+          icon: const Icon(IconsaxPlusBold.wallet_add),
+          label: Text(
+            'شحن',
+            style: AppTextStyles.titleMedium.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          backgroundColor: AppColors.warning,
+        ),
       ),
     );
   }
@@ -168,14 +206,14 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.orange.shade600, Colors.orange.shade400],
+          colors: [AppColors.warning, AppColors.warningLight],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.orange.withOpacity(0.3),
+            color: AppColors.warning.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -186,14 +224,12 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
         children: [
           Row(
             children: [
-              Icon(IconsaxPlusBold.wallet_3, color: Colors.white, size: 28),
+              Icon(IconsaxPlusBold.wallet_3, color: AppColors.white, size: 28),
               const SizedBox(width: 12),
               Text(
                 'رصيد المحفظة',
-                style: GoogleFonts.cairo(
-                  fontSize: 16,
-                  color: Colors.white70,
-                  fontWeight: FontWeight.w600,
+                style: AppTextStyles.titleSmall.copyWith(
+                  color: AppColors.white.withValues(alpha: 0.7),
                 ),
               ),
             ],
@@ -201,10 +237,8 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
           const SizedBox(height: 12),
           Text(
             '${balance.toStringAsFixed(2)} $currency',
-            style: GoogleFonts.cairo(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+            style: AppTextStyles.headlineMedium.copyWith(
+              color: AppColors.white,
             ),
           ),
         ],
@@ -217,17 +251,21 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: used ? Colors.grey[200] : Colors.green.shade50,
+        color: used
+            ? AppColors.slate200
+            : AppColors.success.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: used ? Colors.grey[400]! : Colors.green.shade200,
+          color: used
+              ? AppColors.slate400
+              : AppColors.success.withValues(alpha: 0.2),
         ),
       ),
       child: Row(
         children: [
           Icon(
             used ? IconsaxPlusLinear.tick_circle : IconsaxPlusBold.gift,
-            color: used ? Colors.grey[600] : Colors.green.shade700,
+            color: used ? T.onSurfaceVariant(context) : AppColors.success,
             size: 32,
           ),
           const SizedBox(width: 16),
@@ -236,10 +274,8 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
               used
                   ? 'تم استخدام الرحلة المجانية'
                   : 'لديك رحلة مجانية واحدة لفتح بيانات الركاب',
-              style: GoogleFonts.cairo(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: used ? Colors.grey[700] : Colors.green.shade800,
+              style: AppTextStyles.labelLarge.copyWith(
+                color: used ? AppColors.slate700 : AppColors.successDark,
               ),
             ),
           ),
@@ -253,20 +289,20 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
     final isDebit = p.paymentType == 'wallet_trip_charge';
     final amount = p.amount;
     final prefix = isDebit ? '-' : '+';
-    final color = isCredit ? Colors.green : Colors.orange;
+    final color = isCredit ? AppColors.success : AppColors.warning;
     String label = p.paymentType == 'wallet_topup'
         ? 'شحن محفظة'
         : p.paymentType == 'wallet_trip_charge'
-            ? 'رسوم رحلة'
-            : p.paymentType;
+        ? 'رسوم رحلة'
+        : p.paymentType;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: T.surface(context),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: AppColors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -277,7 +313,7 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -293,21 +329,25 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
               children: [
                 Text(
                   label,
-                  style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.bold),
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 Text(
                   '${p.createdAt.year}-${p.createdAt.month.toString().padLeft(2, '0')}-${p.createdAt.day.toString().padLeft(2, '0')}',
-                  style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey[600]),
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: T.onSurfaceVariant(context),
+                  ),
                 ),
               ],
             ),
           ),
           Text(
             '$prefix${amount.toStringAsFixed(2)} ${p.currency}',
-            style: GoogleFonts.cairo(
-              fontSize: 16,
+            style: AppTextStyles.titleSmall.copyWith(
               fontWeight: FontWeight.bold,
-              color: isCredit ? Colors.green.shade700 : Colors.orange.shade700,
+              color: isCredit ? AppColors.success : AppColors.warning,
             ),
           ),
         ],

@@ -50,7 +50,7 @@ export class BookingsService {
       tripId,
       seatNumber,
       sharePhoneWithDriver = false,
-      paymentIntentId,
+      walletIdempotencyKey,
     } = createBookingDto;
 
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
@@ -112,23 +112,15 @@ export class BookingsService {
 
     let passengerPaymentId: string | null = null;
     if (seatPricing.requiresOnlinePayment) {
-      if (!paymentIntentId?.trim()) {
-        throw new BadRequestException(
-          'paymentIntentId is required when a platform fee applies to this trip',
-        );
-      }
-      const resolved = await this.paymentsService.resolvePassengerPaymentIntentForBooking({
-        paymentIntentId: paymentIntentId.trim(),
-        userId,
-        tripId,
-        seatNumber,
-        countryCode,
-      });
+      const resolved =
+        await this.paymentsService.resolvePassengerWalletPaymentForBooking({
+          userId,
+          tripId,
+          seatNumber,
+          idempotencyKey: walletIdempotencyKey,
+          countryCode,
+        });
       passengerPaymentId = resolved.payment.id;
-    } else if (paymentIntentId?.trim()) {
-      throw new BadRequestException(
-        'Do not send paymentIntentId when no platform fee is configured',
-      );
     }
 
     const qr = this.dataSource.createQueryRunner();

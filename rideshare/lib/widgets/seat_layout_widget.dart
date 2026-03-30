@@ -51,7 +51,8 @@ class SeatLayoutWidget extends StatelessWidget {
         // Seat layout grid
         Builder(
           builder: (context) {
-            final List<int> rowConfigs = seatLayout.seatsPerRowList ??
+            final List<int> rowConfigs =
+                seatLayout.seatsPerRowList ??
                 List.generate(seatLayout.rows, (_) => seatLayout.seatsPerRow);
 
             var currentSeatCount = 0;
@@ -67,12 +68,14 @@ class SeatLayoutWidget extends StatelessWidget {
                     children: List.generate(seatsInThisRow, (colIndex) {
                       currentSeatCount++;
                       final seatNumber = currentSeatCount;
-                      
+
                       return Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         child: _SeatWidget(
                           seatNumber: seatNumber,
-                          seatData: (seatNumber >= 1 && seatNumber <= trip.seats.length)
+                          seatData:
+                              (seatNumber >= 1 &&
+                                  seatNumber <= trip.seats.length)
                               ? trip.seats[seatNumber - 1]
                               : null,
                           isSelected: selectedSeat == seatNumber,
@@ -156,34 +159,46 @@ class _SeatWidget extends StatelessWidget {
       }
     }
 
-    return GestureDetector(
-      onTap: onTap != null && status == SeatStatus.available ? onTap : null,
-      child: Container(
-        width: 50,
-        height: 50,
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(8),
-          border: isSelected
-              ? Border.all(color: Colors.green[700]!, width: 2)
-              : Border.all(color: Colors.grey[300]!, width: 1),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (icon != null)
-              Icon(icon, size: 16, color: textColor)
-            else
-              const SizedBox(height: 4),
-            Text(
-              '$seatNumber',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: textColor,
+    final seatStatusLabel = switch (status) {
+      SeatStatus.available => 'متاح',
+      SeatStatus.booked => 'محجوز',
+      SeatStatus.locked => 'مقفل',
+      SeatStatus.unavailable => 'غير متاح',
+      SeatStatus.invalid => 'غير صالح',
+    };
+
+    return Semantics(
+      button: onTap != null && status == SeatStatus.available,
+      label: 'مقعد $seatNumber $seatStatusLabel${isSelected ? '، محدد' : ''}',
+      child: GestureDetector(
+        onTap: onTap != null && status == SeatStatus.available ? onTap : null,
+        child: Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(8),
+            border: isSelected
+                ? Border.all(color: Colors.green[700]!, width: 2)
+                : Border.all(color: Colors.grey[300]!, width: 1),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (icon != null)
+                Icon(icon, size: 16, color: textColor)
+              else
+                const SizedBox(height: 4),
+              Text(
+                '$seatNumber',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -204,26 +219,14 @@ class _SeatLegend extends StatelessWidget {
         runSpacing: 8,
         alignment: WrapAlignment.center,
         children: [
-          _LegendItem(
-            color: Colors.grey[200]!,
-            label: 'متاح',
-          ),
-          _LegendItem(
-            color: Colors.green,
-            label: 'محدد',
-          ),
-          _LegendItem(
-            color: Colors.red[300]!,
-            label: 'محجوز',
-          ),
+          _LegendItem(color: Colors.grey[200]!, label: 'متاح'),
+          _LegendItem(color: Colors.green, label: 'محدد'),
+          _LegendItem(color: Colors.red[300]!, label: 'محجوز'),
           _LegendItem(
             color: Colors.amber.shade200,
             label: 'مقفل (خارج التطبيق)',
           ),
-          _LegendItem(
-            color: Colors.orange[200]!,
-            label: 'غير متاح',
-          ),
+          _LegendItem(color: Colors.orange[200]!, label: 'غير متاح'),
         ],
       ),
     );
@@ -234,45 +237,28 @@ class _LegendItem extends StatelessWidget {
   final Color color;
   final String label;
 
-  const _LegendItem({
-    required this.color,
-    required this.label,
-  });
+  const _LegendItem({required this.color, required this.label});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: Colors.grey[300]!),
+    return Semantics(
+      label: 'دليل الألوان: $label',
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
           ),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[700],
-          ),
-        ),
-      ],
+          const SizedBox(width: 4),
+          Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+        ],
+      ),
     );
   }
 }
-
-
-
-
-
-
-
-
-
-
-

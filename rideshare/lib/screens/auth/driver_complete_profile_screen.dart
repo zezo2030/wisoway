@@ -130,11 +130,11 @@ class _DriverCompleteProfileScreenState
   Future<void> _showImageSourceDialog(Function(File) onImagePicked) async {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.transparent,
       builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.only(
+        decoration: BoxDecoration(
+          color: T.surface(context),
+          borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(20),
             topRight: Radius.circular(20),
           ),
@@ -148,51 +148,56 @@ class _DriverCompleteProfileScreenState
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.border,
+                  color: T.outline(context),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.secondary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+              Semantics(
+                button: true,
+                label: 'اختيار صورة من المعرض',
+                child: ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: T.secondary(context).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.photo_library,
+                      color: T.secondary(context),
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.photo_library,
-                    color: AppColors.secondary,
-                  ),
+                  title: const Text('من المعرض'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickImage(
+                      source: ImageSource.gallery,
+                      onImagePicked: onImagePicked,
+                    );
+                  },
                 ),
-                title: const Text('من المعرض'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(
-                    source: ImageSource.gallery,
-                    onImagePicked: onImagePicked,
-                  );
-                },
               ),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.secondary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+              Semantics(
+                button: true,
+                label: 'التقاط صورة من الكاميرا',
+                child: ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: T.secondary(context).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.camera_alt, color: T.secondary(context)),
                   ),
-                  child: const Icon(
-                    Icons.camera_alt,
-                    color: AppColors.secondary,
-                  ),
+                  title: const Text('من الكاميرا'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickImage(
+                      source: ImageSource.camera,
+                      onImagePicked: onImagePicked,
+                    );
+                  },
                 ),
-                title: const Text('من الكاميرا'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(
-                    source: ImageSource.camera,
-                    onImagePicked: onImagePicked,
-                  );
-                },
               ),
               const SizedBox(height: 8),
             ],
@@ -210,7 +215,7 @@ class _DriverCompleteProfileScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('يرجى رفع الصورة الشخصية'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
       return;
@@ -220,7 +225,7 @@ class _DriverCompleteProfileScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('يرجى رفع صورة رخصة القيادة'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
       return;
@@ -230,7 +235,7 @@ class _DriverCompleteProfileScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('يرجى رفع صورة رخصة المركبة'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
       return;
@@ -240,7 +245,7 @@ class _DriverCompleteProfileScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('يرجى اختيار نوع المركبة'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
       return;
@@ -280,7 +285,7 @@ class _DriverCompleteProfileScreenState
             content: Text(
               'تم رفع بياناتك بنجاح. طلبك قيد المراجعة من الإدارة؛ سيتم اعتمادك قريباً وستستطيع إنشاء رحلات بعد الاعتماد.',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
             duration: Duration(seconds: 5),
           ),
         );
@@ -294,7 +299,7 @@ class _DriverCompleteProfileScreenState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في إكمال الملف الشخصي: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: T.error(context),
           ),
         );
       }
@@ -316,15 +321,15 @@ class _DriverCompleteProfileScreenState
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                AppColors.secondary,
-                AppColors.secondaryDark,
-                AppColors.secondaryLight,
+                T.secondary(context),
+                AppColors.teal700,
+                AppColors.teal300,
               ],
             ),
           ),
           child: const Center(
             child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
             ),
           ),
         ),
@@ -338,9 +343,9 @@ class _DriverCompleteProfileScreenState
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              AppColors.secondary,
-              AppColors.secondaryDark,
-              AppColors.secondaryLight,
+              T.secondary(context),
+              AppColors.teal700,
+              AppColors.teal300,
             ],
           ),
         ),
@@ -361,13 +366,13 @@ class _DriverCompleteProfileScreenState
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: AppColors.white.withValues(alpha: 0.2),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
                             Icons.drive_eta,
                             size: 50,
-                            color: Colors.white,
+                            color: AppColors.white,
                           ),
                         ),
                         const SizedBox(height: 20),
@@ -376,7 +381,7 @@ class _DriverCompleteProfileScreenState
                           style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: AppColors.white,
                             letterSpacing: 1,
                           ),
                         ),
@@ -387,14 +392,14 @@ class _DriverCompleteProfileScreenState
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: AppColors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: const Text(
                             'الخطوة 2 من 2: المعلومات الإضافية',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.white,
+                              color: AppColors.white,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -404,9 +409,9 @@ class _DriverCompleteProfileScreenState
                   ),
                   // Form Card
                   Container(
-                    decoration: const BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.only(
+                    decoration: BoxDecoration(
+                      color: T.surface(context),
+                      borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(30),
                         topRight: Radius.circular(30),
                       ),
@@ -429,13 +434,14 @@ class _DriverCompleteProfileScreenState
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       border: Border.all(
-                                        color: AppColors.secondary,
+                                        color: T.secondary(context),
                                         width: 3,
                                       ),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: AppColors.secondary
-                                              .withOpacity(0.3),
+                                          color: T
+                                              .secondary(context)
+                                              .withValues(alpha: 0.3),
                                           blurRadius: 10,
                                           offset: const Offset(0, 4),
                                         ),
@@ -443,7 +449,7 @@ class _DriverCompleteProfileScreenState
                                     ),
                                     child: CircleAvatar(
                                       radius: 57,
-                                      backgroundColor: AppColors.background,
+                                      backgroundColor: T.surface(context),
                                       backgroundImage: _profileImage != null
                                           ? FileImage(_profileImage!)
                                           : null,
@@ -451,7 +457,9 @@ class _DriverCompleteProfileScreenState
                                           ? Icon(
                                               Icons.person,
                                               size: 60,
-                                              color: AppColors.textSecondary,
+                                              color: T.onSurfaceVariant(
+                                                context,
+                                              ),
                                             )
                                           : null,
                                     ),
@@ -461,34 +469,42 @@ class _DriverCompleteProfileScreenState
                                     right: 0,
                                     child: Container(
                                       decoration: BoxDecoration(
-                                        gradient: const LinearGradient(
+                                        gradient: LinearGradient(
                                           colors: [
-                                            AppColors.secondary,
-                                            AppColors.secondaryDark,
+                                            T.secondary(context),
+                                            AppColors.teal700,
                                           ],
                                         ),
                                         shape: BoxShape.circle,
                                         boxShadow: [
                                           BoxShadow(
-                                            color: AppColors.secondary
-                                                .withOpacity(0.4),
+                                            color: T
+                                                .secondary(context)
+                                                .withValues(alpha: 0.4),
                                             blurRadius: 8,
                                             offset: const Offset(0, 2),
                                           ),
                                         ],
                                       ),
-                                      child: IconButton(
-                                        icon: const Icon(
-                                          Icons.camera_alt,
-                                          color: Colors.white,
-                                          size: 20,
+                                      child: Tooltip(
+                                        message: 'رفع الصورة الشخصية',
+                                        child: Semantics(
+                                          button: true,
+                                          label: 'رفع الصورة الشخصية',
+                                          child: IconButton(
+                                            icon: const Icon(
+                                              Icons.camera_alt,
+                                              color: AppColors.white,
+                                              size: 20,
+                                            ),
+                                            onPressed: () =>
+                                                _showImageSourceDialog((image) {
+                                                  setState(
+                                                    () => _profileImage = image,
+                                                  );
+                                                }),
+                                          ),
                                         ),
-                                        onPressed: () =>
-                                            _showImageSourceDialog((image) {
-                                              setState(
-                                                () => _profileImage = image,
-                                              );
-                                            }),
                                       ),
                                     ),
                                   ),
@@ -496,12 +512,12 @@ class _DriverCompleteProfileScreenState
                               ),
                             ),
                             const SizedBox(height: 12),
-                            const Center(
+                            Center(
                               child: Text(
                                 'الصورة الشخصية *',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: AppColors.textSecondary,
+                                  color: T.onSurfaceVariant(context),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -509,203 +525,227 @@ class _DriverCompleteProfileScreenState
                             const SizedBox(height: 24),
                             const SizedBox(height: 8),
                             // Vehicle Type
-                            DropdownButtonFormField<String>(
-                              initialValue: _selectedVehicleType,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                color: AppColors.textPrimary,
+                            Semantics(
+                              label: 'نوع المركبة',
+                              textField: true,
+                              child: DropdownButtonFormField<String>(
+                                initialValue: _selectedVehicleType,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: T.onSurface(context),
+                                ),
+                                decoration: InputDecoration(
+                                  labelText: 'نوع المركبة *',
+                                  prefixIcon: Container(
+                                    margin: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: T
+                                          .secondary(context)
+                                          .withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(
+                                      Icons.directions_car,
+                                      color: T.secondary(context),
+                                    ),
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: T.outline(context),
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: T.outline(context),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: T.secondary(context),
+                                      width: 2,
+                                    ),
+                                  ),
+                                ),
+                                items: AppConstants.vehicleTypes.map((type) {
+                                  return DropdownMenuItem(
+                                    value: type,
+                                    child: Text(
+                                      AppConstants.vehicleTypeLabels[type] ??
+                                          type,
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  setState(() => _selectedVehicleType = value);
+                                },
+                                validator: (value) {
+                                  if (value == null) {
+                                    return 'يرجى اختيار نوع المركبة';
+                                  }
+                                  return null;
+                                },
                               ),
-                              decoration: InputDecoration(
-                                labelText: 'نوع المركبة *',
-                                prefixIcon: Container(
-                                  margin: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.secondary.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(
-                                    Icons.directions_car,
-                                    color: AppColors.secondary,
-                                  ),
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                    color: AppColors.border,
-                                  ),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                    color: AppColors.border,
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                    color: AppColors.secondary,
-                                    width: 2,
-                                  ),
-                                ),
-                              ),
-                              items: AppConstants.vehicleTypes.map((type) {
-                                return DropdownMenuItem(
-                                  value: type,
-                                  child: Text(
-                                    AppConstants.vehicleTypeLabels[type] ??
-                                        type,
-                                  ),
-                                );
-                              }).toList(),
-                              onChanged: (value) {
-                                setState(() => _selectedVehicleType = value);
-                              },
-                              validator: (value) {
-                                if (value == null) {
-                                  return 'يرجى اختيار نوع المركبة';
-                                }
-                                return null;
-                              },
                             ),
                             const SizedBox(height: 20),
                             // Plate Number
-                            TextFormField(
-                              controller: _plateNumberController,
-                              style: const TextStyle(fontSize: 16),
-                              decoration: InputDecoration(
-                                labelText: 'رقم اللوحة *',
-                                prefixIcon: Container(
-                                  margin: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.secondary.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8),
+                            Semantics(
+                              label: 'رقم اللوحة',
+                              textField: true,
+                              child: TextFormField(
+                                controller: _plateNumberController,
+                                style: const TextStyle(fontSize: 16),
+                                decoration: InputDecoration(
+                                  labelText: 'رقم اللوحة *',
+                                  prefixIcon: Container(
+                                    margin: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: T
+                                          .secondary(context)
+                                          .withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(
+                                      Icons.confirmation_number,
+                                      color: T.secondary(context),
+                                    ),
                                   ),
-                                  child: const Icon(
-                                    Icons.confirmation_number,
-                                    color: AppColors.secondary,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: T.outline(context),
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: T.outline(context),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: T.secondary(context),
+                                      width: 2,
+                                    ),
                                   ),
                                 ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                    color: AppColors.border,
-                                  ),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                    color: AppColors.border,
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                    color: AppColors.secondary,
-                                    width: 2,
-                                  ),
-                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'يرجى إدخال رقم اللوحة';
+                                  }
+                                  return null;
+                                },
                               ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'يرجى إدخال رقم اللوحة';
-                                }
-                                return null;
-                              },
                             ),
                             const SizedBox(height: 20),
                             // Model
-                            TextFormField(
-                              controller: _modelController,
-                              style: const TextStyle(fontSize: 16),
-                              decoration: InputDecoration(
-                                labelText: 'موديل السيارة *',
-                                prefixIcon: Container(
-                                  margin: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.secondary.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8),
+                            Semantics(
+                              label: 'موديل السيارة',
+                              textField: true,
+                              child: TextFormField(
+                                controller: _modelController,
+                                style: const TextStyle(fontSize: 16),
+                                decoration: InputDecoration(
+                                  labelText: 'موديل السيارة *',
+                                  prefixIcon: Container(
+                                    margin: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: T
+                                          .secondary(context)
+                                          .withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(
+                                      Icons.car_repair,
+                                      color: T.secondary(context),
+                                    ),
                                   ),
-                                  child: const Icon(
-                                    Icons.car_repair,
-                                    color: AppColors.secondary,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: T.outline(context),
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: T.outline(context),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: T.secondary(context),
+                                      width: 2,
+                                    ),
                                   ),
                                 ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                    color: AppColors.border,
-                                  ),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                    color: AppColors.border,
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                    color: AppColors.secondary,
-                                    width: 2,
-                                  ),
-                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'يرجى إدخال موديل السيارة';
+                                  }
+                                  return null;
+                                },
                               ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'يرجى إدخال موديل السيارة';
-                                }
-                                return null;
-                              },
                             ),
                             const SizedBox(height: 20),
                             // Seats
-                            TextFormField(
-                              controller: _seatsController,
-                              keyboardType: TextInputType.number,
-                              style: const TextStyle(fontSize: 16),
-                              decoration: InputDecoration(
-                                labelText: 'عدد المقاعد *',
-                                prefixIcon: Container(
-                                  margin: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.secondary.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8),
+                            Semantics(
+                              label: 'عدد المقاعد',
+                              textField: true,
+                              child: TextFormField(
+                                controller: _seatsController,
+                                keyboardType: TextInputType.number,
+                                style: const TextStyle(fontSize: 16),
+                                decoration: InputDecoration(
+                                  labelText: 'عدد المقاعد *',
+                                  prefixIcon: Container(
+                                    margin: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: T
+                                          .secondary(context)
+                                          .withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(
+                                      Icons.event_seat,
+                                      color: T.secondary(context),
+                                    ),
                                   ),
-                                  child: const Icon(
-                                    Icons.event_seat,
-                                    color: AppColors.secondary,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: T.outline(context),
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: T.outline(context),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: T.secondary(context),
+                                      width: 2,
+                                    ),
                                   ),
                                 ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                    color: AppColors.border,
-                                  ),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                    color: AppColors.border,
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                    color: AppColors.secondary,
-                                    width: 2,
-                                  ),
-                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'يرجى إدخال عدد المقاعد';
+                                  }
+                                  final seats = int.tryParse(value);
+                                  if (seats == null || seats < 1) {
+                                    return 'عدد المقاعد يجب أن يكون رقم صحيح أكبر من 0';
+                                  }
+                                  return null;
+                                },
                               ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'يرجى إدخال عدد المقاعد';
-                                }
-                                final seats = int.tryParse(value);
-                                if (seats == null || seats < 1) {
-                                  return 'عدد المقاعد يجب أن يكون رقم صحيح أكبر من 0';
-                                }
-                                return null;
-                              },
                             ),
                             const SizedBox(height: 24),
                             // Driver License Image
@@ -729,50 +769,58 @@ class _DriverCompleteProfileScreenState
                             Container(
                               height: 56,
                               decoration: BoxDecoration(
-                                gradient: const LinearGradient(
+                                gradient: LinearGradient(
                                   colors: [
-                                    AppColors.secondary,
-                                    AppColors.secondaryDark,
+                                    T.secondary(context),
+                                    AppColors.teal700,
                                   ],
                                 ),
                                 borderRadius: BorderRadius.circular(12),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppColors.secondary.withOpacity(0.3),
+                                    color: T
+                                        .secondary(context)
+                                        .withValues(alpha: 0.3),
                                     blurRadius: 8,
                                     offset: const Offset(0, 4),
                                   ),
                                 ],
                               ),
-                              child: ElevatedButton(
-                                onPressed: _isLoading ? null : _completeProfile,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.transparent,
-                                  shadowColor: Colors.transparent,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                              child: Semantics(
+                                button: true,
+                                label: 'إنشاء الحساب',
+                                child: ElevatedButton(
+                                  onPressed: _isLoading
+                                      ? null
+                                      : _completeProfile,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.transparent,
+                                    shadowColor: AppColors.transparent,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
                                   ),
+                                  child: _isLoading
+                                      ? const SizedBox(
+                                          height: 24,
+                                          width: 24,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2.5,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                  AppColors.white,
+                                                ),
+                                          ),
+                                        )
+                                      : const Text(
+                                          'إنشاء الحساب',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.white,
+                                          ),
+                                        ),
                                 ),
-                                child: _isLoading
-                                    ? const SizedBox(
-                                        height: 24,
-                                        width: 24,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2.5,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                                Colors.white,
-                                              ),
-                                        ),
-                                      )
-                                    : const Text(
-                                        'إنشاء الحساب',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
                               ),
                             ),
                             const SizedBox(height: 16),
@@ -800,91 +848,103 @@ class _DriverCompleteProfileScreenState
       children: [
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: T.onSurface(context),
           ),
         ),
         const SizedBox(height: 12),
-        GestureDetector(
-          onTap: () => _showImageSourceDialog(onImagePicked),
-          child: Container(
-            height: 140,
-            decoration: BoxDecoration(
-              color: image != null ? Colors.transparent : AppColors.background,
-              border: Border.all(
-                color: image != null ? AppColors.secondary : AppColors.border,
-                width: image != null ? 2 : 1,
+        Semantics(
+          button: true,
+          label: 'رفع $title',
+          child: GestureDetector(
+            onTap: () => _showImageSourceDialog(onImagePicked),
+            child: Container(
+              height: 140,
+              decoration: BoxDecoration(
+                color: image != null
+                    ? AppColors.transparent
+                    : T.surface(context),
+                border: Border.all(
+                  color: image != null
+                      ? T.secondary(context)
+                      : T.outline(context),
+                  width: image != null ? 2 : 1,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: image != null
+                    ? [
+                        BoxShadow(
+                          color: T.secondary(context).withValues(alpha: 0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : null,
               ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: image != null
-                  ? [
-                      BoxShadow(
-                        color: AppColors.secondary.withOpacity(0.2),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
+              child: image != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Stack(
+                        children: [
+                          Image.file(
+                            image,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                          ),
+                          Positioned(
+                            top: 8,
+                            left: 8,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: T
+                                    .secondary(context)
+                                    .withValues(alpha: 0.9),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.check_circle,
+                                color: AppColors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ]
-                  : null,
-            ),
-            child: image != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: Stack(
-                      children: [
-                        Image.file(
-                          image,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                        ),
-                        Positioned(
-                          top: 8,
-                          left: 8,
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
+                    )
+                  : Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: AppColors.secondary.withOpacity(0.9),
-                              borderRadius: BorderRadius.circular(8),
+                              color: T
+                                  .secondary(context)
+                                  .withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(
-                              Icons.check_circle,
-                              color: Colors.white,
-                              size: 20,
+                            child: Icon(
+                              Icons.add_photo_alternate,
+                              color: T.secondary(context),
+                              size: 32,
                             ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 12),
+                          Text(
+                            'اضغط لرفع الصورة',
+                            style: TextStyle(
+                              color: T.onSurfaceVariant(context),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  )
-                : Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.secondary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            Icons.add_photo_alternate,
-                            color: AppColors.secondary,
-                            size: 32,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'اضغط لرفع الصورة',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+            ),
           ),
         ),
       ],

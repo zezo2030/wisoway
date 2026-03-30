@@ -22,7 +22,7 @@ class _TripsListScreenState extends State<TripsListScreen> {
   final LocationService _locationService = LocationService();
   final TripService _tripService = TripService();
   LocationModel? _userLocation;
-  String _filterType = 'nearby'; // 'nearby', 'preferred', 'all'
+  String _filterType = 'nearby';
   bool _isLoadingLocation = false;
   late Future<List<TripModel>> _tripsFuture;
 
@@ -71,11 +71,11 @@ class _TripsListScreenState extends State<TripsListScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
           action: onAction != null
               ? SnackBarAction(
                   label: actionLabel,
-                  textColor: Colors.white,
+                  textColor: AppColors.white,
                   onPressed: onAction,
                 )
               : null,
@@ -138,11 +138,11 @@ class _TripsListScreenState extends State<TripsListScreen> {
       appBar: AppBar(
         title: const Text('الرحلات المتاحة'),
         actions: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8.0),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: NotificationIconButton(
-              backgroundColor: Colors.transparent,
-              iconColor: AppColors.textPrimary,
+              backgroundColor: AppColors.transparent,
+              iconColor: T.onSurface(context),
             ),
           ),
           IconButton(
@@ -154,28 +154,30 @@ class _TripsListScreenState extends State<TripsListScreen> {
       ),
       body: Column(
         children: [
-          // Location Display
           Container(
             padding: const EdgeInsets.all(16),
-            color: Colors.blue[50],
+            color: T.surfaceVariant(context),
             child: Row(
               children: [
-                Icon(Icons.location_on, color: Colors.blue[700]),
+                Icon(Icons.location_on, color: T.primary(context)),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'موقعك الحالي:',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: T.onSurfaceVariant(context),
+                        ),
                       ),
                       Text(
                         _userLocation?.name ?? 'جاري تحديد الموقع...',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: Colors.blue[900],
+                          color: T.onSurface(context),
                         ),
                       ),
                     ],
@@ -190,7 +192,6 @@ class _TripsListScreenState extends State<TripsListScreen> {
               ],
             ),
           ),
-          // Filters
           Container(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Row(
@@ -226,7 +227,6 @@ class _TripsListScreenState extends State<TripsListScreen> {
             ),
           ),
           const Divider(height: 1),
-          // Trips List
           Expanded(
             child: FutureBuilder<List<TripModel>>(
               future: _tripsFuture,
@@ -240,17 +240,21 @@ class _TripsListScreenState extends State<TripsListScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.error_outline,
                           size: 64,
-                          color: Colors.red,
+                          color: T.error(context),
                         ),
                         const SizedBox(height: 16),
                         Text('خطأ: ${snapshot.error}'),
                         const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _reloadTrips,
-                          child: const Text('إعادة المحاولة'),
+                        Semantics(
+                          button: true,
+                          label: 'إعادة المحاولة',
+                          child: ElevatedButton(
+                            onPressed: _reloadTrips,
+                            child: const Text('إعادة المحاولة'),
+                          ),
                         ),
                       ],
                     ),
@@ -274,7 +278,7 @@ class _TripsListScreenState extends State<TripsListScreen> {
                         Icon(
                           Icons.directions_car_outlined,
                           size: 64,
-                          color: Colors.grey[400],
+                          color: T.outlineVariant(context),
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -283,7 +287,7 @@ class _TripsListScreenState extends State<TripsListScreen> {
                               : 'لا توجد رحلات متاحة',
                           style: TextStyle(
                             fontSize: 18,
-                            color: Colors.grey[600],
+                            color: T.onSurfaceVariant(context),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -293,13 +297,17 @@ class _TripsListScreenState extends State<TripsListScreen> {
                               : 'جرب تغيير الفلتر أو الموقع',
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.grey[500],
+                            color: T.outlineVariant(context),
                           ),
                         ),
                         const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _reloadTrips,
-                          child: const Text('تحديث'),
+                        Semantics(
+                          button: true,
+                          label: 'تحديث قائمة الرحلات',
+                          child: ElevatedButton(
+                            onPressed: _reloadTrips,
+                            child: const Text('تحديث'),
+                          ),
                         ),
                       ],
                     ),
@@ -340,8 +348,8 @@ class _FilterChip extends StatelessWidget {
       label: Text(label),
       selected: isSelected,
       onSelected: (_) => onTap(),
-      selectedColor: Colors.blue[100],
-      checkmarkColor: Colors.blue[800],
+      selectedColor: T.primaryContainer(context),
+      checkmarkColor: T.primary(context),
     );
   }
 }
@@ -358,126 +366,127 @@ class _TripCard extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      child: InkWell(
-        onTap: () {
-          Navigator.pushNamed(
-            context,
-            RouteNames.tripDetails,
-            arguments: trip.id,
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Route Info
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.location_on,
-                              size: 16,
-                              color: Colors.green,
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                trip.from.name,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+      child: Semantics(
+        button: true,
+        label: 'تفاصيل الرحلة من ${trip.from.name} إلى ${trip.to.name}',
+        child: InkWell(
+          onTap: () {
+            Navigator.pushNamed(
+              context,
+              RouteNames.tripDetails,
+              arguments: trip.id,
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.location_on,
+                                size: 16,
+                                color: AppColors.success,
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.location_city,
-                              size: 16,
-                              color: Colors.red,
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                trip.to.name,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  trip.from.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Available Seats Badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: trip.hasAvailableSeats
-                          ? Colors.green[100]
-                          : Colors.red[100],
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '${trip.availableSeats}/${trip.totalSeats}',
-                      style: TextStyle(
-                        color: trip.hasAvailableSeats
-                            ? Colors.green[800]
-                            : Colors.red[800],
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.location_city,
+                                size: 16,
+                                color: T.error(context),
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  trip.to.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const Divider(height: 24),
-              // Trip Details
-              Row(
-                children: [
-                  Expanded(
-                    child: _InfoItem(
-                      icon: Icons.access_time,
-                      label: 'الانطلاق',
-                      value:
-                          '${dateFormat.format(trip.departureTime)}\n${timeFormat.format(trip.departureTime)}',
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: trip.hasAvailableSeats
+                            ? AppColors.success.withValues(alpha: 0.12)
+                            : T.error(context).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${trip.availableSeats}/${trip.totalSeats}',
+                        style: TextStyle(
+                          color: trip.hasAvailableSeats
+                              ? AppColors.successDark
+                              : AppColors.errorDark,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: _InfoItem(
-                      icon: Icons.attach_money,
-                      label: 'السعر',
-                      value: '${trip.price} ${trip.currency}',
+                  ],
+                ),
+                const Divider(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _InfoItem(
+                        icon: Icons.access_time,
+                        label: 'الانطلاق',
+                        value:
+                            '${dateFormat.format(trip.departureTime)}\n${timeFormat.format(trip.departureTime)}',
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: _InfoItem(
-                      icon: Icons.person,
-                      label: 'السائق',
-                      value: trip.driverName ?? '',
+                    Expanded(
+                      child: _InfoItem(
+                        icon: Icons.attach_money,
+                        label: 'السعر',
+                        value: '${trip.price} ${trip.currency}',
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                    Expanded(
+                      child: _InfoItem(
+                        icon: Icons.person,
+                        label: 'السائق',
+                        value: trip.driverName ?? '',
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -500,9 +509,12 @@ class _InfoItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icon, size: 20, color: Colors.blue),
+        Icon(icon, size: 20, color: T.primary(context)),
         const SizedBox(height: 4),
-        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        Text(
+          label,
+          style: TextStyle(fontSize: 12, color: T.onSurfaceVariant(context)),
+        ),
         const SizedBox(height: 4),
         Text(
           value,

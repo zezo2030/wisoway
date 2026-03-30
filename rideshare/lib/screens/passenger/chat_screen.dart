@@ -6,6 +6,7 @@ import '../../models/chat_model.dart';
 import '../../models/trip_model.dart';
 import '../../widgets/chat_bubble_widget.dart';
 import '../../core/theme/colors.dart';
+import '../../widgets/common/empty_state.dart';
 
 class ChatScreen extends StatefulWidget {
   final String tripId;
@@ -29,7 +30,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final ChatService _chatService = ChatService();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  
+
   String? _chatId;
   bool _isLoading = true;
   bool _isSending = false;
@@ -46,7 +47,7 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final currentUser = authProvider.userModel;
-      
+
       if (currentUser == null) {
         setState(() {
           _isLoading = false;
@@ -55,19 +56,18 @@ class _ChatScreenState extends State<ChatScreen> {
         return;
       }
 
-      // Check if chat is enabled
       final chatEnabled = await _chatService.checkIfChatEnabled(widget.tripId);
 
       if (!chatEnabled) {
         setState(() {
           _isLoading = false;
           _chatEnabled = false;
-          _errorMessage = 'لم يتم تفعيل التواصل بعد. يجب على السائق دفع رسوم التواصل أولاً.';
+          _errorMessage =
+              'لم يتم تفعيل التواصل بعد. يجب على السائق دفع رسوم التواصل أولاً.';
         });
         return;
       }
 
-      // Get or create chat room (room id = chat.id)
       final chat = await _chatService.getOrCreateChat(widget.tripId);
 
       setState(() {
@@ -88,7 +88,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final currentUser = authProvider.userModel;
-    
+
     if (currentUser == null) return;
 
     setState(() => _isSending = true);
@@ -100,11 +100,10 @@ class _ChatScreenState extends State<ChatScreen> {
       );
 
       _messageController.clear();
-      
-      // Scroll to bottom
+
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          0,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -114,7 +113,7 @@ class _ChatScreenState extends State<ChatScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في إرسال الرسالة: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: T.error(context),
           ),
         );
       }
@@ -139,18 +138,14 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(
-          title: Text('محادثة - ${widget.driverName}'),
-        ),
+        appBar: AppBar(title: Text('محادثة - ${widget.driverName}')),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     if (_errorMessage != null && !_chatEnabled) {
       return Scaffold(
-        appBar: AppBar(
-          title: Text('محادثة - ${widget.driverName}'),
-        ),
+        appBar: AppBar(title: Text('محادثة - ${widget.driverName}')),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24.0),
@@ -160,7 +155,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 Icon(
                   Icons.chat_bubble_outline,
                   size: 64,
-                  color: AppColors.textDisabled,
+                  color: T.outlineVariant(context),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -177,14 +172,13 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (_chatId == null || currentUser == null) {
       return Scaffold(
-        appBar: AppBar(
-          title: Text('محادثة - ${widget.driverName}'),
-        ),
+        appBar: AppBar(title: Text('محادثة - ${widget.driverName}')),
         body: const Center(child: Text('خطأ في تحميل المحادثة')),
       );
     }
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -194,15 +188,14 @@ class _ChatScreenState extends State<ChatScreen> {
               Text(
                 '${widget.trip!.from.name} → ${widget.trip!.to.name}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.textOnPrimary.withOpacity(0.8),
-                    ),
+                  color: T.onPrimary(context).withValues(alpha: 0.8),
+                ),
               ),
           ],
         ),
       ),
       body: Column(
         children: [
-          // Messages list
           Expanded(
             child: StreamBuilder<List<MessageModel>>(
               stream: _chatService.getChatStream(_chatId!),
@@ -212,50 +205,33 @@ class _ChatScreenState extends State<ChatScreen> {
                 }
 
                 if (snapshot.hasError) {
-                  return Center(
-                    child: Text('خطأ: ${snapshot.error}'),
-                  );
+                  return Center(child: Text('خطأ: ${snapshot.error}'));
                 }
 
                 final messages = snapshot.data ?? [];
 
                 if (messages.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.chat_bubble_outline,
-                          size: 64,
-                          color: AppColors.textDisabled,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'لا توجد رسائل بعد',
-                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'ابدأ المحادثة الآن',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: AppColors.textDisabled,
-                              ),
-                        ),
-                      ],
-                    ),
+                  return const EmptyState(
+                    icon: Icons.chat_bubble_outline,
+                    title: 'لا توجد رسائل بعد',
+                    subtitle: 'ابدأ المحادثة الآن',
+                    showCircleBackground: false,
+                    iconSize: 64,
                   );
                 }
 
+                final reversedMessages = messages.reversed.toList();
+
                 return ListView.builder(
                   controller: _scrollController,
+                  reverse: true,
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: messages.length,
+                  itemCount: reversedMessages.length,
                   itemBuilder: (context, index) {
-                    final message = messages[index];
-                    final isFromCurrentUser = message.senderId == currentUser.id;
-                    
+                    final message = reversedMessages[index];
+                    final isFromCurrentUser =
+                        message.senderId == currentUser.id;
+
                     return ChatBubbleWidget(
                       message: message,
                       isFromCurrentUser: isFromCurrentUser,
@@ -266,13 +242,12 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
           ),
-          // Message input
           Container(
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: T.surface(context),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: AppColors.black.withValues(alpha: 0.1),
                   blurRadius: 4,
                   offset: const Offset(0, -2),
                 ),
@@ -284,21 +259,25 @@ class _ChatScreenState extends State<ChatScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: TextField(
-                        controller: _messageController,
-                        decoration: InputDecoration(
-                          hintText: 'اكتب رسالة...',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(24),
+                      child: Semantics(
+                        textField: true,
+                        label: 'اكتب رسالة',
+                        child: TextField(
+                          controller: _messageController,
+                          decoration: InputDecoration(
+                            hintText: 'اكتب رسالة...',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
+                          maxLines: null,
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: (_) => _sendMessage(),
                         ),
-                        maxLines: null,
-                        textInputAction: TextInputAction.send,
-                        onSubmitted: (_) => _sendMessage(),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -311,7 +290,8 @@ class _ChatScreenState extends State<ChatScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.send),
-                      color: AppColors.primary,
+                      color: T.primary(context),
+                      tooltip: 'إرسال الرسالة',
                     ),
                   ],
                 ),
@@ -323,6 +303,3 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 }
-
-
-

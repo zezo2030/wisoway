@@ -7,7 +7,7 @@ class ApiEndpoints {
   static const String baseUrl = String.fromEnvironment(
     'BASE_URL',
     // defaultValue: 'http://localhost:3003/api/v1',
-    defaultValue: 'http://192.168.1.4:3003/api/v1',
+    defaultValue: 'http://192.168.1.7:3003/api/v1',
   );
 
   // Auth
@@ -57,9 +57,6 @@ class ApiEndpoints {
   static String paymentById(String id) => '/payments/$id';
   static String approvePayment(String id) => '/payments/$id/approve';
   static String rejectPayment(String id) => '/payments/$id/reject';
-  static const String stripeIntent = '/payments/stripe/create-intent';
-  static const String stripePassengerIntent = '/payments/stripe/passenger-intent';
-
   // Driver wallet
   static const String walletMe = '/payments/wallet/me';
   static const String walletTransactions = '/payments/wallet/transactions';

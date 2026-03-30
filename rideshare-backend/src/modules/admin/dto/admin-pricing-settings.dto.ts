@@ -31,7 +31,7 @@ export class AdminPatchPricingSettingsDto {
 
   @ApiPropertyOptional({
     description:
-      'Passenger: percent of seat price collected by platform online (Stripe). 0 = booking without paymentIntentId (full seat price shown as cash to driver).',
+      'Passenger: percent of seat price collected from rider in-app wallet. 0 = no platform fee online (full seat price to driver as cash).',
   })
   @IsOptional()
   @Type(() => Number)

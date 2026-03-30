@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../core/theme/colors.dart';
 
-/// A modern input field with icon prefix and consistent styling
 class ModernInputField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
@@ -33,65 +32,76 @@ class ModernInputField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        obscureText: obscureText,
-        enabled: enabled,
-        readOnly: readOnly,
-        onTap: onTap,
-        style: TextStyle(
-          fontSize: 16,
-          color: enabled ? AppColors.textPrimary : AppColors.textSecondary,
+    return Semantics(
+      label: label,
+      textField: true,
+      child: Container(
+        decoration: BoxDecoration(
+          color: T.surface(context),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          hintStyle: TextStyle(
-            color: AppColors.textSecondary.withOpacity(0.5),
-            fontSize: 14,
+        child: TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
+          obscureText: obscureText,
+          enabled: enabled,
+          readOnly: readOnly,
+          onTap: onTap,
+          style: TextStyle(
+            fontSize: 16,
+            color: enabled ? T.onSurface(context) : T.onSurfaceVariant(context),
           ),
-          labelStyle: TextStyle(color: AppColors.textSecondary, fontSize: 14),
-          prefixIcon: _buildPrefixIcon(),
-          suffixIcon: suffixIcon,
-          filled: true,
-          fillColor: Colors.white,
-          border: _buildInputBorder(AppColors.border.withOpacity(0.5)),
-          enabledBorder: _buildInputBorder(AppColors.border.withOpacity(0.5)),
-          focusedBorder: _buildInputBorder(AppColors.primary, width: 2),
-          errorBorder: _buildInputBorder(AppColors.error),
-          focusedErrorBorder: _buildInputBorder(AppColors.error, width: 2),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 18,
+          decoration: InputDecoration(
+            labelText: label,
+            hintText: hint,
+            hintStyle: TextStyle(
+              color: T.onSurfaceVariant(context).withValues(alpha: 0.5),
+              fontSize: 14,
+            ),
+            labelStyle: TextStyle(
+              color: T.onSurfaceVariant(context),
+              fontSize: 14,
+            ),
+            prefixIcon: _buildPrefixIcon(context),
+            suffixIcon: suffixIcon,
+            filled: true,
+            fillColor: T.surface(context),
+            border: _buildInputBorder(
+              T.outline(context).withValues(alpha: 0.5),
+            ),
+            enabledBorder: _buildInputBorder(
+              T.outline(context).withValues(alpha: 0.5),
+            ),
+            focusedBorder: _buildInputBorder(T.primary(context), width: 2),
+            errorBorder: _buildInputBorder(T.error(context)),
+            focusedErrorBorder: _buildInputBorder(T.error(context), width: 2),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 18,
+            ),
           ),
+          validator: validator,
         ),
-        validator: validator,
       ),
     );
   }
 
-  Widget _buildPrefixIcon() {
+  Widget _buildPrefixIcon(BuildContext context) {
     return Container(
       margin: const EdgeInsets.all(12),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.1),
+        color: T.primary(context).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Icon(icon, color: AppColors.primary, size: 20),
+      child: Icon(icon, color: T.primary(context), size: 20),
     );
   }
 
@@ -103,7 +113,6 @@ class ModernInputField extends StatelessWidget {
   }
 }
 
-/// A modern selection card with icon and animated states
 class ModernSelectionCard extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -127,107 +136,125 @@ class ModernSelectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isVertical) {
-      return _buildVerticalCard();
+      return _buildVerticalCard(context);
     }
-    return _buildHorizontalCard();
+    return _buildHorizontalCard(context);
   }
 
-  Widget _buildVerticalCard() {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        decoration: _buildCardDecoration(),
-        child: Column(
-          children: [
-            _buildIconContainer(),
-            const SizedBox(height: 10),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: isSelected ? color : AppColors.textPrimary,
-              ),
-            ),
-            if (isSelected)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Icon(
-                  IconsaxPlusBold.tick_circle,
-                  size: 18,
-                  color: color,
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHorizontalCard() {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(16),
-        decoration: _buildCardDecoration(),
-        child: Row(
-          children: [
-            _buildIconContainer(borderRadius: 12),
-            const SizedBox(width: 16),
-            Expanded(
+  Widget _buildVerticalCard(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: title,
+      child: GestureDetector(
+        onTap: onTap,
+        child: MergeSemantics(
+          child: Tooltip(
+            message: title,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              decoration: _buildCardDecoration(context),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _buildIconContainer(),
+                  const SizedBox(height: 10),
                   Text(
                     title,
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: isSelected ? color : AppColors.textPrimary,
+                      color: isSelected ? color : T.onSurface(context),
                     ),
                   ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle!,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
+                  if (isSelected)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Icon(
+                        IconsaxPlusBold.tick_circle,
+                        size: 18,
+                        color: color,
                       ),
                     ),
-                  ],
                 ],
               ),
             ),
-            _buildCheckIndicator(),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  BoxDecoration _buildCardDecoration() {
+  Widget _buildHorizontalCard(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: title,
+      child: GestureDetector(
+        onTap: onTap,
+        child: MergeSemantics(
+          child: Tooltip(
+            message: title,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(16),
+              decoration: _buildCardDecoration(context),
+              child: Row(
+                children: [
+                  _buildIconContainer(borderRadius: 12),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected ? color : T.onSurface(context),
+                          ),
+                        ),
+                        if (subtitle != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            subtitle!,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: T.onSurfaceVariant(context),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  _buildCheckIndicator(context),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  BoxDecoration _buildCardDecoration(BuildContext context) {
     return BoxDecoration(
-      color: isSelected ? color.withOpacity(0.08) : Colors.white,
+      color: isSelected ? color.withValues(alpha: 0.08) : T.surface(context),
       borderRadius: BorderRadius.circular(16),
       border: Border.all(
-        color: isSelected ? color : AppColors.border,
+        color: isSelected ? color : T.outline(context),
         width: isSelected ? 2 : 1,
       ),
       boxShadow: isSelected
           ? [
               BoxShadow(
-                color: color.withOpacity(0.12),
+                color: color.withValues(alpha: 0.12),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
             ]
           : [
               BoxShadow(
-                color: Colors.black.withOpacity(0.03),
+                color: AppColors.black.withValues(alpha: 0.03),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -240,34 +267,33 @@ class ModernSelectionCard extends StatelessWidget {
       duration: const Duration(milliseconds: 200),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isSelected ? color : color.withOpacity(0.1),
+        color: isSelected ? color : color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(borderRadius),
       ),
-      child: Icon(icon, size: 24, color: isSelected ? Colors.white : color),
+      child: Icon(icon, size: 24, color: isSelected ? AppColors.white : color),
     );
   }
 
-  Widget _buildCheckIndicator() {
+  Widget _buildCheckIndicator(BuildContext context) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       width: 24,
       height: 24,
       decoration: BoxDecoration(
-        color: isSelected ? color : Colors.transparent,
+        color: isSelected ? color : AppColors.transparent,
         shape: BoxShape.circle,
         border: Border.all(
-          color: isSelected ? color : AppColors.border,
+          color: isSelected ? color : T.outline(context),
           width: 2,
         ),
       ),
       child: isSelected
-          ? const Icon(Icons.check, size: 16, color: Colors.white)
+          ? const Icon(Icons.check, size: 16, color: AppColors.white)
           : null,
     );
   }
 }
 
-/// A primary gradient button with loading state
 class PrimaryGradientButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final String text;
@@ -286,18 +312,20 @@ class PrimaryGradientButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final buttonColor = color ?? AppColors.primary;
-    final shadowColor = buttonColor.withOpacity(0.35);
+    final buttonColor = color ?? T.primary(context);
+    final shadowColor = buttonColor.withValues(alpha: 0.35);
 
     return Container(
       height: 56,
       decoration: BoxDecoration(
         color: color != null ? buttonColor : null,
-        gradient: color == null ? LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.primary, AppColors.primaryDark],
-        ) : null,
+        gradient: color == null
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [T.primary(context), AppColors.teal700],
+              )
+            : null,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -307,16 +335,21 @@ class PrimaryGradientButton extends StatelessWidget {
           ),
         ],
       ),
-      child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+      child: Semantics(
+        button: true,
+        label: text,
+        enabled: onPressed != null,
+        child: ElevatedButton(
+          onPressed: isLoading ? null : onPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.transparent,
+            shadowColor: AppColors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
           ),
+          child: isLoading ? _buildLoadingIndicator() : _buildButtonContent(),
         ),
-        child: isLoading ? _buildLoadingIndicator() : _buildButtonContent(),
       ),
     );
   }
@@ -327,7 +360,7 @@ class PrimaryGradientButton extends StatelessWidget {
       width: 24,
       child: CircularProgressIndicator(
         strokeWidth: 2.5,
-        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+        valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
       ),
     );
   }
@@ -341,20 +374,19 @@ class PrimaryGradientButton extends StatelessWidget {
           style: const TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: AppColors.white,
             letterSpacing: 0.5,
           ),
         ),
         if (trailingIcon != null) ...[
           const SizedBox(width: 8),
-          Icon(trailingIcon, color: Colors.white, size: 20),
+          Icon(trailingIcon, color: AppColors.white, size: 20),
         ],
       ],
     );
   }
 }
 
-/// An info card for displaying informational messages
 class InfoCard extends StatelessWidget {
   final String message;
   final Color color;
@@ -369,47 +401,52 @@ class InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [color.withOpacity(0.08), color.withOpacity(0.04)],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: color, size: 22),
+    return Semantics(
+      label: message,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+            colors: [
+              color.withValues(alpha: 0.08),
+              color.withValues(alpha: 0.04),
+            ],
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(
-                fontSize: 13,
-                color: color,
-                fontWeight: FontWeight.w500,
-                height: 1.4,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: color,
+                  fontWeight: FontWeight.w500,
+                  height: 1.4,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-/// A section title with optional required indicator
 class SectionTitle extends StatelessWidget {
   final String title;
   final bool isRequired;
@@ -422,10 +459,10 @@ class SectionTitle extends StatelessWidget {
       children: [
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: T.onSurface(context),
           ),
         ),
         if (isRequired)
@@ -434,7 +471,7 @@ class SectionTitle extends StatelessWidget {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: AppColors.error,
+              color: T.error(context),
             ),
           ),
       ],

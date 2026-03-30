@@ -1,8 +1,10 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import {
@@ -71,26 +73,32 @@ export class WalletService {
     };
   }
 
-  async createTopup(userId: string, role: string, dto: CreateTopupDto) {
-    const accountType =
-      role === WalletAccountType.DRIVER
-        ? WalletAccountType.DRIVER
-        : WalletAccountType.RIDER;
-
-    const account = await this.getOrCreateAccount(
-      userId,
-      accountType,
-      dto.currency || 'EGP',
-    );
-
-    const existing = dto.idempotencyKey
-      ? await this.walletTxRepo.findOne({
-          where: { idempotencyKey: dto.idempotencyKey },
-        })
-      : null;
-    if (existing) {
-      return existing;
+  /**
+   * Post a credit after a verified payment (e.g. admin-approved wallet top-up).
+   * Idempotent per `idempotencyKey`.
+   */
+  async creditPostedTopup(params: {
+    userId: string;
+    accountType: WalletAccountType;
+    amount: number;
+    currency?: string;
+    idempotencyKey: string;
+    note?: string | null;
+  }): Promise<WalletTransactionEntity> {
+    const { userId, accountType, amount, idempotencyKey } = params;
+    const currency = params.currency || 'EGP';
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new BadRequestException('Invalid top-up amount');
     }
+
+    const dup = await this.walletTxRepo.findOne({
+      where: { idempotencyKey },
+    });
+    if (dup) {
+      return dup;
+    }
+
+    const account = await this.getOrCreateAccount(userId, accountType, currency);
 
     return this.dataSource.transaction(async (manager) => {
       const locked = await manager.findOne(WalletAccountEntity, {
@@ -101,7 +109,6 @@ export class WalletService {
         throw new NotFoundException('Wallet account not found');
       }
 
-      const amount = dto.amount;
       const current = Number(locked.balance);
       locked.balance = (current + amount).toFixed(2);
       await manager.save(locked);
@@ -113,12 +120,30 @@ export class WalletService {
         status: WalletTransactionStatus.POSTED,
         amount: amount.toFixed(2),
         currency: locked.currency,
-        idempotencyKey: dto.idempotencyKey ?? null,
+        idempotencyKey,
         metadata: {
-          note: dto.note ?? null,
+          note: params.note ?? null,
         },
       });
       return manager.save(tx);
+    });
+  }
+
+  /** Direct HTTP instant top-up: admins only (testing / manual ops). */
+  async createTopup(userId: string, role: string, dto: CreateTopupDto) {
+    if (role !== 'admin') {
+      throw new ForbiddenException(
+        'Use POST /payments/wallet/topup with payment proof. Wallet credit is applied after admin approval.',
+      );
+    }
+    // Admins use the rider ledger bucket for ad-hoc testing unless extended later.
+    return this.creditPostedTopup({
+      userId,
+      accountType: WalletAccountType.RIDER,
+      amount: dto.amount,
+      currency: dto.currency,
+      idempotencyKey: dto.idempotencyKey ?? randomUUID(),
+      note: dto.note ?? null,
     });
   }
 

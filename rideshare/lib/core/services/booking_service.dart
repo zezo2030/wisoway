@@ -10,7 +10,7 @@ class BookingService {
     required String tripId,
     required String seatNumber, // Changed to String "X-Y"
     required bool sharePhoneWithDriver,
-    String? paymentIntentId,
+    String? walletIdempotencyKey,
   }) async {
     try {
       final payload = <String, dynamic>{
@@ -18,8 +18,8 @@ class BookingService {
         'seatNumber': seatNumber,
         'sharePhoneWithDriver': sharePhoneWithDriver,
       };
-      if (paymentIntentId != null && paymentIntentId.isNotEmpty) {
-        payload['paymentIntentId'] = paymentIntentId;
+      if (walletIdempotencyKey != null && walletIdempotencyKey.isNotEmpty) {
+        payload['walletIdempotencyKey'] = walletIdempotencyKey;
       }
       final response = await _api.post(
         ApiEndpoints.bookings,

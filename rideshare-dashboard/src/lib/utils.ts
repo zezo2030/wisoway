@@ -91,10 +91,11 @@ export function getPaymentStatusLabel(status: PaymentStatus): string {
 
 export function getPaymentMethodLabel(method: PaymentMethod): string {
   const labels: Record<PaymentMethod, string> = {
-    [PaymentMethod.STRIPE]: "Stripe",
+    [PaymentMethod.WALLET]: "Wallet",
     [PaymentMethod.PAYMOB]: "Paymob",
     [PaymentMethod.MANUAL]: "Manual",
     [PaymentMethod.COMMUNICATION_FEE]: "Communication Fee",
+    [PaymentMethod.CLIQ_A2A]: "CliQ A2A",
   }
   return labels[method] || method
 }

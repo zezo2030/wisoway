@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../core/constants/route_names.dart';
+import '../../../core/constants/app_spacing.dart';
 import '../../../core/theme/colors.dart';
 import '../../../widgets/notification_icon_button.dart';
 
@@ -21,8 +22,8 @@ class HomeTab extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              AppColors.primary.withOpacity(0.1),
-              Colors.white,
+              T.primary(context).withValues(alpha: 0.1),
+              T.surface(context),
             ],
           ),
         ),
@@ -33,7 +34,6 @@ class HomeTab extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header Section
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -44,16 +44,16 @@ class HomeTab extends StatelessWidget {
                             'مرحباً',
                             style: TextStyle(
                               fontSize: 16,
-                              color: AppColors.textSecondary,
+                              color: T.onSurfaceVariant(context),
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             user?.name ?? 'المستخدم',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary,
+                              color: T.onSurface(context),
                             ),
                           ),
                         ],
@@ -62,23 +62,16 @@ class HomeTab extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 32),
-                  
-                  // Quick Actions Card
+
                   if (user != null && user.canCreateTrips) ...[
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppColors.primary, AppColors.primaryDark],
+                        gradient: LinearGradient(
+                          colors: [T.primary(context), AppColors.teal700],
                         ),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primary.withOpacity(0.3),
-                            blurRadius: 15,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
+                        borderRadius: AppRadius.radiusXl,
+                        boxShadow: AppShadows.lg,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -88,7 +81,7 @@ class HomeTab extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                              color: AppColors.white,
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -96,29 +89,43 @@ class HomeTab extends StatelessWidget {
                             'أنشئ رحلة جديدة واكسب المال',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.white.withOpacity(0.9),
+                              color: AppColors.white.withValues(alpha: 0.9),
                             ),
                           ),
                           const SizedBox(height: 20),
-                            SizedBox(
+                          SizedBox(
                             width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                Navigator.pushNamed(context, RouteNames.createTrip);
-                              },
-                              icon: const Icon(IconsaxPlusBold.add_circle, color: Colors.white),
-                              label: const Text(
-                                'إنشاء رحلة جديدة',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
+                            child: Semantics(
+                              button: true,
+                              label: 'إنشاء رحلة جديدة',
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.pushNamed(
+                                    context,
+                                    RouteNames.createTrip,
+                                  );
+                                },
+                                icon: const Icon(
+                                  IconsaxPlusBold.add_circle,
+                                  color: AppColors.white,
                                 ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white.withOpacity(0.2),
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                label: const Text(
+                                  'إنشاء رحلة جديدة',
+                                  style: TextStyle(
+                                    color: AppColors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.white.withValues(
+                                    alpha: 0.2,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
                                 ),
                               ),
                             ),
@@ -129,16 +136,15 @@ class HomeTab extends StatelessWidget {
                     const SizedBox(height: 24),
                   ],
 
-                  // User Info Card
                   if (user != null) ...[
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: T.surface(context),
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
+                            color: AppColors.black.withValues(alpha: 0.05),
                             blurRadius: 10,
                             offset: const Offset(0, 2),
                           ),
@@ -152,46 +158,52 @@ class HomeTab extends StatelessWidget {
                               Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withOpacity(0.1),
+                                  color: T
+                                      .primary(context)
+                                      .withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: const Icon(
+                                child: Icon(
                                   IconsaxPlusLinear.profile_circle,
-                                  color: AppColors.primary,
+                                  color: T.primary(context),
                                   size: 24,
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              const Text(
+                              Text(
                                 'معلومات المستخدم',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary,
+                                  color: T.onSurface(context),
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 20),
                           _buildInfoRow(
+                            context: context,
                             icon: IconsaxPlusLinear.profile,
                             label: 'الاسم',
                             value: user.name,
                           ),
                           const Divider(height: 24),
                           _buildInfoRow(
+                            context: context,
                             icon: IconsaxPlusLinear.call,
                             label: 'رقم الهاتف',
                             value: user.phoneNumber,
                           ),
                           const Divider(height: 24),
                           _buildInfoRow(
+                            context: context,
                             icon: IconsaxPlusLinear.profile_2user,
                             label: 'الجنس',
                             value: user.isMale ? 'ذكر' : 'أنثى',
                           ),
                           const Divider(height: 24),
                           _buildInfoRow(
+                            context: context,
                             icon: IconsaxPlusLinear.award,
                             label: 'الدور',
                             value: user.isDriver ? 'سائق' : 'راكب',
@@ -202,36 +214,37 @@ class HomeTab extends StatelessWidget {
                     const SizedBox(height: 24),
                   ],
 
-                  // Stats Section (for drivers)
                   if (user != null && user.canCreateTrips) ...[
-                    const Text(
+                    Text(
                       'إحصائيات',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
+                        color: T.onSurface(context),
                       ),
                     ),
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                      Expanded(
-                        child: _buildStatCard(
-                          icon: IconsaxPlusBold.car,
-                          title: 'الرحلات',
-                          value: '0',
-                          color: AppColors.primary,
+                        Expanded(
+                          child: _buildStatCard(
+                            context: context,
+                            icon: IconsaxPlusBold.car,
+                            title: 'الرحلات',
+                            value: '0',
+                            color: T.primary(context),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildStatCard(
-                          icon: IconsaxPlusBold.people,
-                          title: 'الركاب',
-                          value: '0',
-                          color: AppColors.secondary,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildStatCard(
+                            context: context,
+                            icon: IconsaxPlusBold.people,
+                            title: 'الركاب',
+                            value: '0',
+                            color: T.secondary(context),
+                          ),
                         ),
-                      ),
                       ],
                     ),
                   ],
@@ -245,29 +258,27 @@ class HomeTab extends StatelessWidget {
   }
 
   Widget _buildInfoRow({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required String value,
   }) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: AppColors.textSecondary),
+        Icon(icon, size: 20, color: T.onSurfaceVariant(context)),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
             label,
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 14, color: T.onSurfaceVariant(context)),
           ),
         ),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: T.onSurface(context),
           ),
         ),
       ],
@@ -275,6 +286,7 @@ class HomeTab extends StatelessWidget {
   }
 
   Widget _buildStatCard({
+    required BuildContext context,
     required IconData icon,
     required String title,
     required String value,
@@ -283,12 +295,9 @@ class HomeTab extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.withOpacity(0.2),
-          width: 1,
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
       ),
       child: Column(
         children: [
@@ -305,14 +314,10 @@ class HomeTab extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             title,
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 12, color: T.onSurfaceVariant(context)),
           ),
         ],
       ),
     );
   }
 }
-

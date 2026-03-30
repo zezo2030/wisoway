@@ -6,6 +6,7 @@ import '../../models/chat_model.dart';
 import '../../models/trip_model.dart';
 import '../../widgets/chat_bubble_widget.dart';
 import '../../core/theme/colors.dart';
+import '../../widgets/common/empty_state.dart';
 
 class DriverChatScreen extends StatefulWidget {
   final String tripId;
@@ -113,10 +114,9 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
 
       _messageController.clear();
 
-      // Scroll to bottom
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          0,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -126,7 +126,7 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في إرسال الرسالة: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: T.error(context),
           ),
         );
       }
@@ -165,7 +165,7 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.error_outline, size: 64, color: AppColors.error),
+                Icon(Icons.error_outline, size: 64, color: T.error(context)),
                 const SizedBox(height: 16),
                 Text(
                   _errorMessage!,
@@ -189,18 +189,21 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
     final chatId = _chatId ?? '';
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.passengerName != null
-                ? 'محادثة مع ${widget.passengerName}'
-                : 'محادثة الرحلة'),
+            Text(
+              widget.passengerName != null
+                  ? 'محادثة مع ${widget.passengerName}'
+                  : 'محادثة الرحلة',
+            ),
             if (widget.trip != null && widget.passengerName == null)
               Text(
                 '${widget.trip!.from.name} → ${widget.trip!.to.name}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textOnPrimary.withOpacity(0.8),
+                  color: T.onPrimary(context).withValues(alpha: 0.8),
                 ),
               ),
           ],
@@ -208,32 +211,14 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
       ),
       body: Column(
         children: [
-          // Messages list
           Expanded(
             child: chatId.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.chat_bubble_outline,
-                          size: 64,
-                          color: AppColors.textDisabled,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'لا توجد محادثة بعد',
-                          style: Theme.of(context).textTheme.bodyLarge
-                              ?.copyWith(color: AppColors.textSecondary),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'ابدأ المحادثة الآن',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: AppColors.textDisabled),
-                        ),
-                      ],
-                    ),
+                ? const EmptyState(
+                    icon: Icons.chat_bubble_outline,
+                    title: 'لا توجد رسائل بعد',
+                    subtitle: 'ابدأ المحادثة الآن',
+                    showCircleBackground: false,
+                    iconSize: 64,
                   )
                 : StreamBuilder<List<MessageModel>>(
                     stream: _chatService.getChatStream(chatId),
@@ -249,38 +234,24 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
                       final messages = snapshot.data ?? [];
 
                       if (messages.isEmpty) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.chat_bubble_outline,
-                                size: 64,
-                                color: AppColors.textDisabled,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'لا توجد رسائل بعد',
-                                style: Theme.of(context).textTheme.bodyLarge
-                                    ?.copyWith(color: AppColors.textSecondary),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'ابدأ المحادثة الآن',
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(color: AppColors.textDisabled),
-                              ),
-                            ],
-                          ),
+                        return const EmptyState(
+                          icon: Icons.chat_bubble_outline,
+                          title: 'لا توجد رسائل بعد',
+                          subtitle: 'ابدأ المحادثة الآن',
+                          showCircleBackground: false,
+                          iconSize: 64,
                         );
                       }
 
+                      final reversedMessages = messages.reversed.toList();
+
                       return ListView.builder(
                         controller: _scrollController,
+                        reverse: true,
                         padding: const EdgeInsets.symmetric(vertical: 8),
-                        itemCount: messages.length,
+                        itemCount: reversedMessages.length,
                         itemBuilder: (context, index) {
-                          final message = messages[index];
+                          final message = reversedMessages[index];
                           final isFromCurrentUser =
                               message.senderId == currentUser.id;
 
@@ -294,13 +265,12 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
                     },
                   ),
           ),
-          // Message input
           Container(
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: T.surface(context),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: AppColors.black.withValues(alpha: 0.1),
                   blurRadius: 4,
                   offset: const Offset(0, -2),
                 ),
@@ -312,34 +282,45 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: TextField(
-                        controller: _messageController,
-                        decoration: InputDecoration(
-                          hintText: 'اكتب رسالة...',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(24),
+                      child: Semantics(
+                        textField: true,
+                        label: 'اكتب رسالة',
+                        child: TextField(
+                          controller: _messageController,
+                          decoration: InputDecoration(
+                            hintText: 'اكتب رسالة...',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
+                          maxLines: null,
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: (_) => _sendMessage(),
                         ),
-                        maxLines: null,
-                        textInputAction: TextInputAction.send,
-                        onSubmitted: (_) => _sendMessage(),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    IconButton(
-                      onPressed: _isSending ? null : _sendMessage,
-                      icon: _isSending
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.send),
-                      color: AppColors.primary,
+                    Semantics(
+                      button: true,
+                      label: 'إرسال الرسالة',
+                      child: IconButton(
+                        onPressed: _isSending ? null : _sendMessage,
+                        tooltip: 'إرسال',
+                        icon: _isSending
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.send),
+                        color: T.primary(context),
+                      ),
                     ),
                   ],
                 ),

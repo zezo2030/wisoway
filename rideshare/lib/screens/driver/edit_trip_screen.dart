@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../providers/trip_provider.dart';
 import '../../core/services/storage_service.dart';
@@ -11,6 +10,9 @@ import '../../models/location_model.dart';
 import '../../models/seat_layout_config.dart';
 import '../../models/trip_model.dart';
 import '../../widgets/location_picker_widget.dart';
+import '../../core/theme/text_styles.dart';
+import '../../core/theme/colors.dart';
+import '../../../widgets/common/section_card.dart';
 
 class EditTripScreen extends StatefulWidget {
   final String tripId;
@@ -107,8 +109,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
     if (image != null) {
       setState(() {
         _carImage = File(image.path);
-        _existingCarImageUrl =
-            null; // Clear existing URL when new image is picked
+        _existingCarImageUrl = null;
       });
     }
   }
@@ -154,8 +155,6 @@ class _EditTripScreenState extends State<EditTripScreen> {
   }
 
   Future<void> _selectDepartureTime() async {
-    // Allow selecting past dates if trip is completed or past
-    // السماح باختيار تواريخ سابقة إذا كانت الرحلة منتهية أو مكتملة
     final bool allowPastDates =
         _trip != null &&
         (_trip!.isCompleted || _trip!.isPast || _trip!.isLocked);
@@ -165,10 +164,8 @@ class _EditTripScreenState extends State<EditTripScreen> {
       initialDate:
           _departureTime ?? DateTime.now().add(const Duration(days: 1)),
       firstDate: allowPastDates
-          ? DateTime.now().subtract(
-              const Duration(days: 365),
-            ) // Allow past year
-          : DateTime.now(), // Only future dates for active trips
+          ? DateTime.now().subtract(const Duration(days: 365))
+          : DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
 
@@ -189,7 +186,6 @@ class _EditTripScreenState extends State<EditTripScreen> {
           time.minute,
         );
 
-        // Warn if selecting past date for active trip
         if (!allowPastDates && selectedDateTime.isBefore(DateTime.now())) {
           final confirmed = await showDialog<bool>(
             context: context,
@@ -212,7 +208,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                   onPressed: () => Navigator.pop(context, true),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white,
+                    foregroundColor: AppColors.white,
                   ),
                   child: const Text('متابعة'),
                 ),
@@ -263,8 +259,6 @@ class _EditTripScreenState extends State<EditTripScreen> {
       return;
     }
 
-    // Allow past dates only for completed or past trips
-    // السماح بالتواريخ السابقة فقط للرحلات المنتهية أو المكتملة
     final bool isPastTrip =
         _trip != null &&
         (_trip!.isCompleted || _trip!.isPast || _trip!.isLocked);
@@ -279,7 +273,6 @@ class _EditTripScreenState extends State<EditTripScreen> {
       return;
     }
 
-    // Check if trip has bookings - if yes, warn user
     if (_trip != null) {
       final bookedSeats = _trip!.seats.where((seat) => seat.isBooked).length;
       if (bookedSeats > 0) {
@@ -304,7 +297,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                 onPressed: () => Navigator.pop(context, true),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange,
-                  foregroundColor: Colors.white,
+                  foregroundColor: AppColors.white,
                 ),
                 child: const Text('متابعة'),
               ),
@@ -323,7 +316,6 @@ class _EditTripScreenState extends State<EditTripScreen> {
 
       String? carImageUrl = _existingCarImageUrl;
       if (_carImage != null) {
-        // Upload new car image
         carImageUrl = await _storageService.uploadImage(
           imageFile: _carImage!,
           folder: 'trip_images',
@@ -335,22 +327,18 @@ class _EditTripScreenState extends State<EditTripScreen> {
         }
       }
 
-      // Create seat layout
       final seatLayout = SeatLayoutConfig(
         rows: _rows,
         seatsPerRow: _seatsPerRow,
         preventGenderMixing: _preventGenderMixing,
       );
 
-      // Calculate new total seats
       final newTotalSeats = _rows * _seatsPerRow;
 
-      // Calculate available seats (preserve existing bookings)
       final existingBookedSeats =
           _trip?.seats.where((seat) => seat.isBooked).length ?? 0;
       final newAvailableSeats = newTotalSeats - existingBookedSeats;
 
-      // Update trip
       final updates = {
         'from': _fromLocation!.toMap(),
         'to': _toLocation!.toMap(),
@@ -395,14 +383,17 @@ class _EditTripScreenState extends State<EditTripScreen> {
   Widget build(BuildContext context) {
     if (_isLoadingTrip) {
       return Scaffold(
-        backgroundColor: Colors.grey[50],
+        backgroundColor: AppColors.slate50,
         appBar: AppBar(
           elevation: 0,
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black87,
+          backgroundColor: AppColors.white,
+          foregroundColor: T.onSurface(context).withValues(alpha: 0.87),
           title: Text(
             'تعديل الرحلة',
-            style: GoogleFonts.cairo(fontSize: 20, fontWeight: FontWeight.bold),
+            style: AppTextStyles.titleMedium.copyWith(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           centerTitle: true,
         ),
@@ -412,14 +403,17 @@ class _EditTripScreenState extends State<EditTripScreen> {
 
     if (_trip == null) {
       return Scaffold(
-        backgroundColor: Colors.grey[50],
+        backgroundColor: AppColors.slate50,
         appBar: AppBar(
           elevation: 0,
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black87,
+          backgroundColor: AppColors.white,
+          foregroundColor: T.onSurface(context).withValues(alpha: 0.87),
           title: Text(
             'تعديل الرحلة',
-            style: GoogleFonts.cairo(fontSize: 20, fontWeight: FontWeight.bold),
+            style: AppTextStyles.titleMedium.copyWith(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           centerTitle: true,
         ),
@@ -430,14 +424,17 @@ class _EditTripScreenState extends State<EditTripScreen> {
     final totalSeats = _rows * _seatsPerRow;
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppColors.slate50,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        backgroundColor: AppColors.white,
+        foregroundColor: T.onSurface(context).withValues(alpha: 0.87),
         title: Text(
           'تعديل الرحلة',
-          style: GoogleFonts.cairo(fontSize: 20, fontWeight: FontWeight.bold),
+          style: AppTextStyles.titleMedium.copyWith(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
       ),
@@ -449,7 +446,6 @@ class _EditTripScreenState extends State<EditTripScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Header Section
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
@@ -461,7 +457,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.orange.withOpacity(0.3),
+                        color: Colors.orange.withValues(alpha: 0.3),
                         blurRadius: 15,
                         offset: const Offset(0, 5),
                       ),
@@ -472,31 +468,29 @@ class _EditTripScreenState extends State<EditTripScreen> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: AppColors.white.withValues(alpha: 0.2),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
                           Icons.edit,
                           size: 48,
-                          color: Colors.white,
+                          color: AppColors.white,
                         ),
                       ),
                       const SizedBox(height: 16),
                       Text(
                         'تعديل رحلتك',
-                        style: GoogleFonts.cairo(
-                          fontSize: 22,
+                        style: AppTextStyles.titleLarge.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: AppColors.white,
                         ),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'قم بتحديث معلومات الرحلة',
-                        style: GoogleFonts.cairo(
-                          fontSize: 14,
-                          color: Colors.white.withOpacity(0.9),
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.white.withValues(alpha: 0.2),
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -505,14 +499,12 @@ class _EditTripScreenState extends State<EditTripScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Trip Details Card
-                _buildSectionCard(
+                SectionCard(
                   title: 'تفاصيل الرحلة',
                   icon: Icons.route,
-                  color: Colors.blue,
+                  iconColor: Colors.blue,
                   children: [
                     const SizedBox(height: 8),
-                    // From Location
                     _buildModernTextField(
                       controller: _fromController,
                       label: 'نقطة الانطلاق',
@@ -528,7 +520,6 @@ class _EditTripScreenState extends State<EditTripScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    // Arrow Icon
                     Center(
                       child: Container(
                         padding: const EdgeInsets.all(8),
@@ -538,13 +529,12 @@ class _EditTripScreenState extends State<EditTripScreen> {
                         ),
                         child: Icon(
                           Icons.arrow_downward,
-                          color: Colors.blue.shade700,
+                          color: T.primary(context),
                           size: 24,
                         ),
                       ),
                     ),
                     const SizedBox(height: 16),
-                    // To Location
                     _buildModernTextField(
                       controller: _toController,
                       label: 'الوجهة',
@@ -560,7 +550,6 @@ class _EditTripScreenState extends State<EditTripScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    // Departure Time
                     _buildModernTextField(
                       controller: TextEditingController(
                         text: _departureTime != null
@@ -582,7 +571,6 @@ class _EditTripScreenState extends State<EditTripScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    // Price
                     _buildModernTextField(
                       controller: _priceController,
                       label: 'السعر لكل مقعد',
@@ -602,9 +590,9 @@ class _EditTripScreenState extends State<EditTripScreen> {
                         ),
                         child: Text(
                           _trip?.currency ?? 'EGP',
-                          style: GoogleFonts.cairo(
+                          style: AppTextStyles.titleMedium.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: Colors.green.shade700,
+                            color: AppColors.success,
                           ),
                         ),
                       ),
@@ -623,14 +611,12 @@ class _EditTripScreenState extends State<EditTripScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Seat Configuration Card
-                _buildSectionCard(
+                SectionCard(
                   title: 'إعدادات المقاعد',
                   icon: Icons.event_seat,
-                  color: Colors.purple,
+                  iconColor: Colors.purple,
                   children: [
                     const SizedBox(height: 8),
-                    // Rows
                     _buildCounterRow(
                       label: 'عدد الصفوف',
                       value: _rows,
@@ -645,7 +631,6 @@ class _EditTripScreenState extends State<EditTripScreen> {
                           : null,
                     ),
                     const SizedBox(height: 16),
-                    // Seats Per Row
                     _buildCounterRow(
                       label: 'عدد المقاعد في كل صف',
                       value: _seatsPerRow,
@@ -660,7 +645,6 @@ class _EditTripScreenState extends State<EditTripScreen> {
                           : null,
                     ),
                     const SizedBox(height: 16),
-                    // Total Seats Display
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
@@ -683,16 +667,15 @@ class _EditTripScreenState extends State<EditTripScreen> {
                             children: [
                               Icon(
                                 Icons.confirmation_number,
-                                color: Colors.purple.shade700,
+                                color: T.primary(context),
                                 size: 28,
                               ),
                               const SizedBox(width: 12),
                               Text(
                                 'إجمالي المقاعد',
-                                style: GoogleFonts.cairo(
-                                  fontSize: 16,
+                                style: AppTextStyles.titleSmall.copyWith(
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.purple.shade900,
+                                  color: T.primary(context),
                                 ),
                               ),
                             ],
@@ -703,15 +686,14 @@ class _EditTripScreenState extends State<EditTripScreen> {
                               vertical: 10,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.purple.shade700,
+                              color: T.primary(context),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
                               '$totalSeats',
-                              style: GoogleFonts.cairo(
-                                fontSize: 24,
+                              style: AppTextStyles.headlineSmall.copyWith(
                                 fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                                color: AppColors.white,
                               ),
                             ),
                           ),
@@ -719,13 +701,12 @@ class _EditTripScreenState extends State<EditTripScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    // Prevent Gender Mixing
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
+                        color: AppColors.slate50,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey.shade200),
+                        border: Border.all(color: AppColors.slate200),
                       ),
                       child: SwitchListTile(
                         contentPadding: EdgeInsets.zero,
@@ -733,13 +714,12 @@ class _EditTripScreenState extends State<EditTripScreen> {
                           children: [
                             Icon(
                               Icons.people_outline,
-                              color: Colors.purple.shade700,
+                              color: T.primary(context),
                             ),
                             const SizedBox(width: 8),
                             Text(
                               'منع الاختلاط',
-                              style: GoogleFonts.cairo(
-                                fontSize: 16,
+                              style: AppTextStyles.titleSmall.copyWith(
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -749,14 +729,14 @@ class _EditTripScreenState extends State<EditTripScreen> {
                           padding: const EdgeInsets.only(top: 4, right: 48),
                           child: Text(
                             'منع الجلوس بجانب الجنس الآخر',
-                            style: GoogleFonts.cairo(
+                            style: AppTextStyles.bodyMedium.copyWith(
                               fontSize: 13,
-                              color: Colors.grey.shade600,
+                              color: AppColors.slate600,
                             ),
                           ),
                         ),
                         value: _preventGenderMixing,
-                        activeThumbColor: Colors.purple.shade700,
+                        activeThumbColor: T.primary(context),
                         onChanged: (value) {
                           setState(() => _preventGenderMixing = value);
                         },
@@ -766,187 +746,195 @@ class _EditTripScreenState extends State<EditTripScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Car Image Card
-                _buildSectionCard(
+                SectionCard(
                   title: 'صورة السيارة',
                   icon: Icons.car_rental,
-                  color: Colors.teal,
+                  iconColor: Colors.teal,
                   subtitle: '(اختياري)',
                   children: [
                     const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: _pickCarImage,
-                      child: Container(
-                        height: 180,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color:
-                                (_carImage != null ||
-                                    _existingCarImageUrl != null)
-                                ? Colors.teal.shade300
-                                : Colors.grey.shade300,
-                            width: 2,
+                    Semantics(
+                      button: true,
+                      label: 'رفع صورة السيارة',
+                      child: GestureDetector(
+                        onTap: _pickCarImage,
+                        child: Container(
+                          height: 180,
+                          decoration: BoxDecoration(
+                            color: AppColors.slate50,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color:
+                                  (_carImage != null ||
+                                      _existingCarImageUrl != null)
+                                  ? AppColors.teal300
+                                  : AppColors.slate300,
+                              width: 2,
+                            ),
                           ),
-                        ),
-                        child: _carImage != null
-                            ? Stack(
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(14),
-                                    child: Image.file(
-                                      _carImage!,
-                                      fit: BoxFit.cover,
-                                      width: double.infinity,
-                                    ),
-                                  ),
-                                  Positioned(
-                                    top: 8,
-                                    left: 8,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(0.6),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.edit,
-                                        color: Colors.white,
-                                        size: 20,
+                          child: _carImage != null
+                              ? Stack(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(14),
+                                      child: Image.file(
+                                        _carImage!,
+                                        fit: BoxFit.cover,
+                                        width: double.infinity,
                                       ),
                                     ),
-                                  ),
-                                ],
-                              )
-                            : _existingCarImageUrl != null
-                            ? Stack(
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(14),
-                                    child: CachedNetworkImage(
-                                      imageUrl: _existingCarImageUrl!,
-                                      fit: BoxFit.cover,
-                                      width: double.infinity,
-                                      placeholder: (context, url) => Container(
-                                        color: Colors.grey[200],
-                                        child: const Center(
-                                          child: CircularProgressIndicator(),
+                                    Positioned(
+                                      top: 8,
+                                      left: 8,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.black.withValues(
+                                            alpha: 0.6,
+                                          ),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.edit,
+                                          color: AppColors.white,
+                                          size: 20,
                                         ),
                                       ),
-                                      errorWidget: (context, url, error) =>
-                                          Container(
-                                            color: Colors.grey[200],
-                                            child: const Icon(Icons.error),
-                                          ),
                                     ),
-                                  ),
-                                  Positioned(
-                                    top: 8,
-                                    left: 8,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(8),
+                                  ],
+                                )
+                              : _existingCarImageUrl != null
+                              ? Stack(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(14),
+                                      child: CachedNetworkImage(
+                                        imageUrl: _existingCarImageUrl!,
+                                        fit: BoxFit.cover,
+                                        width: double.infinity,
+                                        placeholder: (context, url) =>
+                                            Container(
+                                              color: AppColors.slate200,
+                                              child: const Center(
+                                                child:
+                                                    CircularProgressIndicator(),
+                                              ),
+                                            ),
+                                        errorWidget: (context, url, error) =>
+                                            Container(
+                                              color: AppColors.slate200,
+                                              child: const Icon(Icons.error),
+                                            ),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: 8,
+                                      left: 8,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.black.withValues(
+                                            alpha: 0.6,
+                                          ),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.edit,
+                                          color: AppColors.white,
+                                          size: 20,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(20),
                                       decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(0.6),
+                                        color: AppColors.teal50,
                                         shape: BoxShape.circle,
                                       ),
-                                      child: const Icon(
-                                        Icons.edit,
-                                        color: Colors.white,
-                                        size: 20,
+                                      child: Icon(
+                                        Icons.add_photo_alternate,
+                                        color: AppColors.teal700,
+                                        size: 48,
                                       ),
                                     ),
-                                  ),
-                                ],
-                              )
-                            : Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(20),
-                                    decoration: BoxDecoration(
-                                      color: Colors.teal.shade50,
-                                      shape: BoxShape.circle,
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'اضغط لرفع صورة السيارة',
+                                      style: AppTextStyles.labelLarge.copyWith(
+                                        color: AppColors.slate600,
+                                      ),
                                     ),
-                                    child: Icon(
-                                      Icons.add_photo_alternate,
-                                      color: Colors.teal.shade700,
-                                      size: 48,
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'اختياري',
+                                      style: AppTextStyles.bodySmall.copyWith(
+                                        color: AppColors.slate500,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'اضغط لرفع صورة السيارة',
-                                    style: GoogleFonts.cairo(
-                                      fontSize: 14,
-                                      color: Colors.grey.shade600,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'اختياري',
-                                    style: GoogleFonts.cairo(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade500,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                  ],
+                                ),
+                        ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 32),
 
-                // Update Button
                 Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.orange.withOpacity(0.4),
+                        color: Colors.orange.withValues(alpha: 0.4),
                         blurRadius: 15,
                         offset: const Offset(0, 8),
                       ),
                     ],
                   ),
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _updateTrip,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      backgroundColor: Colors.orange.shade600,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                  child: Semantics(
+                    button: true,
+                    label: 'حفظ التعديلات',
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _updateTrip,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        backgroundColor: Colors.orange.shade600,
+                        foregroundColor: AppColors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
                       ),
-                      elevation: 0,
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 24,
-                            width: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
-                              ),
-                            ),
-                          )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.save, size: 24),
-                              const SizedBox(width: 12),
-                              Text(
-                                'حفظ التعديلات',
-                                style: GoogleFonts.cairo(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppColors.white,
                                 ),
                               ),
-                            ],
-                          ),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.save, size: 24),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'حفظ التعديلات',
+                                  style: AppTextStyles.titleMedium.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -954,71 +942,6 @@ class _EditTripScreenState extends State<EditTripScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildSectionCard({
-    required String title,
-    required IconData icon,
-    required Color color,
-    String? subtitle,
-    required List<Widget> children,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 24),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.cairo(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey.shade900,
-                      ),
-                    ),
-                    if (subtitle != null)
-                      Text(
-                        subtitle,
-                        style: GoogleFonts.cairo(
-                          fontSize: 12,
-                          color: Colors.grey.shade500,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          ...children,
-        ],
       ),
     );
   }
@@ -1039,29 +962,33 @@ class _EditTripScreenState extends State<EditTripScreen> {
       borderRadius: BorderRadius.circular(16),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.grey.shade50,
+          color: AppColors.slate50,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade200, width: 1.5),
+          border: Border.all(color: AppColors.slate200, width: 1.5),
         ),
         child: TextFormField(
           controller: controller,
           readOnly: onTap != null,
           keyboardType: keyboardType,
           validator: validator,
-          style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.w500),
+          style: AppTextStyles.bodyLarge.copyWith(
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+          ),
           decoration: InputDecoration(
             labelText: label,
             hintText: hint,
-            hintStyle: GoogleFonts.cairo(color: Colors.grey.shade400),
-            labelStyle: GoogleFonts.cairo(
-              color: Colors.grey.shade700,
-              fontWeight: FontWeight.w600,
+            hintStyle: AppTextStyles.bodyLarge.copyWith(
+              color: T.outlineVariant(context),
+            ),
+            labelStyle: AppTextStyles.labelLarge.copyWith(
+              color: AppColors.slate700,
             ),
             prefixIcon: Container(
               margin: const EdgeInsets.all(8),
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, color: color, size: 22),
@@ -1072,6 +999,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                     child: IconButton(
                       icon: Icon(Icons.map, color: color),
                       onPressed: onTap,
+                      tooltip: 'اختيار من الخريطة',
                     ),
                   )
                 : suffixWidget != null
@@ -1107,9 +1035,9 @@ class _EditTripScreenState extends State<EditTripScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: AppColors.slate50,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: AppColors.slate200),
       ),
       child: Row(
         children: [
@@ -1119,47 +1047,51 @@ class _EditTripScreenState extends State<EditTripScreen> {
               color: Colors.purple.shade50,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: Colors.purple.shade700, size: 22),
+            child: Icon(icon, color: T.primary(context), size: 22),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               label,
-              style: GoogleFonts.cairo(
+              style: AppTextStyles.bodyLarge.copyWith(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: Colors.grey.shade800,
+                color: AppColors.slate800,
               ),
             ),
           ),
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade300),
+              border: Border.all(color: AppColors.slate300),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: onDecrement,
-                    borderRadius: const BorderRadius.only(
-                      topRight: Radius.circular(12),
-                      bottomRight: Radius.circular(12),
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                  color: AppColors.transparent,
+                  child: Semantics(
+                    button: onDecrement != null,
+                    label: 'تقليل $label',
+                    child: InkWell(
+                      onTap: onDecrement,
+                      borderRadius: const BorderRadius.only(
+                        topRight: Radius.circular(12),
+                        bottomRight: Radius.circular(12),
                       ),
-                      child: Icon(
-                        Icons.remove,
-                        color: onDecrement != null
-                            ? Colors.purple.shade700
-                            : Colors.grey.shade400,
-                        size: 20,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        child: Icon(
+                          Icons.remove,
+                          color: onDecrement != null
+                              ? T.primary(context)
+                              : AppColors.slate400,
+                          size: 20,
+                        ),
                       ),
                     ),
                   ),
@@ -1168,32 +1100,35 @@ class _EditTripScreenState extends State<EditTripScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Text(
                     '$value',
-                    style: GoogleFonts.cairo(
-                      fontSize: 18,
+                    style: AppTextStyles.titleMedium.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.purple.shade700,
+                      color: T.primary(context),
                     ),
                   ),
                 ),
                 Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: onIncrement,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(12),
-                      bottomLeft: Radius.circular(12),
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                  color: AppColors.transparent,
+                  child: Semantics(
+                    button: onIncrement != null,
+                    label: 'زيادة $label',
+                    child: InkWell(
+                      onTap: onIncrement,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(12),
+                        bottomLeft: Radius.circular(12),
                       ),
-                      child: Icon(
-                        Icons.add,
-                        color: onIncrement != null
-                            ? Colors.purple.shade700
-                            : Colors.grey.shade400,
-                        size: 20,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        child: Icon(
+                          Icons.add,
+                          color: onIncrement != null
+                              ? T.primary(context)
+                              : AppColors.slate400,
+                          size: 20,
+                        ),
                       ),
                     ),
                   ),

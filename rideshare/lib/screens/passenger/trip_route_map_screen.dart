@@ -5,6 +5,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import '../../models/trip_model.dart';
 import '../../core/api/websocket_service.dart';
+import '../../core/theme/colors.dart';
+import '../../core/constants/env_config.dart';
 
 class TripRouteMapScreen extends StatefulWidget {
   final TripModel trip;
@@ -21,22 +23,18 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
   final WebSocketService _socketService = WebSocketService();
   StreamSubscription<Map<String, dynamic>>? _trackingSubscription;
 
-  // Route data
   Set<Polyline> _polylines = {};
   Set<Marker> _markers = {};
 
-  // Driver live location
   LatLng? _driverLocation;
   BitmapDescriptor? _driverIcon;
 
-  // Route info
   String _distance = '';
   String _duration = '';
   bool _isLoadingRoute = true;
   bool _isFollowingDriver = false;
 
-  // Google Maps Directions API key (same key used in AndroidManifest.xml)
-  static const String _apiKey = 'AIzaSyBS4ULytH5msEGRECGedllgf3ziF1Q5Itw';
+  String get _apiKey => EnvConfig.googleMapsApiKey;
 
   late LatLng _fromLatLng;
   late LatLng _toLatLng;
@@ -66,10 +64,7 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
         markerId: const MarkerId('destination'),
         position: _toLatLng,
         icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-        infoWindow: InfoWindow(
-          title: 'الوجهة',
-          snippet: widget.trip.to.name,
-        ),
+        infoWindow: InfoWindow(title: 'الوجهة', snippet: widget.trip.to.name),
       ),
     };
   }
@@ -104,20 +99,24 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
     final driverMarker = Marker(
       markerId: const MarkerId('driver_live'),
       position: _driverLocation!,
-      icon: _driverIcon ??
+      icon:
+          _driverIcon ??
           BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
       infoWindow: const InfoWindow(title: 'موقع السائق'),
       anchor: const Offset(0.5, 0.5),
       zIndex: 3,
     );
 
-    _markers.removeWhere((m) => m.markerId.value == 'driver_live');
-    _markers.add(driverMarker);
+    _markers = {
+      ..._markers.where((m) => m.markerId.value != 'driver_live'),
+      driverMarker,
+    };
   }
 
   Future<void> _fetchRoute() async {
     try {
-      final url = 'https://maps.googleapis.com/maps/api/directions/json'
+      final url =
+          'https://maps.googleapis.com/maps/api/directions/json'
           '?origin=${_fromLatLng.latitude},${_fromLatLng.longitude}'
           '&destination=${_toLatLng.latitude},${_toLatLng.longitude}'
           '&key=$_apiKey'
@@ -141,7 +140,7 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
               Polyline(
                 polylineId: const PolylineId('route'),
                 points: points,
-                color: const Color(0xFF1565C0),
+                color: AppColors.teal700,
                 width: 5,
                 patterns: [],
               ),
@@ -149,7 +148,6 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
             _isLoadingRoute = false;
           });
         } else {
-          // No route found, draw straight line
           _drawStraightLine();
         }
       } else {
@@ -166,7 +164,7 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
         Polyline(
           polylineId: const PolylineId('route'),
           points: [_fromLatLng, _toLatLng],
-          color: const Color(0xFF1565C0),
+          color: AppColors.teal700,
           width: 4,
           patterns: [PatternItem.dash(20), PatternItem.gap(10)],
         ),
@@ -175,7 +173,6 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
     });
   }
 
-  /// Decode Google's encoded polyline string into a list of LatLng points
   List<LatLng> _decodePolyline(String encoded) {
     List<LatLng> points = [];
     int index = 0;
@@ -223,19 +220,25 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
       allPoints.add(_driverLocation!);
     }
 
-    double minLat = allPoints.map((p) => p.latitude).reduce((a, b) => a < b ? a : b);
-    double maxLat = allPoints.map((p) => p.latitude).reduce((a, b) => a > b ? a : b);
-    double minLng = allPoints.map((p) => p.longitude).reduce((a, b) => a < b ? a : b);
-    double maxLng = allPoints.map((p) => p.longitude).reduce((a, b) => a > b ? a : b);
+    double minLat = allPoints
+        .map((p) => p.latitude)
+        .reduce((a, b) => a < b ? a : b);
+    double maxLat = allPoints
+        .map((p) => p.latitude)
+        .reduce((a, b) => a > b ? a : b);
+    double minLng = allPoints
+        .map((p) => p.longitude)
+        .reduce((a, b) => a < b ? a : b);
+    double maxLng = allPoints
+        .map((p) => p.longitude)
+        .reduce((a, b) => a > b ? a : b);
 
     final bounds = LatLngBounds(
       southwest: LatLng(minLat - 0.02, minLng - 0.02),
       northeast: LatLng(maxLat + 0.02, maxLng + 0.02),
     );
 
-    _mapController!.animateCamera(
-      CameraUpdate.newLatLngBounds(bounds, 80),
-    );
+    _mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds, 80));
   }
 
   @override
@@ -243,7 +246,6 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
     return Scaffold(
       body: Stack(
         children: [
-          // ── Full-screen Google Map ──
           GoogleMap(
             onMapCreated: _onMapCreated,
             initialCameraPosition: CameraPosition(
@@ -258,31 +260,35 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
             mapToolbarEnabled: false,
           ),
 
-          // ── Top Safe Area Controls ──
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  // Back button
                   _CircleButton(
                     icon: Icons.arrow_back,
                     onTap: () => Navigator.pop(context),
+                    semanticLabel: 'رجوع',
                   ),
                   const Spacer(),
-                  // Fit bounds button
                   _CircleButton(
                     icon: Icons.fullscreen,
                     onTap: _fitBounds,
+                    semanticLabel: 'عرض المسار بالكامل',
+                  ),
+                  const Spacer(),
+                  _CircleButton(
+                    icon: Icons.fullscreen,
+                    onTap: _fitBounds,
+                    semanticLabel: 'عرض المسار بالكامل',
                   ),
                 ],
               ),
             ),
           ),
 
-          // ── Loading indicator for route ──
           if (_isLoadingRoute)
-            const Center(
+            Center(
               child: Card(
                 child: Padding(
                   padding: EdgeInsets.all(20),
@@ -291,47 +297,47 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
                     children: [
                       CircularProgressIndicator(),
                       SizedBox(height: 12),
-                      Text('جاري تحميل المسار...'),
+                      Semantics(
+                        label: 'جاري تحميل المسار',
+                        child: Text('جاري تحميل المسار...'),
+                      ),
                     ],
                   ),
                 ),
               ),
             ),
 
-          // ── Bottom Info Panel ──
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: _buildBottomPanel(),
-          ),
+          Positioned(bottom: 0, left: 0, right: 0, child: _buildBottomPanel()),
         ],
       ),
 
-      // ── Follow driver FAB ──
       floatingActionButton: _driverLocation != null
           ? Padding(
               padding: const EdgeInsets.only(bottom: 200),
-              child: FloatingActionButton.small(
-                heroTag: 'follow_driver',
-                backgroundColor: _isFollowingDriver
-                    ? const Color(0xFF1565C0)
-                    : Colors.white,
-                onPressed: () {
-                  setState(() {
-                    _isFollowingDriver = !_isFollowingDriver;
-                  });
-                  if (_isFollowingDriver && _driverLocation != null) {
-                    _mapController?.animateCamera(
-                      CameraUpdate.newLatLngZoom(_driverLocation!, 15),
-                    );
-                  }
-                },
-                child: Icon(
-                  Icons.gps_fixed,
-                  color: _isFollowingDriver
-                      ? Colors.white
-                      : const Color(0xFF1565C0),
+              child: Semantics(
+                button: true,
+                label: _isFollowingDriver ? 'إيقاف تتبع السائق' : 'تتبع السائق',
+                child: FloatingActionButton.small(
+                  heroTag: 'follow_driver',
+                  backgroundColor: _isFollowingDriver
+                      ? AppColors.teal700
+                      : AppColors.white,
+                  onPressed: () {
+                    setState(() {
+                      _isFollowingDriver = !_isFollowingDriver;
+                    });
+                    if (_isFollowingDriver && _driverLocation != null) {
+                      _mapController?.animateCamera(
+                        CameraUpdate.newLatLngZoom(_driverLocation!, 15),
+                      );
+                    }
+                  },
+                  child: Icon(
+                    Icons.gps_fixed,
+                    color: _isFollowingDriver
+                        ? AppColors.white
+                        : AppColors.teal700,
+                  ),
                 ),
               ),
             )
@@ -342,11 +348,11 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
   Widget _buildBottomPanel() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: T.surface(context),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
+            color: AppColors.black.withValues(alpha: 0.15),
             blurRadius: 20,
             offset: const Offset(0, -4),
           ),
@@ -359,48 +365,44 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Drag handle
               Container(
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: T.outlineVariant(context),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
               const SizedBox(height: 16),
 
-              // From - To
               Row(
                 children: [
-                  // Route indicator dots
                   Column(
                     children: [
                       Container(
                         width: 12,
                         height: 12,
                         decoration: const BoxDecoration(
-                          color: Color(0xFF4CAF50),
+                          color: AppColors.success,
                           shape: BoxShape.circle,
                         ),
                       ),
                       Container(
                         width: 2,
                         height: 30,
-                        color: Colors.grey[300],
+                        color: T.outlineVariant(context),
                       ),
                       Container(
                         width: 12,
                         height: 12,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFF44336),
+                        decoration: BoxDecoration(
+                          color: T.error(context),
                           shape: BoxShape.circle,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(width: 12),
-                  // Location names
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -434,14 +436,13 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
                 const SizedBox(height: 16),
                 const Divider(height: 1),
                 const SizedBox(height: 12),
-                // Distance & Duration chips
                 Row(
                   children: [
                     if (_distance.isNotEmpty)
                       _InfoChip(
                         icon: Icons.straighten,
                         label: _distance,
-                        color: const Color(0xFF1565C0),
+                        color: AppColors.teal700,
                       ),
                     if (_distance.isNotEmpty && _duration.isNotEmpty)
                       const SizedBox(width: 12),
@@ -449,23 +450,24 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
                       _InfoChip(
                         icon: Icons.access_time_filled,
                         label: _duration,
-                        color: const Color(0xFFE65100),
+                        color: AppColors.warningDark,
                       ),
                   ],
                 ),
               ],
 
-              // Live tracking status
               if (_driverLocation != null) ...[
                 const SizedBox(height: 12),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
+                    color: AppColors.success.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
+                      color: AppColors.success.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Row(
@@ -475,7 +477,7 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
                         width: 8,
                         height: 8,
                         decoration: const BoxDecoration(
-                          color: Color(0xFF4CAF50),
+                          color: AppColors.success,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -483,7 +485,7 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
                       const Text(
                         'التتبع المباشر مفعل',
                         style: TextStyle(
-                          color: Color(0xFF2E7D32),
+                          color: AppColors.successDark,
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
                         ),
@@ -493,7 +495,7 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
                         _isFollowingDriver
                             ? Icons.gps_fixed
                             : Icons.gps_not_fixed,
-                        color: const Color(0xFF2E7D32),
+                        color: AppColors.successDark,
                         size: 18,
                       ),
                     ],
@@ -516,33 +518,40 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
   }
 }
 
-// ── Reusable Circle Button ──
 class _CircleButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
+  final String? semanticLabel;
 
-  const _CircleButton({required this.icon, required this.onTap});
+  const _CircleButton({
+    required this.icon,
+    required this.onTap,
+    this.semanticLabel,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      elevation: 4,
-      shadowColor: Colors.black26,
-      shape: const CircleBorder(),
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Icon(icon, size: 22),
+    return Semantics(
+      button: true,
+      label: semanticLabel,
+      child: Material(
+        color: AppColors.white,
+        elevation: 4,
+        shadowColor: AppColors.black.withValues(alpha: 0.26),
+        shape: const CircleBorder(),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Icon(icon, size: 22),
+          ),
         ),
       ),
     );
   }
 }
 
-// ── Info Chip ──
 class _InfoChip extends StatelessWidget {
   final IconData icon;
   final String label;

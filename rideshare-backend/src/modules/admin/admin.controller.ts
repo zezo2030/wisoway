@@ -282,7 +282,7 @@ export class AdminController {
   @ApiQuery({
     name: 'method',
     required: false,
-    enum: ['stripe', 'paymob', 'manual', 'communication_fee'],
+    enum: ['wallet', 'paymob', 'manual', 'communication_fee'],
   })
   @ApiQuery({
     name: 'paymentType',

@@ -32,11 +32,12 @@ import 'screens/driver/my_trips_screen.dart';
 import 'screens/driver/trip_management_screen.dart';
 import 'screens/driver/passenger_details_screen.dart';
 import 'screens/driver/driver_wallet_screen.dart';
-import 'screens/driver/driver_wallet_topup_screen.dart';
+import 'screens/wallet/wallet_topup_request_screen.dart';
 import 'screens/passenger/trips_list_screen.dart';
 import 'screens/passenger/trip_details_screen.dart';
 import 'screens/passenger/seat_selection_screen.dart';
 import 'screens/passenger/trip_route_map_screen.dart';
+import 'screens/passenger/passenger_wallet_screen.dart';
 import 'models/trip_model.dart';
 import 'models/booking_model.dart';
 import 'screens/payment/manual_payment_screen.dart';
@@ -46,8 +47,6 @@ import 'screens/passenger/chat_screen.dart';
 import 'screens/driver/chat_screen.dart' as driver_chat;
 import 'screens/passenger/rating_screen.dart';
 import 'screens/profile/edit_profile_screen.dart';
-import 'package:flutter_stripe/flutter_stripe.dart';
-import 'core/config/stripe_config.dart';
 // Removed unused notification_service.dart
 
 //admin@rideshare.com
@@ -55,10 +54,6 @@ import 'core/config/stripe_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  if (kStripePublishableKey.isNotEmpty) {
-    Stripe.publishableKey = kStripePublishableKey;
-  }
 
   // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -105,6 +100,8 @@ class MyApp extends StatelessWidget {
                   title: 'RideShare',
                   debugShowCheckedModeBanner: false,
                   theme: AppTheme.lightTheme,
+                  darkTheme: AppTheme.darkTheme,
+                  themeMode: ThemeMode.system,
                   locale: localizationService.locale,
                   supportedLocales: const [Locale('ar', ''), Locale('en', '')],
                   localizationsDelegates: const [
@@ -146,7 +143,9 @@ class MyApp extends StatelessWidget {
                     RouteNames.driverWallet: (context) =>
                         const DriverWalletScreen(),
                     RouteNames.driverWalletTopup: (context) =>
-                        const DriverWalletTopupScreen(),
+                        const WalletTopupRequestScreen(),
+                    RouteNames.passengerWallet: (context) =>
+                        const PassengerWalletScreen(),
                     RouteNames.notifications: (context) =>
                         const NotificationsScreen(),
                     RouteNames.editProfile: (context) =>

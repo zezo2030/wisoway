@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../../providers/auth_provider.dart';
-import '../../../bloc/auth/auth_bloc.dart';
-import '../../../bloc/auth/auth_event.dart';
 import '../../../core/constants/route_names.dart';
+import '../../../core/constants/app_spacing.dart';
 import '../../../core/theme/colors.dart';
 import '../../../widgets/notification_icon_button.dart';
+import '../../../widgets/common/logout_confirmation_dialog.dart';
+import '../../home/widgets/profile_menu_item.dart';
 
 class ProfileTab extends StatelessWidget {
   const ProfileTab({super.key});
@@ -22,14 +23,16 @@ class ProfileTab extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [AppColors.primary.withOpacity(0.1), Colors.white],
+            colors: [
+              T.primary(context).withValues(alpha: 0.1),
+              T.surface(context),
+            ],
           ),
         ),
         child: SafeArea(
           child: SingleChildScrollView(
             child: Column(
               children: [
-                // Notifications Icon at top
                 Padding(
                   padding: const EdgeInsets.only(top: 16, right: 20, left: 20),
                   child: Row(
@@ -37,7 +40,6 @@ class ProfileTab extends StatelessWidget {
                     children: const [NotificationIconButton()],
                   ),
                 ),
-                // Profile Header
                 Container(
                   padding: const EdgeInsets.all(24),
                   child: Column(
@@ -50,42 +52,35 @@ class ProfileTab extends StatelessWidget {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: AppColors.primary,
+                                color: T.primary(context),
                                 width: 4,
                               ),
-                              gradient: const LinearGradient(
-                                colors: [
-                                  AppColors.primary,
-                                  AppColors.primaryDark,
-                                ],
-                              ),
+                              color: T.primary(context),
                             ),
                             child: const Icon(
                               IconsaxPlusBold.profile,
                               size: 60,
-                              color: Colors.white,
+                              color: AppColors.white,
                             ),
                           ),
                           Positioned(
                             bottom: 0,
                             right: 0,
                             child: Container(
-                              padding: const EdgeInsets.all(8),
+                              padding: AppSpacing.paddingSm,
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: AppColors.white,
                                 shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
+                                boxShadow: AppShadows.sm,
                               ),
-                              child: const Icon(
-                                IconsaxPlusBold.camera,
-                                color: AppColors.primary,
-                                size: 20,
+                              child: Semantics(
+                                label: 'تعديل الصورة الشخصية',
+                                button: true,
+                                child: Icon(
+                                  IconsaxPlusBold.camera,
+                                  color: T.primary(context),
+                                  size: 20,
+                                ),
                               ),
                             ),
                           ),
@@ -94,10 +89,10 @@ class ProfileTab extends StatelessWidget {
                       const SizedBox(height: 16),
                       Text(
                         user?.name ?? 'المستخدم',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
+                          color: T.onSurface(context),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -105,7 +100,7 @@ class ProfileTab extends StatelessWidget {
                         user?.email ?? '',
                         style: TextStyle(
                           fontSize: 14,
-                          color: AppColors.textSecondary,
+                          color: T.onSurfaceVariant(context),
                         ),
                       ),
                       if (user != null) ...[
@@ -117,23 +112,22 @@ class ProfileTab extends StatelessWidget {
                           ),
                           decoration: BoxDecoration(
                             color: user.isDriver
-                                ? AppColors.secondary.withOpacity(0.1)
-                                : AppColors.primary.withOpacity(0.1),
+                                ? T.secondary(context).withValues(alpha: 0.1)
+                                : T.primary(context).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
                             user.isDriver ? 'سائق' : 'راكب',
                             style: TextStyle(
                               color: user.isDriver
-                                  ? AppColors.secondary
-                                  : AppColors.primary,
+                                  ? T.secondary(context)
+                                  : T.primary(context),
                               fontWeight: FontWeight.w600,
                               fontSize: 12,
                             ),
                           ),
                         ),
                       ],
-                      // Phone verification status
                       if (user != null) ...[
                         const SizedBox(height: 12),
                         Container(
@@ -143,8 +137,8 @@ class ProfileTab extends StatelessWidget {
                           ),
                           decoration: BoxDecoration(
                             color: user.isPhoneVerified
-                                ? AppColors.success.withOpacity(0.1)
-                                : AppColors.warning.withOpacity(0.1),
+                                ? AppColors.success.withValues(alpha: 0.1)
+                                : AppColors.warning.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
@@ -197,12 +191,11 @@ class ProfileTab extends StatelessWidget {
                   ),
                 ),
 
-                // Menu Items
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
                     children: [
-                      _buildMenuItem(
+                      ProfileMenuItem(
                         icon: IconsaxPlusLinear.edit,
                         title: 'تعديل الملف الشخصي',
                         onTap: () {
@@ -215,85 +208,40 @@ class ProfileTab extends StatelessWidget {
                         },
                       ),
                       const SizedBox(height: 12),
-                      _buildMenuItem(
+                      ProfileMenuItem(
                         icon: IconsaxPlusLinear.setting_2,
                         title: 'الإعدادات',
-                        onTap: () {
-                          // TODO: Navigate to settings
-                        },
+                        onTap: () {},
                       ),
                       const SizedBox(height: 12),
-                      _buildMenuItem(
+                      ProfileMenuItem(
                         icon: IconsaxPlusLinear.message_question,
                         title: 'المساعدة والدعم',
-                        onTap: () {
-                          // TODO: Navigate to help
-                        },
+                        onTap: () {},
                       ),
                       const SizedBox(height: 12),
-                      _buildMenuItem(
+                      ProfileMenuItem(
                         icon: IconsaxPlusLinear.info_circle,
                         title: 'حول التطبيق',
-                        onTap: () {
-                          // TODO: Show about dialog
-                        },
+                        onTap: () {},
                       ),
                       const SizedBox(height: 24),
 
-                      // Logout Button
                       Container(
                         width: double.infinity,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: AppColors.error.withOpacity(0.3),
+                            color: T.error(context).withValues(alpha: 0.3),
                             width: 1,
                           ),
                         ),
-                        child: _buildMenuItem(
+                        child: ProfileMenuItem(
                           icon: IconsaxPlusLinear.logout,
                           title: 'تسجيل الخروج',
-                          iconColor: AppColors.error,
-                          textColor: AppColors.error,
-                          onTap: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                title: const Text('تسجيل الخروج'),
-                                content: const Text(
-                                  'هل أنت متأكد من تسجيل الخروج؟',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(context, false),
-                                    child: const Text('إلغاء'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(context, true),
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: AppColors.error,
-                                    ),
-                                    child: const Text('تسجيل الخروج'),
-                                  ),
-                                ],
-                              ),
-                            );
-
-                            if (confirm == true && context.mounted) {
-                              context.read<AuthBloc>().add(const AuthSignOut());
-                              if (context.mounted) {
-                                Navigator.pushReplacementNamed(
-                                  context,
-                                  RouteNames.signIn,
-                                );
-                              }
-                            }
-                          },
+                          iconColor: T.error(context),
+                          textColor: T.error(context),
+                          onTap: () => handleLogout(context),
                         ),
                       ),
                       const SizedBox(height: 32),
@@ -303,65 +251,6 @@ class ProfileTab extends StatelessWidget {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMenuItem({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-    Color? iconColor,
-    Color? textColor,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: (iconColor ?? AppColors.primary).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                icon,
-                color: iconColor ?? AppColors.primary,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: textColor ?? AppColors.textPrimary,
-                ),
-              ),
-            ),
-            Icon(
-              IconsaxPlusLinear.arrow_left_2,
-              size: 16,
-              color: AppColors.textSecondary,
-            ),
-          ],
         ),
       ),
     );

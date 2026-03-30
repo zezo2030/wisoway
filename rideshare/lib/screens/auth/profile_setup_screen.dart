@@ -133,7 +133,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
       }
     } catch (e) {
       if (mounted) {
-        _showSnackBar(e.toString(), AppColors.error);
+        _showSnackBar(e.toString(), T.error(context));
       }
     }
   }
@@ -152,7 +152,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: T.surface(context),
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
@@ -191,13 +191,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
             width: 100,
             height: 100,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.primary, AppColors.primaryDark],
+              gradient: LinearGradient(
+                colors: [
+                  T.primary(context),
+                  T.primary(context).withValues(alpha: 0.7),
+                ],
               ),
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withOpacity(0.3),
+                  color: T.primary(context).withValues(alpha: 0.3),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
@@ -206,7 +209,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
             child: const Icon(
               IconsaxPlusBold.user_edit,
               size: 48,
-              color: Colors.white,
+              color: AppColors.white,
             ),
           ),
           const SizedBox(height: 24),
@@ -217,7 +220,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           const SizedBox(height: 8),
           Text(
             AppStrings.profileSetupSubtitle,
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 15),
+            style: TextStyle(color: T.onSurfaceVariant(context), fontSize: 15),
             textAlign: TextAlign.center,
           ),
         ],
@@ -272,21 +275,21 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.05),
+                  color: T.primary(context).withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       IconsaxPlusLinear.info_circle,
-                      color: AppColors.primary,
+                      color: T.primary(context),
                     ),
                     const SizedBox(width: 12),
                     Text(
                       'لقد اخترت دور: ${_selectedRole == AppConstants.roleDriver ? AppStrings.tripOwner : AppStrings.passenger}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
+                        color: T.primary(context),
                       ),
                     ),
                   ],
@@ -309,7 +312,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
             isSelected: _selectedGender == AppConstants.genderMale,
             onTap: () =>
                 setState(() => _selectedGender = AppConstants.genderMale),
-            color: AppColors.primary,
+            color: T.primary(context),
           ),
         ),
         const SizedBox(width: 12),
@@ -320,7 +323,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
             isSelected: _selectedGender == AppConstants.genderFemale,
             onTap: () =>
                 setState(() => _selectedGender = AppConstants.genderFemale),
-            color: const Color(0xFFE91E63),
+            color: T.error(context),
           ),
         ),
       ],
@@ -337,7 +340,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           isSelected: _selectedRole == AppConstants.rolePassenger,
           onTap: () =>
               setState(() => _selectedRole = AppConstants.rolePassenger),
-          color: AppColors.primary,
+          color: T.primary(context),
           isVertical: false,
         ),
         const SizedBox(height: 12),
@@ -347,7 +350,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           subtitle: AppStrings.tripOwnerDescription,
           isSelected: _selectedRole == AppConstants.roleDriver,
           onTap: () => setState(() => _selectedRole = AppConstants.roleDriver),
-          color: AppColors.primary,
+          color: T.primary(context),
           isVertical: false,
         ),
         if (_selectedRole == AppConstants.roleDriver)

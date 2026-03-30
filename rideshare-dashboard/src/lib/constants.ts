@@ -73,7 +73,7 @@ export const PAYMENT_STATUS_LABELS = {
 } as const
 
 export const PAYMENT_METHOD_LABELS = {
-  stripe: "Stripe",
+  wallet: "Wallet",
   paymob: "Paymob",
   manual: "Manual",
   communication_fee: "Communication Fee",

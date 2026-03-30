@@ -10,7 +10,6 @@ import { jwtConfig } from './config/jwt.config';
 import { s3Config } from './config/s3.config';
 import { redisConfig } from './config/redis.config';
 import { twilioConfig } from './config/twilio.config';
-import { stripeConfig } from './config/stripe.config';
 import { a2aCliqConfig } from './config/a2a-cliq.config';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -49,20 +48,17 @@ import { SecurityModule } from './modules/security/security.module';
         s3Config,
         redisConfig,
         twilioConfig,
-        stripeConfig,
         a2aCliqConfig,
       ],
       envFilePath: '.env',
     }),
     PostgresModule,
+    // Single limit: multiple forRoot entries all apply to every route, so the old
+    // 20/min bucket capped *all* traffic (including /bookings/my), not only public APIs.
     ThrottlerModule.forRoot([
       {
-        ttl: 60000, // 1 minute
-        limit: 100, // 100 requests per minute for authenticated users
-      },
-      {
         ttl: 60000,
-        limit: 20, // 20 requests per minute for public endpoints
+        limit: 200,
       },
     ]),
     HealthModule,

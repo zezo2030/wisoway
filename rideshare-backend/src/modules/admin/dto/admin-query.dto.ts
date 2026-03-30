@@ -57,7 +57,7 @@ export class AdminPaymentQueryDto extends PaginationDto {
   status?: string;
 
   @IsOptional()
-  @IsEnum(['stripe', 'paymob', 'manual', 'communication_fee'])
+  @IsEnum(['wallet', 'paymob', 'manual', 'communication_fee'])
   method?: string;
 
   @IsOptional()

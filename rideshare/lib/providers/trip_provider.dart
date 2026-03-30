@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'dart:io';
 import '../core/services/trip_service.dart';
+import '../core/services/location_service.dart';
 import '../core/api/websocket_service.dart';
 import '../models/trip_model.dart';
 import 'dart:async';
@@ -10,6 +11,7 @@ import '../models/seat_layout_config.dart';
 class TripProvider extends ChangeNotifier {
   final TripService _tripService = TripService();
   final WebSocketService _socket = WebSocketService();
+  final LocationService _locationService = LocationService();
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -224,7 +226,9 @@ class TripProvider extends ChangeNotifier {
     LocationModel? to,
     DateTime? minDepartureTime,
   }) {
-    final fromKey = from == null ? 'null' : '${from.latitude},${from.longitude}';
+    final fromKey = from == null
+        ? 'null'
+        : '${from.latitude},${from.longitude}';
     final toKey = to == null ? 'null' : '${to.latitude},${to.longitude}';
     final normalizedTime = minDepartureTime == null
         ? 'null'
@@ -314,6 +318,34 @@ class TripProvider extends ChangeNotifier {
       _setLoading(false);
       return false;
     }
+  }
+
+  Stream<List<TripModel>> getNearbyTripsStream({
+    required String excludeDriverId,
+    required LocationModel userLocation,
+    required DateTime minDepartureTime,
+    double maxDistanceKm = 100,
+    int limit = 5,
+  }) {
+    return getActiveTripsStream(minDepartureTime: minDepartureTime).map((
+      trips,
+    ) {
+      trips = trips.where((trip) => trip.driverId != excludeDriverId).toList();
+
+      final tripsWithDistance = trips.map((trip) {
+        final distance = _locationService.calculateDistanceBetweenLocations(
+          userLocation,
+          trip.from,
+        );
+        return MapEntry(trip, distance);
+      }).toList();
+
+      tripsWithDistance.sort((a, b) => a.value.compareTo(b.value));
+
+      tripsWithDistance.removeWhere((e) => e.value > maxDistanceKm);
+
+      return tripsWithDistance.take(limit).map((entry) => entry.key).toList();
+    });
   }
 
   // Subscribe to trip for real-time seat updates

@@ -5,12 +5,14 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { PaymentEntity } from '../../database/entities/payment.entity';
 import { CommunicationFeeEntity } from '../../database/entities/communication-fee.entity';
 import { TripEntity } from '../../database/entities/trip.entity';
 import { UserEntity } from '../../database/entities/user.entity';
+import { PgUserRole, WalletAccountType } from '../../database/entities';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { CreateCommunicationFeeDto } from './dto/create-communication-fee.dto';
 import { CreateWalletTopupDto } from './dto/create-wallet-topup.dto';
@@ -20,11 +22,10 @@ import {
   QueryPaymentsDto,
 } from './dto/update-payment-status.dto';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
-import { StripeService } from './stripe.service';
 import { A2aCliqService } from './a2a-cliq.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PlatformPricingService } from './platform-pricing.service';
-import Stripe from 'stripe';
+import { WalletService } from '../wallet/wallet.service';
 
 @Injectable()
 export class PaymentsService {
@@ -38,10 +39,10 @@ export class PaymentsService {
     @InjectRepository(TripEntity) private tripRepo: Repository<TripEntity>,
     @InjectRepository(UserEntity) private userRepo: Repository<UserEntity>,
     private dataSource: DataSource,
-    private stripeService: StripeService,
     private notificationsService: NotificationsService,
     private a2aCliqService: A2aCliqService,
     private platformPricing: PlatformPricingService,
+    private walletService: WalletService,
   ) {}
 
   /**
@@ -52,7 +53,7 @@ export class PaymentsService {
     userId: string,
   ): Promise<PaymentEntity> {
     throw new BadRequestException(
-      'Payment creation not yet migrated to Postgres. Use wallet or Stripe.',
+      'Payment creation not yet migrated to Postgres. Use wallet or manual flows.',
     );
   }
 
@@ -79,23 +80,67 @@ export class PaymentsService {
   }
 
   async approve(
-    _paymentId: string,
+    paymentId: string,
     _adminId: string,
-    _approveDto: ApprovePaymentDto,
+    approveDto: ApprovePaymentDto,
   ): Promise<PaymentEntity> {
+    const payment = await this.paymentRepo.findOne({
+      where: { id: paymentId },
+    });
+    if (!payment) {
+      throw new NotFoundException('Payment not found');
+    }
+    if (payment.status !== 'pending') {
+      throw new BadRequestException('Only pending payments can be approved');
+    }
+
+    if (payment.paymentType === 'wallet_topup') {
+      const user = await this.userRepo.findOne({
+        where: { id: payment.userId },
+      });
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+      const accountType =
+        user.role === PgUserRole.DRIVER
+          ? WalletAccountType.DRIVER
+          : WalletAccountType.RIDER;
+      await this.walletService.creditPostedTopup({
+        userId: payment.userId,
+        accountType,
+        amount: Number(payment.amount),
+        currency: payment.currency,
+        idempotencyKey: `payment-topup:${payment.id}`,
+        note: `Approved wallet top-up payment ${payment.id}`,
+      });
+      payment.status = 'approved';
+      payment.adminNote = approveDto.adminNote ?? null;
+      await this.paymentRepo.save(payment);
+      return payment;
+    }
+
     throw new BadRequestException(
-      'Approve payment not yet migrated to Postgres.',
+      'Approval for this payment type is not implemented yet',
     );
   }
 
   async reject(
-    _paymentId: string,
+    paymentId: string,
     _adminId: string,
-    _rejectDto: RejectPaymentDto,
+    rejectDto: RejectPaymentDto,
   ): Promise<PaymentEntity> {
-    throw new BadRequestException(
-      'Reject payment not yet migrated to Postgres.',
-    );
+    const payment = await this.paymentRepo.findOne({
+      where: { id: paymentId },
+    });
+    if (!payment) {
+      throw new NotFoundException('Payment not found');
+    }
+    if (payment.status !== 'pending') {
+      throw new BadRequestException('Only pending payments can be rejected');
+    }
+    payment.status = 'rejected';
+    payment.adminNote = rejectDto.adminNote ?? null;
+    return this.paymentRepo.save(payment);
   }
 
   async findByUser(
@@ -119,56 +164,23 @@ export class PaymentsService {
     return { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
   }
 
-  async handleStripeWebhook(_event: any): Promise<void> {
-    this.logger.log('Stripe webhook not yet migrated to Postgres.');
-  }
-
-  async verifyAndHandleStripeWebhook(
-    rawBody: string | Buffer,
-    signature: string,
-  ): Promise<void> {
-    const event = await this.stripeService.handleWebhookEvent(
-      rawBody,
-      signature,
-    );
-    if (event.type === 'payment_intent.succeeded') {
-      const pi = event.data.object as Stripe.PaymentIntent;
-      await this.paymentRepo.update(
-        { paymentGatewayRef: pi.id },
-        { status: 'approved' },
-      );
-      this.logger.log(`Stripe PI ${pi.id} marked approved from webhook`);
-    }
-  }
-
   /**
-   * Legacy / admin: amount supplied by caller. Prefer createPassengerSeatPaymentIntent for bookings.
+   * Debit rider wallet for the platform seat fee and create an approved payment row for the booking.
    */
-  async createStripePaymentIntent(
-    amount: number,
-    currency: string,
-    bookingId?: string,
-    paymentType?: string,
-  ): Promise<{ clientSecret: string; paymentIntentId: string }> {
-    return this.stripeService.createPaymentIntent(amount, currency, {
-      bookingId: bookingId || '',
-      paymentType: paymentType || 'trip',
-    });
-  }
-
-  async createPassengerSeatPaymentIntent(params: {
+  async resolvePassengerWalletPaymentForBooking(params: {
+    userId: string;
     tripId: string;
     seatNumber: string;
-    userId: string;
+    idempotencyKey?: string;
     countryCode?: string;
   }): Promise<{
-    clientSecret: string;
-    paymentIntentId: string;
+    payment: PaymentEntity;
     platformAmount: number;
     driverAmount: number;
-    currency: string;
   }> {
-    const { tripId, seatNumber, userId, countryCode = 'EG' } = params;
+    const { userId, tripId, seatNumber, countryCode = 'EG', idempotencyKey } =
+      params;
+
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
     if (!trip) {
       throw new NotFoundException('Trip not found');
@@ -176,8 +188,11 @@ export class PaymentsService {
     if (trip.driverId === userId) {
       throw new BadRequestException('Cannot book your own trip');
     }
+
     const seats = trip.seats || [];
-    const seat = seats.find((s: { seatNumber?: string }) => s.seatNumber === seatNumber);
+    const seat = seats.find(
+      (s: { seatNumber?: string }) => s.seatNumber === seatNumber,
+    );
     if (!seat || seat.status !== 'available') {
       throw new BadRequestException('Seat is not available');
     }
@@ -190,21 +205,18 @@ export class PaymentsService {
     );
     if (!pricing.requiresOnlinePayment) {
       throw new BadRequestException(
-        'No platform fee is configured for this region; complete booking without online payment.',
+        'Online payment is not required for this trip',
       );
     }
 
-    const { clientSecret, paymentIntentId } =
-      await this.stripeService.createPaymentIntent(
-        pricing.platformAmount,
-        trip.currency ?? 'EGP',
-        {
-          tripId,
-          seatNumber,
-          userId,
-          paymentType: 'trip_platform',
-        },
-      );
+    const key = (idempotencyKey?.trim() || randomUUID()) as string;
+
+    const walletTx = await this.walletService.payTripFromRiderWallet(
+      userId,
+      tripId,
+      pricing.platformAmount,
+      key,
+    );
 
     const payment = this.paymentRepo.create({
       userId,
@@ -212,83 +224,12 @@ export class PaymentsService {
       bookingId: null,
       amount: pricing.platformAmount,
       currency: pricing.currency,
-      method: 'stripe',
-      status: 'pending',
+      method: 'wallet',
+      status: 'approved',
       paymentType: 'trip_platform',
-      direction: 'credit',
-      paymentGatewayRef: paymentIntentId,
+      direction: 'debit',
+      paymentGatewayRef: walletTx.id,
     });
-    await this.paymentRepo.save(payment);
-
-    return {
-      clientSecret,
-      paymentIntentId,
-      platformAmount: pricing.platformAmount,
-      driverAmount: pricing.driverAmount,
-      currency: pricing.currency,
-    };
-  }
-
-  /**
-   * After Stripe confirms payment, validate and return the payment row for linking to a booking.
-   */
-  async resolvePassengerPaymentIntentForBooking(params: {
-    paymentIntentId: string;
-    userId: string;
-    tripId: string;
-    seatNumber: string;
-    countryCode?: string;
-  }): Promise<{ payment: PaymentEntity; platformAmount: number; driverAmount: number }> {
-    const { paymentIntentId, userId, tripId, seatNumber, countryCode = 'EG' } =
-      params;
-
-    const trip = await this.tripRepo.findOne({ where: { id: tripId } });
-    if (!trip) {
-      throw new NotFoundException('Trip not found');
-    }
-
-    const feeRow = await this.platformPricing.getActiveFeeRow(countryCode);
-    const pricing = this.platformPricing.passengerSeatPricing(
-      Number(trip.price ?? 0),
-      trip.currency ?? 'EGP',
-      feeRow,
-    );
-    if (!pricing.requiresOnlinePayment) {
-      throw new BadRequestException('Online payment is not required for this trip');
-    }
-
-    const pi = await this.stripeService.retrievePaymentIntent(paymentIntentId);
-    if (pi.status !== 'succeeded') {
-      throw new BadRequestException('Payment has not completed successfully');
-    }
-
-    const meta = pi.metadata || {};
-    if (
-      meta.tripId !== tripId ||
-      meta.seatNumber !== seatNumber ||
-      meta.userId !== userId ||
-      meta.paymentType !== 'trip_platform'
-    ) {
-      throw new BadRequestException('Payment does not match this booking request');
-    }
-
-    const expectedCents = Math.round(pricing.platformAmount * 100);
-    const paid = pi.amount_received ?? pi.amount;
-    if (paid !== expectedCents) {
-      throw new BadRequestException('Paid amount does not match expected platform fee');
-    }
-
-    const payment = await this.paymentRepo.findOne({
-      where: { paymentGatewayRef: paymentIntentId, userId },
-    });
-    if (!payment) {
-      throw new BadRequestException('Payment record not found for this intent');
-    }
-    if (payment.bookingId) {
-      throw new BadRequestException('This payment has already been used for a booking');
-    }
-
-    payment.status = 'approved';
     await this.paymentRepo.save(payment);
 
     return {
@@ -456,12 +397,33 @@ export class PaymentsService {
   }
 
   async createWalletTopup(
-    _userId: string,
-    _dto: CreateWalletTopupDto,
+    userId: string,
+    dto: CreateWalletTopupDto,
   ): Promise<PaymentEntity> {
-    throw new BadRequestException(
-      'Wallet top-up not yet migrated to Postgres.',
-    );
+    if (dto.method === 'manual' && !dto.proofImageUrl?.trim()) {
+      throw new BadRequestException(
+        'Proof image URL is required for manual top-up',
+      );
+    }
+    if (dto.method === 'cliq_a2a') {
+      throw new BadRequestException(
+        'CliQ wallet top-up is not available yet. Use manual with proof.',
+      );
+    }
+    const p = this.paymentRepo.create({
+      userId,
+      tripId: null,
+      bookingId: null,
+      amount: dto.amount,
+      currency: dto.currency ?? 'EGP',
+      method: dto.method,
+      status: 'pending',
+      paymentType: 'wallet_topup',
+      direction: 'credit',
+      proofImageUrl: dto.proofImageUrl ?? null,
+      walletNumber: dto.walletNumber ?? null,
+    });
+    return this.paymentRepo.save(p);
   }
 
   async getPendingPaymentsCount(): Promise<number> {

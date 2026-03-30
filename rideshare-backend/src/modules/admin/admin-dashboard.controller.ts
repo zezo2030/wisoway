@@ -165,7 +165,7 @@ export class AdminDashboardController {
   @ApiQuery({
     name: 'method',
     required: false,
-    enum: ['stripe', 'paymob', 'manual', 'communication_fee'],
+    enum: ['wallet', 'paymob', 'manual', 'communication_fee'],
   })
   @ApiQuery({
     name: 'paymentType',
@@ -319,7 +319,7 @@ export class AdminDashboardController {
   @Patch('pricing-settings')
   @ApiOperation({
     summary:
-      'Update passenger and driver pricing for a country (separate percentages; passenger 0 disables Stripe for bookings)',
+      'Update passenger and driver pricing for a country (passenger 0 = no in-app wallet platform fee on bookings)',
   })
   @ApiQuery({ name: 'countryCode', required: false, example: 'EG' })
   async patchPricingSettings(

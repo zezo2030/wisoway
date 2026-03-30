@@ -32,6 +32,7 @@ class RouteNames {
   static const String paymentHistory = '/payment-history';
   static const String driverWallet = '/driver-wallet';
   static const String driverWalletTopup = '/driver-wallet-topup';
+  static const String passengerWallet = '/passenger-wallet';
   
   // Notifications
   static const String notifications = '/notifications';

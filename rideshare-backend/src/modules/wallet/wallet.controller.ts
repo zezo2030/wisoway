@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { WalletService } from './wallet.service';
 import { CreateTopupDto } from './dto/create-topup.dto';
@@ -34,7 +35,12 @@ export class WalletController {
   }
 
   @Post('topup')
-  @ApiOperation({ summary: 'Top up wallet balance' })
+  @Roles('admin')
+  @ApiOperation({
+    summary: 'Instant wallet top-up (admin only)',
+    description:
+      'Drivers and passengers must use POST /payments/wallet/topup with proof; credit is applied on admin approval.',
+  })
   async topup(
     @CurrentUser('id') userId: string,
     @CurrentUser('role') role: string,

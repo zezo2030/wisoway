@@ -20,10 +20,10 @@ export class CreateCommunicationFeeDto {
 
   @ApiProperty({
     description: 'Payment method',
-    enum: ['stripe', 'manual'],
+    enum: ['manual', 'cliq_a2a'],
     example: 'manual',
   })
-  @IsEnum(['stripe', 'manual'])
+  @IsEnum(['manual', 'cliq_a2a'])
   method: string;
 
   @ApiPropertyOptional({

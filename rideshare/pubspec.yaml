@@ -33,7 +33,6 @@ dependencies:
   equatable: ^2.0.5
   
   # UI Components
-  cupertino_icons: ^1.0.8
   google_fonts: ^6.2.1
   cached_network_image: ^3.4.1
   iconsax_plus: ^1.0.0
@@ -46,30 +45,16 @@ dependencies:
   geolocator: ^13.0.1
   geocoding: ^3.0.0
   
-  # Payment
-  flutter_stripe: ^11.1.0
+  # Networking
   http: ^1.2.2
-  
-  # QR Code (qr_code_scanner will be added in Week 4 when needed)
-  qr_flutter: ^4.1.0
-  # qr_code_scanner: ^1.0.1  # Commented out - has namespace issue, will be fixed in Week 4
   
   # Utilities
   shared_preferences: ^2.3.2
   uuid: ^4.5.1
   timeago: ^3.7.0
   url_launcher: ^6.3.1
-  path_provider: ^2.1.2
-  
-  # Animations (Optional)
-  lottie: ^3.1.2
-  
-  # Form Validation
-  email_validator: ^2.1.17
   
   # Social Login
-  google_sign_in: ^6.2.1
-  flutter_facebook_auth: ^7.1.2
   dio: ^5.9.1
   flutter_secure_storage: ^9.2.4
   socket_io_client: ^3.1.4

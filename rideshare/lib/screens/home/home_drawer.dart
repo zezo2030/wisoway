@@ -1,0 +1,277 @@
+import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
+import '../../../core/constants/route_names.dart';
+import '../../../core/theme/colors.dart';
+import '../../../models/user_model.dart';
+import '../../../widgets/common/logout_confirmation_dialog.dart';
+import 'widgets/drawer_menu_item.dart';
+
+class HomeDrawer extends StatelessWidget {
+  final UserModel? user;
+  final ValueChanged<int>? onTabSelect;
+
+  const HomeDrawer({super.key, this.user, this.onTabSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      width: MediaQuery.of(context).size.width * 0.85,
+      child: SafeArea(
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    T.primary(context),
+                    AppColors.teal700,
+                    AppColors.teal300,
+                  ],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: T.primary(context).withValues(alpha: 0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Stack(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.white, width: 4),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.black.withValues(alpha: 0.2),
+                              blurRadius: 15,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: CircleAvatar(
+                          radius: 50,
+                          backgroundColor: AppColors.white,
+                          child:
+                              user?.photoUrl != null &&
+                                  user!.photoUrl!.isNotEmpty
+                              ? ClipOval(
+                                  child: CachedNetworkImage(
+                                    imageUrl: user!.photoUrl!,
+                                    fit: BoxFit.cover,
+                                    width: 100,
+                                    height: 100,
+                                    errorWidget: (context, url, error) => Icon(
+                                      IconsaxPlusBold.profile,
+                                      size: 50,
+                                      color: T.primary(context),
+                                    ),
+                                  ),
+                                )
+                              : Icon(
+                                  IconsaxPlusBold.profile,
+                                  size: 50,
+                                  color: T.primary(context),
+                                ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: AppColors.success,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.white,
+                              width: 3,
+                            ),
+                          ),
+                          child: const SizedBox(width: 12, height: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    user?.name ?? 'المستخدم',
+                    style: GoogleFonts.tajawal(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.white,
+                      letterSpacing: 0.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  if (user?.email != null && user!.email.isNotEmpty)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          IconsaxPlusLinear.sms,
+                          size: 14,
+                          color: AppColors.white.withValues(alpha: 0.8),
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            user!.email,
+                            style: GoogleFonts.tajawal(
+                              fontSize: 13,
+                              fontWeight: FontWeight.normal,
+                              color: AppColors.white.withValues(alpha: 0.9),
+                            ),
+                            textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  const SizedBox(height: 12),
+                  if (user != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: AppColors.white.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            user!.isDriver
+                                ? IconsaxPlusBold.car
+                                : IconsaxPlusBold.profile_2user,
+                            size: 16,
+                            color: AppColors.white,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            user!.isDriver ? 'سائق' : 'راكب',
+                            style: GoogleFonts.tajawal(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                children: [
+                  DrawerMenuItem(
+                    icon: IconsaxPlusLinear.home,
+                    title: 'الرئيسية',
+                    onTap: () {
+                      Navigator.pop(context);
+                      onTabSelect?.call(0);
+                    },
+                  ),
+                  DrawerMenuItem(
+                    icon: IconsaxPlusLinear.search_normal,
+                    title: 'تصفح الرحلات',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, RouteNames.tripsList);
+                    },
+                  ),
+                  if (user?.canCreateTrips == true) ...[
+                    DrawerMenuItem(
+                      icon: IconsaxPlusLinear.add_circle,
+                      title: 'إنشاء رحلة',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, RouteNames.createTrip);
+                      },
+                    ),
+                    DrawerMenuItem(
+                      icon: IconsaxPlusLinear.car,
+                      title: 'رحلاتي',
+                      onTap: () {
+                        Navigator.pop(context);
+                        onTabSelect?.call(2);
+                      },
+                    ),
+                    DrawerMenuItem(
+                      icon: IconsaxPlusLinear.wallet,
+                      title: 'محفظتي',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, RouteNames.driverWallet);
+                      },
+                    ),
+                  ] else ...[
+                    DrawerMenuItem(
+                      icon: IconsaxPlusLinear.wallet,
+                      title: 'محفظتي',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(
+                          context,
+                          RouteNames.passengerWallet,
+                        );
+                      },
+                    ),
+                  ],
+                  DrawerMenuItem(
+                    icon: IconsaxPlusLinear.profile,
+                    title: 'الملف الشخصي',
+                    onTap: () {
+                      Navigator.pop(context);
+                      onTabSelect?.call(3);
+                    },
+                  ),
+                  DrawerMenuItem(
+                    icon: IconsaxPlusLinear.setting_2,
+                    title: 'الإعدادات',
+                    onTap: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                  const Divider(
+                    height: 32,
+                    thickness: 1,
+                    indent: 20,
+                    endIndent: 20,
+                  ),
+                  DrawerMenuItem(
+                    icon: IconsaxPlusLinear.logout,
+                    title: 'تسجيل الخروج',
+                    iconColor: T.error(context),
+                    textColor: T.error(context),
+                    onTap: () {
+                      Navigator.pop(context);
+                      handleLogout(context);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

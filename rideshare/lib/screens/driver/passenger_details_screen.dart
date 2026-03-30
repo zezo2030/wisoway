@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../core/theme/colors.dart';
+import '../../core/theme/text_styles.dart';
 import '../../models/booking_model.dart';
 import '../../core/constants/route_names.dart';
 
@@ -34,7 +35,9 @@ class PassengerDetailsScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           'تفاصيل الراكب',
-          style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+          style: AppTextStyles.titleMedium.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
       ),
@@ -46,9 +49,9 @@ class PassengerDetailsScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.grey[50],
+                color: AppColors.slate50,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.grey[200]!),
+                border: Border.all(color: AppColors.slate200),
               ),
               child: Column(
                 children: [
@@ -56,41 +59,45 @@ class PassengerDetailsScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: (user?.gender == 'male'
-                              ? Colors.blue.shade100
-                              : Colors.pink.shade100),
+                          ? AppColors.info.withValues(alpha: 0.1)
+                          : Colors.pink.shade100),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       IconsaxPlusBold.profile,
                       size: 48,
                       color: user?.gender == 'male'
-                          ? Colors.blue.shade700
+                          ? AppColors.infoDark
                           : Colors.pink.shade700,
                     ),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     hasData ? user.name : 'راكب مجهول',
-                    style: GoogleFonts.cairo(
+                    style: AppTextStyles.titleMedium.copyWith(
                       fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: hasData ? Colors.black87 : Colors.grey[600],
+                      color: hasData
+                          ? T.onSurface(context).withValues(alpha: 0.87)
+                          : AppColors.slate600,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
-                      color: Colors.green.shade50,
+                      color: AppColors.success.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.green.shade200),
+                      border: Border.all(
+                        color: AppColors.success.withValues(alpha: 0.2),
+                      ),
                     ),
                     child: Text(
                       'مقعد ${booking.seatNumber}',
-                      style: GoogleFonts.cairo(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.green.shade700,
+                      style: AppTextStyles.labelLarge.copyWith(
+                        color: AppColors.success,
                       ),
                     ),
                   ),
@@ -126,21 +133,25 @@ class PassengerDetailsScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
+                  color: AppColors.warning.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.orange.shade200),
+                  border: Border.all(
+                    color: AppColors.warning.withValues(alpha: 0.25),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    Icon(IconsaxPlusLinear.info_circle,
-                        color: Colors.orange.shade700, size: 24),
+                    Icon(
+                      IconsaxPlusLinear.info_circle,
+                      color: AppColors.warning,
+                      size: 24,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         'بيانات الراكب تظهر بعد تأكيد الحجز (رحلة مجانية أو خصم من المحفظة)',
-                        style: GoogleFonts.cairo(
-                          fontSize: 14,
-                          color: Colors.orange.shade900,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.warningDark,
                         ),
                       ),
                     ),
@@ -167,67 +178,69 @@ class _ChatButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () => Navigator.pushNamed(
-        context,
-        RouteNames.driverChat,
-        arguments: {
-          'tripId': tripId,
-          'passengerId': passengerId,
-          'passengerName': passengerName,
-        },
-      ),
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.teal.shade50,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.teal.shade200),
+    return Semantics(
+      button: true,
+      label: 'محادثة خاصة مع $passengerName',
+      child: InkWell(
+        onTap: () => Navigator.pushNamed(
+          context,
+          RouteNames.driverChat,
+          arguments: {
+            'tripId': tripId,
+            'passengerId': passengerId,
+            'passengerName': passengerName,
+          },
         ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.teal.shade100,
-                borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.teal50,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.teal200),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.teal100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  IconsaxPlusLinear.message,
+                  color: AppColors.teal700,
+                  size: 24,
+                ),
               ),
-              child: Icon(
-                IconsaxPlusLinear.message,
-                color: Colors.teal.shade700,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'محادثة خاصة',
-                    style: GoogleFonts.cairo(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.teal.shade900,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'محادثة خاصة',
+                      style: AppTextStyles.titleSmall.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: T.primary(context),
+                      ),
                     ),
-                  ),
-                  Text(
-                    'مراسلة $passengerName',
-                    style: GoogleFonts.cairo(
-                      fontSize: 12,
-                      color: Colors.teal.shade700,
+                    Text(
+                      'مراسلة $passengerName',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.teal700,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Icon(
-              IconsaxPlusLinear.arrow_left_2,
-              color: Colors.teal.shade700,
-              size: 20,
-            ),
-          ],
+              Icon(
+                IconsaxPlusLinear.arrow_left_2,
+                color: AppColors.teal700,
+                size: 20,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -251,65 +264,68 @@ class _InfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isTappable = onTap != null && value.isNotEmpty;
 
-    return InkWell(
-      onTap: isTappable ? onTap : null,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey[200]!),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.teal.shade50,
-                borderRadius: BorderRadius.circular(12),
+    return Semantics(
+      button: isTappable,
+      label: '$label: $value',
+      child: InkWell(
+        onTap: isTappable ? onTap : null,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: T.surface(context),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.slate200),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.black.withValues(alpha: 0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
-              child: Icon(icon, color: Colors.teal.shade700, size: 22),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: GoogleFonts.cairo(
-                      fontSize: 12,
-                      color: Colors.grey[600],
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.teal50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: AppColors.teal700, size: 22),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.slate600,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    value.isNotEmpty ? value : '-',
-                    style: GoogleFonts.cairo(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: value.isNotEmpty ? Colors.black87 : Colors.grey,
+                    const SizedBox(height: 4),
+                    Text(
+                      value.isNotEmpty ? value : '-',
+                      style: AppTextStyles.titleSmall.copyWith(
+                        color: value.isNotEmpty
+                            ? T.onSurface(context).withValues(alpha: 0.87)
+                            : T.outlineVariant(context),
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            if (isTappable)
-              Icon(
-                IconsaxPlusLinear.arrow_left_2,
-                color: Colors.teal.shade700,
-                size: 20,
-              ),
-          ],
+              if (isTappable)
+                Icon(
+                  IconsaxPlusLinear.arrow_left_2,
+                  color: AppColors.teal700,
+                  size: 20,
+                ),
+            ],
+          ),
         ),
       ),
     );

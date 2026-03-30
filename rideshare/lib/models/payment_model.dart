@@ -1,4 +1,4 @@
-enum PaymentMethod { stripe, paymob, manual, communication_fee, cliq_a2a }
+enum PaymentMethod { wallet, paymob, manual, communication_fee, cliq_a2a }
 
 enum PaymentStatus { pending, approved, rejected, refunded }
 
@@ -53,8 +53,8 @@ class PaymentModel {
   factory PaymentModel.fromJson(Map<String, dynamic> json) {
     PaymentMethod method = PaymentMethod.manual;
     final methodStr = json['method'] as String? ?? 'manual';
-    if (methodStr == 'stripe') {
-      method = PaymentMethod.stripe;
+    if (methodStr == 'wallet' || methodStr == 'stripe') {
+      method = PaymentMethod.wallet;
     } else if (methodStr == 'paymob') {
       method = PaymentMethod.paymob;
     } else if (methodStr == 'communication_fee') {
@@ -165,8 +165,6 @@ class PaymentModel {
   bool get isRejected => status == PaymentStatus.rejected;
 
   bool get isOnlinePayment =>
-      method == PaymentMethod.stripe ||
-      method == PaymentMethod.paymob ||
-      method == PaymentMethod.cliq_a2a;
+      method == PaymentMethod.paymob || method == PaymentMethod.cliq_a2a;
   bool get isManualPayment => method == PaymentMethod.manual;
 }

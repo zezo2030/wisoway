@@ -152,7 +152,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(AuthErrorFormatter.format(e, action: AuthAction.otp)),
-            backgroundColor: Colors.red,
+            backgroundColor: T.error(context),
           ),
         );
         // Clear OTP fields
@@ -196,7 +196,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('تم رفع بياناتك بنجاح. طلبك قيد المراجعة من الإدارة.'),
-        backgroundColor: Colors.green,
+        backgroundColor: AppColors.success,
       ),
     );
 
@@ -224,7 +224,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('تم إرسال رمز التحقق مرة أخرى'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
         _startResendTimer();
@@ -239,7 +239,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(AuthErrorFormatter.format(e, action: AuthAction.otp)),
-            backgroundColor: Colors.red,
+            backgroundColor: T.error(context),
           ),
         );
       }
@@ -261,7 +261,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: T.surface(context),
       body: Stack(
         children: [
           // Background decorative elements
@@ -277,8 +277,8 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                   center: Alignment.center,
                   radius: 0.5,
                   colors: [
-                    AppColors.primary.withOpacity(0.2),
-                    Colors.transparent,
+                    T.primary(context).withValues(alpha: 0.2),
+                    AppColors.transparent,
                   ],
                 ),
               ),
@@ -296,8 +296,8 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                   center: Alignment.center,
                   radius: 0.5,
                   colors: [
-                    AppColors.primaryDark.withOpacity(0.15),
-                    Colors.transparent,
+                    AppColors.teal700.withValues(alpha: 0.15),
+                    AppColors.transparent,
                   ],
                 ),
               ),
@@ -307,17 +307,17 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
             child: Column(
               children: [
                 AppBar(
-                  title: const Text(
+                  title: Text(
                     'التحقق من الرمز',
                     style: TextStyle(
-                      color: Color(0xFF1E293B),
+                      color: T.onSurface(context),
                       fontWeight: FontWeight.bold,
                       fontSize: 20,
                     ),
                   ),
-                  backgroundColor: Colors.transparent,
+                  backgroundColor: AppColors.transparent,
                   elevation: 0,
-                  iconTheme: const IconThemeData(color: Color(0xFF1E293B)),
+                  iconTheme: IconThemeData(color: T.onSurface(context)),
                   centerTitle: true,
                 ),
                 Expanded(
@@ -330,29 +330,31 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                         Container(
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: T.surface(context),
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.primary.withOpacity(0.15),
+                                color: T
+                                    .primary(context)
+                                    .withValues(alpha: 0.15),
                                 blurRadius: 24,
                                 offset: const Offset(0, 8),
                               ),
                             ],
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.mark_email_read_rounded,
                             size: 64,
-                            color: AppColors.primary,
+                            color: T.primary(context),
                           ),
                         ),
                         const SizedBox(height: 40),
-                        const Text(
+                        Text(
                           'أدخل رمز التحقق',
                           style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF1E293B),
+                            color: T.onSurface(context),
                             letterSpacing: 0.5,
                           ),
                           textAlign: TextAlign.center,
@@ -361,9 +363,9 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                         RichText(
                           textAlign: TextAlign.center,
                           text: TextSpan(
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 15,
-                              color: Color(0xFF64748B),
+                              color: T.onSurfaceVariant(context),
                               fontWeight: FontWeight.w500,
                               height: 1.5,
                             ),
@@ -373,8 +375,8 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                               ),
                               TextSpan(
                                 text: _maskPhone(widget.phoneNumber),
-                                style: const TextStyle(
-                                  color: AppColors.primary,
+                                style: TextStyle(
+                                  color: T.primary(context),
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
                                 ),
@@ -395,48 +397,54 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                                   AppConstants.otpLength,
                               height: 64,
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: T.surface(context),
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
                                   color: _controllers[index].text.isNotEmpty
-                                      ? AppColors.primary
-                                      : Colors.transparent,
+                                      ? T.primary(context)
+                                      : AppColors.transparent,
                                   width: 2,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.04),
+                                    color: AppColors.black.withValues(
+                                      alpha: 0.04,
+                                    ),
                                     blurRadius: 16,
                                     offset: const Offset(0, 4),
                                   ),
                                 ],
                               ),
                               child: Center(
-                                child: TextField(
-                                  controller: _controllers[index],
-                                  focusNode: _focusNodes[index],
-                                  textAlign: TextAlign.center,
-                                  keyboardType: TextInputType.number,
-                                  maxLength: 1,
-                                  style: const TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF1E293B),
+                                child: Semantics(
+                                  label: 'رمز التحقق ${index + 1}',
+                                  textField: true,
+                                  child: TextField(
+                                    controller: _controllers[index],
+                                    focusNode: _focusNodes[index],
+                                    textAlign: TextAlign.center,
+                                    keyboardType: TextInputType.number,
+                                    maxLength: 1,
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: T.onSurface(context),
+                                    ),
+                                    decoration: const InputDecoration(
+                                      counterText: '',
+                                      border: InputBorder.none,
+                                      contentPadding: EdgeInsets.zero,
+                                    ),
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                    ],
+                                    onChanged: (value) {
+                                      _onOTPChanged(index, value);
+                                      setState(
+                                        () {},
+                                      ); // For rebuilding border color
+                                    },
                                   ),
-                                  decoration: const InputDecoration(
-                                    counterText: '',
-                                    border: InputBorder.none,
-                                    contentPadding: EdgeInsets.zero,
-                                  ),
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly,
-                                  ],
-                                  onChanged: (value) {
-                                    _onOTPChanged(index, value);
-                                    setState(
-                                      () {},
-                                    ); // For rebuilding border color
-                                  },
                                 ),
                               ),
                             ),
@@ -448,85 +456,101 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                           width: double.infinity,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
-                            gradient: const LinearGradient(
+                            gradient: LinearGradient(
                               colors: [
-                                AppColors.primary,
-                                AppColors.primaryDark,
+                                T.primary(context),
+                                T.primary(context).withValues(alpha: 0.7),
                               ],
                               begin: Alignment.centerLeft,
                               end: Alignment.centerRight,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.primary.withOpacity(0.3),
+                                color: T
+                                    .primary(context)
+                                    .withValues(alpha: 0.3),
                                 blurRadius: 12,
                                 offset: const Offset(0, 6),
                               ),
                             ],
                           ),
-                          child: ElevatedButton(
-                            onPressed: _isLoading
-                                ? null
-                                : (_getOTPCode().length ==
-                                          AppConstants.otpLength
-                                      ? _verifyOTP
-                                      : null),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                          child: Semantics(
+                            button: true,
+                            label: 'تحقق من الرمز',
+                            child: ElevatedButton(
+                              onPressed: _isLoading
+                                  ? null
+                                  : (_getOTPCode().length ==
+                                            AppConstants.otpLength
+                                        ? _verifyOTP
+                                        : null),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.transparent,
+                                shadowColor: AppColors.transparent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
                               ),
-                            ),
-                            child: _isLoading
-                                ? const SizedBox(
-                                    height: 24,
-                                    width: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.5,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white,
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      height: 24,
+                                      width: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              AppColors.white,
+                                            ),
+                                      ),
+                                    )
+                                  : const Text(
+                                      'تحقق من الرمز',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.white,
+                                        letterSpacing: 0.5,
                                       ),
                                     ),
-                                  )
-                                : const Text(
-                                    'تحقق من الرمز',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 24),
-                        GestureDetector(
-                          onTap: _canResend && !_isLoading ? _resendOTP : null,
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 8,
-                              horizontal: 16,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _canResend
-                                  ? AppColors.primary.withOpacity(0.1)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              _canResend
-                                  ? 'إعادة إرسال الرمز'
-                                  : 'إعادة إرسال الرمز خلال $_resendTimer ثانية',
-                              style: TextStyle(
+                        Semantics(
+                          button: true,
+                          label: _canResend
+                              ? 'إعادة إرسال الرمز'
+                              : 'إعادة إرسال الرمز خلال $_resendTimer ثانية',
+                          enabled: _canResend && !_isLoading,
+                          child: GestureDetector(
+                            onTap: _canResend && !_isLoading
+                                ? _resendOTP
+                                : null,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 8,
+                                horizontal: 16,
+                              ),
+                              decoration: BoxDecoration(
                                 color: _canResend
-                                    ? AppColors.primary
-                                    : const Color(0xFF94A3B8),
-                                fontSize: 15,
-                                fontWeight: _canResend
-                                    ? FontWeight.bold
-                                    : FontWeight.w500,
+                                    ? T.primary(context).withValues(alpha: 0.1)
+                                    : AppColors.transparent,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                _canResend
+                                    ? 'إعادة إرسال الرمز'
+                                    : 'إعادة إرسال الرمز خلال $_resendTimer ثانية',
+                                style: TextStyle(
+                                  color: _canResend
+                                      ? T.primary(context)
+                                      : T.outlineVariant(context),
+                                  fontSize: 15,
+                                  fontWeight: _canResend
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
+                                ),
                               ),
                             ),
                           ),

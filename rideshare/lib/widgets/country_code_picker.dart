@@ -4,7 +4,6 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import '../core/constants/countries.dart';
 import '../core/theme/colors.dart';
 
-/// ويدجت لاختيار رمز الدولة مع بحث - يستخدم في حقول رقم الهاتف
 class CountryCodePicker extends StatelessWidget {
   final CountryData selectedCountry;
   final ValueChanged<CountryData> onCountryChanged;
@@ -22,52 +21,57 @@ class CountryCodePicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final effectiveBorderColor =
-        borderColor ?? AppColors.primary.withOpacity(0.3);
+        borderColor ?? T.primary(context).withValues(alpha: 0.3);
 
-    return GestureDetector(
-      onTap: () => _showCountryPicker(context),
-      child: Container(
-        width: width ?? 100,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: effectiveBorderColor),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              _flagEmoji(selectedCountry.iso2),
-              style: const TextStyle(fontSize: 20),
-            ),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                selectedCountry.dialCode,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-                overflow: TextOverflow.ellipsis,
+    return Semantics(
+      button: true,
+      label:
+          'اختر رمز الدولة، الحالي: ${selectedCountry.nameAr} ${selectedCountry.dialCode}',
+      child: GestureDetector(
+        onTap: () => _showCountryPicker(context),
+        child: Container(
+          width: width ?? 100,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: T.surface(context),
+            border: Border.all(color: effectiveBorderColor),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              IconsaxPlusLinear.arrow_down_2,
-              size: 16,
-              color: AppColors.textSecondary,
-            ),
-          ],
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                _flagEmoji(selectedCountry.iso2),
+                style: const TextStyle(fontSize: 20),
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  selectedCountry.dialCode,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: T.onSurface(context),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                IconsaxPlusLinear.arrow_down_2,
+                size: 16,
+                color: T.onSurfaceVariant(context),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -77,9 +81,7 @@ class CountryCodePicker extends StatelessWidget {
     if (iso2.length != 2) return '🌐';
     final chars = iso2.toUpperCase().codeUnits;
     if (chars.any((c) => c < 65 || c > 90)) return '🌐';
-    return String.fromCharCodes(
-      chars.map((c) => 0x1F1E6 + (c - 65)),
-    );
+    return String.fromCharCodes(chars.map((c) => 0x1F1E6 + (c - 65)));
   }
 
   void _showCountryPicker(BuildContext context) {
@@ -87,7 +89,7 @@ class CountryCodePicker extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.transparent,
       builder: (ctx) => _CountryPickerSheet(
         selectedCountry: selectedCountry,
         onCountrySelected: (country) {
@@ -138,8 +140,9 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
       if (query.trim().isEmpty) {
         _filteredCountries = Countries.all;
       } else {
-        _filteredCountries =
-            Countries.all.where((c) => c.matchesQuery(query)).toList();
+        _filteredCountries = Countries.all
+            .where((c) => c.matchesQuery(query))
+            .toList();
       }
     });
   }
@@ -151,23 +154,21 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
 
     return Container(
       height: sheetHeight + bottomPadding,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: T.surface(context),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         children: [
-          // Handle bar
           Container(
             margin: const EdgeInsets.only(top: 12),
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppColors.border,
+              color: T.outline(context),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          // Title
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
@@ -175,11 +176,10 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: T.onSurface(context),
               ),
             ),
           ),
-          // Search field
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: TextField(
@@ -190,10 +190,10 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                 hintText: 'ابحث بالاسم أو رمز الدولة...',
                 prefixIcon: Icon(
                   IconsaxPlusLinear.search_normal_1,
-                  color: AppColors.textSecondary,
+                  color: T.onSurfaceVariant(context),
                 ),
                 filled: true,
-                fillColor: AppColors.background,
+                fillColor: T.surface(context),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -206,14 +206,14 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
             ),
           ),
           const SizedBox(height: 8),
-          // Country list
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.only(bottom: 24),
               itemCount: _filteredCountries.length,
               itemBuilder: (context, index) {
                 final country = _filteredCountries[index];
-                final isSelected = country.dialCode == widget.selectedCountry.dialCode;
+                final isSelected =
+                    country.dialCode == widget.selectedCountry.dialCode;
 
                 return ListTile(
                   leading: Text(
@@ -223,19 +223,26 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                   title: Text(
                     country.nameAr,
                     style: TextStyle(
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                      color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.w500,
+                      color: isSelected
+                          ? T.primary(context)
+                          : T.onSurface(context),
                     ),
                   ),
                   subtitle: Text(
                     '${country.nameEn} ${country.dialCode}',
                     style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.textSecondary,
+                      color: T.onSurfaceVariant(context),
                     ),
                   ),
                   trailing: isSelected
-                      ? Icon(IconsaxPlusBold.tick_circle, color: AppColors.primary)
+                      ? Icon(
+                          IconsaxPlusBold.tick_circle,
+                          color: T.primary(context),
+                        )
                       : null,
                   onTap: () => widget.onCountrySelected(country),
                 );
@@ -251,8 +258,6 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
     if (iso2.length != 2) return '🌐';
     final chars = iso2.toUpperCase().codeUnits;
     if (chars.any((c) => c < 65 || c > 90)) return '🌐';
-    return String.fromCharCodes(
-      chars.map((c) => 0x1F1E6 + (c - 65)),
-    );
+    return String.fromCharCodes(chars.map((c) => 0x1F1E6 + (c - 65)));
   }
 }

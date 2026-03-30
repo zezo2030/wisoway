@@ -2,13 +2,15 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import '../../models/payment_model.dart';
 import '../../models/wallet_model.dart';
+import '../../models/wallet_account_model.dart';
+import '../../models/wallet_transaction_model.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
 
 class PaymentService {
   final ApiClient _api = ApiClient();
 
-  // Create standard payment (For passenger paying driver or vice versa via manual/Stripe)
+  // Create standard payment (manual / other methods via API)
   Future<PaymentModel> createPayment({
     String? tripId,
     String? bookingId,
@@ -148,6 +150,54 @@ class PaymentService {
     return Map<String, dynamic>.from(response as Map);
   }
 
+  /// Postgres wallet (driver or rider): balance from `wallet_accounts`.
+  Future<WalletAccountModel> getWalletAccountMe() async {
+    final response = await _api.get(ApiEndpoints.walletV2Me);
+    final raw = response is Map ? (response['data'] ?? response) : response;
+    return WalletAccountModel.fromJson(
+      Map<String, dynamic>.from(raw as Map),
+    );
+  }
+
+  /// Ledger for current user's wallet account (same role as JWT).
+  Future<List<WalletTransactionModel>> getWalletLedgerTransactions({
+    int limit = 50,
+  }) async {
+    final response = await _api.get(
+      ApiEndpoints.walletV2Transactions,
+      queryParameters: {'limit': limit},
+    );
+    dynamic list;
+    if (response is List) {
+      list = response;
+    } else if (response is Map) {
+      final m = Map<String, dynamic>.from(response);
+      list = m['data'] ?? m['items'];
+    }
+    if (list is! List) return [];
+    return list
+        .map((e) => WalletTransactionModel.fromJson(
+              Map<String, dynamic>.from(e as Map),
+            ))
+        .toList();
+  }
+
+  /// Instant credit via POST /wallet/topup — **admin JWT only**. Riders/drivers must use [createWalletTopup].
+  Future<void> topUpWalletAccount({
+    required double amount,
+    String currency = 'EGP',
+    String? note,
+    String? idempotencyKey,
+  }) async {
+    final body = <String, dynamic>{
+      'amount': amount,
+      'currency': currency,
+    };
+    if (note != null) body['note'] = note;
+    if (idempotencyKey != null) body['idempotencyKey'] = idempotencyKey;
+    await _api.post(ApiEndpoints.walletV2Topup, data: body);
+  }
+
   /// Driver wallet: create top-up request (pending until admin approves)
   Future<PaymentModel> createWalletTopup({
     required double amount,
@@ -243,22 +293,6 @@ class PaymentService {
       print('❌ Error rejecting payment: $e');
       rethrow;
     }
-  }
-
-  /// Stripe PaymentIntent for passenger platform share (amount computed on server).
-  Future<Map<String, dynamic>> createPassengerSeatPaymentIntent({
-    required String tripId,
-    required String seatNumber,
-  }) async {
-    final response = await _api.post(
-      ApiEndpoints.stripePassengerIntent,
-      data: {
-        'tripId': tripId,
-        'seatNumber': seatNumber,
-      },
-    );
-    final data = response['data'] ?? response;
-    return Map<String, dynamic>.from(data as Map);
   }
 
   // Helper method for file uploads

@@ -260,7 +260,7 @@ export default function PaymentsListPage() {
                 </SelectTrigger>
                 <SelectContent className="rounded-xl shadow-lg border-border/50">
                   <SelectItem value="all">{t("allMethods")}</SelectItem>
-                  <SelectItem value={PaymentMethod.STRIPE}>Stripe</SelectItem>
+                  <SelectItem value={PaymentMethod.WALLET}>Wallet</SelectItem>
                   <SelectItem value={PaymentMethod.PAYMOB}>Paymob</SelectItem>
                   <SelectItem value={PaymentMethod.MANUAL}>Manual</SelectItem>
                   <SelectItem value={PaymentMethod.COMMUNICATION_FEE}>{t("paymentType_fee")}</SelectItem>

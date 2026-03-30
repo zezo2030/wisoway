@@ -7,10 +7,10 @@ import { TripEntity } from '../../database/entities/trip.entity';
 import { UserEntity } from '../../database/entities/user.entity';
 import { PaymentsController } from './payments.controller';
 import { PaymentsService } from './payments.service';
-import { StripeService } from './stripe.service';
 import { A2aCliqService } from './a2a-cliq.service';
 import { PlatformPricingService } from './platform-pricing.service';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { WalletModule } from '../wallet/wallet.module';
 
 @Module({
   imports: [
@@ -22,17 +22,16 @@ import { NotificationsModule } from '../notifications/notifications.module';
     ]),
     ConfigModule,
     forwardRef(() => NotificationsModule),
+    WalletModule,
   ],
   controllers: [PaymentsController],
   providers: [
     PaymentsService,
-    StripeService,
     A2aCliqService,
     PlatformPricingService,
   ],
   exports: [
     PaymentsService,
-    StripeService,
     A2aCliqService,
     PlatformPricingService,
   ],

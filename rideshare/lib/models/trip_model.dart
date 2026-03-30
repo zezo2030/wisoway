@@ -257,4 +257,31 @@ class TripModel {
   bool get isLocked => (isActive && isPast) || isExpired;
 
   bool get canBeBooked => isActive && !isPast && hasAvailableSeats;
+
+  int get bookedSeatsCount => totalSeats - availableSeats;
+
+  double get totalRevenue => bookedSeatsCount * price;
+
+  String get fromDisplayName =>
+      from.name.isNotEmpty ? from.name : (from.address ?? 'موقع غير معروف');
+
+  String get toDisplayName =>
+      to.name.isNotEmpty ? to.name : (to.address ?? 'موقع غير معروف');
+
+  String get statusDisplayText {
+    switch (status) {
+      case 'active':
+        return 'نشطة';
+      case 'hidden':
+        return 'مخفية';
+      case 'completed':
+        return 'مكتملة';
+      case 'cancelled':
+        return 'ملغاة';
+      case 'expired':
+        return 'منتهية';
+      default:
+        return status;
+    }
+  }
 }

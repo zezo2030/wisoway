@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
+import '../core/theme/colors.dart';
+import '../core/theme/text_styles.dart';
 import '../models/payment_model.dart';
 
 /// Communication Fee Dialog
-/// 
+///
 /// Dialog يعرض رسوم فتح التواصل ويسمح للمستخدم باختيار طريقة الدفع
 class CommunicationFeeDialog extends StatefulWidget {
   final double amount;
@@ -30,9 +31,7 @@ class _CommunicationFeeDialogState extends State<CommunicationFeeDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Container(
         padding: const EdgeInsets.all(24),
         constraints: const BoxConstraints(maxWidth: 400),
@@ -46,12 +45,12 @@ class _CommunicationFeeDialogState extends State<CommunicationFeeDialog> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
+                    color: AppColors.warning.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     IconsaxPlusBold.dollar_circle,
-                    color: Colors.orange.shade700,
+                    color: AppColors.warning,
                     size: 28,
                   ),
                 ),
@@ -62,17 +61,13 @@ class _CommunicationFeeDialogState extends State<CommunicationFeeDialog> {
                     children: [
                       Text(
                         'رسوم فتح التواصل',
-                        style: GoogleFonts.cairo(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: AppTextStyles.titleMedium.copyWith(fontSize: 20),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'لإتاحة التواصل مع الراكب',
-                        style: GoogleFonts.cairo(
-                          fontSize: 14,
-                          color: Colors.grey[600],
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.slate600,
                         ),
                       ),
                     ],
@@ -80,6 +75,7 @@ class _CommunicationFeeDialogState extends State<CommunicationFeeDialog> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
+                  tooltip: 'إغلاق',
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
@@ -92,13 +88,13 @@ class _CommunicationFeeDialogState extends State<CommunicationFeeDialog> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Colors.orange.shade50,
-                    Colors.orange.shade100,
+                    AppColors.warning.withValues(alpha: 0.1),
+                    AppColors.warning.withValues(alpha: 0.18),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: Colors.orange.shade200,
+                  color: AppColors.warning.withValues(alpha: 0.25),
                   width: 2,
                 ),
               ),
@@ -107,10 +103,8 @@ class _CommunicationFeeDialogState extends State<CommunicationFeeDialog> {
                 children: [
                   Text(
                     widget.amount.toStringAsFixed(2),
-                    style: GoogleFonts.cairo(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.orange.shade900,
+                    style: AppTextStyles.headlineLarge.copyWith(
+                      color: AppColors.warningDark,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -120,15 +114,14 @@ class _CommunicationFeeDialogState extends State<CommunicationFeeDialog> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.orange.shade700,
+                      color: AppColors.warning,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       widget.currency,
-                      style: GoogleFonts.cairo(
-                        fontSize: 16,
+                      style: AppTextStyles.titleSmall.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: AppColors.white,
                       ),
                     ),
                   ),
@@ -140,20 +133,9 @@ class _CommunicationFeeDialogState extends State<CommunicationFeeDialog> {
             // Payment Methods
             Text(
               'اختر طريقة الدفع',
-              style: GoogleFonts.cairo(
-                fontSize: 16,
+              style: AppTextStyles.titleSmall.copyWith(
                 fontWeight: FontWeight.bold,
               ),
-            ),
-            const SizedBox(height: 12),
-
-            // Stripe
-            _buildPaymentMethodCard(
-              icon: IconsaxPlusBold.card,
-              title: 'بطاقة ائتمان (Stripe)',
-              subtitle: 'دفع آمن عبر Stripe',
-              method: PaymentMethod.stripe,
-              color: Colors.blue,
             ),
             const SizedBox(height: 12),
 
@@ -163,47 +145,50 @@ class _CommunicationFeeDialogState extends State<CommunicationFeeDialog> {
               title: 'بطاقة ائتمان (Paymob)',
               subtitle: 'دفع آمن عبر Paymob',
               method: PaymentMethod.paymob,
-              color: Colors.green,
+              color: AppColors.success,
             ),
             const SizedBox(height: 12),
 
-          // Manual wallets (offline)
+            // Manual wallets (offline)
             _buildPaymentMethodCard(
               icon: IconsaxPlusBold.wallet,
               title: 'محفظة إلكترونية',
               subtitle: 'Zain Cash, Orange Money, Cliq, Vodafone Cash',
               method: PaymentMethod.manual,
-              color: Colors.purple,
+              color: AppColors.info,
             ),
-          const SizedBox(height: 12),
+            const SizedBox(height: 12),
 
-          // CliQ A2A (online)
-          _buildPaymentMethodCard(
-            icon: IconsaxPlusBold.wallet,
-            title: 'CliQ A2A',
-            subtitle: 'دفع مباشر عبر نظام CliQ',
-            method: PaymentMethod.cliq_a2a,
-            color: Colors.orange,
-          ),
+            // CliQ A2A (online)
+            _buildPaymentMethodCard(
+              icon: IconsaxPlusBold.wallet,
+              title: 'CliQ A2A',
+              subtitle: 'دفع مباشر عبر نظام CliQ',
+              method: PaymentMethod.cliq_a2a,
+              color: AppColors.warning,
+            ),
             const SizedBox(height: 24),
 
             // Action Buttons
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  child: Semantics(
+                    button: true,
+                    label: 'إلغاء',
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                    ),
-                    child: Text(
-                      'إلغاء',
-                      style: GoogleFonts.cairo(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                      child: Text(
+                        'إلغاء',
+                        style: AppTextStyles.titleSmall.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -211,27 +196,31 @@ class _CommunicationFeeDialogState extends State<CommunicationFeeDialog> {
                 const SizedBox(width: 12),
                 Expanded(
                   flex: 2,
-                  child: ElevatedButton(
-                    onPressed: _selectedMethod == null
-                        ? null
-                        : () {
-                            widget.onPaymentMethodSelected(_selectedMethod!);
-                            Navigator.pop(context);
-                          },
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: Colors.orange.shade600,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  child: Semantics(
+                    button: true,
+                    label:
+                        'تأكيد ودفع ${widget.amount.toStringAsFixed(2)} ${widget.currency}',
+                    child: ElevatedButton(
+                      onPressed: _selectedMethod == null
+                          ? null
+                          : () {
+                              widget.onPaymentMethodSelected(_selectedMethod!);
+                              Navigator.pop(context);
+                            },
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        backgroundColor: AppColors.warning,
+                        foregroundColor: AppColors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
                       ),
-                      elevation: 0,
-                    ),
-                    child: Text(
-                      'تأكيد ودفع',
-                      style: GoogleFonts.cairo(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                      child: Text(
+                        'تأكيد ودفع',
+                        style: AppTextStyles.titleSmall.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -253,78 +242,66 @@ class _CommunicationFeeDialogState extends State<CommunicationFeeDialog> {
   }) {
     final isSelected = _selectedMethod == method;
 
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _selectedMethod = method;
-        });
-      },
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.1) : Colors.grey[50],
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? color : Colors.grey[300]!,
-            width: isSelected ? 2 : 1,
+    return Semantics(
+      button: true,
+      label: title,
+      selected: isSelected,
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _selectedMethod = method;
+          });
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? color.withValues(alpha: 0.1)
+                : AppColors.slate50,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected ? color : AppColors.slate300,
+              width: isSelected ? 2 : 1,
+            ),
           ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 24),
               ),
-              child: Icon(
-                icon,
-                color: color,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.cairo(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: isSelected ? color : Colors.grey[900],
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTextStyles.titleSmall.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: isSelected ? color : T.onSurface(context),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: GoogleFonts.cairo(
-                      fontSize: 12,
-                      color: Colors.grey[600],
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.slate600,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            if (isSelected)
-              Icon(
-                Icons.check_circle,
-                color: color,
-                size: 24,
-              ),
-          ],
+              if (isSelected) Icon(Icons.check_circle, color: color, size: 24),
+            ],
+          ),
         ),
       ),
     );
   }
 }
-
-
-
-
-
-
-
-

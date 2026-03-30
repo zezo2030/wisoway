@@ -25,7 +25,7 @@ class _DriverPendingApprovalScreenState
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: T.surface(context),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -34,52 +34,49 @@ class _DriverPendingApprovalScreenState
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Pending approval animation
                 Container(
                   width: 200,
                   height: 200,
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
+                    color: T.primary(context).withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     IconsaxPlusBold.timer,
                     size: 100,
-                    color: AppColors.primary,
+                    color: T.primary(context),
                   ),
                 ),
                 const SizedBox(height: 32),
 
-                // Awaiting approval text
-                const Text(
+                Text(
                   'حسابك قيد المراجعة',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+                    color: T.onSurface(context),
                   ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'نحن نقوم بمراجعة حسابك. سيتم إشعارك عند الموافقة.',
                   style: TextStyle(
                     fontSize: 16,
-                    color: AppColors.textSecondary,
+                    color: T.onSurfaceVariant(context),
                   ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 40),
 
-                // Profile summary card
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: T.surface(context),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: T.onSurface(context).withValues(alpha: 0.05),
                         blurRadius: 10,
                         offset: const Offset(0, 2),
                       ),
@@ -88,12 +85,12 @@ class _DriverPendingApprovalScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'ملفك الشخصي',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
+                          color: T.onSurface(context),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -117,57 +114,66 @@ class _DriverPendingApprovalScreenState
                 ),
                 const SizedBox(height: 40),
 
-                // Action buttons
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () =>
-                        Navigator.pushNamed(context, RouteNames.profile),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                Semantics(
+                  label: 'عرض الملف الشخصي',
+                  button: true,
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () =>
+                          Navigator.pushNamed(context, RouteNames.profile),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: T.primary(context),
+                        foregroundColor: T.onPrimary(context),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                    ),
-                    child: const Text(
-                      'عرض الملف الشخصي',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                      child: const Text(
+                        'عرض الملف الشخصي',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
-                OutlinedButton(
-                  onPressed: () async {
-                    await authProvider.signOut();
-                    if (mounted) {
-                      Navigator.pushReplacementNamed(
-                        context,
-                        RouteNames.signIn,
-                      );
-                    }
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textSecondary,
-                    side: BorderSide(
-                      color: AppColors.textSecondary.withOpacity(0.3),
+                Semantics(
+                  label: 'تسجيل خروج',
+                  button: true,
+                  child: OutlinedButton(
+                    onPressed: () async {
+                      await authProvider.signOut();
+                      if (mounted) {
+                        Navigator.pushReplacementNamed(
+                          context,
+                          RouteNames.signIn,
+                        );
+                      }
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: T.onSurfaceVariant(context),
+                      side: BorderSide(
+                        color: T
+                            .onSurfaceVariant(context)
+                            .withValues(alpha: 0.3),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 16,
+                        horizontal: 24,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 16,
-                      horizontal: 24,
+                    child: const Text(
+                      'تسجيل خروج',
+                      style: TextStyle(fontSize: 16),
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'تسجيل خروج',
-                    style: TextStyle(fontSize: 16),
                   ),
                 ),
               ],
@@ -184,15 +190,15 @@ class _DriverPendingApprovalScreenState
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 14, color: T.onSurfaceVariant(context)),
         ),
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w500,
-            color: AppColors.textPrimary,
+            color: T.onSurface(context),
           ),
         ),
       ],

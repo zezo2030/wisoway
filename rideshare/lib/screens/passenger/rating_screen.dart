@@ -27,7 +27,7 @@ class RatingScreen extends StatefulWidget {
 class _RatingScreenState extends State<RatingScreen> {
   final RatingService _ratingService = RatingService();
   final TextEditingController _commentController = TextEditingController();
-  
+
   int _selectedRating = 0;
   bool _isSubmitting = false;
 
@@ -42,7 +42,7 @@ class _RatingScreenState extends State<RatingScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('يرجى اختيار تقييم'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -53,15 +53,14 @@ class _RatingScreenState extends State<RatingScreen> {
 
     if (currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('يجب تسجيل الدخول'),
-          backgroundColor: Colors.red,
+        SnackBar(
+          content: const Text('يجب تسجيل الدخول'),
+          backgroundColor: T.error(context),
         ),
       );
       return;
     }
 
-    // Check if user has already rated this trip
     final hasRated = await _ratingService.hasUserRatedTrip(widget.tripId);
 
     if (hasRated) {
@@ -69,7 +68,7 @@ class _RatingScreenState extends State<RatingScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('لقد قمت بتقييم هذه الرحلة بالفعل'),
-            backgroundColor: Colors.orange,
+            backgroundColor: AppColors.warning,
           ),
         );
         Navigator.pop(context);
@@ -93,17 +92,17 @@ class _RatingScreenState extends State<RatingScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('تم إرسال التقييم بنجاح'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
-        Navigator.pop(context, true); // Return true to indicate success
+        Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في إرسال التقييم: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: T.error(context),
           ),
         );
       }
@@ -117,22 +116,19 @@ class _RatingScreenState extends State<RatingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('تقييم الرحلة'),
-      ),
+      appBar: AppBar(title: const Text('تقييم الرحلة')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const SizedBox(height: 32),
-            // Driver info
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: T.surface(context),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.border),
+                border: Border.all(color: T.outline(context)),
               ),
               child: Row(
                 children: [
@@ -140,12 +136,12 @@ class _RatingScreenState extends State<RatingScreen> {
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
+                      color: T.primary(context).withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       Icons.person,
-                      color: AppColors.primary,
+                      color: T.primary(context),
                       size: 32,
                     ),
                   ),
@@ -156,17 +152,15 @@ class _RatingScreenState extends State<RatingScreen> {
                       children: [
                         Text(
                           widget.driverName,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         if (widget.trip != null) ...[
                           const SizedBox(height: 4),
                           Text(
                             '${widget.trip!.from.name} → ${widget.trip!.to.name}',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: AppColors.textSecondary,
-                                ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: T.onSurfaceVariant(context)),
                           ),
                         ],
                       ],
@@ -176,16 +170,14 @@ class _RatingScreenState extends State<RatingScreen> {
               ),
             ),
             const SizedBox(height: 48),
-            // Rating question
             Text(
               'كيف كانت تجربتك مع السائق؟',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
-            // Rating stars
             RatingWidget(
               initialRating: _selectedRating,
               starSize: 48.0,
@@ -196,55 +188,63 @@ class _RatingScreenState extends State<RatingScreen> {
               },
             ),
             const SizedBox(height: 16),
-            // Rating label
             if (_selectedRating > 0)
               Text(
                 _getRatingLabel(_selectedRating),
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  color: T.primary(context),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             const SizedBox(height: 48),
-            // Comment field
-            TextField(
-              controller: _commentController,
-              decoration: InputDecoration(
-                labelText: 'تعليق (اختياري)',
-                hintText: 'شاركنا رأيك في الرحلة...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                alignLabelWithHint: true,
-              ),
-              maxLines: 5,
-              textInputAction: TextInputAction.done,
-            ),
-            const SizedBox(height: 32),
-            // Submit button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isSubmitting ? null : _submitRating,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
+            Semantics(
+              label: 'حقل تعليق',
+              textField: true,
+              hint: 'شاركنا رأيك في الرحلة',
+              child: TextField(
+                controller: _commentController,
+                decoration: InputDecoration(
+                  labelText: 'تعليق (اختياري)',
+                  hintText: 'شاركنا رأيك في الرحلة...',
+                  border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  alignLabelWithHint: true,
                 ),
-                child: _isSubmitting
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                maxLines: 5,
+                textInputAction: TextInputAction.done,
+              ),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              child: Semantics(
+                button: true,
+                label: 'إرسال التقييم',
+                child: ElevatedButton(
+                  onPressed: _isSubmitting ? null : _submitRating,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.white,
+                            ),
+                          ),
+                        )
+                      : const Text(
+                          'إرسال التقييم',
+                          style: TextStyle(fontSize: 16),
                         ),
-                      )
-                    : const Text(
-                        'إرسال التقييم',
-                        style: TextStyle(fontSize: 16),
-                      ),
+                ),
               ),
             ),
           ],
@@ -270,6 +270,3 @@ class _RatingScreenState extends State<RatingScreen> {
     }
   }
 }
-
-
-

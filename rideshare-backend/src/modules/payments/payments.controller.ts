@@ -7,8 +7,6 @@ import {
   Param,
   Query,
   UseGuards,
-  Req,
-  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -24,14 +22,11 @@ import {
   ApprovePaymentDto,
   RejectPaymentDto,
   QueryPaymentsDto,
-  CreatePaymentIntentDto,
 } from './dto/update-payment-status.dto';
 import { CreateWalletTopupDto } from './dto/create-wallet-topup.dto';
-import { CreatePassengerPaymentIntentDto } from './dto/create-passenger-payment-intent.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('payments')
@@ -155,7 +150,7 @@ export class PaymentsController {
   }
 
   @Post('wallet/topup')
-  @Roles('driver')
+  @Roles('driver', 'passenger')
   @ApiOperation({
     summary: 'Create wallet top-up request (pending admin approval)',
   })
@@ -231,66 +226,5 @@ export class PaymentsController {
     @Body() rejectDto: RejectPaymentDto,
   ) {
     return this.paymentsService.reject(paymentId, adminId, rejectDto);
-  }
-
-  @Post('stripe/passenger-intent')
-  @Roles('passenger', 'driver')
-  @ApiOperation({
-    summary:
-      'Create Stripe PaymentIntent for platform share of a seat (server-calculated amount)',
-  })
-  @ApiResponse({ status: 200, description: 'Payment intent created' })
-  @ApiResponse({ status: 400, description: 'Invalid trip/seat or no platform fee' })
-  async createPassengerSeatIntent(
-    @Body() dto: CreatePassengerPaymentIntentDto,
-    @CurrentUser('id') userId: string,
-  ) {
-    return this.paymentsService.createPassengerSeatPaymentIntent({
-      tripId: dto.tripId,
-      seatNumber: dto.seatNumber,
-      userId,
-      countryCode: dto.countryCode,
-    });
-  }
-
-  @Post('stripe/create-intent')
-  @ApiOperation({ summary: 'Create a Stripe payment intent (legacy / manual amount)' })
-  @ApiResponse({
-    status: 200,
-    description: 'Payment intent created',
-    type: Object,
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Stripe not configured or invalid input',
-  })
-  async createPaymentIntent(
-    @Body() createPaymentIntentDto: CreatePaymentIntentDto,
-    @CurrentUser('id') userId: string,
-  ) {
-    const { amount, currency, bookingId, paymentType } = createPaymentIntentDto;
-
-    return this.paymentsService.createStripePaymentIntent(
-      amount || 0,
-      currency || 'EGP',
-      bookingId,
-      paymentType,
-    );
-  }
-
-  @Post('stripe/webhook')
-  @Public()
-  @ApiOperation({ summary: 'Handle Stripe webhook events' })
-  @ApiResponse({ status: 200, description: 'Webhook received' })
-  @ApiResponse({ status: 400, description: 'Invalid webhook signature' })
-  async handleStripeWebhook(@Req() req: any) {
-    const signature = req.headers['stripe-signature'];
-    const rawBody = req.rawBody || JSON.stringify(req.body);
-    if (!signature) {
-      throw new BadRequestException('Missing stripe-signature header');
-    }
-    await this.paymentsService.verifyAndHandleStripeWebhook(rawBody, signature);
-
-    return { received: true };
   }
 }

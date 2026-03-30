@@ -96,7 +96,9 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
           message = 'تصريح الموقع مطلوب.';
           actionLabel = 'منح التصريح';
           onAction = () => _initializeLocation();
-        } else if (errorStr.contains('LOCATION_PERMISSION_PERMANENTLY_DENIED')) {
+        } else if (errorStr.contains(
+          'LOCATION_PERMISSION_PERMANENTLY_DENIED',
+        )) {
           message = 'تم رفض تصريح الموقع بشكل دائم. افتح الإعدادات لمنحه.';
           actionLabel = 'الإعدادات';
           onAction = () => _locationService.openAppSettings();
@@ -290,23 +292,27 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
               child: Row(
                 children: [
                   Expanded(
-                    child: TextField(
-                      controller: _searchController,
-                      focusNode: _searchFocusNode,
-                      decoration: InputDecoration(
-                        hintText: 'ابحث عن مكان أو عنوان...',
-                        prefixIcon: const Icon(Icons.search),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    child: Semantics(
+                      label: 'البحث عن مكان أو عنوان',
+                      textField: true,
+                      child: TextField(
+                        controller: _searchController,
+                        focusNode: _searchFocusNode,
+                        decoration: InputDecoration(
+                          hintText: 'ابحث عن مكان أو عنوان...',
+                          prefixIcon: const Icon(Icons.search),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          filled: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                         ),
-                        filled: true,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
+                        textDirection: TextDirection.ltr,
+                        onSubmitted: (_) => _searchByAddress(),
                       ),
-                      textDirection: TextDirection.ltr,
-                      onSubmitted: (_) => _searchByAddress(),
                     ),
                   ),
                   const SizedBox(width: 8),

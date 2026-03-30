@@ -6,7 +6,6 @@ import '../core/theme/colors.dart';
 import '../core/constants/route_names.dart';
 import '../providers/notification_provider.dart';
 
-/// Widget لإظهار أيقونة الإشعارات مع عداد
 class NotificationIconButton extends StatelessWidget {
   final double? iconSize;
   final Color? iconColor;
@@ -34,25 +33,31 @@ class NotificationIconButton extends StatelessWidget {
       builder: (context, provider, child) {
         final unreadCount = provider.unreadCount;
 
-        return GestureDetector(
-              onTap: () {
-                Navigator.pushNamed(context, RouteNames.notifications);
-              },
-              child: SizedBox(
-                width: 48,
-                height: 48,
-                child: Container(
-                  padding: padding ?? const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: backgroundColor ?? AppColors.primary.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Stack(
+        return Semantics(
+          button: true,
+          label:
+              'الإشعارات${unreadCount > 0 ? " ($unreadCount غير مقروء)" : ""}',
+          child: GestureDetector(
+            onTap: () {
+              Navigator.pushNamed(context, RouteNames.notifications);
+            },
+            child: SizedBox(
+              width: 48,
+              height: 48,
+              child: Container(
+                padding: padding ?? const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color:
+                      backgroundColor ??
+                      T.primary(context).withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Stack(
                   clipBehavior: Clip.none,
                   children: [
                     Icon(
                       IconsaxPlusLinear.notification,
-                      color: iconColor ?? AppColors.primary,
+                      color: iconColor ?? T.primary(context),
                       size: iconSize ?? 24,
                     ),
                     if (unreadCount > 0)
@@ -61,8 +66,8 @@ class NotificationIconButton extends StatelessWidget {
                         top: -4,
                         child: Container(
                           padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: AppColors.error,
+                          decoration: BoxDecoration(
+                            color: T.error(context),
                             shape: BoxShape.circle,
                           ),
                           constraints: const BoxConstraints(
@@ -72,7 +77,7 @@ class NotificationIconButton extends StatelessWidget {
                           child: Text(
                             unreadCount > 99 ? '99+' : '$unreadCount',
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: AppColors.white,
                               fontSize: 9,
                               fontWeight: FontWeight.bold,
                             ),
@@ -84,7 +89,8 @@ class NotificationIconButton extends StatelessWidget {
                 ),
               ),
             ),
-          );
+          ),
+        );
       },
     );
   }

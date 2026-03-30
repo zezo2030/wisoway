@@ -61,7 +61,7 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedGender == null) {
-      _showSnackBar('يرجى اختيار الجنس', Colors.red);
+      _showSnackBar('يرجى اختيار الجنس', T.error(context));
       return;
     }
 
@@ -73,7 +73,8 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
       final password = _passwordController.text;
       final fullName =
           '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}';
-      final phoneNumber = '${_selectedCountry.dialCode}${_phoneController.text.trim()}';
+      final phoneNumber =
+          '${_selectedCountry.dialCode}${_phoneController.text.trim()}';
 
       // 1. Create pending registration with phone verification
       await authProvider.signUpWithEmailAndPassword(
@@ -100,7 +101,7 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
     } catch (e) {
       _showSnackBar(
         AuthErrorFormatter.format(e, action: AuthAction.signUp),
-        Colors.red,
+        T.error(context),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -117,7 +118,7 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: T.surface(context),
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: SingleChildScrollView(
@@ -168,34 +169,37 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
                             : null,
                       ),
                       const SizedBox(height: 16),
-                       ModernInputField(
-                         controller: _passwordController,
-                         label: 'كلمة المرور',
-                         hint: '********',
-                         icon: IconsaxPlusLinear.lock,
-                         obscureText: _obscurePassword,
-                         suffixIcon: IconButton(
-                           icon: Icon(
-                             _obscurePassword
-                                 ? IconsaxPlusLinear.eye_slash
-                                 : IconsaxPlusLinear.eye,
-                           ),
-                           onPressed: () => setState(
-                             () => _obscurePassword = !_obscurePassword,
-                           ),
-                         ),
-                         validator: (v) => (v == null || v.length < 8)
-                             ? '8 أحرف على الأقل'
-                             : null,
-                       ),
-                       const SizedBox(height: 16),
-                       Row(
+                      ModernInputField(
+                        controller: _passwordController,
+                        label: 'كلمة المرور',
+                        hint: '********',
+                        icon: IconsaxPlusLinear.lock,
+                        obscureText: _obscurePassword,
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? IconsaxPlusLinear.eye_slash
+                                : IconsaxPlusLinear.eye,
+                          ),
+                          tooltip: 'إظهار/إخفاء كلمة المرور',
+                          onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
+                        ),
+                        validator: (v) => (v == null || v.length < 8)
+                            ? '8 أحرف على الأقل'
+                            : null,
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
                         children: [
                           CountryCodePicker(
                             selectedCountry: _selectedCountry,
                             onCountryChanged: (country) =>
                                 setState(() => _selectedCountry = country),
-                            borderColor: AppColors.secondary.withOpacity(0.3),
+                            borderColor: T
+                                .secondary(context)
+                                .withValues(alpha: 0.3),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -227,7 +231,7 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
                         onPressed: _isLoading ? null : _signUp,
                         text: 'التالي (معلومات السيارة)',
                         isLoading: _isLoading,
-                        color: AppColors.secondary,
+                        color: T.secondary(context),
                       ),
                       const SizedBox(height: 24),
                       _buildFooter(),
@@ -246,39 +250,39 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(24, 60, 24, 30),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.secondary, AppColors.secondaryDark],
+          colors: [T.secondary(context), AppColors.teal700],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.only(
+        borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(40),
           bottomRight: Radius.circular(40),
         ),
       ),
       child: Column(
         children: [
-          const Icon(IconsaxPlusBold.driver, size: 60, color: Colors.white),
+          const Icon(IconsaxPlusBold.driver, size: 60, color: AppColors.white),
           const SizedBox(height: 16),
           const Text(
             'تسجيل سائق جديد',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: AppColors.white,
             ),
           ),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: AppColors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(20),
             ),
             child: const Text(
               'الخطوة 1 من 2: المعلومات الأساسية',
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppColors.white, fontSize: 13),
             ),
           ),
         ],
@@ -296,7 +300,7 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
             isSelected: _selectedGender == AppConstants.genderMale,
             onTap: () =>
                 setState(() => _selectedGender = AppConstants.genderMale),
-            color: AppColors.secondary,
+            color: T.secondary(context),
           ),
         ),
         const SizedBox(width: 12),
@@ -307,7 +311,7 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
             isSelected: _selectedGender == AppConstants.genderFemale,
             onTap: () =>
                 setState(() => _selectedGender = AppConstants.genderFemale),
-            color: const Color(0xFFE91E63),
+            color: T.error(context),
           ),
         ),
       ],
@@ -318,18 +322,22 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Text(
+        Text(
           'لديك حساب بالفعل؟ ',
-          style: TextStyle(color: AppColors.textSecondary),
+          style: TextStyle(color: T.onSurfaceVariant(context)),
         ),
-        TextButton(
-          onPressed: () =>
-              Navigator.pushReplacementNamed(context, RouteNames.signIn),
-          child: const Text(
-            'تسجيل الدخول',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: AppColors.secondary,
+        Semantics(
+          button: true,
+          label: 'تسجيل الدخول',
+          child: TextButton(
+            onPressed: () =>
+                Navigator.pushReplacementNamed(context, RouteNames.signIn),
+            child: Text(
+              'تسجيل الدخول',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: T.secondary(context),
+              ),
             ),
           ),
         ),

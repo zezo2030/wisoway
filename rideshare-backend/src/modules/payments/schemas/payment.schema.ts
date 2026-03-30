@@ -23,7 +23,7 @@ export class Payment {
   @Prop({
     type: String,
     required: true,
-    enum: ['stripe', 'paymob', 'manual', 'communication_fee', 'cliq_a2a'],
+    enum: ['wallet', 'paymob', 'manual', 'communication_fee', 'cliq_a2a'],
   })
   method: string;
 

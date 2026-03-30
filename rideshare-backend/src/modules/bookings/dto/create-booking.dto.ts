@@ -36,11 +36,11 @@ export class CreateBookingDto {
 
   @ApiPropertyOptional({
     description:
-      'Stripe PaymentIntent id (pi_...) after successful pay; required when platform fee > 0',
-    example: 'pi_xxx',
+      'Idempotency key for wallet debit when a platform fee applies (recommended for retries)',
+    example: '550e8400-e29b-41d4-a716-446655440000',
   })
   @IsOptional()
   @IsString()
   @MaxLength(128)
-  paymentIntentId?: string;
+  walletIdempotencyKey?: string;
 }
