@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Patch,
   Delete,
   Query,
@@ -30,6 +31,7 @@ import { AdminReportsQueryDto } from './dto/admin-reports-query.dto';
 import {
   ApproveDriverDto,
   VerifyVehicleDto,
+  BroadcastNotificationDto,
 } from './dto/admin-query.dto';
 import { AdminPatchPricingSettingsDto } from './dto/admin-pricing-settings.dto';
 
@@ -269,6 +271,16 @@ export class AdminDashboardController {
       limit: query.limit,
       type: query.type,
     });
+  }
+
+  @Post('notifications/broadcast')
+  @ApiOperation({ summary: 'Broadcast notification to users' })
+  @ApiResponse({
+    status: 200,
+    description: 'Notification broadcast sent successfully',
+  })
+  async broadcastNotification(@Body() dto: BroadcastNotificationDto) {
+    return this.adminDashboardService.broadcastNotification(dto);
   }
 
   @Get('chat/rooms')

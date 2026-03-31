@@ -23,10 +23,10 @@ void main() {
       await tester.pumpWidget(_createTestWidget());
       await tester.pump();
 
-      expect(find.text('إشعارات الرحلات'), findsOneWidget);
-      expect(find.text('إشعارات الدفع'), findsOneWidget);
-      expect(find.text('إشعارات الرسائل'), findsOneWidget);
-      expect(find.text('إشعارات النظام'), findsOneWidget);
+      expect(find.text('الرحلات'), findsOneWidget);
+      expect(find.text('المدفوعات'), findsOneWidget);
+      expect(find.text('الرسائل'), findsOneWidget);
+      expect(find.text('النظام'), findsOneWidget);
       expect(find.byType(Switch), findsWidgets);
     });
 

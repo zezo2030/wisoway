@@ -23,7 +23,11 @@ import {
   WalletTransactionType,
   WalletTransactionStatus,
 } from '../../database/entities/shared.enums';
-import type { DashboardStats, ReportResponse } from './dto/admin-query.dto';
+import type {
+  DashboardStats,
+  ReportResponse,
+  BroadcastNotificationDto,
+} from './dto/admin-query.dto';
 import type { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BookingsService } from '../bookings/bookings.service';
@@ -601,6 +605,45 @@ export class AdminDashboardService {
     } catch {
       return { data: [], meta: { page, limit, total: 0, totalPages: 0 } };
     }
+  }
+
+  async broadcastNotification(
+    dto: BroadcastNotificationDto,
+  ): Promise<{ sent: number }> {
+    const { title, body, targetRole } = dto;
+
+    const qb = this.userRepo
+      .createQueryBuilder('u')
+      .select('u.id')
+      .where('u.isActive = :active', { active: true });
+    if (targetRole) {
+      qb.andWhere('u.role = :role', { role: targetRole });
+    }
+    const users = await qb.getMany();
+
+    let sent = 0;
+    for (const user of users) {
+      try {
+        await this.notificationsService.create({
+          userId: user.id,
+          type: 'admin_broadcast',
+          title,
+          body,
+          data: { broadcast: true, targetRole: targetRole ?? 'all' },
+        });
+        sent++;
+      } catch (error) {
+        this.logger.error(
+          `Failed to send notification to user ${user.id}: ${(error as Error).message}`,
+        );
+      }
+    }
+
+    this.logger.log(
+      `Broadcast notification sent to ${sent} users (target: ${targetRole ?? 'all'})`,
+    );
+
+    return { sent };
   }
 
   async getChatRooms(query: {
