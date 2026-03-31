@@ -137,6 +137,335 @@
   "profileSaved": "تم حفظ الملف الشخصي بنجاح",
   "@profileSaved": {
     "description": "رسالة نجاح حفظ الملف الشخصي"
+  },
+  "settings": "الإعدادات",
+  "@settings": {
+    "description": "عنوان شاشة الإعدادات"
+  },
+  "appearance": "المظهر",
+  "@appearance": {
+    "description": "قسم المظهر في الإعدادات"
+  },
+  "darkMode": "الوضع الداكن",
+  "@darkMode": {
+    "description": "خيار تبديل الوضع الداكن"
+  },
+  "darkModeSubtitle": "تفعيل المظهر الداكن للتطبيق",
+  "@darkModeSubtitle": {
+    "description": "وصف خيار الوضع الداكن"
+  },
+  "themeMode": "سمة التطبيق",
+  "@themeMode": {
+    "description": "خيار اختيار سمة التطبيق"
+  },
+  "themeSystem": "تلقائي (حسب النظام)",
+  "@themeSystem": {
+    "description": "خيار السمة - تبع النظام"
+  },
+  "themeLight": "فاتح",
+  "@themeLight": {
+    "description": "خيار السمة - فاتح"
+  },
+  "themeDark": "داكن",
+  "@themeDark": {
+    "description": "خيار السمة - داكن"
+  },
+  "selectTheme": "اختر السمة",
+  "@selectTheme": {
+    "description": "عنوان نافذة اختيار السمة"
+  },
+  "language": "اللغة",
+  "@language": {
+    "description": "قسم اللغة في الإعدادات"
+  },
+  "languageArabic": "العربية",
+  "@languageArabic": {
+    "description": "اللغة العربية"
+  },
+  "languageEnglish": "English",
+  "@languageEnglish": {
+    "description": "اللغة الإنجليزية"
+  },
+  "selectLanguage": "اختر اللغة",
+  "@selectLanguage": {
+    "description": "عنوان نافذة اختيار اللغة"
+  },
+  "currentLanguageAr": "العربية",
+  "@currentLanguageAr": {
+    "description": "اللغة الحالية - عربي"
+  },
+  "currentLanguageEn": "English",
+  "@currentLanguageEn": {
+    "description": "اللغة الحالية - إنجليزي"
+  },
+  "notifications": "الإشعارات",
+  "@notifications": {
+    "description": "قسم الإشعارات في الإعدادات"
+  },
+  "pushNotifications": "الإشعارات",
+  "@pushNotifications": {
+    "description": "خيار تبديل الإشعارات"
+  },
+  "notificationSound": "الأصوات",
+  "@notificationSound": {
+    "description": "خيار صوت الإشعارات"
+  },
+  "notificationVibration": "الاهتزاز",
+  "@notificationVibration": {
+    "description": "خيار اهتزاز الإشعارات"
+  },
+  "notificationSettings": "إعدادات مفصلة",
+  "@notificationSettings": {
+    "description": "عنوان الانتقال لإعدادات الإشعارات المفصلة"
+  },
+  "notificationSettingsTitle": "إعدادات الإشعارات",
+  "@notificationSettingsTitle": {
+    "description": "عنوان شاشة إعدادات الإشعارات"
+  },
+  "notificationCategories": "فئات الإشعارات",
+  "@notificationCategories": {
+    "description": "عنوان قسم فئات الإشعارات"
+  },
+  "notifTrips": "إشعارات الرحلات",
+  "@notifTrips": {
+    "description": "فئة إشعارات الرحلات"
+  },
+  "notifPayments": "إشعارات الدفع",
+  "@notifPayments": {
+    "description": "فئة إشعارات الدفع"
+  },
+  "notifMessages": "إشعارات الرسائل",
+  "@notifMessages": {
+    "description": "فئة إشعارات الرسائل"
+  },
+  "notifSystem": "إشعارات النظام",
+  "@notifSystem": {
+    "description": "فئة إشعارات النظام"
+  },
+  "notifCustomizeInfo": "يمكنك تخصيص الإشعارات التي تريد استقبالها",
+  "@notifCustomizeInfo": {
+    "description": "نص معلومات تخصيص الإشعارات"
+  },
+  "accountSecurity": "الحساب والأمان",
+  "@accountSecurity": {
+    "description": "قسم الحساب والأمان"
+  },
+  "accountInfo": "معلومات الحساب",
+  "@accountInfo": {
+    "description": "عنوان الانتقال لمعلومات الحساب"
+  },
+  "changePassword": "تغيير كلمة المرور",
+  "@changePassword": {
+    "description": "عنوان تغيير كلمة المرور"
+  },
+  "comingSoon": "قريباً",
+  "@comingSoon": {
+    "description": "شعار قريباً"
+  },
+  "accountSecurityTitle": "الحساب والأمان",
+  "@accountSecurityTitle": {
+    "description": "عنوان شاشة الحساب والأمان"
+  },
+  "accountDetails": "معلومات الحساب",
+  "@accountDetails": {
+    "description": "قسم تفاصيل الحساب"
+  },
+  "emailLabel": "البريد الإلكتروني",
+  "@emailLabel": {
+    "description": "تسمية البريد الإلكتروني"
+  },
+  "phoneLabel": "رقم الهاتف",
+  "@phoneLabel": {
+    "description": "تسمية رقم الهاتف"
+  },
+  "accountType": "نوع الحساب",
+  "@accountType": {
+    "description": "تسمية نوع الحساب"
+  },
+  "linkPhone": "ربط",
+  "@linkPhone": {
+    "description": "زر ربط الهاتف"
+  },
+  "verificationStatus": "حالة التوثيق",
+  "@verificationStatus": {
+    "description": "قسم حالة التوثيق"
+  },
+  "emailVerified": "البريد الإلكتروني",
+  "@emailVerified": {
+    "description": "توثيق البريد الإلكتروني"
+  },
+  "phoneVerified": "رقم الهاتف",
+  "@phoneVerified": {
+    "description": "توثيق رقم الهاتف"
+  },
+  "driverApproval": "اعتماد السائق",
+  "@driverApproval": {
+    "description": "اعتماد حساب السائق"
+  },
+  "verified": "موثّق",
+  "@verified": {
+    "description": "حالة التوثيق - موثّق"
+  },
+  "notVerified": "غير موثّق",
+  "@notVerified": {
+    "description": "حالة التوثيق - غير موثّق"
+  },
+  "approved": "معتمد",
+  "@approved": {
+    "description": "حالة اعتماد السائق - معتمد"
+  },
+  "pending": "قيد المراجعة",
+  "@pending": {
+    "description": "حالة اعتماد السائق - قيد المراجعة"
+  },
+  "privacy": "الخصوصية",
+  "@privacy": {
+    "description": "قسم الخصوصية في الإعدادات"
+  },
+  "locationSharing": "مشاركة الموقع",
+  "@locationSharing": {
+    "description": "تبديل مشاركة الموقع"
+  },
+  "locationSharingSubtitle": "مشاركة موقعك المباشر",
+  "@locationSharingSubtitle": {
+    "description": "وصف مشاركة الموقع"
+  },
+  "onlineStatus": "الظهور متصل",
+  "@onlineStatus": {
+    "description": "تبديل حالة الاتصال"
+  },
+  "onlineStatusSubtitle": "إظهار حالة الاتصال",
+  "@onlineStatusSubtitle": {
+    "description": "وصف حالة الاتصال"
+  },
+  "showRating": "إظهار التقييم",
+  "@showRating": {
+    "description": "تبديل إظهار التقييم"
+  },
+  "showRatingSubtitle": "إظهار تقييمك للآخرين",
+  "@showRatingSubtitle": {
+    "description": "وصف إظهار التقييم"
+  },
+  "privacyTitle": "الخصوصية",
+  "@privacyTitle": {
+    "description": "عنوان شاشة الخصوصية"
+  },
+  "privacySettings": "إعدادات الخصوصية",
+  "@privacySettings": {
+    "description": "قسم إعدادات الخصوصية"
+  },
+  "privacyInfo": "هذه الإعدادات تتحكم في ما يمكن للآخرين رؤيته عنك",
+  "@privacyInfo": {
+    "description": "نص معلومات الخصوصية"
+  },
+  "paymentAndWallet": "الدفع والمحفظة",
+  "@paymentAndWallet": {
+    "description": "قسم الدفع والمحفظة في الإعدادات"
+  },
+  "wallet": "المحفظة",
+  "@wallet": {
+    "description": "بلاط المحفظة"
+  },
+  "paymentHistory": "سجل المدفوعات",
+  "@paymentHistory": {
+    "description": "بلاط سجل المدفوعات"
+  },
+  "supportAndHelp": "الدعم والمساعدة",
+  "@supportAndHelp": {
+    "description": "قسم الدعم والمساعدة في الإعدادات"
+  },
+  "contactUs": "تواصل معنا",
+  "@contactUs": {
+    "description": "بلاط تواصل معنا عبر واتساب"
+  },
+  "termsOfService": "شروط الاستخدام",
+  "@termsOfService": {
+    "description": "بلاط شروط الاستخدام"
+  },
+  "privacyPolicy": "سياسة الخصوصية",
+  "@privacyPolicy": {
+    "description": "بلاط سياسة الخصوصية"
+  },
+  "aboutApp": "حول التطبيق",
+  "@aboutApp": {
+    "description": "قسم حول التطبيق في الإعدادات"
+  },
+  "aboutAppTitle": "حول التطبيق",
+  "@aboutAppTitle": {
+    "description": "عنوان شاشة حول التطبيق"
+  },
+  "rateApp": "تقييم التطبيق",
+  "@rateApp": {
+    "description": "بلاط تقييم التطبيق"
+  },
+  "shareApp": "مشاركة التطبيق",
+  "@shareApp": {
+    "description": "بلاط مشاركة التطبيق"
+  },
+  "licenses": "التراخيص",
+  "@licenses": {
+    "description": "بلاط التراخيص"
+  },
+  "appVersion": "الإصدار {version}",
+  "@appVersion": {
+    "description": "رقم إصدار التطبيق",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "appDescription": "منصة مشاركة الرحلات",
+  "@appDescription": {
+    "description": "وصف التطبيق"
+  },
+  "madeWithLove": "صنع بـ ❤️ في مصر",
+  "@madeWithLove": {
+    "description": "نص ذيل الشاشة"
+  },
+  "inAppBrowserTitle": "المتصفح",
+  "@inAppBrowserTitle": {
+    "description": "عنوان شاشة المتصفح داخل التطبيق"
+  },
+  "deleteAccount": "حذف الحساب",
+  "@deleteAccount": {
+    "description": "بلاط حذف الحساب"
+  },
+  "deleteAccountWarning": "هل أنت متأكد من رغبتك في حذف حسابك؟ هذا الإجراء لا يمكن التراجع عنه.",
+  "@deleteAccountWarning": {
+    "description": "رسالة تحذير حذف الحساب"
+  },
+  "deleteAccountConfirm": "نعم، حذف الحساب",
+  "@deleteAccountConfirm": {
+    "description": "زر تأكيد حذف الحساب"
+  },
+  "deleteAccountSecondWarning": "تحذير أخير: سيتم حذف جميع بياناتك بشكل نهائي ولن تتمكن من استرجاعها.",
+  "@deleteAccountSecondWarning": {
+    "description": "رسالة التحذير الثاني لحذف الحساب"
+  },
+  "deleteAccountSecondConfirm": "حذف نهائي",
+  "@deleteAccountSecondConfirm": {
+    "description": "زر التأكيد النهائي لحذف الحساب"
+  },
+  "contactSupportTitle": "تواصل مع الدعم",
+  "@contactSupportTitle": {
+    "description": "عنوان نافذة تواصل مع الدعم"
+  },
+  "contactSupportMessage": "لا يمكن حذف الحساب حالياً. تواصل مع الدعم الفني عبر واتساب أو البريد الإلكتروني.",
+  "@contactSupportMessage": {
+    "description": "رسالة فشل حذف الحساب"
+  },
+  "contactWhatsApp": "تواصل عبر واتساب",
+  "@contactWhatsApp": {
+    "description": "زر تواصل عبر واتساب"
+  },
+  "contactEmail": "تواصل عبر البريد",
+  "@contactEmail": {
+    "description": "زر تواصل عبر البريد الإلكتروني"
+  },
+  "close": "إغلاق",
+  "@close": {
+    "description": "زر إغلاق"
   }
 }
 

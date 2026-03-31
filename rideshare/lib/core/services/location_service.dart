@@ -3,15 +3,22 @@ import 'dart:ui';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/location_model.dart';
 
 class LocationService {
+  static const String _keyLocationSharing = 'privacy_location_sharing';
+
+  Future<bool> isLocationSharingEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyLocationSharing) ?? true;
+  }
+
   static final RegExp _plusCodeRegex = RegExp(
     r'^[23456789CFGHJMPQRVWX]{2,}\+[23456789CFGHJMPQRVWX]{2,}$',
     caseSensitive: false,
   );
 
-  // Check if location services are enabled
   Future<bool> isLocationServiceEnabled() async {
     return await Geolocator.isLocationServiceEnabled();
   }
@@ -27,7 +34,16 @@ class LocationService {
   }
 
   // Get current location
-  Future<Position> getCurrentPosition() async {
+  Future<Position> getCurrentPosition({
+    bool checkPrivacyPreference = true,
+  }) async {
+    if (checkPrivacyPreference) {
+      final sharingEnabled = await isLocationSharingEnabled();
+      if (!sharingEnabled) {
+        throw Exception('LOCATION_SHARING_DISABLED');
+      }
+    }
+
     bool serviceEnabled = await isLocationServiceEnabled();
     if (!serviceEnabled) {
       // On some Android devices, we can check this, but we can't force it open without user intervention
@@ -118,8 +134,11 @@ class LocationService {
     } on PlatformException catch (e) {
       // IO_ERROR / "Service not Available" = Geocoder backend unavailable
       // (e.g. emulator without Google Play, no network, or Play Services disabled)
-      if (e.code == 'IO_ERROR' || (e.message?.contains('Service not Available') ?? false)) {
-        print('⚠️ Geocoding unavailable (Google Play Services or network). Using fallback.');
+      if (e.code == 'IO_ERROR' ||
+          (e.message?.contains('Service not Available') ?? false)) {
+        print(
+          '⚠️ Geocoding unavailable (Google Play Services or network). Using fallback.',
+        );
       } else {
         print('❌ Error getting address from coordinates: $e');
       }
@@ -180,11 +199,15 @@ class LocationService {
     required double lat2,
     required double lon2,
   }) {
-    return Geolocator.distanceBetween(lat1, lon1, lat2, lon2) / 1000; // Convert to km
+    return Geolocator.distanceBetween(lat1, lon1, lat2, lon2) /
+        1000; // Convert to km
   }
 
   // Calculate distance between two LocationModel objects
-  double calculateDistanceBetweenLocations(LocationModel loc1, LocationModel loc2) {
+  double calculateDistanceBetweenLocations(
+    LocationModel loc1,
+    LocationModel loc2,
+  ) {
     return calculateDistance(
       lat1: loc1.latitude,
       lon1: loc1.longitude,
@@ -222,8 +245,8 @@ class LocationService {
   }
 
   bool get _isArabicLocale {
-    final languageCode =
-        PlatformDispatcher.instance.locale.languageCode.toLowerCase();
+    final languageCode = PlatformDispatcher.instance.locale.languageCode
+        .toLowerCase();
     return languageCode.startsWith('ar');
   }
 
@@ -231,4 +254,3 @@ class LocationService {
     return _isArabicLocale ? 'موقع غير معروف' : 'Unknown location';
   }
 }
-

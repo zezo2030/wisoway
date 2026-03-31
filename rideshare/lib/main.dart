@@ -9,6 +9,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/services/localization_service.dart';
+import 'core/services/theme_service.dart';
 import 'core/services/notification_navigation_service.dart';
 import 'bloc/auth/auth_bloc.dart';
 import 'bloc/trip/trip_bloc.dart';
@@ -48,6 +49,7 @@ import 'screens/passenger/chat_screen.dart';
 import 'screens/driver/chat_screen.dart' as driver_chat;
 import 'screens/passenger/rating_screen.dart';
 import 'screens/profile/edit_profile_screen.dart';
+import 'screens/settings/settings_screen.dart';
 // Removed unused notification_service.dart
 
 //admin@rideshare.com
@@ -89,6 +91,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => LocalizationService()),
+        ChangeNotifierProvider(create: (_) => ThemeService()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => TripProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
@@ -102,13 +105,14 @@ class MyApp extends StatelessWidget {
           builder: (context) {
             return Consumer<LocalizationService>(
               builder: (context, localizationService, child) {
+                final themeService = context.watch<ThemeService>();
                 return MaterialApp(
                   navigatorKey: NotificationNavigationService.navigatorKey,
                   title: 'RideShare',
                   debugShowCheckedModeBanner: false,
                   theme: AppTheme.lightTheme,
                   darkTheme: AppTheme.darkTheme,
-                  themeMode: ThemeMode.system,
+                  themeMode: themeService.themeMode,
                   locale: localizationService.locale,
                   supportedLocales: const [Locale('ar', ''), Locale('en', '')],
                   localizationsDelegates: const [
@@ -157,6 +161,7 @@ class MyApp extends StatelessWidget {
                         const NotificationsScreen(),
                     RouteNames.editProfile: (context) =>
                         const EditProfileScreen(),
+                    RouteNames.settings: (context) => const SettingsScreen(),
                   },
                   onGenerateRoute: (settings) {
                     if (settings.name == RouteNames.phoneAuth) {

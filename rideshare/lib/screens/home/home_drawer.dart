@@ -248,6 +248,7 @@ class HomeDrawer extends StatelessWidget {
                     title: 'الإعدادات',
                     onTap: () {
                       Navigator.pop(context);
+                      Navigator.pushNamed(context, RouteNames.settings);
                     },
                   ),
                   const Divider(

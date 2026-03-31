@@ -137,6 +137,335 @@
   "profileSaved": "Profile saved successfully",
   "@profileSaved": {
     "description": "Success message for profile saved"
+  },
+  "settings": "Settings",
+  "@settings": {
+    "description": "Settings screen title"
+  },
+  "appearance": "Appearance",
+  "@appearance": {
+    "description": "Appearance section in settings"
+  },
+  "darkMode": "Dark Mode",
+  "@darkMode": {
+    "description": "Dark mode toggle option"
+  },
+  "darkModeSubtitle": "Enable dark theme for the app",
+  "@darkModeSubtitle": {
+    "description": "Dark mode option description"
+  },
+  "themeMode": "App Theme",
+  "@themeMode": {
+    "description": "App theme selection option"
+  },
+  "themeSystem": "System Default",
+  "@themeSystem": {
+    "description": "Theme option - follow system"
+  },
+  "themeLight": "Light",
+  "@themeLight": {
+    "description": "Theme option - light"
+  },
+  "themeDark": "Dark",
+  "@themeDark": {
+    "description": "Theme option - dark"
+  },
+  "selectTheme": "Select Theme",
+  "@selectTheme": {
+    "description": "Theme selection sheet title"
+  },
+  "language": "Language",
+  "@language": {
+    "description": "Language section in settings"
+  },
+  "languageArabic": "العربية",
+  "@languageArabic": {
+    "description": "Arabic language"
+  },
+  "languageEnglish": "English",
+  "@languageEnglish": {
+    "description": "English language"
+  },
+  "selectLanguage": "Select Language",
+  "@selectLanguage": {
+    "description": "Language selection sheet title"
+  },
+  "currentLanguageAr": "العربية",
+  "@currentLanguageAr": {
+    "description": "Current language - Arabic"
+  },
+  "currentLanguageEn": "English",
+  "@currentLanguageEn": {
+    "description": "Current language - English"
+  },
+  "notifications": "Notifications",
+  "@notifications": {
+    "description": "Notifications section in settings"
+  },
+  "pushNotifications": "Push Notifications",
+  "@pushNotifications": {
+    "description": "Push notifications toggle option"
+  },
+  "notificationSound": "Sound",
+  "@notificationSound": {
+    "description": "Notification sound toggle option"
+  },
+  "notificationVibration": "Vibration",
+  "@notificationVibration": {
+    "description": "Notification vibration toggle option"
+  },
+  "notificationSettings": "Detailed Settings",
+  "@notificationSettings": {
+    "description": "Navigation to detailed notification settings"
+  },
+  "notificationSettingsTitle": "Notification Settings",
+  "@notificationSettingsTitle": {
+    "description": "Notification settings screen title"
+  },
+  "notificationCategories": "Notification Categories",
+  "@notificationCategories": {
+    "description": "Notification categories section title"
+  },
+  "notifTrips": "Trip Notifications",
+  "@notifTrips": {
+    "description": "Trip notifications category"
+  },
+  "notifPayments": "Payment Notifications",
+  "@notifPayments": {
+    "description": "Payment notifications category"
+  },
+  "notifMessages": "Message Notifications",
+  "@notifMessages": {
+    "description": "Message notifications category"
+  },
+  "notifSystem": "System Notifications",
+  "@notifSystem": {
+    "description": "System notifications category"
+  },
+  "notifCustomizeInfo": "You can customize which notifications you want to receive",
+  "@notifCustomizeInfo": {
+    "description": "Notification customization info text"
+  },
+  "accountSecurity": "Account & Security",
+  "@accountSecurity": {
+    "description": "Account & Security section"
+  },
+  "accountInfo": "Account Info",
+  "@accountInfo": {
+    "description": "Account info navigation tile"
+  },
+  "changePassword": "Change Password",
+  "@changePassword": {
+    "description": "Change password tile"
+  },
+  "comingSoon": "Coming Soon",
+  "@comingSoon": {
+    "description": "Coming soon badge"
+  },
+  "accountSecurityTitle": "Account & Security",
+  "@accountSecurityTitle": {
+    "description": "Account security screen title"
+  },
+  "accountDetails": "Account Details",
+  "@accountDetails": {
+    "description": "Account details section"
+  },
+  "emailLabel": "Email",
+  "@emailLabel": {
+    "description": "Email label"
+  },
+  "phoneLabel": "Phone Number",
+  "@phoneLabel": {
+    "description": "Phone number label"
+  },
+  "accountType": "Account Type",
+  "@accountType": {
+    "description": "Account type label"
+  },
+  "linkPhone": "Link",
+  "@linkPhone": {
+    "description": "Link phone button"
+  },
+  "verificationStatus": "Verification Status",
+  "@verificationStatus": {
+    "description": "Verification status section"
+  },
+  "emailVerified": "Email",
+  "@emailVerified": {
+    "description": "Email verification"
+  },
+  "phoneVerified": "Phone Number",
+  "@phoneVerified": {
+    "description": "Phone verification"
+  },
+  "driverApproval": "Driver Approval",
+  "@driverApproval": {
+    "description": "Driver account approval"
+  },
+  "verified": "Verified",
+  "@verified": {
+    "description": "Verification status - verified"
+  },
+  "notVerified": "Not Verified",
+  "@notVerified": {
+    "description": "Verification status - not verified"
+  },
+  "approved": "Approved",
+  "@approved": {
+    "description": "Driver approval status - approved"
+  },
+  "pending": "Pending",
+  "@pending": {
+    "description": "Driver approval status - pending"
+  },
+  "privacy": "Privacy",
+  "@privacy": {
+    "description": "Privacy section in settings"
+  },
+  "locationSharing": "Location Sharing",
+  "@locationSharing": {
+    "description": "Location sharing toggle"
+  },
+  "locationSharingSubtitle": "Share your live location",
+  "@locationSharingSubtitle": {
+    "description": "Location sharing description"
+  },
+  "onlineStatus": "Online Status",
+  "@onlineStatus": {
+    "description": "Online status toggle"
+  },
+  "onlineStatusSubtitle": "Show your online status",
+  "@onlineStatusSubtitle": {
+    "description": "Online status description"
+  },
+  "showRating": "Show Rating",
+  "@showRating": {
+    "description": "Show rating toggle"
+  },
+  "showRatingSubtitle": "Show your rating to others",
+  "@showRatingSubtitle": {
+    "description": "Show rating description"
+  },
+  "privacyTitle": "Privacy",
+  "@privacyTitle": {
+    "description": "Privacy screen title"
+  },
+  "privacySettings": "Privacy Settings",
+  "@privacySettings": {
+    "description": "Privacy settings section"
+  },
+  "privacyInfo": "These settings control what others can see about you",
+  "@privacyInfo": {
+    "description": "Privacy info text"
+  },
+  "paymentAndWallet": "Payment & Wallet",
+  "@paymentAndWallet": {
+    "description": "Payment & Wallet section in settings"
+  },
+  "wallet": "Wallet",
+  "@wallet": {
+    "description": "Wallet tile"
+  },
+  "paymentHistory": "Payment History",
+  "@paymentHistory": {
+    "description": "Payment history tile"
+  },
+  "supportAndHelp": "Support & Help",
+  "@supportAndHelp": {
+    "description": "Support & Help section in settings"
+  },
+  "contactUs": "Contact Us",
+  "@contactUs": {
+    "description": "Contact Us via WhatsApp tile"
+  },
+  "termsOfService": "Terms of Service",
+  "@termsOfService": {
+    "description": "Terms of Service tile"
+  },
+  "privacyPolicy": "Privacy Policy",
+  "@privacyPolicy": {
+    "description": "Privacy Policy tile"
+  },
+  "aboutApp": "About",
+  "@aboutApp": {
+    "description": "About section in settings"
+  },
+  "aboutAppTitle": "About",
+  "@aboutAppTitle": {
+    "description": "About screen title"
+  },
+  "rateApp": "Rate App",
+  "@rateApp": {
+    "description": "Rate App tile"
+  },
+  "shareApp": "Share App",
+  "@shareApp": {
+    "description": "Share App tile"
+  },
+  "licenses": "Licenses",
+  "@licenses": {
+    "description": "Licenses tile"
+  },
+  "appVersion": "Version {version}",
+  "@appVersion": {
+    "description": "App version number",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "appDescription": "Ride sharing platform",
+  "@appDescription": {
+    "description": "App description"
+  },
+  "madeWithLove": "Made with ❤️ in Egypt",
+  "@madeWithLove": {
+    "description": "Footer text"
+  },
+  "inAppBrowserTitle": "Browser",
+  "@inAppBrowserTitle": {
+    "description": "In-app browser screen title"
+  },
+  "deleteAccount": "Delete Account",
+  "@deleteAccount": {
+    "description": "Delete account tile"
+  },
+  "deleteAccountWarning": "Are you sure you want to delete your account? This action cannot be undone.",
+  "@deleteAccountWarning": {
+    "description": "Delete account warning message"
+  },
+  "deleteAccountConfirm": "Yes, Delete Account",
+  "@deleteAccountConfirm": {
+    "description": "Delete account confirm button"
+  },
+  "deleteAccountSecondWarning": "Final warning: All your data will be permanently deleted and cannot be recovered.",
+  "@deleteAccountSecondWarning": {
+    "description": "Second delete account warning message"
+  },
+  "deleteAccountSecondConfirm": "Delete Permanently",
+  "@deleteAccountSecondConfirm": {
+    "description": "Final delete account confirm button"
+  },
+  "contactSupportTitle": "Contact Support",
+  "@contactSupportTitle": {
+    "description": "Contact support dialog title"
+  },
+  "contactSupportMessage": "Account deletion is currently unavailable. Please contact support via WhatsApp or email.",
+  "@contactSupportMessage": {
+    "description": "Account deletion failure message"
+  },
+  "contactWhatsApp": "Contact via WhatsApp",
+  "@contactWhatsApp": {
+    "description": "Contact via WhatsApp button"
+  },
+  "contactEmail": "Contact via Email",
+  "@contactEmail": {
+    "description": "Contact via email button"
+  },
+  "close": "Close",
+  "@close": {
+    "description": "Close button"
   }
 }
 

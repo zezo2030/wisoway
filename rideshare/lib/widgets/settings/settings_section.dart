@@ -36,12 +36,9 @@ class SettingsSection extends StatelessWidget {
           ),
           child: Column(children: _withDividers(context)),
         ),
-        },
-      }
+      ],
     );
   }
-}
-
 
   List<Widget> _withDividers(BuildContext context) {
     final list = <Widget>[];

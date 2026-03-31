@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/constants/app_spacing.dart';
 import '../../core/theme/colors.dart';
 
 class SettingsSwitchTile extends StatelessWidget {
@@ -65,24 +64,16 @@ class SettingsSwitchTile extends StatelessWidget {
                       ),
                     ),
                   ),
-                ),
-              const Spacer(),
-                Switch(
-                  value: value,
-                  onChanged: enabled ? onChanged : null,
-                  activeColor: T.primary(context),
-                  materialState: MaterialState.all<Color: AppColors.teal600),
-                ),
-              child: Icon(
-                IconsaxPlusLinear.arrow_left_2,
-                size: 16,
-                color: T.onSurfaceVariant(context),
-              ),
+              ],
             ),
-          ],
+          ),
+          Switch(
+            value: value,
+            onChanged: enabled ? onChanged : null,
+            activeThumbColor: T.primary(context),
+          ),
         ],
       ),
     );
   }
-}
 }

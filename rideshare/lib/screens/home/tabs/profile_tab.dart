@@ -191,7 +191,9 @@ class ProfileTab extends StatelessWidget {
               ProfileMenuItem(
                 icon: IconsaxPlusLinear.setting_2,
                 title: 'الإعدادات',
-                onTap: () {},
+                onTap: () {
+                  Navigator.pushNamed(context, RouteNames.settings);
+                },
               ),
               const SizedBox(height: 12),
               ProfileMenuItem(

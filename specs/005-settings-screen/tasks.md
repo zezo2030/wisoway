@@ -51,16 +51,16 @@
 
 ### Tests for User Story 1
 
-- [ ] T015 [P] [US1] Add widget test for dark mode toggle behavior in rideshare/test/widget/settings/theme_toggle_test.dart
-- [ ] T016 [P] [US1] Add widget test for theme mode selector bottom sheet in rideshare/test/widget/settings/theme_toggle_test.dart
+- [x] T015 [P] [US1] Add widget test for dark mode toggle behavior in rideshare/test/widget/settings/theme_toggle_test.dart
+- [x] T016 [P] [US1] Add widget test for theme mode selector bottom sheet in rideshare/test/widget/settings/theme_toggle_test.dart
 
 ### Implementation for User Story 1
 
-- [ ] T017 [US1] Implement Appearance section with dark mode switch and theme mode tile in rideshare/lib/screens/settings/settings_screen.dart
-- [ ] T018 [US1] Implement theme mode selection bottom sheet actions in rideshare/lib/screens/settings/settings_screen.dart
-- [ ] T019 [US1] Wire ThemeService reads/writes for settings UI controls in rideshare/lib/screens/settings/settings_screen.dart
-- [ ] T020 [US1] Add theme-related localized labels and helper text in rideshare/lib/l10n/app_ar.arb
-- [ ] T021 [US1] Add theme-related localized labels and helper text in rideshare/lib/l10n/app_en.arb
+- [x] T017 [US1] Implement Appearance section with dark mode switch and theme mode tile in rideshare/lib/screens/settings/settings_screen.dart
+- [x] T018 [US1] Implement theme mode selection bottom sheet actions in rideshare/lib/screens/settings/settings_screen.dart
+- [x] T019 [US1] Wire ThemeService reads/writes for settings UI controls in rideshare/lib/screens/settings/settings_screen.dart
+- [x] T020 [US1] Add theme-related localized labels and helper text in rideshare/lib/l10n/app_ar.arb
+- [x] T021 [US1] Add theme-related localized labels and helper text in rideshare/lib/l10n/app_en.arb
 
 **Checkpoint**: US1 is independently functional and testable.
 
@@ -74,15 +74,15 @@
 
 ### Tests for User Story 2
 
-- [ ] T022 [P] [US2] Add widget test for language selector flow in rideshare/test/widget/settings/language_switch_test.dart
-- [ ] T023 [P] [US2] Add widget test for RTL/LTR direction change from language selection in rideshare/test/widget/settings/language_switch_test.dart
+- [x] T022 [P] [US2] Add widget test for language selector flow in rideshare/test/widget/settings/language_switch_test.dart
+- [x] T023 [P] [US2] Add widget test for RTL/LTR direction change from language selection in rideshare/test/widget/settings/language_switch_test.dart
 
 ### Implementation for User Story 2
 
-- [ ] T024 [US2] Implement Language section tile and selector bottom sheet in rideshare/lib/screens/settings/settings_screen.dart
-- [ ] T025 [US2] Wire language change to LocalizationService from Settings UI in rideshare/lib/screens/settings/settings_screen.dart
-- [ ] T026 [US2] Add language selection labels and confirmations in rideshare/lib/l10n/app_ar.arb
-- [ ] T027 [US2] Add language selection labels and confirmations in rideshare/lib/l10n/app_en.arb
+- [x] T024 [US2] Implement Language section tile and selector bottom sheet in rideshare/lib/screens/settings/settings_screen.dart
+- [x] T025 [US2] Wire language change to LocalizationService from Settings UI in rideshare/lib/screens/settings/settings_screen.dart
+- [x] T026 [US2] Add language selection labels and confirmations in rideshare/lib/l10n/app_ar.arb
+- [x] T027 [US2] Add language selection labels and confirmations in rideshare/lib/l10n/app_en.arb
 
 **Checkpoint**: US2 is independently functional and testable.
 
@@ -96,15 +96,15 @@
 
 ### Tests for User Story 3
 
-- [ ] T028 [P] [US3] Add widget test for settings screen section rendering in rideshare/test/widget/settings/settings_screen_test.dart
-- [ ] T029 [P] [US3] Add widget test for profile and drawer settings navigation in rideshare/test/widget/settings/settings_screen_test.dart
+- [x] T028 [P] [US3] Add widget test for settings screen section rendering in rideshare/test/widget/settings/settings_screen_test.dart
+- [x] T029 [P] [US3] Add widget test for profile and drawer settings navigation in rideshare/test/widget/settings/settings_screen_test.dart
 
 ### Implementation for User Story 3
 
-- [ ] T030 [US3] Build main settings screen scaffold and section layout in rideshare/lib/screens/settings/settings_screen.dart
-- [ ] T031 [US3] Wire Profile tab Settings/Help/About buttons to settings routes in rideshare/lib/screens/home/tabs/profile_tab.dart
-- [ ] T032 [US3] Wire Side Drawer Settings item navigation and drawer close behavior in rideshare/lib/screens/home/home_drawer.dart
-- [ ] T033 [US3] Add settings screen route entry and builder in rideshare/lib/main.dart
+- [x] T030 [US3] Build main settings screen scaffold and section layout in rideshare/lib/screens/settings/settings_screen.dart
+- [x] T031 [US3] Wire Profile tab Settings/Help/About buttons to settings routes in rideshare/lib/screens/home/tabs/profile_tab.dart
+- [x] T032 [US3] Wire Side Drawer Settings item navigation and drawer close behavior in rideshare/lib/screens/home/home_drawer.dart
+- [x] T033 [US3] Add settings screen route entry and builder in rideshare/lib/main.dart
 
 **Checkpoint**: US3 is independently functional and testable.
 
@@ -118,17 +118,17 @@
 
 ### Tests for User Story 4
 
-- [ ] T034 [P] [US4] Add widget test for notification master toggle behavior in rideshare/test/widget/settings/notification_settings_test.dart
-- [ ] T035 [P] [US4] Add widget test for notification category toggle persistence in rideshare/test/widget/settings/notification_settings_test.dart
+- [x] T034 [P] [US4] Add widget test for notification master toggle behavior in rideshare/test/widget/settings/notification_settings_test.dart
+- [x] T035 [P] [US4] Add widget test for notification category toggle persistence in rideshare/test/widget/settings/notification_settings_test.dart
 
 ### Implementation for User Story 4
 
-- [ ] T036 [US4] Implement notification state APIs (master, sound, vibration, categories) in rideshare/lib/core/services/settings_service.dart
-- [ ] T037 [US4] Implement category topic subscribe/unsubscribe wiring in rideshare/lib/core/services/settings_service.dart
-- [ ] T038 [US4] Create detailed notification settings screen UI in rideshare/lib/screens/settings/notification_settings_screen.dart
-- [ ] T039 [US4] Integrate notification switches and navigation tile in rideshare/lib/screens/settings/settings_screen.dart
-- [ ] T040 [US4] Add notification labels and category text in rideshare/lib/l10n/app_ar.arb
-- [ ] T041 [US4] Add notification labels and category text in rideshare/lib/l10n/app_en.arb
+- [x] T036 [US4] Implement notification state APIs (master, sound, vibration, categories) in rideshare/lib/core/services/settings_service.dart
+- [x] T037 [US4] Implement category topic subscribe/unsubscribe wiring in rideshare/lib/core/services/settings_service.dart
+- [x] T038 [US4] Create detailed notification settings screen UI in rideshare/lib/screens/settings/notification_settings_screen.dart
+- [x] T039 [US4] Integrate notification switches and navigation tile in rideshare/lib/screens/settings/settings_screen.dart
+- [x] T040 [US4] Add notification labels and category text in rideshare/lib/l10n/app_ar.arb
+- [x] T041 [US4] Add notification labels and category text in rideshare/lib/l10n/app_en.arb
 
 **Checkpoint**: US4 is independently functional and testable.
 
@@ -142,16 +142,16 @@
 
 ### Tests for User Story 5
 
-- [ ] T042 [P] [US5] Add widget test for account info and verification rendering in rideshare/test/widget/settings/account_security_test.dart
-- [ ] T043 [P] [US5] Add widget test for link-phone and coming-soon actions in rideshare/test/widget/settings/account_security_test.dart
+- [x] T042 [P] [US5] Add widget test for account info and verification rendering in rideshare/test/widget/settings/account_security_test.dart
+- [x] T043 [P] [US5] Add widget test for link-phone and coming-soon actions in rideshare/test/widget/settings/account_security_test.dart
 
 ### Implementation for User Story 5
 
-- [ ] T044 [US5] Create account and security details screen in rideshare/lib/screens/settings/account_security_screen.dart
-- [ ] T045 [US5] Implement role-aware verification badges using AuthProvider data in rideshare/lib/screens/settings/account_security_screen.dart
-- [ ] T046 [US5] Add account security navigation/action tiles in rideshare/lib/screens/settings/settings_screen.dart
-- [ ] T047 [US5] Add account/security localized strings in rideshare/lib/l10n/app_ar.arb
-- [ ] T048 [US5] Add account/security localized strings in rideshare/lib/l10n/app_en.arb
+- [x] T044 [US5] Create account and security details screen in rideshare/lib/screens/settings/account_security_screen.dart
+- [x] T045 [US5] Implement role-aware verification badges using AuthProvider data in rideshare/lib/screens/settings/account_security_screen.dart
+- [x] T046 [US5] Add account security navigation/action tiles in rideshare/lib/screens/settings/settings_screen.dart
+- [x] T047 [US5] Add account/security localized strings in rideshare/lib/l10n/app_ar.arb
+- [x] T048 [US5] Add account/security localized strings in rideshare/lib/l10n/app_en.arb
 
 **Checkpoint**: US5 is independently functional and testable.
 
@@ -165,17 +165,17 @@
 
 ### Tests for User Story 6
 
-- [ ] T049 [P] [US6] Add widget test for privacy toggle persistence in rideshare/test/widget/settings/privacy_settings_test.dart
-- [ ] T050 [P] [US6] Add widget test for privacy screen toggle states loading in rideshare/test/widget/settings/privacy_settings_test.dart
+- [x] T049 [P] [US6] Add widget test for privacy toggle persistence in rideshare/test/widget/settings/privacy_settings_test.dart
+- [x] T050 [P] [US6] Add widget test for privacy screen toggle states loading in rideshare/test/widget/settings/privacy_settings_test.dart
 
 ### Implementation for User Story 6
 
-- [ ] T051 [US6] Implement privacy preference read/write APIs in rideshare/lib/core/services/settings_service.dart
-- [ ] T052 [US6] Create privacy settings screen with three toggles in rideshare/lib/screens/settings/privacy_settings_screen.dart
-- [ ] T053 [US6] Add privacy section navigation and summary states in rideshare/lib/screens/settings/settings_screen.dart
-- [ ] T054 [US6] Enforce location-sharing preference before location broadcast in rideshare/lib/core/services/location_service.dart
-- [ ] T055 [US6] Add privacy localized strings and descriptions in rideshare/lib/l10n/app_ar.arb
-- [ ] T056 [US6] Add privacy localized strings and descriptions in rideshare/lib/l10n/app_en.arb
+- [x] T051 [US6] Implement privacy preference read/write APIs in rideshare/lib/core/services/settings_service.dart
+- [x] T052 [US6] Create privacy settings screen with three toggles in rideshare/lib/screens/settings/privacy_settings_screen.dart
+- [x] T053 [US6] Add privacy section navigation and summary states in rideshare/lib/screens/settings/settings_screen.dart
+- [x] T054 [US6] Enforce location-sharing preference before location broadcast in rideshare/lib/core/services/location_service.dart
+- [x] T055 [US6] Add privacy localized strings and descriptions in rideshare/lib/l10n/app_ar.arb
+- [x] T056 [US6] Add privacy localized strings and descriptions in rideshare/lib/l10n/app_en.arb
 
 **Checkpoint**: US6 is independently functional and testable.
 
@@ -189,15 +189,15 @@
 
 ### Tests for User Story 7
 
-- [ ] T057 [P] [US7] Add widget test for role-based wallet navigation in rideshare/test/widget/settings/payment_shortcuts_test.dart
-- [ ] T058 [P] [US7] Add widget test for payment history shortcut navigation in rideshare/test/widget/settings/payment_shortcuts_test.dart
+- [x] T057 [P] [US7] Add widget test for role-based wallet navigation in rideshare/test/widget/settings/payment_shortcuts_test.dart
+- [x] T058 [P] [US7] Add widget test for payment history shortcut navigation in rideshare/test/widget/settings/payment_shortcuts_test.dart
 
 ### Implementation for User Story 7
 
-- [ ] T059 [US7] Implement payment and wallet shortcut tiles in rideshare/lib/screens/settings/settings_screen.dart
-- [ ] T060 [US7] Add role-aware wallet route resolution logic in rideshare/lib/screens/settings/settings_screen.dart
-- [ ] T061 [US7] Add payment shortcut localized labels in rideshare/lib/l10n/app_ar.arb
-- [ ] T062 [US7] Add payment shortcut localized labels in rideshare/lib/l10n/app_en.arb
+- [x] T059 [US7] Implement payment and wallet shortcut tiles in rideshare/lib/screens/settings/settings_screen.dart
+- [x] T060 [US7] Add role-aware wallet route resolution logic in rideshare/lib/screens/settings/settings_screen.dart
+- [x] T061 [US7] Add payment shortcut localized labels in rideshare/lib/l10n/app_ar.arb
+- [x] T062 [US7] Add payment shortcut localized labels in rideshare/lib/l10n/app_en.arb
 
 **Checkpoint**: US7 is independently functional and testable.
 
@@ -211,17 +211,17 @@
 
 ### Tests for User Story 8
 
-- [ ] T063 [P] [US8] Add widget test for about screen app metadata rendering in rideshare/test/widget/settings/about_screen_test.dart
-- [ ] T064 [P] [US8] Add widget test for about and legal action handlers in rideshare/test/widget/settings/about_screen_test.dart
+- [x] T063 [P] [US8] Add widget test for about screen app metadata rendering in rideshare/test/widget/settings/about_screen_test.dart
+- [x] T064 [P] [US8] Add widget test for about and legal action handlers in rideshare/test/widget/settings/about_screen_test.dart
 
 ### Implementation for User Story 8
 
-- [ ] T065 [US8] Create about screen with version, rate, share, and licenses actions in rideshare/lib/screens/settings/about_screen.dart
-- [ ] T066 [US8] Create reusable in-app browser screen for legal pages in rideshare/lib/screens/settings/in_app_browser_screen.dart
-- [ ] T067 [US8] Add support/help and about section actions in rideshare/lib/screens/settings/settings_screen.dart
-- [ ] T068 [US8] Add WhatsApp contact and legal URL launcher helpers in rideshare/lib/screens/settings/settings_screen.dart
-- [ ] T069 [US8] Add about/support localized strings in rideshare/lib/l10n/app_ar.arb
-- [ ] T070 [US8] Add about/support localized strings in rideshare/lib/l10n/app_en.arb
+- [x] T065 [US8] Create about screen with version, rate, share, and licenses actions in rideshare/lib/screens/settings/about_screen.dart
+- [x] T066 [US8] Create reusable in-app browser screen for legal pages in rideshare/lib/screens/settings/in_app_browser_screen.dart
+- [x] T067 [US8] Add support/help and about section actions in rideshare/lib/screens/settings/settings_screen.dart
+- [x] T068 [US8] Add WhatsApp contact and legal URL launcher helpers in rideshare/lib/screens/settings/settings_screen.dart
+- [x] T069 [US8] Add about/support localized strings in rideshare/lib/l10n/app_ar.arb
+- [x] T070 [US8] Add about/support localized strings in rideshare/lib/l10n/app_en.arb
 
 **Checkpoint**: US8 is independently functional and testable.
 
@@ -235,16 +235,16 @@
 
 ### Tests for User Story 9
 
-- [ ] T071 [P] [US9] Add widget test for double-confirmation delete flow in rideshare/test/widget/settings/account_deletion_test.dart
-- [ ] T072 [P] [US9] Add widget test for backend-unavailable Contact Support fallback dialog in rideshare/test/widget/settings/account_deletion_test.dart
+- [x] T071 [P] [US9] Add widget test for double-confirmation delete flow in rideshare/test/widget/settings/account_deletion_test.dart
+- [x] T072 [P] [US9] Add widget test for backend-unavailable Contact Support fallback dialog in rideshare/test/widget/settings/account_deletion_test.dart
 
 ### Implementation for User Story 9
 
-- [ ] T073 [US9] Implement danger-zone delete account tile and dialog entry in rideshare/lib/screens/settings/settings_screen.dart
-- [ ] T074 [US9] Implement irreversible warning and second confirmation logic in rideshare/lib/screens/settings/settings_screen.dart
-- [ ] T075 [US9] Implement backend-unavailable fallback to WhatsApp/email support dialog in rideshare/lib/screens/settings/settings_screen.dart
-- [ ] T076 [US9] Add account deletion localized copy and warnings in rideshare/lib/l10n/app_ar.arb
-- [ ] T077 [US9] Add account deletion localized copy and warnings in rideshare/lib/l10n/app_en.arb
+- [x] T073 [US9] Implement danger-zone delete account tile and dialog entry in rideshare/lib/screens/settings/settings_screen.dart
+- [x] T074 [US9] Implement irreversible warning and second confirmation logic in rideshare/lib/screens/settings/settings_screen.dart
+- [x] T075 [US9] Implement backend-unavailable fallback to WhatsApp/email support dialog in rideshare/lib/screens/settings/settings_screen.dart
+- [x] T076 [US9] Add account deletion localized copy and warnings in rideshare/lib/l10n/app_ar.arb
+- [x] T077 [US9] Add account deletion localized copy and warnings in rideshare/lib/l10n/app_en.arb
 
 **Checkpoint**: US9 is independently functional and testable.
 
@@ -254,10 +254,10 @@
 
 **Purpose**: Feature hardening and final validation across all stories.
 
-- [ ] T078 [P] Add final settings localization key consistency pass in rideshare/lib/l10n/app_ar.arb
-- [ ] T079 [P] Add final settings localization key consistency pass in rideshare/lib/l10n/app_en.arb
-- [ ] T080 Run full settings widget test suite and fix regressions in rideshare/test/widget/settings/
-- [ ] T081 Execute quickstart smoke checklist and record outcomes in specs/005-settings-screen/quickstart.md
+- [x] T078 [P] Add final settings localization key consistency pass in rideshare/lib/l10n/app_ar.arb
+- [x] T079 [P] Add final settings localization key consistency pass in rideshare/lib/l10n/app_en.arb
+- [x] T080 Run full settings widget test suite and fix regressions in rideshare/test/widget/settings/
+- [x] T081 Execute quickstart smoke checklist and record outcomes in specs/005-settings-screen/quickstart.md
 
 ---
 
