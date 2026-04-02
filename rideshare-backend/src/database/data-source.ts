@@ -1,12 +1,18 @@
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import {
+  BookingEntity,
+  CommunicationFeeEntity,
   DeviceTokenEntity,
   DriverLocationEntity,
   NotificationEntity,
+  OtpCodeEntity,
+  PaymentEntity,
   PayoutRequestEntity,
+  PendingRegistrationEntity,
   TripEntity,
   UserEntity,
+  VehicleEntity,
   WalletAccountEntity,
   WalletHoldEntity,
   WalletTransactionEntity,
@@ -24,6 +30,7 @@ export const AppDataSource = new DataSource({
   entities: [
     UserEntity,
     TripEntity,
+    BookingEntity,
     DriverLocationEntity,
     WalletAccountEntity,
     WalletTransactionEntity,
@@ -31,6 +38,11 @@ export const AppDataSource = new DataSource({
     PayoutRequestEntity,
     NotificationEntity,
     DeviceTokenEntity,
+    PendingRegistrationEntity,
+    OtpCodeEntity,
+    VehicleEntity,
+    PaymentEntity,
+    CommunicationFeeEntity,
   ],
-  migrations: ['dist/src/database/migrations/*.js'],
+  migrations: ['src/database/migrations/*.ts'],
 });

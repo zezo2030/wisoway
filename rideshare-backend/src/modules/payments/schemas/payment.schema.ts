@@ -17,7 +17,7 @@ export class Payment {
   @Prop({ type: Number, required: true, min: 0.01 })
   amount: number;
 
-  @Prop({ type: String, required: true, default: 'EGP' })
+  @Prop({ type: String, required: true, default: 'JOD' })
   currency: string;
 
   @Prop({

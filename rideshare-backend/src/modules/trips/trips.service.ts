@@ -45,7 +45,7 @@ export class TripsService {
     private tripsGateway: TripsGateway,
   ) {}
 
-  async getPricingPreview(tripId: string, countryCode: string = 'EG') {
+  async getPricingPreview(tripId: string, countryCode: string = 'JO') {
     const trip = await this.findById(tripId);
     return this.platformPricing.pricingPreviewForTrip(trip, countryCode);
   }
@@ -104,7 +104,7 @@ export class TripsService {
       },
       departureTime,
       price: String(createTripDto.price),
-      currency: createTripDto.currency ?? 'EGP',
+      currency: createTripDto.currency ?? 'JOD',
       totalSeats: createTripDto.totalSeats,
       availableSeats: createTripDto.totalSeats,
       seatLayout: createTripDto.seatLayout,

@@ -167,7 +167,7 @@ export class User {
   @Prop({ type: Number, required: false, min: 0, default: 0 })
   walletBalance?: number;
 
-  @Prop({ type: String, required: false, default: 'EGP', maxlength: 5 })
+  @Prop({ type: String, required: false, default: 'JOD', maxlength: 5 })
   walletCurrency?: string;
 
   /** Driver: whether the one lifetime free trip has been used */

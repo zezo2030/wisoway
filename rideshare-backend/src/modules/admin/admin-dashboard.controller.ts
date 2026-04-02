@@ -321,10 +321,10 @@ export class AdminDashboardController {
     summary:
       'Get pricing row: passenger % (platform share per seat) and driver % (unlock fee on capacity), plus legacy flat fee',
   })
-  @ApiQuery({ name: 'countryCode', required: false, example: 'EG' })
+  @ApiQuery({ name: 'countryCode', required: false, example: 'JO' })
   async getPricingSettings(@Query('countryCode') countryCode?: string) {
     return this.adminDashboardService.getPlatformPricingSettings(
-      countryCode || 'EG',
+      countryCode || 'JO',
     );
   }
 
@@ -333,13 +333,13 @@ export class AdminDashboardController {
     summary:
       'Update passenger and driver pricing for a country (passenger 0 = no in-app wallet platform fee on bookings)',
   })
-  @ApiQuery({ name: 'countryCode', required: false, example: 'EG' })
+  @ApiQuery({ name: 'countryCode', required: false, example: 'JO' })
   async patchPricingSettings(
     @Query('countryCode') countryCode: string | undefined,
     @Body() dto: AdminPatchPricingSettingsDto,
   ) {
     return this.adminDashboardService.patchPlatformPricingSettings(
-      countryCode || 'EG',
+      countryCode || 'JO',
       dto,
     );
   }

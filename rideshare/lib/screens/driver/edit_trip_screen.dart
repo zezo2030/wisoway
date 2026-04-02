@@ -508,7 +508,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                     _buildModernTextField(
                       controller: _fromController,
                       label: 'نقطة الانطلاق',
-                      hint: 'مثال: القاهرة',
+                      hint: 'مثال: عمّان',
                       icon: Icons.location_on,
                       color: Colors.red,
                       onTap: _selectFromLocation,
@@ -589,7 +589,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          _trip?.currency ?? 'EGP',
+                          _trip?.currency ?? 'JOD',
                           style: AppTextStyles.titleMedium.copyWith(
                             fontWeight: FontWeight.bold,
                             color: AppColors.success,

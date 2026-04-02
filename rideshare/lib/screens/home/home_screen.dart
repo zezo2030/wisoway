@@ -91,10 +91,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
       setState(() {
         _userLocation = LocationModel(
-          name: 'القاهرة',
-          latitude: 30.0444,
-          longitude: 31.2357,
-          address: 'القاهرة، مصر',
+          name: 'عمّان',
+          latitude: 31.9539,
+          longitude: 35.9106,
+          address: 'عمّان، الأردن',
         );
       });
     }

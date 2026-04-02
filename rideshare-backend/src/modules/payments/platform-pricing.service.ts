@@ -71,7 +71,7 @@ export class PlatformPricingService {
     const totalSeats = trip.totalSeats ?? 0;
     const pct = Number(row?.driverUnlockPercent ?? 0);
     const legacyFlat = Number(row?.feeAmount ?? 0);
-    const currency = row?.currency ?? trip.currency ?? 'EGP';
+    const currency = row?.currency ?? trip.currency ?? 'JOD';
     const feeAmount =
       pct > 0
         ? this.round2((seatPrice * totalSeats * pct) / 100)
@@ -88,7 +88,7 @@ export class PlatformPricingService {
 
   async pricingPreviewForTrip(
     trip: TripEntity,
-    countryCode: string = 'EG',
+    countryCode: string = 'JO',
   ): Promise<{
     tripId: string;
     passenger: PassengerSeatPricing;
@@ -97,7 +97,7 @@ export class PlatformPricingService {
     const row = await this.getActiveFeeRow(countryCode);
     const passenger = this.passengerSeatPricing(
       Number(trip.price ?? 0),
-      trip.currency ?? 'EGP',
+      trip.currency ?? 'JOD',
       row,
     );
     const driverUnlock = this.driverUnlockPricing(trip, row);

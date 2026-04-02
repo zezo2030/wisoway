@@ -74,11 +74,11 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
       }
     } catch (e) {
       print('❌ Error initializing location: $e');
-      // Default to Cairo, Egypt
-      final defaultPosition = const LatLng(30.0444, 31.2357);
+      // Default: Amman, Jordan
+      final defaultPosition = const LatLng(31.9539, 35.9106);
       setState(() {
         _selectedLocation = defaultPosition;
-        _selectedAddress = 'القاهرة، مصر';
+        _selectedAddress = 'عمّان، الأردن';
         _isLoading = false;
       });
 
@@ -389,7 +389,7 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                         initialCameraPosition: CameraPosition(
                           target:
                               _selectedLocation ??
-                              const LatLng(30.0444, 31.2357),
+                              const LatLng(31.9539, 35.9106),
                           zoom: 15,
                         ),
                         onTap: _onMapTap,

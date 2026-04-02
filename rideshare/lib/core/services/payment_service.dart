@@ -185,7 +185,7 @@ class PaymentService {
   /// Instant credit via POST /wallet/topup — **admin JWT only**. Riders/drivers must use [createWalletTopup].
   Future<void> topUpWalletAccount({
     required double amount,
-    String currency = 'EGP',
+    String currency = 'JOD',
     String? note,
     String? idempotencyKey,
   }) async {
@@ -198,14 +198,18 @@ class PaymentService {
     await _api.post(ApiEndpoints.walletV2Topup, data: body);
   }
 
-  /// Driver wallet: create top-up request (pending until admin approves)
+  /// Create wallet top-up request.
+  /// For `method == 'manual'` a [proofImage] or [proofImageUrl] is required.
+  /// For `method == 'cliq_a2a'` pass [aliasType] ('ALIAS' or 'MOBL') and [aliasValue].
   Future<PaymentModel> createWalletTopup({
     required double amount,
-    String currency = 'EGP',
+    String currency = 'JOD',
     required String method,
     String? proofImageUrl,
     File? proofImage,
     String? walletNumber,
+    String? aliasType,
+    String? aliasValue,
   }) async {
     String? url = proofImageUrl;
     if (url == null && proofImage != null && method == 'manual') {
@@ -218,6 +222,8 @@ class PaymentService {
     };
     if (url != null) data['proofImageUrl'] = url;
     if (walletNumber != null) data['walletNumber'] = walletNumber;
+    if (aliasType != null) data['aliasType'] = aliasType;
+    if (aliasValue != null) data['aliasValue'] = aliasValue;
     final response = await _api.post(ApiEndpoints.walletTopup, data: data);
     final res = response['data'] ?? response;
     return PaymentModel.fromJson(Map<String, dynamic>.from(res as Map));
@@ -262,9 +268,16 @@ class PaymentService {
   // Refresh CliQ payment status
   Future<PaymentModel> refreshCliqPaymentStatus(String paymentId) async {
     try {
-      final response =
-          await _api.get(ApiEndpoints.cliqStatus(paymentId));
-      final data = response['data'] ?? response;
+      final response = await _api.get(
+        ApiEndpoints.cliqStatus(paymentId),
+        queryParameters: {
+          '_': DateTime.now().millisecondsSinceEpoch.toString(),
+        },
+      );
+      final raw = response['data'] ?? response;
+      final data = raw is Map<String, dynamic>
+          ? raw
+          : Map<String, dynamic>.from(raw as Map);
       return PaymentModel.fromJson(data);
     } catch (e) {
       print('❌ Error refreshing CliQ payment status: $e');

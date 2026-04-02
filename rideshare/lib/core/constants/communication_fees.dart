@@ -34,9 +34,9 @@ class CommunicationFees {
   /// 
   /// [countryCode] رمز البلد (مثل 'EG', 'JO', 'SA')
   /// 
-  /// Returns رمز العملة (مثل 'EGP', 'JOD')، أو 'EGP' كقيمة افتراضية
+  /// Returns رمز العملة (مثل 'JOD', 'EGP')، أو 'JOD' كقيمة افتراضية
   static String getCurrencyByCountry(String countryCode) {
-    return currencyByCountry[countryCode.toUpperCase()] ?? 'EGP';
+    return currencyByCountry[countryCode.toUpperCase()] ?? 'JOD';
   }
 
   /// الحصول على رسوم التواصل والعملة معاً

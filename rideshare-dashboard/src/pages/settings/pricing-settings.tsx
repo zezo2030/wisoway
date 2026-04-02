@@ -22,14 +22,14 @@ function num(v: number | string | undefined): number {
 export default function PricingSettingsPage() {
   const qc = useQueryClient()
   const { t } = useLanguage()
-  const countryCode = "EG"
+  const countryCode = "JO"
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "pricing-settings", countryCode],
     queryFn: () => getPlatformPricingSettings(countryCode),
   })
 
   const [feeAmount, setFeeAmount] = useState("")
-  const [currency, setCurrency] = useState("EGP")
+  const [currency, setCurrency] = useState("JOD")
   const [passengerPct, setPassengerPct] = useState("")
   const [driverUnlockPct, setDriverUnlockPct] = useState("")
   const [isActive, setIsActive] = useState(true)
@@ -38,7 +38,7 @@ export default function PricingSettingsPage() {
   useEffect(() => {
     if (!data) return
     setFeeAmount(String(num(data.feeAmount)))
-    setCurrency(data.currency || "EGP")
+    setCurrency(data.currency || "JOD")
     setPassengerPct(String(num(data.passengerPlatformPercent)))
     setDriverUnlockPct(String(num(data.driverUnlockPercent)))
     setIsActive(!!data.isActive)
@@ -178,7 +178,7 @@ export default function PricingSettingsPage() {
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value.toUpperCase())}
                   maxLength={5}
-                  placeholder="e.g., EGP"
+                  placeholder="e.g., JOD"
                 />
               </div>
 

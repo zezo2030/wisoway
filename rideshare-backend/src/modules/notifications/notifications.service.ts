@@ -1,4 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { existsSync, readFileSync } from 'fs';
+import { resolve } from 'path';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as admin from 'firebase-admin';
@@ -22,6 +24,14 @@ export class NotificationsService {
     private notificationsGateway: NotificationsGateway,
   ) {}
 
+  private normalizePrivateKey(privateKeyRaw?: string): string | undefined {
+    if (!privateKeyRaw) {
+      return undefined;
+    }
+
+    return privateKeyRaw.trim().replace(/^"|"$/g, '').replace(/\\n/g, '\n');
+  }
+
   private ensureFirebase() {
     if (this.firebaseReady || this.firebaseUnavailable) {
       return;
@@ -30,23 +40,68 @@ export class NotificationsService {
       this.firebaseReady = true;
       return;
     }
+    const serviceAccountPath =
+      process.env.FIREBASE_SERVICE_ACCOUNT_PATH?.trim() ||
+      process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim();
+    if (serviceAccountPath) {
+      try {
+        const resolvedPath = resolve(serviceAccountPath);
+        if (!existsSync(resolvedPath)) {
+          throw new Error(`service account file not found at ${resolvedPath}`);
+        }
+
+        const serviceAccount = JSON.parse(
+          readFileSync(resolvedPath, 'utf8'),
+        ) as admin.ServiceAccount & {
+          project_id?: string;
+          client_email?: string;
+          private_key?: string;
+        };
+
+        const projectId = serviceAccount.projectId ?? serviceAccount.project_id;
+        const clientEmail =
+          serviceAccount.clientEmail ?? serviceAccount.client_email;
+        const privateKey = this.normalizePrivateKey(
+          serviceAccount.privateKey ?? serviceAccount.private_key,
+        );
+
+        if (!projectId || !clientEmail || !privateKey) {
+          throw new Error('service account file is missing required fields');
+        }
+
+        admin.initializeApp({
+          credential: admin.credential.cert({
+            projectId,
+            clientEmail,
+            privateKey,
+          }),
+        });
+        this.firebaseReady = true;
+        this.logger.log('Firebase push configured from service account file');
+        return;
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Unknown Firebase error';
+        this.logger.warn(
+          `Failed to initialize Firebase from service account file: ${message}`,
+        );
+      }
+    }
+
     const projectId = process.env.FIREBASE_PROJECT_ID;
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    const privateKeyRaw = process.env.FIREBASE_PRIVATE_KEY;
-    if (!projectId || !clientEmail || !privateKeyRaw) {
+    const privateKey = this.normalizePrivateKey(
+      process.env.FIREBASE_PRIVATE_KEY,
+    );
+    if (!projectId || !clientEmail || !privateKey) {
       this.logger.warn(
-        'Firebase push is not configured (missing FIREBASE_* variables)',
+        'Firebase push is not configured (missing FIREBASE_SERVICE_ACCOUNT_PATH or FIREBASE_* variables)',
       );
       this.firebaseUnavailable = true;
       return;
     }
 
     try {
-      const privateKey = privateKeyRaw
-        .trim()
-        .replace(/^"|"$/g, '')
-        .replace(/\\n/g, '\n');
-
       admin.initializeApp({
         credential: admin.credential.cert({
           projectId,
@@ -61,6 +116,42 @@ export class NotificationsService {
         `Firebase push is disabled due to invalid credentials: ${error.message}`,
       );
     }
+  }
+
+  private stringifyFcmValue(value: unknown): string {
+    if (typeof value === 'string') {
+      return value;
+    }
+    if (
+      typeof value === 'number' ||
+      typeof value === 'boolean' ||
+      typeof value === 'bigint'
+    ) {
+      return String(value);
+    }
+    return JSON.stringify(value);
+  }
+
+  private buildFcmData(
+    userId: string,
+    payload: {
+      type: string;
+      data?: Record<string, unknown>;
+      notificationId?: string;
+    },
+  ): Record<string, string> {
+    const rawData: Record<string, unknown> = {
+      userId,
+      type: payload.type,
+      notificationId: payload.notificationId,
+      ...(payload.data ?? {}),
+    };
+
+    return Object.fromEntries(
+      Object.entries(rawData)
+        .filter(([, value]) => value !== null && value !== undefined)
+        .map(([key, value]) => [key, this.stringifyFcmValue(value)]),
+    );
   }
 
   async create(
@@ -82,6 +173,11 @@ export class NotificationsService {
     this.sendPush(createNotificationDto.userId, {
       title: createNotificationDto.title,
       body: createNotificationDto.body,
+      type: createNotificationDto.type,
+      data: {
+        ...(createNotificationDto.data ?? {}),
+        notificationId: saved.id,
+      },
     });
 
     return saved;
@@ -89,7 +185,12 @@ export class NotificationsService {
 
   async sendPush(
     userId: string,
-    payload: { title: string; body?: string },
+    payload: {
+      title: string;
+      body?: string;
+      type: string;
+      data?: Record<string, unknown>;
+    },
   ): Promise<void> {
     this.ensureFirebase();
     if (!this.firebaseReady) {
@@ -109,12 +210,24 @@ export class NotificationsService {
           title: payload.title,
           body: payload.body,
         },
-        data: {
-          userId,
+        data: this.buildFcmData(userId, payload),
+        android: {
+          priority: 'high',
+          notification: {
+            channelId: 'rideshare_notifications',
+          },
+        },
+        apns: {
+          payload: {
+            aps: {
+              sound: 'default',
+            },
+          },
         },
       });
     } catch (error) {
-      this.logger.error(`Failed to send push notification: ${error.message}`);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Failed to send push notification: ${message}`);
     }
   }
 

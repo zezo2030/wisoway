@@ -1,14 +1,20 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../constants/route_names.dart';
 
 /// Service to handle navigation when user taps on notifications
 class NotificationNavigationService {
-  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
 
   /// Handle navigation based on notification data
   static void handleNotificationNavigation(RemoteMessage message) {
-    final data = message.data;
+    handleNotificationData(Map<String, dynamic>.from(message.data));
+  }
+
+  static void handleNotificationData(Map<String, dynamic> data) {
     final type = data['type'] as String?;
 
     if (type == null) {
@@ -31,6 +37,7 @@ class NotificationNavigationService {
 
       case 'trip_reminder':
       case 'driver_arrived':
+      case 'trip_cancelled':
         _handleTripNotification(data);
         break;
 
@@ -51,10 +58,7 @@ class NotificationNavigationService {
     if (tripId != null) {
       // Navigate to trip details or trip management based on user role
       // For now, navigate to trip details
-      _navigateToRoute(
-        RouteNames.tripDetails,
-        arguments: tripId,
-      );
+      _navigateToRoute(RouteNames.tripDetails, arguments: tripId);
     } else {
       _navigateToRoute(RouteNames.notifications);
     }
@@ -78,10 +82,7 @@ class NotificationNavigationService {
 
     if (tripId != null) {
       // Navigate to trip details
-      _navigateToRoute(
-        RouteNames.tripDetails,
-        arguments: tripId,
-      );
+      _navigateToRoute(RouteNames.tripDetails, arguments: tripId);
     } else {
       _navigateToRoute(RouteNames.notifications);
     }
@@ -93,10 +94,7 @@ class NotificationNavigationService {
 
     if (tripId != null) {
       // Navigate to trip details or chat (when implemented)
-      _navigateToRoute(
-        RouteNames.tripDetails,
-        arguments: tripId,
-      );
+      _navigateToRoute(RouteNames.tripDetails, arguments: tripId);
     } else {
       _navigateToRoute(RouteNames.notifications);
     }
@@ -111,10 +109,7 @@ class NotificationNavigationService {
     }
 
     // Use pushNamed for navigation
-    navigator.pushNamed(
-      routeName,
-      arguments: arguments,
-    ).catchError((error) {
+    navigator.pushNamed(routeName, arguments: arguments).catchError((error) {
       debugPrint('Navigation error: $error');
       // Fallback: navigate to notifications screen
       navigator.pushNamed(RouteNames.notifications);
@@ -130,8 +125,16 @@ class NotificationNavigationService {
     }
 
     try {
-      // Parse payload if it's JSON
-      // For now, just navigate to notifications screen
+      final decoded = jsonDecode(payload);
+      if (decoded is Map<String, dynamic>) {
+        handleNotificationData(decoded);
+        return;
+      }
+      if (decoded is Map) {
+        handleNotificationData(Map<String, dynamic>.from(decoded));
+        return;
+      }
+
       _navigateToRoute(RouteNames.notifications);
     } catch (e) {
       debugPrint('Error parsing notification payload: $e');
@@ -139,4 +142,3 @@ class NotificationNavigationService {
     }
   }
 }
-

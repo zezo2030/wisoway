@@ -123,7 +123,7 @@ export class AdminDashboardService {
 
   private readonly logger = new Logger(AdminDashboardService.name);
 
-  async getPlatformPricingSettings(countryCode: string = 'EG') {
+  async getPlatformPricingSettings(countryCode: string = 'JO') {
     let row = await this.communicationFeeRepo.findOne({
       where: { countryCode },
     });
@@ -131,7 +131,7 @@ export class AdminDashboardService {
       row = this.communicationFeeRepo.create({
         countryCode,
         feeAmount: 0,
-        currency: 'EGP',
+        currency: 'JOD',
         isActive: true,
         passengerPlatformPercent: 0,
         driverUnlockPercent: 0,

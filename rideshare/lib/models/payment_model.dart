@@ -50,9 +50,30 @@ class PaymentModel {
     return v.toString();
   }
 
+  static double _amountFromJson(dynamic v) {
+    if (v == null) return 0;
+    if (v is num) return v.toDouble();
+    if (v is String) return double.tryParse(v) ?? 0;
+    return double.tryParse(v.toString()) ?? 0;
+  }
+
+  static PaymentStatus _statusFromJson(dynamic v) {
+    final s = (v?.toString() ?? 'pending').trim().toLowerCase();
+    switch (s) {
+      case 'approved':
+        return PaymentStatus.approved;
+      case 'rejected':
+        return PaymentStatus.rejected;
+      case 'refunded':
+        return PaymentStatus.refunded;
+      default:
+        return PaymentStatus.pending;
+    }
+  }
+
   factory PaymentModel.fromJson(Map<String, dynamic> json) {
     PaymentMethod method = PaymentMethod.manual;
-    final methodStr = json['method'] as String? ?? 'manual';
+    final methodStr = (json['method']?.toString() ?? 'manual').trim();
     if (methodStr == 'wallet' || methodStr == 'stripe') {
       method = PaymentMethod.wallet;
     } else if (methodStr == 'paymob') {
@@ -63,15 +84,7 @@ class PaymentModel {
       method = PaymentMethod.cliq_a2a;
     }
 
-    PaymentStatus status = PaymentStatus.pending;
-    final statusStr = json['status'] as String? ?? 'pending';
-    if (statusStr == 'approved') {
-      status = PaymentStatus.approved;
-    } else if (statusStr == 'rejected') {
-      status = PaymentStatus.rejected;
-    } else if (statusStr == 'refunded') {
-      status = PaymentStatus.refunded;
-    }
+    final status = _statusFromJson(json['status']);
 
     final pUserId = _idFromJson(json['userId']) ?? '';
 
@@ -81,8 +94,8 @@ class PaymentModel {
       bookingId: _idFromJson(json['bookingId']),
       userId: pUserId,
       paymentType: json['paymentType'] ?? 'trip',
-      amount: (json['amount'] ?? 0).toDouble(),
-      currency: json['currency'] ?? 'EGP',
+      amount: _amountFromJson(json['amount']),
+      currency: json['currency'] ?? 'JOD',
       method: method,
       status: status,
       proofImageUrl: json['proofImageUrl'],

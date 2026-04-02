@@ -27,6 +27,23 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PlatformPricingService } from './platform-pricing.service';
 import { WalletService } from '../wallet/wallet.service';
 
+/**
+ * Maps raw A2A CliQ error codes / descriptions to user-friendly Arabic messages.
+ * Falls back to the raw description when no mapping exists.
+ */
+function resolveCliqError(code: string, description?: string): string {
+  const map: Record<string, string> = {
+    EE11: 'لم يتم العثور على الحساب، تحقق من قيمة الـ alias وأعد المحاولة',
+    EE12: 'رصيد غير كافٍ في الحساب',
+    EE13: 'الحساب موقوف أو غير فعّال',
+    EE14: 'تجاوزت الحد الأقصى للمعاملات اليومية',
+    '310': 'تم رفض العملية من قِبل مزود الخدمة',
+    '300': 'انتهت مهلة العملية، حاول مجدداً',
+    '001': 'بيانات الطلب غير صحيحة',
+  };
+  return map[code] ?? description ?? 'فشلت عملية الدفع عبر CliQ';
+}
+
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
@@ -75,8 +92,67 @@ export class PaymentsService {
     throw new BadRequestException('CliQ not yet migrated to Postgres.');
   }
 
-  async refreshCliqPaymentStatus(_paymentId: string): Promise<PaymentEntity> {
-    throw new BadRequestException('CliQ not yet migrated to Postgres.');
+  async refreshCliqPaymentStatus(paymentId: string, requestingUserId?: string): Promise<PaymentEntity> {
+    const payment = await this.paymentRepo.findOne({ where: { id: paymentId } });
+    if (!payment) {
+      throw new NotFoundException('Payment not found');
+    }
+    if (requestingUserId && payment.userId !== requestingUserId) {
+      throw new ForbiddenException('Not authorized to check this payment');
+    }
+    if (payment.method !== 'cliq_a2a') {
+      throw new BadRequestException('Payment is not a CliQ A2A payment');
+    }
+    if (payment.status === 'rejected' || payment.status === 'approved') {
+      return payment;
+    }
+
+    // PaymentInquiry يتوقع MessageTrxID نفسه المرسل في Purchase (محفوظ في transactionId).
+    // لا تستخدم paymentGatewayRef (MSGID) أولاً — كان يسبب استعلامًا خاطئًا وحالة pending دائمة.
+    const messageTrxId = payment.transactionId ?? payment.paymentGatewayRef;
+    if (!messageTrxId) {
+      throw new BadRequestException('No CliQ transaction reference found for this payment');
+    }
+
+    const inquiry = await this.a2aCliqService.paymentInquiry(messageTrxId);
+    const statusCode = String(inquiry.StatusCode ?? '').trim();
+    this.logger.log(
+      `CliQ inquiry for payment ${paymentId}: StatusCode=${statusCode} (raw=${inquiry.StatusCode}), desc=${inquiry.StatusDescription}`,
+    );
+
+    if (statusCode === '0' || statusCode === '000') {
+      const user = await this.userRepo.findOne({ where: { id: payment.userId } });
+      if (!user) throw new NotFoundException('User not found');
+      const accountType =
+        user.role === PgUserRole.DRIVER
+          ? WalletAccountType.DRIVER
+          : WalletAccountType.RIDER;
+      await this.walletService.creditPostedTopup({
+        userId: payment.userId,
+        accountType,
+        amount: Number(payment.amount),
+        currency: payment.currency,
+        idempotencyKey: `cliq-topup:${payment.id}`,
+        note: `CliQ A2A wallet top-up ${payment.id}`,
+      });
+      payment.status = 'approved';
+      await this.paymentRepo.save(payment);
+    } else {
+      // StatusCode "310" = Rejected, "306" = error; "300" = processing — keep pending
+      const failureCodes = ['310', '306', 'FAILED', 'REJECTED'];
+      if (failureCodes.includes(statusCode)) {
+        payment.status = 'rejected';
+        payment.adminNote =
+          inquiry.StatusDescription_ar ??
+          inquiry.StatusDescription ??
+          'CliQ payment rejected';
+        await this.paymentRepo.save(payment);
+        this.logger.log(`Payment ${paymentId} marked rejected (inquiry StatusCode=${statusCode})`);
+      }
+    }
+
+    const fresh = await this.paymentRepo.findOne({ where: { id: paymentId } });
+    return fresh ?? payment;
   }
 
   async approve(
@@ -178,7 +254,7 @@ export class PaymentsService {
     platformAmount: number;
     driverAmount: number;
   }> {
-    const { userId, tripId, seatNumber, countryCode = 'EG', idempotencyKey } =
+    const { userId, tripId, seatNumber, countryCode = 'JO', idempotencyKey } =
       params;
 
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
@@ -200,7 +276,7 @@ export class PaymentsService {
     const feeRow = await this.platformPricing.getActiveFeeRow(countryCode);
     const pricing = this.platformPricing.passengerSeatPricing(
       Number(trip.price ?? 0),
-      trip.currency ?? 'EGP',
+      trip.currency ?? 'JOD',
       feeRow,
     );
     if (!pricing.requiresOnlinePayment) {
@@ -267,7 +343,7 @@ export class PaymentsService {
       throw new NotFoundException('User not found');
     }
 
-    const countryCode = 'EG';
+    const countryCode = 'JO';
     const communicationFee = await this.communicationFeeRepo.findOne({
       where: { countryCode, isActive: true },
     });
@@ -276,7 +352,7 @@ export class PaymentsService {
       communicationFee,
     );
     const feeAmount = unlock.feeAmount;
-    const currency = unlock.currency ?? driver.walletCurrency ?? 'EGP';
+    const currency = unlock.currency ?? driver.walletCurrency ?? 'JOD';
     const lifetimeFreeEnabled =
       communicationFee?.lifetimeFreeTripEnabled !== false;
 
@@ -384,7 +460,7 @@ export class PaymentsService {
     }
     return {
       balance: Number(user.walletBalance ?? 0),
-      currency: user.walletCurrency ?? 'EGP',
+      currency: user.walletCurrency ?? 'JOD',
       hasUsedLifetimeFreeTrip: user.hasUsedLifetimeFreeTrip ?? false,
     };
   }
@@ -406,16 +482,98 @@ export class PaymentsService {
       );
     }
     if (dto.method === 'cliq_a2a') {
-      throw new BadRequestException(
-        'CliQ wallet top-up is not available yet. Use manual with proof.',
-      );
+      if (!dto.aliasType || !dto.aliasValue?.trim()) {
+        throw new BadRequestException(
+          'aliasType and aliasValue are required for CliQ A2A top-up',
+        );
+      }
+
+      const messageTrxId = randomUUID();
+      const p = this.paymentRepo.create({
+        userId,
+        tripId: null,
+        bookingId: null,
+        amount: dto.amount,
+        currency: dto.currency ?? 'JOD',
+        method: 'cliq_a2a',
+        status: 'pending',
+        paymentType: 'wallet_topup',
+        direction: 'credit',
+        recipientAliasType: dto.aliasType,
+        recipientAliasValue: dto.aliasValue,
+        transactionId: messageTrxId,
+      });
+      const saved = await this.paymentRepo.save(p);
+
+      try {
+        const purchaseResult = await this.a2aCliqService.purchase({
+          messageTrxId,
+          aliasType: dto.aliasType,
+          aliasValue: dto.aliasValue,
+          amount: dto.amount,
+        });
+
+        if (purchaseResult.MSGID) {
+          saved.paymentGatewayRef = purchaseResult.MSGID;
+          await this.paymentRepo.save(saved);
+        }
+
+        const rawCode = String(purchaseResult.errorCode ?? '');
+        const isSuccess = rawCode === '0';
+
+        if (!isSuccess) {
+          const userMessage =
+            purchaseResult.description_ar ??
+            resolveCliqError(rawCode, purchaseResult.description);
+          saved.status = 'rejected';
+          saved.adminNote = `[${rawCode}] ${purchaseResult.description ?? ''}`.trim();
+          await this.paymentRepo.save(saved);
+          throw new BadRequestException(userMessage);
+        }
+
+        const user = await this.userRepo.findOne({ where: { id: userId } });
+        if (user) {
+          const accountType =
+            user.role === PgUserRole.DRIVER
+              ? WalletAccountType.DRIVER
+              : WalletAccountType.RIDER;
+          try {
+            await this.walletService.creditPostedTopup({
+              userId,
+              accountType,
+              amount: dto.amount,
+              currency: dto.currency ?? 'JOD',
+              idempotencyKey: `cliq-topup:${saved.id}`,
+              note: `CliQ A2A wallet top-up ${saved.id}`,
+            });
+            saved.status = 'approved';
+            await this.paymentRepo.save(saved);
+            this.logger.log(
+              `CliQ purchase succeeded (errorCode=0), wallet credited immediately for payment ${saved.id}`,
+            );
+          } catch (creditErr) {
+            this.logger.error(
+              `CliQ purchase succeeded but wallet credit failed for payment ${saved.id}: ${creditErr}`,
+            );
+          }
+        }
+      } catch (err) {
+        if (err instanceof BadRequestException) throw err;
+        saved.status = 'rejected';
+        saved.adminNote = 'CliQ gateway error';
+        await this.paymentRepo.save(saved);
+        throw new BadRequestException('تعذّر الاتصال ببوابة CliQ، حاول مجدداً');
+      }
+
+      return saved;
     }
+
     const p = this.paymentRepo.create({
       userId,
       tripId: null,
       bookingId: null,
       amount: dto.amount,
-      currency: dto.currency ?? 'EGP',
+      currency: dto.currency ?? 'JOD',
       method: dto.method,
       status: 'pending',
       paymentType: 'wallet_topup',

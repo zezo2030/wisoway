@@ -11,6 +11,7 @@ import 'core/theme/app_theme.dart';
 import 'core/services/localization_service.dart';
 import 'core/services/theme_service.dart';
 import 'core/services/notification_navigation_service.dart';
+import 'core/services/push_notification_service.dart';
 import 'bloc/auth/auth_bloc.dart';
 import 'bloc/trip/trip_bloc.dart';
 import 'providers/auth_provider.dart';
@@ -76,10 +77,11 @@ void main() async {
         AppleProvider.debug, // Change to deviceCheckProvider for production
   );
 
+  await PushNotificationService.initialize();
+
   // Note: FirebaseAuth has been replaced with Custom backend REST API.
   // Language settings can be passed in request headers via Interceptors.
 
-  // Notification Service initialization removed for REST API backend.
   runApp(const MyApp());
 }
 

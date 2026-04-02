@@ -120,6 +120,7 @@ describe('NotificationsService', () => {
       await service.sendPush('user-id', {
         title: 'Test Notification',
         body: 'Test body',
+        type: 'booking_created',
       });
 
       expect(mockUserModel.findById).toHaveBeenCalledWith('user-id');
@@ -134,6 +135,7 @@ describe('NotificationsService', () => {
         service.sendPush('non-existent', {
           title: 'Test',
           body: 'Test',
+          type: 'booking_created',
         }),
       ).resolves.not.toThrow();
     });

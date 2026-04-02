@@ -218,7 +218,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
         to: _toLocation!,
         departureTime: _departureTime!,
         price: double.parse(_priceController.text.trim()),
-        currency: 'EGP',
+        currency: 'JOD',
         seatLayout: seatLayout,
       );
 
@@ -541,7 +541,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                   horizontal: 16,
                 ),
                 child: Text(
-                  'EGP',
+                  'JOD',
                   style: AppTextStyles.titleMedium.copyWith(
                     fontWeight: FontWeight.bold,
                     color: T.primary(context),

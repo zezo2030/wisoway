@@ -40,8 +40,6 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
     {'value': 'zain', 'label': 'Zain Cash', 'country': 'الأردن'},
     {'value': 'orange', 'label': 'Orange Money', 'country': 'الأردن'},
     {'value': 'cliq', 'label': 'Cliq', 'country': 'الأردن'},
-    {'value': 'vodafone', 'label': 'Vodafone Cash', 'country': 'مصر'},
-    {'value': 'etisalat', 'label': 'Etisalat Cash', 'country': 'مصر'},
     {'value': 'other', 'label': 'أخرى', 'country': ''},
   ];
 

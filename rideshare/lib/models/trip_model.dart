@@ -147,7 +147,7 @@ class TripModel {
           ? DateTime.parse(json['departureTime'])
           : DateTime.now(),
       price: _parseDouble(json['price']),
-      currency: json['currency'] ?? 'EGP',
+      currency: json['currency'] ?? 'JOD',
       totalSeats: _parseInt(json['totalSeats']),
       availableSeats: _parseInt(json['availableSeats']),
       seatLayout: seatLayout,

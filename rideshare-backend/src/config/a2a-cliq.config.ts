@@ -24,6 +24,10 @@ class A2aCliqConfig {
   @IsString()
   BEARER_TOKEN: string;
 
+  /** Authorization Bearer لطلب GetToken فقط (من Postman "Get Token"). إن وُجد يُفضّل على BEARER_TOKEN. */
+  @IsString()
+  BEARER_TOKEN_GETTOKEN: string;
+
   @IsString()
   CALLBACK_URL: string;
 }
@@ -39,6 +43,10 @@ export const a2aCliqConfig = registerAs('a2aCliq', () => {
     SECURITY_KEY: process.env.A2A_CLIQ_SECURITY_KEY || '',
     CORRELATION_ID: process.env.A2A_CLIQ_CORRELATION_ID || '',
     BEARER_TOKEN: process.env.A2A_CLIQ_BEARER_TOKEN || '',
+    BEARER_TOKEN_GETTOKEN:
+      process.env.A2A_CLIQ_BEARER_TOKEN_GETTOKEN ||
+      process.env.A2A_CLIQ_BEARER_TOKEN ||
+      '',
     CALLBACK_URL:
       process.env.A2A_CLIQ_CALLBACK_URL ||
       'https://example.com/api/v1/payments/cliq/callback',

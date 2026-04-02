@@ -102,11 +102,11 @@ export class BookingsService {
       }
     }
 
-    const countryCode = 'EG';
+    const countryCode = 'JO';
     const feeRow = await this.platformPricing.getActiveFeeRow(countryCode);
     const seatPricing = this.platformPricing.passengerSeatPricing(
       Number(trip.price ?? 0),
-      trip.currency ?? 'EGP',
+      trip.currency ?? 'JOD',
       feeRow,
     );
 

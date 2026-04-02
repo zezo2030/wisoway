@@ -79,7 +79,7 @@ export class UserEntity {
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   walletBalance: number;
 
-  @Column({ type: 'varchar', length: 5, default: 'EGP' })
+  @Column({ type: 'varchar', length: 5, default: 'JOD' })
   walletCurrency: string;
 
   @Column({ type: 'boolean', default: false })

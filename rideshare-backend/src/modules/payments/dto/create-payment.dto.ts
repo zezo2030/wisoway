@@ -33,8 +33,8 @@ export class CreatePaymentDto {
 
   @ApiPropertyOptional({
     description: 'Currency code',
-    default: 'EGP',
-    example: 'EGP',
+    default: 'JOD',
+    example: 'JOD',
   })
   @IsString()
   @IsOptional()

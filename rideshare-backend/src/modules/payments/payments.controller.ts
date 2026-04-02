@@ -182,14 +182,21 @@ export class PaymentsController {
   }
 
   @Get(':id/cliq-status')
-  @Roles('driver', 'admin')
+  @Roles('driver', 'passenger', 'admin')
   @ApiOperation({
-    summary: 'Refresh and get CliQ A2A payment status by payment ID',
+    summary: 'Refresh and get CliQ A2A payment status (driver, passenger, or admin)',
   })
   @ApiParam({ name: 'id', description: 'Payment ID' })
   @ApiResponse({ status: 200, description: 'CliQ payment status updated' })
-  async getCliqPaymentStatus(@Param('id') paymentId: string) {
-    return this.paymentsService.refreshCliqPaymentStatus(paymentId);
+  @ApiResponse({ status: 403, description: 'Not authorized to check this payment' })
+  @ApiResponse({ status: 404, description: 'Payment not found' })
+  async getCliqPaymentStatus(
+    @Param('id') paymentId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: string,
+  ) {
+    const requestingUserId = role === 'admin' ? undefined : userId;
+    return this.paymentsService.refreshCliqPaymentStatus(paymentId, requestingUserId);
   }
 
   @Patch(':id/approve')

@@ -201,7 +201,7 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
 
   Widget _buildBalanceCard() {
     final balance = _wallet?.balance ?? 0.0;
-    final currency = _wallet?.currency ?? 'EGP';
+    final currency = _wallet?.currency ?? 'JOD';
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(

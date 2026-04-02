@@ -67,7 +67,7 @@ export class TripEntity {
   @Column({ type: 'numeric', precision: 10, scale: 2 })
   price: string;
 
-  @Column({ type: 'varchar', length: 5, default: 'EGP' })
+  @Column({ type: 'varchar', length: 5, default: 'JOD' })
   currency: string;
 
   @Column({ type: 'int', default: 4 })

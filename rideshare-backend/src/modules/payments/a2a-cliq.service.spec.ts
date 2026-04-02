@@ -20,6 +20,7 @@ describe('A2aCliqService', () => {
     SECURITY_KEY: 'security-key',
     CORRELATION_ID: 'ARABTHERAP',
     BEARER_TOKEN: 'test-token',
+    BEARER_TOKEN_GETTOKEN: 'test-token',
     CALLBACK_URL: 'https://example.com/callback',
   };
 
@@ -75,12 +76,22 @@ describe('A2aCliqService', () => {
 
   describe('purchase', () => {
     it('should return purchase response on success', async () => {
-      (axios.post as jest.Mock).mockResolvedValue({
-        data: {
-          errorCode: 0,
-          description: 'Success',
-        },
-      });
+      (axios.post as jest.Mock)
+        .mockResolvedValueOnce({
+          data: {
+            TokenInfo: {
+              Token: 'session-jwt',
+              ExpiryDate: '2030-01-01T12:00:00',
+            },
+            Result: { errorCode: 0, description: 'Success' },
+          },
+        })
+        .mockResolvedValueOnce({
+          data: {
+            errorCode: 0,
+            description: 'Success',
+          },
+        });
 
       const result = await service.purchase({
         messageTrxId: 'CLIQ123',
@@ -93,9 +104,19 @@ describe('A2aCliqService', () => {
     });
 
     it('should throw on invalid response', async () => {
-      (axios.post as jest.Mock).mockResolvedValue({
-        data: null,
-      });
+      (axios.post as jest.Mock)
+        .mockResolvedValueOnce({
+          data: {
+            TokenInfo: {
+              Token: 'session-jwt',
+              ExpiryDate: '2030-01-01T12:00:00',
+            },
+            Result: { errorCode: 0, description: 'Success' },
+          },
+        })
+        .mockResolvedValueOnce({
+          data: null,
+        });
 
       await expect(
         service.purchase({
@@ -110,27 +131,51 @@ describe('A2aCliqService', () => {
 
   describe('paymentInquiry', () => {
     it('should return inquiry response on success', async () => {
-      (axios.post as jest.Mock).mockResolvedValue({
-        data: {
-          MessageTrxID: 'CLIQ123',
-          StatusCode: '0',
-          StatusDescription: 'Success',
-        },
-      });
+      (axios.post as jest.Mock)
+        .mockResolvedValueOnce({
+          status: 200,
+          data: {
+            TokenInfo: {
+              Token: 'session-jwt',
+              ExpiryDate: '2030-01-01T12:00:00',
+            },
+            Result: { errorCode: 0, description: 'Success' },
+          },
+        })
+        .mockResolvedValueOnce({
+          status: 200,
+          data: {
+            MessageTrxID: 'CLIQ123',
+            StatusCode: '0',
+            StatusDescription: 'Success',
+          },
+        });
 
       const result = await service.paymentInquiry('CLIQ123');
       expect(result.StatusCode).toBe('0');
     });
 
     it('should throw on invalid response', async () => {
-      (axios.post as jest.Mock).mockResolvedValue({
-        data: {},
-      });
+      (axios.post as jest.Mock)
+        .mockResolvedValueOnce({
+          status: 200,
+          data: {
+            TokenInfo: {
+              Token: 'session-jwt',
+              ExpiryDate: '2030-01-01T12:00:00',
+            },
+            Result: { errorCode: 0, description: 'Success' },
+          },
+        })
+        .mockResolvedValueOnce({
+          status: 200,
+          data: {},
+        });
 
       await expect(service.paymentInquiry('CLIQ123')).rejects.toThrow(
         BadRequestException,
       );
     });
   });
-}
+});
 

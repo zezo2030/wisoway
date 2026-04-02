@@ -131,8 +131,8 @@ class _AboutScreenState extends State<AboutScreen> {
           const SizedBox(height: 40),
           Text(
             isArabic
-                ? 'صنع بـ \u2764\uFE0F في مصر'
-                : 'Made with \u2764\uFE0F in Egypt',
+                ? 'صنع بـ \u2764\uFE0F في الأردن'
+                : 'Made with \u2764\uFE0F in Jordan',
             style: TextStyle(fontSize: 14, color: T.onSurfaceVariant(context)),
           ),
         ],

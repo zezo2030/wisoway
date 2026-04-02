@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import {
   PayoutRequestEntity,
   TripEntity,
@@ -39,7 +39,7 @@ export class WalletService {
   private async getOrCreateAccount(
     userId: string,
     accountType: WalletAccountType,
-    currency = 'EGP',
+    currency = 'JOD',
   ) {
     let account = await this.walletAccountRepo.findOne({
       where: { userId, accountType, currency },
@@ -57,12 +57,37 @@ export class WalletService {
     return account;
   }
 
+  /**
+   * Wallet balances are per (user, role bucket, currency). Default currency is JOD (Jordan).
+   * When multiple accounts exist, we pick the best row to display (see below).
+   */
   async getWalletSummary(userId: string, role: string) {
     const accountType =
       role === WalletAccountType.DRIVER
         ? WalletAccountType.DRIVER
         : WalletAccountType.RIDER;
-    const account = await this.getOrCreateAccount(userId, accountType);
+
+    const accounts = await this.walletAccountRepo.find({
+      where: { userId, accountType },
+      order: { updatedAt: 'DESC' },
+    });
+
+    if (accounts.length === 0) {
+      const account = await this.getOrCreateAccount(userId, accountType);
+      return {
+        accountId: account.id,
+        accountType: account.accountType,
+        currency: account.currency,
+        balance: Number(account.balance),
+        isActive: account.isActive,
+      };
+    }
+
+    const positive = accounts.filter((a) => Number(a.balance) > 0);
+    const account =
+      positive.sort((a, b) => Number(b.balance) - Number(a.balance))[0] ??
+      accounts.find((a) => a.currency === 'JOD') ??
+      accounts[0];
 
     return {
       accountId: account.id,
@@ -86,7 +111,7 @@ export class WalletService {
     note?: string | null;
   }): Promise<WalletTransactionEntity> {
     const { userId, accountType, amount, idempotencyKey } = params;
-    const currency = params.currency || 'EGP';
+    const currency = params.currency || 'JOD';
     if (!Number.isFinite(amount) || amount <= 0) {
       throw new BadRequestException('Invalid top-up amount');
     }
@@ -159,7 +184,7 @@ export class WalletService {
     const account = await this.getOrCreateAccount(
       driverId,
       WalletAccountType.DRIVER,
-      'EGP',
+      'JOD',
     );
     const fee = 10;
 
@@ -259,7 +284,7 @@ export class WalletService {
     const account = await this.getOrCreateAccount(
       driverId,
       WalletAccountType.DRIVER,
-      dto.currency || 'EGP',
+      dto.currency || 'JOD',
     );
     if (Number(account.balance) < dto.amount) {
       throw new BadRequestException('Insufficient wallet balance for payout');
@@ -282,9 +307,16 @@ export class WalletService {
       role === WalletAccountType.DRIVER
         ? WalletAccountType.DRIVER
         : WalletAccountType.RIDER;
-    const account = await this.getOrCreateAccount(userId, accountType);
+    const walletAccounts = await this.walletAccountRepo.find({
+      where: { userId, accountType },
+    });
+    if (walletAccounts.length === 0) {
+      await this.getOrCreateAccount(userId, accountType);
+      return [];
+    }
+    const accountIds = walletAccounts.map((a) => a.id);
     const transactions = await this.walletTxRepo.find({
-      where: { accountId: account.id },
+      where: { accountId: In(accountIds) },
       order: { createdAt: 'DESC' },
       take: Math.min(Math.max(limit, 1), 200),
     });

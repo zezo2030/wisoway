@@ -13,7 +13,7 @@ class WalletModel {
   factory WalletModel.fromJson(Map<String, dynamic> json) {
     return WalletModel(
       balance: (json['balance'] ?? 0).toDouble(),
-      currency: json['currency'] ?? 'EGP',
+      currency: json['currency'] ?? 'JOD',
       hasUsedLifetimeFreeTrip: json['hasUsedLifetimeFreeTrip'] ?? false,
     );
   }

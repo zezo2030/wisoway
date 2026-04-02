@@ -1177,11 +1177,11 @@ class Countries {
     return all.where((c) => c.matchesQuery(q)).toList();
   }
 
-  /// الدولة الافتراضية (مصر)
+  /// الدولة الافتراضية (الأردن)
   static const CountryData defaultCountry = CountryData(
-    iso2: 'EG',
-    dialCode: '+20',
-    nameEn: 'Egypt',
-    nameAr: 'مصر',
+    iso2: 'JO',
+    dialCode: '+962',
+    nameEn: 'Jordan',
+    nameAr: 'الأردن',
   );
 }

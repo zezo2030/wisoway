@@ -27,7 +27,7 @@ export class WalletHoldEntity {
   @Column({ type: 'numeric', precision: 14, scale: 2 })
   amount: string;
 
-  @Column({ type: 'varchar', length: 5, default: 'EGP' })
+  @Column({ type: 'varchar', length: 5, default: 'JOD' })
   currency: string;
 
   @Column({ type: 'varchar', default: 'pending' })

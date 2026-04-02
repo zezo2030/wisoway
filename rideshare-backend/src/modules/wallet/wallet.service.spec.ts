@@ -26,6 +26,7 @@ describe('WalletService', () => {
         {
           provide: getRepositoryToken(WalletAccountEntity),
           useValue: {
+            find: jest.fn(),
             findOne: jest.fn(),
             create: jest.fn(),
             save: jest.fn(),
@@ -59,19 +60,48 @@ describe('WalletService', () => {
   });
 
   it('returns existing wallet summary for driver', async () => {
-    walletAccountRepo.findOne.mockResolvedValue({
-      id: 'w1',
-      userId: 'u1',
-      accountType: 'driver',
-      currency: 'EGP',
-      balance: '20.00',
-      isActive: true,
-    } as any);
+    walletAccountRepo.find.mockResolvedValue([
+      {
+        id: 'w1',
+        userId: 'u1',
+        accountType: 'driver',
+        currency: 'JOD',
+        balance: '20.00',
+        isActive: true,
+      },
+    ] as any);
 
     const summary = await service.getWalletSummary('u1', 'driver');
 
     expect(summary.accountId).toBe('w1');
     expect(summary.balance).toBe(20);
     expect(summary.accountType).toBe('driver');
+  });
+
+  it('prefers non-zero JOD account over empty legacy currency when both exist', async () => {
+    walletAccountRepo.find.mockResolvedValue([
+      {
+        id: 'egp',
+        userId: 'u1',
+        accountType: 'rider',
+        currency: 'EGP',
+        balance: '0.00',
+        isActive: true,
+      },
+      {
+        id: 'jod',
+        userId: 'u1',
+        accountType: 'rider',
+        currency: 'JOD',
+        balance: '15.50',
+        isActive: true,
+      },
+    ] as any);
+
+    const summary = await service.getWalletSummary('u1', 'passenger');
+
+    expect(summary.accountId).toBe('jod');
+    expect(summary.currency).toBe('JOD');
+    expect(summary.balance).toBe(15.5);
   });
 });

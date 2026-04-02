@@ -54,7 +54,7 @@ export class Trip {
     type: String,
     required: true,
     enum: ['EGP', 'JOD', 'SAR', 'AED', 'QAR'],
-    default: 'EGP',
+    default: 'JOD',
   })
   currency: string;
 

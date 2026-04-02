@@ -88,11 +88,11 @@ class _PassengerWalletScreenState extends State<PassengerWalletScreen> {
   }
 
   Future<void> _openTopUpRequest() async {
-    final ok = await Navigator.pushNamed<bool>(
+    final result = await Navigator.pushNamed(
       context,
       RouteNames.driverWalletTopup,
     );
-    if (ok == true && mounted) await _load();
+    if (result == true && mounted) await _load();
   }
 
   @override
@@ -121,7 +121,7 @@ class _PassengerWalletScreenState extends State<PassengerWalletScreen> {
                     _buildBalanceCard(),
                     const SizedBox(height: 8),
                     Text(
-                      'تُستخدم لدفع تكلفة الحجز عند تفعيل الدفع من المحفظة. الشحن عبر تحويل يدوي مع إثبات؛ يُضاف الرصيد بعد موافقة الإدارة.',
+                      'تُستخدم لدفع تكلفة الحجز عند تفعيل الدفع من المحفظة. الشحن بالدينار الأردني (JOD) عبر CliQ أو تحويل يدوي مع إثبات؛ يُضاف الرصيد بعد التأكد أو موافقة الإدارة حسب الطريقة.',
                       style: AppTextStyles.bodySmall.copyWith(
                         color: T.onSurfaceVariant(context),
                       ),
@@ -204,7 +204,7 @@ class _PassengerWalletScreenState extends State<PassengerWalletScreen> {
 
   Widget _buildBalanceCard() {
     final balance = _account?.balance ?? 0;
-    final currency = _account?.currency ?? 'EGP';
+    final currency = _account?.currency ?? 'JOD';
     final active = _account?.isActive ?? true;
     return Container(
       padding: const EdgeInsets.all(24),

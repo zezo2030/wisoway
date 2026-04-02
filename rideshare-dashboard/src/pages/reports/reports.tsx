@@ -297,7 +297,7 @@ function ReportContent({
                 <p className="text-sm font-bold uppercase tracking-wider text-muted-foreground/80 mb-1">{summaryConfig.title}</p>
                 <div className={cn("text-4xl font-black", scheme.text)}>
                   {summaryConfig.currency
-                    ? formatCurrency(summaryConfig.value, "EGP")
+                    ? formatCurrency(summaryConfig.value, "JOD")
                     : formatNumber(summaryConfig.value)}
                 </div>
                 <p className="text-xs font-medium text-foreground/50 mt-2">
@@ -318,7 +318,7 @@ function ReportContent({
                   {summaryConfig.currency
                     ? formatCurrency(
                       summaryConfig.value / (report.breakdown.length || 1),
-                      "EGP"
+                      "JOD"
                     )
                     : formatNumber(
                       Math.round(summaryConfig.value / (report.breakdown.length || 1))
@@ -396,7 +396,7 @@ function ReportContent({
                     formatter={(value) => {
                       const numValue = typeof value === 'number' ? value : 0
                       return [summaryConfig.currency
-                        ? formatCurrency(numValue, "EGP")
+                        ? formatCurrency(numValue, "JOD")
                         : formatNumber(numValue), ""]
                     }}
                     labelFormatter={(label) => `${label}`}
@@ -458,7 +458,7 @@ function ReportContent({
                             value > 0 && scheme.text
                           )}>
                             {reportType === "revenue" && item.amount
-                              ? formatCurrency(item.amount, "EGP")
+                              ? formatCurrency(item.amount, "JOD")
                               : formatNumber(item.count)}
                           </span>
                         </TableCell>

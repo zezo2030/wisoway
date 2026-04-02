@@ -4,6 +4,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import '../core/api/websocket_service.dart';
 import '../core/services/auth_service.dart';
 import '../core/services/notification_service.dart';
+import '../core/services/notification_navigation_service.dart';
+import '../core/services/push_notification_service.dart';
 import '../models/notification_model.dart';
 
 class NotificationProvider with ChangeNotifier {
@@ -56,19 +58,24 @@ class NotificationProvider with ChangeNotifier {
       });
 
       // Listen to foreground messages
-      FirebaseMessaging.onMessage.listen((message) {
-        fetchNotifications(); // Refresh list on new message
+      FirebaseMessaging.onMessage.listen((message) async {
+        await PushNotificationService.showForegroundNotification(message);
+        await fetchNotifications();
       });
 
       // Check if app was opened from terminated state
       final initialMessage = await FirebaseMessaging.instance
           .getInitialMessage();
       if (initialMessage != null) {
-        fetchNotifications();
+        NotificationNavigationService.handleNotificationNavigation(
+          initialMessage,
+        );
+        await fetchNotifications();
       }
 
-      FirebaseMessaging.onMessageOpenedApp.listen((_) {
-        fetchNotifications();
+      FirebaseMessaging.onMessageOpenedApp.listen((message) async {
+        NotificationNavigationService.handleNotificationNavigation(message);
+        await fetchNotifications();
       });
 
       await _socketService.connect();
