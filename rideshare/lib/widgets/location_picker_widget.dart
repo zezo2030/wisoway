@@ -112,7 +112,7 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
             action: onAction != null
                 ? SnackBarAction(
                     label: actionLabel,
-                    textColor: AppColors.white,
+                    textColor: T.onPrimary(context),
                     onPressed: onAction,
                   )
                 : null,
@@ -216,11 +216,11 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: Colors.red,
+          backgroundColor: T.error(context),
           action: onAction != null
               ? SnackBarAction(
                   label: actionLabel,
-                  textColor: Colors.white,
+                  textColor: T.onError(context),
                   onPressed: onAction,
                 )
               : null,
@@ -253,7 +253,7 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
             content: Text(
               'لم يتم العثور على نتائج. جرّب اسم مكان أو عنوان أوضح.',
             ),
-            backgroundColor: Colors.orange,
+            backgroundColor: AppColors.warning,
           ),
         );
       }
@@ -263,7 +263,7 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في البحث: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: T.error(context),
           ),
         );
       }
@@ -351,7 +351,7 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                         const Icon(
                           Icons.error_outline,
                           size: 64,
-                          color: Colors.red,
+                          color: AppColors.error,
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -422,10 +422,10 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                         child: Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: AppColors.white,
+                            color: T.surface(context),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.black.withValues(alpha: 0.1),
+                                color: T.shadow(context).withValues(alpha: 0.1),
                                 blurRadius: 10,
                                 offset: const Offset(0, -5),
                               ),
@@ -440,9 +440,10 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                               else
                                 Text(
                                   _selectedAddress ?? 'اختر موقعاً على الخريطة',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
+                                    color: T.onSurface(context),
                                   ),
                                 ),
                               const SizedBox(height: 16),

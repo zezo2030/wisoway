@@ -314,11 +314,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: AppColors.slate50,
+        backgroundColor: T.background(context),
         appBar: AppBar(
           elevation: 0,
-          backgroundColor: AppColors.white,
-          foregroundColor: T.onSurface(context).withValues(alpha: 0.87),
           title: Text(
             'إدارة الرحلة',
             style: AppTextStyles.titleMedium.copyWith(
@@ -332,11 +330,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
 
     if (_trip == null) {
       return Scaffold(
-        backgroundColor: AppColors.slate50,
+        backgroundColor: T.background(context),
         appBar: AppBar(
           elevation: 0,
-          backgroundColor: AppColors.white,
-          foregroundColor: T.onSurface(context).withValues(alpha: 0.87),
           title: Text(
             'إدارة الرحلة',
             style: AppTextStyles.titleMedium.copyWith(
@@ -351,13 +347,13 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
               Icon(
                 IconsaxPlusLinear.danger,
                 size: 64,
-                color: AppColors.slate300,
+                color: T.outlineVariant(context),
               ),
               const SizedBox(height: 16),
               Text(
                 'الرحلة غير موجودة',
                 style: AppTextStyles.titleMedium.copyWith(
-                  color: AppColors.slate400,
+                  color: T.textSecondary(context),
                 ),
               ),
             ],
@@ -372,11 +368,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     final totalRevenue = _getTotalRevenue();
 
     return Scaffold(
-      backgroundColor: AppColors.slate50,
+      backgroundColor: T.background(context),
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: AppColors.white,
-        foregroundColor: T.onSurface(context).withValues(alpha: 0.87),
         title: Text(
           'إدارة الرحلة',
           style: AppTextStyles.titleMedium.copyWith(
@@ -492,14 +486,17 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.blue.shade600, Colors.blue.shade400],
+          colors: [
+            T.primary(context),
+            T.primary(context).withValues(alpha: 0.7),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.withValues(alpha: 0.3),
+            color: T.primary(context).withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -515,12 +512,12 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.white.withValues(alpha: 0.2),
+                    color: T.onPrimary(context).withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     IconsaxPlusBold.route_square,
-                    color: AppColors.white,
+                    color: T.onPrimary(context),
                     size: 28,
                   ),
                 ),
@@ -533,14 +530,14 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                         'معلومات الرحلة',
                         style: AppTextStyles.titleMedium.copyWith(
                           fontSize: 20,
-                          color: AppColors.white,
+                          color: T.onPrimary(context),
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         '${dateFormat.format(trip.departureTime)} ${timeFormat.format(trip.departureTime)}',
                         style: AppTextStyles.bodyMedium.copyWith(
-                          color: AppColors.white.withValues(alpha: 0.9),
+                          color: T.onPrimary(context).withValues(alpha: 0.9),
                         ),
                       ),
                     ],
@@ -553,7 +550,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.white.withValues(alpha: 0.15),
+                color: T.onPrimary(context).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
@@ -561,12 +558,12 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.green.shade400,
+                      color: T.success(context),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       IconsaxPlusBold.location,
-                      color: AppColors.white,
+                      color: T.onPrimary(context),
                       size: 20,
                     ),
                   ),
@@ -578,7 +575,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                         Text(
                           'من',
                           style: AppTextStyles.bodySmall.copyWith(
-                            color: AppColors.white.withValues(alpha: 0.8),
+                            color: T.onPrimary(context).withValues(alpha: 0.8),
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -586,7 +583,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                           trip.from.name,
                           style: AppTextStyles.titleSmall.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: AppColors.white,
+                            color: T.onPrimary(context),
                           ),
                         ),
                       ],
@@ -601,7 +598,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
               padding: const EdgeInsets.only(right: 20),
               child: Icon(
                 IconsaxPlusLinear.arrow_down_1,
-                color: AppColors.white.withValues(alpha: 0.7),
+                color: T.onPrimary(context).withValues(alpha: 0.7),
                 size: 24,
               ),
             ),
@@ -610,7 +607,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.white.withValues(alpha: 0.15),
+                color: T.onPrimary(context).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
@@ -618,12 +615,12 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.red.shade400,
+                      color: T.error(context),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       IconsaxPlusBold.location,
-                      color: AppColors.white,
+                      color: T.onPrimary(context),
                       size: 20,
                     ),
                   ),
@@ -635,7 +632,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                         Text(
                           'إلى',
                           style: AppTextStyles.bodySmall.copyWith(
-                            color: AppColors.white.withValues(alpha: 0.8),
+                            color: T.onPrimary(context).withValues(alpha: 0.8),
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -643,7 +640,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                           trip.to.name,
                           style: AppTextStyles.titleSmall.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: AppColors.white,
+                            color: T.onPrimary(context),
                           ),
                         ),
                       ],
@@ -669,21 +666,21 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.orange.shade50,
+          color: T.primaryContainer(context),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.orange.shade200),
+          border: Border.all(color: T.primary(context).withValues(alpha: 0.3)),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.orange.shade100,
+                color: T.primary(context).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 IconsaxPlusBold.wallet_3,
-                color: Colors.orange.shade700,
+                color: T.primary(context),
                 size: 24,
               ),
             ),
@@ -704,7 +701,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                         ? 'تم استخدام الرحلة المجانية'
                         : 'رحلة مجانية متاحة',
                     style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.slate500,
+                      color: T.textSecondary(context),
                     ),
                   ),
                 ],
@@ -712,7 +709,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
             ),
             Icon(
               IconsaxPlusLinear.arrow_left_2,
-              color: Colors.orange.shade700,
+              color: T.primary(context),
               size: 20,
             ),
           ],
@@ -729,7 +726,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       children: [
         Text(
           'تأكيد الحجز يفتح بيانات الراكب (رحلة مجانية أو خصم من المحفظة مرة واحدة للرحلة)',
-          style: AppTextStyles.bodySmall.copyWith(color: AppColors.slate400),
+          style: AppTextStyles.bodySmall.copyWith(
+            color: T.textSecondary(context),
+          ),
         ),
         const SizedBox(height: 16),
         ...pendingBookings.map((b) => _buildPendingBookingItem(b)),
@@ -884,11 +883,11 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: T.surface(context),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppColors.black.withValues(alpha: 0.05),
+            color: T.shadow(context).withValues(alpha: 0.08),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -908,7 +907,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
           const SizedBox(height: 12),
           Text(
             label,
-            style: AppTextStyles.bodySmall.copyWith(color: AppColors.slate400),
+            style: AppTextStyles.bodySmall.copyWith(
+              color: T.textSecondary(context),
+            ),
           ),
           const SizedBox(height: 4),
           Text(
@@ -917,7 +918,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
           ),
           Text(
             subtitle,
-            style: AppTextStyles.labelSmall.copyWith(color: AppColors.slate500),
+            style: AppTextStyles.labelSmall.copyWith(
+              color: T.textSecondary(context),
+            ),
           ),
         ],
       ),
@@ -954,11 +957,11 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: T.surface(context),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppColors.black.withValues(alpha: 0.05),
+            color: T.shadow(context).withValues(alpha: 0.08),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -982,7 +985,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                 Text(
                   'حالة الرحلة',
                   style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.slate400,
+                    color: T.textSecondary(context),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1113,7 +1116,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
             label,
             style: AppTextStyles.bodyLarge.copyWith(
               fontSize: 15,
-              color: AppColors.slate500,
+              color: T.textSecondary(context),
             ),
           ),
         ),
@@ -1137,7 +1140,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       children: [
         Text(
           'اضغط مطولاً على مقعد أخضر لقفله (حجز خارجي)، أو على مقعد مقفل لفتحه.',
-          style: AppTextStyles.bodySmall.copyWith(color: AppColors.slate400),
+          style: AppTextStyles.bodySmall.copyWith(
+            color: T.textSecondary(context),
+          ),
         ),
         const SizedBox(height: 20),
         // Seat Layout Visualization
@@ -1158,7 +1163,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                 ),
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: AppColors.teal50,
+                  color: T.primaryContainer(context),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -1189,9 +1194,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                 runSpacing: 8,
                 children: [
                   _buildLegendItem(AppColors.success, 'متاح'),
-                  _buildLegendItem(Colors.amber.shade200, 'مقفل'),
+                  _buildLegendItem(T.secondary(context), 'مقفل'),
                   _buildLegendItem(T.primary(context), 'محجوز - رجل'),
-                  _buildLegendItem(Colors.pink, 'محجوز - أنثى'),
+                  _buildLegendItem(T.accentPink(context), 'محجوز - أنثى'),
                 ],
               ),
             ],
@@ -1231,9 +1236,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
             IconData seatIcon;
 
             if (isLocked) {
-              seatColor = Colors.amber.shade100;
-              borderColor = Colors.amber.shade400;
-              iconColor = Colors.amber.shade900;
+              seatColor = T.secondary(context).withValues(alpha: 0.15);
+              borderColor = T.secondary(context).withValues(alpha: 0.5);
+              iconColor = T.secondary(context);
               seatIcon = IconsaxPlusBold.lock;
             } else if (!isBooked) {
               seatColor = AppColors.successLight.withValues(alpha: 0.2);
@@ -1242,18 +1247,18 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
               seatIcon = IconsaxPlusLinear.profile_2user;
             } else if (isMale) {
               seatColor = T.primary(context).withValues(alpha: 0.1);
-              borderColor = AppColors.teal300;
+              borderColor = T.primary(context).withValues(alpha: 0.4);
               iconColor = T.primary(context);
               seatIcon = IconsaxPlusBold.profile;
             } else if (isFemale) {
-              seatColor = Colors.pink.shade100;
-              borderColor = Colors.pink.shade300;
-              iconColor = Colors.pink.shade700;
+              seatColor = T.accentPink(context).withValues(alpha: 0.1);
+              borderColor = T.accentPink(context).withValues(alpha: 0.4);
+              iconColor = T.accentPink(context);
               seatIcon = IconsaxPlusBold.profile;
             } else {
-              seatColor = AppColors.slate100;
-              borderColor = AppColors.slate300;
-              iconColor = AppColors.slate500;
+              seatColor = T.surfaceVariant(context);
+              borderColor = T.outlineVariant(context);
+              iconColor = T.textSecondary(context);
               seatIcon = IconsaxPlusBold.profile;
             }
 
@@ -1337,9 +1342,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.slate50,
+          color: T.surfaceVariant(context),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.slate200),
+          border: Border.all(color: T.outline(context)),
         ),
         child: Row(
           children: [
@@ -1348,16 +1353,14 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
               decoration: BoxDecoration(
                 color: booking.userPopulated?.gender == 'male'
                     ? T.primary(context).withValues(alpha: 0.1)
-                    : Colors.pink.shade100,
+                    : T.accentPink(context).withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                booking.userPopulated?.gender == 'male'
-                    ? IconsaxPlusBold.profile
-                    : IconsaxPlusBold.profile,
+                IconsaxPlusBold.profile,
                 color: booking.userPopulated?.gender == 'male'
                     ? T.primary(context)
-                    : Colors.pink.shade700,
+                    : T.accentPink(context),
                 size: 24,
               ),
             ),
@@ -1375,7 +1378,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                       fontWeight: FontWeight.bold,
                       color: booking.hasDriverPaidToContact
                           ? T.onSurface(context).withValues(alpha: 0.87)
-                          : AppColors.slate400,
+                          : T.textSecondary(context),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -1384,13 +1387,13 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                       Icon(
                         IconsaxPlusLinear.profile_2user,
                         size: 14,
-                        color: AppColors.slate400,
+                        color: T.textSecondary(context),
                       ),
                       const SizedBox(width: 4),
                       Text(
                         'مقعد ${booking.seatNumber}',
                         style: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.slate400,
+                          color: T.textSecondary(context),
                         ),
                       ),
                       // Show phone only if driver has paid AND passenger allows sharing
@@ -1400,14 +1403,14 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                         Icon(
                           IconsaxPlusLinear.call,
                           size: 14,
-                          color: AppColors.slate400,
+                          color: T.textSecondary(context),
                         ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
                             booking.userPopulated?.phoneNumber ?? '',
                             style: AppTextStyles.bodySmall.copyWith(
-                              color: AppColors.slate400,
+                              color: T.textSecondary(context),
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1421,17 +1424,17 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: AppColors.teal50,
+                color: T.success(context).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: AppColors.successLight.withValues(alpha: 0.4),
+                  color: T.success(context).withValues(alpha: 0.3),
                 ),
               ),
               child: Text(
                 'مؤكد',
                 style: AppTextStyles.labelSmall.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: AppColors.success,
+                  color: T.success(context),
                 ),
               ),
             ),
@@ -1458,7 +1461,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
               return Container(
                 height: 200,
                 decoration: BoxDecoration(
-                  color: AppColors.slate200,
+                  color: T.surfaceVariant(context),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(
@@ -1467,13 +1470,13 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                     Icon(
                       IconsaxPlusLinear.danger,
                       size: 48,
-                      color: AppColors.slate300,
+                      color: T.outlineVariant(context),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'فشل تحميل الصورة',
                       style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.slate400,
+                        color: T.textSecondary(context),
                       ),
                     ),
                   ],

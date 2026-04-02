@@ -49,9 +49,9 @@ class PassengerDetailsScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppColors.slate50,
+                color: T.surface(context),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.slate200),
+                border: Border.all(color: T.outline(context)),
               ),
               child: Column(
                 children: [
@@ -59,16 +59,16 @@ class PassengerDetailsScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: (user?.gender == 'male'
-                          ? AppColors.info.withValues(alpha: 0.1)
-                          : Colors.pink.shade100),
+                          ? T.info(context).withValues(alpha: 0.1)
+                          : T.accentPink(context).withValues(alpha: 0.1)),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       IconsaxPlusBold.profile,
                       size: 48,
                       color: user?.gender == 'male'
-                          ? AppColors.infoDark
-                          : Colors.pink.shade700,
+                          ? T.info(context)
+                          : T.accentPink(context),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -78,7 +78,7 @@ class PassengerDetailsScreen extends StatelessWidget {
                       fontSize: 20,
                       color: hasData
                           ? T.onSurface(context).withValues(alpha: 0.87)
-                          : AppColors.slate600,
+                          : T.textSecondary(context),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -195,21 +195,23 @@ class _ChatButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.teal50,
+            color: T.primaryContainer(context),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.teal200),
+            border: Border.all(
+              color: T.primary(context).withValues(alpha: 0.3),
+            ),
           ),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.teal100,
+                  color: T.primary(context).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   IconsaxPlusLinear.message,
-                  color: AppColors.teal700,
+                  color: T.primary(context),
                   size: 24,
                 ),
               ),
@@ -222,13 +224,13 @@ class _ChatButton extends StatelessWidget {
                       'محادثة خاصة',
                       style: AppTextStyles.titleSmall.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: T.primary(context),
+                        color: T.onSurface(context),
                       ),
                     ),
                     Text(
                       'مراسلة $passengerName',
                       style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.teal700,
+                        color: T.textSecondary(context),
                       ),
                     ),
                   ],
@@ -236,7 +238,7 @@ class _ChatButton extends StatelessWidget {
               ),
               Icon(
                 IconsaxPlusLinear.arrow_left_2,
-                color: AppColors.teal700,
+                color: T.primary(context),
                 size: 20,
               ),
             ],
@@ -275,10 +277,10 @@ class _InfoCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: T.surface(context),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.slate200),
+            border: Border.all(color: T.outline(context)),
             boxShadow: [
               BoxShadow(
-                color: AppColors.black.withValues(alpha: 0.03),
+                color: T.shadow(context).withValues(alpha: 0.05),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -289,10 +291,10 @@ class _InfoCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.teal50,
+                  color: T.primary(context).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: AppColors.teal700, size: 22),
+                child: Icon(icon, color: T.primary(context), size: 22),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -302,7 +304,7 @@ class _InfoCard extends StatelessWidget {
                     Text(
                       label,
                       style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.slate600,
+                        color: T.textSecondary(context),
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -321,7 +323,7 @@ class _InfoCard extends StatelessWidget {
               if (isTappable)
                 Icon(
                   IconsaxPlusLinear.arrow_left_2,
-                  color: AppColors.teal700,
+                  color: T.primary(context),
                   size: 20,
                 ),
             ],

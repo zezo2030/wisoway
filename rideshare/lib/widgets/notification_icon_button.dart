@@ -76,8 +76,8 @@ class NotificationIconButton extends StatelessWidget {
                           ),
                           child: Text(
                             unreadCount > 99 ? '99+' : '$unreadCount',
-                            style: const TextStyle(
-                              color: AppColors.white,
+                            style: TextStyle(
+                              color: T.onError(context),
                               fontSize: 9,
                               fontWeight: FontWeight.bold,
                             ),

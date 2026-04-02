@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:rideshare/core/services/localization_service.dart';
-import 'package:rideshare/core/services/settings_service.dart';
 import 'package:rideshare/screens/settings/notification_settings_screen.dart';
 
 Widget _createTestWidget() {

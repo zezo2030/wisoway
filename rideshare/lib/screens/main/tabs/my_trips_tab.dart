@@ -67,11 +67,11 @@ class MyTripsTab extends StatelessWidget {
           },
           tooltip: 'إنشاء رحلة جديدة',
           backgroundColor: T.primary(context),
-          icon: const Icon(IconsaxPlusBold.add, color: AppColors.white),
-          label: const Text(
+          icon: Icon(IconsaxPlusBold.add, color: T.onPrimary(context)),
+          label: Text(
             'رحلة جديدة',
             style: TextStyle(
-              color: AppColors.white,
+              color: T.onPrimary(context),
               fontWeight: FontWeight.bold,
             ),
           ),

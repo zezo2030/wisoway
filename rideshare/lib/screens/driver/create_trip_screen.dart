@@ -139,9 +139,9 @@ class _CreateTripScreenState extends State<CreateTripScreen>
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
               primary: T.primary(context),
-              onPrimary: AppColors.white,
+              onPrimary: T.onPrimary(context),
               onSurface: T.onSurface(context).withValues(alpha: 0.87),
             ),
           ),
@@ -158,9 +158,9 @@ class _CreateTripScreenState extends State<CreateTripScreen>
         builder: (context, child) {
           return Theme(
             data: Theme.of(context).copyWith(
-              colorScheme: ColorScheme.light(
+              colorScheme: Theme.of(context).colorScheme.copyWith(
                 primary: T.primary(context),
-                onPrimary: AppColors.white,
+                onPrimary: T.onPrimary(context),
                 onSurface: T.onSurface(context).withValues(alpha: 0.87),
               ),
             ),
@@ -239,16 +239,18 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.redAccent,
+        backgroundColor: T.error(context),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         content: Row(
           children: [
-            const Icon(Icons.error_outline, color: AppColors.white),
+            Icon(Icons.error_outline, color: T.onError(context)),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 msg,
-                style: AppTextStyles.bodyLarge.copyWith(color: AppColors.white),
+                style: AppTextStyles.bodyLarge.copyWith(
+                  color: T.onError(context),
+                ),
               ),
             ),
           ],
@@ -261,16 +263,18 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.green,
+        backgroundColor: T.success(context),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         content: Row(
           children: [
-            const Icon(Icons.check_circle_outline, color: AppColors.white),
+            Icon(Icons.check_circle_outline, color: T.onPrimary(context)),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 msg,
-                style: AppTextStyles.bodyLarge.copyWith(color: AppColors.white),
+                style: AppTextStyles.bodyLarge.copyWith(
+                  color: T.onPrimary(context),
+                ),
               ),
             ),
           ],
@@ -286,7 +290,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
 
     if (user != null && !user.canCreateTrips) {
       return Scaffold(
-        backgroundColor: AppColors.white,
+        backgroundColor: T.background(context),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -328,7 +332,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: T.primary(context),
-                    foregroundColor: AppColors.white,
+                    foregroundColor: T.onPrimary(context),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 32,
                       vertical: 16,
@@ -346,7 +350,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FE),
+      backgroundColor: T.background(context),
       appBar: AppBar(
         backgroundColor: T.primary(context),
         elevation: 0,
@@ -355,11 +359,11 @@ class _CreateTripScreenState extends State<CreateTripScreen>
           'إنشاء رحلة جديدة',
           style: AppTextStyles.titleMedium.copyWith(
             fontWeight: FontWeight.bold,
-            color: AppColors.white,
+            color: T.onPrimary(context),
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.white),
+          icon: Icon(Icons.arrow_back_ios_new, color: T.onPrimary(context)),
           tooltip: 'رجوع',
           onPressed: () => Navigator.pop(context),
         ),
@@ -369,24 +373,34 @@ class _CreateTripScreenState extends State<CreateTripScreen>
           opacity: _fadeAnimation,
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  _buildHeaderIllustration(),
-                  const SizedBox(height: 30),
-                  _buildLocationsCard(),
-                  const SizedBox(height: 20),
-                  _buildDetailsCard(),
-                  const SizedBox(height: 20),
-                  _buildSeatingCard(),
-                  const SizedBox(height: 20),
-                  _buildCarImageCard(),
-                  const SizedBox(height: 40),
-                  _buildSubmitButton(),
-                  const SizedBox(height: 20),
-                ],
+            padding: EdgeInsets.symmetric(
+              horizontal: _horizontalPadding(context),
+              vertical: _verticalSpacing(context),
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: _maxContentWidth(context),
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      _buildHeaderIllustration(),
+                      SizedBox(height: _verticalSpacing(context)),
+                      _buildLocationsCard(),
+                      SizedBox(height: _cardGap(context)),
+                      _buildDetailsCard(),
+                      SizedBox(height: _cardGap(context)),
+                      _buildSeatingCard(),
+                      SizedBox(height: _cardGap(context)),
+                      _buildCarImageCard(),
+                      SizedBox(height: _verticalSpacing(context) * 1.5),
+                      _buildSubmitButton(),
+                      SizedBox(height: _verticalSpacing(context)),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -395,18 +409,46 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     );
   }
 
+  double _horizontalPadding(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width >= 900) return 40;
+    if (width >= 600) return 24;
+    return 16;
+  }
+
+  double _maxContentWidth(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width >= 1200) return 600;
+    if (width >= 900) return 500;
+    if (width >= 600) return double.infinity;
+    return double.infinity;
+  }
+
+  double _cardGap(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width >= 600) return 16;
+    return 16;
+  }
+
+  double _verticalSpacing(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width >= 600) return 24;
+    return 20;
+  }
+
   Widget _buildHeaderIllustration() {
+    final iconSize = _iconSize(context);
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(_cardPadding(context)),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: T.surface(context),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: T.outline(context)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.black.withValues(alpha: 0.02),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+            color: T.surface(context).withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -421,7 +463,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
             child: Icon(
               IconsaxPlusBold.car,
               color: T.primary(context),
-              size: 48,
+              size: iconSize,
             ),
           ),
           const SizedBox(height: 16),
@@ -443,6 +485,13 @@ class _CreateTripScreenState extends State<CreateTripScreen>
         ],
       ),
     );
+  }
+
+  double _iconSize(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < 360) return 36;
+    if (width >= 600) return 56;
+    return 48;
   }
 
   Widget _buildLocationsCard() {
@@ -483,7 +532,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                     controller: _toController,
                     hint: 'أين وجهتك؟',
                     icon: Icons.location_on_rounded,
-                    iconColor: const Color(0xFF00C9A7),
+                    iconColor: T.primary(context),
                     onTap: _selectToLocation,
                   ),
                 ],
@@ -516,7 +565,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
             ),
             hint: 'وقت الانطلاق',
             icon: IconsaxPlusBroken.calendar_1,
-            iconColor: const Color(0xFFFFA726),
+            iconColor: T.secondary(context),
             onTap: _selectDepartureTime,
           ),
           const SizedBox(height: 16),
@@ -526,7 +575,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
             style: AppTextStyles.labelLarge.copyWith(),
             decoration: InputDecoration(
               filled: true,
-              fillColor: AppColors.white,
+              fillColor: T.surface(context),
               hintText: 'السعر لكل مقعد',
               hintStyle: AppTextStyles.bodyLarge.copyWith(
                 color: AppColors.slate400,
@@ -554,7 +603,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(color: AppColors.slate200),
+                borderSide: BorderSide(color: T.outline(context)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -615,7 +664,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: AppColors.slate100,
+              color: T.surfaceVariant(context),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Row(
@@ -720,9 +769,9 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                     ),
                     if (_customRowConfigs.length > 1)
                       IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.remove_circle_outline,
-                          color: Colors.redAccent,
+                          color: T.error(context),
                         ),
                         onPressed: () =>
                             setState(() => _customRowConfigs.removeAt(index)),
@@ -764,12 +813,12 @@ class _CreateTripScreenState extends State<CreateTripScreen>
           duration: const Duration(milliseconds: 300),
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isActive ? AppColors.white : AppColors.transparent,
+            color: isActive ? T.surface(context) : AppColors.transparent,
             borderRadius: BorderRadius.circular(12),
             boxShadow: isActive
                 ? [
                     BoxShadow(
-                      color: AppColors.black.withValues(alpha: 0.05),
+                      color: T.shadow(context),
                       blurRadius: 10,
                       offset: const Offset(0, 2),
                     ),
@@ -796,9 +845,9 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: T.surface(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.slate200),
+        border: Border.all(color: T.outline(context)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -808,12 +857,12 @@ class _CreateTripScreenState extends State<CreateTripScreen>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFB8500).withValues(alpha: 0.1),
+                  color: T.secondary(context).withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.people_outline,
-                  color: Color(0xFFFB8500),
+                  color: T.secondary(context),
                   size: 20,
                 ),
               ),
@@ -831,8 +880,8 @@ class _CreateTripScreenState extends State<CreateTripScreen>
             label: 'منع الاختلاط: ${_preventGenderMixing ? "مفعّل" : "معطّل"}',
             child: Switch(
               value: _preventGenderMixing,
-              activeThumbColor: T.primary(context),
-              activeColor: T.primary(context).withValues(alpha: 0.3),
+              // activeThumbColor: T.primary(context),
+              activeThumbColor: T.primary(context).withValues(alpha: 0.3),
               onChanged: (v) => setState(() => _preventGenderMixing = v),
             ),
           ),
@@ -870,70 +919,77 @@ class _CreateTripScreenState extends State<CreateTripScreen>
             label: 'إضافة صورة للسيارة',
             child: GestureDetector(
               onTap: _pickCarImage,
-              child: Container(
-                height: 160,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: _carImage != null
-                        ? T.primary(context)
-                        : AppColors.slate300,
-                    width: 2,
-                    style: BorderStyle.solid,
-                  ),
-                  image: _carImage != null
-                      ? DecorationImage(
-                          image: FileImage(_carImage!),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: _carImageHeight(context),
+                  maxHeight: _carImageHeight(context) * 1.5,
                 ),
-                child: _carImage == null
-                    ? Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: T.primary(context).withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: T.surface(context),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: _carImage != null
+                          ? T.primary(context)
+                          : T.outline(context),
+                      width: 2,
+                      style: BorderStyle.solid,
+                    ),
+                    image: _carImage != null
+                        ? DecorationImage(
+                            image: FileImage(_carImage!),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
+                  child: _carImage == null
+                      ? Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: T
+                                    .primary(context)
+                                    .withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                IconsaxPlusBroken.camera,
+                                color: T.primary(context),
+                                size: 32,
+                              ),
                             ),
-                            child: Icon(
-                              IconsaxPlusBroken.camera,
-                              color: T.primary(context),
-                              size: 32,
+                            const SizedBox(height: 12),
+                            Text(
+                              'انقر لإضافة صورة لسيارتك',
+                              style: AppTextStyles.labelLarge.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: T.textSecondary(context),
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'انقر لإضافة صورة لسيارتك',
-                            style: AppTextStyles.labelLarge.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.slate600,
-                            ),
-                          ),
-                        ],
-                      )
-                    : Align(
-                        alignment: Alignment.topRight,
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.black.withValues(alpha: 0.5),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.edit,
-                              color: AppColors.white,
-                              size: 20,
+                          ],
+                        )
+                      : Align(
+                          alignment: Alignment.topRight,
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.black.withValues(alpha: 0.5),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.edit,
+                                color: AppColors.white,
+                                size: 20,
+                              ),
                             ),
                           ),
                         ),
-                      ),
+                ),
               ),
             ),
           ),
@@ -942,49 +998,59 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     );
   }
 
+  double _carImageHeight(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < 360) return 120;
+    if (width >= 600) return 180;
+    return 160;
+  }
+
   Widget _buildSubmitButton() {
-    return Container(
-      width: double.infinity,
-      height: 60,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: T.primary(context),
-        boxShadow: [
-          BoxShadow(
-            color: T.primary(context).withValues(alpha: 0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Semantics(
-        button: true,
-        label: 'تأكيد ونشر الرحلة',
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.transparent,
-            shadowColor: AppColors.transparent,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: _maxContentWidth(context)),
+      child: Container(
+        width: double.infinity,
+        height: 60,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: T.primary(context),
+          boxShadow: [
+            BoxShadow(
+              color: T.primary(context).withValues(alpha: 0.3),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
             ),
+          ],
+        ),
+        child: Semantics(
+          button: true,
+          label: 'تأكيد ونشر الرحلة',
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.transparent,
+              shadowColor: AppColors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
+            onPressed: _isLoading ? null : _createTrip,
+            child: _isLoading
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: AppColors.white,
+                      strokeWidth: 3,
+                    ),
+                  )
+                : Text(
+                    'تأكيد ونشر الرحلة',
+                    style: AppTextStyles.titleMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: T.onPrimary(context),
+                    ),
+                  ),
           ),
-          onPressed: _isLoading ? null : _createTrip,
-          child: _isLoading
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    color: AppColors.white,
-                    strokeWidth: 3,
-                  ),
-                )
-              : Text(
-                  'تأكيد ونشر الرحلة',
-                  style: AppTextStyles.titleMedium.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.white,
-                  ),
-                ),
         ),
       ),
     );
@@ -992,21 +1058,27 @@ class _CreateTripScreenState extends State<CreateTripScreen>
 
   Widget _buildGlassCard({required Widget child}) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(_cardPadding(context)),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: T.surface(context),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: T.outline(context)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.black.withValues(alpha: 0.02),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+            color: T.surface(context).withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: child,
     );
+  }
+
+  double _cardPadding(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width >= 600) return 28;
+    return 20;
   }
 
   Widget _buildInteractiveField({
@@ -1024,9 +1096,9 @@ class _CreateTripScreenState extends State<CreateTripScreen>
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           decoration: BoxDecoration(
-            color: AppColors.white,
+            color: T.surface(context),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.slate200),
+            border: Border.all(color: T.outline(context)),
           ),
           child: Row(
             children: [
@@ -1048,7 +1120,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                         ? FontWeight.normal
                         : FontWeight.w600,
                     color: controller.text.isEmpty
-                        ? AppColors.slate500
+                        ? T.textSecondary(context)
                         : T.onSurface(context),
                   ),
                   maxLines: 1,
@@ -1076,9 +1148,9 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: T.surface(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.slate200),
+        border: Border.all(color: T.outline(context)),
       ),
       child: Column(
         children: [
@@ -1112,16 +1184,16 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: onDecrease == null
-                          ? AppColors.slate100
-                          : AppColors.white,
-                      border: Border.all(color: AppColors.slate300),
+                          ? T.surfaceVariant(context)
+                          : T.surface(context),
+                      border: Border.all(color: T.outlineVariant(context)),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       Icons.remove,
                       size: 20,
                       color: onDecrease == null
-                          ? AppColors.slate400
+                          ? T.textDisabled(context)
                           : T.onSurface(context),
                     ),
                   ),
@@ -1147,16 +1219,16 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: onIncrease == null
-                          ? AppColors.slate100
-                          : AppColors.white,
-                      border: Border.all(color: AppColors.slate300),
+                          ? T.surfaceVariant(context)
+                          : T.surface(context),
+                      border: Border.all(color: T.outlineVariant(context)),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       Icons.add,
                       size: 20,
                       color: onIncrease == null
-                          ? AppColors.slate400
+                          ? T.textDisabled(context)
                           : T.onSurface(context),
                     ),
                   ),

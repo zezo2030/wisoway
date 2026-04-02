@@ -197,7 +197,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Navigator.pop(ctx);
               _showSecondConfirmationDialog(context);
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: T.error(context)),
             child: Text(isArabic ? 'نعم، حذف الحساب' : 'Yes, Delete Account'),
           ),
         ],
@@ -227,7 +227,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Navigator.pop(ctx);
               _attemptDeleteAccount(context);
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: T.error(context)),
             child: Text(isArabic ? 'حذف نهائي' : 'Delete Permanently'),
           ),
         ],
@@ -422,7 +422,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: Text(
                           isArabic ? 'قريباً' : 'Coming Soon',
                           style: const TextStyle(
-                            color: Colors.white,
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                           ),
@@ -589,21 +588,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.08),
+                      color: T.error(context).withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: Colors.red.withValues(alpha: 0.2),
+                        color: T.error(context).withValues(alpha: 0.2),
                       ),
                     ),
                     child: ListTile(
-                      leading: const Icon(
+                      leading: Icon(
                         IconsaxPlusBroken.trash,
-                        color: Colors.red,
+                        color: T.error(context),
                       ),
                       title: Text(
                         isArabic ? 'حذف الحساب' : 'Delete Account',
-                        style: const TextStyle(
-                          color: Colors.red,
+                        style: TextStyle(
+                          color: T.error(context),
                           fontWeight: FontWeight.w600,
                         ),
                       ),

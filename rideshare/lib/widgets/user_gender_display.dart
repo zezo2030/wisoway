@@ -37,7 +37,7 @@ class UserGenderDisplay extends StatelessWidget {
             children: [
               Icon(
                 isMale ? Icons.male : Icons.female,
-                color: isMale ? Colors.blue : Colors.pink,
+                color: isMale ? T.info(context) : T.accentPink(context),
                 size: iconSize,
                 semanticLabel: isMale ? 'ذكر' : 'أنثى',
               ),
@@ -91,13 +91,15 @@ class UserInfoCard extends StatelessWidget {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: user.isMale
-                            ? Colors.blue.withOpacity(0.1)
-                            : Colors.pink.withOpacity(0.1),
+                            ? T.info(context).withValues(alpha: 0.1)
+                            : T.accentPink(context).withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         user.isMale ? Icons.male : Icons.female,
-                        color: user.isMale ? Colors.blue : Colors.pink,
+                        color: user.isMale
+                            ? T.info(context)
+                            : T.accentPink(context),
                         size: 32,
                       ),
                     ),
@@ -119,7 +121,7 @@ class UserInfoCard extends StatelessWidget {
                             user.email,
                             style: TextStyle(
                               fontSize: 14,
-                              color: AppColors.slate600,
+                              color: T.textSecondary(context),
                             ),
                           ),
                         ],
@@ -130,12 +132,14 @@ class UserInfoCard extends StatelessWidget {
                 const Divider(height: 32),
                 // معلومات إضافية
                 _buildInfoRow(
+                  context: context,
                   icon: Icons.person,
                   label: 'الجنس',
                   value: user.isMale ? 'ذكر' : 'أنثى',
                 ),
                 const SizedBox(height: 12),
                 _buildInfoRow(
+                  context: context,
                   icon: Icons.badge,
                   label: 'الدور',
                   value: user.role == AppConstants.rolePassenger
@@ -147,6 +151,7 @@ class UserInfoCard extends StatelessWidget {
                 if (user.phoneNumber.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   _buildInfoRow(
+                    context: context,
                     icon: Icons.phone,
                     label: 'رقم الهاتف',
                     value: user.phoneNumber,
@@ -155,6 +160,7 @@ class UserInfoCard extends StatelessWidget {
                 if (user.rating > 0) ...[
                   const SizedBox(height: 12),
                   _buildInfoRow(
+                    context: context,
                     icon: Icons.star,
                     label: 'التقييم',
                     value:
@@ -170,17 +176,18 @@ class UserInfoCard extends StatelessWidget {
   }
 
   Widget _buildInfoRow({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required String value,
   }) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: AppColors.slate600),
+        Icon(icon, size: 20, color: T.textSecondary(context)),
         const SizedBox(width: 12),
         Text(
           '$label: ',
-          style: TextStyle(fontSize: 14, color: AppColors.slate600),
+          style: TextStyle(fontSize: 14, color: T.textSecondary(context)),
         ),
         Text(
           value,
@@ -216,13 +223,13 @@ IconData getGenderIcon(String gender) {
 }
 
 /// Helper function للحصول على لون الجنس
-Color getGenderColor(String gender) {
+Color getGenderColor(String gender, BuildContext context) {
   switch (gender) {
     case AppConstants.genderMale:
-      return Colors.blue;
+      return T.info(context);
     case AppConstants.genderFemale:
-      return Colors.pink;
+      return T.accentPink(context);
     default:
-      return Colors.grey;
+      return T.textDisabled(context);
   }
 }

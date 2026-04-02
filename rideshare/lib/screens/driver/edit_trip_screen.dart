@@ -75,7 +75,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('الرحلة غير موجودة'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
             ),
           );
           Navigator.pop(context);
@@ -87,7 +87,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تحميل الرحلة: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -207,7 +207,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                 ElevatedButton(
                   onPressed: () => Navigator.pop(context, true),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
+                    backgroundColor: AppColors.warning,
                     foregroundColor: AppColors.white,
                   ),
                   child: const Text('متابعة'),
@@ -233,7 +233,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('يرجى اختيار نقطة الانطلاق'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
       return;
@@ -243,7 +243,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('يرجى اختيار الوجهة'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
       return;
@@ -253,7 +253,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('يرجى اختيار وقت الانطلاق'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
       return;
@@ -267,7 +267,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('وقت الانطلاق يجب أن يكون في المستقبل للرحلات النشطة'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
       return;
@@ -296,7 +296,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
               ElevatedButton(
                 onPressed: () => Navigator.pop(context, true),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
+                  backgroundColor: AppColors.warning,
                   foregroundColor: AppColors.white,
                 ),
                 child: const Text('متابعة'),
@@ -356,7 +356,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('تم تحديث الرحلة بنجاح'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
         Navigator.pop(context, true);
@@ -368,7 +368,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -383,11 +383,9 @@ class _EditTripScreenState extends State<EditTripScreen> {
   Widget build(BuildContext context) {
     if (_isLoadingTrip) {
       return Scaffold(
-        backgroundColor: AppColors.slate50,
+        backgroundColor: T.background(context),
         appBar: AppBar(
           elevation: 0,
-          backgroundColor: AppColors.white,
-          foregroundColor: T.onSurface(context).withValues(alpha: 0.87),
           title: Text(
             'تعديل الرحلة',
             style: AppTextStyles.titleMedium.copyWith(
@@ -403,11 +401,9 @@ class _EditTripScreenState extends State<EditTripScreen> {
 
     if (_trip == null) {
       return Scaffold(
-        backgroundColor: AppColors.slate50,
+        backgroundColor: T.background(context),
         appBar: AppBar(
           elevation: 0,
-          backgroundColor: AppColors.white,
-          foregroundColor: T.onSurface(context).withValues(alpha: 0.87),
           title: Text(
             'تعديل الرحلة',
             style: AppTextStyles.titleMedium.copyWith(
@@ -424,11 +420,9 @@ class _EditTripScreenState extends State<EditTripScreen> {
     final totalSeats = _rows * _seatsPerRow;
 
     return Scaffold(
-      backgroundColor: AppColors.slate50,
+      backgroundColor: T.background(context),
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: AppColors.white,
-        foregroundColor: T.onSurface(context).withValues(alpha: 0.87),
         title: Text(
           'تعديل الرحلة',
           style: AppTextStyles.titleMedium.copyWith(
@@ -450,14 +444,17 @@ class _EditTripScreenState extends State<EditTripScreen> {
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Colors.orange.shade600, Colors.orange.shade400],
+                      colors: [
+                        T.secondary(context),
+                        T.secondary(context).withValues(alpha: 0.7),
+                      ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.orange.withValues(alpha: 0.3),
+                        color: T.secondary(context).withValues(alpha: 0.3),
                         blurRadius: 15,
                         offset: const Offset(0, 5),
                       ),
@@ -468,13 +465,13 @@ class _EditTripScreenState extends State<EditTripScreen> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: AppColors.white.withValues(alpha: 0.2),
+                          color: T.onPrimary(context).withValues(alpha: 0.2),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.edit,
                           size: 48,
-                          color: AppColors.white,
+                          color: T.onPrimary(context),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -482,7 +479,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                         'تعديل رحلتك',
                         style: AppTextStyles.titleLarge.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: AppColors.white,
+                          color: T.onPrimary(context),
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -490,7 +487,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                       Text(
                         'قم بتحديث معلومات الرحلة',
                         style: AppTextStyles.bodyMedium.copyWith(
-                          color: AppColors.white.withValues(alpha: 0.2),
+                          color: T.onPrimary(context).withValues(alpha: 0.8),
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -502,7 +499,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                 SectionCard(
                   title: 'تفاصيل الرحلة',
                   icon: Icons.route,
-                  iconColor: Colors.blue,
+                  iconColor: T.info(context),
                   children: [
                     const SizedBox(height: 8),
                     _buildModernTextField(
@@ -510,7 +507,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                       label: 'نقطة الانطلاق',
                       hint: 'مثال: عمّان',
                       icon: Icons.location_on,
-                      color: Colors.red,
+                      color: T.error(context),
                       onTap: _selectFromLocation,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -524,7 +521,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
+                          color: T.primary(context).withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -540,7 +537,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                       label: 'الوجهة',
                       hint: 'مثال: الإسكندرية',
                       icon: Icons.location_city,
-                      color: Colors.green,
+                      color: T.success(context),
                       onTap: _selectToLocation,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -561,7 +558,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                       label: 'وقت الانطلاق',
                       hint: 'اختر التاريخ والوقت',
                       icon: Icons.access_time,
-                      color: Colors.orange,
+                      color: T.secondary(context),
                       onTap: _selectDepartureTime,
                       validator: (value) {
                         if (_departureTime == null) {
@@ -576,7 +573,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                       label: 'السعر لكل مقعد',
                       hint: 'مثال: 100',
                       icon: Icons.attach_money,
-                      color: Colors.green,
+                      color: T.success(context),
                       keyboardType: TextInputType.number,
                       suffixWidget: Container(
                         margin: const EdgeInsets.only(left: 12),
@@ -585,14 +582,14 @@ class _EditTripScreenState extends State<EditTripScreen> {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.green.shade50,
+                          color: T.success(context).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           _trip?.currency ?? 'JOD',
                           style: AppTextStyles.titleMedium.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: AppColors.success,
+                            color: T.success(context),
                           ),
                         ),
                       ),
@@ -614,7 +611,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                 SectionCard(
                   title: 'إعدادات المقاعد',
                   icon: Icons.event_seat,
-                  iconColor: Colors.purple,
+                  iconColor: T.primary(context),
                   children: [
                     const SizedBox(height: 8),
                     _buildCounterRow(
@@ -648,15 +645,10 @@ class _EditTripScreenState extends State<EditTripScreen> {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.purple.shade50,
-                            Colors.purple.shade100,
-                          ],
-                        ),
+                        color: T.primaryContainer(context),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: Colors.purple.shade200,
+                          color: T.primary(context).withValues(alpha: 0.3),
                           width: 2,
                         ),
                       ),
@@ -693,7 +685,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                               '$totalSeats',
                               style: AppTextStyles.headlineSmall.copyWith(
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.white,
+                                color: T.onPrimary(context),
                               ),
                             ),
                           ),
@@ -704,9 +696,9 @@ class _EditTripScreenState extends State<EditTripScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppColors.slate50,
+                        color: T.surfaceVariant(context),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.slate200),
+                        border: Border.all(color: T.outline(context)),
                       ),
                       child: SwitchListTile(
                         contentPadding: EdgeInsets.zero,
@@ -731,7 +723,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                             'منع الجلوس بجانب الجنس الآخر',
                             style: AppTextStyles.bodyMedium.copyWith(
                               fontSize: 13,
-                              color: AppColors.slate600,
+                              color: T.textSecondary(context),
                             ),
                           ),
                         ),
@@ -749,7 +741,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                 SectionCard(
                   title: 'صورة السيارة',
                   icon: Icons.car_rental,
-                  iconColor: Colors.teal,
+                  iconColor: T.primary(context),
                   subtitle: '(اختياري)',
                   children: [
                     const SizedBox(height: 8),
@@ -761,14 +753,14 @@ class _EditTripScreenState extends State<EditTripScreen> {
                         child: Container(
                           height: 180,
                           decoration: BoxDecoration(
-                            color: AppColors.slate50,
+                            color: T.surfaceVariant(context),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
                               color:
                                   (_carImage != null ||
                                       _existingCarImageUrl != null)
-                                  ? AppColors.teal300
-                                  : AppColors.slate300,
+                                  ? T.primary(context)
+                                  : T.outline(context),
                               width: 2,
                             ),
                           ),
@@ -794,9 +786,9 @@ class _EditTripScreenState extends State<EditTripScreen> {
                                           ),
                                           shape: BoxShape.circle,
                                         ),
-                                        child: const Icon(
+                                        child: Icon(
                                           Icons.edit,
-                                          color: AppColors.white,
+                                          color: T.onPrimary(context),
                                           size: 20,
                                         ),
                                       ),
@@ -814,7 +806,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                                         width: double.infinity,
                                         placeholder: (context, url) =>
                                             Container(
-                                              color: AppColors.slate200,
+                                              color: T.surfaceVariant(context),
                                               child: const Center(
                                                 child:
                                                     CircularProgressIndicator(),
@@ -822,8 +814,11 @@ class _EditTripScreenState extends State<EditTripScreen> {
                                             ),
                                         errorWidget: (context, url, error) =>
                                             Container(
-                                              color: AppColors.slate200,
-                                              child: const Icon(Icons.error),
+                                              color: T.surfaceVariant(context),
+                                              child: Icon(
+                                                Icons.error,
+                                                color: T.error(context),
+                                              ),
                                             ),
                                       ),
                                     ),
@@ -838,9 +833,9 @@ class _EditTripScreenState extends State<EditTripScreen> {
                                           ),
                                           shape: BoxShape.circle,
                                         ),
-                                        child: const Icon(
+                                        child: Icon(
                                           Icons.edit,
-                                          color: AppColors.white,
+                                          color: T.onPrimary(context),
                                           size: 20,
                                         ),
                                       ),
@@ -853,12 +848,12 @@ class _EditTripScreenState extends State<EditTripScreen> {
                                     Container(
                                       padding: const EdgeInsets.all(20),
                                       decoration: BoxDecoration(
-                                        color: AppColors.teal50,
+                                        color: T.primaryContainer(context),
                                         shape: BoxShape.circle,
                                       ),
                                       child: Icon(
                                         Icons.add_photo_alternate,
-                                        color: AppColors.teal700,
+                                        color: T.primary(context),
                                         size: 48,
                                       ),
                                     ),
@@ -866,14 +861,14 @@ class _EditTripScreenState extends State<EditTripScreen> {
                                     Text(
                                       'اضغط لرفع صورة السيارة',
                                       style: AppTextStyles.labelLarge.copyWith(
-                                        color: AppColors.slate600,
+                                        color: T.textSecondary(context),
                                       ),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
                                       'اختياري',
                                       style: AppTextStyles.bodySmall.copyWith(
-                                        color: AppColors.slate500,
+                                        color: T.textSecondary(context),
                                       ),
                                     ),
                                   ],
@@ -890,7 +885,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.orange.withValues(alpha: 0.4),
+                        color: T.secondary(context).withValues(alpha: 0.3),
                         blurRadius: 15,
                         offset: const Offset(0, 8),
                       ),
@@ -903,21 +898,21 @@ class _EditTripScreenState extends State<EditTripScreen> {
                       onPressed: _isLoading ? null : _updateTrip,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 18),
-                        backgroundColor: Colors.orange.shade600,
-                        foregroundColor: AppColors.white,
+                        backgroundColor: T.secondary(context),
+                        foregroundColor: T.onPrimary(context),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
                         elevation: 0,
                       ),
                       child: _isLoading
-                          ? const SizedBox(
+                          ? SizedBox(
                               height: 24,
                               width: 24,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2.5,
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  AppColors.white,
+                                  T.onPrimary(context),
                                 ),
                               ),
                             )
@@ -962,9 +957,9 @@ class _EditTripScreenState extends State<EditTripScreen> {
       borderRadius: BorderRadius.circular(16),
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.slate50,
+          color: T.surface(context),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.slate200, width: 1.5),
+          border: Border.all(color: T.outline(context), width: 1.5),
         ),
         child: TextFormField(
           controller: controller,
@@ -982,7 +977,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
               color: T.outlineVariant(context),
             ),
             labelStyle: AppTextStyles.labelLarge.copyWith(
-              color: AppColors.slate700,
+              color: T.textSecondary(context),
             ),
             prefixIcon: Container(
               margin: const EdgeInsets.all(8),
@@ -1035,16 +1030,16 @@ class _EditTripScreenState extends State<EditTripScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.slate50,
+        color: T.surface(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.slate200),
+        border: Border.all(color: T.outline(context)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.purple.shade50,
+              color: T.primary(context).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: T.primary(context), size: 22),
@@ -1056,15 +1051,15 @@ class _EditTripScreenState extends State<EditTripScreen> {
               style: AppTextStyles.bodyLarge.copyWith(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: AppColors.slate800,
+                color: T.onSurface(context),
               ),
             ),
           ),
           Container(
             decoration: BoxDecoration(
-              color: AppColors.white,
+              color: T.surface(context),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.slate300),
+              border: Border.all(color: T.outlineVariant(context)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -1089,7 +1084,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                           Icons.remove,
                           color: onDecrement != null
                               ? T.primary(context)
-                              : AppColors.slate400,
+                              : T.textDisabled(context),
                           size: 20,
                         ),
                       ),
@@ -1126,7 +1121,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                           Icons.add,
                           color: onIncrement != null
                               ? T.primary(context)
-                              : AppColors.slate400,
+                              : T.textDisabled(context),
                           size: 20,
                         ),
                       ),

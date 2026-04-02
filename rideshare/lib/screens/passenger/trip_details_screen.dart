@@ -258,7 +258,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: T.primary(context),
-                      foregroundColor: AppColors.white,
+                      foregroundColor: T.onPrimary(context),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
-import '../../core/constants/app_spacing.dart';
 import '../../core/theme/colors.dart';
 
 class SettingsTile extends StatelessWidget {

@@ -168,8 +168,8 @@ class _MainScreenState extends State<MainScreen> {
                           ),
                           child: Text(
                             unreadCount > 99 ? '99+' : '$unreadCount',
-                            style: const TextStyle(
-                              color: AppColors.white,
+                            style: TextStyle(
+                              color: T.onError(context),
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
@@ -230,8 +230,8 @@ class _MainScreenState extends State<MainScreen> {
                           ),
                           child: Text(
                             unreadCount > 99 ? '99+' : '$unreadCount',
-                            style: const TextStyle(
-                              color: AppColors.white,
+                            style: TextStyle(
+                              color: T.onError(context),
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),

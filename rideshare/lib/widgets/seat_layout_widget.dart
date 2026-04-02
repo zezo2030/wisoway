@@ -29,20 +29,20 @@ class SeatLayoutWidget extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.blue[100],
+            color: T.primary(context).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.drive_eta, size: 16, color: Colors.blue[800]),
+              Icon(Icons.drive_eta, size: 16, color: T.primary(context)),
               const SizedBox(width: 8),
               Text(
                 'مقعد السائق',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: Colors.blue[800],
+                  color: T.primary(context),
                 ),
               ),
             ],
@@ -129,33 +129,33 @@ class _SeatWidget extends StatelessWidget {
     IconData? icon;
 
     if (isSelected) {
-      backgroundColor = Colors.green;
-      textColor = Colors.white;
+      backgroundColor = T.success(context);
+      textColor = T.onPrimary(context);
       icon = Icons.check;
     } else {
       switch (status) {
         case SeatStatus.available:
-          backgroundColor = Colors.grey[200]!;
-          textColor = Colors.black87;
+          backgroundColor = T.surfaceVariant(context);
+          textColor = T.onSurface(context);
           break;
         case SeatStatus.booked:
-          backgroundColor = Colors.red[300]!;
-          textColor = Colors.white;
+          backgroundColor = T.error(context).withValues(alpha: 0.6);
+          textColor = T.onError(context);
           icon = Icons.person;
           break;
         case SeatStatus.locked:
-          backgroundColor = Colors.amber.shade200;
-          textColor = Colors.amber.shade900;
+          backgroundColor = T.secondary(context).withValues(alpha: 0.2);
+          textColor = T.secondary(context);
           icon = Icons.lock_outline;
           break;
         case SeatStatus.unavailable:
-          backgroundColor = Colors.orange[200]!;
-          textColor = Colors.orange[900]!;
+          backgroundColor = T.outlineVariant(context).withValues(alpha: 0.3);
+          textColor = T.textDisabled(context);
           icon = Icons.block;
           break;
         case SeatStatus.invalid:
-          backgroundColor = Colors.grey[100]!;
-          textColor = Colors.grey[400]!;
+          backgroundColor = T.surfaceVariant(context);
+          textColor = T.textDisabled(context);
           break;
       }
     }
@@ -180,8 +180,8 @@ class _SeatWidget extends StatelessWidget {
             color: backgroundColor,
             borderRadius: BorderRadius.circular(8),
             border: isSelected
-                ? Border.all(color: AppColors.success, width: 2)
-                : Border.all(color: AppColors.slate300, width: 1),
+                ? Border.all(color: T.success(context), width: 2)
+                : Border.all(color: T.outlineVariant(context), width: 1),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -212,7 +212,7 @@ class _SeatLegend extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.slate100,
+        color: T.surfaceVariant(context),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Wrap(
@@ -220,14 +220,20 @@ class _SeatLegend extends StatelessWidget {
         runSpacing: 8,
         alignment: WrapAlignment.center,
         children: [
-          _LegendItem(color: AppColors.slate200, label: 'متاح'),
-          _LegendItem(color: AppColors.success, label: 'محدد'),
-          _LegendItem(color: AppColors.errorLight, label: 'محجوز'),
+          _LegendItem(color: T.surfaceVariant(context), label: 'متاح'),
+          _LegendItem(color: T.success(context), label: 'محدد'),
           _LegendItem(
-            color: AppColors.warningLight,
+            color: T.error(context).withValues(alpha: 0.6),
+            label: 'محجوز',
+          ),
+          _LegendItem(
+            color: T.secondary(context).withValues(alpha: 0.2),
             label: 'مقفل (خارج التطبيق)',
           ),
-          _LegendItem(color: Colors.orange[200]!, label: 'غير متاح'),
+          _LegendItem(
+            color: T.outlineVariant(context).withValues(alpha: 0.3),
+            label: 'غير متاح',
+          ),
         ],
       ),
     );
@@ -253,13 +259,13 @@ class _LegendItem extends StatelessWidget {
             decoration: BoxDecoration(
               color: color,
               borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: AppColors.slate300),
+              border: Border.all(color: T.outlineVariant(context)),
             ),
           ),
           const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(fontSize: 12, color: AppColors.slate700),
+            style: TextStyle(fontSize: 12, color: T.textSecondary(context)),
           ),
         ],
       ),

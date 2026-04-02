@@ -29,8 +29,8 @@ class HomeDrawer extends StatelessWidget {
                   end: Alignment.bottomLeft,
                   colors: [
                     T.primary(context),
-                    AppColors.teal700,
-                    AppColors.teal300,
+                    T.primary(context).withValues(alpha: 0.8),
+                    T.primary(context).withValues(alpha: 0.6),
                   ],
                 ),
                 boxShadow: [
@@ -48,7 +48,10 @@ class HomeDrawer extends StatelessWidget {
                       Container(
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: AppColors.white, width: 4),
+                          border: Border.all(
+                            color: T.onPrimary(context),
+                            width: 4,
+                          ),
                           boxShadow: [
                             BoxShadow(
                               color: AppColors.black.withValues(alpha: 0.2),
@@ -59,7 +62,7 @@ class HomeDrawer extends StatelessWidget {
                         ),
                         child: CircleAvatar(
                           radius: 50,
-                          backgroundColor: AppColors.white,
+                          backgroundColor: T.surface(context),
                           child:
                               user?.photoUrl != null &&
                                   user!.photoUrl!.isNotEmpty
@@ -92,7 +95,7 @@ class HomeDrawer extends StatelessWidget {
                             color: AppColors.success,
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: AppColors.white,
+                              color: T.onPrimary(context),
                               width: 3,
                             ),
                           ),
@@ -107,7 +110,7 @@ class HomeDrawer extends StatelessWidget {
                     style: GoogleFonts.tajawal(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.white,
+                      color: T.onPrimary(context),
                       letterSpacing: 0.5,
                     ),
                     textAlign: TextAlign.center,
@@ -120,7 +123,7 @@ class HomeDrawer extends StatelessWidget {
                         Icon(
                           IconsaxPlusLinear.sms,
                           size: 14,
-                          color: AppColors.white.withValues(alpha: 0.8),
+                          color: T.onPrimary(context).withValues(alpha: 0.8),
                         ),
                         const SizedBox(width: 6),
                         Flexible(
@@ -129,7 +132,9 @@ class HomeDrawer extends StatelessWidget {
                             style: GoogleFonts.tajawal(
                               fontSize: 13,
                               fontWeight: FontWeight.normal,
-                              color: AppColors.white.withValues(alpha: 0.9),
+                              color: T
+                                  .onPrimary(context)
+                                  .withValues(alpha: 0.9),
                             ),
                             textAlign: TextAlign.center,
                             overflow: TextOverflow.ellipsis,
@@ -145,10 +150,10 @@ class HomeDrawer extends StatelessWidget {
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.white.withValues(alpha: 0.2),
+                        color: T.onPrimary(context).withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: AppColors.white.withValues(alpha: 0.3),
+                          color: T.onPrimary(context).withValues(alpha: 0.3),
                           width: 1,
                         ),
                       ),
@@ -160,7 +165,7 @@ class HomeDrawer extends StatelessWidget {
                                 ? IconsaxPlusBold.car
                                 : IconsaxPlusBold.profile_2user,
                             size: 16,
-                            color: AppColors.white,
+                            color: T.onPrimary(context),
                           ),
                           const SizedBox(width: 8),
                           Text(
@@ -168,7 +173,7 @@ class HomeDrawer extends StatelessWidget {
                             style: GoogleFonts.tajawal(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.white,
+                              color: T.onPrimary(context),
                             ),
                           ),
                         ],

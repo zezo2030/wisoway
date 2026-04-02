@@ -57,10 +57,10 @@ class ProfileTab extends StatelessWidget {
                               ),
                               color: T.primary(context),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               IconsaxPlusBold.profile,
                               size: 60,
-                              color: AppColors.white,
+                              color: T.onPrimary(context),
                             ),
                           ),
                           Positioned(
@@ -69,7 +69,7 @@ class ProfileTab extends StatelessWidget {
                             child: Container(
                               padding: AppSpacing.paddingSm,
                               decoration: BoxDecoration(
-                                color: AppColors.white,
+                                color: T.surface(context),
                                 shape: BoxShape.circle,
                                 boxShadow: AppShadows.sm,
                               ),

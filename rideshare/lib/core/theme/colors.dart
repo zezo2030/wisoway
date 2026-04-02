@@ -227,4 +227,30 @@ class T {
       Theme.of(context).colorScheme.outline;
   static Color outlineVariant(BuildContext context) =>
       Theme.of(context).colorScheme.outlineVariant;
+  static Color shadow(BuildContext context) =>
+      Theme.of(context).colorScheme.shadow;
+  static Color textSecondary(BuildContext context) =>
+      Theme.of(context).colorScheme.onSurfaceVariant;
+  static Color textDisabled(BuildContext context) =>
+      Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38);
+  static Color success(BuildContext context) {
+    final brightness = Theme.of(context).colorScheme.brightness;
+    return brightness == Brightness.dark
+        ? const Color(0xFF34D399)
+        : const Color(0xFF22C55E);
+  }
+
+  static Color info(BuildContext context) {
+    final brightness = Theme.of(context).colorScheme.brightness;
+    return brightness == Brightness.dark
+        ? const Color(0xFF60A5FA)
+        : const Color(0xFF3B82F6);
+  }
+
+  static Color accentPink(BuildContext context) {
+    final brightness = Theme.of(context).colorScheme.brightness;
+    return brightness == Brightness.dark
+        ? const Color(0xFFF06292)
+        : const Color(0xFFE91E63);
+  }
 }
