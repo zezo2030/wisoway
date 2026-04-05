@@ -67,6 +67,14 @@ export class UsersService {
     return user;
   }
 
+  async findByIdWithPassword(id: string): Promise<UserEntity | null> {
+    return this.userRepo
+      .createQueryBuilder('user')
+      .addSelect('user.passwordHash')
+      .where('user.id = :id', { id })
+      .getOne();
+  }
+
   async findByProviderId(
     provider: string,
     providerId: string,

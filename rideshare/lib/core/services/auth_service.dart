@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../../models/user_model.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
+import '../api/error_handler.dart';
 import '../storage/token_storage.dart';
 import '../constants/app_constants.dart';
 
@@ -161,6 +162,23 @@ class AuthService {
 
     // Refresh the profile locally
     _currentUser = await getProfile();
+  }
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      await _api.patch(
+        ApiEndpoints.changePassword,
+        data: {
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+        },
+      );
+    } catch (e) {
+      throw Exception(ErrorHandler.getErrorMessage(e));
+    }
   }
 
   Future<void> updateFcmToken(String fcmToken) async {

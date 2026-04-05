@@ -13,8 +13,8 @@ import '../../../providers/auth_provider.dart';
 import '../../../widgets/settings/settings_section.dart';
 import '../../../widgets/settings/settings_tile.dart';
 import '../../../widgets/settings/settings_switch_tile.dart';
-import 'notification_settings_screen.dart';
 import 'account_security_screen.dart';
+import 'change_password_screen.dart';
 import 'privacy_settings_screen.dart';
 import 'about_screen.dart';
 import 'in_app_browser_screen.dart';
@@ -376,19 +376,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             }
                           : null,
                     ),
-                    SettingsTile(
-                      icon: IconsaxPlusBroken.setting_4,
-                      title: isArabic ? 'إعدادات مفصلة' : 'Detailed Settings',
-                      trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const NotificationSettingsScreen(),
-                          ),
-                        );
-                      },
-                    ),
                   ],
                 ),
                 SettingsSection(
@@ -410,24 +397,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SettingsTile(
                       icon: IconsaxPlusBroken.lock,
                       title: isArabic ? 'تغيير كلمة المرور' : 'Change Password',
-                      trailing: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.warningDark,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          isArabic ? 'قريباً' : 'Coming Soon',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                      trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (_) => const ChangePasswordScreen(),
                           ),
-                        ),
-                      ),
-                      enabled: false,
+                        );
+                      },
                     ),
                   ],
                 ),

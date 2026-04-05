@@ -230,11 +230,27 @@ class PaymentService {
   }
 
   // Get user payments
+  /// Backend returns [PaginatedResult] inside the global `{ success, data }` wrapper.
   Future<List<PaymentModel>> getMyPayments() async {
     try {
       final response = await _api.get(ApiEndpoints.myPayments);
-      final data = response['data'] as List? ?? [];
-      return data.map((json) => PaymentModel.fromJson(json)).toList();
+      dynamic payload =
+          response is Map ? (response['data'] ?? response) : response;
+      dynamic list;
+      if (payload is List) {
+        list = payload;
+      } else if (payload is Map) {
+        final m = Map<String, dynamic>.from(payload);
+        list = m['data'] ?? m['items'];
+      }
+      if (list is! List) return [];
+      return list
+          .map(
+            (json) => PaymentModel.fromJson(
+              Map<String, dynamic>.from(json as Map),
+            ),
+          )
+          .toList();
     } catch (e) {
       print('❌ Error getting payments: $e');
       return [];

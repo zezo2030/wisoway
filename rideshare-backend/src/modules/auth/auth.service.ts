@@ -18,6 +18,7 @@ import { SignInDto } from './dto/sign-in.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { Twilio } from 'twilio';
 
 export interface AuthResponse {
@@ -346,6 +347,50 @@ export class AuthService {
     // Verify reset token and update password
     // TODO: Implement password reset with token verification
     return { message: 'Password reset successfully' };
+  }
+
+  async changePassword(
+    userId: string,
+    dto: ChangePasswordDto,
+  ): Promise<{ message: string }> {
+    const user = await this.usersService.findByIdWithPassword(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    if (!user.passwordHash) {
+      throw new BadRequestException(
+        'This account has no password. Use the sign-in method you registered with.',
+      );
+    }
+
+    const { currentPassword, newPassword } = dto;
+    if (currentPassword === newPassword) {
+      throw new BadRequestException(
+        'New password must be different from the current password',
+      );
+    }
+
+    const isBcryptHash =
+      user.passwordHash.startsWith('$2b$') ||
+      user.passwordHash.startsWith('$2a$') ||
+      user.passwordHash.startsWith('$2y$');
+
+    let isCurrentValid = false;
+    if (isBcryptHash) {
+      isCurrentValid = await bcrypt.compare(
+        currentPassword,
+        user.passwordHash,
+      );
+    } else {
+      isCurrentValid = currentPassword === user.passwordHash;
+    }
+
+    if (!isCurrentValid) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    await this.usersService.updatePasswordHash(userId, newPassword);
+    return { message: 'Password changed successfully' };
   }
 
   async linkPhone(
