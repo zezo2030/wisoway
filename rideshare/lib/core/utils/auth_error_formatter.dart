@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 
-enum AuthAction { signIn, signUp, otp }
+enum AuthAction { signIn, signUp, otp, passwordReset }
 
 class AuthErrorFormatter {
   static bool isPhoneVerificationRequired(Object error) {
@@ -56,6 +56,8 @@ class AuthErrorFormatter {
         return 'تعذر إنشاء الحساب حالياً. راجع البيانات وحاول مرة أخرى.';
       case AuthAction.otp:
         return 'تعذر التحقق من الرمز حالياً. حاول مرة أخرى.';
+      case AuthAction.passwordReset:
+        return 'تعذر إعادة تعيين كلمة المرور حالياً. حاول مرة أخرى.';
     }
   }
 

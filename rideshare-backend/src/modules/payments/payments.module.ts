@@ -25,15 +25,7 @@ import { WalletModule } from '../wallet/wallet.module';
     WalletModule,
   ],
   controllers: [PaymentsController],
-  providers: [
-    PaymentsService,
-    A2aCliqService,
-    PlatformPricingService,
-  ],
-  exports: [
-    PaymentsService,
-    A2aCliqService,
-    PlatformPricingService,
-  ],
+  providers: [PaymentsService, A2aCliqService, PlatformPricingService],
+  exports: [PaymentsService, A2aCliqService, PlatformPricingService],
 })
 export class PaymentsModule {}

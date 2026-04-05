@@ -47,9 +47,15 @@ describe('PaymentsService – CliQ wallet top-up', () => {
       providers: [
         PaymentsService,
         { provide: getRepositoryToken(PaymentEntity), useValue: paymentRepo },
-        { provide: getRepositoryToken(CommunicationFeeEntity), useValue: makeRepo() },
+        {
+          provide: getRepositoryToken(CommunicationFeeEntity),
+          useValue: makeRepo(),
+        },
         { provide: getRepositoryToken(TripEntity), useValue: makeRepo() },
-        { provide: getRepositoryToken(UserEntity), useValue: { findOne: jest.fn(async () => mockUser) } },
+        {
+          provide: getRepositoryToken(UserEntity),
+          useValue: { findOne: jest.fn(async () => mockUser) },
+        },
         { provide: DataSource, useValue: { createQueryRunner: jest.fn() } },
         { provide: NotificationsService, useValue: { sendToUser: jest.fn() } },
         { provide: A2aCliqService, useValue: a2aCliqService },
@@ -179,7 +185,10 @@ describe('PaymentsService – CliQ wallet top-up', () => {
     });
 
     it('does NOT double-credit an already approved payment', async () => {
-      paymentRepo.findOne.mockResolvedValue({ ...pendingCliQ, status: 'approved' });
+      paymentRepo.findOne.mockResolvedValue({
+        ...pendingCliQ,
+        status: 'approved',
+      });
       a2aCliqService.paymentInquiry.mockResolvedValue({
         MessageTrxID: 'trx-ref-001',
         StatusCode: '000',
@@ -212,16 +221,19 @@ describe('PaymentsService – CliQ wallet top-up', () => {
 
     it('throws NotFoundException when payment does not exist', async () => {
       paymentRepo.findOne.mockResolvedValue(null);
-      await expect(
-        service.refreshCliqPaymentStatus('pay-999'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.refreshCliqPaymentStatus('pay-999')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws BadRequestException for non-cliq_a2a payment', async () => {
-      paymentRepo.findOne.mockResolvedValue({ ...pendingCliQ, method: 'manual' });
-      await expect(
-        service.refreshCliqPaymentStatus('pay-123'),
-      ).rejects.toThrow(BadRequestException);
+      paymentRepo.findOne.mockResolvedValue({
+        ...pendingCliQ,
+        method: 'manual',
+      });
+      await expect(service.refreshCliqPaymentStatus('pay-123')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 });

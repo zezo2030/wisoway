@@ -140,7 +140,10 @@ export class A2aCliqService {
       `A2A CliQ token refreshed, expires at ${data.TokenInfo.ExpiryDate}`,
     );
 
-    return { token: data.TokenInfo.Token, expiryDate: data.TokenInfo.ExpiryDate };
+    return {
+      token: data.TokenInfo.Token,
+      expiryDate: data.TokenInfo.ExpiryDate,
+    };
   }
 
   /**
@@ -275,7 +278,9 @@ export class A2aCliqService {
       );
 
       if (data == null || typeof data.errorCode === 'undefined') {
-        throw new BadRequestException('Invalid purchase response from A2A CliQ');
+        throw new BadRequestException(
+          'Invalid purchase response from A2A CliQ',
+        );
       }
 
       return data;
@@ -316,7 +321,9 @@ export class A2aCliqService {
         name: 'static_merchant_jwt',
         bearer: async () => {
           if (!this.staticBearerToken?.trim()) {
-            throw new BadRequestException('A2A_CLIQ_BEARER_TOKEN is not configured');
+            throw new BadRequestException(
+              'A2A_CLIQ_BEARER_TOKEN is not configured',
+            );
           }
           return this.staticBearerToken;
         },
@@ -327,24 +334,28 @@ export class A2aCliqService {
     for (let i = 0; i < strategies.length; i++) {
       try {
         const bearer = await strategies[i].bearer();
-        const response = await axios.post<A2aCliqInquiryResponse & { errorCode?: number }>(
-          url,
-          body,
-          {
-            headers: this.buildHeadersWithBearer(bearer),
-            validateStatus: () => true,
-          },
-        );
+        const response = await axios.post<
+          A2aCliqInquiryResponse & { errorCode?: number }
+        >(url, body, {
+          headers: this.buildHeadersWithBearer(bearer),
+          validateStatus: () => true,
+        });
         const data = response.data;
         const ok = response.status >= 200 && response.status < 300;
 
         if (!ok) {
-          const code = data?.errorCode != null ? String(data.errorCode) : String(response.status);
+          const code =
+            data?.errorCode != null
+              ? String(data.errorCode)
+              : String(response.status);
           return {
             MessageTrxID: messageTrxId,
             StatusCode: code,
-            StatusDescription: (data as { description?: string })?.description || `HTTP ${response.status}`,
-            StatusDescription_ar: (data as { description_ar?: string })?.description_ar,
+            StatusDescription:
+              (data as { description?: string })?.description ||
+              `HTTP ${response.status}`,
+            StatusDescription_ar: (data as { description_ar?: string })
+              ?.description_ar,
           };
         }
 
@@ -359,7 +370,8 @@ export class A2aCliqService {
             StatusCode: ec,
             StatusDescription:
               (data as { description?: string }).description || 'Inquiry error',
-            StatusDescription_ar: (data as { description_ar?: string }).description_ar,
+            StatusDescription_ar: (data as { description_ar?: string })
+              .description_ar,
           };
         }
 

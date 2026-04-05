@@ -9,6 +9,8 @@ class RouteNames {
   static const String driverSignUp = '/driver-sign-up';
   static const String driverCompleteProfile = '/driver-complete-profile';
   static const String driverPendingApproval = '/driver-pending-approval';
+  static const String forgotPassword = '/forgot-password';
+  static const String resetPassword = '/reset-password';
 
   // Main Routes
   static const String home = '/home';
@@ -54,6 +56,7 @@ class RouteNames {
   static const String accountSecurity = '/account-security';
   static const String privacySettings = '/privacy-settings';
   static const String inAppBrowser = '/in-app-browser';
+  static const String changePassword = '/change-password';
 
   // Future Routes (for later weeks)
   static const String bookings = '/bookings';

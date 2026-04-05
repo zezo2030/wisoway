@@ -7,6 +7,7 @@ import {
   DriverLocationEntity,
   NotificationEntity,
   OtpCodeEntity,
+  PasswordResetSessionEntity,
   PaymentEntity,
   PayoutRequestEntity,
   PendingRegistrationEntity,
@@ -43,6 +44,7 @@ export const AppDataSource = new DataSource({
     VehicleEntity,
     PaymentEntity,
     CommunicationFeeEntity,
+    PasswordResetSessionEntity,
   ],
   migrations: ['src/database/migrations/*.ts'],
 });

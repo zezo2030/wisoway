@@ -56,7 +56,8 @@ export class CreateWalletTopupDto {
   aliasType?: 'ALIAS' | 'MOBL';
 
   @ApiPropertyOptional({
-    description: 'CliQ alias value — CliQ alias or mobile number (required for cliq_a2a)',
+    description:
+      'CliQ alias value — CliQ alias or mobile number (required for cliq_a2a)',
   })
   @IsString()
   @IsOptional()

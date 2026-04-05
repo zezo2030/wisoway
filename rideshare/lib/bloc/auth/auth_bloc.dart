@@ -19,6 +19,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthSaveUserProfile>(_onSaveUserProfile);
     on<AuthSaveDriverProfile>(_onSaveDriverProfile);
     on<AuthSignOut>(_onSignOut);
+    on<AuthForgotPassword>(_onForgotPassword);
+    on<AuthVerifyResetOTP>(_onVerifyResetOTP);
+    on<AuthResetPassword>(_onResetPassword);
+    on<AuthChangePassword>(_onChangePassword);
     on<AuthClearError>(_onClearError);
 
     add(const AuthInitialized());
@@ -181,6 +185,67 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       await _authService.logout();
       emit(const AuthUnauthenticated());
+    } catch (e) {
+      emit(AuthError(e.toString()));
+    }
+  }
+
+  Future<void> _onForgotPassword(
+    AuthForgotPassword event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoading());
+    try {
+      await _authService.forgotPassword(event.phoneNumber);
+      emit(AuthPasswordResetSent(phoneNumber: event.phoneNumber));
+    } catch (e) {
+      emit(AuthError(e.toString()));
+    }
+  }
+
+  Future<void> _onVerifyResetOTP(
+    AuthVerifyResetOTP event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoading());
+    try {
+      final resetToken = await _authService.verifyResetOtp(
+        event.phoneNumber,
+        event.code,
+      );
+      emit(AuthPasswordResetOTPVerified(resetToken: resetToken));
+    } catch (e) {
+      emit(AuthError(e.toString()));
+    }
+  }
+
+  Future<void> _onResetPassword(
+    AuthResetPassword event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoading());
+    try {
+      await _authService.resetPassword(
+        event.resetToken,
+        event.newPassword,
+      );
+      emit(const AuthPasswordResetSuccess());
+    } catch (e) {
+      emit(AuthError(e.toString()));
+    }
+  }
+
+  Future<void> _onChangePassword(
+    AuthChangePassword event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoading());
+    try {
+      await _authService.changePassword(
+        event.currentPassword,
+        event.newPassword,
+      );
+      emit(const AuthPasswordChangedSuccess());
     } catch (e) {
       emit(AuthError(e.toString()));
     }

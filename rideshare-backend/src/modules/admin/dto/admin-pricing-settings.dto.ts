@@ -11,7 +11,9 @@ import {
 import { Type } from 'class-transformer';
 
 export class AdminPatchPricingSettingsDto {
-  @ApiPropertyOptional({ description: 'Legacy flat unlock fee when driverUnlockPercent is 0' })
+  @ApiPropertyOptional({
+    description: 'Legacy flat unlock fee when driverUnlockPercent is 0',
+  })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()

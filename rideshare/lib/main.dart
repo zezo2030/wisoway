@@ -24,6 +24,8 @@ import 'screens/auth/sign_up_screen.dart';
 import 'screens/auth/phone_auth_screen.dart';
 import 'screens/auth/otp_verification_screen.dart';
 import 'screens/auth/profile_setup_screen.dart';
+import 'screens/auth/forgot_password_screen.dart';
+import 'screens/auth/reset_password_screen.dart';
 import 'screens/auth/driver_sign_up_screen.dart';
 import 'screens/auth/driver_complete_profile_screen.dart';
 import 'screens/driver/driver_pending_approval_screen.dart';
@@ -51,6 +53,7 @@ import 'screens/driver/chat_screen.dart' as driver_chat;
 import 'screens/passenger/rating_screen.dart';
 import 'screens/profile/edit_profile_screen.dart';
 import 'screens/settings/settings_screen.dart';
+import 'screens/settings/change_password_screen.dart';
 // Removed unused notification_service.dart
 
 //admin@rideshare.com
@@ -142,6 +145,10 @@ class MyApp extends StatelessWidget {
                         const DriverCompleteProfileScreen(),
                     RouteNames.driverPendingApproval: (context) =>
                         const DriverPendingApprovalScreen(),
+                    RouteNames.forgotPassword: (context) =>
+                        const ForgotPasswordScreen(),
+                    RouteNames.resetPassword: (context) =>
+                        const ResetPasswordScreen(),
                     RouteNames.home: (context) => const HomeScreen(),
                     RouteNames.profile: (context) => const HomeScreen(),
                     RouteNames.main: (context) => const MainScreen(),
@@ -164,6 +171,8 @@ class MyApp extends StatelessWidget {
                     RouteNames.editProfile: (context) =>
                         const EditProfileScreen(),
                     RouteNames.settings: (context) => const SettingsScreen(),
+                    RouteNames.changePassword: (context) =>
+                        const ChangePasswordScreen(),
                   },
                   onGenerateRoute: (settings) {
                     if (settings.name == RouteNames.phoneAuth) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../core/constants/route_names.dart';
+import '../../core/constants/app_strings.dart';
 import '../../core/theme/colors.dart';
 import '../../core/utils/auth_error_formatter.dart';
 
@@ -324,7 +325,28 @@ class _SignInScreenState extends State<SignInScreen>
                                     },
                                   ),
                                 ),
-                                const SizedBox(height: 32),
+                                const SizedBox(height: 8),
+                                // Forgot Password Link
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: () {
+                                      Navigator.pushNamed(
+                                        context,
+                                        RouteNames.forgotPassword,
+                                      );
+                                    },
+                                    child: Text(
+                                      AppStrings.forgotPassword,
+                                      style: TextStyle(
+                                        color: T.textSecondary(context),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
                                 Container(
                                   height: 56,
                                   decoration: BoxDecoration(

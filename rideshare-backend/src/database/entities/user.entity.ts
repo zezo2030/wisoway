@@ -85,6 +85,9 @@ export class UserEntity {
   @Column({ type: 'boolean', default: false })
   hasUsedLifetimeFreeTrip: boolean;
 
+  @Column({ type: 'timestamp', nullable: true, default: null })
+  passwordChangedAt: Date | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

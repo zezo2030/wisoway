@@ -161,14 +161,17 @@ export class ChatPostgresGateway
     return { event: 'stoppedTyping' };
   }
 
-  async emitNewMessage(chatRoomId: string, message: {
-    id: string;
-    chatRoomId: string;
-    senderId: string;
-    senderName: string | null;
-    text: string;
-    createdAt: Date;
-  }) {
+  async emitNewMessage(
+    chatRoomId: string,
+    message: {
+      id: string;
+      chatRoomId: string;
+      senderId: string;
+      senderName: string | null;
+      text: string;
+      createdAt: Date;
+    },
+  ) {
     this.server.to(`room:${chatRoomId}`).emit('newMessage', {
       _id: message.id,
       id: message.id,

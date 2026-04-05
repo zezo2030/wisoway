@@ -178,4 +178,3 @@ describe('A2aCliqService', () => {
     });
   });
 });
-

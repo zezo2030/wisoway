@@ -34,7 +34,7 @@ export class UsersService {
 
   async create(userData: Partial<UserEntity>): Promise<UserEntity> {
     if (this.shouldHashPassword(userData.passwordHash)) {
-      userData.passwordHash = await bcrypt.hash(userData.passwordHash!, 12);
+      userData.passwordHash = await bcrypt.hash(userData.passwordHash, 12);
     }
     const user = this.userRepo.create(userData);
     return this.userRepo.save(user);
@@ -156,6 +156,17 @@ export class UsersService {
     await this.userRepo.save(user);
   }
 
+  async updatePasswordAndInvalidateTokens(
+    id: string,
+    passwordHash: string,
+  ): Promise<void> {
+    await this.userRepo.update(id, {
+      passwordHash,
+      passwordChangedAt: new Date(),
+      refreshToken: null,
+    });
+  }
+
   async deactivate(id: string): Promise<void> {
     await this.userRepo.update(id, { isActive: false });
   }
@@ -237,7 +248,9 @@ export class UsersService {
     await this.pendingRegistrationRepo.delete({ phoneNumber });
   }
 
-  private shouldHashPassword(passwordHash?: string | null): passwordHash is string {
+  private shouldHashPassword(
+    passwordHash?: string | null,
+  ): passwordHash is string {
     if (!passwordHash) {
       return false;
     }

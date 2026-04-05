@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddPassengerIdToChatRooms1739500000000
-  implements MigrationInterface
-{
+export class AddPassengerIdToChatRooms1739500000000 implements MigrationInterface {
   name = 'AddPassengerIdToChatRooms1739500000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

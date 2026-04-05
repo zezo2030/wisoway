@@ -143,7 +143,10 @@ export class AdminDashboardController {
   @Patch('vehicles/:id/verify')
   @ApiOperation({ summary: 'Verify or reject vehicle' })
   @ApiParam({ name: 'id', description: 'Vehicle ID' })
-  @ApiResponse({ status: 200, description: 'Vehicle verification status updated' })
+  @ApiResponse({
+    status: 200,
+    description: 'Vehicle verification status updated',
+  })
   @ApiResponse({ status: 404, description: 'Vehicle not found' })
   async verifyVehicle(
     @Param('id') vehicleId: string,

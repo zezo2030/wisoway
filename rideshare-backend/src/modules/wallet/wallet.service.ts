@@ -123,7 +123,11 @@ export class WalletService {
       return dup;
     }
 
-    const account = await this.getOrCreateAccount(userId, accountType, currency);
+    const account = await this.getOrCreateAccount(
+      userId,
+      accountType,
+      currency,
+    );
 
     return this.dataSource.transaction(async (manager) => {
       const locked = await manager.findOne(WalletAccountEntity, {

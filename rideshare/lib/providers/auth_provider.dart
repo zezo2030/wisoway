@@ -148,6 +148,59 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> forgotPassword(String phoneNumber) async {
+    try {
+      _setLoading(true);
+      _setError(null);
+      await _authService.forgotPassword(phoneNumber);
+      _setLoading(false);
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      rethrow;
+    }
+  }
+
+  Future<String> verifyResetOtp(String phoneNumber, String code) async {
+    try {
+      _setLoading(true);
+      _setError(null);
+      final resetToken = await _authService.verifyResetOtp(phoneNumber, code);
+      _setLoading(false);
+      return resetToken;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      rethrow;
+    }
+  }
+
+  Future<void> resetPassword(String resetToken, String newPassword) async {
+    try {
+      _setLoading(true);
+      _setError(null);
+      await _authService.resetPassword(resetToken, newPassword);
+      _setLoading(false);
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      rethrow;
+    }
+  }
+
+  Future<void> changePassword(String currentPassword, String newPassword) async {
+    try {
+      _setLoading(true);
+      _setError(null);
+      await _authService.changePassword(currentPassword, newPassword);
+      _setLoading(false);
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      rethrow;
+    }
+  }
+
   Future<void> saveUserProfile({
     required String name,
     required String email,

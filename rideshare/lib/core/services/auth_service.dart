@@ -183,10 +183,35 @@ class AuthService {
   }
 
   // ===== Password Reset =====
-  Future<void> resetPassword(String email) async {
-    // Depending on backend implementation, might require a different endpoint
-    // Placeholder based on usual NestJS Auth
-    throw Exception('Not implemented in API client yet');
+  Future<void> forgotPassword(String phoneNumber) async {
+    await _api.post(
+      ApiEndpoints.forgotPassword,
+      data: {'phoneNumber': phoneNumber},
+    );
+  }
+
+  Future<String> verifyResetOtp(String phoneNumber, String code) async {
+    final response = await _api.post(
+      ApiEndpoints.verifyResetOtp,
+      data: {'phoneNumber': phoneNumber, 'code': code.trim()},
+    );
+
+    final data = response['data'] ?? response;
+    return data['resetToken'];
+  }
+
+  Future<void> resetPassword(String resetToken, String newPassword) async {
+    await _api.post(
+      ApiEndpoints.resetPassword,
+      data: {'resetToken': resetToken, 'newPassword': newPassword},
+    );
+  }
+
+  Future<void> changePassword(String currentPassword, String newPassword) async {
+    await _api.post(
+      ApiEndpoints.changePassword,
+      data: {'currentPassword': currentPassword, 'newPassword': newPassword},
+    );
   }
 
   // ===== Admin & Driver actions =====

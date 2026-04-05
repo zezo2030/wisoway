@@ -118,7 +118,9 @@ export class TripsService {
     return this.tripRepo.save(trip);
   }
 
-  async findById(tripId: string): Promise<TripEntity & { distanceKm?: number }> {
+  async findById(
+    tripId: string,
+  ): Promise<TripEntity & { distanceKm?: number }> {
     const result = await this.tripRepo
       .createQueryBuilder('trip')
       .where('trip.id = :id', { id: tripId })
@@ -136,8 +138,7 @@ export class TripsService {
     const distanceKm = result.raw[0]?.distance_km;
     return {
       ...trip,
-      distanceKm:
-        distanceKm != null ? Number(distanceKm) : undefined,
+      distanceKm: distanceKm != null ? Number(distanceKm) : undefined,
     };
   }
 
@@ -212,7 +213,7 @@ export class TripsService {
       throw new BadRequestException('Invalid seat number');
     }
 
-    const current = seats[seatIndex] as any;
+    const current = seats[seatIndex];
 
     if (locked) {
       if (current.status !== 'available') {

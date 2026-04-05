@@ -17,3 +17,5 @@ export * from './payment.entity';
 export * from './communication-fee.entity';
 export * from './chat-room.entity';
 export * from './message.entity';
+export * from './password-reset-session.entity';
+export * from './password-reset-session.entity';

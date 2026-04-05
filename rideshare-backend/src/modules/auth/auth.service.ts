@@ -4,13 +4,19 @@ import {
   BadRequestException,
   ConflictException,
   NotFoundException,
+  HttpException,
+  HttpStatus,
+  ForbiddenException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import { UsersService } from '../users/users.service';
 import { UserEntity } from '../../database/entities/user.entity';
+import { PasswordResetSessionEntity } from '../../database/entities/password-reset-session.entity';
 import { PgUserRole } from '../../database/entities/shared.enums';
 import { PendingRegistrationGender } from '../../database/entities/pending-registration.entity';
 import { SignUpDto } from './dto/sign-up.dto';
@@ -18,6 +24,10 @@ import { SignInDto } from './dto/sign-in.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { VerifyResetOtpDto } from './dto/verify-reset-otp.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { Twilio } from 'twilio';
 
 export interface AuthResponse {
@@ -58,6 +68,8 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    @InjectRepository(PasswordResetSessionEntity)
+    private passwordResetSessionRepo: Repository<PasswordResetSessionEntity>,
   ) {
     const accountSid = this.configService.get<string>('TWILIO_ACCOUNT_SID');
     const authToken = this.configService.get<string>('TWILIO_AUTH_TOKEN');
@@ -137,7 +149,8 @@ export class AuthService {
     const password = signInDto.password;
 
     // Find user
-    const user = await this.usersService.findByEmailWithPassword(normalizedEmail);
+    const user =
+      await this.usersService.findByEmailWithPassword(normalizedEmail);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -326,26 +339,233 @@ export class AuthService {
     return { message: 'Logged out successfully' };
   }
 
-  async forgotPassword(email: string): Promise<{ message: string }> {
-    const user = await this.usersService.findByEmail(email);
-    if (!user) {
-      // Don't reveal if email exists
-      return { message: 'Password reset email sent' };
+  async forgotPassword(phoneNumber: string): Promise<{ message: string }> {
+    const user = await this.usersService.findByPhone(phoneNumber);
+    if (!user || !user.isPhoneVerified) {
+      return {
+        message:
+          'If this phone number is registered, a verification code has been sent.',
+      };
     }
 
-    // Generate reset token (in a real app, send email with reset link)
-    // For now, we'll just return a message
-    // TODO: Implement email service for password reset
-    return { message: 'Password reset email sent' };
+    const existingSession = await this.passwordResetSessionRepo.findOne({
+      where: { phoneNumber },
+      order: { createdAt: 'DESC' },
+    });
+
+    if (existingSession) {
+      const sixtySecondsAgo = new Date(Date.now() - 60 * 1000);
+      if (existingSession.createdAt > sixtySecondsAgo) {
+        const retryAfter = Math.ceil(
+          (existingSession.createdAt.getTime() + 60000 - Date.now()) / 1000,
+        );
+        throw new HttpException(
+          {
+            message: 'Please wait before requesting another code.',
+            retryAfter,
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+    }
+
+    await this.passwordResetSessionRepo.delete({ phoneNumber });
+
+    const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+    const hashedOtp = await bcrypt.hash(otpCode, 10);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    const session = this.passwordResetSessionRepo.create({
+      phoneNumber,
+      otpCode: hashedOtp,
+      expiresAt,
+    });
+    await this.passwordResetSessionRepo.save(session);
+
+    if (this.otpProvider === 'local') {
+      console.log(
+        `[Password Reset OTP] Phone: ${phoneNumber} → Code: ${otpCode}`,
+      );
+    } else {
+      try {
+        if (!this.twilioClient || !this.twilioVerifyServiceSid) {
+          throw new BadRequestException(
+            'Twilio Verify is not configured correctly',
+          );
+        }
+        await this.twilioClient.verify.v2
+          .services(this.twilioVerifyServiceSid)
+          .verifications.create({
+            to: phoneNumber,
+            channel: 'sms',
+          });
+      } catch (error) {
+        console.error('Failed to send password reset OTP via Twilio:', error);
+      }
+    }
+
+    return {
+      message:
+        'If this phone number is registered, a verification code has been sent.',
+    };
   }
 
-  async resetPassword(
-    token: string,
-    newPassword: string,
+  async verifyResetOtp(
+    dto: VerifyResetOtpDto,
+  ): Promise<{ message: string; resetToken: string }> {
+    const session = await this.passwordResetSessionRepo
+      .createQueryBuilder('session')
+      .addSelect('session.otpCode')
+      .where('session.phoneNumber = :phoneNumber', {
+        phoneNumber: dto.phoneNumber,
+      })
+      .orderBy('session.createdAt', 'DESC')
+      .getOne();
+
+    if (!session) {
+      throw new NotFoundException(
+        'No active reset session found. Please request a new code.',
+      );
+    }
+
+    if (session.isLocked) {
+      throw new BadRequestException(
+        'Too many attempts. Please request a new code.',
+      );
+    }
+
+    if (session.expiresAt < new Date()) {
+      throw new BadRequestException(
+        'Verification code has expired. Please request a new one.',
+      );
+    }
+
+    const isOtpValid = await bcrypt.compare(dto.code, session.otpCode);
+
+    if (!isOtpValid) {
+      session.attemptCount += 1;
+      if (session.attemptCount >= 5) {
+        session.isLocked = true;
+        await this.passwordResetSessionRepo.save(session);
+        throw new BadRequestException(
+          'Too many attempts. Please request a new code.',
+        );
+      }
+      await this.passwordResetSessionRepo.save(session);
+      const attemptsRemaining = 5 - session.attemptCount;
+      throw new BadRequestException({
+        message: 'Invalid verification code',
+        attemptsRemaining,
+      });
+    }
+
+    session.isVerified = true;
+    session.attemptCount = 0;
+    await this.passwordResetSessionRepo.save(session);
+
+    const resetToken = this.jwtService.sign(
+      {
+        sub: session.id,
+        phoneNumber: session.phoneNumber,
+        sessionId: session.id,
+      },
+      {
+        secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
+        expiresIn: '5m',
+      },
+    );
+
+    return {
+      message: 'Verification successful. You may now set a new password.',
+      resetToken,
+    };
+  }
+
+  async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(dto.resetToken, {
+        secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
+      });
+    } catch {
+      throw new BadRequestException(
+        'Reset session has expired. Please start over.',
+      );
+    }
+
+    const session = await this.passwordResetSessionRepo.findOne({
+      where: { id: payload.sessionId },
+    });
+
+    if (!session || !session.isVerified || session.expiresAt < new Date()) {
+      throw new BadRequestException('Invalid or expired reset session.');
+    }
+
+    const user = await this.usersService.findByPhone(session.phoneNumber);
+    if (!user) {
+      throw new NotFoundException('User not found.');
+    }
+
+    if (user.passwordHash) {
+      const isSamePassword = await bcrypt.compare(
+        dto.newPassword,
+        user.passwordHash,
+      );
+      if (isSamePassword) {
+        throw new BadRequestException(
+          'New password must be different from current password',
+        );
+      }
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.newPassword, 12);
+    await this.usersService.updatePasswordAndInvalidateTokens(
+      user.id,
+      hashedPassword,
+    );
+
+    await this.passwordResetSessionRepo.delete({ id: session.id });
+
+    return { message: 'Password has been reset successfully.' };
+  }
+
+  async changePassword(
+    userId: string,
+    dto: ChangePasswordDto,
   ): Promise<{ message: string }> {
-    // Verify reset token and update password
-    // TODO: Implement password reset with token verification
-    return { message: 'Password reset successfully' };
+    const user = await this.usersService.findById(userId);
+
+    if (!user.passwordHash) {
+      throw new ForbiddenException(
+        'Password change is not available for social login accounts',
+      );
+    }
+
+    const isCurrentPasswordValid = await bcrypt.compare(
+      dto.currentPassword,
+      user.passwordHash,
+    );
+    if (!isCurrentPasswordValid) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    const isSamePassword = await bcrypt.compare(
+      dto.newPassword,
+      user.passwordHash,
+    );
+    if (isSamePassword) {
+      throw new BadRequestException(
+        'New password must be different from current password',
+      );
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.newPassword, 12);
+    await this.usersService.updatePasswordAndInvalidateTokens(
+      user.id,
+      hashedPassword,
+    );
+
+    return { message: 'Password changed successfully.' };
   }
 
   async linkPhone(

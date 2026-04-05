@@ -326,7 +326,9 @@ export class BookingsService {
       booking.seatNumber,
     );
 
-    const trip = booking.trip || (await this.tripRepo.findOne({ where: { id: booking.tripId } }));
+    const trip =
+      booking.trip ||
+      (await this.tripRepo.findOne({ where: { id: booking.tripId } }));
     if (trip) {
       await this.notificationsService.create({
         userId: booking.userId,

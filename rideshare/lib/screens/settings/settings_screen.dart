@@ -410,24 +410,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SettingsTile(
                       icon: IconsaxPlusBroken.lock,
                       title: isArabic ? 'تغيير كلمة المرور' : 'Change Password',
-                      trailing: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.warningDark,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          isArabic ? 'قريباً' : 'Coming Soon',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      enabled: false,
+                      trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
+                      onTap: () {
+                        Navigator.pushNamed(context, RouteNames.changePassword);
+                      },
                     ),
                   ],
                 ),

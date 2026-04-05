@@ -35,7 +35,9 @@ export class BookingsController {
 
   @Post()
   @Roles('passenger', 'driver')
-  @ApiOperation({ summary: 'Create a new booking (Passenger or Driver as rider)' })
+  @ApiOperation({
+    summary: 'Create a new booking (Passenger or Driver as rider)',
+  })
   @ApiResponse({ status: 201, description: 'Booking created successfully' })
   @ApiResponse({
     status: 400,

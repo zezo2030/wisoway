@@ -158,13 +158,19 @@ export class ChatPostgresService {
     }
   }
 
-  async addParticipant(roomId: string, userId: string): Promise<ChatRoomEntity> {
+  async addParticipant(
+    roomId: string,
+    userId: string,
+  ): Promise<ChatRoomEntity> {
     const room = await this.chatRoomRepo.findOne({ where: { id: roomId } });
     if (!room) {
       throw new NotFoundException('Chat room not found');
     }
 
-    const participants = (room.participants ?? []) as { userId: string; joinedAt: Date }[];
+    const participants = (room.participants ?? []) as {
+      userId: string;
+      joinedAt: Date;
+    }[];
     const isParticipant = participants.some((p) => p.userId === userId);
     if (!isParticipant) {
       const user = await this.userRepo.findOne({ where: { id: userId } });

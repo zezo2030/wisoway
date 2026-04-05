@@ -88,7 +88,8 @@ export class TripsController {
 
   @Get(':id/pricing-preview')
   @ApiOperation({
-    summary: 'Passenger/driver platform pricing preview for one seat and driver unlock fee',
+    summary:
+      'Passenger/driver platform pricing preview for one seat and driver unlock fee',
   })
   @ApiResponse({ status: 200, description: 'Pricing breakdown' })
   @ApiResponse({ status: 404, description: 'Trip not found' })

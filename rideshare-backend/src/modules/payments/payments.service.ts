@@ -92,8 +92,13 @@ export class PaymentsService {
     throw new BadRequestException('CliQ not yet migrated to Postgres.');
   }
 
-  async refreshCliqPaymentStatus(paymentId: string, requestingUserId?: string): Promise<PaymentEntity> {
-    const payment = await this.paymentRepo.findOne({ where: { id: paymentId } });
+  async refreshCliqPaymentStatus(
+    paymentId: string,
+    requestingUserId?: string,
+  ): Promise<PaymentEntity> {
+    const payment = await this.paymentRepo.findOne({
+      where: { id: paymentId },
+    });
     if (!payment) {
       throw new NotFoundException('Payment not found');
     }
@@ -111,7 +116,9 @@ export class PaymentsService {
     // لا تستخدم paymentGatewayRef (MSGID) أولاً — كان يسبب استعلامًا خاطئًا وحالة pending دائمة.
     const messageTrxId = payment.transactionId ?? payment.paymentGatewayRef;
     if (!messageTrxId) {
-      throw new BadRequestException('No CliQ transaction reference found for this payment');
+      throw new BadRequestException(
+        'No CliQ transaction reference found for this payment',
+      );
     }
 
     const inquiry = await this.a2aCliqService.paymentInquiry(messageTrxId);
@@ -121,7 +128,9 @@ export class PaymentsService {
     );
 
     if (statusCode === '0' || statusCode === '000') {
-      const user = await this.userRepo.findOne({ where: { id: payment.userId } });
+      const user = await this.userRepo.findOne({
+        where: { id: payment.userId },
+      });
       if (!user) throw new NotFoundException('User not found');
       const accountType =
         user.role === PgUserRole.DRIVER
@@ -147,7 +156,9 @@ export class PaymentsService {
           inquiry.StatusDescription ??
           'CliQ payment rejected';
         await this.paymentRepo.save(payment);
-        this.logger.log(`Payment ${paymentId} marked rejected (inquiry StatusCode=${statusCode})`);
+        this.logger.log(
+          `Payment ${paymentId} marked rejected (inquiry StatusCode=${statusCode})`,
+        );
       }
     }
 
@@ -254,8 +265,13 @@ export class PaymentsService {
     platformAmount: number;
     driverAmount: number;
   }> {
-    const { userId, tripId, seatNumber, countryCode = 'JO', idempotencyKey } =
-      params;
+    const {
+      userId,
+      tripId,
+      seatNumber,
+      countryCode = 'JO',
+      idempotencyKey,
+    } = params;
 
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
     if (!trip) {
@@ -285,7 +301,7 @@ export class PaymentsService {
       );
     }
 
-    const key = (idempotencyKey?.trim() || randomUUID()) as string;
+    const key = idempotencyKey?.trim() || randomUUID();
 
     const walletTx = await this.walletService.payTripFromRiderWallet(
       userId,
@@ -526,7 +542,8 @@ export class PaymentsService {
             purchaseResult.description_ar ??
             resolveCliqError(rawCode, purchaseResult.description);
           saved.status = 'rejected';
-          saved.adminNote = `[${rawCode}] ${purchaseResult.description ?? ''}`.trim();
+          saved.adminNote =
+            `[${rawCode}] ${purchaseResult.description ?? ''}`.trim();
           await this.paymentRepo.save(saved);
           throw new BadRequestException(userMessage);
         }

@@ -82,3 +82,33 @@ class AuthProfileSaved extends AuthState {
   @override
   List<Object?> get props => [userModel];
 }
+
+// Password Reset OTP Sent State
+class AuthPasswordResetSent extends AuthState {
+  final String phoneNumber;
+
+  const AuthPasswordResetSent({required this.phoneNumber});
+
+  @override
+  List<Object?> get props => [phoneNumber];
+}
+
+// Password Reset OTP Verified State (has resetToken for setting new password)
+class AuthPasswordResetOTPVerified extends AuthState {
+  final String resetToken;
+
+  const AuthPasswordResetOTPVerified({required this.resetToken});
+
+  @override
+  List<Object?> get props => [resetToken];
+}
+
+// Password Reset Success State
+class AuthPasswordResetSuccess extends AuthState {
+  const AuthPasswordResetSuccess();
+}
+
+// Password Changed Success State
+class AuthPasswordChangedSuccess extends AuthState {
+  const AuthPasswordChangedSuccess();
+}
