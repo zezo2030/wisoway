@@ -1,12 +1,14 @@
 // Payments List Page: All payments with filters
 // T026: Implements all payments view with status, method, and type filters
 
+import { useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { getAllPayments } from "@/api/payments"
 import { DataTable, type Column } from "@/components/data-table"
 import { StatusBadge } from "@/components/status-badge"
 import { ImagePreview } from "@/components/image-preview"
+import { PaymentDetailsDialog } from "@/components/payment-details-dialog"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import {
   Select,
@@ -34,6 +36,8 @@ function isPopulatedTrip(tripId: string | TripSummary | undefined): tripId is Tr
 
 export default function PaymentsListPage() {
   const { t, language } = useLanguage()
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
   const page = parseInt(searchParams.get("page") || "1", 10)
   const limit = 20
@@ -75,6 +79,28 @@ export default function PaymentsListPage() {
 
   const handlePageChange = (newPage: number) => {
     updateSearchParams({ page: String(newPage) })
+  }
+
+  const handleOpenDetails = (payment: Payment) => {
+    setSelectedPayment(payment)
+    setIsDetailsOpen(true)
+  }
+
+  const getPaymentTypeText = (paymentType: string) => {
+    switch (paymentType) {
+      case PaymentType.TRIP:
+        return t("paymentType_trip")
+      case PaymentType.COMMUNICATION_FEE:
+        return t("paymentType_fee")
+      case PaymentType.WALLET_TOPUP:
+        return t("walletTopup")
+      case PaymentType.WALLET_TRIP_CHARGE:
+        return t("walletTripCharge")
+      case "trip_platform":
+        return t("paymentType_trip")
+      default:
+        return paymentType.replaceAll("_", " ")
+    }
   }
 
   // Table columns
@@ -143,7 +169,7 @@ export default function PaymentsListPage() {
       header: t("paymentType"),
       cell: (payment) => (
         <span className="text-xs font-semibold px-2 py-1 rounded-full bg-muted text-muted-foreground border border-border/40">
-          {payment.paymentType === PaymentType.TRIP ? t("paymentType_trip") : t("paymentType_fee")}
+          {getPaymentTypeText(String(payment.paymentType))}
         </span>
       ),
     },
@@ -156,11 +182,13 @@ export default function PaymentsListPage() {
       key: "proof",
       header: t("proof"),
       cell: (payment) => (
-        <ImagePreview
-          imageUrl={payment.proofImageUrl}
-          alt={t("proof")}
-          thumbnailClassName="h-10 w-10 sm:h-12 sm:w-12 rounded-lg shadow-sm border border-border/50 object-cover"
-        />
+        <div onClick={(e) => e.stopPropagation()}>
+          <ImagePreview
+            imageUrl={payment.proofImageUrl}
+            alt={t("proof")}
+            thumbnailClassName="h-10 w-10 sm:h-12 sm:w-12 rounded-lg shadow-sm border border-border/50 object-cover"
+          />
+        </div>
       ),
     },
     {
@@ -278,6 +306,8 @@ export default function PaymentsListPage() {
                   <SelectItem value="all">{t("allTypes")}</SelectItem>
                   <SelectItem value={PaymentType.TRIP}>{t("paymentType_trip")}</SelectItem>
                   <SelectItem value={PaymentType.COMMUNICATION_FEE}>{t("paymentType_fee")}</SelectItem>
+                  <SelectItem value={PaymentType.WALLET_TOPUP}>{t("walletTopup")}</SelectItem>
+                  <SelectItem value={PaymentType.WALLET_TRIP_CHARGE}>{t("walletTripCharge")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -295,10 +325,17 @@ export default function PaymentsListPage() {
               pageSize={limit}
               loading={isLoading}
               emptyMessage={t("noPaymentsFound")}
+              onRowClick={handleOpenDetails}
             />
           </div>
         </CardContent>
       </Card>
+
+      <PaymentDetailsDialog
+        payment={selectedPayment}
+        open={isDetailsOpen}
+        onOpenChange={setIsDetailsOpen}
+      />
     </div>
   )
 }

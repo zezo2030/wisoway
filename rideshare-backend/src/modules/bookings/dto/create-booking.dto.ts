@@ -1,9 +1,11 @@
 import {
+  ArrayUnique,
   IsString,
   IsNotEmpty,
   IsUUID,
   IsBoolean,
   IsOptional,
+  IsArray,
   MaxLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -25,6 +27,19 @@ export class CreateBookingDto {
   @IsString()
   @IsNotEmpty()
   seatNumber: string;
+
+  @ApiPropertyOptional({
+    description:
+      'List of seat numbers for multi-seat booking (format: ["0-0", "0-1"])',
+    example: ['0-0', '0-1'],
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsString({ each: true })
+  @IsNotEmpty({ each: true })
+  seatNumbers?: string[];
 
   @ApiPropertyOptional({
     description: 'Whether the passenger wants to share their phone number with the driver immediately',

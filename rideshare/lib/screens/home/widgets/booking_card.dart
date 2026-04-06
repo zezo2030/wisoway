@@ -7,14 +7,14 @@ import '../../../models/booking_model.dart';
 import '../../../models/trip_model.dart';
 
 class BookingCard extends StatelessWidget {
-  final BookingModel booking;
+  final BookingGroupModel group;
   final TripModel? trip;
   final bool isPastTrip;
   final VoidCallback? onTap;
 
   const BookingCard({
     super.key,
-    required this.booking,
+    required this.group,
     this.trip,
     this.isPastTrip = false,
     this.onTap,
@@ -155,23 +155,23 @@ class BookingCard extends StatelessWidget {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: booking.isPending
+                        color: group.isPending
                             ? AppColors.warning.withValues(alpha: 0.1)
-                            : booking.isConfirmed
+                            : group.isConfirmed
                             ? AppColors.success.withValues(alpha: 0.1)
                             : T.error(context).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        booking.isPending
+                        group.isPending
                             ? 'قيد الانتظار'
-                            : booking.isConfirmed
+                            : group.isConfirmed
                             ? 'مؤكد'
                             : 'ملغي',
                         style: TextStyle(
-                          color: booking.isPending
+                          color: group.isPending
                               ? AppColors.warningDark
-                              : booking.isConfirmed
+                              : group.isConfirmed
                               ? AppColors.successDark
                               : T.error(context),
                           fontWeight: FontWeight.bold,
@@ -209,8 +209,8 @@ class BookingCard extends StatelessWidget {
                     Expanded(
                       child: _BookingInfoItem(
                         icon: IconsaxPlusBold.profile_2user,
-                        label: 'المقعد',
-                        value: booking.seatNumber,
+                        label: 'المقاعد',
+                        value: group.seatNumbers.join(', '),
                         mutedStyle: isPastTrip,
                       ),
                     ),

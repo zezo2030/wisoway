@@ -1,12 +1,11 @@
-// Wallets List Page: Wallet transactions (top-ups and trip charges)
-
-import { useSearchParams, useNavigate } from "react-router-dom"
+import { useMemo } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { getAllPayments } from "@/api/payments"
+import { getAdminWallets } from "@/api/admin"
 import { DataTable, type Column } from "@/components/data-table"
-import { StatusBadge } from "@/components/status-badge"
-import { ImagePreview } from "@/components/image-preview"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
@@ -14,56 +13,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
-import { QUERY_KEYS, ROUTES } from "@/lib/constants"
-import { formatDate, formatCurrency, getTripLocationName, cn } from "@/lib/utils"
-import { PaymentType } from "@/types/enums"
-import type { Payment, UserSummary, TripSummary } from "@/types/models"
+import { ROUTES } from "@/lib/constants"
+import { cn, formatCurrency, formatDateTime } from "@/lib/utils"
+import type { WalletAccountAdmin } from "@/types/models"
 import { useLanguage } from "@/providers/language-provider"
-import { Wallet, AlertCircle, ArrowLeftRight, Clock } from "lucide-react"
-
-function isPopulatedUser(userId: string | UserSummary): userId is UserSummary {
-  return typeof userId === "object" && userId !== null && "name" in userId
-}
-
-function isPopulatedTrip(
-  tripId: string | TripSummary | undefined
-): tripId is TripSummary {
-  return typeof tripId === "object" && tripId !== null && "from" in tripId
-}
+import { Wallet, AlertCircle, Clock } from "lucide-react"
 
 export default function WalletsListPage() {
   const { t, language } = useLanguage()
-  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
-  const page = parseInt(searchParams.get("page") || "1", 10)
-  const limit = 20
-  const typeFilter = searchParams.get("type") || "all"
+  const [searchParams, setSearchParams] = useSearchParams()
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: [
-      QUERY_KEYS.PAYMENTS.ALL,
-      "wallets",
-      { page, limit, type: typeFilter },
-    ],
-    queryFn: () =>
-      getAllPayments({
-        page,
-        limit,
-        walletOnly: typeFilter === "all",
-        paymentType:
-          typeFilter !== "all" ? (typeFilter as PaymentType) : undefined,
-      }),
-  })
+  const page = Number(searchParams.get("page") || "1")
+  const limit = 20
+  const roleFilter = searchParams.get("role") || "all"
+  const accountTypeFilter = searchParams.get("accountType") || "all"
+  const search = searchParams.get("search") || ""
 
   const updateSearchParams = (updates: Record<string, string | null>) => {
     const newParams = new URLSearchParams(searchParams)
     Object.entries(updates).forEach(([key, value]) => {
-      if (value === null) {
-        newParams.delete(key)
-      } else {
-        newParams.set(key, value)
-      }
+      if (!value) newParams.delete(key)
+      else newParams.set(key, value)
     })
     if (Object.keys(updates).some((k) => k !== "page")) {
       newParams.set("page", "1")
@@ -71,131 +42,112 @@ export default function WalletsListPage() {
     setSearchParams(newParams)
   }
 
-  const handlePageChange = (newPage: number) => {
-    updateSearchParams({ page: String(newPage) })
+  const walletsQuery = useQuery({
+    queryKey: ["admin-wallets", { page, limit, roleFilter, accountTypeFilter, search }],
+    queryFn: () =>
+      getAdminWallets({
+        page,
+        limit,
+        role: roleFilter === "all" ? undefined : (roleFilter as "driver" | "passenger"),
+        accountType:
+          accountTypeFilter === "all" ? undefined : (accountTypeFilter as "driver" | "rider"),
+        search: search || undefined,
+      }),
+  })
+
+  const openWalletPage = (wallet: WalletAccountAdmin) => {
+    navigate(`/wallets/${wallet.id}`)
   }
 
-  const columns: Column<Payment>[] = [
-    {
-      key: "user",
-      header: t("passenger"),
-      cell: (payment) => (
-        <div className="flex items-center gap-3 py-1">
-          {isPopulatedUser(payment.userId) ? (
-            <>
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm shadow-sm border border-primary/20 flex-shrink-0">
-                {payment.userId.name.charAt(0).toUpperCase()}
+  const columns: Column<WalletAccountAdmin>[] = useMemo(() => {
+    return [
+      {
+        key: "owner",
+        header: language === "ar" ? "صاحب المحفظة" : "Owner",
+        cell: (wallet) => (
+          <div className="flex items-center gap-3 py-1">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm shadow-sm border border-primary/20 flex-shrink-0">
+              {(wallet.user?.name || "?").charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div className="font-semibold text-foreground">{wallet.user?.name || "-"}</div>
+              <div className="text-xs text-muted-foreground">
+                {wallet.user?.email || wallet.user?.phoneNumber || "-"}
               </div>
-              <div>
-                <div className="font-semibold text-foreground">
-                  {payment.userId.name}
-                </div>
-                <div className="text-xs font-medium text-muted-foreground">
-                  {payment.userId.email}
-                </div>
-              </div>
-            </>
-          ) : (
-            <span className="text-muted-foreground font-mono text-xs">
-              ID: {payment.userId}
-            </span>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: "trip",
-      header: t("nav_trips"),
-      cell: (payment) => (
-        <div>
-          {isPopulatedTrip(payment.tripId) ? (
-            <>
-              <div className="font-medium flex items-center gap-1">
-                {getTripLocationName(payment.tripId as unknown as Record<string, unknown>, "from")}
-                <ArrowLeftRight className="w-3 h-3 text-muted-foreground" />
-                {getTripLocationName(payment.tripId as unknown as Record<string, unknown>, "to")}
-              </div>
-              <div className="text-xs font-medium text-muted-foreground mt-0.5">
-                {formatDate(payment.tripId.departureTime)}
-              </div>
-            </>
-          ) : payment.tripId ? (
-            <span className="text-muted-foreground font-mono text-xs">
-              ID: {payment.tripId}
-            </span>
-          ) : (
-            <span className="text-muted-foreground italic">N/A</span>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: "amount",
-      header: t("amount"),
-      cell: (payment) => (
-        <div className="font-black text-emerald-600 dark:text-emerald-400">
-          {formatCurrency(payment.amount, payment.currency)}
-        </div>
-      ),
-    },
-    {
-      key: "type",
-      header: t("paymentType"),
-      cell: (payment) => (
-        <span className="text-xs font-semibold px-2 py-1 rounded-full bg-muted text-muted-foreground border border-border/40 object-cover">
-          {payment.paymentType === PaymentType.WALLET_TOPUP ? t("walletTopup") : t("walletTripCharge")}
-        </span>
-      ),
-    },
-    {
-      key: "status",
-      header: t("status"),
-      cell: (payment) => (
-        <StatusBadge status={payment.status} type="payment" className="shadow-sm" />
-      ),
-    },
-    {
-      key: "proof",
-      header: t("proof"),
-      cell: (payment) => (
-        <ImagePreview
-          imageUrl={payment.proofImageUrl}
-          alt={t("proof")}
-          thumbnailClassName="h-10 w-10 sm:h-12 sm:w-12 rounded-lg shadow-sm border border-border/50 object-cover"
-        />
-      ),
-    },
-    {
-      key: "adminNote",
-      header: t("adminNote"),
-      cell: (payment) => (
-        <div
-          className="max-w-[150px] truncate text-xs font-medium text-muted-foreground bg-muted/40 px-2 py-1 rounded-md border border-border/30"
-          title={payment.adminNote || ""}
-        >
-          {payment.adminNote || "-"}
-        </div>
-      ),
-    },
-    {
-      key: "date",
-      header: t("date"),
-      cell: (payment) => (
-        <div className="text-sm font-medium text-muted-foreground">
-          {formatDate(payment.createdAt)}
-        </div>
-      ),
-    },
-  ]
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: "role",
+        header: language === "ar" ? "الدور" : "Role",
+        cell: (wallet) => (
+          <span className="text-xs font-semibold px-2 py-1 rounded-full bg-muted text-muted-foreground border border-border/40">
+            {wallet.user?.role === "driver"
+              ? language === "ar"
+                ? "سائق"
+                : "Driver"
+              : wallet.user?.role === "passenger"
+                ? language === "ar"
+                  ? "راكب"
+                  : "Passenger"
+                : wallet.user?.role}
+          </span>
+        ),
+      },
+      {
+        key: "accountType",
+        header: language === "ar" ? "نوع المحفظة" : "Wallet Type",
+        cell: (wallet) => (
+          <span className="text-xs font-semibold px-2 py-1 rounded-full bg-muted text-muted-foreground border border-border/40">
+            {wallet.accountType === "driver"
+              ? language === "ar"
+                ? "محفظة سائق"
+                : "Driver Wallet"
+              : language === "ar"
+                ? "محفظة راكب"
+                : "Rider Wallet"}
+          </span>
+        ),
+      },
+      {
+        key: "balance",
+        header: language === "ar" ? "الرصيد" : "Balance",
+        cell: (wallet) => (
+          <div className="font-black text-emerald-600 dark:text-emerald-400">
+            {formatCurrency(Number(wallet.balance || 0), wallet.currency)}
+          </div>
+        ),
+      },
+      {
+        key: "updatedAt",
+        header: language === "ar" ? "آخر تحديث" : "Last Update",
+        cell: (wallet) => (
+          <div className="text-sm font-medium text-muted-foreground">
+            {formatDateTime(wallet.updatedAt)}
+          </div>
+        ),
+      },
+      {
+        key: "actions",
+        header: language === "ar" ? "الفتح" : "Open",
+        cell: () => (
+          <span className="text-xs font-semibold text-primary">
+            {language === "ar" ? "تفاصيل المحفظة" : "Wallet Details"}
+          </span>
+        ),
+      },
+    ]
+  }, [language])
 
-  if (error) {
+  if (walletsQuery.error) {
     return (
       <div className="space-y-4 animate-in fade-in duration-500">
         <h1 className="text-4xl font-extrabold tracking-tight">{t("walletsTitle")}</h1>
         <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-6 text-destructive flex items-center shadow-sm">
           <AlertCircle className={cn("w-6 h-6", language === "ar" ? "ml-3" : "mr-3")} />
           <span className="font-semibold text-lg">
-            {t("noWalletTransactionsFound")}
+            {language === "ar" ? "فشل تحميل المحافظ" : "Failed to load wallets"}
           </span>
         </div>
       </div>
@@ -214,60 +166,82 @@ export default function WalletsListPage() {
               {t("walletsTitle")}
             </h1>
             <p className="text-muted-foreground mt-1 text-lg font-medium">
-              {t("walletsSubtitle")}
+              {language === "ar"
+                ? "إدارة محافظ الركاب والسائقين. اضغط على أي محفظة لفتح صفحة التفاصيل."
+                : "Manage rider and driver wallets. Click any wallet to open its detail page."}
             </p>
           </div>
         </div>
+
+        <Button
+          variant="outline"
+          className="rounded-xl border-border/50 shadow-sm font-semibold"
+          onClick={() => navigate(ROUTES.PAYMENTS_PENDING)}
+        >
+          <Clock className={cn("w-4 h-4", language === "ar" ? "ml-2" : "mr-2")} />
+          {t("pendingTopups")}
+        </Button>
       </div>
 
       <Card className="border-border/50 shadow-lg bg-card/60 backdrop-blur-xl dark:shadow-none dark:border-white/10 overflow-hidden">
         <CardHeader className="bg-muted/30 border-b border-border/40 pb-5 pt-6 px-6">
-          <div className="flex flex-col lg:flex-row gap-5 lg:items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="outline"
-                className="rounded-xl border-border/50 shadow-sm font-semibold"
-                onClick={() => navigate(ROUTES.PAYMENTS_PENDING)}
-              >
-                <Clock className={cn("w-4 h-4", language === "ar" ? "ml-2" : "mr-2")} />
-                {t("pendingTopups")}
-              </Button>
-            </div>
+          <div className="flex flex-col lg:flex-row gap-3 lg:items-center justify-between">
             <div className="flex flex-wrap items-center gap-3">
               <Select
-                value={typeFilter}
-                onValueChange={(value) =>
-                  updateSearchParams({ type: value === "all" ? null : value })
-                }
+                value={roleFilter}
+                onValueChange={(value) => updateSearchParams({ role: value === "all" ? null : value })}
               >
-                <SelectTrigger className="w-[180px] bg-background/80 border-border/50 rounded-full font-medium shadow-sm px-4">
-                  <SelectValue placeholder={t("transactionType")} />
+                <SelectTrigger className="w-[170px] bg-background/80 border-border/50 rounded-full font-medium shadow-sm px-4">
+                  <SelectValue placeholder={language === "ar" ? "الدور" : "Role"} />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl shadow-lg border-border/50">
-                  <SelectItem value="all">{t("allWalletTransactions")}</SelectItem>
-                  <SelectItem value={PaymentType.WALLET_TOPUP}>
-                    {t("walletTopup")}
-                  </SelectItem>
-                  <SelectItem value={PaymentType.WALLET_TRIP_CHARGE}>
-                    {t("walletTripCharge")}
-                  </SelectItem>
+                  <SelectItem value="all">{language === "ar" ? "كل الأدوار" : "All Roles"}</SelectItem>
+                  <SelectItem value="driver">{language === "ar" ? "السائقون" : "Drivers"}</SelectItem>
+                  <SelectItem value="passenger">{language === "ar" ? "الركاب" : "Passengers"}</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={accountTypeFilter}
+                onValueChange={(value) =>
+                  updateSearchParams({ accountType: value === "all" ? null : value })
+                }
+              >
+                <SelectTrigger className="w-[190px] bg-background/80 border-border/50 rounded-full font-medium shadow-sm px-4">
+                  <SelectValue placeholder={language === "ar" ? "نوع المحفظة" : "Wallet Type"} />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl shadow-lg border-border/50">
+                  <SelectItem value="all">{language === "ar" ? "كل المحافظ" : "All Wallets"}</SelectItem>
+                  <SelectItem value="driver">{language === "ar" ? "محافظ السائقين" : "Driver Wallets"}</SelectItem>
+                  <SelectItem value="rider">{language === "ar" ? "محافظ الركاب" : "Rider Wallets"}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="w-full lg:w-[280px]">
+              <Input
+                value={search}
+                onChange={(e) => updateSearchParams({ search: e.target.value || null })}
+                placeholder={language === "ar" ? "بحث بالاسم أو البريد أو الهاتف" : "Search by name, email, or phone"}
+                className="rounded-full bg-background/80 border-border/50"
+              />
+            </div>
           </div>
         </CardHeader>
+
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <DataTable
               columns={columns}
-              data={data?.data || []}
+              data={walletsQuery.data?.data || []}
               page={page}
-              totalPages={data?.meta.totalPages || 0}
-              total={data?.meta.total || 0}
-              onPageChange={handlePageChange}
+              totalPages={walletsQuery.data?.meta.totalPages || 0}
+              total={walletsQuery.data?.meta.total || 0}
+              onPageChange={(newPage) => updateSearchParams({ page: String(newPage) })}
               pageSize={limit}
-              loading={isLoading}
-              emptyMessage={t("noWalletTransactionsFound")}
+              loading={walletsQuery.isLoading}
+              emptyMessage={language === "ar" ? "لا توجد محافظ مطابقة" : "No wallets found"}
+              onRowClick={openWalletPage}
             />
           </div>
         </CardContent>
@@ -275,3 +249,4 @@ export default function WalletsListPage() {
     </div>
   )
 }
+

@@ -10,6 +10,7 @@ import { UserEntity } from '../../database/entities/user.entity';
 import { TripEntity } from '../../database/entities/trip.entity';
 import { VehicleEntity } from '../../database/entities/vehicle.entity';
 import { PaymentEntity } from '../../database/entities/payment.entity';
+import { WalletAccountEntity } from '../../database/entities/wallet-account.entity';
 import { WalletTransactionEntity } from '../../database/entities/wallet-transaction.entity';
 import { BookingEntity } from '../../database/entities/booking.entity';
 import { RatingEntity } from '../../database/entities/rating.entity';
@@ -20,6 +21,8 @@ import { CommunicationFeeEntity } from '../../database/entities/communication-fe
 import {
   PgUserRole,
   TripStatus,
+  WalletAccountType,
+  WalletEntryDirection,
   WalletTransactionType,
   WalletTransactionStatus,
 } from '../../database/entities/shared.enums';
@@ -92,6 +95,14 @@ export interface AdminReportsQuery {
   endDate: string;
 }
 
+export interface AdminWalletsQuery {
+  page?: number;
+  limit?: number;
+  role?: PgUserRole.DRIVER | PgUserRole.PASSENGER;
+  accountType?: WalletAccountType.DRIVER | WalletAccountType.RIDER;
+  search?: string;
+}
+
 @Injectable()
 export class AdminDashboardService {
   constructor(
@@ -103,6 +114,8 @@ export class AdminDashboardService {
     private vehicleRepo: Repository<VehicleEntity>,
     @InjectRepository(PaymentEntity)
     private paymentRepo: Repository<PaymentEntity>,
+    @InjectRepository(WalletAccountEntity)
+    private walletAccountRepo: Repository<WalletAccountEntity>,
     @InjectRepository(WalletTransactionEntity)
     private walletTxRepo: Repository<WalletTransactionEntity>,
     @InjectRepository(BookingEntity)
@@ -376,6 +389,144 @@ export class AdminDashboardService {
     query: AdminPaymentsQuery,
   ): Promise<PaginatedResult<PaymentEntity>> {
     return this.getPayments({ ...query, status: 'pending' });
+  }
+
+  async getWallets(
+    query: AdminWalletsQuery,
+  ): Promise<
+    PaginatedResult<
+      WalletAccountEntity & {
+        user: Pick<
+          UserEntity,
+          'id' | 'name' | 'email' | 'phoneNumber' | 'role' | 'isActive'
+        >;
+      }
+    >
+  > {
+    const page = Math.max(1, query.page ?? 1);
+    const limit = Math.min(100, Math.max(1, query.limit ?? 20));
+    const skip = (page - 1) * limit;
+
+    try {
+      const qb = this.walletAccountRepo
+        .createQueryBuilder('wa')
+        .leftJoinAndSelect('wa.user', 'user')
+        .where('wa.accountType IN (:...accountTypes)', {
+          accountTypes: [WalletAccountType.DRIVER, WalletAccountType.RIDER],
+        })
+        .orderBy('wa.updatedAt', 'DESC')
+        .skip(skip)
+        .take(limit);
+
+      if (query.role) {
+        qb.andWhere('user.role = :role', { role: query.role });
+      }
+      if (query.accountType) {
+        qb.andWhere('wa.accountType = :accountType', {
+          accountType: query.accountType,
+        });
+      }
+      if (query.search?.trim()) {
+        const term = `%${query.search.trim()}%`;
+        qb.andWhere(
+          '(user.name ILIKE :term OR user.email ILIKE :term OR user.phoneNumber ILIKE :term)',
+          { term },
+        );
+      }
+
+      const [data, total] = await qb.getManyAndCount();
+      return {
+        data,
+        meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      };
+    } catch {
+      return { data: [], meta: { page, limit, total: 0, totalPages: 0 } };
+    }
+  }
+
+  async getWalletTransactionsForAccount(accountId: string, limit = 50) {
+    const safeLimit = Math.min(200, Math.max(1, Number(limit || 50)));
+    const account = await this.walletAccountRepo.findOne({
+      where: { id: accountId },
+      relations: ['user'],
+    });
+    if (!account) {
+      throw new NotFoundException('Wallet account not found');
+    }
+
+    const transactions = await this.walletTxRepo.find({
+      where: { accountId },
+      order: { createdAt: 'DESC' },
+      take: safeLimit,
+    });
+
+    return { account, transactions };
+  }
+
+  async adjustWalletBalance(
+    accountId: string,
+    input: {
+      direction: WalletEntryDirection.CREDIT | WalletEntryDirection.DEBIT;
+      amount: number;
+      note?: string;
+      referenceId?: string;
+    },
+    adminId: string,
+  ) {
+    const amount = Number(input.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new BadRequestException('Invalid adjustment amount');
+    }
+
+    return this.walletAccountRepo.manager.transaction(async (manager) => {
+      const accountRepo = manager.getRepository(WalletAccountEntity);
+      const txRepo = manager.getRepository(WalletTransactionEntity);
+
+      const account = await accountRepo.findOne({
+        where: { id: accountId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!account) {
+        throw new NotFoundException('Wallet account not found');
+      }
+
+      const currentBalance = Number(account.balance || 0);
+      const nextBalance =
+        input.direction === WalletEntryDirection.CREDIT
+          ? currentBalance + amount
+          : currentBalance - amount;
+
+      if (nextBalance < 0) {
+        throw new BadRequestException('Insufficient wallet balance');
+      }
+
+      account.balance = nextBalance.toFixed(2);
+      await accountRepo.save(account);
+
+      const tx = txRepo.create({
+        accountId: account.id,
+        type: WalletTransactionType.ADJUSTMENT,
+        direction: input.direction,
+        status: WalletTransactionStatus.POSTED,
+        amount: amount.toFixed(2),
+        currency: account.currency,
+        referenceType: 'admin_adjustment',
+        referenceId: input.referenceId ?? null,
+        idempotencyKey: null,
+        metadata: {
+          note: input.note ?? null,
+          adminId,
+          previousBalance: currentBalance,
+          newBalance: nextBalance,
+        },
+      });
+      const savedTx = await txRepo.save(tx);
+
+      return {
+        account,
+        transaction: savedTx,
+      };
+    });
   }
 
   async getVehicles(

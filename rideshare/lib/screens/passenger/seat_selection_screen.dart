@@ -8,8 +8,8 @@ import '../../core/services/trip_service.dart';
 import '../../widgets/seat_layout_widget.dart';
 import '../../utils/seat_layout_helpers.dart';
 import '../../utils/seat_validation.dart';
+import '../../core/constants/route_names.dart';
 import '../../core/theme/colors.dart';
-import 'package:uuid/uuid.dart';
 
 class SeatSelectionScreen extends StatefulWidget {
   final String tripId;
@@ -25,10 +25,9 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   final TripService _tripService = TripService();
   TripModel? _trip;
   Map<String, dynamic>? _pricingPreview;
-  int? _selectedSeat;
+  final Set<int> _selectedSeats = <int>{};
   bool _sharePhoneWithDriver = true;
   bool _isLoading = true;
-  bool _isBooking = false;
 
   @override
   void initState() {
@@ -39,10 +38,32 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   Future<void> _loadTrip() async {
     try {
       final tripProvider = Provider.of<TripProvider>(context, listen: false);
+      final auth = Provider.of<AuthProvider>(context, listen: false);
       final trip = await tripProvider.getTrip(widget.tripId);
       Map<String, dynamic>? preview;
       if (trip != null) {
         preview = await _tripService.getTripPricingPreview(trip.id);
+        if (auth.userModel != null) {
+          final existing = await _bookingService.getMyBookings();
+          final already = existing.any(
+            (b) =>
+                b.tripId == trip.id &&
+                b.status != 'cancelled',
+          );
+          if (already && mounted) {
+            setState(() => _isLoading = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'لديك حجز مسبق على هذه الرحلة. لا يُسمح إلا بحجز واحد لكل رحلة.',
+                ),
+                backgroundColor: AppColors.warning,
+              ),
+            );
+            Navigator.of(context).pop();
+            return;
+          }
+        }
       }
       setState(() {
         _trip = trip;
@@ -82,6 +103,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       trip: _trip!,
       seatNumber: seatNumber,
       userGender: userModel.gender,
+      currentUserId: userModel.id,
     )) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -94,16 +116,38 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       return;
     }
 
+    final next = Set<int>.from(_selectedSeats);
+    if (next.contains(seatNumber)) {
+      next.remove(seatNumber);
+    } else {
+      next.add(seatNumber);
+    }
+    if (next.isNotEmpty &&
+        next.length > 1 &&
+        !SeatValidation.isContiguousSeatGroup(_trip!, next)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'يجب أن تكون المقاعد المختارة متجاورة (مجموعة واحدة متصلة).',
+          ),
+          backgroundColor: AppColors.warning,
+        ),
+      );
+      return;
+    }
+
     setState(() {
-      _selectedSeat = seatNumber;
+      _selectedSeats
+        ..clear()
+        ..addAll(next);
     });
   }
 
-  Future<void> _bookSeat() async {
-    if (_trip == null || _selectedSeat == null) {
+  Future<void> _openBookingInvoice() async {
+    if (_trip == null || _selectedSeats.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('يرجى اختيار مقعد'),
+          content: const Text('يرجى اختيار مقعد واحد على الأقل'),
           backgroundColor: T.error(context),
         ),
       );
@@ -134,14 +178,18 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       return;
     }
 
-    if (!SeatValidation.canSelectSeat(
-      trip: _trip!,
-      seatNumber: _selectedSeat!,
-      userGender: userModel.gender,
-    )) {
+    final hasInvalidSelectedSeat = _selectedSeats.any(
+      (seat) => !SeatValidation.canSelectSeat(
+        trip: _trip!,
+        seatNumber: seat,
+        userGender: userModel.gender,
+        currentUserId: userModel.id,
+      ),
+    );
+    if (hasInvalidSelectedSeat) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('المقعد لم يعد متاحاً. يرجى اختيار مقعد آخر'),
+          content: const Text('أحد المقاعد المحددة لم يعد متاحاً. اختر مرة أخرى'),
           backgroundColor: T.error(context),
         ),
       );
@@ -149,49 +197,49 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       return;
     }
 
-    setState(() => _isBooking = true);
+    if (_selectedSeats.length > 1 &&
+        !SeatValidation.isContiguousSeatGroup(_trip!, _selectedSeats)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'يجب أن تكون المقاعد متجاورة في مجموعة واحدة.',
+          ),
+          backgroundColor: AppColors.warning,
+        ),
+      );
+      return;
+    }
 
-    final backendSeatNumber = SeatLayoutHelpers.displayIndexToBackendSeatId(
-      _selectedSeat!,
-      _trip!.seatLayout,
+    final backendSeatNumbers = _selectedSeats.toList()
+      ..sort((a, b) => a.compareTo(b));
+    final backendSeatIds = backendSeatNumbers
+        .map((seat) => SeatLayoutHelpers.displayIndexToBackendSeatId(
+              seat,
+              _trip!.seatLayout,
+            ))
+        .toList();
+
+    final bookingGroupId = await Navigator.pushNamed<String?>(
+      context,
+      RouteNames.passengerBookingInvoice,
+      arguments: <String, dynamic>{
+        'tripId': _trip!.id,
+        'seatNumbers': backendSeatIds,
+        'sharePhoneWithDriver': _sharePhoneWithDriver,
+      },
     );
 
-    try {
-      final passenger = _pricingPreview?['passenger'];
-      final requiresOnline =
-          passenger is Map && passenger['requiresOnlinePayment'] == true;
-
-      final walletIdempotencyKey = requiresOnline ? const Uuid().v4() : null;
-
-      final bookingId = await _bookingService.createBooking(
-        tripId: _trip!.id,
-        seatNumber: backendSeatNumber,
-        sharePhoneWithDriver: _sharePhoneWithDriver,
-        walletIdempotencyKey: walletIdempotencyKey,
+    if (!mounted) return;
+    if (bookingGroupId != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'تم إرسال طلب حجز ${backendSeatIds.length} مقعد. انتظر تأكيد السائق',
+          ),
+          backgroundColor: AppColors.success,
+        ),
       );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم إرسال طلب الحجز بنجاح. انتظر تأكيد السائق'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-        Navigator.pop(context, bookingId);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في الحجز: ${e.toString()}'),
-            backgroundColor: T.error(context),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isBooking = false);
-      }
+      Navigator.pop(context, bookingGroupId);
     }
   }
 
@@ -291,8 +339,9 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
             const SizedBox(height: 16),
             SeatLayoutWidget(
               trip: _trip!,
-              selectedSeat: _selectedSeat,
+              selectedSeats: _selectedSeats,
               userGender: userModel.gender,
+              currentUserId: userModel.id,
               onSeatTap: _onSeatTap,
             ),
             const SizedBox(height: 24),
@@ -332,7 +381,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'سيتم خصم حصة التطبيق من محفظتك عند إرسال الحجز. تأكد من كفاية الرصيد من «محفظتي» في القائمة.',
+                          'بعد اختيار المقاعد ستفتح صفحة فاتورة؛ يُحجز المبلغ من المحفظة ثم يُثبت عند تأكيد السائق. إذا غادرت الرحلة دون تأكيد يُعاد المبلغ.',
                           style: TextStyle(
                             fontSize: 14,
                             color: T.onPrimaryContainer(context),
@@ -346,7 +395,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
               ),
               const SizedBox(height: 24),
             ],
-            if (_selectedSeat != null)
+            if (_selectedSeats.isNotEmpty)
               Card(
                 color: AppColors.success.withValues(alpha: 0.08),
                 child: Padding(
@@ -357,7 +406,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'المقعد المحدد: $_selectedSeat',
+                          'المقاعد المحددة: ${_selectedSeats.toList()..sort()}',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -372,35 +421,72 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
             const SizedBox(height: 24),
             Semantics(
               button: true,
-              label: 'إرسال طلب الحجز',
+              label: 'مراجعة الفاتورة ثم الحجز',
               child: Tooltip(
-                message: 'إرسال طلب حجز للمقعد المحدد',
+                message: 'عرض تفاصيل الدفع ثم تأكيد الحجز',
                 child: ElevatedButton(
-                  onPressed: _isBooking || _selectedSeat == null
-                      ? null
-                      : _bookSeat,
+                  onPressed:
+                      _selectedSeats.isEmpty ? null : _openBookingInvoice,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     minimumSize: const Size(double.infinity, 50),
                   ),
-                  child: _isBooking
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              AppColors.white,
-                            ),
-                          ),
-                        )
-                      : const Text(
-                          'إرسال طلب الحجز',
-                          style: TextStyle(fontSize: 18),
-                        ),
+                  child: Text(
+                    _selectedSeats.isEmpty
+                        ? 'مراجعة الفاتورة والحجز'
+                        : 'مراجعة الفاتورة (${_selectedSeats.length}) مقعد',
+                    style: const TextStyle(fontSize: 18),
+                  ),
                 ),
               ),
             ),
+            if (_pricingPreview != null &&
+                _pricingPreview!['passenger'] is Map &&
+                _selectedSeats.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Builder(
+                builder: (context) {
+                  final p = _pricingPreview!['passenger'] as Map;
+                  final platform =
+                      double.tryParse('${p['platformAmount'] ?? 0}') ?? 0;
+                  final driver = double.tryParse('${p['driverAmount'] ?? 0}') ?? 0;
+                  final count = _selectedSeats.length;
+                  final platformTotal = platform * count;
+                  final driverTotal = driver * count;
+                  final total = platformTotal + driverTotal;
+                  return Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: T.primaryContainer(context),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'ملخص الدفع لـ $count مقعد',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: T.onPrimaryContainer(context),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'للتطبيق: ${platformTotal.toStringAsFixed(2)} ${_trip!.currency}',
+                        ),
+                        Text(
+                          'للسائق: ${driverTotal.toStringAsFixed(2)} ${_trip!.currency}',
+                        ),
+                        Text(
+                          'الإجمالي: ${total.toStringAsFixed(2)} ${_trip!.currency}',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
@@ -414,7 +500,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'سيتم إرسال طلب الحجز للسائق. انتظر تأكيده قبل أن يتم تأكيد الحجز.',
+                      'بعد الفاتورة يُرسل طلب الحجز للسائق. تأكيده يثبت السحب من محفظتك.',
                       style: TextStyle(
                         fontSize: 12,
                         color: T.onPrimaryContainer(context),

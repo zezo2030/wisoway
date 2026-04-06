@@ -572,14 +572,14 @@ class _CreateTripScreenState extends State<CreateTripScreen>
           TextFormField(
             controller: _priceController,
             keyboardType: TextInputType.number,
-            style: AppTextStyles.labelLarge.copyWith(),
+            style: AppTextStyles.labelLargeWithContext(context),
             decoration: InputDecoration(
               filled: true,
               fillColor: T.surface(context),
               hintText: 'السعر لكل مقعد',
-              hintStyle: AppTextStyles.bodyLarge.copyWith(
-                color: AppColors.slate400,
-              ),
+              hintStyle: AppTextStyles.bodyLargeWithContext(
+                context,
+              ).copyWith(color: T.onSurfaceVariant(context)),
               prefixIcon: Icon(
                 IconsaxPlusBroken.wallet_1,
                 color: T.onSurface(context),
@@ -724,9 +724,9 @@ class _CreateTripScreenState extends State<CreateTripScreen>
           ] else ...[
             Text(
               'حدد عدد المقاعد في كل صف:',
-              style: AppTextStyles.labelLarge.copyWith(
-                color: T.onSurface(context).withValues(alpha: 0.54),
-              ),
+              style: AppTextStyles.labelLargeWithContext(
+                context,
+              ).copyWith(color: T.onSurfaceVariant(context)),
             ),
             const SizedBox(height: 12),
             ...List.generate(_customRowConfigs.length, (index) {
@@ -807,32 +807,38 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     return Semantics(
       button: true,
       label: '$title ${isActive ? "(محدد)" : ""}',
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isActive ? T.surface(context) : AppColors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: isActive
-                ? [
-                    BoxShadow(
-                      color: T.shadow(context),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Center(
-            child: Text(
-              title,
-              style: AppTextStyles.labelLarge.copyWith(
-                fontWeight: FontWeight.bold,
+      child: Material(
+        color: AppColors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          splashColor: T.primary(context).withValues(alpha: 0.08),
+          highlightColor: T.primary(context).withValues(alpha: 0.04),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: isActive
+                  ? T.primaryContainer(context)
+                  : AppColors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
                 color: isActive
-                    ? T.primary(context)
-                    : T.onSurfaceVariant(context),
+                    ? T.primary(context).withValues(alpha: 0.35)
+                    : AppColors.transparent,
+                width: 1,
+              ),
+            ),
+            child: Center(
+              child: Text(
+                title,
+                style: AppTextStyles.labelLarge.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: isActive
+                      ? T.onPrimaryContainer(context)
+                      : T.onSurfaceVariant(context),
+                ),
               ),
             ),
           ),
@@ -869,9 +875,10 @@ class _CreateTripScreenState extends State<CreateTripScreen>
               const SizedBox(width: 12),
               Text(
                 'منع الاختلاط',
-                style: AppTextStyles.bodyLarge.copyWith(
+                style: AppTextStyles.bodyLargeWithContext(context).copyWith(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
+                  color: T.onSurface(context),
                 ),
               ),
             ],
@@ -1008,38 +1015,31 @@ class _CreateTripScreenState extends State<CreateTripScreen>
   Widget _buildSubmitButton() {
     return ConstrainedBox(
       constraints: BoxConstraints(maxWidth: _maxContentWidth(context)),
-      child: Container(
-        width: double.infinity,
-        height: 60,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          color: T.primary(context),
-          boxShadow: [
-            BoxShadow(
-              color: T.primary(context).withValues(alpha: 0.3),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Semantics(
-          button: true,
-          label: 'تأكيد ونشر الرحلة',
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.transparent,
+      child: Semantics(
+        button: true,
+        label: 'تأكيد ونشر الرحلة',
+        child: SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: FilledButton(
+            style: FilledButton.styleFrom(
+              elevation: 0,
               shadowColor: AppColors.transparent,
+              backgroundColor: T.primary(context),
+              foregroundColor: T.onPrimary(context),
+              disabledBackgroundColor: T.primary(context).withValues(alpha: 0.38),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
               ),
+              padding: const EdgeInsets.symmetric(horizontal: 24),
             ),
             onPressed: _isLoading ? null : _createTrip,
             child: _isLoading
-                ? const SizedBox(
+                ? SizedBox(
                     width: 24,
                     height: 24,
                     child: CircularProgressIndicator(
-                      color: AppColors.white,
+                      color: T.onPrimary(context),
                       strokeWidth: 3,
                     ),
                   )
@@ -1158,83 +1158,96 @@ class _CreateTripScreenState extends State<CreateTripScreen>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(icon, color: T.primary(context), size: 18),
-              const SizedBox(width: 8),
-              Flexible(
+              const SizedBox(width: 6),
+              Expanded(
                 child: Text(
                   label,
-                  style: AppTextStyles.labelLarge.copyWith(fontSize: 13),
+                  style: AppTextStyles.labelLargeWithContext(
+                    context,
+                  ).copyWith(fontSize: 13, color: T.onSurface(context)),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Semantics(
-                button: onDecrease != null,
-                label: 'تقليل $label',
-                child: GestureDetector(
-                  onTap: onDecrease,
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: onDecrease == null
-                          ? T.surfaceVariant(context)
-                          : T.surface(context),
-                      border: Border.all(color: T.outlineVariant(context)),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.remove,
-                      size: 20,
-                      color: onDecrease == null
-                          ? T.textDisabled(context)
-                          : T.onSurface(context),
-                    ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text(
-                  '$value',
-                  style: AppTextStyles.titleSmall.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              Semantics(
-                button: onIncrease != null,
-                label: 'زيادة $label',
-                child: GestureDetector(
-                  onTap: onIncrease,
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: onIncrease == null
-                          ? T.surfaceVariant(context)
-                          : T.surface(context),
-                      border: Border.all(color: T.outlineVariant(context)),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.add,
-                      size: 20,
-                      color: onIncrease == null
-                          ? T.textDisabled(context)
-                          : T.onSurface(context),
+          SizedBox(
+            width: double.infinity,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.center,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Semantics(
+                    button: onDecrease != null,
+                    label: 'تقليل $label',
+                    child: GestureDetector(
+                      onTap: onDecrease,
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: onDecrease == null
+                              ? T.surfaceVariant(context)
+                              : T.surface(context),
+                          border: Border.all(color: T.outlineVariant(context)),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.remove,
+                          size: 20,
+                          color: onDecrease == null
+                              ? T.textDisabled(context)
+                              : T.onSurface(context),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      '$value',
+                      style: AppTextStyles.titleSmallWithContext(context)
+                          .copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: T.onSurface(context),
+                          ),
+                    ),
+                  ),
+                  Semantics(
+                    button: onIncrease != null,
+                    label: 'زيادة $label',
+                    child: GestureDetector(
+                      onTap: onIncrease,
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: onIncrease == null
+                              ? T.surfaceVariant(context)
+                              : T.surface(context),
+                          border: Border.all(color: T.outlineVariant(context)),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.add,
+                          size: 20,
+                          color: onIncrease == null
+                              ? T.textDisabled(context)
+                              : T.onSurface(context),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ],
       ),

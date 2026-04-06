@@ -5,6 +5,7 @@ class BookingModel {
   final String id;
   final String tripId;
   final String userId;
+  final String bookingGroupId;
 
   // Populated fields from backend (Optional locally)
   final TripModel? tripPopulated;
@@ -12,6 +13,9 @@ class BookingModel {
 
   // Seat Info
   final String seatNumber; // now String "0-0"
+  final double? seatPriceAtBooking;
+  final double? platformAmount;
+  final double? driverAmount;
 
   // Privacy
   final bool sharePhoneWithDriver;
@@ -33,9 +37,13 @@ class BookingModel {
     required this.id,
     required this.tripId,
     required this.userId,
+    required this.bookingGroupId,
     this.tripPopulated,
     this.userPopulated,
     required this.seatNumber,
+    this.seatPriceAtBooking,
+    this.platformAmount,
+    this.driverAmount,
     this.sharePhoneWithDriver = true,
     this.hasDriverPaidToContact = false,
     this.status = 'pending',
@@ -49,6 +57,8 @@ class BookingModel {
   static String _str(dynamic v) => v == null
       ? ''
       : (v is Map ? (v['_id'] ?? v['id'])?.toString() ?? '' : v.toString());
+  static double? _dbl(dynamic v) =>
+      v == null ? null : double.tryParse(v.toString());
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
     // TypeORM returns relation as 'trip', Mongoose may use 'tripId' when populated
@@ -77,9 +87,15 @@ class BookingModel {
       id: _str(json['_id'] ?? json['id']),
       tripId: pTripId,
       userId: pUserId,
+      bookingGroupId: _str(json['bookingGroupId']).isNotEmpty
+          ? _str(json['bookingGroupId'])
+          : _str(json['_id'] ?? json['id']),
       tripPopulated: pTripObj,
       userPopulated: pUserObj,
       seatNumber: json['seatNumber'].toString(),
+      seatPriceAtBooking: _dbl(json['seatPriceAtBooking']),
+      platformAmount: _dbl(json['platformAmount']),
+      driverAmount: _dbl(json['driverAmount']),
       sharePhoneWithDriver: json['sharePhoneWithDriver'] ?? true,
       hasDriverPaidToContact: json['hasDriverPaidToContact'] ?? false,
       status: json['status'] ?? 'pending',
@@ -102,7 +118,11 @@ class BookingModel {
       if (id.isNotEmpty) '_id': id,
       'tripId': tripId,
       'userId': userId,
+      'bookingGroupId': bookingGroupId,
       'seatNumber': seatNumber,
+      'seatPriceAtBooking': seatPriceAtBooking,
+      'platformAmount': platformAmount,
+      'driverAmount': driverAmount,
       'sharePhoneWithDriver': sharePhoneWithDriver,
       'hasDriverPaidToContact': hasDriverPaidToContact,
       'status': status,
@@ -120,9 +140,13 @@ class BookingModel {
     String? id,
     String? tripId,
     String? userId,
+    String? bookingGroupId,
     TripModel? tripPopulated,
     UserModel? userPopulated,
     String? seatNumber,
+    double? seatPriceAtBooking,
+    double? platformAmount,
+    double? driverAmount,
     bool? sharePhoneWithDriver,
     bool? hasDriverPaidToContact,
     String? status,
@@ -136,9 +160,13 @@ class BookingModel {
       id: id ?? this.id,
       tripId: tripId ?? this.tripId,
       userId: userId ?? this.userId,
+      bookingGroupId: bookingGroupId ?? this.bookingGroupId,
       tripPopulated: tripPopulated ?? this.tripPopulated,
       userPopulated: userPopulated ?? this.userPopulated,
       seatNumber: seatNumber ?? this.seatNumber,
+      seatPriceAtBooking: seatPriceAtBooking ?? this.seatPriceAtBooking,
+      platformAmount: platformAmount ?? this.platformAmount,
+      driverAmount: driverAmount ?? this.driverAmount,
       sharePhoneWithDriver: sharePhoneWithDriver ?? this.sharePhoneWithDriver,
       hasDriverPaidToContact:
           hasDriverPaidToContact ?? this.hasDriverPaidToContact,
@@ -199,5 +227,85 @@ class BookingModel {
       }
     }
     return tripsMap;
+  }
+}
+
+class BookingGroupModel {
+  final String bookingGroupId;
+  final String tripId;
+  final String userId;
+  final TripModel? trip;
+  final List<String> seatNumbers;
+  final String status;
+  final List<BookingModel> bookings;
+  final double platformAmountTotal;
+  final double driverAmountTotal;
+  final double totalAmount;
+  final String currency;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  const BookingGroupModel({
+    required this.bookingGroupId,
+    required this.tripId,
+    required this.userId,
+    required this.trip,
+    required this.seatNumbers,
+    required this.status,
+    required this.bookings,
+    required this.platformAmountTotal,
+    required this.driverAmountTotal,
+    required this.totalAmount,
+    required this.currency,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  bool get isPending => status == 'pending';
+  bool get isConfirmed => status == 'confirmed';
+  bool get isCancelled => status == 'cancelled';
+  bool get isCompleted => status == 'completed';
+
+  factory BookingGroupModel.fromJson(Map<String, dynamic> json) {
+    final rawBookings = (json['bookings'] as List?) ?? const [];
+    final bookings = rawBookings
+        .whereType<Map>()
+        .map((b) => BookingModel.fromJson(Map<String, dynamic>.from(b)))
+        .toList();
+    final totals = (json['totals'] is Map)
+        ? Map<String, dynamic>.from(json['totals'] as Map)
+        : <String, dynamic>{};
+    final tripJson = json['trip'];
+    final trip = tripJson is Map<String, dynamic>
+        ? TripModel.fromJson(tripJson)
+        : null;
+
+    final seatNumbers = (json['seatNumbers'] as List?)
+            ?.map((s) => s.toString())
+            .toList() ??
+        bookings.map((b) => b.seatNumber).toList();
+
+    return BookingGroupModel(
+      bookingGroupId:
+          (json['bookingGroupId'] ?? json['_id'] ?? json['id']).toString(),
+      tripId: (json['tripId'] ?? '').toString(),
+      userId: (json['userId'] ?? '').toString(),
+      trip: trip,
+      seatNumbers: seatNumbers,
+      status: (json['status'] ?? 'pending').toString(),
+      bookings: bookings,
+      platformAmountTotal:
+          double.tryParse((totals['platformAmount'] ?? 0).toString()) ?? 0,
+      driverAmountTotal:
+          double.tryParse((totals['driverAmount'] ?? 0).toString()) ?? 0,
+      totalAmount: double.tryParse((totals['totalAmount'] ?? 0).toString()) ?? 0,
+      currency: (totals['currency'] ?? trip?.currency ?? 'JOD').toString(),
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+          : (bookings.isNotEmpty ? bookings.last.createdAt : DateTime.now()),
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'])
+          : (bookings.isNotEmpty ? bookings.first.updatedAt : DateTime.now()),
+    );
   }
 }

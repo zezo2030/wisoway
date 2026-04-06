@@ -50,7 +50,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: T.surface(context),
+      color: AppColors.slate100,
       child: SafeArea(
         child: CustomScrollView(
           slivers: [

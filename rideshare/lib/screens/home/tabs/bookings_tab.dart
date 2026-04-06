@@ -152,9 +152,11 @@ class _BookingsTabState extends State<BookingsTab> {
   }
 
   Widget _buildPassengerBookingsPage(BuildContext context) {
+    const pageBackground = AppColors.slate100;
+
     if (widget.user == null) {
       return Scaffold(
-        backgroundColor: T.surface(context),
+        backgroundColor: pageBackground,
         appBar: AppBar(
           title: Text(
             'حجوزاتي',
@@ -177,7 +179,7 @@ class _BookingsTabState extends State<BookingsTab> {
     }
 
     return Scaffold(
-      backgroundColor: T.surface(context),
+      backgroundColor: pageBackground,
       appBar: AppBar(
         title: Text(
           'حجوزاتي',
@@ -193,9 +195,9 @@ class _BookingsTabState extends State<BookingsTab> {
         ).getActiveTripsStream(minDepartureTime: _bookingsMinDepartureTime),
         builder: (context, tripsSnapshot) {
           final bookingService = BookingService();
-          return FutureBuilder<List<BookingModel>>(
+          return FutureBuilder<List<BookingGroupModel>>(
             key: ValueKey(_passengerBookingsRefreshKey),
-            future: bookingService.getUserBookings(),
+            future: bookingService.getMyGroupedBookings(),
             builder: (context, bookingsSnapshot) {
               if (bookingsSnapshot.connectionState == ConnectionState.waiting) {
                 return Center(
@@ -214,9 +216,9 @@ class _BookingsTabState extends State<BookingsTab> {
                 );
               }
 
-              final bookings = bookingsSnapshot.data ?? [];
+              final groupedBookings = bookingsSnapshot.data ?? [];
 
-              if (bookings.isEmpty) {
+              if (groupedBookings.isEmpty) {
                 return EmptyState(
                   icon: IconsaxPlusBold.bookmark,
                   title: 'حجوزاتي',
@@ -242,15 +244,27 @@ class _BookingsTabState extends State<BookingsTab> {
                 );
               }
 
-              final tripsMap = BookingModel.buildTripsMap(
-                bookings,
-                tripsSnapshot.data ?? [],
-              );
-
-              final (:upcoming, :past) = BookingModel.categorizeBookings(
-                bookings,
-                tripsMap,
-              );
+              final tripsMap = <String, TripModel>{
+                for (final trip in (tripsSnapshot.data ?? <TripModel>[])) trip.id: trip,
+              };
+              final upcoming = <BookingGroupModel>[];
+              final past = <BookingGroupModel>[];
+              for (final group in groupedBookings) {
+                final trip = tripsMap[group.tripId] ?? group.trip;
+                final isPast =
+                    group.isCancelled ||
+                    group.isCompleted ||
+                    (trip != null &&
+                        (!trip.departureTime.isAfter(DateTime.now()) ||
+                            const {'completed', 'cancelled', 'expired'}.contains(
+                              trip.status,
+                            )));
+                if (isPast) {
+                  past.add(group);
+                } else {
+                  upcoming.add(group);
+                }
+              }
 
               return RefreshIndicator(
                 onRefresh: () async {
@@ -264,22 +278,19 @@ class _BookingsTabState extends State<BookingsTab> {
                     if (upcoming.isNotEmpty) ...[
                       _buildSectionTitle('قادمة'),
                       const SizedBox(height: 12),
-                      ...upcoming.map((booking) {
-                        final trip =
-                            tripsMap[booking.tripId] ?? booking.tripPopulated;
+                      ...upcoming.map((group) {
+                        final trip = tripsMap[group.tripId] ?? group.trip;
                         return BookingCard(
-                          booking: booking,
+                          group: group,
                           trip: trip,
                           isPastTrip: false,
-                          onTap: trip != null
-                              ? () {
-                                  Navigator.pushNamed(
-                                    context,
-                                    RouteNames.tripDetails,
-                                    arguments: trip.id,
-                                  );
-                                }
-                              : null,
+                          onTap: () {
+                            Navigator.pushNamed(
+                              context,
+                              RouteNames.bookingDetails,
+                              arguments: group.bookingGroupId,
+                            );
+                          },
                         );
                       }),
                     ],
@@ -287,22 +298,19 @@ class _BookingsTabState extends State<BookingsTab> {
                       if (upcoming.isNotEmpty) const SizedBox(height: 24),
                       _buildSectionTitle('سابقة'),
                       const SizedBox(height: 12),
-                      ...past.map((booking) {
-                        final trip =
-                            tripsMap[booking.tripId] ?? booking.tripPopulated;
+                      ...past.map((group) {
+                        final trip = tripsMap[group.tripId] ?? group.trip;
                         return BookingCard(
-                          booking: booking,
+                          group: group,
                           trip: trip,
                           isPastTrip: true,
-                          onTap: trip != null
-                              ? () {
-                                  Navigator.pushNamed(
-                                    context,
-                                    RouteNames.tripDetails,
-                                    arguments: trip.id,
-                                  );
-                                }
-                              : null,
+                          onTap: () {
+                            Navigator.pushNamed(
+                              context,
+                              RouteNames.bookingDetails,
+                              arguments: group.bookingGroupId,
+                            );
+                          },
                         );
                       }),
                     ],

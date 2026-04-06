@@ -16,6 +16,8 @@ import type {
   Notification,
   ChatRoom,
   ChatMessage,
+  WalletAccountAdmin,
+  WalletTransactionAdmin,
 } from "@/types/models"
 import type {
   ApiResponse,
@@ -30,6 +32,8 @@ import type {
   GetChatMessagesParams,
   GetAdminNotificationsParams,
   BroadcastNotificationRequest,
+  GetAdminWalletsParams,
+  AdjustWalletRequest,
 } from "@/types/api"
 import { apiClient } from "./client"
 import { backendSeatIdToDisplayIndex } from "@/lib/seat-layout"
@@ -373,5 +377,37 @@ export async function patchPlatformPricingSettings(
   const response = await apiClient.patch<ApiResponse<PlatformPricingSettings>>("/admin/pricing-settings", body, {
     params: { countryCode },
   })
+  return response.data.data
+}
+
+export async function getAdminWallets(
+  params: GetAdminWalletsParams,
+): Promise<PaginatedResult<WalletAccountAdmin>> {
+  const response = await apiClient.get<ApiResponse<PaginatedResult<WalletAccountAdmin>>>(
+    "/admin/wallets",
+    { params },
+  )
+  return response.data.data
+}
+
+export async function getAdminWalletTransactions(
+  accountId: string,
+  limit = 50,
+): Promise<{ account: WalletAccountAdmin; transactions: WalletTransactionAdmin[] }> {
+  const response = await apiClient.get<
+    ApiResponse<{ account: WalletAccountAdmin; transactions: WalletTransactionAdmin[] }>
+  >(`/admin/wallets/${accountId}/transactions`, {
+    params: { limit },
+  })
+  return response.data.data
+}
+
+export async function adjustAdminWallet(
+  accountId: string,
+  body: AdjustWalletRequest,
+): Promise<{ account: WalletAccountAdmin; transaction: WalletTransactionAdmin }> {
+  const response = await apiClient.post<
+    ApiResponse<{ account: WalletAccountAdmin; transaction: WalletTransactionAdmin }>
+  >(`/admin/wallets/${accountId}/adjust`, body)
   return response.data.data
 }

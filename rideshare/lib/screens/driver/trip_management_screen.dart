@@ -725,7 +725,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       iconColor: AppColors.warning,
       children: [
         Text(
-          'تأكيد الحجز يفتح بيانات الراكب (رحلة مجانية أو خصم من المحفظة مرة واحدة للرحلة)',
+          'قبل أول تأكيد على الرحلة ستظهر فاتورة توضح رسوم فتح التواصل؛ بعدها يمكنك الموافقة أو الرجوع.',
           style: AppTextStyles.bodySmall.copyWith(
             color: T.textSecondary(context),
           ),
@@ -791,7 +791,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                     ),
                   )
                 : Text(
-                    'تأكيد الحجز',
+                    _trip?.communicationFeeStatus == 'paid'
+                        ? 'تأكيد الحجز'
+                        : 'مراجعة والدفع',
                     style: AppTextStyles.labelLarge.copyWith(fontSize: 13),
                   ),
           ),
@@ -801,6 +803,31 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
   }
 
   Future<void> _confirmBooking(String bookingId) async {
+    final trip = _trip;
+    if (trip == null) return;
+
+    if (trip.communicationFeeStatus != 'paid') {
+      final result = await Navigator.pushNamed<bool>(
+        context,
+        RouteNames.driverBookingConfirmInvoice,
+        arguments: <String, dynamic>{
+          'tripId': trip.id,
+          'bookingId': bookingId,
+        },
+      );
+      if (!mounted) return;
+      if (result == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('تم تأكيد الحجز'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        _loadTrip();
+      }
+      return;
+    }
+
     setState(() => _confirmingBookingId = bookingId);
     try {
       await _bookingService.confirmBooking(bookingId);

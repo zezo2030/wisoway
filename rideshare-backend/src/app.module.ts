@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
@@ -53,6 +54,7 @@ import { SecurityModule } from './modules/security/security.module';
       envFilePath: '.env',
     }),
     PostgresModule,
+    ScheduleModule.forRoot(),
     // Single limit: multiple forRoot entries all apply to every route, so the old
     // 20/min bucket capped *all* traffic (including /bookings/my), not only public APIs.
     ThrottlerModule.forRoot([

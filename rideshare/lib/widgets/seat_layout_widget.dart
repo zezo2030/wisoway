@@ -7,14 +7,21 @@ import '../core/theme/colors.dart';
 class SeatLayoutWidget extends StatelessWidget {
   final TripModel trip;
   final int? selectedSeat;
+  final Set<int> selectedSeats;
+  final Set<int> highlightedSeatNumbers;
   final String? userGender;
+  /// يُستثنى من تعارض الجنس إذا كان المقعد المجاور محجوزاً لنفس المستخدم.
+  final String? currentUserId;
   final Function(int)? onSeatTap;
 
   const SeatLayoutWidget({
     super.key,
     required this.trip,
     this.selectedSeat,
+    this.selectedSeats = const <int>{},
+    this.highlightedSeatNumbers = const <int>{},
     this.userGender,
+    this.currentUserId,
     this.onSeatTap,
   });
 
@@ -58,6 +65,12 @@ class SeatLayoutWidget extends StatelessWidget {
 
             var currentSeatCount = 0;
 
+            final allSelected = {
+              ...selectedSeats,
+              if (selectedSeat != null) selectedSeat!,
+              ...highlightedSeatNumbers,
+            };
+
             return Column(
               children: rowConfigs.asMap().entries.map((entry) {
                 final seatsInThisRow = entry.value;
@@ -79,12 +92,13 @@ class SeatLayoutWidget extends StatelessWidget {
                                   seatNumber <= trip.seats.length)
                               ? trip.seats[seatNumber - 1]
                               : null,
-                          isSelected: selectedSeat == seatNumber,
+                          isSelected: allSelected.contains(seatNumber),
                           status: userGender != null
                               ? SeatValidation.getSeatStatus(
                                   trip: trip,
                                   seatNumber: seatNumber,
                                   userGender: userGender,
+                                  currentUserId: currentUserId,
                                 )
                               : SeatStatus.available,
                           onTap: onSeatTap != null

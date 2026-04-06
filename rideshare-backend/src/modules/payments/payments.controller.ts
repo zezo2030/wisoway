@@ -127,16 +127,16 @@ export class PaymentsController {
   }
 
   @Get('wallet/me')
-  @Roles('driver')
-  @ApiOperation({ summary: 'Get driver wallet balance and free-trip status' })
+  @Roles('driver', 'passenger')
+  @ApiOperation({ summary: 'Get current user wallet balance and free-trip status' })
   @ApiResponse({ status: 200, description: 'Wallet summary' })
   async getWalletMe(@CurrentUser('id') userId: string) {
     return this.paymentsService.getWalletMe(userId);
   }
 
   @Get('wallet/transactions')
-  @Roles('driver')
-  @ApiOperation({ summary: 'Get driver wallet transaction history' })
+  @Roles('driver', 'passenger')
+  @ApiOperation({ summary: 'Get current user wallet transaction history' })
   @ApiResponse({ status: 200, description: 'Paginated wallet transactions' })
   async getWalletTransactions(
     @CurrentUser('id') userId: string,

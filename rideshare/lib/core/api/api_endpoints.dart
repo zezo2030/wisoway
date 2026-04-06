@@ -44,7 +44,10 @@ class ApiEndpoints {
   // Bookings
   static const String bookings = '/bookings';
   static const String myBookings = '/bookings/my';
+  static const String myGroupedBookings = '/bookings/my/grouped';
   static String bookingById(String id) => '/bookings/$id';
+  static String bookingGroupById(String bookingGroupId) =>
+      '/bookings/group/$bookingGroupId';
   static String tripBookings(String tripId) => '/bookings/trip/$tripId';
   static String confirmBooking(String id) => '/bookings/$id/confirm';
   static String cancelBooking(String id) => '/bookings/$id/cancel';

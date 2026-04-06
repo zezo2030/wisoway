@@ -104,4 +104,30 @@ describe('WalletService', () => {
     expect(summary.currency).toBe('JOD');
     expect(summary.balance).toBe(15.5);
   });
+
+  it('sums balances when legacy rows differ only by currency casing', async () => {
+    walletAccountRepo.find.mockResolvedValue([
+      {
+        id: 'a',
+        userId: 'u1',
+        accountType: 'rider',
+        currency: 'jod',
+        balance: '10.00',
+        isActive: true,
+      },
+      {
+        id: 'b',
+        userId: 'u1',
+        accountType: 'rider',
+        currency: 'JOD',
+        balance: '5.00',
+        isActive: true,
+      },
+    ] as any);
+
+    const summary = await service.getWalletSummary('u1', 'passenger');
+
+    expect(summary.currency).toBe('JOD');
+    expect(summary.balance).toBe(15);
+  });
 });

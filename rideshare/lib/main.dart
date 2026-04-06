@@ -33,12 +33,15 @@ import 'screens/driver/create_trip_screen.dart';
 import 'screens/driver/edit_trip_screen.dart';
 import 'screens/driver/my_trips_screen.dart';
 import 'screens/driver/trip_management_screen.dart';
+import 'screens/driver/driver_booking_confirm_invoice_screen.dart';
 import 'screens/driver/passenger_details_screen.dart';
 import 'screens/driver/driver_wallet_screen.dart';
 import 'screens/wallet/wallet_topup_request_screen.dart';
 import 'screens/passenger/trips_list_screen.dart';
 import 'screens/passenger/trip_details_screen.dart';
+import 'screens/passenger/booking_details_screen.dart';
 import 'screens/passenger/seat_selection_screen.dart';
+import 'screens/passenger/passenger_booking_invoice_screen.dart';
 import 'screens/passenger/trip_route_map_screen.dart';
 import 'screens/passenger/passenger_wallet_screen.dart';
 import 'models/trip_model.dart';
@@ -203,11 +206,31 @@ class MyApp extends StatelessWidget {
                         builder: (context) => TripDetailsScreen(tripId: tripId),
                       );
                     }
+                    if (settings.name == RouteNames.bookingDetails) {
+                      final bookingGroupId = settings.arguments as String;
+                      return MaterialPageRoute(
+                        builder: (context) =>
+                            BookingDetailsScreen(bookingGroupId: bookingGroupId),
+                      );
+                    }
                     if (settings.name == RouteNames.seatSelection) {
                       final tripId = settings.arguments as String;
                       return MaterialPageRoute(
                         builder: (context) =>
                             SeatSelectionScreen(tripId: tripId),
+                      );
+                    }
+                    if (settings.name == RouteNames.passengerBookingInvoice) {
+                      final args = settings.arguments as Map<String, dynamic>;
+                      final seats = args['seatNumbers'];
+                      return MaterialPageRoute<String?>(
+                        settings: settings,
+                        builder: (context) => PassengerBookingInvoiceScreen(
+                          tripId: args['tripId'] as String,
+                          seatNumbers: List<String>.from(seats as List),
+                          sharePhoneWithDriver:
+                              args['sharePhoneWithDriver'] as bool? ?? true,
+                        ),
                       );
                     }
                     if (settings.name == RouteNames.tripRouteMap) {
@@ -263,6 +286,17 @@ class MyApp extends StatelessWidget {
                       return MaterialPageRoute(
                         builder: (context) =>
                             PassengerDetailsScreen(booking: booking),
+                      );
+                    }
+                    if (settings.name ==
+                        RouteNames.driverBookingConfirmInvoice) {
+                      final args = settings.arguments as Map<String, dynamic>;
+                      return MaterialPageRoute<bool>(
+                        settings: settings,
+                        builder: (context) => DriverBookingConfirmInvoiceScreen(
+                          tripId: args['tripId'] as String,
+                          bookingId: args['bookingId'] as String,
+                        ),
                       );
                     }
                     return null;

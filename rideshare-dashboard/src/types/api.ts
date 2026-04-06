@@ -1,7 +1,7 @@
 // API Types: Rideshare Admin Dashboard
 // Source: api-contracts.md
 
-import type { PaginatedResult, User, Trip, Payment, Vehicle, Notification, DashboardStats, ReportResponse, UserStats, AuthUser, Booking, Rating, ChatRoom, ChatMessage } from './models';
+import type { PaginatedResult, User, Trip, Payment, Vehicle, Notification, DashboardStats, ReportResponse, UserStats, AuthUser, Booking, Rating, ChatRoom, ChatMessage, WalletAccountAdmin, WalletTransactionAdmin } from './models';
 import type { UserRole, PaymentStatus, PaymentMethod, PaymentType, TripStatus, BookingStatus } from './enums';
 
 // Generic API Response Wrapper
@@ -72,6 +72,19 @@ export interface GetAllPaymentsParams extends PaginationParams {
   method?: PaymentMethod;
   paymentType?: PaymentType;
   walletOnly?: boolean;
+}
+
+export interface GetAdminWalletsParams extends PaginationParams {
+  role?: 'driver' | 'passenger';
+  accountType?: 'driver' | 'rider';
+  search?: string;
+}
+
+export interface AdjustWalletRequest {
+  direction: 'credit' | 'debit';
+  amount: number;
+  note?: string;
+  referenceId?: string;
 }
 
 export interface ApprovePaymentRequest {
@@ -153,6 +166,8 @@ export type TripsResponse = ApiResponse<PaginatedResult<Trip>>;
 export type TripResponse = ApiResponse<Trip>;
 export type PendingPaymentsResponse = ApiResponse<PaginatedResult<Payment>>;
 export type AllPaymentsResponse = ApiResponse<PaginatedResult<Payment>>;
+export type AdminWalletsResponse = ApiResponse<PaginatedResult<WalletAccountAdmin>>;
+export type AdminWalletTransactionsResponse = ApiResponse<{ account: WalletAccountAdmin; transactions: WalletTransactionAdmin[] }>;
 export type PaymentResponse = ApiResponse<Payment>;
 export type VehiclesResponse = ApiResponse<PaginatedResult<Vehicle>>;
 export type VehicleResponse = ApiResponse<Vehicle>;

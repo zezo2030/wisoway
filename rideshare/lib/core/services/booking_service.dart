@@ -6,18 +6,32 @@ class BookingService {
   final ApiClient _api = ApiClient();
 
   // Create a booking request
-  Future<String> createBooking({
+  Future<Map<String, dynamic>> createBooking({
     required String tripId,
-    required String seatNumber, // Changed to String "X-Y"
+    String? seatNumber, // Backward compatibility
+    List<String>? seatNumbers,
     required bool sharePhoneWithDriver,
     String? walletIdempotencyKey,
   }) async {
     try {
+      final resolvedSeatNumbers = (seatNumbers ?? const [])
+          .where((s) => s.trim().isNotEmpty)
+          .map((s) => s.trim())
+          .toSet()
+          .toList();
+      if (resolvedSeatNumbers.isEmpty && (seatNumber == null || seatNumber.isEmpty)) {
+        throw Exception('At least one seat must be selected');
+      }
       final payload = <String, dynamic>{
         'tripId': tripId,
-        'seatNumber': seatNumber,
         'sharePhoneWithDriver': sharePhoneWithDriver,
       };
+      if (resolvedSeatNumbers.isNotEmpty) {
+        payload['seatNumbers'] = resolvedSeatNumbers;
+      }
+      if (seatNumber != null && seatNumber.isNotEmpty) {
+        payload['seatNumber'] = seatNumber;
+      }
       if (walletIdempotencyKey != null && walletIdempotencyKey.isNotEmpty) {
         payload['walletIdempotencyKey'] = walletIdempotencyKey;
       }
@@ -27,7 +41,10 @@ class BookingService {
       );
 
       final res = response['data'] ?? response;
-      return res['_id'] ?? res['id'];
+      if (res is Map<String, dynamic>) {
+        return res;
+      }
+      return <String, dynamic>{};
     } catch (e) {
       print('❌ Error creating booking: $e');
       rethrow;
@@ -96,6 +113,54 @@ class BookingService {
   /// نفس getMyBookings (للتوافق مع الشاشات).
   Future<List<BookingModel>> getUserBookings({String? status}) =>
       getMyBookings(status: status);
+
+  Future<List<BookingGroupModel>> getMyGroupedBookings({String? status}) async {
+    try {
+      Map<String, dynamic>? query;
+      if (status != null) {
+        query = {'status': status};
+      }
+      final response = await _api.get(
+        ApiEndpoints.myGroupedBookings,
+        queryParameters: query,
+      );
+      final raw = response['data'];
+      List<dynamic> list;
+      if (raw is List) {
+        list = raw;
+      } else if (raw is Map<String, dynamic>) {
+        list =
+            raw['data'] ??
+            raw['bookings'] ??
+            raw['items'] ??
+            raw['results'] ??
+            [];
+      } else {
+        list = [];
+      }
+      return list
+          .map((json) =>
+              BookingGroupModel.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      print('❌ Error getting grouped bookings: $e');
+      return [];
+    }
+  }
+
+  Future<BookingGroupModel?> getBookingGroupById(String bookingGroupId) async {
+    try {
+      final response = await _api.get(ApiEndpoints.bookingGroupById(bookingGroupId));
+      final data = response['data'] ?? response;
+      if (data is Map<String, dynamic>) {
+        return BookingGroupModel.fromJson(data);
+      }
+      return null;
+    } catch (e) {
+      print('❌ Error getting booking group details: $e');
+      return null;
+    }
+  }
 
   // Get user's own bookings
   Future<List<BookingModel>> getMyBookings({String? status}) async {

@@ -12,6 +12,7 @@ export const ROUTES = {
   PAYMENTS: "/payments",
   PAYMENTS_PENDING: "/payments/pending",
   WALLETS: "/wallets",
+  WALLET_DETAIL: "/wallets/:id",
   VEHICLES: "/vehicles",
   TRIPS: "/trips",
   TRIP_DETAIL: "/trips/:id",

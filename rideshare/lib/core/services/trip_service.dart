@@ -1,4 +1,5 @@
 import '../../models/trip_model.dart';
+import '../../models/trip_pricing_preview_model.dart';
 import '../../models/location_model.dart';
 import '../../models/seat_layout_config.dart';
 import '../api/api_client.dart';
@@ -95,6 +96,14 @@ class TripService {
       print('❌ Error getting pricing preview: $e');
       return null;
     }
+  }
+
+  Future<TripPricingPreviewModel?> getTripPricingPreviewModel(
+    String tripId,
+  ) async {
+    final raw = await getTripPricingPreview(tripId);
+    if (raw == null) return null;
+    return TripPricingPreviewModel.fromJson(raw);
   }
 
   // Get driver's trips

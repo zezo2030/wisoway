@@ -19,12 +19,16 @@ class RouteNames {
   static const String editTrip = '/edit-trip';
   static const String myTrips = '/my-trips';
   static const String tripManagement = '/trip-management';
+  static const String driverBookingConfirmInvoice =
+      '/driver-booking-confirm-invoice';
   static const String passengerDetails = '/passenger-details';
 
   // Passenger Routes
   static const String tripsList = '/trips-list';
   static const String tripDetails = '/trip-details';
+  static const String bookingDetails = '/booking-details';
   static const String seatSelection = '/seat-selection';
+  static const String passengerBookingInvoice = '/passenger-booking-invoice';
   static const String tripRouteMap = '/trip-route-map';
 
   // Payment Routes

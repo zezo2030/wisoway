@@ -31,6 +31,8 @@ class AppTheme {
       onErrorContainer: colors.onErrorContainer,
       outline: colors.outline,
       outlineVariant: colors.outlineVariant,
+      shadow: colors.shadow,
+      scrim: colors.overlay,
     );
 
     return ThemeData(

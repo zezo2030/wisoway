@@ -12,9 +12,10 @@ import { UserEntity } from './user.entity';
 import { TripEntity } from './trip.entity';
 
 @Entity({ name: 'bookings' })
-@Index('idx_bookings_user_trip', ['userId', 'tripId'], { unique: true })
+@Index('idx_bookings_user_trip', ['userId', 'tripId'])
 @Index('idx_bookings_trip', ['tripId'])
 @Index('idx_bookings_user', ['userId'])
+@Index('idx_bookings_group', ['bookingGroupId'])
 export class BookingEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -35,6 +36,9 @@ export class BookingEntity {
 
   @Column({ type: 'varchar' })
   seatNumber: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  bookingGroupId: string | null;
 
   @Column({ type: 'varchar', default: 'pending' })
   @Index('idx_bookings_status')

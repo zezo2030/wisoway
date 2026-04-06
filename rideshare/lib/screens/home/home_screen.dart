@@ -188,6 +188,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
 
     return Scaffold(
+      backgroundColor: AppColors.slate100,
       body: Row(
         children: [
           NavigationRail(
@@ -277,6 +278,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildScaffoldWithBottomNav(BuildContext context, user) {
     return Scaffold(
+      backgroundColor: AppColors.slate100,
       body: Builder(
         builder: (scaffoldBodyContext) {
           final pages = [

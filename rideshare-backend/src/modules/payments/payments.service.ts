@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { PaymentEntity } from '../../database/entities/payment.entity';
 import { CommunicationFeeEntity } from '../../database/entities/communication-fee.entity';
 import { TripEntity } from '../../database/entities/trip.entity';
@@ -315,6 +315,97 @@ export class PaymentsService {
     };
   }
 
+  /**
+   * Hold platform fee in rider wallet (PENDING) until driver confirms; creates payment status `held`.
+   * Must run inside the same DB transaction as booking insert.
+   */
+  async holdPassengerWalletPaymentInTransaction(
+    manager: EntityManager,
+    params: {
+      userId: string;
+      tripId: string;
+      bookingId: string;
+      platformAmount: number;
+      currency: string;
+      idempotencyKey: string;
+    },
+  ): Promise<{ payment: PaymentEntity; walletTxId: string }> {
+    const {
+      userId,
+      tripId,
+      bookingId,
+      platformAmount,
+      currency,
+      idempotencyKey,
+    } = params;
+    if (!Number.isFinite(platformAmount) || platformAmount <= 0) {
+      throw new BadRequestException('Invalid platform amount for hold');
+    }
+
+    const walletTx = await this.walletService.holdRiderPlatformFeeWithManager(
+      manager,
+      {
+        riderId: userId,
+        bookingId,
+        tripId,
+        amount: platformAmount,
+        currency,
+        idempotencyKey,
+      },
+    );
+
+    const payment = manager.create(PaymentEntity, {
+      userId,
+      tripId,
+      bookingId,
+      amount: platformAmount,
+      currency,
+      method: 'wallet',
+      status: 'held',
+      paymentType: 'trip_platform',
+      direction: 'debit',
+      paymentGatewayRef: walletTx.id,
+    });
+    await manager.save(payment);
+    return { payment, walletTxId: walletTx.id };
+  }
+
+  /** Finalize passenger hold after driver confirms booking (platform fee kept). */
+  async capturePassengerHoldForPaymentId(paymentId: string): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      const payment = await manager.findOne(PaymentEntity, {
+        where: { id: paymentId },
+      });
+      if (!payment || payment.status !== 'held' || !payment.paymentGatewayRef) {
+        return;
+      }
+      await this.walletService.captureRiderHoldWithManager(
+        manager,
+        payment.paymentGatewayRef,
+      );
+      payment.status = 'approved';
+      await manager.save(payment);
+    });
+  }
+
+  /** Refund rider when booking cancelled or trip departed without driver confirm. */
+  async releasePassengerHoldForPaymentId(paymentId: string): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      const payment = await manager.findOne(PaymentEntity, {
+        where: { id: paymentId },
+      });
+      if (!payment || payment.status !== 'held' || !payment.paymentGatewayRef) {
+        return;
+      }
+      await this.walletService.releaseRiderHoldWithManager(
+        manager,
+        payment.paymentGatewayRef,
+      );
+      payment.status = 'refunded';
+      await manager.save(payment);
+    });
+  }
+
   async chargeDriverWalletForTrip(
     driverId: string,
     tripId: string,
@@ -332,12 +423,7 @@ export class PaymentsService {
 
     const driver = await this.userRepo.findOne({
       where: { id: driverId },
-      select: [
-        'id',
-        'walletBalance',
-        'walletCurrency',
-        'hasUsedLifetimeFreeTrip',
-      ],
+      select: ['id', 'hasUsedLifetimeFreeTrip'],
     });
     if (!driver) {
       throw new NotFoundException('User not found');
@@ -352,21 +438,18 @@ export class PaymentsService {
       communicationFee,
     );
     const feeAmount = unlock.feeAmount;
-    const currency = unlock.currency ?? driver.walletCurrency ?? 'JOD';
+    const currency = unlock.currency ?? 'JOD';
     const lifetimeFreeEnabled =
       communicationFee?.lifetimeFreeTripEnabled !== false;
 
-    const qr = this.dataSource.createQueryRunner();
-    await qr.connect();
-    await qr.startTransaction();
-    try {
+    await this.dataSource.transaction(async (manager) => {
       if (lifetimeFreeEnabled && !driver.hasUsedLifetimeFreeTrip) {
-        await qr.manager.update(
+        await manager.update(
           UserEntity,
           { id: driverId },
           { hasUsedLifetimeFreeTrip: true },
         );
-        await qr.manager.update(
+        await manager.update(
           TripEntity,
           { id: tripId },
           {
@@ -375,23 +458,14 @@ export class PaymentsService {
             communicationFeeStatus: 'paid',
           },
         );
-        await qr.commitTransaction();
         this.logger.log(
           `Lifetime free trip used for driver ${driverId}, trip ${tripId}`,
         );
         return;
       }
 
-      const balance = Number(driver.walletBalance ?? 0);
-      if (feeAmount > 0 && balance < feeAmount) {
-        await qr.rollbackTransaction();
-        throw new BadRequestException(
-          'Insufficient wallet balance. Please top up your wallet to confirm bookings and view passenger details.',
-        );
-      }
-
       if (feeAmount <= 0) {
-        await qr.manager.update(
+        await manager.update(
           TripEntity,
           { id: tripId },
           {
@@ -400,21 +474,20 @@ export class PaymentsService {
             communicationFeeStatus: 'paid',
           },
         );
-        await qr.commitTransaction();
         this.logger.log(
           `Zero unlock fee for driver ${driverId}, trip ${tripId}; marked paid.`,
         );
         return;
       }
 
-      await qr.manager
-        .createQueryBuilder()
-        .update(UserEntity)
-        .set({ walletBalance: () => '"walletBalance" - :fee' })
-        .setParameter('fee', feeAmount)
-        .where('id = :id', { id: driverId })
-        .execute();
-      const payment = qr.manager.create(PaymentEntity, {
+      await this.walletService.debitDriverUnlockFee(manager, {
+        driverId,
+        tripId,
+        feeAmount,
+        currency,
+      });
+
+      const payment = manager.create(PaymentEntity, {
         userId: driverId,
         tripId,
         amount: feeAmount,
@@ -424,8 +497,8 @@ export class PaymentsService {
         paymentType: 'wallet_trip_charge',
         direction: 'debit',
       });
-      await qr.manager.save(PaymentEntity, payment);
-      await qr.manager.update(
+      await manager.save(payment);
+      await manager.update(
         TripEntity,
         { id: tripId },
         {
@@ -434,16 +507,10 @@ export class PaymentsService {
           communicationFeeStatus: 'paid',
         },
       );
-      await qr.commitTransaction();
       this.logger.log(
         `Wallet charged ${feeAmount} ${currency} for driver ${driverId}, trip ${tripId}`,
       );
-    } catch (err) {
-      await qr.rollbackTransaction();
-      throw err;
-    } finally {
-      await qr.release();
-    }
+    });
   }
 
   async getWalletMe(userId: string): Promise<{
@@ -453,14 +520,21 @@ export class PaymentsService {
   }> {
     const user = await this.userRepo.findOne({
       where: { id: userId },
-      select: ['walletBalance', 'walletCurrency', 'hasUsedLifetimeFreeTrip'],
+      select: ['hasUsedLifetimeFreeTrip', 'role'],
     });
     if (!user) {
       throw new NotFoundException('User not found');
     }
+    /** Same ledger as admin-approved top-ups (`wallet_accounts`), not legacy `users.walletBalance`. */
+    const walletRole =
+      user.role === PgUserRole.DRIVER ? 'driver' : 'passenger';
+    const summary = await this.walletService.getWalletSummary(
+      userId,
+      walletRole,
+    );
     return {
-      balance: Number(user.walletBalance ?? 0),
-      currency: user.walletCurrency ?? 'JOD',
+      balance: summary.balance,
+      currency: summary.currency,
       hasUsedLifetimeFreeTrip: user.hasUsedLifetimeFreeTrip ?? false,
     };
   }

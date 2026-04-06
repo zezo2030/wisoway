@@ -18,6 +18,7 @@ import {
 } from '@nestjs/swagger';
 import { AdminDashboardService } from './admin-dashboard.service';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { PgUserRole } from '../../database/entities/shared.enums';
 import { AdminUsersQueryDto } from './dto/admin-users-query.dto';
 import { AdminPaymentsQueryDto } from './dto/admin-payments-query.dto';
@@ -28,12 +29,15 @@ import { AdminRatingsQueryDto } from './dto/admin-ratings-query.dto';
 import { AdminNotificationsQueryDto } from './dto/admin-notifications-query.dto';
 import { AdminChatQueryDto } from './dto/admin-chat-query.dto';
 import { AdminReportsQueryDto } from './dto/admin-reports-query.dto';
+import { AdminWalletsQueryDto } from './dto/admin-wallets-query.dto';
+import { AdminWalletTransactionsQueryDto } from './dto/admin-wallet-transactions-query.dto';
 import {
   ApproveDriverDto,
   VerifyVehicleDto,
   BroadcastNotificationDto,
 } from './dto/admin-query.dto';
 import { AdminPatchPricingSettingsDto } from './dto/admin-pricing-settings.dto';
+import { AdminWalletAdjustDto } from './dto/admin-wallet-adjust.dto';
 
 @ApiTags('Admin')
 @ApiBearerAuth()
@@ -185,6 +189,53 @@ export class AdminDashboardController {
       paymentType: query.paymentType,
       walletOnly: query.walletOnly,
     });
+  }
+
+  @Get('wallets')
+  @ApiOperation({ summary: 'Get user wallet accounts (riders and drivers)' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'role', required: false, enum: ['driver', 'passenger'] })
+  @ApiQuery({ name: 'accountType', required: false, enum: ['driver', 'rider'] })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiResponse({ status: 200, description: 'Wallet accounts retrieved successfully' })
+  async getWallets(@Query() query: AdminWalletsQueryDto) {
+    return this.adminDashboardService.getWallets({
+      page: query.page,
+      limit: query.limit,
+      role: query.role,
+      accountType: query.accountType,
+      search: query.search,
+    });
+  }
+
+  @Get('wallets/:id/transactions')
+  @ApiOperation({ summary: 'Get wallet account transactions' })
+  @ApiParam({ name: 'id', description: 'Wallet account ID' })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Wallet account transactions retrieved' })
+  async getWalletTransactions(
+    @Param('id') accountId: string,
+    @Query() query: AdminWalletTransactionsQueryDto,
+  ) {
+    return this.adminDashboardService.getWalletTransactionsForAccount(
+      accountId,
+      query.limit,
+    );
+  }
+
+  @Post('wallets/:id/adjust')
+  @ApiOperation({ summary: 'Adjust wallet balance manually (admin)' })
+  @ApiParam({ name: 'id', description: 'Wallet account ID' })
+  @ApiResponse({ status: 200, description: 'Wallet adjusted successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid amount or insufficient balance' })
+  @ApiResponse({ status: 404, description: 'Wallet account not found' })
+  async adjustWallet(
+    @Param('id') accountId: string,
+    @Body() dto: AdminWalletAdjustDto,
+    @CurrentUser('id') adminId: string,
+  ) {
+    return this.adminDashboardService.adjustWalletBalance(accountId, dto, adminId);
   }
 
   @Get('trips')

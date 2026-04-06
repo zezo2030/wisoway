@@ -71,6 +71,28 @@ export class BookingsController {
     });
   }
 
+  @Get('my/grouped')
+  @ApiOperation({ summary: 'Get current user bookings grouped by bookingGroupId' })
+  @ApiResponse({ status: 200, description: 'List of grouped user bookings' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['pending', 'confirmed', 'cancelled', 'completed'],
+  })
+  async getMyGroupedBookings(
+    @Query() pagination: PaginationDto,
+    @Query('status') status?: string,
+    @CurrentUser('id') userId?: string,
+  ) {
+    return this.bookingsService.findGroupedByUser(userId!, {
+      page: pagination.page ?? 1,
+      limit: pagination.limit ?? 20,
+      status,
+    });
+  }
+
   @Get('trip/:tripId')
   @Roles('driver')
   @ApiOperation({ summary: 'Get bookings for a trip (Driver only)' })
@@ -88,6 +110,18 @@ export class BookingsController {
       page: pagination.page ?? 1,
       limit: pagination.limit ?? 20,
     });
+  }
+
+  @Get('group/:bookingGroupId')
+  @ApiOperation({ summary: 'Get grouped booking details by bookingGroupId' })
+  @ApiResponse({ status: 200, description: 'Grouped booking details' })
+  @ApiResponse({ status: 403, description: 'Not authorized' })
+  @ApiResponse({ status: 404, description: 'Booking group not found' })
+  async getGroupById(
+    @Param('bookingGroupId') bookingGroupId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.bookingsService.findGroupById(bookingGroupId, userId);
   }
 
   @Get(':id')

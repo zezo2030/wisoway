@@ -16,6 +16,7 @@
     "db:migration:run": "node -r dotenv/config -r ts-node/register ./node_modules/typeorm/cli.js -d src/database/data-source.ts migration:run",
     "db:migration:revert": "node -r ts-node/register ./node_modules/typeorm/cli.js -d src/database/data-source.ts migration:revert",
     "db:backfill": "ts-node src/database/scripts/backfill-mongo-to-postgres.ts",
+    "db:clear-trips": "node -r dotenv/config -r ts-node/register src/database/scripts/clear-trips-and-bookings.ts",
     "seed:admin": "ts-node -r tsconfig-paths/register seed-admin.ts",
     "test": "jest",
     "test:watch": "jest --watch",

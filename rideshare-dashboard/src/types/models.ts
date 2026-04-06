@@ -131,6 +131,40 @@ export interface Payment {
   updatedAt: string
 }
 
+export interface WalletAccountAdmin {
+  id: string
+  userId: string
+  accountType: 'driver' | 'rider'
+  currency: string
+  balance: string | number
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+  user: {
+    id: string
+    name: string
+    email?: string | null
+    phoneNumber?: string | null
+    role: 'driver' | 'passenger' | 'admin'
+    isActive: boolean
+  }
+}
+
+export interface WalletTransactionAdmin {
+  id: string
+  accountId: string
+  type: string
+  direction: 'credit' | 'debit'
+  status: string
+  amount: string | number
+  currency: string
+  referenceType?: string | null
+  referenceId?: string | null
+  idempotencyKey?: string | null
+  metadata?: Record<string, unknown> | null
+  createdAt: string
+}
+
 export interface Rating {
   _id: string
   fromUserId: string | UserSummary

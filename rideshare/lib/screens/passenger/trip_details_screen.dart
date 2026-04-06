@@ -9,6 +9,7 @@ import '../../providers/trip_provider.dart';
 import '../../models/trip_model.dart';
 import '../../core/constants/route_names.dart';
 import '../../widgets/seat_layout_widget.dart';
+import '../../core/services/booking_service.dart';
 import '../../core/services/chat_service.dart';
 import '../../core/services/rating_service.dart';
 import '../../core/api/websocket_service.dart';
@@ -24,8 +25,10 @@ class TripDetailsScreen extends StatefulWidget {
 }
 
 class _TripDetailsScreenState extends State<TripDetailsScreen> {
+  final BookingService _bookingService = BookingService();
   TripModel? _trip;
   bool _isLoading = true;
+  bool _hasActiveBookingOnTrip = false;
   GoogleMapController? _mapController;
   final WebSocketService _socketService = WebSocketService();
   StreamSubscription<Map<String, dynamic>>? _trackingSubscription;
@@ -61,9 +64,18 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   Future<void> _loadTrip() async {
     try {
       final tripProvider = Provider.of<TripProvider>(context, listen: false);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final trip = await tripProvider.getTrip(widget.tripId);
+      var hasBooking = false;
+      if (trip != null && authProvider.userModel != null) {
+        final mine = await _bookingService.getMyBookings();
+        hasBooking = mine.any(
+          (b) => b.tripId == trip.id && b.status != 'cancelled',
+        );
+      }
       setState(() {
         _trip = trip;
+        _hasActiveBookingOnTrip = hasBooking;
         _isLoading = false;
         _buildMarkers();
       });
@@ -381,6 +393,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       SeatLayoutWidget(
                         trip: trip,
                         userGender: userModel.gender,
+                        currentUserId: userModel.id,
                       ),
                     ],
                   ),
@@ -428,7 +441,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               ),
               const SizedBox(height: 16),
             ],
-            if (userModel != null && trip.hasAvailableSeats && trip.isUpcoming)
+            if (userModel != null &&
+                trip.hasAvailableSeats &&
+                trip.isUpcoming &&
+                !_hasActiveBookingOnTrip)
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Semantics(
@@ -450,6 +466,32 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       'احجز مقعد',
                       style: TextStyle(fontSize: 18),
                     ),
+                  ),
+                ),
+              )
+            else if (userModel != null &&
+                trip.hasAvailableSeats &&
+                trip.isUpcoming &&
+                _hasActiveBookingOnTrip)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: T.outlineVariant(context).withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: T.primary(context)),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'لديك حجز على هذه الرحلة. يُسمح بحجز واحد فقط؛ يمكنك اختيار عدة مقاعد متجاورة في نفس الحجز.',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               )

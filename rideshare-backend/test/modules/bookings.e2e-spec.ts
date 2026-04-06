@@ -295,7 +295,7 @@ describe('Bookings E2E', () => {
       expect(response.body.error.message).toContain('not available');
     });
 
-    it('should fail when user already has booking for this trip', async () => {
+    it('should reject a second booking on the same trip (one booking per trip)', async () => {
       const response = await request(app.getHttpServer())
         .post('/api/v1/bookings')
         .set('Authorization', `Bearer ${passengerAccessToken}`)
@@ -306,7 +306,7 @@ describe('Bookings E2E', () => {
         .expect(400);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error.message).toContain('already booked');
+      expect(response.body.error.message).toMatch(/already have a booking/i);
     });
 
     it('should fail with gender mismatch when preventGenderMixing is true', async () => {

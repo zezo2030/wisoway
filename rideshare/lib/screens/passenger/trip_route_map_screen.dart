@@ -115,47 +115,185 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
 
   Future<void> _fetchRoute() async {
     try {
-      final url =
-          'https://maps.googleapis.com/maps/api/directions/json'
-          '?origin=${_fromLatLng.latitude},${_fromLatLng.longitude}'
-          '&destination=${_toLatLng.latitude},${_toLatLng.longitude}'
-          '&key=$_apiKey'
-          '&language=ar';
-
-      final response = await http.get(Uri.parse(url));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['routes'] != null && (data['routes'] as List).isNotEmpty) {
-          final route = data['routes'][0];
-          final overviewPolyline = route['overview_polyline']['points'];
-          final legs = route['legs'][0];
-
-          final points = _decodePolyline(overviewPolyline);
-
-          setState(() {
-            _distance = legs['distance']['text'];
-            _duration = legs['duration']['text'];
-            _polylines = {
-              Polyline(
-                polylineId: const PolylineId('route'),
-                points: points,
-                color: AppColors.teal700,
-                width: 5,
-                patterns: [],
-              ),
-            };
-            _isLoadingRoute = false;
-          });
-        } else {
-          _drawStraightLine();
-        }
-      } else {
-        _drawStraightLine();
+      final google = await _tryFetchGoogleDrivingRoute();
+      if (google != null && google.points.length >= 2) {
+        if (!mounted) return;
+        setState(() {
+          _distance = google.distanceText;
+          _duration = google.durationText;
+          _polylines = {
+            Polyline(
+              polylineId: const PolylineId('route'),
+              points: google.points,
+              color: AppColors.teal700,
+              width: 5,
+              patterns: [],
+            ),
+          };
+          _isLoadingRoute = false;
+        });
+        _scheduleFitBoundsToRoute();
+        return;
       }
-    } catch (e) {
-      _drawStraightLine();
+    } catch (_) {
+      // جرّب البديل
     }
+
+    try {
+      final osrm = await _tryFetchOsrmDrivingRoute();
+      if (osrm != null && osrm.points.length >= 2) {
+        if (!mounted) return;
+        setState(() {
+          _distance = osrm.distanceText;
+          _duration = osrm.durationText;
+          _polylines = {
+            Polyline(
+              polylineId: const PolylineId('route'),
+              points: osrm.points,
+              color: AppColors.teal700,
+              width: 5,
+              patterns: [],
+            ),
+          };
+          _isLoadingRoute = false;
+        });
+        _scheduleFitBoundsToRoute();
+        return;
+      }
+    } catch (_) {
+      // آخر خيار: خط مباشر
+    }
+
+    if (!mounted) return;
+    _drawStraightLine();
+  }
+
+  /// مسار قيادة حقيقي عبر الطرق (دمج polyline كل خطوة = أدق من الخط العام فقط).
+  Future<({List<LatLng> points, String distanceText, String durationText})?>
+  _tryFetchGoogleDrivingRoute() async {
+    final uri = Uri.https('maps.googleapis.com', '/maps/api/directions/json', {
+      'origin': '${_fromLatLng.latitude},${_fromLatLng.longitude}',
+      'destination': '${_toLatLng.latitude},${_toLatLng.longitude}',
+      'mode': 'driving',
+      'key': _apiKey,
+      'language': 'ar',
+    });
+    final response = await http.get(uri);
+    if (response.statusCode != 200) return null;
+    final data = json.decode(response.body) as Map<String, dynamic>;
+    if (data['status'] != 'OK') return null;
+    final routes = data['routes'];
+    if (routes is! List || routes.isEmpty) return null;
+    final route = routes.first as Map<String, dynamic>;
+    String distanceText = '';
+    String durationText = '';
+    final legs = route['legs'];
+    if (legs is List && legs.isNotEmpty) {
+      final leg = legs.first as Map<String, dynamic>;
+      final dist = leg['distance'];
+      final dur = leg['duration'];
+      if (dist is Map && dist['text'] != null) {
+        distanceText = dist['text'].toString();
+      }
+      if (dur is Map && dur['text'] != null) {
+        durationText = dur['text'].toString();
+      }
+    }
+    final points = _decodeGoogleRoutePointsAlongRoads(route);
+    if (points.length < 2) return null;
+    return (
+      points: points,
+      distanceText: distanceText,
+      durationText: durationText,
+    );
+  }
+
+  List<LatLng> _decodeGoogleRoutePointsAlongRoads(Map<String, dynamic> route) {
+    final legs = route['legs'];
+    if (legs is List && legs.isNotEmpty) {
+      final leg = legs.first as Map<String, dynamic>;
+      final steps = leg['steps'];
+      if (steps is List && steps.isNotEmpty) {
+        final merged = <LatLng>[];
+        for (final step in steps) {
+          if (step is! Map<String, dynamic>) continue;
+          final poly = step['polyline'];
+          if (poly is Map && poly['points'] is String) {
+            merged.addAll(_decodePolyline(poly['points'] as String));
+          }
+        }
+        if (merged.length >= 2) {
+          return merged;
+        }
+      }
+    }
+    final overview = route['overview_polyline'];
+    if (overview is Map && overview['points'] is String) {
+      return _decodePolyline(overview['points'] as String);
+    }
+    return [];
+  }
+
+  /// بديل مجاني يتبع شبكة الطرق عند رفض المفتاح أو تعطيل Directions API.
+  Future<({List<LatLng> points, String distanceText, String durationText})?>
+  _tryFetchOsrmDrivingRoute() async {
+    final path =
+        '${_fromLatLng.longitude},${_fromLatLng.latitude};'
+        '${_toLatLng.longitude},${_toLatLng.latitude}';
+    final uri = Uri.parse(
+      'https://router.project-osrm.org/route/v1/driving/$path'
+      '?overview=full&geometries=geojson',
+    );
+    final response = await http.get(uri);
+    if (response.statusCode != 200) return null;
+    final data = json.decode(response.body) as Map<String, dynamic>;
+    if (data['code'] != 'Ok') return null;
+    final routes = data['routes'];
+    if (routes is! List || routes.isEmpty) return null;
+    final route = routes.first as Map<String, dynamic>;
+    final geometry = route['geometry'];
+    if (geometry is! Map<String, dynamic>) return null;
+    final coords = geometry['coordinates'];
+    if (coords is! List) return null;
+    final points = <LatLng>[];
+    for (final c in coords) {
+      if (c is List && c.length >= 2) {
+        final lon = (c[0] as num).toDouble();
+        final lat = (c[1] as num).toDouble();
+        points.add(LatLng(lat, lon));
+      }
+    }
+    if (points.length < 2) return null;
+    final meters = route['distance'];
+    final seconds = route['duration'];
+    final distanceText = meters is num
+        ? _formatDistanceMetersAr(meters)
+        : '';
+    final durationText = seconds is num
+        ? _formatDurationSecondsAr(seconds)
+        : '';
+    return (
+      points: points,
+      distanceText: distanceText,
+      durationText: durationText,
+    );
+  }
+
+  String _formatDistanceMetersAr(num meters) {
+    if (meters < 1000) {
+      return '${meters.round()} م';
+    }
+    return '${(meters / 1000).toStringAsFixed(1)} كم';
+  }
+
+  String _formatDurationSecondsAr(num seconds) {
+    final totalMin = (seconds / 60).floor();
+    if (totalMin < 60) {
+      return '$totalMin د';
+    }
+    final h = totalMin ~/ 60;
+    final m = totalMin % 60;
+    return '$h س $m د';
   }
 
   void _drawStraightLine() {
@@ -170,6 +308,15 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
         ),
       };
       _isLoadingRoute = false;
+    });
+    _scheduleFitBoundsToRoute();
+  }
+
+  void _scheduleFitBoundsToRoute() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _fitBounds();
+      }
     });
   }
 
@@ -215,27 +362,39 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
   void _fitBounds() {
     if (_mapController == null) return;
 
-    List<LatLng> allPoints = [_fromLatLng, _toLatLng];
+    final allPoints = <LatLng>[];
+    for (final pl in _polylines) {
+      allPoints.addAll(pl.points);
+    }
+    if (allPoints.isEmpty) {
+      allPoints.addAll([_fromLatLng, _toLatLng]);
+    }
     if (_driverLocation != null) {
       allPoints.add(_driverLocation!);
     }
 
-    double minLat = allPoints
-        .map((p) => p.latitude)
-        .reduce((a, b) => a < b ? a : b);
-    double maxLat = allPoints
-        .map((p) => p.latitude)
-        .reduce((a, b) => a > b ? a : b);
-    double minLng = allPoints
-        .map((p) => p.longitude)
-        .reduce((a, b) => a < b ? a : b);
-    double maxLng = allPoints
-        .map((p) => p.longitude)
-        .reduce((a, b) => a > b ? a : b);
+    double minLat = allPoints.first.latitude;
+    double maxLat = allPoints.first.latitude;
+    double minLng = allPoints.first.longitude;
+    double maxLng = allPoints.first.longitude;
+    for (final p in allPoints) {
+      if (p.latitude < minLat) minLat = p.latitude;
+      if (p.latitude > maxLat) maxLat = p.latitude;
+      if (p.longitude < minLng) minLng = p.longitude;
+      if (p.longitude > maxLng) maxLng = p.longitude;
+    }
+
+    const pad = 0.02;
+    if ((maxLat - minLat).abs() < 1e-9 && (maxLng - minLng).abs() < 1e-9) {
+      _mapController!.animateCamera(
+        CameraUpdate.newLatLngZoom(allPoints.first, 14),
+      );
+      return;
+    }
 
     final bounds = LatLngBounds(
-      southwest: LatLng(minLat - 0.02, minLng - 0.02),
-      northeast: LatLng(maxLat + 0.02, maxLng + 0.02),
+      southwest: LatLng(minLat - pad, minLng - pad),
+      northeast: LatLng(maxLat + pad, maxLng + pad),
     );
 
     _mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds, 80));
@@ -272,13 +431,7 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
                   ),
                   const Spacer(),
                   _CircleButton(
-                    icon: Icons.fullscreen,
-                    onTap: _fitBounds,
-                    semanticLabel: 'عرض المسار بالكامل',
-                  ),
-                  const Spacer(),
-                  _CircleButton(
-                    icon: Icons.fullscreen,
+                    icon: Icons.zoom_out_map,
                     onTap: _fitBounds,
                     semanticLabel: 'عرض المسار بالكامل',
                   ),
