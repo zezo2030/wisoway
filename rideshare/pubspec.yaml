@@ -70,6 +70,7 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^5.0.0
   build_runner: ^2.4.9
+  flutter_launcher_icons: ^0.14.3
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -77,9 +78,26 @@ dev_dependencies:
 # The following section is specific to Flutter packages.
 flutter:
   uses-material-design: true
-  
-  # # Assets
-  # assets:
-  #   - assets/images/
-  #   - assets/icons/
-  #   - assets/animations/
+  assets:
+    - assets/icons/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/icons/app_icon.png
+  min_sdk_android: 21
+  web:
+    generate: true
+    image_path: assets/icons/app_icon.png
+    background_color: "#0C2B6A"
+    theme_color: "#0C2B6A"
+  windows:
+    generate: true
+    image_path: assets/icons/app_icon.png
+    icon_size: 48
+  macos:
+    generate: true
+    image_path: assets/icons/app_icon.png
+  linux:
+    generate: true
+    image_path: assets/icons/app_icon.png

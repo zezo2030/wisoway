@@ -8,18 +8,15 @@ import { randomUUID } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import {
-  PayoutRequestEntity,
   TripEntity,
   WalletAccountEntity,
   WalletAccountType,
   WalletEntryDirection,
-  PayoutStatus,
   WalletTransactionEntity,
   WalletTransactionStatus,
   WalletTransactionType,
 } from '../../database/entities';
 import { CreateTopupDto } from './dto/create-topup.dto';
-import { CreatePayoutRequestDto } from './dto/create-payout-request.dto';
 import { DriverTripChargeDto } from './dto/driver-trip-charge.dto';
 
 @Injectable()
@@ -30,8 +27,6 @@ export class WalletService {
     private readonly walletAccountRepo: Repository<WalletAccountEntity>,
     @InjectRepository(WalletTransactionEntity)
     private readonly walletTxRepo: Repository<WalletTransactionEntity>,
-    @InjectRepository(PayoutRequestEntity)
-    private readonly payoutRepo: Repository<PayoutRequestEntity>,
     @InjectRepository(TripEntity)
     private readonly tripRepo: Repository<TripEntity>,
   ) {}
@@ -159,7 +154,7 @@ export class WalletService {
    */
   async getWalletSummary(userId: string, role: string) {
     const accountType =
-      role === WalletAccountType.DRIVER
+      role === 'driver'
         ? WalletAccountType.DRIVER
         : WalletAccountType.RIDER;
 
@@ -232,7 +227,11 @@ export class WalletService {
       return dup;
     }
 
-    const account = await this.getOrCreateAccount(userId, accountType, currency);
+    const account = await this.getOrCreateAccount(
+      userId,
+      accountType,
+      currency,
+    );
 
     return this.dataSource.transaction(async (manager) => {
       const locked = await manager.findOne(WalletAccountEntity, {
@@ -389,28 +388,6 @@ export class WalletService {
     });
   }
 
-  async createPayoutRequest(driverId: string, dto: CreatePayoutRequestDto) {
-    const account = await this.getOrCreateAccount(
-      driverId,
-      WalletAccountType.DRIVER,
-      dto.currency || 'JOD',
-    );
-    if (Number(account.balance) < dto.amount) {
-      throw new BadRequestException('Insufficient wallet balance for payout');
-    }
-
-    return this.payoutRepo.save(
-      this.payoutRepo.create({
-        driverId,
-        amount: dto.amount.toFixed(2),
-        currency: dto.currency || account.currency,
-        status: PayoutStatus.PENDING,
-        bankAccountRef: dto.bankAccountRef ?? null,
-        note: dto.note ?? null,
-      } as Partial<PayoutRequestEntity>),
-    );
-  }
-
   /**
    * Debit rider for platform fee; wallet row stays PENDING until capture (driver confirms)
    * or release (cancel / trip departed without confirm).
@@ -551,7 +528,7 @@ export class WalletService {
 
   async getWalletTransactions(userId: string, role: string, limit = 50) {
     const accountType =
-      role === WalletAccountType.DRIVER
+      role === 'driver'
         ? WalletAccountType.DRIVER
         : WalletAccountType.RIDER;
     const walletAccounts = await this.walletAccountRepo.find({

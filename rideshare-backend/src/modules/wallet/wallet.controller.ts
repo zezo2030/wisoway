@@ -6,7 +6,6 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { WalletService } from './wallet.service';
 import { CreateTopupDto } from './dto/create-topup.dto';
 import { DriverTripChargeDto } from './dto/driver-trip-charge.dto';
-import { CreatePayoutRequestDto } from './dto/create-payout-request.dto';
 
 @ApiTags('wallet')
 @ApiBearerAuth()
@@ -39,7 +38,7 @@ export class WalletController {
   @ApiOperation({
     summary: 'Instant wallet top-up (admin only)',
     description:
-      'Drivers and passengers must use POST /payments/wallet/topup with proof; credit is applied on admin approval.',
+      'For production flows, drivers and passengers use POST /payments/wallet/topup with proof; credit is applied after admin approval. This endpoint credits the admin test ledger (rider bucket) only.',
   })
   async topup(
     @CurrentUser('id') userId: string,
@@ -71,14 +70,5 @@ export class WalletController {
       dto.amount,
       dto.idempotencyKey,
     );
-  }
-
-  @Post('driver/payout-requests')
-  @ApiOperation({ summary: 'Create manual payout request for driver earnings' })
-  async createPayoutRequest(
-    @CurrentUser('id') driverId: string,
-    @Body() dto: CreatePayoutRequestDto,
-  ) {
-    return this.walletService.createPayoutRequest(driverId, dto);
   }
 }

@@ -7,7 +7,7 @@ class ApiEndpoints {
   static const String baseUrl = String.fromEnvironment(
     'BASE_URL',
     // defaultValue: 'http://localhost:3003/api/v1',
-    defaultValue: 'http://192.168.1.7:3003/api/v1',
+    defaultValue: 'http://192.168.1.5:3003/api/v1',
   );
 
   // Auth
@@ -69,8 +69,6 @@ class ApiEndpoints {
   static const String walletV2Transactions = '/wallet/transactions';
   static const String walletV2Topup = '/wallet/topup';
   static const String walletDriverTripCharge = '/wallet/driver/trip-charge';
-  static const String walletDriverPayoutRequests =
-      '/wallet/driver/payout-requests';
   static const String walletRiderPayTrip = '/wallet/rider/pay-trip';
 
   // Chat

@@ -241,6 +241,14 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
               color: AppColors.white,
             ),
           ),
+          const SizedBox(height: 12),
+          Text(
+            'هذا الرصيد لرسوم المنصة والخدمات فقط؛ أجرة المقعد تُستلم نقدًا من الراكب.',
+            style: AppTextStyles.labelMedium.copyWith(
+              color: AppColors.white.withValues(alpha: 0.88),
+              height: 1.35,
+            ),
+          ),
         ],
       ),
     );

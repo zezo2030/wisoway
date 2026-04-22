@@ -2,9 +2,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import {
-  PayoutRequestEntity,
   TripEntity,
   WalletAccountEntity,
+  WalletAccountType,
   WalletTransactionEntity,
 } from '../../database/entities';
 import { WalletService } from './wallet.service';
@@ -40,13 +40,6 @@ describe('WalletService', () => {
           },
         },
         {
-          provide: getRepositoryToken(PayoutRequestEntity),
-          useValue: {
-            create: jest.fn(),
-            save: jest.fn(),
-          },
-        },
-        {
           provide: getRepositoryToken(TripEntity),
           useValue: {
             findOne: jest.fn(),
@@ -64,12 +57,12 @@ describe('WalletService', () => {
       {
         id: 'w1',
         userId: 'u1',
-        accountType: 'driver',
+        accountType: WalletAccountType.DRIVER,
         currency: 'JOD',
         balance: '20.00',
         isActive: true,
       },
-    ] as any);
+    ] as unknown as WalletAccountEntity[]);
 
     const summary = await service.getWalletSummary('u1', 'driver');
 

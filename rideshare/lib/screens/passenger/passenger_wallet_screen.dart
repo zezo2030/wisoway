@@ -75,7 +75,7 @@ class _PassengerWalletScreenState extends State<PassengerWalletScreen> {
       case 'refund':
         return 'استرداد';
       case 'payout':
-        return 'سحب أرباح';
+        return 'تسوية محفظة';
       case 'adjustment':
         return 'تعديل رصيد';
       case 'hold':

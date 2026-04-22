@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import {
-  PayoutRequestEntity,
   TripEntity,
   WalletAccountEntity,
   WalletTransactionEntity,
@@ -14,7 +13,6 @@ import { WalletService } from './wallet.service';
     TypeOrmModule.forFeature([
       WalletAccountEntity,
       WalletTransactionEntity,
-      PayoutRequestEntity,
       TripEntity,
     ]),
   ],

@@ -6,7 +6,7 @@ export type Language = "en" | "ar"
 export const translations = {
   en: {
     // Layout / Sidebar
-    adminDashboard: "Admin Dashboard",
+    adminDashboard: "VisionWay Dashboard",
     toggleMenu: "Toggle menu",
     notifications: "Notifications",
     profile: "Profile",
@@ -314,12 +314,12 @@ export const translations = {
     emailRequired: "Email is required",
     validEmail: "Please enter a valid email address",
     passwordRequired: "Password is required",
-    rideshareAdmin: "Rideshare Admin",
+    rideshareAdmin: "VisionWay Admin",
   },
 
   ar: {
     // Layout / Sidebar
-    adminDashboard: "لوحة الإدارة",
+    adminDashboard: "لوحة VisionWay",
     toggleMenu: "فتح القائمة",
     notifications: "الإشعارات",
     profile: "الملف الشخصي",
@@ -627,7 +627,7 @@ export const translations = {
     emailRequired: "البريد الإلكتروني مطلوب",
     validEmail: "يرجى إدخال بريد إلكتروني صالح",
     passwordRequired: "كلمة المرور مطلوبة",
-    rideshareAdmin: "إدارة رايد شير",
+    rideshareAdmin: "إدارة VisionWay",
   },
 } as const
 
