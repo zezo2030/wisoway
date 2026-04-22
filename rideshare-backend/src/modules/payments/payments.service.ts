@@ -655,7 +655,59 @@ export class PaymentsService {
       proofImageUrl: dto.proofImageUrl ?? null,
       walletNumber: dto.walletNumber ?? null,
     });
-    return this.paymentRepo.save(p);
+    const saved = await this.paymentRepo.save(p);
+    const requester = await this.userRepo.findOne({
+      where: { id: userId },
+      select: ['name'],
+    });
+    void this.notifyAdminsWalletTopupPending({
+      paymentId: saved.id,
+      requesterUserId: userId,
+      requesterName: requester?.name?.trim() || 'مستخدم',
+      amount: dto.amount,
+      currency: dto.currency ?? 'JOD',
+      method: dto.method,
+    });
+    return saved;
+  }
+
+  private async notifyAdminsWalletTopupPending(params: {
+    paymentId: string;
+    requesterUserId: string;
+    requesterName: string;
+    amount: number;
+    currency: string;
+    method: string;
+  }): Promise<void> {
+    const admins = await this.userRepo.find({
+      where: { role: PgUserRole.ADMIN, isActive: true },
+      select: ['id'],
+    });
+    if (admins.length === 0) {
+      return;
+    }
+    const body = `${params.requesterName} طلب شحن المحفظة بمبلغ ${params.amount} ${params.currency}.`;
+    for (const admin of admins) {
+      try {
+        await this.notificationsService.create({
+          userId: admin.id,
+          type: 'wallet_topup_pending',
+          title: 'طلب شحن محفظة جديد',
+          body,
+          data: {
+            paymentId: params.paymentId,
+            requesterUserId: params.requesterUserId,
+            amount: params.amount,
+            currency: params.currency,
+            method: params.method,
+          },
+        });
+      } catch (err) {
+        this.logger.warn(
+          `Failed to notify admin ${admin.id} about wallet top-up ${params.paymentId}: ${err}`,
+        );
+      }
+    }
   }
 
   async getPendingPaymentsCount(): Promise<number> {
