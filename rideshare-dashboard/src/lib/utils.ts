@@ -130,6 +130,20 @@ export function getCurrencyLabel(currency: Currency): string {
   return labels[currency] || currency
 }
 
+export function getWalletTransactionTypeLabel(type: string): string {
+  const labels: Record<string, string> = {
+    topup: "Top-up",
+    trip_debit: "Trip Charge",
+    trip_payment: "Trip Payment",
+    refund: "Refund",
+    payout: "Payout",
+    adjustment: "Adjustment",
+    hold: "Hold",
+    release_hold: "Release Hold",
+  }
+  return labels[type] || type
+}
+
 export function getGenderLabel(gender: Gender): string {
   const labels: Record<Gender, string> = {
     [Gender.MALE]: "Male",

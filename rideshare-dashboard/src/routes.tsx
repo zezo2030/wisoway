@@ -11,6 +11,7 @@ import UserDetailPage from "@/pages/users/user-detail"
 import PaymentsListPage from "@/pages/payments/payments-list"
 import PendingQueuePage from "@/pages/payments/pending-queue"
 import WalletsListPage from "@/pages/wallets/wallets-list"
+import WalletDetailPage from "@/pages/wallets/wallet-detail"
 import VehiclesListPage from "@/pages/vehicles/vehicles-list"
 import TripsListPage from "@/pages/trips/trips-list"
 import TripDetailPage from "@/pages/trips/trip-detail"
@@ -82,6 +83,10 @@ export function AppRoutes() {
         {
           path: "wallets",
           element: <WalletsListPage />,
+        },
+        {
+          path: "wallets/:id",
+          element: <WalletDetailPage />,
         },
         {
           path: "vehicles",

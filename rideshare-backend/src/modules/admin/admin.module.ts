@@ -5,6 +5,7 @@ import { TripEntity } from '../../database/entities/trip.entity';
 import { VehicleEntity } from '../../database/entities/vehicle.entity';
 import { PaymentEntity } from '../../database/entities/payment.entity';
 import { WalletTransactionEntity } from '../../database/entities/wallet-transaction.entity';
+import { WalletAccountEntity } from '../../database/entities/wallet-account.entity';
 import { BookingEntity } from '../../database/entities/booking.entity';
 import { RatingEntity } from '../../database/entities/rating.entity';
 import { NotificationEntity } from '../../database/entities/notification.entity';
@@ -24,6 +25,7 @@ import { BookingsModule } from '../bookings/bookings.module';
       VehicleEntity,
       PaymentEntity,
       WalletTransactionEntity,
+      WalletAccountEntity,
       BookingEntity,
       RatingEntity,
       NotificationEntity,

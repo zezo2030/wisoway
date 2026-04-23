@@ -271,3 +271,30 @@ export interface RefreshResponse {
   accessToken: string
   refreshToken: string
 }
+
+// Wallet Types
+
+export interface WalletAccount {
+  id: string
+  userId: string | UserSummary
+  accountType: 'driver' | 'rider' | 'system'
+  currency: string
+  balance: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface WalletTransaction {
+  id: string
+  accountId: string
+  type: string
+  direction: 'debit' | 'credit'
+  status: string
+  amount: number
+  currency: string
+  referenceType: string | null
+  referenceId: string | null
+  metadata: Record<string, unknown> | null
+  createdAt: string
+}

@@ -89,3 +89,31 @@ export const ReportType = {
 } as const
 
 export type ReportType = typeof ReportType[keyof typeof ReportType]
+
+export const WalletAccountType = {
+  DRIVER: 'driver',
+  RIDER: 'rider',
+  SYSTEM: 'system',
+} as const
+
+export type WalletAccountType = typeof WalletAccountType[keyof typeof WalletAccountType]
+
+export const WalletEntryDirection = {
+  DEBIT: 'debit',
+  CREDIT: 'credit',
+} as const
+
+export type WalletEntryDirection = typeof WalletEntryDirection[keyof typeof WalletEntryDirection]
+
+export const WalletTransactionType = {
+  TOPUP: 'topup',
+  TRIP_DEBIT: 'trip_debit',
+  TRIP_PAYMENT: 'trip_payment',
+  REFUND: 'refund',
+  PAYOUT: 'payout',
+  ADJUSTMENT: 'adjustment',
+  HOLD: 'hold',
+  RELEASE_HOLD: 'release_hold',
+} as const
+
+export type WalletTransactionType = typeof WalletTransactionType[keyof typeof WalletTransactionType]

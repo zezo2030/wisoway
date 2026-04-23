@@ -11,6 +11,7 @@ import { TripEntity } from '../../database/entities/trip.entity';
 import { VehicleEntity } from '../../database/entities/vehicle.entity';
 import { PaymentEntity } from '../../database/entities/payment.entity';
 import { WalletTransactionEntity } from '../../database/entities/wallet-transaction.entity';
+import { WalletAccountEntity } from '../../database/entities/wallet-account.entity';
 import { BookingEntity } from '../../database/entities/booking.entity';
 import { RatingEntity } from '../../database/entities/rating.entity';
 import { NotificationEntity } from '../../database/entities/notification.entity';
@@ -20,6 +21,7 @@ import { CommunicationFeeEntity } from '../../database/entities/communication-fe
 import {
   PgUserRole,
   TripStatus,
+  WalletAccountType,
   WalletTransactionType,
   WalletTransactionStatus,
 } from '../../database/entities/shared.enums';
@@ -92,6 +94,16 @@ export interface AdminReportsQuery {
   endDate: string;
 }
 
+export interface AdminWalletsQuery {
+  page?: number;
+  limit?: number;
+  accountType?: WalletAccountType;
+  search?: string;
+  minBalance?: number;
+  maxBalance?: number;
+  isActive?: boolean;
+}
+
 @Injectable()
 export class AdminDashboardService {
   constructor(
@@ -105,6 +117,8 @@ export class AdminDashboardService {
     private paymentRepo: Repository<PaymentEntity>,
     @InjectRepository(WalletTransactionEntity)
     private walletTxRepo: Repository<WalletTransactionEntity>,
+    @InjectRepository(WalletAccountEntity)
+    private walletAccountRepo: Repository<WalletAccountEntity>,
     @InjectRepository(BookingEntity)
     private bookingRepo: Repository<BookingEntity>,
     @InjectRepository(RatingEntity)
@@ -795,5 +809,111 @@ export class AdminDashboardService {
     } catch {
       return 0;
     }
+  }
+
+  async getWallets(
+    query: AdminWalletsQuery,
+  ): Promise<PaginatedResult<WalletAccountEntity>> {
+    const page = Math.max(1, query.page ?? 1);
+    const limit = Math.min(100, Math.max(1, query.limit ?? 20));
+    const skip = (page - 1) * limit;
+
+    const qb = this.walletAccountRepo
+      .createQueryBuilder('wa')
+      .leftJoinAndSelect('wa.user', 'user')
+      .select([
+        'wa.id',
+        'wa.userId',
+        'wa.accountType',
+        'wa.currency',
+        'wa.balance',
+        'wa.isActive',
+        'wa.createdAt',
+        'wa.updatedAt',
+        'user.id',
+        'user.name',
+        'user.email',
+        'user.phoneNumber',
+        'user.role',
+      ])
+      .orderBy('wa.updatedAt', 'DESC')
+      .skip(skip)
+      .take(limit);
+
+    if (query.accountType) {
+      qb.andWhere('wa.accountType = :accountType', {
+        accountType: query.accountType,
+      });
+    }
+    if (query.isActive !== undefined) {
+      qb.andWhere('wa.isActive = :isActive', { isActive: query.isActive });
+    }
+    if (query.search?.trim()) {
+      const term = `%${query.search.trim()}%`;
+      qb.andWhere(
+        '(user.name ILIKE :term OR user.email ILIKE :term OR user.phoneNumber ILIKE :term)',
+        { term },
+      );
+    }
+    if (query.minBalance !== undefined) {
+      qb.andWhere('CAST(wa.balance AS DECIMAL) >= :minBalance', {
+        minBalance: query.minBalance,
+      });
+    }
+    if (query.maxBalance !== undefined) {
+      qb.andWhere('CAST(wa.balance AS DECIMAL) <= :maxBalance', {
+        maxBalance: query.maxBalance,
+      });
+    }
+
+    const [data, total] = await qb.getManyAndCount();
+    return {
+      data,
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  async getWalletById(walletId: string): Promise<WalletAccountEntity> {
+    const wallet = await this.walletAccountRepo.findOne({
+      where: { id: walletId },
+      relations: ['user'],
+    });
+    if (!wallet) {
+      throw new NotFoundException('Wallet account not found');
+    }
+    return wallet;
+  }
+
+  async getWalletTransactions(
+    walletId: string,
+    query: { page?: number; limit?: number },
+  ): Promise<PaginatedResult<WalletTransactionEntity>> {
+    const wallet = await this.walletAccountRepo.findOne({
+      where: { id: walletId },
+    });
+    if (!wallet) {
+      throw new NotFoundException('Wallet account not found');
+    }
+
+    const page = Math.max(1, query.page ?? 1);
+    const limit = Math.min(100, Math.max(1, query.limit ?? 20));
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await this.walletTxRepo.findAndCount({
+      where: { accountId: walletId },
+      order: { createdAt: 'DESC' },
+      skip,
+      take: limit,
+    });
+
+    const mapped = data.map((tx) => ({
+      ...tx,
+      amount: Number(tx.amount),
+    })) as (WalletTransactionEntity & { amount: number })[];
+
+    return {
+      data: mapped,
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
   }
 }

@@ -12,6 +12,7 @@ export const ROUTES = {
   PAYMENTS: "/payments",
   PAYMENTS_PENDING: "/payments/pending",
   WALLETS: "/wallets",
+  WALLET_DETAIL: "/wallets/:id",
   VEHICLES: "/vehicles",
   TRIPS: "/trips",
   TRIP_DETAIL: "/trips/:id",
@@ -161,6 +162,11 @@ export const QUERY_KEYS = {
   PAYMENTS: {
     PENDING: "payments-pending",
     ALL: "payments-all",
+  },
+  WALLETS: {
+    ALL: "wallets-all",
+    DETAIL: "wallet-detail",
+    TRANSACTIONS: "wallet-transactions",
   },
   NOTIFICATIONS: {
     LIST: "notifications",

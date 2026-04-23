@@ -28,6 +28,8 @@ import { AdminRatingsQueryDto } from './dto/admin-ratings-query.dto';
 import { AdminNotificationsQueryDto } from './dto/admin-notifications-query.dto';
 import { AdminChatQueryDto } from './dto/admin-chat-query.dto';
 import { AdminReportsQueryDto } from './dto/admin-reports-query.dto';
+import { AdminWalletsQueryDto } from './dto/admin-wallets-query.dto';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 import {
   ApproveDriverDto,
   VerifyVehicleDto,
@@ -187,6 +189,54 @@ export class AdminDashboardController {
       method: query.method,
       paymentType: query.paymentType,
       walletOnly: query.walletOnly,
+    });
+  }
+
+  @Get('wallets')
+  @ApiOperation({ summary: 'List all wallet accounts with user info' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'accountType', required: false, enum: ['driver', 'rider', 'system'] })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'minBalance', required: false, type: Number })
+  @ApiQuery({ name: 'maxBalance', required: false, type: Number })
+  @ApiQuery({ name: 'isActive', required: false, type: Boolean })
+  @ApiResponse({ status: 200, description: 'Wallet accounts retrieved successfully' })
+  async getWallets(@Query() query: AdminWalletsQueryDto) {
+    return this.adminDashboardService.getWallets({
+      page: query.page,
+      limit: query.limit,
+      accountType: query.accountType,
+      search: query.search,
+      minBalance: query.minBalance,
+      maxBalance: query.maxBalance,
+      isActive: query.isActive,
+    });
+  }
+
+  @Get('wallets/:id')
+  @ApiOperation({ summary: 'Get wallet account with user details' })
+  @ApiParam({ name: 'id', description: 'Wallet Account ID' })
+  @ApiResponse({ status: 200, description: 'Wallet account retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Wallet account not found' })
+  async getWalletById(@Param('id') walletId: string) {
+    return this.adminDashboardService.getWalletById(walletId);
+  }
+
+  @Get('wallets/:id/transactions')
+  @ApiOperation({ summary: 'Get transactions for a wallet account' })
+  @ApiParam({ name: 'id', description: 'Wallet Account ID' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Transactions retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Wallet account not found' })
+  async getWalletTransactions(
+    @Param('id') walletId: string,
+    @Query() query: PaginationDto,
+  ) {
+    return this.adminDashboardService.getWalletTransactions(walletId, {
+      page: query.page,
+      limit: query.limit,
     });
   }
 
