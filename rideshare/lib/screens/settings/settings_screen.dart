@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/route_names.dart';
+import '../../../core/constants/support_constants.dart';
 import '../../../core/services/theme_service.dart';
 import '../../../core/services/localization_service.dart';
 import '../../../core/services/settings_service.dart';
@@ -16,7 +17,6 @@ import '../../../widgets/settings/settings_switch_tile.dart';
 import 'notification_settings_screen.dart';
 import 'account_security_screen.dart';
 import 'privacy_settings_screen.dart';
-import 'about_screen.dart';
 import 'in_app_browser_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -168,7 +168,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _launchWhatsApp() async {
     final uri = Uri.parse(
-      'https://wa.me/+201234567890?text=${Uri.encodeComponent('مرحباً، أحتاج مساعدة في تطبيق RideShare')}',
+      'https://wa.me/+201234567890?text=${Uri.encodeComponent('مرحباً، أحتاج مساعدة في تطبيق VisionWay')}',
     );
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -255,21 +255,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
         content: Text(
           isArabic
               ? 'لا يمكن حذف الحساب حالياً. تواصل مع الدعم الفني عبر واتساب أو البريد الإلكتروني.'
-              : 'Account deletion is currently unavailable. Please contact support via WhatsApp or email.',
+              : 'Account deletion is currently unavailable. Please contact support by email.',
         ),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              _launchWhatsApp();
+              Navigator.pushNamed(context, RouteNames.support);
             },
             child: Text(isArabic ? 'تواصل عبر واتساب' : 'WhatsApp'),
           ),
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              final uri = Uri.parse(
-                'mailto:support@rideshare.app?subject=${Uri.encodeComponent('Account Deletion Request')}',
+              final uri = Uri(
+                scheme: 'mailto',
+                path: SupportConstants.supportEmail,
+                queryParameters: {'subject': 'Account Deletion Request'},
               );
               if (await canLaunchUrl(uri)) {
                 await launchUrl(uri);
@@ -511,7 +513,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       icon: IconsaxPlusBroken.message,
                       title: isArabic ? 'تواصل معنا' : 'Contact Us',
                       trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
-                      onTap: () => _launchWhatsApp(),
+                      onTap: () {
+                        Navigator.pushNamed(context, RouteNames.support);
+                      },
                     ),
                     SettingsTile(
                       icon: IconsaxPlusBroken.document_text,
@@ -559,12 +563,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: isArabic ? 'حول التطبيق' : 'About',
                       trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const AboutScreen(),
-                          ),
-                        );
+                        Navigator.pushNamed(context, RouteNames.about);
                       },
                     ),
                   ],

@@ -45,6 +45,16 @@ class _HomeScreenState extends State<HomeScreen> {
     await notificationProvider.initialize();
   }
 
+  Future<void> _refreshHomeData() async {
+    await Future.wait([
+      _loadUserLocation(),
+      Provider.of<NotificationProvider>(
+        context,
+        listen: false,
+      ).fetchNotifications(),
+    ]);
+  }
+
   Future<void> _loadUserLocation() async {
     if (!mounted) return;
     setState(() => _isLoadingLocation = true);
@@ -181,6 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onOpenDrawer: () {},
         onRefreshLocation: _loadUserLocation,
         onChangeLocation: _changeLocation,
+        onRefreshData: _refreshHomeData,
       ),
       const SearchTab(),
       BookingsTab(user: user),
@@ -288,6 +299,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Scaffold.of(scaffoldBodyContext).openDrawer(),
               onRefreshLocation: _loadUserLocation,
               onChangeLocation: _changeLocation,
+              onRefreshData: _refreshHomeData,
             ),
             const SearchTab(),
             BookingsTab(user: user),

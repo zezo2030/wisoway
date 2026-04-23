@@ -78,12 +78,15 @@ export const PAYMENT_METHOD_LABELS = {
   paymob: "Paymob",
   manual: "Manual",
   communication_fee: "Communication Fee",
+  cliq_a2a: "CliQ A2A",
 } as const
 
 export const PAYMENT_TYPE_LABELS = {
   trip: "Trip",
   trip_platform: "Trip (platform fee)",
   communication_fee: "Communication Fee",
+  wallet_topup: "Wallet Top-up",
+  wallet_trip_charge: "Wallet Trip Charge",
 } as const
 
 export const SEAT_STATUS_LABELS = {

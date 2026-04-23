@@ -17,7 +17,13 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { QUERY_KEYS } from "@/lib/constants"
-import { formatDate, formatCurrency, getTripLocationName, cn } from "@/lib/utils"
+import {
+  formatDate,
+  formatCurrency,
+  getPaymentTypeLabel,
+  getTripLocationName,
+  cn,
+} from "@/lib/utils"
 import { PaymentStatus, PaymentMethod, PaymentType } from "@/types/enums"
 import type { Payment, UserSummary, TripSummary } from "@/types/models"
 import { useLanguage } from "@/providers/language-provider"
@@ -143,7 +149,7 @@ export default function PaymentsListPage() {
       header: t("paymentType"),
       cell: (payment) => (
         <span className="text-xs font-semibold px-2 py-1 rounded-full bg-muted text-muted-foreground border border-border/40">
-          {payment.paymentType === PaymentType.TRIP ? t("paymentType_trip") : t("paymentType_fee")}
+          {getPaymentTypeLabel(payment.paymentType)}
         </span>
       ),
     },
@@ -264,6 +270,7 @@ export default function PaymentsListPage() {
                   <SelectItem value={PaymentMethod.PAYMOB}>Paymob</SelectItem>
                   <SelectItem value={PaymentMethod.MANUAL}>Manual</SelectItem>
                   <SelectItem value={PaymentMethod.COMMUNICATION_FEE}>{t("paymentType_fee")}</SelectItem>
+                  <SelectItem value={PaymentMethod.CLIQ_A2A}>CliQ A2A</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -277,7 +284,10 @@ export default function PaymentsListPage() {
                 <SelectContent className="rounded-xl shadow-lg border-border/50">
                   <SelectItem value="all">{t("allTypes")}</SelectItem>
                   <SelectItem value={PaymentType.TRIP}>{t("paymentType_trip")}</SelectItem>
+                  <SelectItem value={PaymentType.TRIP_PLATFORM}>Trip Platform Fee</SelectItem>
                   <SelectItem value={PaymentType.COMMUNICATION_FEE}>{t("paymentType_fee")}</SelectItem>
+                  <SelectItem value={PaymentType.WALLET_TOPUP}>Wallet Top-up</SelectItem>
+                  <SelectItem value={PaymentType.WALLET_TRIP_CHARGE}>Wallet Trip Charge</SelectItem>
                 </SelectContent>
               </Select>
             </div>

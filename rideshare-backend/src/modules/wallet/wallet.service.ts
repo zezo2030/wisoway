@@ -176,6 +176,68 @@ export class WalletService {
     });
   }
 
+  async adjustBalanceByAdmin(params: {
+    accountId: string;
+    amount: number;
+    note?: string | null;
+    currency?: string;
+    adminId: string;
+  }): Promise<WalletTransactionEntity> {
+    const { accountId, amount, adminId } = params;
+    if (!Number.isFinite(amount) || amount === 0) {
+      throw new BadRequestException('Adjustment amount must be non-zero');
+    }
+
+    const account = await this.walletAccountRepo.findOne({
+      where: { id: accountId },
+    });
+    if (!account) {
+      throw new NotFoundException('Wallet account not found');
+    }
+
+    if (params.currency && params.currency !== account.currency) {
+      throw new BadRequestException('Currency does not match wallet currency');
+    }
+
+    return this.dataSource.transaction(async (manager) => {
+      const locked = await manager.findOne(WalletAccountEntity, {
+        where: { id: account.id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!locked) {
+        throw new NotFoundException('Wallet account not found');
+      }
+
+      const current = Number(locked.balance);
+      const nextBalance = current + amount;
+      if (nextBalance < 0) {
+        throw new BadRequestException(
+          'Adjustment would make wallet balance negative',
+        );
+      }
+
+      locked.balance = nextBalance.toFixed(2);
+      await manager.save(locked);
+
+      const tx = manager.create(WalletTransactionEntity, {
+        accountId: locked.id,
+        type: WalletTransactionType.ADJUSTMENT,
+        direction:
+          amount > 0 ? WalletEntryDirection.CREDIT : WalletEntryDirection.DEBIT,
+        status: WalletTransactionStatus.POSTED,
+        amount: Math.abs(amount).toFixed(2),
+        currency: locked.currency,
+        metadata: {
+          note: params.note ?? null,
+          adminId,
+          balanceBefore: current.toFixed(2),
+          balanceAfter: nextBalance.toFixed(2),
+        },
+      });
+      return manager.save(tx);
+    });
+  }
+
   async chargeDriverForTrip(driverId: string, dto: DriverTripChargeDto) {
     const trip = await this.tripRepo.findOne({
       where: { id: dto.tripId, driverId },

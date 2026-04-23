@@ -50,6 +50,7 @@ export type PaymentMethod = typeof PaymentMethod[keyof typeof PaymentMethod]
 
 export const PaymentType = {
   TRIP: 'trip',
+  TRIP_PLATFORM: 'trip_platform',
   COMMUNICATION_FEE: 'communication_fee',
   WALLET_TOPUP: 'wallet_topup',
   WALLET_TRIP_CHARGE: 'wallet_trip_charge',

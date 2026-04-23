@@ -34,6 +34,7 @@ import type { PaginatedResult } from '../../common/interfaces/paginated-result.i
 import { NotificationsService } from '../notifications/notifications.service';
 import { BookingsService } from '../bookings/bookings.service';
 import { AdminPatchPricingSettingsDto } from './dto/admin-pricing-settings.dto';
+import { WalletService } from '../wallet/wallet.service';
 
 export interface AdminUsersQuery {
   page?: number;
@@ -133,6 +134,7 @@ export class AdminDashboardService {
     private communicationFeeRepo: Repository<CommunicationFeeEntity>,
     private notificationsService: NotificationsService,
     private bookingsService: BookingsService,
+    private walletService: WalletService,
   ) {}
 
   private readonly logger = new Logger(AdminDashboardService.name);
@@ -185,6 +187,7 @@ export class AdminDashboardService {
       completedTrips,
       totalRevenue,
       pendingPayments,
+      pendingManualTopups,
       pendingVehicleVerifications,
     ] = await Promise.all([
       this.userRepo.count(),
@@ -194,6 +197,7 @@ export class AdminDashboardService {
       this.tripRepo.count({ where: { status: TripStatus.COMPLETED } }),
       this.getTotalRevenue(),
       this.getPendingPaymentsCount(),
+      this.getPendingManualTopupsCount(),
       this.getPendingVehicleVerificationsCount(),
     ]);
 
@@ -205,6 +209,7 @@ export class AdminDashboardService {
       completedTrips,
       totalRevenue,
       pendingPayments,
+      pendingManualTopups,
       pendingVehicleVerifications,
     };
   }
@@ -915,5 +920,54 @@ export class AdminDashboardService {
       data: mapped,
       meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
+  }
+
+  async adjustWalletBalance(
+    walletId: string,
+    params: {
+      amount: number;
+      note?: string;
+      currency?: string;
+      adminId: string;
+    },
+  ): Promise<WalletAccountEntity> {
+    const wallet = await this.walletAccountRepo.findOne({
+      where: { id: walletId },
+      relations: ['user'],
+    });
+    if (!wallet) {
+      throw new NotFoundException('Wallet account not found');
+    }
+
+    await this.walletService.adjustBalanceByAdmin({
+      accountId: wallet.id,
+      amount: params.amount,
+      note: params.note,
+      currency: params.currency ?? wallet.currency,
+      adminId: params.adminId,
+    });
+
+    const refreshed = await this.walletAccountRepo.findOne({
+      where: { id: walletId },
+      relations: ['user'],
+    });
+    if (!refreshed) {
+      throw new NotFoundException('Wallet account not found');
+    }
+    return refreshed;
+  }
+
+  private async getPendingManualTopupsCount(): Promise<number> {
+    try {
+      return await this.paymentRepo.count({
+        where: {
+          status: 'pending',
+          method: 'manual',
+          paymentType: 'wallet_topup',
+        },
+      });
+    } catch {
+      return 0;
+    }
   }
 }

@@ -1,6 +1,6 @@
 class AppConstants {
   // App Info
-  static const String appName = 'RideShare';
+  static const String appName = 'VisionWay';
 
   // When false, OTP is sent via Twilio. When true, skips sending SMS (dev only).
   static const bool skipOTP = false;

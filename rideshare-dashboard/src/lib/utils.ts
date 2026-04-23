@@ -103,6 +103,7 @@ export function getPaymentMethodLabel(method: PaymentMethod): string {
 export function getPaymentTypeLabel(type: PaymentType): string {
   const labels: Record<PaymentType, string> = {
     [PaymentType.TRIP]: "Trip",
+    [PaymentType.TRIP_PLATFORM]: "Trip Platform Fee",
     [PaymentType.COMMUNICATION_FEE]: "Communication Fee",
     [PaymentType.WALLET_TOPUP]: "Wallet Top-up",
     [PaymentType.WALLET_TRIP_CHARGE]: "Wallet Trip Charge",
@@ -133,7 +134,9 @@ export function getCurrencyLabel(currency: Currency): string {
 export function getWalletTransactionTypeLabel(type: string): string {
   const labels: Record<string, string> = {
     topup: "Top-up",
+    wallet_topup: "Wallet Top-up",
     trip_debit: "Trip Charge",
+    wallet_trip_charge: "Wallet Trip Charge",
     trip_payment: "Trip Payment",
     refund: "Refund",
     payout: "Payout",

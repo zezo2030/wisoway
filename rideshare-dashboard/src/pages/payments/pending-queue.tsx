@@ -65,6 +65,7 @@ export default function PendingQueuePage() {
       approvePayment(paymentId, adminNote),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYMENTS.PENDING] })
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYMENTS.ALL] })
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.DASHBOARD_STATS] })
       toast.success("Payment approved successfully")
       setActionDialog({ open: false, payment: null, action: null, adminNote: "" })
@@ -84,6 +85,7 @@ export default function PendingQueuePage() {
       rejectPayment(paymentId, adminNote),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYMENTS.PENDING] })
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYMENTS.ALL] })
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.DASHBOARD_STATS] })
       toast.success("Payment rejected successfully")
       setActionDialog({ open: false, payment: null, action: null, adminNote: "" })
@@ -116,11 +118,16 @@ export default function PendingQueuePage() {
     if (!actionDialog.payment || !actionDialog.action) return
 
     const { payment, action, adminNote } = actionDialog
+    const paymentId = payment.id || payment._id
+    if (!paymentId) {
+      toast.error("Payment identifier is missing")
+      return
+    }
 
     if (action === "approve") {
-      approveMutation.mutate({ paymentId: payment._id, adminNote: adminNote || undefined })
+      approveMutation.mutate({ paymentId, adminNote: adminNote || undefined })
     } else {
-      rejectMutation.mutate({ paymentId: payment._id, adminNote: adminNote || undefined })
+      rejectMutation.mutate({ paymentId, adminNote: adminNote || undefined })
     }
   }
 

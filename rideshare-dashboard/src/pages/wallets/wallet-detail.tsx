@@ -1,11 +1,22 @@
 // Wallet Detail Page: Wallet account details with transaction history
 
 import { useParams, useNavigate, useSearchParams } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
-import { getWalletById, getWalletTransactions } from "@/api/wallets"
+import { useMemo, useState } from "react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { adjustWalletBalance, getWalletById, getWalletTransactions } from "@/api/wallets"
 import { DataTable, type Column } from "@/components/data-table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { QUERY_KEYS } from "@/lib/constants"
 import {
   formatDate,
@@ -27,7 +38,10 @@ import {
   ArrowUpCircle,
   ArrowDownCircle,
   AlertCircle,
+  Plus,
+  Minus,
 } from "lucide-react"
+import { toast } from "sonner"
 
 function isPopulatedUser(userId: string | UserSummary): userId is UserSummary {
   return typeof userId === "object" && userId !== null && "name" in userId
@@ -36,10 +50,15 @@ function isPopulatedUser(userId: string | UserSummary): userId is UserSummary {
 export default function WalletDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { t, language } = useLanguage()
   const [searchParams, setSearchParams] = useSearchParams()
   const txPage = parseInt(searchParams.get("txPage") || "1", 10)
   const txLimit = 20
+  const [adjustmentOpen, setAdjustmentOpen] = useState(false)
+  const [adjustmentMode, setAdjustmentMode] = useState<"credit" | "debit">("credit")
+  const [adjustmentAmount, setAdjustmentAmount] = useState("")
+  const [adjustmentNote, setAdjustmentNote] = useState("")
 
   const { data: wallet, isLoading: walletLoading, error: walletError } = useQuery({
     queryKey: [QUERY_KEYS.WALLETS.DETAIL, id],
@@ -51,6 +70,36 @@ export default function WalletDetailPage() {
     queryKey: [QUERY_KEYS.WALLETS.TRANSACTIONS, id, { page: txPage, limit: txLimit }],
     queryFn: () => getWalletTransactions(id!, { page: txPage, limit: txLimit }),
     enabled: !!id,
+  })
+
+  const adjustmentValue = useMemo(() => {
+    const parsed = Number(adjustmentAmount)
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return null
+    }
+    return adjustmentMode === "credit" ? parsed : -parsed
+  }, [adjustmentAmount, adjustmentMode])
+
+  const adjustMutation = useMutation({
+    mutationFn: () =>
+      adjustWalletBalance(id!, {
+        amount: adjustmentValue!,
+        currency: wallet?.currency,
+        note: adjustmentNote.trim() || undefined,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.WALLETS.DETAIL, id] })
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.WALLETS.TRANSACTIONS, id] })
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.WALLETS.ALL] })
+      toast.success(adjustmentMode === "credit" ? "Wallet credited successfully" : "Wallet debited successfully")
+      setAdjustmentOpen(false)
+      setAdjustmentAmount("")
+      setAdjustmentNote("")
+      setAdjustmentMode("credit")
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to adjust wallet balance")
+    },
   })
 
   const handleTxPageChange = (newPage: number) => {
@@ -274,6 +323,31 @@ export default function WalletDetailPage() {
                 <div className="text-sm text-muted-foreground mt-2 font-medium">
                   {wallet.currency}
                 </div>
+                <div className="mt-4 flex flex-wrap justify-center gap-2">
+                  <Button
+                    size="sm"
+                    className="rounded-full"
+                    onClick={() => {
+                      setAdjustmentMode("credit")
+                      setAdjustmentOpen(true)
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add Balance
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-full"
+                    onClick={() => {
+                      setAdjustmentMode("debit")
+                      setAdjustmentOpen(true)
+                    }}
+                  >
+                    <Minus className="w-4 h-4 mr-1" />
+                    Deduct Balance
+                  </Button>
+                </div>
                 <span
                   className={cn(
                     "mt-3 text-xs font-semibold px-3 py-1.5 rounded-full border",
@@ -339,6 +413,62 @@ export default function WalletDetailPage() {
           </Card>
         </>
       ) : null}
+
+      <Dialog open={adjustmentOpen} onOpenChange={setAdjustmentOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {adjustmentMode === "credit" ? "Add balance to wallet" : "Deduct balance from wallet"}
+            </DialogTitle>
+            <DialogDescription>
+              This creates an `adjustment` transaction so the wallet history stays complete.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Amount ({wallet?.currency ?? "JOD"})</label>
+              <Input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={adjustmentAmount}
+                onChange={(e) => setAdjustmentAmount(e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Note</label>
+              <Textarea
+                value={adjustmentNote}
+                onChange={(e) => setAdjustmentNote(e.target.value)}
+                placeholder="Reason for this manual adjustment"
+                className="min-h-24"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setAdjustmentOpen(false)}
+              disabled={adjustMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => adjustMutation.mutate()}
+              disabled={!adjustmentValue || adjustMutation.isPending}
+            >
+              {adjustMutation.isPending
+                ? "Saving..."
+                : adjustmentMode === "credit"
+                  ? "Confirm Add"
+                  : "Confirm Deduct"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

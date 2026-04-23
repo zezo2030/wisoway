@@ -54,6 +54,8 @@ import 'screens/passenger/rating_screen.dart';
 import 'screens/profile/edit_profile_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/settings/change_password_screen.dart';
+import 'screens/settings/support_screen.dart';
+import 'screens/settings/about_screen.dart';
 // Removed unused notification_service.dart
 
 //admin@rideshare.com
@@ -113,7 +115,7 @@ class MyApp extends StatelessWidget {
                 final themeService = context.watch<ThemeService>();
                 return MaterialApp(
                   navigatorKey: NotificationNavigationService.navigatorKey,
-                  title: 'RideShare',
+                  title: 'VisionWay',
                   debugShowCheckedModeBanner: false,
                   theme: AppTheme.lightTheme,
                   darkTheme: AppTheme.darkTheme,
@@ -171,6 +173,8 @@ class MyApp extends StatelessWidget {
                     RouteNames.editProfile: (context) =>
                         const EditProfileScreen(),
                     RouteNames.settings: (context) => const SettingsScreen(),
+                    RouteNames.support: (context) => const SupportScreen(),
+                    RouteNames.about: (context) => const AboutScreen(),
                     RouteNames.changePassword: (context) =>
                         const ChangePasswordScreen(),
                   },

@@ -130,6 +130,12 @@ export class AdminService implements OnModuleInit {
       status: 'pending',
     });
 
+    const pendingManualTopups = await this.paymentModel.countDocuments({
+      status: 'pending',
+      method: 'manual',
+      paymentType: 'wallet_topup',
+    });
+
     // Get pending vehicle verifications
     const pendingVehicleVerifications = await this.vehicleModel.countDocuments({
       isVerified: false,
@@ -146,6 +152,7 @@ export class AdminService implements OnModuleInit {
       completedTrips: tripCountMap['completed'] || 0,
       totalRevenue,
       pendingPayments,
+      pendingManualTopups,
       pendingVehicleVerifications,
     };
   }

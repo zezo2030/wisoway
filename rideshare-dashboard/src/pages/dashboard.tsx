@@ -126,6 +126,13 @@ export default function DashboardPage() {
       route: ROUTES.PAYMENTS_PENDING,
     },
     {
+      key: "pendingManualTopups" as const,
+      titleKey: "walletTopup" as const,
+      descKey: "awaitingSettlement" as const,
+      icon: CreditCard,
+      route: `${ROUTES.PAYMENTS}?type=wallet_topup&method=manual&status=pending`,
+    },
+    {
       key: "pendingVehicleVerifications" as const,
       titleKey: "unverifiedVehicles" as const,
       descKey: "needsAdminReview" as const,

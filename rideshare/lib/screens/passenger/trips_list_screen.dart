@@ -110,6 +110,20 @@ class _TripsListScreenState extends State<TripsListScreen> {
     });
   }
 
+  Future<void> _handleRefresh() async {
+    if ((_filterType == 'nearby' || _filterType == 'preferred') &&
+        _userLocation == null) {
+      await _loadUserLocation();
+      return;
+    }
+
+    setState(() {
+      _tripsFuture = _fetchTrips();
+    });
+
+    await _tripsFuture;
+  }
+
   Future<List<TripModel>> _fetchTrips() async {
     if (_filterType == 'preferred' && _userLocation != null) {
       return _tripService.getPreferredTrips(riderLocation: _userLocation!);
@@ -236,24 +250,36 @@ class _TripsListScreenState extends State<TripsListScreen> {
                 }
 
                 if (snapshot.hasError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                  return RefreshIndicator(
+                    onRefresh: _handleRefresh,
+                    color: T.primary(context),
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
                       children: [
-                        Icon(
-                          Icons.error_outline,
-                          size: 64,
-                          color: T.error(context),
-                        ),
-                        const SizedBox(height: 16),
-                        Text('خطأ: ${snapshot.error}'),
-                        const SizedBox(height: 16),
-                        Semantics(
-                          button: true,
-                          label: 'إعادة المحاولة',
-                          child: ElevatedButton(
-                            onPressed: _reloadTrips,
-                            child: const Text('إعادة المحاولة'),
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.6,
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.error_outline,
+                                  size: 64,
+                                  color: T.error(context),
+                                ),
+                                const SizedBox(height: 16),
+                                Text('خطأ: ${snapshot.error}'),
+                                const SizedBox(height: 16),
+                                Semantics(
+                                  button: true,
+                                  label: 'إعادة المحاولة',
+                                  child: ElevatedButton(
+                                    onPressed: _reloadTrips,
+                                    child: const Text('إعادة المحاولة'),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -271,42 +297,54 @@ class _TripsListScreenState extends State<TripsListScreen> {
                       (_filterType == 'nearby' || _filterType == 'preferred') &&
                       _userLocation == null;
 
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                  return RefreshIndicator(
+                    onRefresh: _handleRefresh,
+                    color: T.primary(context),
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
                       children: [
-                        Icon(
-                          Icons.directions_car_outlined,
-                          size: 64,
-                          color: T.outlineVariant(context),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          locationRequired
-                              ? 'فعّل الموقع لعرض هذه الرحلات'
-                              : 'لا توجد رحلات متاحة',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: T.onSurfaceVariant(context),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          locationRequired
-                              ? 'اختر موقعك الحالي ثم أعد المحاولة'
-                              : 'جرب تغيير الفلتر أو الموقع',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: T.outlineVariant(context),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Semantics(
-                          button: true,
-                          label: 'تحديث قائمة الرحلات',
-                          child: ElevatedButton(
-                            onPressed: _reloadTrips,
-                            child: const Text('تحديث'),
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.6,
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.directions_car_outlined,
+                                  size: 64,
+                                  color: T.outlineVariant(context),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  locationRequired
+                                      ? 'فعّل الموقع لعرض هذه الرحلات'
+                                      : 'لا توجد رحلات متاحة',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: T.onSurfaceVariant(context),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  locationRequired
+                                      ? 'اختر موقعك الحالي ثم أعد المحاولة'
+                                      : 'جرب تغيير الفلتر أو الموقع',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: T.outlineVariant(context),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Semantics(
+                                  button: true,
+                                  label: 'تحديث قائمة الرحلات',
+                                  child: ElevatedButton(
+                                    onPressed: _reloadTrips,
+                                    child: const Text('تحديث'),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -314,13 +352,18 @@ class _TripsListScreenState extends State<TripsListScreen> {
                   );
                 }
 
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: filteredTrips.length,
-                  itemBuilder: (context, index) {
-                    final trip = filteredTrips[index];
-                    return _TripCard(trip: trip);
-                  },
+                return RefreshIndicator(
+                  onRefresh: _handleRefresh,
+                  color: T.primary(context),
+                  child: ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
+                    itemCount: filteredTrips.length,
+                    itemBuilder: (context, index) {
+                      final trip = filteredTrips[index];
+                      return _TripCard(trip: trip);
+                    },
+                  ),
                 );
               },
             ),

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:provider/provider.dart';
+
 import '../../core/constants/route_names.dart';
 import '../../core/services/payment_service.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/text_styles.dart';
-import '../../models/payment_model.dart';
+import '../../models/wallet_account_model.dart';
 import '../../models/wallet_model.dart';
+import '../../models/wallet_transaction_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/common/empty_state.dart';
 
@@ -20,7 +22,8 @@ class DriverWalletScreen extends StatefulWidget {
 class _DriverWalletScreenState extends State<DriverWalletScreen> {
   final PaymentService _paymentService = PaymentService();
   WalletModel? _wallet;
-  List<PaymentModel> _transactions = [];
+  WalletAccountModel? _walletAccount;
+  List<WalletTransactionModel> _transactions = [];
   bool _loading = true;
   bool _loadingTransactions = false;
 
@@ -33,19 +36,28 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final wallet = await _paymentService.getWalletMe();
+      final results = await Future.wait([
+        _paymentService.getWalletMe(),
+        _paymentService.getWalletAccountMe(),
+      ]);
+
       if (mounted) {
         setState(() {
-          _wallet = wallet;
+          _wallet = results[0] as WalletModel;
+          _walletAccount = results[1] as WalletAccountModel;
           _loading = false;
         });
       }
+
       _loadTransactions();
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: T.error(context)),
+          SnackBar(
+            content: Text('خطأ: $e'),
+            backgroundColor: T.error(context),
+          ),
         );
       }
     }
@@ -54,13 +66,7 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
   Future<void> _loadTransactions() async {
     setState(() => _loadingTransactions = true);
     try {
-      final res = await _paymentService.getWalletTransactions();
-      final data = res['data'] as List? ?? [];
-      final list = data
-          .map(
-            (e) => PaymentModel.fromJson(Map<String, dynamic>.from(e as Map)),
-          )
-          .toList();
+      final list = await _paymentService.getWalletLedgerTransactions(limit: 50);
       if (mounted) {
         setState(() {
           _transactions = list;
@@ -78,6 +84,29 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
       RouteNames.driverWalletTopup,
     );
     if (result == true && mounted) _load();
+  }
+
+  String _typeLabel(String type) {
+    switch (type) {
+      case 'topup':
+        return 'شحن محفظة';
+      case 'trip_payment':
+        return 'دفع رحلة';
+      case 'trip_debit':
+        return 'رسوم رحلة';
+      case 'refund':
+        return 'استرداد';
+      case 'payout':
+        return 'سحب أرباح';
+      case 'adjustment':
+        return 'تعديل رصيد';
+      case 'hold':
+        return 'حجز مبلغ';
+      case 'release_hold':
+        return 'إلغاء حجز';
+      default:
+        return type;
+    }
   }
 
   @override
@@ -172,10 +201,8 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
                             itemCount: _transactions.length,
                             separatorBuilder: (_, __) =>
                                 const SizedBox(height: 8),
-                            itemBuilder: (context, i) {
-                              final p = _transactions[i];
-                              return _buildTransactionTile(p);
-                            },
+                            itemBuilder: (context, i) =>
+                                _buildTransactionTile(_transactions[i]),
                           ),
                   ],
                 ),
@@ -200,8 +227,8 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
   }
 
   Widget _buildBalanceCard() {
-    final balance = _wallet?.balance ?? 0.0;
-    final currency = _wallet?.currency ?? 'JOD';
+    final balance = _walletAccount?.balance ?? 0.0;
+    final currency = _walletAccount?.currency ?? 'JOD';
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -284,17 +311,10 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
     );
   }
 
-  Widget _buildTransactionTile(PaymentModel p) {
-    final isCredit = p.paymentType == 'wallet_topup';
-    final isDebit = p.paymentType == 'wallet_trip_charge';
-    final amount = p.amount;
-    final prefix = isDebit ? '-' : '+';
+  Widget _buildTransactionTile(WalletTransactionModel tx) {
+    final isCredit = tx.direction == 'credit';
     final color = isCredit ? AppColors.success : AppColors.warning;
-    String label = p.paymentType == 'wallet_topup'
-        ? 'شحن محفظة'
-        : p.paymentType == 'wallet_trip_charge'
-        ? 'رسوم رحلة'
-        : p.paymentType;
+    final prefix = isCredit ? '+' : '-';
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -317,7 +337,9 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
-              isCredit ? IconsaxPlusBold.wallet_add : IconsaxPlusBold.car,
+              isCredit
+                  ? IconsaxPlusBold.wallet_add
+                  : IconsaxPlusBold.wallet_minus,
               color: color,
               size: 22,
             ),
@@ -328,14 +350,14 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  label,
+                  _typeLabel(tx.type),
                   style: AppTextStyles.bodyLarge.copyWith(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
-                  '${p.createdAt.year}-${p.createdAt.month.toString().padLeft(2, '0')}-${p.createdAt.day.toString().padLeft(2, '0')}',
+                  '${tx.createdAt.year}-${tx.createdAt.month.toString().padLeft(2, '0')}-${tx.createdAt.day.toString().padLeft(2, '0')}',
                   style: AppTextStyles.bodySmall.copyWith(
                     color: T.onSurfaceVariant(context),
                   ),
@@ -344,7 +366,7 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
             ),
           ),
           Text(
-            '$prefix${amount.toStringAsFixed(2)} ${p.currency}',
+            '$prefix${tx.amount.toStringAsFixed(2)} ${tx.currency}',
             style: AppTextStyles.titleSmall.copyWith(
               fontWeight: FontWeight.bold,
               color: isCredit ? AppColors.success : AppColors.warning,

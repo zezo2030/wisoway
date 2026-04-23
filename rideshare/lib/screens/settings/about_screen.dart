@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
-import '../../../core/services/localization_service.dart';
 import '../../../core/theme/colors.dart';
 
 class AboutScreen extends StatefulWidget {
@@ -27,156 +23,205 @@ class _AboutScreenState extends State<AboutScreen> {
 
   Future<void> _loadPackageInfo() async {
     final info = await PackageInfo.fromPlatform();
+    if (!mounted) return;
+
     setState(() {
       _version = info.version;
       _buildNumber = info.buildNumber;
     });
   }
 
-  Future<void> _rateApp() async {
-    final uri = Uri.parse(
-      'https://play.google.com/store/apps/details?id=com.rideshare.app',
-    );
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
-
-  void _shareApp() {
-    Share.share(
-      'https://play.google.com/store/apps/details?id=com.rideshare.app',
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final localizationService = context.watch<LocalizationService>();
-    final isArabic = localizationService.isArabic;
+    final versionLabel = _version.isEmpty
+        ? 'جارٍ تحميل الإصدار...'
+        : 'الإصدار $_version${_buildNumber.isNotEmpty ? '+$_buildNumber' : ''}';
 
     return Scaffold(
-      appBar: AppBar(title: Text(isArabic ? 'حول التطبيق' : 'About')),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          const SizedBox(height: 20),
-          Icon(IconsaxPlusBroken.car, size: 80, color: T.primary(context)),
-          const SizedBox(height: 16),
-          Text(
-            'RideShare',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: T.onSurface(context),
-            ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              T.primary(context).withValues(alpha: 0.08),
+              T.background(context),
+            ],
           ),
-          const SizedBox(height: 8),
-          if (_version.isNotEmpty)
-            Text(
-              isArabic
-                  ? 'الإصدار $_version+$_buildNumber'
-                  : 'Version $_version+$_buildNumber',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: T.onSurfaceVariant(context),
+        ),
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+            children: [
+              _TopBar(onBack: () => Navigator.pop(context)),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: T.surface(context),
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: T.shadow(context).withValues(alpha: 0.08),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 84,
+                      height: 84,
+                      decoration: BoxDecoration(
+                        color: T.primary(context).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: Icon(
+                        IconsaxPlusBold.car,
+                        size: 38,
+                        color: T.primary(context),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      'VisionWay',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: T.onSurface(context),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      versionLabel,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: T.onSurfaceVariant(context),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      'منصة تنقل ذكية تربط السائقين والركاب بتجربة عربية واضحة، سريعة، وموثوقة.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.7,
+                        color: T.onSurfaceVariant(context),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          const SizedBox(height: 8),
-          Text(
-            isArabic ? 'منصة مشاركة الرحلات' : 'Ride sharing platform',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: T.onSurfaceVariant(context)),
+              const SizedBox(height: 18),
+              _InfoCard(
+                title: 'ما الذي يميز VisionWay؟',
+                items: const [
+                  'واجهة عربية أولًا مع تجربة استخدام واضحة وسريعة.',
+                  'إدارة مرنة للرحلات والحجوزات والتواصل بين السائق والراكب.',
+                  'تصميم يركز على الثقة والبساطة وسهولة الوصول للمعلومات المهمة.',
+                ],
+              ),
+            ],
           ),
-          const SizedBox(height: 32),
-          Container(
-            decoration: BoxDecoration(
-              color: T.surface(context),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                _buildActionTile(
-                  icon: IconsaxPlusBroken.star,
-                  title: isArabic ? 'تقييم التطبيق' : 'Rate App',
-                  onTap: _rateApp,
-                ),
-                const Divider(height: 1, indent: 56),
-                _buildActionTile(
-                  icon: IconsaxPlusBroken.export_2,
-                  title: isArabic ? 'مشاركة التطبيق' : 'Share App',
-                  onTap: _shareApp,
-                ),
-                const Divider(height: 1, indent: 56),
-                _buildActionTile(
-                  icon: IconsaxPlusBroken.document,
-                  title: isArabic ? 'التراخيص' : 'Licenses',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const LicensePage()),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 40),
-          Text(
-            isArabic
-                ? 'صنع بـ \u2764\uFE0F في الأردن'
-                : 'Made with \u2764\uFE0F in Jordan',
-            style: TextStyle(fontSize: 14, color: T.onSurfaceVariant(context)),
-          ),
-        ],
+        ),
       ),
     );
   }
+}
 
-  Widget _buildActionTile({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: T.primary(context).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: T.primary(context), size: 22),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: T.onSurface(context),
-                ),
-              ),
-            ),
-            Icon(
-              IconsaxPlusLinear.arrow_left_2,
-              size: 16,
-              color: T.onSurfaceVariant(context),
-            ),
-          ],
+class _TopBar extends StatelessWidget {
+  const _TopBar({required this.onBack});
+
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        IconButton(
+          onPressed: onBack,
+          icon: const Icon(IconsaxPlusLinear.arrow_right_2),
+          style: IconButton.styleFrom(
+            backgroundColor: T.surface(context),
+            foregroundColor: T.onSurface(context),
+          ),
         ),
+        const SizedBox(width: 12),
+        Text(
+          'حول التطبيق',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: T.onSurface(context),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InfoCard extends StatelessWidget {
+  const _InfoCard({
+    required this.title,
+    required this.items,
+  });
+
+  final String title;
+  final List<String> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: T.surface(context),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: T.onSurface(context),
+            ),
+          ),
+          const SizedBox(height: 14),
+          ...items.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    margin: const EdgeInsets.only(top: 6),
+                    decoration: BoxDecoration(
+                      color: T.primary(context),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.6,
+                        color: T.onSurfaceVariant(context),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

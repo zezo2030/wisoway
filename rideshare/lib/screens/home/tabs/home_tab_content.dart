@@ -22,6 +22,7 @@ class HomeTabContent extends StatefulWidget {
   final VoidCallback onOpenDrawer;
   final VoidCallback onRefreshLocation;
   final VoidCallback onChangeLocation;
+  final Future<void> Function()? onRefreshData;
 
   const HomeTabContent({
     super.key,
@@ -31,6 +32,7 @@ class HomeTabContent extends StatefulWidget {
     required this.onOpenDrawer,
     required this.onRefreshLocation,
     required this.onChangeLocation,
+    this.onRefreshData,
   });
 
   @override
@@ -47,19 +49,35 @@ class _HomeTabContentState extends State<HomeTabContent> {
     _activeTripsMinDepartureTime = DateTime.now();
   }
 
+  Future<void> _handleRefresh() async {
+    final tripProvider = Provider.of<TripProvider>(context, listen: false);
+
+    await Future.wait([
+      tripProvider.fetchActiveTrips(
+        minDepartureTime: _activeTripsMinDepartureTime,
+      ),
+      if (widget.onRefreshData != null) widget.onRefreshData!(),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
       color: T.surface(context),
       child: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(child: _buildHeader(context)),
-            SliverToBoxAdapter(child: _buildSearchBar(context)),
-            SliverToBoxAdapter(child: _buildLocationSection(context)),
-            SliverToBoxAdapter(child: _buildNearbyTripsSection(context)),
-            const SliverToBoxAdapter(child: SizedBox(height: 100)),
-          ],
+        child: RefreshIndicator(
+          onRefresh: _handleRefresh,
+          color: T.primary(context),
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(child: _buildHeader(context)),
+              SliverToBoxAdapter(child: _buildSearchBar(context)),
+              SliverToBoxAdapter(child: _buildLocationSection(context)),
+              SliverToBoxAdapter(child: _buildNearbyTripsSection(context)),
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            ],
+          ),
         ),
       ),
     );

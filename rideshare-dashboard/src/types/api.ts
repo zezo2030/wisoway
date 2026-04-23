@@ -184,6 +184,12 @@ export interface GetWalletsParams extends PaginationParams {
   isActive?: boolean;
 }
 
+export interface AdjustWalletBalanceRequest {
+  amount: number;
+  currency?: string;
+  note?: string;
+}
+
 export type WalletsResponse = ApiResponse<PaginatedResult<WalletAccount>>;
 export type WalletResponse = ApiResponse<WalletAccount>;
 export type WalletTransactionsResponse = ApiResponse<PaginatedResult<WalletTransaction>>;

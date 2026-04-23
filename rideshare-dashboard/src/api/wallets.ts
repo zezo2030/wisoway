@@ -1,7 +1,12 @@
 // Wallets API: Wallet account management API functions
 
 import type { WalletAccount, WalletTransaction, PaginatedResult } from "@/types/models"
-import type { ApiResponse, GetWalletsParams, PaginationParams } from "@/types/api"
+import type {
+  ApiResponse,
+  GetWalletsParams,
+  PaginationParams,
+  AdjustWalletBalanceRequest,
+} from "@/types/api"
 import { apiClient } from "./client"
 
 /**
@@ -37,6 +42,20 @@ export async function getWalletTransactions(
   const response = await apiClient.get<ApiResponse<PaginatedResult<WalletTransaction>>>(
     `/admin/wallets/${walletId}/transactions`,
     { params }
+  )
+  return response.data.data
+}
+
+/**
+ * Adjust wallet balance manually as admin.
+ */
+export async function adjustWalletBalance(
+  walletId: string,
+  data: AdjustWalletBalanceRequest
+): Promise<WalletAccount> {
+  const response = await apiClient.patch<ApiResponse<WalletAccount>>(
+    `/admin/wallets/${walletId}/adjust`,
+    data
   )
   return response.data.data
 }

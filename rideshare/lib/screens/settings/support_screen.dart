@@ -1,0 +1,441 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../../core/constants/support_constants.dart';
+import '../../../core/theme/colors.dart';
+
+class SupportScreen extends StatelessWidget {
+  const SupportScreen({super.key});
+
+  Future<void> _launchEmail(BuildContext context) async {
+    final uri = Uri(
+      scheme: 'mailto',
+      path: SupportConstants.supportEmail,
+      queryParameters: {'subject': SupportConstants.supportSubject},
+    );
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+      return;
+    }
+
+    if (context.mounted) {
+      _showMessage(context, 'تعذر فتح تطبيق البريد الإلكتروني');
+    }
+  }
+
+  Future<void> _launchPhone(BuildContext context) async {
+    if (SupportConstants.supportPhone.isEmpty) {
+      _showMessage(context, 'رقم الدعم غير متاح حاليًا');
+      return;
+    }
+
+    final uri = Uri.parse('tel:${SupportConstants.supportPhone}');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+      return;
+    }
+
+    if (context.mounted) {
+      _showMessage(context, 'تعذر بدء الاتصال الآن');
+    }
+  }
+
+  Future<void> _copyEmail(BuildContext context) async {
+    await Clipboard.setData(
+      const ClipboardData(text: SupportConstants.supportEmail),
+    );
+    if (context.mounted) {
+      _showMessage(context, 'تم نسخ بريد الدعم');
+    }
+  }
+
+  void _showMessage(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final showPhoneCard = SupportConstants.supportPhoneDisplay.isNotEmpty;
+
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              T.primary(context).withValues(alpha: 0.08),
+              T.background(context),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+            children: [
+              _SupportAppBar(
+                title: 'المساعدة والدعم',
+                onBack: () => Navigator.pop(context),
+              ),
+              const SizedBox(height: 20),
+              _SupportHero(
+                icon: IconsaxPlusBold.message_question,
+                title: 'نحن هنا لمساعدتك',
+                subtitle:
+                    'إذا واجهتك مشكلة في الحجز أو الحساب أو المدفوعات، يمكنك التواصل مباشرة مع فريق VisionWay.',
+              ),
+              const SizedBox(height: 20),
+              _ContactCard(
+                icon: IconsaxPlusBold.sms,
+                accentColor: T.primary(context),
+                title: 'راسلنا عبر البريد الإلكتروني',
+                value: SupportConstants.supportEmail,
+                description:
+                    'أرسل استفسارك وسنراجع الرسالة في أقرب وقت ممكن.',
+                primaryActionLabel: 'إرسال بريد',
+                secondaryActionLabel: 'نسخ البريد',
+                onPrimaryAction: () => _launchEmail(context),
+                onSecondaryAction: () => _copyEmail(context),
+              ),
+              if (showPhoneCard) ...[
+                const SizedBox(height: 16),
+                _ContactCard(
+                  icon: IconsaxPlusBold.call_calling,
+                  accentColor: AppColors.warningDark,
+                  title: 'اتصل بفريق الدعم',
+                  value: SupportConstants.supportPhoneDisplay,
+                  description:
+                      'اضغط على الرقم لبدء الاتصال المباشر بفريق الدعم.',
+                  primaryActionLabel: 'اتصال الآن',
+                  onPrimaryAction: () => _launchPhone(context),
+                ),
+              ],
+              const SizedBox(height: 20),
+              _InfoPanel(
+                title: 'كيف نساعدك؟',
+                items: const [
+                  'مشكلة في تسجيل الدخول أو تحديث بيانات الحساب',
+                  'استفسارات الحجز والرحلات والمدفوعات',
+                  'مراجعة المشاكل الفنية أو الاقتراحات',
+                ],
+              ),
+              const SizedBox(height: 16),
+              _InfoPanel(
+                title: 'نصيحة سريعة',
+                items: const [
+                  'اذكر رقم الهاتف أو البريد المسجل داخل التطبيق لتسريع المراجعة.',
+                  'أضف وصفًا مختصرًا للمشكلة والخطوات التي حدثت قبلها.',
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SupportAppBar extends StatelessWidget {
+  const _SupportAppBar({
+    required this.title,
+    required this.onBack,
+  });
+
+  final String title;
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        IconButton(
+          onPressed: onBack,
+          icon: const Icon(IconsaxPlusLinear.arrow_right_2),
+          style: IconButton.styleFrom(
+            backgroundColor: T.surface(context),
+            foregroundColor: T.onSurface(context),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: T.onSurface(context),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SupportHero extends StatelessWidget {
+  const _SupportHero({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: T.surface(context),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: T.shadow(context).withValues(alpha: 0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              color: T.primary(context).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Icon(icon, color: T.primary(context), size: 28),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              color: T.onSurface(context),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            subtitle,
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.6,
+              color: T.onSurfaceVariant(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ContactCard extends StatelessWidget {
+  const _ContactCard({
+    required this.icon,
+    required this.accentColor,
+    required this.title,
+    required this.value,
+    required this.description,
+    required this.primaryActionLabel,
+    required this.onPrimaryAction,
+    this.secondaryActionLabel,
+    this.onSecondaryAction,
+  });
+
+  final IconData icon;
+  final Color accentColor;
+  final String title;
+  final String value;
+  final String description;
+  final String primaryActionLabel;
+  final VoidCallback onPrimaryAction;
+  final String? secondaryActionLabel;
+  final VoidCallback? onSecondaryAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: T.surface(context),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: accentColor.withValues(alpha: 0.16)),
+        boxShadow: [
+          BoxShadow(
+            color: T.shadow(context).withValues(alpha: 0.05),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(icon, color: accentColor, size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: T.onSurface(context),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: accentColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            description,
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.6,
+              color: T.onSurfaceVariant(context),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton(
+                  onPressed: onPrimaryAction,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: accentColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: Text(primaryActionLabel),
+                ),
+              ),
+              if (secondaryActionLabel != null && onSecondaryAction != null) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: onSecondaryAction,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: T.onSurface(context),
+                      side: BorderSide(
+                        color: T.outline(context).withValues(alpha: 0.6),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: Text(secondaryActionLabel!),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoPanel extends StatelessWidget {
+  const _InfoPanel({
+    required this.title,
+    required this.items,
+  });
+
+  final String title;
+  final List<String> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: T.surface(context),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: T.onSurface(context),
+            ),
+          ),
+          const SizedBox(height: 14),
+          ...items.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    margin: const EdgeInsets.only(top: 6),
+                    decoration: BoxDecoration(
+                      color: T.primary(context),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.6,
+                        color: T.onSurfaceVariant(context),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import '../../models/notification_model.dart';
 import 'notification_navigation_service.dart';
 
 class PushNotificationService {
@@ -14,8 +15,8 @@ class PushNotificationService {
   static const AndroidNotificationChannel _androidChannel =
       AndroidNotificationChannel(
         'rideshare_notifications',
-        'RideShare Notifications',
-        description: 'Notifications for bookings, trips, payments, and chat',
+        'إشعارات VisionWay',
+        description: 'إشعارات الحجوزات والرحلات والمدفوعات والمحادثات',
         importance: Importance.max,
       );
 
@@ -83,8 +84,17 @@ class PushNotificationService {
     }
 
     final notification = message.notification;
-    final title = notification?.title;
-    final body = notification?.body;
+    final data = Map<String, dynamic>.from(message.data);
+    final title = NotificationModel.localizedTitleFor(
+      type: data['type']?.toString() ?? '',
+      data: data,
+      fallbackTitle: notification?.title,
+    );
+    final body = NotificationModel.localizedBodyFor(
+      type: data['type']?.toString() ?? '',
+      data: data,
+      fallbackBody: notification?.body,
+    );
 
     if ((title == null || title.isEmpty) && (body == null || body.isEmpty)) {
       return;
@@ -92,14 +102,14 @@ class PushNotificationService {
 
     await _localNotifications.show(
       message.messageId?.hashCode ?? message.hashCode,
-      title ?? 'RideShare',
+      title ?? 'VisionWay',
       body,
       const NotificationDetails(
         android: AndroidNotificationDetails(
           'rideshare_notifications',
-          'RideShare Notifications',
+          'إشعارات VisionWay',
           channelDescription:
-              'Notifications for bookings, trips, payments, and chat',
+              'إشعارات الحجوزات والرحلات والمدفوعات والمحادثات',
           importance: Importance.max,
           priority: Priority.high,
         ),

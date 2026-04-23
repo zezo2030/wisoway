@@ -16,6 +16,7 @@ import { AdminDashboardController } from './admin-dashboard.controller';
 import { AdminDashboardService } from './admin-dashboard.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { BookingsModule } from '../bookings/bookings.module';
+import { WalletModule } from '../wallet/wallet.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { BookingsModule } from '../bookings/bookings.module';
     ]),
     NotificationsModule,
     BookingsModule,
+    WalletModule,
   ],
   controllers: [AdminDashboardController],
   providers: [AdminDashboardService],

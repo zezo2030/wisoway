@@ -17,6 +17,7 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { AdminDashboardService } from './admin-dashboard.service';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { PgUserRole } from '../../database/entities/shared.enums';
 import { AdminUsersQueryDto } from './dto/admin-users-query.dto';
@@ -30,6 +31,7 @@ import { AdminChatQueryDto } from './dto/admin-chat-query.dto';
 import { AdminReportsQueryDto } from './dto/admin-reports-query.dto';
 import { AdminWalletsQueryDto } from './dto/admin-wallets-query.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
+import { AdminAdjustWalletDto } from './dto/admin-adjust-wallet.dto';
 import {
   ApproveDriverDto,
   VerifyVehicleDto,
@@ -172,12 +174,18 @@ export class AdminDashboardController {
   @ApiQuery({
     name: 'method',
     required: false,
-    enum: ['wallet', 'paymob', 'manual', 'communication_fee'],
+    enum: ['wallet', 'paymob', 'manual', 'communication_fee', 'cliq_a2a'],
   })
   @ApiQuery({
     name: 'paymentType',
     required: false,
-    enum: ['trip', 'communication_fee', 'wallet_topup', 'wallet_trip_charge'],
+    enum: [
+      'trip',
+      'trip_platform',
+      'communication_fee',
+      'wallet_topup',
+      'wallet_trip_charge',
+    ],
   })
   @ApiQuery({ name: 'walletOnly', required: false, type: Boolean })
   @ApiResponse({ status: 200, description: 'Payments retrieved successfully' })
@@ -221,6 +229,24 @@ export class AdminDashboardController {
   @ApiResponse({ status: 404, description: 'Wallet account not found' })
   async getWalletById(@Param('id') walletId: string) {
     return this.adminDashboardService.getWalletById(walletId);
+  }
+
+  @Patch('wallets/:id/adjust')
+  @ApiOperation({ summary: 'Adjust wallet balance manually (admin)' })
+  @ApiParam({ name: 'id', description: 'Wallet Account ID' })
+  @ApiResponse({ status: 200, description: 'Wallet balance adjusted successfully' })
+  @ApiResponse({ status: 404, description: 'Wallet account not found' })
+  async adjustWalletBalance(
+    @Param('id') walletId: string,
+    @CurrentUser('id') adminId: string,
+    @Body() dto: AdminAdjustWalletDto,
+  ) {
+    return this.adminDashboardService.adjustWalletBalance(walletId, {
+      amount: dto.amount,
+      note: dto.note,
+      currency: dto.currency,
+      adminId,
+    });
   }
 
   @Get('wallets/:id/transactions')
@@ -416,6 +442,7 @@ export class AdminDashboardController {
             completedTrips: { type: 'number' },
             totalRevenue: { type: 'number' },
             pendingPayments: { type: 'number' },
+            pendingManualTopups: { type: 'number' },
             pendingVehicleVerifications: { type: 'number' },
           },
         },

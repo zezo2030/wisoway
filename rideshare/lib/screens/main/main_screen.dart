@@ -306,7 +306,7 @@ class _MainScreenState extends State<MainScreen> {
       case 2:
         return const Text('البروفايل');
       default:
-        return const Text('RideShare');
+        return const Text('VisionWay');
     }
   }
 }

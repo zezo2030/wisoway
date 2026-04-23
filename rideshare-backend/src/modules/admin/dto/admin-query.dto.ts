@@ -149,6 +149,7 @@ export interface DashboardStats {
   completedTrips: number;
   totalRevenue: number;
   pendingPayments: number;
+  pendingManualTopups: number;
   pendingVehicleVerifications: number;
 }
 

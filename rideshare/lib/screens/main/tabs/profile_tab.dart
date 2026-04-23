@@ -211,19 +211,25 @@ class ProfileTab extends StatelessWidget {
                       ProfileMenuItem(
                         icon: IconsaxPlusLinear.setting_2,
                         title: 'الإعدادات',
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.pushNamed(context, RouteNames.settings);
+                        },
                       ),
                       const SizedBox(height: 12),
                       ProfileMenuItem(
                         icon: IconsaxPlusLinear.message_question,
                         title: 'المساعدة والدعم',
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.pushNamed(context, RouteNames.support);
+                        },
                       ),
                       const SizedBox(height: 12),
                       ProfileMenuItem(
                         icon: IconsaxPlusLinear.info_circle,
                         title: 'حول التطبيق',
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.pushNamed(context, RouteNames.about);
+                        },
                       ),
                       const SizedBox(height: 24),
 

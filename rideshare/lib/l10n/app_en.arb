@@ -1,6 +1,6 @@
 {
   "@@locale": "en",
-  "appName": "RideShare",
+  "appName": "VisionWay",
   "phoneAuth": "Sign In",
   "@phoneAuth": {
     "description": "Phone authentication screen title"

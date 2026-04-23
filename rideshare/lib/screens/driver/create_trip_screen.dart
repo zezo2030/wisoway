@@ -572,7 +572,9 @@ class _CreateTripScreenState extends State<CreateTripScreen>
           TextFormField(
             controller: _priceController,
             keyboardType: TextInputType.number,
-            style: AppTextStyles.labelLarge.copyWith(),
+            style: AppTextStyles.labelLarge.copyWith(
+              color: T.onSurface(context),
+            ),
             decoration: InputDecoration(
               filled: true,
               fillColor: T.surface(context),
@@ -872,6 +874,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                 style: AppTextStyles.bodyLarge.copyWith(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
+                  color: T.onSurface(context),
                 ),
               ),
             ],
@@ -1145,6 +1148,12 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     required VoidCallback? onDecrease,
     required VoidCallback? onIncrease,
   }) {
+    final viewportWidth = MediaQuery.sizeOf(context).width;
+    final isCompact = viewportWidth < 430;
+    final buttonSize = isCompact ? 36.0 : 44.0;
+    final valuePadding = isCompact ? 6.0 : 12.0;
+    final controlIconSize = isCompact ? 18.0 : 20.0;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
@@ -1162,7 +1171,10 @@ class _CreateTripScreenState extends State<CreateTripScreen>
               Flexible(
                 child: Text(
                   label,
-                  style: AppTextStyles.labelLarge.copyWith(fontSize: 13),
+                  style: AppTextStyles.labelLarge.copyWith(
+                    fontSize: 13,
+                    color: T.onSurface(context),
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1172,6 +1184,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Semantics(
                 button: onDecrease != null,
@@ -1179,8 +1192,8 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                 child: GestureDetector(
                   onTap: onDecrease,
                   child: Container(
-                    width: 44,
-                    height: 44,
+                    width: buttonSize,
+                    height: buttonSize,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: onDecrease == null
@@ -1191,7 +1204,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                     ),
                     child: Icon(
                       Icons.remove,
-                      size: 20,
+                      size: controlIconSize,
                       color: onDecrease == null
                           ? T.textDisabled(context)
                           : T.onSurface(context),
@@ -1200,11 +1213,12 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: EdgeInsets.symmetric(horizontal: valuePadding),
                 child: Text(
                   '$value',
                   style: AppTextStyles.titleSmall.copyWith(
                     fontWeight: FontWeight.bold,
+                    color: T.onSurface(context),
                   ),
                 ),
               ),
@@ -1214,8 +1228,8 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                 child: GestureDetector(
                   onTap: onIncrease,
                   child: Container(
-                    width: 44,
-                    height: 44,
+                    width: buttonSize,
+                    height: buttonSize,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: onIncrease == null
@@ -1226,7 +1240,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                     ),
                     child: Icon(
                       Icons.add,
-                      size: 20,
+                      size: controlIconSize,
                       color: onIncrease == null
                           ? T.textDisabled(context)
                           : T.onSurface(context),

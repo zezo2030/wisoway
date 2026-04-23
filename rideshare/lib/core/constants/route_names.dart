@@ -51,6 +51,7 @@ class RouteNames {
 
   // Settings Routes
   static const String settings = '/settings';
+  static const String support = '/support';
   static const String about = '/about';
   static const String notificationSettings = '/notification-settings';
   static const String accountSecurity = '/account-security';

@@ -330,7 +330,7 @@ export const translations = {
     emailRequired: "Email is required",
     validEmail: "Please enter a valid email address",
     passwordRequired: "Password is required",
-    rideshareAdmin: "Rideshare Admin",
+    rideshareAdmin: "VisionWay Admin",
   },
 
   ar: {
@@ -659,7 +659,7 @@ export const translations = {
     emailRequired: "البريد الإلكتروني مطلوب",
     validEmail: "يرجى إدخال بريد إلكتروني صالح",
     passwordRequired: "كلمة المرور مطلوبة",
-    rideshareAdmin: "إدارة رايد شير",
+    rideshareAdmin: "إدارة VisionWay",
   },
 } as const
 

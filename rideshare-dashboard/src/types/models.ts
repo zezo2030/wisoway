@@ -114,6 +114,7 @@ export interface Booking {
 
 export interface Payment {
   _id: string
+  id?: string
   userId: string | UserSummary
   tripId?: string | TripSummary
   bookingId?: string | BookingSummary
@@ -185,6 +186,7 @@ export interface DashboardStats {
   completedTrips: number
   totalRevenue: number
   pendingPayments: number
+  pendingManualTopups: number
   pendingVehicleVerifications: number
 }
 

@@ -22,6 +22,17 @@ class _MyTripsScreenState extends State<MyTripsScreen>
   late TabController _tabController;
   String _selectedStatus = 'active';
 
+  Future<void> _refreshTrips() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.userModel;
+    if (user == null) return;
+
+    await Provider.of<TripProvider>(context, listen: false).fetchDriverTrips(
+      driverId: user.id,
+      status: _selectedStatus,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -143,41 +154,59 @@ class _MyTripsScreenState extends State<MyTripsScreen>
           final trips = snapshot.data ?? [];
 
           if (trips.isEmpty) {
-            return EmptyState(
-              icon: _selectedStatus == 'active'
-                  ? Icons.directions_car_outlined
-                  : _selectedStatus == 'hidden'
-                  ? Icons.visibility_off_outlined
-                  : Icons.check_circle_outline,
-              title: _selectedStatus == 'active'
-                  ? 'لا توجد رحلات نشطة'
-                  : _selectedStatus == 'hidden'
-                  ? 'لا توجد رحلات مخفية'
-                  : 'لا توجد رحلات مكتملة',
-              showCircleBackground: false,
-              iconSize: 64,
-              action: _selectedStatus == 'active'
-                  ? ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.pushNamed(context, RouteNames.createTrip);
-                      },
-                      icon: const Icon(IconsaxPlusBold.add_circle),
-                      label: const Text('إنشاء رحلة'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: T.primary(context),
-                      ),
-                    )
-                  : null,
+            return RefreshIndicator(
+              onRefresh: _refreshTrips,
+              color: T.primary(context),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.7,
+                  child: EmptyState(
+                    icon: _selectedStatus == 'active'
+                        ? Icons.directions_car_outlined
+                        : _selectedStatus == 'hidden'
+                        ? Icons.visibility_off_outlined
+                        : Icons.check_circle_outline,
+                    title: _selectedStatus == 'active'
+                        ? 'لا توجد رحلات نشطة'
+                        : _selectedStatus == 'hidden'
+                        ? 'لا توجد رحلات مخفية'
+                        : 'لا توجد رحلات مكتملة',
+                    showCircleBackground: false,
+                    iconSize: 64,
+                    action: _selectedStatus == 'active'
+                        ? ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.pushNamed(
+                                context,
+                                RouteNames.createTrip,
+                              );
+                            },
+                            icon: const Icon(IconsaxPlusBold.add_circle),
+                            label: const Text('إنشاء رحلة'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: T.primary(context),
+                            ),
+                          )
+                        : null,
+                  ),
+                ),
+              ),
             );
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-            itemCount: trips.length,
-            itemBuilder: (context, index) {
-              final trip = trips[index];
-              return _TripCard(trip: trip);
-            },
+          return RefreshIndicator(
+            onRefresh: _refreshTrips,
+            color: T.primary(context),
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+              itemCount: trips.length,
+              itemBuilder: (context, index) {
+                final trip = trips[index];
+                return _TripCard(trip: trip);
+              },
+            ),
           );
         },
       ),

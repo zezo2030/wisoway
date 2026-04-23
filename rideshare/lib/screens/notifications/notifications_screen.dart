@@ -169,7 +169,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 final notification = notifications[index];
                 return Semantics(
                   button: true,
-                  label: notification.title,
+                  label: notification.displayTitle,
                   child: NotificationCard(
                     notification: notification,
                     onTap: () => _handleNotificationTap(notification),
