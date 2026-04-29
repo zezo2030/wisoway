@@ -44,18 +44,20 @@ export class PlatformPricingService {
   passengerSeatPricing(
     seatPrice: number,
     currency: string,
-    row: CommunicationFeeEntity | null,
+    _row: CommunicationFeeEntity | null,
   ): PassengerSeatPricing {
-    const pct = Number(row?.passengerPlatformPercent ?? 0);
-    const platformAmount = this.round2((seatPrice * pct) / 100);
-    const driverAmount = this.round2(seatPrice - platformAmount);
+    // Passengers no longer pay any platform fee. The full seat price is owed
+    // to the driver in cash on meet-up; the app is not in the rider's payment
+    // path at all. The communication-fee table still drives driverUnlockPricing
+    // separately (kept untouched).
+    const price = this.round2(seatPrice);
     return {
-      seatPrice: this.round2(seatPrice),
-      passengerPlatformPercent: pct,
-      platformAmount,
-      driverAmount,
+      seatPrice: price,
+      passengerPlatformPercent: 0,
+      platformAmount: 0,
+      driverAmount: price,
       currency,
-      requiresOnlinePayment: platformAmount > 0,
+      requiresOnlinePayment: false,
     };
   }
 

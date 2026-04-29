@@ -4,12 +4,14 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../../users/users.service';
 import { UserEntity } from '../../../database/entities/user.entity';
+import { DeviceFingerprintService } from '../device-fingerprint.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     private configService: ConfigService,
     private usersService: UsersService,
+    private deviceFingerprintService: DeviceFingerprintService,
   ) {
     const secret = configService.get<string>('JWT_ACCESS_SECRET');
     if (!secret) {
@@ -26,7 +28,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any): Promise<UserEntity> {
-    const { sub, email } = payload;
+    const { sub, email, did } = payload;
 
     if (!sub && !email) {
       throw new UnauthorizedException('Invalid token payload');
@@ -54,6 +56,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     if (!user.isActive) {
       throw new UnauthorizedException('User account is inactive');
+    }
+
+    if (did) {
+      const activeDevice = await this.deviceFingerprintService.findActiveDeviceById(
+        user.id,
+        did,
+      );
+      if (!activeDevice) {
+        throw new UnauthorizedException('Device session is no longer active');
+      }
     }
 
     if (user.passwordChangedAt) {

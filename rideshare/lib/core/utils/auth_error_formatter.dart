@@ -9,10 +9,7 @@ class AuthErrorFormatter {
     return message.contains('phone_verification_required');
   }
 
-  static String format(
-    Object error, {
-    required AuthAction action,
-  }) {
+  static String format(Object error, {required AuthAction action}) {
     final backendMessage = _extractBackendMessage(error);
     final message = backendMessage ?? _clean(error.toString());
     final lower = message.toLowerCase();
@@ -22,11 +19,12 @@ class AuthErrorFormatter {
     }
     if (lower.contains('email already registered') ||
         lower.contains('email already exists') ||
+        lower.contains('phone number is already registered') ||
         lower.contains('already registered')) {
-      return 'هذا البريد الإلكتروني مستخدم بالفعل. جرّب تسجيل الدخول أو استخدم بريداً آخر.';
+      return 'رقم الهاتف مستخدم بالفعل. جرّب تسجيل الدخول أو استخدم رقماً آخر.';
     }
     if (lower.contains('invalid credentials')) {
-      return 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
+      return 'رقم الهاتف أو كلمة المرور غير صحيحة.';
     }
     if (lower.contains('account is inactive')) {
       return 'الحساب غير نشط حالياً. تواصل مع الدعم.';

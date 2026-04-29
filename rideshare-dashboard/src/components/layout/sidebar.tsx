@@ -20,6 +20,7 @@ import {
   Bell,
   MessageSquare,
   Percent,
+  ShieldAlert,
 } from "lucide-react"
 import { useState } from "react"
 import { ROUTES } from "@/lib/constants"
@@ -37,8 +38,9 @@ const NAV_ITEMS: { path: string; labelKey: TranslationKey; icon: string }[] = [
   { path: ROUTES.RATINGS,           labelKey: "nav_ratings",        icon: "Star" },
   { path: ROUTES.NOTIFICATIONS,     labelKey: "nav_notifications",  icon: "Bell" },
   { path: ROUTES.CHAT,             labelKey: "nav_chat",           icon: "MessageSquare" },
-  { path: ROUTES.REPORTS,           labelKey: "nav_reports",        icon: "BarChart3" },
-  { path: ROUTES.PRICING_SETTINGS, labelKey: "nav_pricing",        icon: "Percent" },
+  { path: ROUTES.REPORTS,           labelKey: "nav_reports",          icon: "BarChart3" },
+  { path: ROUTES.PRICING_SETTINGS,  labelKey: "nav_pricing",          icon: "Percent" },
+  { path: ROUTES.ACCOUNT_FLAGS,     labelKey: "nav_accountFlags",     icon: "ShieldAlert" },
 ]
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -54,6 +56,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Bell,
   MessageSquare,
   Percent,
+  ShieldAlert,
 }
 
 interface SidebarProps {

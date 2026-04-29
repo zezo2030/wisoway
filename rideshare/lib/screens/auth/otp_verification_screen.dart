@@ -7,7 +7,8 @@ import '../../providers/auth_provider.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/colors.dart';
-import '../../core/utils/auth_error_formatter.dart';
+import '../../core/ui/error_surface.dart';
+import '../../core/api/api_client.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
   final String phoneNumber;
@@ -125,10 +126,25 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         return;
       }
 
-      // Registration flow (passenger or driver)
+      // Registration flow (passenger or driver). Forward the profile fields
+      // collected on the previous screen so the backend can provision the
+      // account on first verify when no record exists yet.
+      final firstName = (args?['firstName'] as String?)?.trim();
+      final lastName = (args?['lastName'] as String?)?.trim();
+      final composedName =
+          (args?['name'] as String?)?.trim() ??
+          ([
+            firstName,
+            lastName,
+          ].where((p) => p != null && p.isNotEmpty).join(' ').trim());
+
       await authProvider.verifyOTP(
         phoneNumber: widget.phoneNumber,
         smsCode: otpCode,
+        name: composedName.isEmpty ? null : composedName,
+        gender: args?['gender'] as String?,
+        role: args?['role'] as String?,
+        password: args?['password'] as String?,
       );
 
       if (mounted) {
@@ -136,26 +152,37 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
           await _completeDriverProfileAfterOtp(authProvider, args);
           return;
         }
+        final afterVerifyRoute = args?['afterVerifyRoute'] as String?;
         if (isDriverRegistration) {
-          // Driver registration: Navigate to complete profile
           Navigator.pushReplacementNamed(
             context,
-            RouteNames.driverCompleteProfile,
+            afterVerifyRoute ?? RouteNames.driverCompleteProfile,
+            arguments: {
+              'firstName': args?['firstName'],
+              'lastName': args?['lastName'],
+              'email': args?['email'],
+              'gender': args?['gender'],
+            },
+          );
+        } else if (afterVerifyRoute != null) {
+          Navigator.pushReplacementNamed(
+            context,
+            afterVerifyRoute,
+            arguments: {
+              'name': args?['name'],
+              'email': args?['email'],
+              'gender': args?['gender'],
+              'role': args?['role'] ?? AppConstants.rolePassenger,
+              'phoneNumber': widget.phoneNumber,
+            },
           );
         } else {
-          // Passenger registration: Navigate to home
           Navigator.pushReplacementNamed(context, RouteNames.home);
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AuthErrorFormatter.format(e, action: AuthAction.otp)),
-            backgroundColor: T.error(context),
-          ),
-        );
-        // Clear OTP fields
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
         for (var controller in _controllers) {
           controller.clear();
         }
@@ -236,12 +263,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AuthErrorFormatter.format(e, action: AuthAction.otp)),
-            backgroundColor: T.error(context),
-          ),
-        );
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     } finally {
       if (mounted) {

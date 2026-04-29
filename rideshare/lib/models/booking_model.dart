@@ -1,6 +1,42 @@
 import 'trip_model.dart';
 import 'user_model.dart';
 
+/// A single seat within a multi-seat booking (mirrors BookingSeatEntity).
+class BookingSeatModel {
+  final String id;
+  final String bookingId;
+  final String seatNumber;
+  final String displayName;
+  final String gender;
+  final bool isMainBooker;
+  final DateTime? markedAbsentAt;
+  final DateTime createdAt;
+
+  const BookingSeatModel({
+    required this.id,
+    required this.bookingId,
+    required this.seatNumber,
+    required this.displayName,
+    required this.gender,
+    required this.isMainBooker,
+    this.markedAbsentAt,
+    required this.createdAt,
+  });
+
+  factory BookingSeatModel.fromJson(Map<String, dynamic> json) {
+    return BookingSeatModel(
+      id: json['id']?.toString() ?? '',
+      bookingId: json['bookingId']?.toString() ?? '',
+      seatNumber: json['seatNumber']?.toString() ?? '',
+      displayName: json['displayName']?.toString() ?? '',
+      gender: json['gender']?.toString() ?? '',
+      isMainBooker: json['isMainBooker'] ?? false,
+      markedAbsentAt: BookingModel._dateOrNull(json['markedAbsentAt']),
+      createdAt: BookingModel._dateOrNow(json['createdAt']),
+    );
+  }
+}
+
 class BookingModel {
   final String id;
   final String tripId;
@@ -10,8 +46,14 @@ class BookingModel {
   final TripModel? tripPopulated;
   final UserModel? userPopulated;
 
-  // Seat Info
-  final String seatNumber; // now String "0-0"
+  // Seat Info — legacy v1 (single seat); nullable for v2 bookings
+  final String? seatNumber;
+
+  // Multi-seat v2 fields
+  final int seatCount;
+  final String? totalAmount;
+  final DateTime? expiresAt;
+  final List<BookingSeatModel> seats;
 
   // Privacy
   final bool sharePhoneWithDriver;
@@ -20,7 +62,18 @@ class BookingModel {
   final bool hasDriverPaidToContact;
 
   // Status
-  final String status; // 'pending' | 'confirmed' | 'cancelled' | 'completed'
+  final String status; // 'pending' | 'confirmed' | 'cancelled' | 'rejected' | 'completed' | 'no_show'
+
+  // Settlement (Phase 7 — US5)
+  final DateTime? settledAt;
+  final DateTime? settlementGraceUntil;
+
+  /// Whether the booking has been marked as paid by the driver.
+  bool get isSettled => settledAt != null;
+
+  /// Whether chat/call contact is allowed (post-settlement reveal).
+  final bool chatEnabled;
+  final bool callEnabled;
 
   // Metadata
   final DateTime createdAt;
@@ -35,9 +88,17 @@ class BookingModel {
     required this.userId,
     this.tripPopulated,
     this.userPopulated,
-    required this.seatNumber,
+    this.seatNumber,
+    this.seatCount = 1,
+    this.totalAmount,
+    this.expiresAt,
+    this.seats = const [],
     this.sharePhoneWithDriver = true,
     this.hasDriverPaidToContact = false,
+    this.settledAt,
+    this.settlementGraceUntil,
+    this.chatEnabled = false,
+    this.callEnabled = false,
     this.status = 'pending',
     required this.createdAt,
     required this.updatedAt,
@@ -49,6 +110,23 @@ class BookingModel {
   static String _str(dynamic v) => v == null
       ? ''
       : (v is Map ? (v['_id'] ?? v['id'])?.toString() ?? '' : v.toString());
+
+  static DateTime? _dateOrNull(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    return DateTime.tryParse(value.toString());
+  }
+
+  static DateTime _dateOrNow(dynamic value) {
+    return _dateOrNull(value) ?? DateTime.now();
+  }
+
+  static int _intOr(dynamic value, int fallback) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? fallback;
+    return fallback;
+  }
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
     // TypeORM returns relation as 'trip', Mongoose may use 'tripId' when populated
@@ -73,25 +151,35 @@ class BookingModel {
       pUserId = _str(json['userId']);
     }
 
+    final seatsJson = json['seats'];
+    final List<BookingSeatModel> parsedSeats = seatsJson is List
+        ? seatsJson
+            .whereType<Map<String, dynamic>>()
+            .map(BookingSeatModel.fromJson)
+            .toList()
+        : [];
+
     return BookingModel(
       id: _str(json['_id'] ?? json['id']),
       tripId: pTripId,
       userId: pUserId,
       tripPopulated: pTripObj,
       userPopulated: pUserObj,
-      seatNumber: json['seatNumber'].toString(),
+      seatNumber: json['seatNumber']?.toString(),
+      seatCount: _intOr(json['seatCount'], 1),
+      totalAmount: json['totalAmount']?.toString(),
+      expiresAt: _dateOrNull(json['expiresAt']),
+      seats: parsedSeats,
       sharePhoneWithDriver: json['sharePhoneWithDriver'] ?? true,
       hasDriverPaidToContact: json['hasDriverPaidToContact'] ?? false,
+      settledAt: _dateOrNull(json['settledAt']),
+      settlementGraceUntil: _dateOrNull(json['settlementGraceUntil']),
+      chatEnabled: json['chatEnabled'] ?? false,
+      callEnabled: json['callEnabled'] ?? false,
       status: json['status'] ?? 'pending',
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : DateTime.now(),
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
-          : DateTime.now(),
-      cancelledAt: json['cancelledAt'] != null
-          ? DateTime.parse(json['cancelledAt'])
-          : null,
+      createdAt: _dateOrNow(json['createdAt']),
+      updatedAt: _dateOrNow(json['updatedAt']),
+      cancelledAt: _dateOrNull(json['cancelledAt']),
       cancelledBy: json['cancelledBy'],
       cancellationReason: json['cancellationReason'],
     );
@@ -102,7 +190,9 @@ class BookingModel {
       if (id.isNotEmpty) '_id': id,
       'tripId': tripId,
       'userId': userId,
-      'seatNumber': seatNumber,
+      if (seatNumber != null) 'seatNumber': seatNumber,
+      'seatCount': seatCount,
+      if (totalAmount != null) 'totalAmount': totalAmount,
       'sharePhoneWithDriver': sharePhoneWithDriver,
       'hasDriverPaidToContact': hasDriverPaidToContact,
       'status': status,
@@ -123,8 +213,16 @@ class BookingModel {
     TripModel? tripPopulated,
     UserModel? userPopulated,
     String? seatNumber,
+    int? seatCount,
+    String? totalAmount,
+    DateTime? expiresAt,
+    List<BookingSeatModel>? seats,
     bool? sharePhoneWithDriver,
     bool? hasDriverPaidToContact,
+    DateTime? settledAt,
+    DateTime? settlementGraceUntil,
+    bool? chatEnabled,
+    bool? callEnabled,
     String? status,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -139,9 +237,17 @@ class BookingModel {
       tripPopulated: tripPopulated ?? this.tripPopulated,
       userPopulated: userPopulated ?? this.userPopulated,
       seatNumber: seatNumber ?? this.seatNumber,
+      seatCount: seatCount ?? this.seatCount,
+      totalAmount: totalAmount ?? this.totalAmount,
+      expiresAt: expiresAt ?? this.expiresAt,
+      seats: seats ?? this.seats,
       sharePhoneWithDriver: sharePhoneWithDriver ?? this.sharePhoneWithDriver,
       hasDriverPaidToContact:
           hasDriverPaidToContact ?? this.hasDriverPaidToContact,
+      settledAt: settledAt ?? this.settledAt,
+      settlementGraceUntil: settlementGraceUntil ?? this.settlementGraceUntil,
+      chatEnabled: chatEnabled ?? this.chatEnabled,
+      callEnabled: callEnabled ?? this.callEnabled,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -156,8 +262,18 @@ class BookingModel {
   bool get isConfirmed => status == 'confirmed';
   bool get isCancelled => status == 'cancelled';
   bool get isCompleted => status == 'completed';
+  bool get isRejected => status == 'rejected';
+  bool get isNoShow => status == 'no_show';
 
   bool get canBeCancelled => isPending || isConfirmed;
+
+  /// Display seat info: prefer seats list (v2), fall back to seatNumber (v1).
+  String get seatSummary {
+    if (seats.isNotEmpty) {
+      return seats.map((s) => s.seatNumber).join(', ');
+    }
+    return seatNumber ?? '';
+  }
 
   static bool isPastBooking(BookingModel booking, TripModel? trip) {
     if (booking.isCancelled || booking.isCompleted) return true;

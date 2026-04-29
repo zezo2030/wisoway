@@ -8,6 +8,8 @@ import { randomUUID } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import {
+  BookingEntity,
+  BookingStatus,
   PayoutRequestEntity,
   TripEntity,
   WalletAccountEntity,
@@ -241,18 +243,31 @@ export class WalletService {
   async chargeDriverForTrip(driverId: string, dto: DriverTripChargeDto) {
     const trip = await this.tripRepo.findOne({
       where: { id: dto.tripId, driverId },
-      select: ['id', 'driverId'],
     });
     if (!trip) {
       throw new NotFoundException('Trip not found for this driver');
+    }
+    if (trip.driverWalletChargeApplied) {
+      const existingTripCharge = await this.walletTxRepo.findOne({
+        where: {
+          referenceType: 'trip',
+          referenceId: dto.tripId,
+          type: WalletTransactionType.TRIP_DEBIT,
+        },
+        order: { createdAt: 'DESC' },
+      });
+      if (existingTripCharge) return existingTripCharge;
+      throw new BadRequestException('Trip fee has already been paid');
     }
 
     const account = await this.getOrCreateAccount(
       driverId,
       WalletAccountType.DRIVER,
-      'JOD',
+      trip.currency || 'JOD',
     );
-    const fee = 10;
+    const seatPrice = Number(trip.price ?? 0);
+    const totalSeats = Number(trip.totalSeats ?? 0);
+    const fee = Math.round(seatPrice * totalSeats * 0.05 * 100) / 100;
 
     const existing = dto.idempotencyKey
       ? await this.walletTxRepo.findOne({
@@ -291,8 +306,34 @@ export class WalletService {
         referenceType: 'trip',
         referenceId: dto.tripId,
         idempotencyKey: dto.idempotencyKey ?? null,
+        metadata: {
+          seatPrice,
+          totalSeats,
+          percent: 5,
+          formula: 'seatPrice * totalSeats * 5%',
+        },
       });
-      return manager.save(tx);
+      const savedTx = await manager.save(tx);
+
+      await manager.update(
+        TripEntity,
+        { id: dto.tripId },
+        {
+          driverWalletChargeApplied: true,
+          driverWalletChargeAt: new Date(),
+          communicationFeeStatus: 'paid',
+        },
+      );
+      await manager.update(
+        BookingEntity,
+        {
+          tripId: dto.tripId,
+          status: In([BookingStatus.PENDING, BookingStatus.CONFIRMED]),
+        },
+        { hasDriverPaidToContact: true },
+      );
+
+      return savedTx;
     });
   }
 

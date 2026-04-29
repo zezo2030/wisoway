@@ -3,6 +3,19 @@ import 'dotenv/config';
 import { AppDataSource } from '../data-source';
 
 const CLEAR_ORDER = [
+  // ── 008-platform-completion new tables (must precede their FK parents) ──────
+  'settlement_audits',
+  'call_sessions',
+  'refund_requests',
+  'complaints',
+  'trip_share_links',
+  'trip_recurrence_rules',
+  'pending_charges',
+  'booking_seats',
+  'security_events',
+  'account_flags',
+  'user_devices',
+  // ── Existing tables ──────────────────────────────────────────────────────────
   'wallet_holds',
   'wallet_transactions',
   'payout_requests',
@@ -29,24 +42,28 @@ async function run() {
 
   try {
     await AppDataSource.query('BEGIN');
-    
+
     // Check which tables exist before trying to truncate
     const tablesInDb = await AppDataSource.query(
-      "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
+      "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",
     );
     const existingTables = tablesInDb.map((t: any) => t.table_name);
-    const tablesToClear = CLEAR_ORDER.filter(table => existingTables.includes(table));
+    const tablesToClear = CLEAR_ORDER.filter((table) =>
+      existingTables.includes(table),
+    );
 
     if (tablesToClear.length > 0) {
-      const tableList = tablesToClear.map((table) => '"' + table + '"').join(', ');
+      const tableList = tablesToClear
+        .map((table) => '"' + table + '"')
+        .join(', ');
       await AppDataSource.query(
-        "TRUNCATE TABLE " + tableList + " RESTART IDENTITY CASCADE",
+        'TRUNCATE TABLE ' + tableList + ' RESTART IDENTITY CASCADE',
       );
       console.log('Postgres database cleared successfully.');
     } else {
       console.log('No tables found to clear.');
     }
-    
+
     await AppDataSource.query('COMMIT');
   } catch (error) {
     await AppDataSource.query('ROLLBACK');

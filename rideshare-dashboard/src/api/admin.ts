@@ -16,6 +16,13 @@ import type {
   Notification,
   ChatRoom,
   ChatMessage,
+  AccountFlag,
+  PendingCharge,
+  SettlementAudit,
+  Complaint,
+  ComplaintStatus,
+  RefundRequest,
+  RefundRequestStatus,
 } from "@/types/models"
 import type {
   ApiResponse,
@@ -373,5 +380,192 @@ export async function patchPlatformPricingSettings(
   const response = await apiClient.patch<ApiResponse<PlatformPricingSettings>>("/admin/pricing-settings", body, {
     params: { countryCode },
   })
+  return response.data.data
+}
+
+// ─── Account Flags (Phase 3) ─────────────────────────────────────────────────
+
+export interface GetAccountFlagsParams {
+  page?: number
+  limit?: number
+  disposition?: 'open' | 'resolved' | 'dismissed'
+  severity?: string
+  userId?: string
+}
+
+export async function getAccountFlags(
+  params: GetAccountFlagsParams = {},
+): Promise<PaginatedResult<AccountFlag>> {
+  const response = await apiClient.get<ApiResponse<PaginatedResult<AccountFlag>>>(
+    "/admin/account-flags",
+    { params },
+  )
+  return response.data.data
+}
+
+export async function resolveAccountFlag(flagId: string): Promise<AccountFlag> {
+  const response = await apiClient.patch<ApiResponse<AccountFlag>>(
+    `/admin/account-flags/${flagId}/resolve`,
+  )
+  return response.data.data
+}
+
+export async function dismissAccountFlag(flagId: string): Promise<AccountFlag> {
+  const response = await apiClient.patch<ApiResponse<AccountFlag>>(
+    `/admin/account-flags/${flagId}/dismiss`,
+  )
+  return response.data.data
+}
+
+// ─── Pending Charges (Phase 4) ────────────────────────────────────────────────
+
+export interface GetPendingChargesParams {
+  page?: number
+  limit?: number
+  status?: 'pending' | 'collected' | 'waived' | 'failed'
+  userId?: string
+}
+
+export async function getPendingCharges(
+  params: GetPendingChargesParams = {},
+): Promise<PaginatedResult<PendingCharge>> {
+  const response = await apiClient.get<ApiResponse<PaginatedResult<PendingCharge>>>(
+    "/admin/pending-charges",
+    { params },
+  )
+  return response.data.data
+}
+
+export async function waivePendingCharge(chargeId: string): Promise<PendingCharge> {
+  const response = await apiClient.patch<ApiResponse<PendingCharge>>(
+    `/admin/pending-charges/${chargeId}/waive`,
+  )
+  return response.data.data
+}
+
+// ─── Settlement (Phase 7) ─────────────────────────────────────────────────────
+
+/**
+ * Admin revert of a booking settlement.
+ * POST /admin/bookings/:bookingId/admin-revert-settlement
+ */
+export async function adminRevertSettlement(
+  bookingId: string,
+  reason?: string,
+): Promise<Booking> {
+  const response = await apiClient.post<ApiResponse<Booking>>(
+    `/admin/bookings/${bookingId}/admin-revert-settlement`,
+    { reason },
+  )
+  return response.data.data
+}
+
+/**
+ * Get settlement audit trail for a booking.
+ * GET /admin/bookings/:bookingId/settlement-audits
+ */
+export async function getSettlementAudits(bookingId: string): Promise<SettlementAudit[]> {
+  const response = await apiClient.get<ApiResponse<SettlementAudit[]>>(
+    `/admin/bookings/${bookingId}/settlement-audits`,
+  )
+  return response.data.data
+}
+
+// ─── Ban (Phase 8) ────────────────────────────────────────────────────────────
+
+export async function banUser(userId: string, banReason?: string): Promise<User> {
+  const response = await apiClient.post<ApiResponse<User>>(
+    `/admin/users/${userId}/ban`,
+    { banReason },
+  )
+  return response.data.data
+}
+
+export async function unbanUser(userId: string): Promise<User> {
+  const response = await apiClient.post<ApiResponse<User>>(
+    `/admin/users/${userId}/unban`,
+    {},
+  )
+  return response.data.data
+}
+
+// ─── User Devices (Phase 8) ───────────────────────────────────────────────────
+
+export interface UserDevice {
+  id: string
+  userId: string
+  deviceId: string
+  platform: string
+  deviceName?: string
+  status: 'active' | 'revoked'
+  revokedAt?: string
+  revokeReason?: string
+  lastSeenAt?: string
+  createdAt: string
+}
+
+export async function getUserDevices(userId: string): Promise<UserDevice[]> {
+  const response = await apiClient.get<ApiResponse<UserDevice[]>>(
+    `/admin/users/${userId}/devices`,
+  )
+  return response.data.data
+}
+
+// ─── Complaints (Phase 8) ─────────────────────────────────────────────────────
+
+export interface GetComplaintsParams {
+  page?: number
+  limit?: number
+  status?: ComplaintStatus
+  cursor?: string
+}
+
+export async function getComplaints(
+  params: GetComplaintsParams = {},
+): Promise<PaginatedResult<Complaint>> {
+  const response = await apiClient.get<ApiResponse<PaginatedResult<Complaint>>>(
+    "/admin/complaints",
+    { params },
+  )
+  return response.data.data
+}
+
+export async function updateComplaint(
+  id: string,
+  payload: { status: ComplaintStatus; adminNotes?: string },
+): Promise<Complaint> {
+  const response = await apiClient.patch<ApiResponse<Complaint>>(
+    `/admin/complaints/${id}`,
+    payload,
+  )
+  return response.data.data
+}
+
+// ─── Refund Requests (Phase 8) ────────────────────────────────────────────────
+
+export interface GetRefundRequestsParams {
+  page?: number
+  limit?: number
+  status?: RefundRequestStatus
+}
+
+export async function getRefundRequests(
+  params: GetRefundRequestsParams = {},
+): Promise<PaginatedResult<RefundRequest>> {
+  const response = await apiClient.get<ApiResponse<PaginatedResult<RefundRequest>>>(
+    "/admin/refund-requests",
+    { params },
+  )
+  return response.data.data
+}
+
+export async function updateRefundRequest(
+  id: string,
+  payload: { status: RefundRequestStatus; adminNotes?: string },
+): Promise<RefundRequest> {
+  const response = await apiClient.patch<ApiResponse<RefundRequest>>(
+    `/admin/refund-requests/${id}`,
+    payload,
+  )
   return response.data.data
 }

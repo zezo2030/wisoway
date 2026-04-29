@@ -7,6 +7,7 @@ import '../core/theme/colors.dart';
 class SeatLayoutWidget extends StatelessWidget {
   final TripModel trip;
   final int? selectedSeat;
+  final List<int> selectedSeats;
   final String? userGender;
   final Function(int)? onSeatTap;
 
@@ -14,6 +15,7 @@ class SeatLayoutWidget extends StatelessWidget {
     super.key,
     required this.trip,
     this.selectedSeat,
+    this.selectedSeats = const [],
     this.userGender,
     this.onSeatTap,
   });
@@ -79,7 +81,9 @@ class SeatLayoutWidget extends StatelessWidget {
                                   seatNumber <= trip.seats.length)
                               ? trip.seats[seatNumber - 1]
                               : null,
-                          isSelected: selectedSeat == seatNumber,
+                          isSelected:
+                              selectedSeat == seatNumber ||
+                              selectedSeats.contains(seatNumber),
                           status: userGender != null
                               ? SeatValidation.getSeatStatus(
                                   trip: trip,

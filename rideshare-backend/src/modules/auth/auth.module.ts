@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -8,26 +7,37 @@ import { AuthService } from './auth.service';
 import { UsersModule } from '../users/users.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
-import { PasswordResetSessionEntity } from '../../database/entities';
+import { DeviceFingerprintService } from './device-fingerprint.service';
+import { AccountRiskService } from './account-risk.service';
+import {
+  UserDeviceEntity,
+  AccountFlagEntity,
+  SecurityEventEntity,
+  UserEntity,
+  PasswordResetSessionEntity,
+} from '../../database/entities';
 
 @Module({
   imports: [
     UsersModule,
     PassportModule,
-    TypeOrmModule.forFeature([PasswordResetSessionEntity]),
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_ACCESS_SECRET'),
-        signOptions: {
-          expiresIn: '15m',
-        },
-      }),
-      inject: [ConfigService],
-    }),
+    TypeOrmModule.forFeature([
+      UserDeviceEntity,
+      AccountFlagEntity,
+      SecurityEventEntity,
+      UserEntity,
+      PasswordResetSessionEntity,
+    ]),
+    ConfigModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, JwtRefreshStrategy],
-  exports: [AuthService],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    JwtRefreshStrategy,
+    DeviceFingerprintService,
+    AccountRiskService,
+  ],
+  exports: [AuthService, DeviceFingerprintService],
 })
 export class AuthModule {}

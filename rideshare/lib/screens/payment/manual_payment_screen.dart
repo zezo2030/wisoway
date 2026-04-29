@@ -8,6 +8,9 @@ import '../../core/theme/colors.dart';
 import '../../core/theme/text_styles.dart';
 import '../../models/payment_model.dart';
 import '../../../widgets/common/section_card.dart';
+import '../../core/ui/error_surface.dart';
+import '../../core/api/api_client.dart';
+import '../../core/errors/failure.dart';
 
 class ManualPaymentScreen extends StatefulWidget {
   final String paymentId;
@@ -62,12 +65,7 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
         setState(() => _payment = null);
       }
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في تحميل بيانات الدفع: ${e.toString()}'),
-            backgroundColor: T.error(context),
-          ),
-        );
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     }
   }
@@ -94,20 +92,26 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_selectedWalletType == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('يرجى اختيار نوع المحفظة'),
-          backgroundColor: T.error(context),
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.validation,
+          messageKey: 'errorsValidationGeneric',
+          severity: FailureSeverity.warning,
+          developerDetail: 'Wallet type not selected',
         ),
       );
       return;
     }
 
     if (_proofImage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('يرجى رفع صورة إثبات الدفع'),
-          backgroundColor: T.error(context),
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.validation,
+          messageKey: 'errorsValidationGeneric',
+          severity: FailureSeverity.warning,
+          developerDetail: 'Payment proof not uploaded',
         ),
       );
       return;
@@ -139,12 +143,7 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ: ${e.toString()}'),
-            backgroundColor: T.error(context),
-          ),
-        );
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     } finally {
       if (mounted) {

@@ -6,7 +6,6 @@ import '../core/api/websocket_service.dart';
 import '../models/trip_model.dart';
 import 'dart:async';
 import '../models/location_model.dart';
-import '../models/seat_layout_config.dart';
 
 class TripProvider extends ChangeNotifier {
   final TripService _tripService = TripService();
@@ -87,23 +86,22 @@ class TripProvider extends ChangeNotifier {
     _setError(null);
   }
 
-  // Create a new trip
+  // Create a new trip — seat layout is read from the driver's vehicle
+  // server-side, so callers don't pass it here.
   Future<String?> createTrip({
     required LocationModel from,
     required LocationModel to,
     required DateTime departureTime,
     required double price,
     required String currency,
-    required SeatLayoutConfig seatLayout,
     File? carImage,
+    List<LocationModel>? stops,
+    String? notes,
+    Map<String, dynamic>? recurrence,
   }) async {
     try {
       _setLoading(true);
       _setError(null);
-
-      // Note: Image upload should ideally be handled here via a generic upload service
-      // But for the scope of the provider update, we pass null or skip image logic
-      // since we removed storage_service which was hardcoded to Firebase.
 
       final tripId = await _tripService.createTrip(
         from: from,
@@ -111,8 +109,10 @@ class TripProvider extends ChangeNotifier {
         departureTime: departureTime,
         price: price,
         currency: currency,
-        seatLayout: seatLayout,
         carImageUrl: null,
+        stops: stops,
+        notes: notes,
+        recurrence: recurrence,
       );
 
       await fetchDriverTrips();

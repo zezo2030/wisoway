@@ -31,6 +31,27 @@ class LocationModel {
     );
   }
 
+  /// Create from a StopDto-shaped map (backend uses lat/lng instead of latitude/longitude).
+  factory LocationModel.fromStopMap(Map<String, dynamic> map) {
+    return LocationModel(
+      name: map['name'] ?? '',
+      latitude: ((map['lat'] ?? map['latitude']) ?? 0.0).toDouble(),
+      longitude: ((map['lng'] ?? map['longitude']) ?? 0.0).toDouble(),
+      address: map['address'],
+    );
+  }
+
+  /// Serialize as a StopDto (lat/lng keys, with order).
+  Map<String, dynamic> toStopMap({required int order}) {
+    return {
+      'name': name,
+      'lat': latitude,
+      'lng': longitude,
+      if (address != null) 'address': address,
+      'order': order,
+    };
+  }
+
   // Create a copy with updated fields
   LocationModel copyWith({
     String? name,

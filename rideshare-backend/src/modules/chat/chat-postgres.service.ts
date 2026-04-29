@@ -54,16 +54,14 @@ export class ChatPostgresService {
         'Passenger must have a confirmed booking for this trip',
       );
     }
-    const hasPaidFee =
-      booking.hasDriverPaidToContact ??
-      (await this.paymentsService.hasUserPaidCommunicationFee(
-        booking.id,
-        driverId,
-      ));
-    if (!hasPaidFee) {
-      throw new ForbiddenException(
-        'Driver has not paid the communication fee to unlock chat',
-      );
+    // Phase 7 (US5): chat is gated on settlement — booking must be marked paid.
+    if (!booking.settledAt) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        code: 'BOOKING_NOT_SETTLED',
+        message:
+          'Chat is only available after the driver marks the booking as paid',
+      });
     }
 
     let room = await this.chatRoomRepo.findOne({
@@ -144,16 +142,14 @@ export class ChatPostgresService {
           'You must have a confirmed booking to access this chat',
         );
       }
-      const hasPaidFee =
-        booking.hasDriverPaidToContact ??
-        (await this.paymentsService.hasUserPaidCommunicationFee(
-          booking.id,
-          trip.driverId,
-        ));
-      if (!hasPaidFee) {
-        throw new ForbiddenException(
-          'Driver has not paid the communication fee to unlock chat',
-        );
+      // Phase 7 (US5): settlement gate — booking must be marked paid.
+      if (!booking.settledAt) {
+        throw new ForbiddenException({
+          statusCode: 403,
+          code: 'BOOKING_NOT_SETTLED',
+          message:
+            'Chat is only available after the driver marks the booking as paid',
+        });
       }
     }
   }
@@ -204,6 +200,25 @@ export class ChatPostgresService {
       throw new ForbiddenException(
         'You are not a participant in this chat room',
       );
+    }
+
+    // Phase 7 (US5): settlement gate — reject messages on unsettled rooms.
+    if (room.passengerId) {
+      const booking = await this.bookingRepo.findOne({
+        where: {
+          tripId: room.tripId,
+          userId: room.passengerId,
+          status: 'confirmed',
+        },
+      });
+      if (booking && !booking.settledAt) {
+        throw new ForbiddenException({
+          statusCode: 403,
+          code: 'BOOKING_NOT_SETTLED',
+          message:
+            'Chat is only available after the driver marks the booking as paid',
+        });
+      }
     }
 
     const user = await this.userRepo.findOne({ where: { id: userId } });

@@ -105,6 +105,33 @@ class AccountSecurityScreen extends StatelessWidget {
                 ),
             ],
           ),
+          SettingsSection(
+            title: isArabic ? 'الأجهزة الموثوقة' : 'Trusted Devices',
+            children: [
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                leading: Icon(
+                  IconsaxPlusBroken.mobile,
+                  color: T.primary(context),
+                ),
+                title: Text(isArabic ? 'إدارة الأجهزة' : 'Manage Devices'),
+                subtitle: Text(
+                  isArabic
+                      ? 'عرض وإلغاء الأجهزة المرتبطة بحسابك'
+                      : 'View and revoke devices linked to your account',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: T.onSurfaceVariant(context),
+                  ),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => Navigator.pushNamed(
+                  context,
+                  RouteNames.accountSecurityDevices,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

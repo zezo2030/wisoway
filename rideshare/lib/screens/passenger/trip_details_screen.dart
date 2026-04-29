@@ -13,6 +13,8 @@ import '../../core/services/chat_service.dart';
 import '../../core/services/rating_service.dart';
 import '../../core/api/websocket_service.dart';
 import '../../core/theme/colors.dart';
+import '../../core/ui/error_surface.dart';
+import '../../core/api/api_client.dart';
 
 class TripDetailsScreen extends StatefulWidget {
   final String tripId;
@@ -70,12 +72,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في تحميل الرحلة: ${e.toString()}'),
-            backgroundColor: T.error(context),
-          ),
-        );
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     }
   }
@@ -196,7 +193,39 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    // Intermediate stops
+                    if (trip.stops.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      ...trip.stops.asMap().entries.map((entry) {
+                        final i = entry.key;
+                        final stop = entry.value;
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.radio_button_checked,
+                                color: T.secondary(context),
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  '${i + 1}. ${stop.name}',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: T.onSurface(context)
+                                        .withValues(alpha: 0.70),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 4),
+                    ] else
+                      const SizedBox(height: 8),
                     Row(
                       children: [
                         Icon(Icons.location_city, color: T.error(context)),
@@ -362,7 +391,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            if (userModel != null) ...[
+            // Driver notes card
+            if (trip.notes != null && trip.notes!.isNotEmpty)
               Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
                 child: Padding(
@@ -370,25 +400,37 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'تخطيط المقاعد',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.sticky_note_2_outlined,
+                            color: T.secondary(context),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'ملاحظات السائق',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 16),
-                      SeatLayoutWidget(
-                        trip: trip,
-                        userGender: userModel.gender,
+                      const SizedBox(height: 12),
+                      Text(
+                        trip.notes!,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: T.onSurface(context).withValues(alpha: 0.80),
+                          height: 1.5,
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-            ],
-            if (trip.carImageUrl != null) ...[
+            if (userModel != null && trip.carImageUrl != null) ...[
               Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
                 child: Padding(

@@ -35,6 +35,14 @@ export class VehicleEntity {
   @Column({ type: 'int' })
   seats: number;
 
+  @Column({ type: 'jsonb', nullable: true })
+  seatLayout: {
+    rows: number;
+    seatsPerRow: number;
+    seatsPerRowList?: number[];
+    preventGenderMixing?: boolean;
+  } | null;
+
   @Column({ type: 'text', nullable: true })
   licenseImageUrl: string | null;
 

@@ -16,6 +16,7 @@
     "db:migration:run": "node -r dotenv/config -r ts-node/register ./node_modules/typeorm/cli.js -d src/database/data-source.ts migration:run",
     "db:migration:revert": "node -r ts-node/register ./node_modules/typeorm/cli.js -d src/database/data-source.ts migration:revert",
     "db:clear": "ts-node src/database/scripts/clear-postgres.ts",
+    "db:clear-trips": "ts-node src/database/scripts/clear-trips.ts",
     "db:backfill": "ts-node src/database/scripts/backfill-mongo-to-postgres.ts",
     "seed:admin": "ts-node -r tsconfig-paths/register seed-admin.ts",
     "test": "jest",
@@ -100,15 +101,18 @@
       "json",
       "ts"
     ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
+    "rootDir": ".",
+    "testMatch": [
+      "<rootDir>/src/**/*.spec.ts",
+      "<rootDir>/test/unit/**/*.spec.ts"
+    ],
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "src/**/*.(t|j)s"
     ],
-    "coverageDirectory": "../coverage",
+    "coverageDirectory": "coverage",
     "testEnvironment": "node"
   }
 }

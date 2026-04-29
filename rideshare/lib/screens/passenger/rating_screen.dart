@@ -5,6 +5,9 @@ import '../../core/services/rating_service.dart';
 import '../../models/trip_model.dart';
 import '../../widgets/rating_widget.dart';
 import '../../core/theme/colors.dart';
+import '../../core/ui/error_surface.dart';
+import '../../core/api/api_client.dart';
+import '../../core/errors/failure.dart';
 
 class RatingScreen extends StatefulWidget {
   final String tripId;
@@ -52,10 +55,14 @@ class _RatingScreenState extends State<RatingScreen> {
     final currentUser = authProvider.userModel;
 
     if (currentUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('يجب تسجيل الدخول'),
-          backgroundColor: T.error(context),
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.auth,
+          messageKey: 'errorsAuthSessionExpired',
+          severity: FailureSeverity.error,
+          nextAction: FailureAction.reauthenticate,
+          developerDetail: 'User not authenticated',
         ),
       );
       return;
@@ -99,12 +106,7 @@ class _RatingScreenState extends State<RatingScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في إرسال التقييم: ${e.toString()}'),
-            backgroundColor: T.error(context),
-          ),
-        );
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     } finally {
       if (mounted) {

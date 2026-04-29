@@ -6,13 +6,16 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/trip_provider.dart';
+import '../../core/constants/route_names.dart';
 import '../../core/services/storage_service.dart';
-import '../../models/location_model.dart';
-import '../../models/seat_layout_config.dart';
-import '../../widgets/location_picker_widget.dart';
 import '../../core/services/vehicle_service.dart';
+import '../../models/location_model.dart';
+import '../../models/vehicle_model.dart';
+import '../../widgets/location_picker_widget.dart';
 import '../../core/theme/text_styles.dart';
 import '../../core/theme/colors.dart';
+import '../../core/ui/error_surface.dart';
+import '../../core/api/api_client.dart';
 
 class CreateTripScreen extends StatefulWidget {
   const CreateTripScreen({super.key});
@@ -34,12 +37,31 @@ class _CreateTripScreenState extends State<CreateTripScreen>
   LocationModel? _toLocation;
   DateTime? _departureTime;
   File? _carImage;
-  int _rows = 2;
-  int _seatsPerRow = 2;
-  bool _isCustomLayout = false;
-  final List<int> _customRowConfigs = [1, 3];
-  bool _preventGenderMixing = true;
+  VehicleModel? _vehicle;
+  bool _isLoadingVehicle = true;
   bool _isLoading = false;
+
+  // Stops (up to 5 intermediate waypoints)
+  final List<LocationModel> _stops = [];
+
+  // Notes
+  final TextEditingController _notesController = TextEditingController();
+
+  // Recurrence
+  bool _enableRecurrence = false;
+  String _recurrenceFrequency = 'weekly'; // 'daily' | 'weekly'
+  final Set<String> _selectedWeekdays = {};
+  DateTime? _recurrenceUntil;
+
+  static const Map<String, String> _weekdayLabels = {
+    'sun': 'أحد',
+    'mon': 'اثنين',
+    'tue': 'ثلاثاء',
+    'wed': 'أربعاء',
+    'thu': 'خميس',
+    'fri': 'جمعة',
+    'sat': 'سبت',
+  };
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -65,12 +87,14 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     if (user != null) {
       final vehicleService = VehicleService();
       final vehicleInfo = await vehicleService.getMyVehicle();
-      if (vehicleInfo != null && mounted) {
+      if (mounted) {
         setState(() {
-          _rows = 2;
-          _seatsPerRow = (vehicleInfo.seats) ~/ 2;
+          _vehicle = vehicleInfo;
+          _isLoadingVehicle = false;
         });
       }
+    } else if (mounted) {
+      setState(() => _isLoadingVehicle = false);
     }
   }
 
@@ -79,6 +103,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     _fromController.dispose();
     _toController.dispose();
     _priceController.dispose();
+    _notesController.dispose();
     _fadeController.dispose();
     super.dispose();
   }
@@ -206,20 +231,26 @@ class _CreateTripScreenState extends State<CreateTripScreen>
 
       if (user == null) throw Exception('المستخدم غير مسجل دخول');
 
-      final seatLayout = SeatLayoutConfig(
-        rows: _rows,
-        seatsPerRow: _seatsPerRow,
-        seatsPerRowList: _isCustomLayout ? _customRowConfigs : null,
-        preventGenderMixing: _preventGenderMixing,
-      );
-
       final tripId = await tripProvider.createTrip(
         from: _fromLocation!,
         to: _toLocation!,
         departureTime: _departureTime!,
         price: double.parse(_priceController.text.trim()),
         currency: 'JOD',
-        seatLayout: seatLayout,
+        stops: _stops.isNotEmpty ? List.of(_stops) : null,
+        notes: _notesController.text.trim().isNotEmpty
+            ? _notesController.text.trim()
+            : null,
+        recurrence: _enableRecurrence
+            ? {
+                'frequency': _recurrenceFrequency,
+                if (_recurrenceFrequency == 'weekly' &&
+                    _selectedWeekdays.isNotEmpty)
+                  'weekdays': _selectedWeekdays.toList(),
+                if (_recurrenceUntil != null)
+                  'until': DateFormat('yyyy-MM-dd').format(_recurrenceUntil!),
+              }
+            : null,
       );
 
       if (tripId != null && mounted) {
@@ -229,7 +260,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
         throw Exception('فشل إنشاء الرحلة');
       }
     } catch (e) {
-      if (mounted) _showError('خطأ: ${e.toString()}');
+      if (mounted) ErrorSurface.showFailure(context, ApiClient.mapError(e));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -384,22 +415,28 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                 ),
                 child: Form(
                   key: _formKey,
-                  child: Column(
-                    children: [
-                      _buildHeaderIllustration(),
-                      SizedBox(height: _verticalSpacing(context)),
-                      _buildLocationsCard(),
-                      SizedBox(height: _cardGap(context)),
-                      _buildDetailsCard(),
-                      SizedBox(height: _cardGap(context)),
-                      _buildSeatingCard(),
-                      SizedBox(height: _cardGap(context)),
-                      _buildCarImageCard(),
-                      SizedBox(height: _verticalSpacing(context) * 1.5),
-                      _buildSubmitButton(),
-                      SizedBox(height: _verticalSpacing(context)),
-                    ],
-                  ),
+                    child: Column(
+                      children: [
+                        _buildHeaderIllustration(),
+                        SizedBox(height: _verticalSpacing(context)),
+                        _buildLocationsCard(),
+                        SizedBox(height: _cardGap(context)),
+                        _buildStopsCard(),
+                        SizedBox(height: _cardGap(context)),
+                        _buildDetailsCard(),
+                        SizedBox(height: _cardGap(context)),
+                        _buildNotesCard(),
+                        SizedBox(height: _cardGap(context)),
+                        _buildRecurrenceCard(),
+                        SizedBox(height: _cardGap(context)),
+                        _buildVehicleSeatingSummaryCard(),
+                        SizedBox(height: _cardGap(context)),
+                        _buildCarImageCard(),
+                        SizedBox(height: _verticalSpacing(context) * 1.5),
+                        _buildSubmitButton(),
+                        SizedBox(height: _verticalSpacing(context)),
+                      ],
+                    ),
                 ),
               ),
             ),
@@ -623,10 +660,14 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     );
   }
 
-  Widget _buildSeatingCard() {
-    int totalSeats = _isCustomLayout
-        ? _customRowConfigs.fold(0, (sum, item) => sum + item)
-        : _rows * _seatsPerRow;
+  Widget _buildVehicleSeatingSummaryCard() {
+    final vehicle = _vehicle;
+    final layout = vehicle?.seatLayout;
+    final totalSeats = layout != null
+        ? (layout.seatsPerRowList != null && layout.seatsPerRowList!.isNotEmpty
+              ? layout.seatsPerRowList!.fold<int>(0, (s, v) => s + v)
+              : layout.rows * layout.seatsPerRow)
+        : (vehicle?.seats ?? 0);
 
     return _buildGlassCard(
       child: Column(
@@ -636,166 +677,69 @@ class _CreateTripScreenState extends State<CreateTripScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'إعدادات المقاعد',
+                'مقاعد السيارة',
                 style: AppTextStyles.titleMedium.copyWith(
                   fontWeight: FontWeight.bold,
                   color: T.onSurface(context),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: T.primary(context).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '$totalSeats مقعد',
-                  style: AppTextStyles.titleMedium.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: T.primary(context),
+              if (!_isLoadingVehicle && vehicle != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: T.primary(context).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '$totalSeats مقعد',
+                    style: AppTextStyles.titleMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: T.primary(context),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
-          const SizedBox(height: 20),
-
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: T.surfaceVariant(context),
-              borderRadius: BorderRadius.circular(16),
+          const SizedBox(height: 12),
+          if (_isLoadingVehicle)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: LinearProgressIndicator(),
+            )
+          else
+            Text(
+              layout != null
+                  ? 'تخطيط المقاعد ومنع الاختلاط مأخوذان من إعدادات سيارتك ويُطبَّقان على كل رحلاتك.'
+                  : 'لم تضبط بعد تخطيط مقاعد لسيارتك — سيتم استخدام تخطيط افتراضي. اضبطه من إعدادات السيارة لتجربة أدق.',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: T.onSurfaceVariant(context),
+              ),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildModeToggle(
-                    title: 'نظام الشبكة',
-                    isActive: !_isCustomLayout,
-                    onTap: () => setState(() => _isCustomLayout = false),
-                  ),
-                ),
-                Expanded(
-                  child: _buildModeToggle(
-                    title: 'توزيع مخصص',
-                    isActive: _isCustomLayout,
-                    onTap: () => setState(() => _isCustomLayout = true),
-                  ),
-                ),
-              ],
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: () async {
+              await Navigator.pushNamed(context, RouteNames.vehicleSettings);
+              await _loadVehicleInfo();
+            },
+            icon: Icon(IconsaxPlusBroken.car, color: T.primary(context)),
+            label: Text(
+              'تعديل إعدادات السيارة',
+              style: AppTextStyles.bodyLarge.copyWith(
+                color: T.primary(context),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+              side: BorderSide(color: T.primary(context)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
             ),
           ),
-
-          const SizedBox(height: 20),
-
-          if (!_isCustomLayout) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: _buildCounter(
-                    label: 'الصفوف',
-                    value: _rows,
-                    icon: IconsaxPlusBroken.row_vertical,
-                    onDecrease: _rows > 1
-                        ? () => setState(() => _rows--)
-                        : null,
-                    onIncrease: _rows < 10
-                        ? () => setState(() => _rows++)
-                        : null,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildCounter(
-                    label: 'بكل صف',
-                    value: _seatsPerRow,
-                    icon: Icons.airline_seat_recline_normal_rounded,
-                    onDecrease: _seatsPerRow > 1
-                        ? () => setState(() => _seatsPerRow--)
-                        : null,
-                    onIncrease: _seatsPerRow < 10
-                        ? () => setState(() => _seatsPerRow++)
-                        : null,
-                  ),
-                ),
-              ],
-            ),
-          ] else ...[
-            Text(
-              'حدد عدد المقاعد في كل صف:',
-              style: AppTextStyles.labelLarge.copyWith(
-                color: T.onSurface(context).withValues(alpha: 0.54),
-              ),
-            ),
-            const SizedBox(height: 12),
-            ...List.generate(_customRowConfigs.length, (index) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: T.primary(context).withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          '${index + 1}',
-                          style: AppTextStyles.titleMedium.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: T.primary(context),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildCounter(
-                        label: index == 0
-                            ? 'بجانب السائق'
-                            : 'الصف ${index + 1}',
-                        value: _customRowConfigs[index],
-                        icon: Icons.airline_seat_recline_normal_rounded,
-                        onDecrease: _customRowConfigs[index] > 0
-                            ? () => setState(() => _customRowConfigs[index]--)
-                            : null,
-                        onIncrease: _customRowConfigs[index] < 4
-                            ? () => setState(() => _customRowConfigs[index]++)
-                            : null,
-                      ),
-                    ),
-                    if (_customRowConfigs.length > 1)
-                      IconButton(
-                        icon: Icon(
-                          Icons.remove_circle_outline,
-                          color: T.error(context),
-                        ),
-                        onPressed: () =>
-                            setState(() => _customRowConfigs.removeAt(index)),
-                      ),
-                  ],
-                ),
-              );
-            }),
-            TextButton.icon(
-              onPressed: () => setState(() => _customRowConfigs.add(3)),
-              icon: Icon(Icons.add_circle_outline, color: T.primary(context)),
-              label: Text(
-                'إضافة صف جديد',
-                style: AppTextStyles.bodyLarge.copyWith(
-                  color: T.primary(context),
-                ),
-              ),
-            ),
-          ],
-
-          const SizedBox(height: 16),
-          _buildMixingToggle(),
         ],
       ),
     );
@@ -806,89 +750,35 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     required bool isActive,
     required VoidCallback onTap,
   }) {
-    return Semantics(
-      button: true,
-      label: '$title ${isActive ? "(محدد)" : ""}',
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isActive ? T.surface(context) : AppColors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: isActive
-                ? [
-                    BoxShadow(
-                      color: T.shadow(context),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Center(
-            child: Text(
-              title,
-              style: AppTextStyles.labelLarge.copyWith(
-                fontWeight: FontWeight.bold,
-                color: isActive
-                    ? T.primary(context)
-                    : T.onSurfaceVariant(context),
-              ),
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isActive ? T.surface(context) : AppColors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: T.shadow(context),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Center(
+          child: Text(
+            title,
+            style: AppTextStyles.labelLarge.copyWith(
+              fontWeight: FontWeight.bold,
+              color: isActive
+                  ? T.primary(context)
+                  : T.onSurfaceVariant(context),
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildMixingToggle() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: T.surface(context),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: T.outline(context)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: T.secondary(context).withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.people_outline,
-                  color: T.secondary(context),
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'منع الاختلاط',
-                style: AppTextStyles.bodyLarge.copyWith(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: T.onSurface(context),
-                ),
-              ),
-            ],
-          ),
-          Semantics(
-            label: 'منع الاختلاط: ${_preventGenderMixing ? "مفعّل" : "معطّل"}',
-            child: Switch(
-              value: _preventGenderMixing,
-              // activeThumbColor: T.primary(context),
-              activeThumbColor: T.primary(context).withValues(alpha: 0.3),
-              onChanged: (v) => setState(() => _preventGenderMixing = v),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1059,6 +949,379 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     );
   }
 
+  Widget _buildStopsCard() {
+    return _buildGlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'محطات التوقف',
+                style: AppTextStyles.titleMedium.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: T.onSurface(context),
+                ),
+              ),
+              Row(
+                children: [
+                  Text(
+                    'اختياري',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: T.outlineVariant(context),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  if (_stops.length < 5)
+                    Semantics(
+                      button: true,
+                      label: 'إضافة محطة توقف',
+                      child: GestureDetector(
+                        onTap: _addStop,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: T.primary(context).withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.add,
+                            color: T.primary(context),
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+          if (_stops.isEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              'أضف حتى 5 محطات توقف وسيطة على طول الطريق.',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: T.onSurfaceVariant(context),
+              ),
+            ),
+          ] else ...[
+            const SizedBox(height: 12),
+            ...List.generate(_stops.length, (i) {
+              final stop = _stops[i];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: T.surface(context),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: T.outline(context)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: T.secondary(context).withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${i + 1}',
+                            style: AppTextStyles.labelLarge.copyWith(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: T.secondary(context),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          stop.name,
+                          style: AppTextStyles.bodyLarge.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: T.onSurface(context),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Semantics(
+                        button: true,
+                        label: 'حذف المحطة ${i + 1}',
+                        child: GestureDetector(
+                          onTap: () => setState(() => _stops.removeAt(i)),
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(
+                              Icons.close,
+                              size: 18,
+                              color: T.error(context),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _addStop() async {
+    final location = await Navigator.push<LocationModel>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LocationPickerWidget(
+          title: 'اختر محطة توقف ${_stops.length + 1}',
+          onLocationSelected: (_) {},
+        ),
+      ),
+    );
+    if (location != null) {
+      setState(() => _stops.add(location));
+    }
+  }
+
+  Widget _buildNotesCard() {
+    return _buildGlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'ملاحظات للركاب',
+                style: AppTextStyles.titleMedium.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: T.onSurface(context),
+                ),
+              ),
+              Text(
+                'اختياري',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: T.outlineVariant(context),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _notesController,
+            maxLines: 3,
+            maxLength: 2000,
+            style: AppTextStyles.bodyLarge.copyWith(
+              color: T.onSurface(context),
+            ),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: T.surface(context),
+              hintText: 'مثال: التوقف في صيدلية البتراء، لا تأخر أكثر من 5 دقائق...',
+              hintStyle: AppTextStyles.bodyMedium.copyWith(
+                color: T.onSurfaceVariant(context),
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: T.outline(context)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: T.primary(context), width: 2),
+              ),
+              counterStyle: AppTextStyles.bodyMedium.copyWith(
+                color: T.onSurfaceVariant(context),
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecurrenceCard() {
+    return _buildGlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'تكرار الرحلة',
+                style: AppTextStyles.titleMedium.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: T.onSurface(context),
+                ),
+              ),
+              Semantics(
+                label: 'تفعيل تكرار الرحلة: ${_enableRecurrence ? "مفعّل" : "معطّل"}',
+                child: Switch(
+                  value: _enableRecurrence,
+                  activeThumbColor: T.primary(context).withValues(alpha: 0.3),
+                  onChanged: (v) => setState(() => _enableRecurrence = v),
+                ),
+              ),
+            ],
+          ),
+          if (!_enableRecurrence)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'فعّل هذا الخيار لجدولة الرحلة بشكل تلقائي (يومياً أو أسبوعياً).',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: T.onSurfaceVariant(context),
+                ),
+              ),
+            )
+          else ...[
+            const SizedBox(height: 20),
+
+            // Frequency toggle
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: T.surfaceVariant(context),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildModeToggle(
+                      title: 'يومياً',
+                      isActive: _recurrenceFrequency == 'daily',
+                      onTap: () => setState(() {
+                        _recurrenceFrequency = 'daily';
+                        _selectedWeekdays.clear();
+                      }),
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildModeToggle(
+                      title: 'أسبوعياً',
+                      isActive: _recurrenceFrequency == 'weekly',
+                      onTap: () =>
+                          setState(() => _recurrenceFrequency = 'weekly'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Weekday chips (only for weekly)
+            if (_recurrenceFrequency == 'weekly') ...[
+              const SizedBox(height: 16),
+              Text(
+                'أيام التكرار',
+                style: AppTextStyles.labelLarge.copyWith(
+                  color: T.onSurface(context).withValues(alpha: 0.54),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _weekdayLabels.entries.map((entry) {
+                  final key = entry.key;
+                  final label = entry.value;
+                  final selected = _selectedWeekdays.contains(key);
+                  return Semantics(
+                    button: true,
+                    label: '$label ${selected ? "(محدد)" : ""}',
+                    child: FilterChip(
+                      label: Text(
+                        label,
+                        style: AppTextStyles.labelLarge.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: selected
+                              ? T.onPrimary(context)
+                              : T.onSurface(context),
+                        ),
+                      ),
+                      selected: selected,
+                      onSelected: (v) => setState(() {
+                        if (v) {
+                          _selectedWeekdays.add(key);
+                        } else {
+                          _selectedWeekdays.remove(key);
+                        }
+                      }),
+                      selectedColor: T.primary(context),
+                      checkmarkColor: T.onPrimary(context),
+                      backgroundColor: T.surface(context),
+                      side: BorderSide(
+                        color: selected
+                            ? T.primary(context)
+                            : T.outline(context),
+                      ),
+                      showCheckmark: false,
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+
+            const SizedBox(height: 16),
+
+            // Until date
+            _buildInteractiveField(
+              controller: TextEditingController(
+                text: _recurrenceUntil != null
+                    ? DateFormat('yyyy-MM-dd').format(_recurrenceUntil!)
+                    : '',
+              ),
+              hint: 'تاريخ انتهاء التكرار (اختياري)',
+              icon: IconsaxPlusBroken.calendar_1,
+              iconColor: T.secondary(context),
+              onTap: _selectRecurrenceUntil,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _selectRecurrenceUntil() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: (_recurrenceUntil ?? DateTime.now()).add(
+        const Duration(days: 30),
+      ),
+      firstDate: DateTime.now().add(const Duration(days: 1)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      helpText: 'تاريخ انتهاء التكرار',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: T.primary(context),
+              onPrimary: T.onPrimary(context),
+              onSurface: T.onSurface(context).withValues(alpha: 0.87),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) setState(() => _recurrenceUntil = picked);
+  }
+
   Widget _buildGlassCard({required Widget child}) {
     return Container(
       padding: EdgeInsets.all(_cardPadding(context)),
@@ -1141,117 +1404,4 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     );
   }
 
-  Widget _buildCounter({
-    required String label,
-    required int value,
-    required IconData icon,
-    required VoidCallback? onDecrease,
-    required VoidCallback? onIncrease,
-  }) {
-    final viewportWidth = MediaQuery.sizeOf(context).width;
-    final isCompact = viewportWidth < 430;
-    final buttonSize = isCompact ? 36.0 : 44.0;
-    final valuePadding = isCompact ? 6.0 : 12.0;
-    final controlIconSize = isCompact ? 18.0 : 20.0;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      decoration: BoxDecoration(
-        color: T.surface(context),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: T.outline(context)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: T.primary(context), size: 18),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  label,
-                  style: AppTextStyles.labelLarge.copyWith(
-                    fontSize: 13,
-                    color: T.onSurface(context),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Semantics(
-                button: onDecrease != null,
-                label: 'تقليل $label',
-                child: GestureDetector(
-                  onTap: onDecrease,
-                  child: Container(
-                    width: buttonSize,
-                    height: buttonSize,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: onDecrease == null
-                          ? T.surfaceVariant(context)
-                          : T.surface(context),
-                      border: Border.all(color: T.outlineVariant(context)),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.remove,
-                      size: controlIconSize,
-                      color: onDecrease == null
-                          ? T.textDisabled(context)
-                          : T.onSurface(context),
-                    ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: valuePadding),
-                child: Text(
-                  '$value',
-                  style: AppTextStyles.titleSmall.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: T.onSurface(context),
-                  ),
-                ),
-              ),
-              Semantics(
-                button: onIncrease != null,
-                label: 'زيادة $label',
-                child: GestureDetector(
-                  onTap: onIncrease,
-                  child: Container(
-                    width: buttonSize,
-                    height: buttonSize,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: onIncrease == null
-                          ? T.surfaceVariant(context)
-                          : T.surface(context),
-                      border: Border.all(color: T.outlineVariant(context)),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.add,
-                      size: controlIconSize,
-                      color: onIncrease == null
-                          ? T.textDisabled(context)
-                          : T.onSurface(context),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 }

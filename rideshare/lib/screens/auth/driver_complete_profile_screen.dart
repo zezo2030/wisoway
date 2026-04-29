@@ -7,6 +7,9 @@ import '../../core/constants/route_names.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/theme/colors.dart';
+import '../../core/ui/error_surface.dart';
+import '../../core/api/api_client.dart';
+import '../../core/errors/failure.dart';
 
 class DriverCompleteProfileScreen extends StatefulWidget {
   const DriverCompleteProfileScreen({super.key});
@@ -212,40 +215,52 @@ class _DriverCompleteProfileScreenState
 
     // Validate images
     if (_profileImage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('يرجى رفع الصورة الشخصية'),
-          backgroundColor: AppColors.error,
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.validation,
+          messageKey: 'errorsValidationGeneric',
+          severity: FailureSeverity.warning,
+          developerDetail: 'Personal photo not uploaded',
         ),
       );
       return;
     }
 
     if (_driverLicenseImage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('يرجى رفع صورة رخصة القيادة'),
-          backgroundColor: AppColors.error,
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.validation,
+          messageKey: 'errorsValidationGeneric',
+          severity: FailureSeverity.warning,
+          developerDetail: 'Driver license photo not uploaded',
         ),
       );
       return;
     }
 
     if (_vehicleLicenseImage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('يرجى رفع صورة رخصة المركبة'),
-          backgroundColor: AppColors.error,
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.validation,
+          messageKey: 'errorsValidationGeneric',
+          severity: FailureSeverity.warning,
+          developerDetail: 'Vehicle license photo not uploaded',
         ),
       );
       return;
     }
 
     if (_selectedVehicleType == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('يرجى اختيار نوع المركبة'),
-          backgroundColor: AppColors.error,
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.validation,
+          messageKey: 'errorsValidationGeneric',
+          severity: FailureSeverity.warning,
+          developerDetail: 'Vehicle type not selected',
         ),
       );
       return;
@@ -296,12 +311,7 @@ class _DriverCompleteProfileScreenState
     } catch (e) {
       print('❌ Error completing driver profile: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في إكمال الملف الشخصي: ${e.toString()}'),
-            backgroundColor: T.error(context),
-          ),
-        );
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     } finally {
       if (mounted) {

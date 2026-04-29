@@ -204,12 +204,19 @@ export class AdminDashboardController {
   @ApiOperation({ summary: 'List all wallet accounts with user info' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'accountType', required: false, enum: ['driver', 'rider', 'system'] })
+  @ApiQuery({
+    name: 'accountType',
+    required: false,
+    enum: ['driver', 'rider', 'system'],
+  })
   @ApiQuery({ name: 'search', required: false, type: String })
   @ApiQuery({ name: 'minBalance', required: false, type: Number })
   @ApiQuery({ name: 'maxBalance', required: false, type: Number })
   @ApiQuery({ name: 'isActive', required: false, type: Boolean })
-  @ApiResponse({ status: 200, description: 'Wallet accounts retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Wallet accounts retrieved successfully',
+  })
   async getWallets(@Query() query: AdminWalletsQueryDto) {
     return this.adminDashboardService.getWallets({
       page: query.page,
@@ -225,7 +232,10 @@ export class AdminDashboardController {
   @Get('wallets/:id')
   @ApiOperation({ summary: 'Get wallet account with user details' })
   @ApiParam({ name: 'id', description: 'Wallet Account ID' })
-  @ApiResponse({ status: 200, description: 'Wallet account retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Wallet account retrieved successfully',
+  })
   @ApiResponse({ status: 404, description: 'Wallet account not found' })
   async getWalletById(@Param('id') walletId: string) {
     return this.adminDashboardService.getWalletById(walletId);
@@ -234,7 +244,10 @@ export class AdminDashboardController {
   @Patch('wallets/:id/adjust')
   @ApiOperation({ summary: 'Adjust wallet balance manually (admin)' })
   @ApiParam({ name: 'id', description: 'Wallet Account ID' })
-  @ApiResponse({ status: 200, description: 'Wallet balance adjusted successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Wallet balance adjusted successfully',
+  })
   @ApiResponse({ status: 404, description: 'Wallet account not found' })
   async adjustWalletBalance(
     @Param('id') walletId: string,
@@ -254,7 +267,10 @@ export class AdminDashboardController {
   @ApiParam({ name: 'id', description: 'Wallet Account ID' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiResponse({ status: 200, description: 'Transactions retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Transactions retrieved successfully',
+  })
   @ApiResponse({ status: 404, description: 'Wallet account not found' })
   async getWalletTransactions(
     @Param('id') walletId: string,

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import '../../models/vehicle_model.dart';
+import '../../models/seat_layout_config.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
 
@@ -14,6 +15,7 @@ class VehicleService {
     required String plateNumber,
     required String modelName,
     required int seats,
+    SeatLayoutConfig? seatLayout,
     File? licenseImage,
     File? vehicleLicenseImage,
   }) async {
@@ -36,6 +38,7 @@ class VehicleService {
           'plateNumber': plateNumber,
           'model': modelName,
           'seats': seats,
+          if (seatLayout != null) 'seatLayout': seatLayout.toMap(),
           'licenseImageUrl': licenseImageUrl,
           'vehicleLicenseImageUrl': vehicleLicenseImageUrl,
         },
@@ -56,7 +59,6 @@ class VehicleService {
       final data = response['data'] ?? response;
       return VehicleModel.fromJson(data);
     } on DioException catch (e) {
-      // If 404, the user doesn't have a vehicle
       if (e.response?.statusCode == 404) {
         return null;
       }
@@ -65,6 +67,24 @@ class VehicleService {
       print('❌ Error getting vehicle: $e');
       return null;
     }
+  }
+
+  // Update the driver's vehicle (currently only seatLayout is editable
+  // post-registration, but the endpoint accepts any subset of fields).
+  Future<VehicleModel> updateVehicle(
+    String vehicleId, {
+    SeatLayoutConfig? seatLayout,
+  }) async {
+    final body = <String, dynamic>{
+      if (seatLayout != null) 'seatLayout': seatLayout.toMap(),
+    };
+
+    final response = await _api.patch(
+      ApiEndpoints.vehicleById(vehicleId),
+      data: body,
+    );
+    final data = response['data'] ?? response;
+    return VehicleModel.fromJson(data);
   }
 
   // Helper method for file uploads

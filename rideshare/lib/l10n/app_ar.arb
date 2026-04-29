@@ -466,6 +466,340 @@
   "close": "إغلاق",
   "@close": {
     "description": "زر إغلاق"
+  },
+  "errorsNetworkOffline": "أنت غير متصل بالإنترنت. تحقق من الاتصال وحاول مرة أخرى.",
+  "@errorsNetworkOffline": {
+    "description": "رسالة خطأ عدم الاتصال بالشبكة"
+  },
+  "errorsNetworkTimeout": "انتهت مهلة الاتصال. حاول مرة أخرى.",
+  "@errorsNetworkTimeout": {
+    "description": "رسالة خطأ انتهاء مهلة الاتصال"
+  },
+  "errorsServerGeneric": "حدث خطأ في الخادم. حاول مرة أخرى لاحقاً.",
+  "@errorsServerGeneric": {
+    "description": "رسالة خطأ الخادم العامة"
+  },
+  "errorsAuthSessionExpired": "انتهت صلاحية جلستك. يرجى تسجيل الدخول مرة أخرى.",
+  "@errorsAuthSessionExpired": {
+    "description": "رسالة انتهاء صلاحية الجلسة"
+  },
+  "errorsAuthInvalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+  "@errorsAuthInvalidCredentials": {
+    "description": "رسالة بيانات الدخول غير الصحيحة"
+  },
+  "errorsPermissionDenied": "تم رفض الإذن. تحقق من إعدادات التطبيق.",
+  "@errorsPermissionDenied": {
+    "description": "رسالة رفض الإذن"
+  },
+  "errorsValidationGeneric": "البيانات المدخلة غير صحيحة. راجع البيانات وحاول مرة أخرى.",
+  "@errorsValidationGeneric": {
+    "description": "رسالة خطأ التحقق العامة"
+  },
+  "errorsUnknownGeneric": "حدث خطأ غير متوقع. حاول مرة أخرى.",
+  "@errorsUnknownGeneric": {
+    "description": "رسالة الخطأ غير المعروف"
+  },
+  "errorsActionRetry": "إعادة المحاولة",
+  "@errorsActionRetry": {
+    "description": "زر إعادة المحاولة"
+  },
+  "errorsActionReauthenticate": "تسجيل الدخول مرة أخرى",
+  "@errorsActionReauthenticate": {
+    "description": "زر إعادة تسجيل الدخول"
+  },
+  "errorsActionOpenSettings": "فتح الإعدادات",
+  "@errorsActionOpenSettings": {
+    "description": "زر فتح الإعدادات"
+  },
+  "errorsRouteUnavailable": "تعذّر تحميل المسار. نعرض نقاط الانطلاق والوصول.",
+  "@errorsRouteUnavailable": {
+    "description": "رسالة تعذر تحميل المسار"
+  },
+  "notificationsBookingCreatedTitle": "حجز جديد",
+  "@notificationsBookingCreatedTitle": {
+    "description": "Title for booking created notification"
+  },
+  "notificationsBookingCreatedBody": "تم حجز مقعد جديد في رحلتك",
+  "@notificationsBookingCreatedBody": {
+    "description": "Body for booking created notification"
+  },
+  "notificationsBookingConfirmedTitle": "تم تأكيد الحجز",
+  "@notificationsBookingConfirmedTitle": {
+    "description": "Title for booking confirmed notification"
+  },
+  "notificationsBookingConfirmedBody": "تم تأكيد حجزك بنجاح",
+  "@notificationsBookingConfirmedBody": {
+    "description": "Body for booking confirmed notification"
+  },
+  "notificationsBookingRejectedTitle": "تم رفض الحجز",
+  "@notificationsBookingRejectedTitle": {
+    "description": "Title for booking rejected notification"
+  },
+  "notificationsBookingRejectedBody": "للأسف، تم رفض حجزك",
+  "@notificationsBookingRejectedBody": {
+    "description": "Body for booking rejected notification"
+  },
+  "notificationsBookingCanceledTitle": "تم إلغاء الحجز",
+  "@notificationsBookingCanceledTitle": {
+    "description": "Title for booking canceled notification"
+  },
+  "notificationsBookingCanceledBody": "تم إلغاء الحجز",
+  "@notificationsBookingCanceledBody": {
+    "description": "Body for booking canceled notification"
+  },
+  "notificationsNewTripPostedTitle": "رحلة جديدة",
+  "@notificationsNewTripPostedTitle": {
+    "description": "Title for new trip posted notification"
+  },
+  "notificationsNewTripPostedBody": "يتوفر رحلة جديدة إلى {destination}",
+  "@notificationsNewTripPostedBody": {
+    "description": "Body for new trip posted notification",
+    "placeholders": {
+      "destination": {
+        "type": "String"
+      }
+    }
+  },
+
+  "accountBannedTitle": "تم تعليق حسابك",
+  "@accountBannedTitle": {
+    "description": "Ban screen title shown when user account is banned"
+  },
+  "accountBannedMessage": "تم تعليق حسابك بسبب: {reason}",
+  "@accountBannedMessage": {
+    "description": "Ban screen body message with reason",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "accountBannedContactSupport": "تواصل مع الدعم",
+  "@accountBannedContactSupport": {
+    "description": "Button on ban screen that opens WhatsApp support"
+  },
+  "accountRestrictedBanner": "حسابك مقيّد مؤقتاً. بعض الإجراءات غير متاحة حتى تتم المراجعة.",
+  "@accountRestrictedBanner": {
+    "description": "Banner shown when the account is in restricted state"
+  },
+  "maskedPhoneLabel": "رقم محجوب",
+  "@maskedPhoneLabel": {
+    "description": "Placeholder shown instead of the actual phone number before settlement"
+  },
+  "maskedPhoneHint": "يُكشف الرقم بعد إتمام الدفع",
+  "@maskedPhoneHint": {
+    "description": "Hint explaining why the phone number is masked"
+  },
+  "shareLinkTripEnded": "انتهت الرحلة",
+  "@shareLinkTripEnded": {
+    "description": "State label shown on the public share-link page when the trip has completed"
+  },
+  "shareLinkLiveTracking": "تتبع مباشر",
+  "@shareLinkLiveTracking": {
+    "description": "Label shown on the public share-link page while the trip is in progress"
+  },
+  "shareLinkGenerate": "مشاركة الرحلة",
+  "@shareLinkGenerate": {
+    "description": "Button to generate a public share link for the trip"
+  },
+  "noShowNotificationTitle": "لم يصل السائق",
+  "@noShowNotificationTitle": {
+    "description": "Push notification title when the driver no-show threshold is reached"
+  },
+  "noShowNotificationBody": "لم يبدأ السائق الرحلة خلال الوقت المحدد. تم إلغاء الرحلة وسيتم احتساب غرامة.",
+  "@noShowNotificationBody": {
+    "description": "Push notification body for driver no-show cancellation"
+  },
+  "pendingChargeBanner": "لديك رسوم معلقة بقيمة {amount}. ستُخصم عند تأكيد حجزك القادم.",
+  "@pendingChargeBanner": {
+    "description": "Banner shown to a user who has an outstanding pending charge",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "pendingChargeTitle": "رسوم معلقة",
+  "@pendingChargeTitle": {
+    "description": "Title for the pending charges section"
+  },
+  "pendingChargeKindPassengerCancellation": "غرامة إلغاء حجز",
+  "@pendingChargeKindPassengerCancellation": {
+    "description": "Label for a pending charge of kind passenger_cancellation"
+  },
+  "pendingChargeKindDriverNoShow": "غرامة غياب السائق",
+  "@pendingChargeKindDriverNoShow": {
+    "description": "Label for a pending charge of kind driver_no_show"
+  },
+  "pendingChargeKindPassengerNoShow": "غرامة غياب الراكب",
+  "@pendingChargeKindPassengerNoShow": {
+    "description": "Label for a pending charge of kind passenger_no_show"
+  },
+  "devicesScreenTitle": "الأجهزة المتصلة",
+  "@devicesScreenTitle": {
+    "description": "Title for the connected devices management screen"
+  },
+  "devicesRevokeButton": "إزالة الجهاز",
+  "@devicesRevokeButton": {
+    "description": "Button to revoke a connected device session"
+  },
+  "devicesCurrentDevice": "الجهاز الحالي",
+  "@devicesCurrentDevice": {
+    "description": "Label for the current device in the devices list"
+  },
+  "bookingTimeoutNotificationTitle": "انتهت صلاحية الحجز",
+  "@bookingTimeoutNotificationTitle": {
+    "description": "Push notification title when a pending booking expires after 3 hours"
+  },
+  "bookingTimeoutNotificationBody": "انتهت مهلة الحجز ولم يتم قبوله من السائق. المقاعد أصبحت متاحة.",
+  "@bookingTimeoutNotificationBody": {
+    "description": "Push notification body for booking timeout cancellation"
+  },
+  "settlementMarkPaid": "تأكيد الدفع",
+  "@settlementMarkPaid": {
+    "description": "Driver CTA button to mark a booking as paid/settled"
+  },
+  "settlementUnmarkPaid": "التراجع عن تأكيد الدفع",
+  "@settlementUnmarkPaid": {
+    "description": "Driver CTA to undo mark-paid within the grace window"
+  },
+  "settlementGraceCountdown": "يمكن التراجع خلال {seconds} ثانية",
+  "@settlementGraceCountdown": {
+    "description": "Countdown text shown during the 5-minute grace window",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "chatDisabledUnsettled": "الدردشة متاحة بعد إتمام الدفع",
+  "@chatDisabledUnsettled": {
+    "description": "Tooltip shown when chat is disabled because the booking is unsettled"
+  },
+  "callDisabledUnsettled": "الاتصال متاح بعد إتمام الدفع",
+  "@callDisabledUnsettled": {
+    "description": "Tooltip shown when call is disabled because the booking is unsettled"
+  },
+  "callMaskedNumber": "الاتصال عبر رقم مخفي",
+  "@callMaskedNumber": {
+    "description": "Label shown when the call is routed through a proxy number"
+  },
+  "hidePhoneNumberToggle": "إخفاء رقم هاتفي",
+  "@hidePhoneNumberToggle": {
+    "description": "Profile settings toggle to hide phone number from other parties"
+  },
+  "hidePhoneNumberSubtitle": "سيُستخدم رقم وسيط عند الاتصال بك",
+  "@hidePhoneNumberSubtitle": {
+    "description": "Description for the hide-phone-number toggle"
+  },
+  "complaintScreenTitle": "تقديم شكوى",
+  "@complaintScreenTitle": {
+    "description": "Title for the complaint filing screen"
+  },
+  "complaintCategoryLabel": "نوع الشكوى",
+  "@complaintCategoryLabel": {
+    "description": "Label for the complaint category picker"
+  },
+  "complaintDescriptionLabel": "وصف المشكلة",
+  "@complaintDescriptionLabel": {
+    "description": "Label for the complaint description text field"
+  },
+  "complaintSubmitButton": "إرسال الشكوى",
+  "@complaintSubmitButton": {
+    "description": "Submit button for the complaint form"
+  },
+  "complaintSubmittedSuccess": "تم إرسال شكواك بنجاح. سنراجعها قريباً.",
+  "@complaintSubmittedSuccess": {
+    "description": "Success message after complaint submission"
+  },
+  "complaintStatusResolved": "تم الحل",
+  "@complaintStatusResolved": {
+    "description": "Complaint status label for resolved complaints"
+  },
+  "refundRequestTitle": "طلب استرداد",
+  "@refundRequestTitle": {
+    "description": "Title for the refund request screen"
+  },
+  "refundRequestBody": "سيتم فتح واتساب للتواصل مع فريق الدعم بشأن طلب الاسترداد.",
+  "@refundRequestBody": {
+    "description": "Explainer text on the refund request screen"
+  },
+  "refundRequestButton": "تقديم طلب الاسترداد",
+  "@refundRequestButton": {
+    "description": "Button to submit a refund request and open WhatsApp"
+  },
+  "supportScreenTitle": "الدعم والمساعدة",
+  "@supportScreenTitle": {
+    "description": "Title for the support screen"
+  },
+  "supportWhatsAppButton": "تواصل عبر واتساب",
+  "@supportWhatsAppButton": {
+    "description": "Button to open WhatsApp support chat"
+  },
+  "tripStopsLabel": "محطات التوقف",
+  "@tripStopsLabel": {
+    "description": "Label for the trip stops section"
+  },
+  "tripNotesLabel": "ملاحظات الرحلة",
+  "@tripNotesLabel": {
+    "description": "Label for the trip notes section"
+  },
+  "tripRecurrenceLabel": "تكرار الرحلة",
+  "@tripRecurrenceLabel": {
+    "description": "Label for the trip recurrence settings"
+  },
+  "recurrenceFrequencyDaily": "يومياً",
+  "@recurrenceFrequencyDaily": {
+    "description": "Recurrence frequency option: daily"
+  },
+  "recurrenceFrequencyWeekly": "أسبوعياً",
+  "@recurrenceFrequencyWeekly": {
+    "description": "Recurrence frequency option: weekly"
+  },
+  "recurrenceUntilLabel": "حتى تاريخ",
+  "@recurrenceUntilLabel": {
+    "description": "Label for the recurrence end date picker"
+  },
+  "companionPickerTitle": "إضافة مرافقين",
+  "@companionPickerTitle": {
+    "description": "Title for the companion (multi-seat) picker screen"
+  },
+  "companionDisplayNameLabel": "اسم المرافق",
+  "@companionDisplayNameLabel": {
+    "description": "Label for the companion display name field"
+  },
+  "autoPickSeatsButton": "اختيار مقاعد تلقائي",
+  "@autoPickSeatsButton": {
+    "description": "Button to trigger automatic seat selection"
+  },
+  "preTripPromptTitle": "تأكيد الحضور",
+  "@preTripPromptTitle": {
+    "description": "Title for the pre-trip presence confirmation prompt"
+  },
+  "preTripPromptPassengerBody": "هل السائق موجود في نقطة الانطلاق؟",
+  "@preTripPromptPassengerBody": {
+    "description": "Body of the pre-trip prompt shown to the passenger"
+  },
+  "preTripPromptDriverBody": "هل الراكب {name} موجود؟",
+  "@preTripPromptDriverBody": {
+    "description": "Body of the pre-trip prompt shown to the driver for each passenger",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "startTripButton": "بدء الرحلة",
+  "@startTripButton": {
+    "description": "Driver button to start the trip"
+  },
+  "completeTripButton": "إنهاء الرحلة",
+  "@completeTripButton": {
+    "description": "Driver button to complete/end the trip"
+  },
+  "markPassengerAbsent": "غياب الراكب",
+  "@markPassengerAbsent": {
+    "description": "Driver action to mark a passenger as absent at trip completion"
   }
 }
 

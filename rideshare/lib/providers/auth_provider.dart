@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'dart:io';
 import '../core/services/auth_service.dart';
+import '../core/services/device_fingerprint_service.dart';
+import '../core/services/push_notification_service.dart';
 import '../core/services/storage_service.dart';
 import '../core/services/vehicle_service.dart';
 import '../models/user_model.dart';
@@ -8,15 +10,23 @@ import '../core/constants/app_constants.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
+  final DeviceFingerprintService _deviceService = DeviceFingerprintService();
   final StorageService _storageService = StorageService();
   final VehicleService _vehicleService = VehicleService();
 
   UserModel? _userModel;
+
   /// Loading state for user-triggered actions (sign in, send OTP, etc.)
   bool _isLoading = false;
+
   /// true only during initial app bootstrap auth check.
   bool _isInitializing = true;
   String? _errorMessage;
+
+  /// Backend safety signals from the last verifyOTP call.
+  String _accountState = 'active'; // 'active' | 'restricted' | 'banned'
+  String _deviceState = 'new'; // 'trusted' | 'new' | 'revoked'
+  bool _pendingPhoneLinkRequired = false;
 
   UserModel? get userModel => _userModel;
   bool get isLoading => _isLoading;
@@ -24,6 +34,9 @@ class AuthProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _userModel != null;
   bool get hasProfile => _userModel != null;
+  String get accountState => _accountState;
+  String get deviceState => _deviceState;
+  bool get pendingPhoneLinkRequired => _pendingPhoneLinkRequired;
 
   AuthProvider() {
     _init();
@@ -70,12 +83,47 @@ class AuthProvider extends ChangeNotifier {
   Future<void> verifyOTP({
     required String phoneNumber,
     required String smsCode,
+    String? name,
+    String? gender,
+    String? role,
+    String? password,
   }) async {
     try {
       _setLoading(true);
       _setError(null);
 
-      _userModel = await _authService.verifyOTP(phoneNumber, smsCode);
+      // Build the device block, including FCM token if available.
+      String? fcmToken;
+      try {
+        await PushNotificationService.initialize();
+        fcmToken = await PushNotificationService.getToken();
+      } catch (_) {
+        // FCM is optional — never block auth if push isn't available.
+      }
+
+      final devicePayload = await _deviceService.buildPayload(
+        fcmToken: fcmToken,
+      );
+
+      final result = await _authService.verifyOTP(
+        phoneNumber,
+        smsCode,
+        device: devicePayload,
+        name: name,
+        gender: gender,
+        role: role,
+        password: password,
+      );
+
+      _userModel = result.user;
+      _accountState = result.accountState;
+      _deviceState = result.deviceState;
+      _pendingPhoneLinkRequired = result.pendingPhoneLinkRequired;
+
+      // Register push token after successful login if FCM was available.
+      if (_userModel != null) {
+        await _registerDeviceToken(existingToken: fcmToken);
+      }
       _setLoading(false);
     } catch (e) {
       _setError(e.toString());
@@ -102,44 +150,18 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>> signUpWithEmailAndPassword({
-    required String email,
-    required String password,
-    required String name,
+  Future<void> signInWithPhoneAndPassword({
     required String phoneNumber,
-    String role = 'passenger',
-    String? gender,
-  }) async {
-    try {
-      _setLoading(true);
-      _setError(null);
-
-      final response = await _authService.signUp(
-        email: email,
-        password: password,
-        name: name,
-        phoneNumber: phoneNumber,
-        role: role,
-        gender: gender,
-      );
-
-      _setLoading(false);
-      return response;
-    } catch (e) {
-      _setError(e.toString());
-      _setLoading(false);
-      rethrow;
-    }
-  }
-
-  Future<void> signInWithEmailAndPassword({
-    required String email,
     required String password,
   }) async {
     try {
       _setLoading(true);
       _setError(null);
-      _userModel = await _authService.signIn(email: email, password: password);
+      _userModel = await _authService.signIn(
+        phoneNumber: phoneNumber,
+        password: password,
+      );
+      await _registerDeviceToken();
       _setLoading(false);
     } catch (e) {
       _setError(e.toString());
@@ -188,7 +210,10 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> changePassword(String currentPassword, String newPassword) async {
+  Future<void> changePassword(
+    String currentPassword,
+    String newPassword,
+  ) async {
     try {
       _setLoading(true);
       _setError(null);
@@ -208,6 +233,7 @@ class AuthProvider extends ChangeNotifier {
     String? gender,
     String? role,
     File? profileImage,
+    bool? hidePhoneNumber,
   }) async {
     try {
       _setLoading(true);
@@ -226,6 +252,7 @@ class AuthProvider extends ChangeNotifier {
         email: email,
         gender: gender,
         profileImageUrl: profileImageUrl,
+        hidePhoneNumber: hidePhoneNumber,
       );
 
       // Update role explicitly if not passenger yet or if role is specifically provided
@@ -319,6 +346,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       _setLoading(true);
       _setError(null);
+      await _deregisterDeviceToken();
       await _authService.logout();
       _userModel = null;
       _setLoading(false);
@@ -346,5 +374,49 @@ class AuthProvider extends ChangeNotifier {
 
   void clearError() {
     _setError(null);
+  }
+
+  Future<void> _registerDeviceToken({String? existingToken}) async {
+    try {
+      await PushNotificationService.initialize();
+      final token = existingToken ?? await PushNotificationService.getToken();
+      if (token == null || token.isEmpty) {
+        return;
+      }
+
+      final platform = defaultTargetPlatform == TargetPlatform.iOS
+          ? 'ios'
+          : 'android';
+
+      await PushNotificationService.registerDevice(
+        token: token,
+        platform: platform,
+      );
+
+      await _authService.updateFcmToken(token);
+
+      await PushNotificationService.onTokenRefresh((newToken) async {
+        await PushNotificationService.registerDevice(
+          token: newToken,
+          platform: platform,
+        );
+        await _authService.updateFcmToken(newToken);
+      });
+    } catch (_) {
+      // Push registration should never block auth.
+    }
+  }
+
+  Future<void> _deregisterDeviceToken() async {
+    try {
+      final token = await PushNotificationService.getToken();
+      if (token == null || token.isEmpty) {
+        return;
+      }
+
+      await PushNotificationService.deregisterDevice(token);
+    } catch (_) {
+      // Push deregistration should never block logout.
+    }
   }
 }

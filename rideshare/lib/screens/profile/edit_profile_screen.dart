@@ -27,6 +27,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _selectedGender;
   File? _profileImage;
   String? _currentPhotoUrl;
+  bool _hidePhoneNumber = false;
 
   @override
   void initState() {
@@ -46,6 +47,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _nameController.text = user.name;
       _selectedGender = user.gender;
       _currentPhotoUrl = user.photoUrl;
+      _hidePhoneNumber = user.hidePhoneNumber;
       setState(() {});
     }
   }
@@ -98,6 +100,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         gender: _selectedGender,
         role: authProvider.userModel?.role ?? AppConstants.rolePassenger,
         profileImage: _profileImage,
+        hidePhoneNumber: _hidePhoneNumber,
       );
 
       if (mounted) {
@@ -353,7 +356,65 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         const SectionTitle(title: AppStrings.gender, isRequired: true),
         const SizedBox(height: 12),
         _buildGenderCards(),
+        const SizedBox(height: 28),
+        _buildHidePhoneToggle(),
       ],
+    );
+  }
+
+  Widget _buildHidePhoneToggle() {
+    return Container(
+      decoration: BoxDecoration(
+        color: T.surface(context),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Semantics(
+        toggled: _hidePhoneNumber,
+        label: 'إخفاء رقم الهاتف عن السائق',
+        child: SwitchListTile.adaptive(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
+          ),
+          secondary: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: T.primary(context).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              IconsaxPlusLinear.call_slash,
+              color: T.primary(context),
+              size: 20,
+            ),
+          ),
+          title: Text(
+            'إخفاء رقم الهاتف',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: T.onSurface(context),
+            ),
+          ),
+          subtitle: Text(
+            'استخدام الاتصال المخفي بدلاً من مشاركة رقمك الحقيقي',
+            style: TextStyle(
+              fontSize: 12,
+              color: T.onSurfaceVariant(context),
+            ),
+          ),
+          value: _hidePhoneNumber,
+          onChanged: (val) => setState(() => _hidePhoneNumber = val),
+          activeColor: T.primary(context),
+        ),
+      ),
     );
   }
 

@@ -1,7 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'dart:io';
 import '../../models/location_model.dart';
-import '../../models/seat_layout_config.dart';
 
 abstract class TripEvent extends Equatable {
   const TripEvent();
@@ -10,7 +9,8 @@ abstract class TripEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-// Create Trip
+// Create Trip — seat layout is taken from the driver's vehicle on the
+// server, so it isn't part of the event.
 class TripCreate extends TripEvent {
   final String driverId;
   final String driverName;
@@ -20,7 +20,6 @@ class TripCreate extends TripEvent {
   final DateTime departureTime;
   final double price;
   final String currency;
-  final SeatLayoutConfig seatLayout;
   final File? carImage;
 
   const TripCreate({
@@ -32,7 +31,6 @@ class TripCreate extends TripEvent {
     required this.departureTime,
     required this.price,
     required this.currency,
-    required this.seatLayout,
     this.carImage,
   });
 
@@ -46,7 +44,6 @@ class TripCreate extends TripEvent {
         departureTime,
         price,
         currency,
-        seatLayout,
         carImage,
       ];
 }

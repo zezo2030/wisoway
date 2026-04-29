@@ -5,11 +5,27 @@ import '../../core/theme/colors.dart';
 import '../../core/theme/text_styles.dart';
 import '../../models/booking_model.dart';
 import '../../core/constants/route_names.dart';
+import '../../core/services/booking_service.dart';
 
-class PassengerDetailsScreen extends StatelessWidget {
+class PassengerDetailsScreen extends StatefulWidget {
   final BookingModel booking;
 
   const PassengerDetailsScreen({super.key, required this.booking});
+
+  @override
+  State<PassengerDetailsScreen> createState() => _PassengerDetailsScreenState();
+}
+
+class _PassengerDetailsScreenState extends State<PassengerDetailsScreen> {
+  final _bookingService = BookingService();
+  late BookingModel _booking;
+  bool _markingPaid = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _booking = widget.booking;
+  }
 
   Future<void> _launchCall(String phone) async {
     final uri = Uri.parse('tel:$phone');
@@ -26,10 +42,38 @@ class PassengerDetailsScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _onMarkPaid() async {
+    setState(() => _markingPaid = true);
+    try {
+      final updated = await _bookingService.markPaid(_booking.id);
+      if (mounted) {
+        setState(() => _booking = updated);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم تأكيد استلام المبلغ بنجاح'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('حدث خطأ: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _markingPaid = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final user = booking.userPopulated;
-    final hasData = booking.hasDriverPaidToContact && user != null;
+    final user = _booking.userPopulated;
+    // Post-settlement reveal: show full passenger details once booking is settled
+    final hasData = _booking.isSettled && user != null;
 
     return Scaffold(
       appBar: AppBar(
@@ -73,7 +117,7 @@ class PassengerDetailsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    hasData ? user.name : 'راكب مجهول',
+                    hasData ? user.name : '***',
                     style: AppTextStyles.titleMedium.copyWith(
                       fontSize: 20,
                       color: hasData
@@ -95,7 +139,7 @@ class PassengerDetailsScreen extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      'مقعد ${booking.seatNumber}',
+                      'مقعد ${_booking.seatNumber ?? '-'}',
                       style: AppTextStyles.labelLarge.copyWith(
                         color: AppColors.success,
                       ),
@@ -105,6 +149,43 @@ class PassengerDetailsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
+            // ── Mark-paid CTA (only when booking is confirmed and not yet settled) ──
+            if (_booking.status == 'confirmed' && !_booking.isSettled) ...[
+              _MarkPaidButton(
+                loading: _markingPaid,
+                onPressed: _onMarkPaid,
+              ),
+              const SizedBox(height: 16),
+              // Hint about PII reveal
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.warning.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      IconsaxPlusLinear.info_circle,
+                      color: AppColors.warning,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'بيانات الراكب والمحادثة تظهر فقط بعد تأكيد استلام المبلغ',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.warningDark,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             if (hasData) ...[
               _InfoCard(
                 icon: IconsaxPlusLinear.call,
@@ -125,40 +206,48 @@ class PassengerDetailsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               _ChatButton(
-                tripId: booking.tripId,
-                passengerId: booking.userId,
+                tripId: _booking.tripId,
+                passengerId: _booking.userId,
                 passengerName: user.name,
               ),
-            ] else
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppColors.warning.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppColors.warning.withValues(alpha: 0.25),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      IconsaxPlusLinear.info_circle,
-                      color: AppColors.warning,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'بيانات الراكب تظهر بعد تأكيد الحجز (رحلة مجانية أو خصم من المحفظة)',
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color: AppColors.warningDark,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MarkPaidButton extends StatelessWidget {
+  final bool loading;
+  final VoidCallback onPressed;
+
+  const _MarkPaidButton({required this.loading, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: loading ? null : onPressed,
+        icon: loading
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(IconsaxPlusBold.wallet_check),
+        label: Text(
+          loading ? 'جاري التأكيد...' : 'تأكيد استلام المبلغ',
+          style: AppTextStyles.titleSmall.copyWith(fontWeight: FontWeight.bold),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.success,
+          foregroundColor: AppColors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
       ),
     );

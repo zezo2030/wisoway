@@ -37,7 +37,10 @@ export class UserEntity {
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  city: string | null;
+
+  @Column({ type: 'varchar', nullable: true, select: false })
   fcmToken: string | null;
 
   @OneToMany(() => DeviceTokenEntity, (token) => token.user)
@@ -87,6 +90,44 @@ export class UserEntity {
 
   @Column({ type: 'timestamp', nullable: true, default: null })
   passwordChangedAt: Date | null;
+
+  // ── Foundation extensions (008-platform-completion / Phase 2) ─────────────
+
+  /** Set by an admin ban action; non-null means the account is banned. */
+  @Column({ type: 'timestamptz', nullable: true, default: null })
+  bannedAt: Date | null;
+
+  /** Human-readable reason surfaced to the banned user on app open. */
+  @Column({ type: 'text', nullable: true, default: null })
+  banReason: string | null;
+
+  /**
+   * Set by automated risk heuristics (e.g. multi-account-from-one-device).
+   * Write operations are blocked; admin clears via dashboard.
+   */
+  @Column({ type: 'boolean', default: false })
+  restricted: boolean;
+
+  /**
+   * User preference: route in-app calls through a Twilio proxy DID so the
+   * other party never sees the real phone number.
+   */
+  @Column({ type: 'boolean', default: false })
+  hidePhoneNumber: boolean;
+
+  /**
+   * True for legacy social-login accounts that have not yet linked a phone
+   * number.  Cleared once the user completes the phone-link migration flow.
+   */
+  @Column({ type: 'boolean', default: false })
+  pendingPhoneLink: boolean;
+
+  /**
+   * Recorded on every legacy social sign-in during the migration window only.
+   * Null once the account has completed phone-link migration.
+   */
+  @Column({ type: 'timestamptz', nullable: true, default: null })
+  lastSocialLoginAt: Date | null;
 
   @CreateDateColumn()
   createdAt: Date;

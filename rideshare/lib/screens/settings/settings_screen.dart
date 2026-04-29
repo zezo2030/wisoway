@@ -14,9 +14,7 @@ import '../../../providers/auth_provider.dart';
 import '../../../widgets/settings/settings_section.dart';
 import '../../../widgets/settings/settings_tile.dart';
 import '../../../widgets/settings/settings_switch_tile.dart';
-import 'notification_settings_screen.dart';
 import 'account_security_screen.dart';
-import 'privacy_settings_screen.dart';
 import 'in_app_browser_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -31,9 +29,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _pushNotifications = false;
   bool _notifSound = false;
   bool _notifVibration = false;
-  bool _locationSharing = false;
-  bool _showOnlineStatus = false;
-  bool _showRating = false;
 
   bool _ar(BuildContext context) {
     return Directionality.of(context) == TextDirection.rtl;
@@ -50,9 +45,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _pushNotifications = await settings.isPushNotificationsEnabled();
     _notifSound = await settings.isNotificationSoundEnabled();
     _notifVibration = await settings.isNotificationVibrationEnabled();
-    _locationSharing = await settings.isLocationSharingEnabled();
-    _showOnlineStatus = await settings.isShowOnlineStatus();
-    _showRating = await settings.isShowRating();
     setState(() => _isLoading = false);
   }
 
@@ -378,19 +370,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             }
                           : null,
                     ),
-                    SettingsTile(
-                      icon: IconsaxPlusBroken.setting_4,
-                      title: isArabic ? 'إعدادات مفصلة' : 'Detailed Settings',
-                      trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const NotificationSettingsScreen(),
-                          ),
-                        );
-                      },
-                    ),
                   ],
                 ),
                 SettingsSection(
@@ -419,63 +398,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ],
                 ),
-                SettingsSection(
-                  title: isArabic ? 'الخصوصية' : 'Privacy',
-                  children: [
-                    SettingsSwitchTile(
-                      icon: IconsaxPlusBroken.location,
-                      title: isArabic ? 'مشاركة الموقع' : 'Location Sharing',
-                      subtitle: isArabic
-                          ? 'السماح بمشاركة موقعك أثناء الرحلة'
-                          : 'Allow sharing your location during rides',
-                      value: _locationSharing,
-                      onChanged: (value) {
-                        final settings = SettingsService();
-                        settings.setLocationSharingEnabled(value);
-                        setState(() => _locationSharing = value);
-                      },
-                    ),
-                    SettingsSwitchTile(
-                      icon: IconsaxPlusBroken.clock,
-                      title: isArabic ? 'حالة الاتصال' : 'Online Status',
-                      subtitle: isArabic
-                          ? 'إظهار حالتك كمتصل للمستخدمين الآخرين'
-                          : 'Show your online status to other users',
-                      value: _showOnlineStatus,
-                      onChanged: (value) {
-                        final settings = SettingsService();
-                        settings.setShowOnlineStatus(value);
-                        setState(() => _showOnlineStatus = value);
-                      },
-                    ),
-                    SettingsSwitchTile(
-                      icon: IconsaxPlusBroken.star,
-                      title: isArabic ? 'إظهار التقييم' : 'Show Rating',
-                      subtitle: isArabic
-                          ? 'إظهار تقييمك للمستخدمين الآخرين'
-                          : 'Show your rating to other users',
-                      value: _showRating,
-                      onChanged: (value) {
-                        final settings = SettingsService();
-                        settings.setShowRating(value);
-                        setState(() => _showRating = value);
-                      },
-                    ),
-                    SettingsTile(
-                      icon: IconsaxPlusBroken.shield_tick,
-                      title: isArabic ? 'إعدادات الخصوصية' : 'Privacy Settings',
-                      trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const PrivacySettingsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
+                if (context.watch<AuthProvider>().userModel?.role ==
+                    AppConstants.roleDriver)
+                  SettingsSection(
+                    title: isArabic ? 'السائق' : 'Driver',
+                    children: [
+                      SettingsTile(
+                        icon: IconsaxPlusBroken.car,
+                        title: isArabic
+                            ? 'إعدادات السيارة وتخطيط المقاعد'
+                            : 'Vehicle & Seat Layout',
+                        trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
+                        onTap: () {
+                          Navigator.pushNamed(
+                            context,
+                            RouteNames.vehicleSettings,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 SettingsSection(
                   title: isArabic ? 'الدفع والمحفظة' : 'Payment & Wallet',
                   children: [

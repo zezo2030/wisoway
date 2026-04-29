@@ -6,6 +6,8 @@ import '../../providers/auth_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../models/notification_model.dart';
 import '../../core/theme/colors.dart';
+import '../../core/ui/error_surface.dart';
+import '../../core/api/api_client.dart';
 import '../../core/constants/route_names.dart';
 import '../../widgets/common/empty_state.dart';
 import '../../widgets/notification_card.dart';
@@ -87,12 +89,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       ).deleteNotification(notification.id);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في حذف الإشعار: $e'),
-            backgroundColor: T.error(context),
-          ),
-        );
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     }
   }

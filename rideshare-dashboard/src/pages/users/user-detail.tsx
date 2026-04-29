@@ -10,12 +10,15 @@ import {
   getTrips,
   getDriverVehicle,
   changeUserRole,
-  toggleUserBan,
   confirmUser,
   approveDriver,
   deleteUser,
+  banUser,
+  unbanUser,
+  getUserDevices,
 } from "@/api/admin"
 import { StatusBadge } from "@/components/status-badge"
+import { Badge } from "@/components/ui/badge"
 import { ImagePreview } from "@/components/image-preview"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import { Button } from "@/components/ui/button"
@@ -28,6 +31,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import { QUERY_KEYS } from "@/lib/constants"
 import { cn, formatDate, formatLocationName, getUserRoleLabel, getTripLocationName } from "@/lib/utils"
 import { UserRole } from "@/types/enums"
@@ -52,6 +64,7 @@ import {
   CarFront,
   Trash2,
   FileText,
+  Smartphone,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -60,6 +73,13 @@ export default function UserDetailPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState("trips")
+
+  // Ban reason dialog state
+  const [banDialog, setBanDialog] = useState<{
+    open: boolean
+    userId: string
+    banReason: string
+  }>({ open: false, userId: "", banReason: "" })
 
   // Confirmation dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -116,17 +136,38 @@ export default function UserDetailPage() {
     },
   })
 
-  // Toggle ban mutation
-  const toggleBanMutation = useMutation({
-    mutationFn: ({ userId, isActive }: { userId: string; isActive: boolean }) =>
-      toggleUserBan(userId, isActive),
-    onSuccess: (_, variables) => {
+  // Phase 8 ban mutation — POST /admin/users/:id/ban with optional reason
+  const banMutation = useMutation({
+    mutationFn: ({ userId, banReason }: { userId: string; banReason?: string }) =>
+      banUser(userId, banReason),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.USER, id] })
-      toast.success(variables.isActive ? "User unbanned successfully" : "User banned successfully")
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.USER_DEVICES, id] })
+      toast.success("User banned successfully")
     },
     onError: () => {
-      toast.error("Failed to update user status")
+      toast.error("Failed to ban user")
     },
+  })
+
+  // Phase 8 unban mutation — POST /admin/users/:id/unban
+  const unbanMutation = useMutation({
+    mutationFn: (userId: string) => unbanUser(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.USER, id] })
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.USER_DEVICES, id] })
+      toast.success("User unbanned successfully")
+    },
+    onError: () => {
+      toast.error("Failed to unban user")
+    },
+  })
+
+  // Fetch user devices (lazy — only when devices tab is active)
+  const { data: devices, isLoading: isLoadingDevices } = useQuery({
+    queryKey: [QUERY_KEYS.ADMIN.USER_DEVICES, id],
+    queryFn: () => getUserDevices(id!),
+    enabled: !!id && activeTab === "devices",
   })
 
   const confirmUserMutation = useMutation({
@@ -184,30 +225,34 @@ export default function UserDetailPage() {
     })
   }
 
-  const handleBanToggle = () => {
+  const handleBanClick = () => {
     if (!user) return
-    // Prevent banning admin users
-    if (user.role === UserRole.ADMIN && user.isActive) {
+    if (user.role === UserRole.ADMIN) {
       toast.error("Cannot ban admin users")
       return
     }
-
     const userId = (user as { id?: string }).id ?? user._id
     if (!userId) {
       toast.error("Cannot ban user: missing user ID")
       return
     }
+    setBanDialog({ open: true, userId, banReason: "" })
+  }
 
-    const isBanning = user.isActive
+  const handleUnbanClick = () => {
+    if (!user) return
+    const userId = (user as { id?: string }).id ?? user._id
+    if (!userId) {
+      toast.error("Cannot unban user: missing user ID")
+      return
+    }
     setConfirmDialog({
       open: true,
-      title: isBanning ? "Ban User" : "Unban User",
-      description: isBanning
-        ? "Are you sure you want to ban this user? They will no longer be able to access the platform."
-        : "Are you sure you want to unban this user? They will regain access to the platform.",
-      variant: isBanning ? "destructive" : "default",
+      title: "Unban User",
+      description: "Are you sure you want to unban this user? They will regain full access to the platform.",
+      variant: "default",
       onConfirm: () => {
-        toggleBanMutation.mutate({ userId, isActive: !user.isActive })
+        unbanMutation.mutate(userId)
         setConfirmDialog((prev) => ({ ...prev, open: false }))
       },
     })
@@ -433,8 +478,8 @@ export default function UserDetailPage() {
             </DropdownMenuItem>
             <div className="h-px bg-border my-1" />
             <DropdownMenuItem
-              onClick={handleBanToggle}
-              disabled={toggleBanMutation.isPending || (user.role === UserRole.ADMIN && user.isActive)}
+              onClick={user.isActive ? handleBanClick : handleUnbanClick}
+              disabled={banMutation.isPending || unbanMutation.isPending || (user.role === UserRole.ADMIN && user.isActive)}
               className={cn("font-medium cursor-pointer", user.isActive ? "text-rose-600 focus:text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-950/30" : "text-emerald-600 focus:text-emerald-600 focus:bg-emerald-50 dark:focus:bg-emerald-950/30")}
             >
               {user.isActive ? (
@@ -723,6 +768,9 @@ export default function UserDetailPage() {
             <TabsTrigger value="ratings" className="rounded-xl px-5 py-2.5 font-semibold text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary flex-shrink-0">
               <Star className="mr-2 h-4 w-4" /> Ratings
             </TabsTrigger>
+            <TabsTrigger value="devices" className="rounded-xl px-5 py-2.5 font-semibold text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary flex-shrink-0">
+              <Smartphone className="mr-2 h-4 w-4" /> Devices
+            </TabsTrigger>
           </TabsList>
 
           <Card className="mt-6 border-border/50 shadow-md bg-card/60 backdrop-blur-xl mb-10 overflow-hidden">
@@ -806,6 +854,71 @@ export default function UserDetailPage() {
                 <p className="mt-2 text-sm text-muted-foreground font-medium">Ratings breakdown module coming soon.</p>
               </div>
             </TabsContent>
+
+            <TabsContent value="devices" className="m-0 focus-visible:outline-none focus-visible:ring-0">
+              {isLoadingDevices ? (
+                <div className="p-16 flex flex-col items-center justify-center text-center">
+                  <Smartphone className="h-12 w-12 mb-4 text-muted-foreground/30 animate-pulse" />
+                  <p className="text-sm text-muted-foreground font-medium">Loading devices...</p>
+                </div>
+              ) : devices && devices.length > 0 ? (
+                <div>
+                  <CardHeader className="border-b border-border/30 bg-muted/10 pb-4 pt-5 px-6">
+                    <CardTitle className="text-lg font-bold flex items-center">
+                      <Smartphone className="w-5 h-5 mr-3 text-primary" /> Registered Devices
+                    </CardTitle>
+                    <CardDescription className="text-sm font-medium">
+                      {devices.filter((d) => d.status === "active").length} active · {devices.filter((d) => d.status === "revoked").length} revoked
+                    </CardDescription>
+                  </CardHeader>
+                  <div className="divide-y divide-border/50">
+                    {devices.map((device) => (
+                      <div key={device.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-muted/30 transition-colors">
+                        <div className="flex items-start gap-4">
+                          <div className={cn(
+                            "p-3 rounded-xl border shadow-inner mt-0.5",
+                            device.status === "active"
+                              ? "bg-emerald-500/10 border-emerald-500/20"
+                              : "bg-muted border-border/40"
+                          )}>
+                            <Smartphone className={cn("w-5 h-5", device.status === "active" ? "text-emerald-600" : "text-muted-foreground/50")} />
+                          </div>
+                          <div>
+                            <p className="font-bold text-base text-foreground">
+                              {device.deviceName || device.deviceId}
+                            </p>
+                            <p className="text-sm text-muted-foreground capitalize">
+                              {device.platform}
+                              {device.lastSeenAt && (
+                                <span className="ml-2">· Last seen {formatDate(device.lastSeenAt)}</span>
+                              )}
+                            </p>
+                            {device.revokeReason && (
+                              <p className="text-xs text-rose-500 mt-0.5">Revoked: {device.revokeReason}</p>
+                            )}
+                          </div>
+                        </div>
+                        <Badge
+                          variant={device.status === "active" ? "default" : "outline"}
+                          className={cn(
+                            "shadow-sm font-semibold self-start sm:self-center capitalize",
+                            device.status === "active" ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "text-muted-foreground",
+                          )}
+                        >
+                          {device.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-16 flex flex-col items-center justify-center text-center">
+                  <Smartphone className="h-12 w-12 mb-4 text-muted-foreground/30" />
+                  <h3 className="text-xl font-bold">No devices registered</h3>
+                  <p className="mt-2 text-sm text-muted-foreground font-medium">This user has no registered devices on record.</p>
+                </div>
+              )}
+            </TabsContent>
           </Card>
         </Tabs>
       </div>
@@ -821,6 +934,55 @@ export default function UserDetailPage() {
         variant={confirmDialog.variant}
         onConfirm={confirmDialog.onConfirm}
       />
+
+      {/* Ban Reason Dialog */}
+      <Dialog open={banDialog.open} onOpenChange={(open) => setBanDialog((prev) => ({ ...prev, open }))}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-rose-600">
+              <Ban className="h-5 w-5" /> Ban User
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">
+              This user will immediately lose access to the platform. All active devices will be revoked.
+            </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="ban-reason" className="text-sm font-semibold">
+                Reason <span className="text-muted-foreground font-normal">(optional)</span>
+              </Label>
+              <Textarea
+                id="ban-reason"
+                placeholder="e.g. Repeated policy violations, fraud report..."
+                className="resize-none min-h-[90px]"
+                value={banDialog.banReason}
+                onChange={(e) => setBanDialog((prev) => ({ ...prev, banReason: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setBanDialog({ open: false, userId: "", banReason: "" })}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={banMutation.isPending}
+              onClick={() => {
+                banMutation.mutate({
+                  userId: banDialog.userId,
+                  banReason: banDialog.banReason.trim() || undefined,
+                })
+                setBanDialog({ open: false, userId: "", banReason: "" })
+              }}
+            >
+              {banMutation.isPending ? "Banning..." : "Confirm Ban"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -17,6 +17,10 @@ async function bootstrap() {
   const uploadsPath = path.join(process.cwd(), 'uploads');
   app.useStaticAssets(uploadsPath, { prefix: '/uploads' });
 
+  // Serve public share page statically
+  const publicPath = path.join(process.cwd(), 'public');
+  app.useStaticAssets(publicPath, { prefix: '/public' });
+
   // Security: Helmet
   app.use(helmet());
 

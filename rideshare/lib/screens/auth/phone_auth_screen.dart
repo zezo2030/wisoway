@@ -4,6 +4,8 @@ import '../../providers/auth_provider.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/colors.dart';
+import '../../core/ui/error_surface.dart';
+import '../../core/api/api_client.dart';
 
 class PhoneAuthScreen extends StatefulWidget {
   /// When true, user is already logged in and we are linking/confirming phone (OTP will call linkPhone).
@@ -77,13 +79,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ: ${e.toString()}'),
-            backgroundColor: T.error(context),
-            duration: const Duration(seconds: 4),
-          ),
-        );
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     } finally {
       if (mounted) {

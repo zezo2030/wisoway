@@ -14,10 +14,12 @@ import 'core/services/notification_navigation_service.dart';
 import 'core/services/push_notification_service.dart';
 import 'bloc/auth/auth_bloc.dart';
 import 'bloc/trip/trip_bloc.dart';
+import 'bloc/booking/booking_bloc.dart';
 import 'providers/auth_provider.dart';
 import 'providers/trip_provider.dart';
 import 'providers/notification_provider.dart';
 import 'core/constants/route_names.dart';
+import 'screens/auth/welcome_screen.dart';
 import 'screens/auth/sign_in_screen.dart';
 import 'screens/auth/account_type_selection_screen.dart';
 import 'screens/auth/sign_up_screen.dart';
@@ -34,6 +36,7 @@ import 'screens/main/main_screen.dart';
 import 'screens/driver/create_trip_screen.dart';
 import 'screens/driver/edit_trip_screen.dart';
 import 'screens/driver/my_trips_screen.dart';
+import 'screens/driver/vehicle_settings_screen.dart';
 import 'screens/driver/trip_management_screen.dart';
 import 'screens/driver/passenger_details_screen.dart';
 import 'screens/driver/driver_wallet_screen.dart';
@@ -54,8 +57,12 @@ import 'screens/passenger/rating_screen.dart';
 import 'screens/profile/edit_profile_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/settings/change_password_screen.dart';
+import 'screens/settings/account_security_devices_screen.dart';
 import 'screens/settings/support_screen.dart';
 import 'screens/settings/about_screen.dart';
+import 'screens/auth/banned_screen.dart';
+import 'screens/passenger/complaint_screen.dart';
+import 'screens/passenger/refund_request_screen.dart';
 // Removed unused notification_service.dart
 
 //admin@rideshare.com
@@ -107,6 +114,7 @@ class MyApp extends StatelessWidget {
         providers: [
           BlocProvider(create: (_) => AuthBloc()),
           BlocProvider(create: (_) => TripBloc()),
+          BlocProvider(create: (_) => BookingBloc()),
         ],
         child: Builder(
           builder: (context) {
@@ -137,6 +145,7 @@ class MyApp extends StatelessWidget {
                   },
                   home: const AuthWrapper(),
                   routes: {
+                    RouteNames.welcome: (context) => const WelcomeScreen(),
                     RouteNames.signIn: (context) => const SignInScreen(),
                     RouteNames.accountTypeSelection: (context) =>
                         const AccountTypeSelectionScreen(),
@@ -159,6 +168,8 @@ class MyApp extends StatelessWidget {
                     RouteNames.createTrip: (context) =>
                         const CreateTripScreen(),
                     RouteNames.myTrips: (context) => const MyTripsScreen(),
+                    RouteNames.vehicleSettings: (context) =>
+                        const VehicleSettingsScreen(),
                     RouteNames.tripsList: (context) => const TripsListScreen(),
                     RouteNames.paymentHistory: (context) =>
                         const PaymentHistoryScreen(),
@@ -177,8 +188,33 @@ class MyApp extends StatelessWidget {
                     RouteNames.about: (context) => const AboutScreen(),
                     RouteNames.changePassword: (context) =>
                         const ChangePasswordScreen(),
+                    RouteNames.accountSecurityDevices: (context) =>
+                        const AccountSecurityDevicesScreen(),
+                    RouteNames.banned: (context) => const BannedScreen(),
                   },
                   onGenerateRoute: (settings) {
+                    if (settings.name == RouteNames.complaint) {
+                      final args =
+                          settings.arguments as Map<String, dynamic>?;
+                      return MaterialPageRoute(
+                        settings: settings,
+                        builder: (context) => ComplaintScreen(
+                          againstUserId: args?['againstUserId'] as String?,
+                          tripId: args?['tripId'] as String?,
+                        ),
+                      );
+                    }
+                    if (settings.name == RouteNames.refundRequest) {
+                      final args =
+                          settings.arguments as Map<String, dynamic>;
+                      return MaterialPageRoute(
+                        settings: settings,
+                        builder: (context) => RefundRequestScreen(
+                          bookingId: args['bookingId'] as String,
+                          tripRef: args['tripRef'] as String?,
+                        ),
+                      );
+                    }
                     if (settings.name == RouteNames.phoneAuth) {
                       final args = settings.arguments as Map<String, dynamic>?;
                       final isLinkPhone = args?['isLinkPhone'] == true;
@@ -304,9 +340,9 @@ class AuthWrapper extends StatelessWidget {
           );
         }
 
-        // Not authenticated - show sign in
+        // Not authenticated - show welcome screen
         if (!authProvider.isAuthenticated) {
-          return const SignInScreen();
+          return const WelcomeScreen();
         }
 
         // Authenticated but phone not verified - require phone confirmation

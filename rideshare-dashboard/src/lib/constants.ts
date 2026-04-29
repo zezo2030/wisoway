@@ -22,6 +22,10 @@ export const ROUTES = {
   CHAT: "/chat",
   REPORTS: "/reports",
   PRICING_SETTINGS: "/settings/pricing",
+  ACCOUNT_FLAGS: "/account-flags",
+  PENDING_CHARGES: "/pending-charges",
+  COMPLAINTS: "/complaints",
+  REFUNDS: "/refunds",
 } as const
 
 // Navigation Items (for sidebar)
@@ -38,6 +42,10 @@ export const NAV_ITEMS = [
   { path: ROUTES.CHAT, label: "Chat", icon: "MessageSquare" },
   { path: ROUTES.REPORTS, label: "Reports", icon: "BarChart3" },
   { path: ROUTES.PRICING_SETTINGS, label: "Pricing", icon: "Percent" },
+  { path: ROUTES.ACCOUNT_FLAGS, label: "Account Flags", icon: "ShieldAlert" },
+  { path: ROUTES.PENDING_CHARGES, label: "Pending Charges", icon: "ReceiptText" },
+  { path: ROUTES.COMPLAINTS, label: "Complaints", icon: "MessageSquareWarning" },
+  { path: ROUTES.REFUNDS, label: "Refunds", icon: "ReceiptRefund" },
 ] as const
 
 // Page Sizes for Pagination
@@ -64,6 +72,8 @@ export const BOOKING_STATUS_LABELS = {
   confirmed: "Confirmed",
   cancelled: "Cancelled",
   completed: "Completed",
+  rejected: "Rejected",
+  no_show: "No-Show",
 } as const
 
 export const PAYMENT_STATUS_LABELS = {
@@ -132,6 +142,8 @@ export const STATUS_VARIANTS = {
   confirmed: "default",
   cancelled_booking: "destructive",
   completed_booking: "default",
+  rejected_booking: "destructive",
+  no_show_booking: "outline",
 
   // Vehicle status
   verified: "default",
@@ -152,6 +164,7 @@ export const QUERY_KEYS = {
     USERS: "users",
     USER: "user",
     USER_STATS: "user-stats",
+    USER_DEVICES: "user-devices",
     TRIPS: "trips",
     TRIP: "trip",
     VEHICLES: "vehicles",
@@ -174,6 +187,21 @@ export const QUERY_KEYS = {
   NOTIFICATIONS: {
     LIST: "notifications",
     UNREAD_COUNT: "notifications-unread-count",
+  },
+  ACCOUNT_FLAGS: {
+    LIST: "account-flags",
+  },
+  PENDING_CHARGES: {
+    LIST: "pending-charges",
+  },
+  COMPLAINTS: {
+    LIST: "complaints",
+  },
+  REFUNDS: {
+    LIST: "refunds",
+  },
+  SETTLEMENT: {
+    AUDITS: "settlement-audits",
   },
 } as const
 

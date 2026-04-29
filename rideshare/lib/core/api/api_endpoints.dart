@@ -44,15 +44,29 @@ class ApiEndpoints {
   static String hideTrip(String id) => '/trips/$id/hide';
   static String showTrip(String id) => '/trips/$id/show';
   static String completeTrip(String id) => '/trips/$id/complete';
+  static String startTrip(String id) => '/trips/$id/start';
+  static String shareLink(String tripId) => '/trips/$tripId/share-link';
+  static String publicShare(String token) => '/share/$token';
+  static String passengerConfirm(String bookingId) => '/bookings/$bookingId/passenger-confirm';
+  static String driverConfirm(String bookingId) => '/bookings/$bookingId/driver-confirm';
   static String cancelTrip(String id) => '/trips/$id';
 
-  // Bookings
+  // Bookings (v1 — legacy)
   static const String bookings = '/bookings';
   static const String myBookings = '/bookings/my';
   static String bookingById(String id) => '/bookings/$id';
   static String tripBookings(String tripId) => '/bookings/trip/$tripId';
   static String confirmBooking(String id) => '/bookings/$id/confirm';
   static String cancelBooking(String id) => '/bookings/$id/cancel';
+
+  // Bookings (v2 — multi-seat)
+  static const String bookingsV2 = '/v2/bookings';
+  static const String bookingsV2AutoPick = '/v2/bookings/auto-pick';
+  static String acceptBooking(String id) => '/v2/bookings/$id/accept';
+  static String rejectBooking(String id) => '/v2/bookings/$id/reject';
+
+  // Pending charges
+  static const String myPendingCharges = '/me/pending-charges';
 
   // Payments
   static const String payments = '/payments';
@@ -99,12 +113,22 @@ class ApiEndpoints {
   static const String unreadCount = '/notifications/unread-count';
   static const String readAll = '/notifications/read-all';
   static String readNotification(String id) => '/notifications/$id/read';
+  static const String notificationDevices = '/notifications/devices';
+  static String notificationDevice(String token) =>
+      '/notifications/devices/${Uri.encodeComponent(token)}';
 
   // Tracking
   static String trackingLatest(String tripId) => '/tracking/$tripId/latest';
   static String trackingHistory(String tripId) => '/tracking/$tripId/history';
   static const String trackingNearbyTrips = '/tracking/nearby/trips';
 
+  // Locations
+  static const String locationsRoute = '/locations/route';
+
   // Uploads
   static const String uploads = '/uploads';
+
+  // Devices (Phase 3 — account security)
+  static const String devices = '/auth/devices';
+  static String deviceById(String deviceId) => '/auth/devices/$deviceId';
 }

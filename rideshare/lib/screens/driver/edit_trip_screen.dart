@@ -7,12 +7,14 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../providers/trip_provider.dart';
 import '../../core/services/storage_service.dart';
 import '../../models/location_model.dart';
-import '../../models/seat_layout_config.dart';
 import '../../models/trip_model.dart';
 import '../../widgets/location_picker_widget.dart';
 import '../../core/theme/text_styles.dart';
 import '../../core/theme/colors.dart';
 import '../../../widgets/common/section_card.dart';
+import '../../core/ui/error_surface.dart';
+import '../../core/api/api_client.dart';
+import '../../core/errors/failure.dart';
 
 class EditTripScreen extends StatefulWidget {
   final String tripId;
@@ -37,9 +39,6 @@ class _EditTripScreenState extends State<EditTripScreen> {
   DateTime? _departureTime;
   File? _carImage;
   String? _existingCarImageUrl;
-  int _rows = 2;
-  int _seatsPerRow = 2;
-  bool _preventGenderMixing = true;
   bool _isLoading = false;
   bool _isLoadingTrip = true;
 
@@ -61,9 +60,6 @@ class _EditTripScreenState extends State<EditTripScreen> {
           _toLocation = trip.to;
           _departureTime = trip.departureTime;
           _priceController.text = trip.price.toString();
-          _rows = trip.seatLayout.rows;
-          _seatsPerRow = trip.seatLayout.seatsPerRow;
-          _preventGenderMixing = trip.seatLayout.preventGenderMixing;
           _existingCarImageUrl = trip.carImageUrl;
           _fromController.text = trip.from.name;
           _toController.text = trip.to.name;
@@ -72,10 +68,13 @@ class _EditTripScreenState extends State<EditTripScreen> {
       } else {
         if (mounted) {
           setState(() => _isLoadingTrip = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('الرحلة غير موجودة'),
-              backgroundColor: AppColors.error,
+          ErrorSurface.showFailure(
+            context,
+            const Failure(
+              category: FailureCategory.validation,
+              messageKey: 'errorsValidationGeneric',
+              severity: FailureSeverity.warning,
+              developerDetail: 'Trip not found',
             ),
           );
           Navigator.pop(context);
@@ -84,12 +83,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoadingTrip = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في تحميل الرحلة: ${e.toString()}'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     }
   }
@@ -230,30 +224,39 @@ class _EditTripScreenState extends State<EditTripScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_fromLocation == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('يرجى اختيار نقطة الانطلاق'),
-          backgroundColor: AppColors.error,
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.validation,
+          messageKey: 'errorsValidationGeneric',
+          severity: FailureSeverity.warning,
+          developerDetail: 'Origin location is missing',
         ),
       );
       return;
     }
 
     if (_toLocation == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('يرجى اختيار الوجهة'),
-          backgroundColor: AppColors.error,
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.validation,
+          messageKey: 'errorsValidationGeneric',
+          severity: FailureSeverity.warning,
+          developerDetail: 'Destination location is missing',
         ),
       );
       return;
     }
 
     if (_departureTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('يرجى اختيار وقت الانطلاق'),
-          backgroundColor: AppColors.error,
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.validation,
+          messageKey: 'errorsValidationGeneric',
+          severity: FailureSeverity.warning,
+          developerDetail: 'Departure time is missing',
         ),
       );
       return;
@@ -264,10 +267,13 @@ class _EditTripScreenState extends State<EditTripScreen> {
         (_trip!.isCompleted || _trip!.isPast || _trip!.isLocked);
 
     if (!isPastTrip && _departureTime!.isBefore(DateTime.now())) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('وقت الانطلاق يجب أن يكون في المستقبل للرحلات النشطة'),
-          backgroundColor: AppColors.error,
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.validation,
+          messageKey: 'errorsValidationGeneric',
+          severity: FailureSeverity.warning,
+          developerDetail: 'Departure time must be in the future for active trips',
         ),
       );
       return;
@@ -327,26 +333,11 @@ class _EditTripScreenState extends State<EditTripScreen> {
         }
       }
 
-      final seatLayout = SeatLayoutConfig(
-        rows: _rows,
-        seatsPerRow: _seatsPerRow,
-        preventGenderMixing: _preventGenderMixing,
-      );
-
-      final newTotalSeats = _rows * _seatsPerRow;
-
-      final existingBookedSeats =
-          _trip?.seats.where((seat) => seat.isBooked).length ?? 0;
-      final newAvailableSeats = newTotalSeats - existingBookedSeats;
-
       final updates = {
         'from': _fromLocation!.toMap(),
         'to': _toLocation!.toMap(),
         'departureTime': _departureTime!,
         'price': double.parse(_priceController.text.trim()),
-        'seatLayout': seatLayout.toMap(),
-        'totalSeats': newTotalSeats,
-        'availableSeats': newAvailableSeats > 0 ? newAvailableSeats : 0,
         if (carImageUrl != null) 'carImage': carImageUrl,
       };
 
@@ -365,12 +356,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ: ${e.toString()}'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     } finally {
       if (mounted) {
@@ -416,8 +402,6 @@ class _EditTripScreenState extends State<EditTripScreen> {
         body: const Center(child: Text('الرحلة غير موجودة')),
       );
     }
-
-    final totalSeats = _rows * _seatsPerRow;
 
     return Scaffold(
       backgroundColor: T.background(context),
@@ -603,136 +587,6 @@ class _EditTripScreenState extends State<EditTripScreen> {
                         }
                         return null;
                       },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                SectionCard(
-                  title: 'إعدادات المقاعد',
-                  icon: Icons.event_seat,
-                  iconColor: T.primary(context),
-                  children: [
-                    const SizedBox(height: 8),
-                    _buildCounterRow(
-                      label: 'عدد الصفوف',
-                      value: _rows,
-                      icon: Icons.view_column,
-                      min: 1,
-                      max: 10,
-                      onDecrement: _rows > 1
-                          ? () => setState(() => _rows--)
-                          : null,
-                      onIncrement: _rows < 10
-                          ? () => setState(() => _rows++)
-                          : null,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildCounterRow(
-                      label: 'عدد المقاعد في كل صف',
-                      value: _seatsPerRow,
-                      icon: Icons.airline_seat_recline_normal,
-                      min: 1,
-                      max: 10,
-                      onDecrement: _seatsPerRow > 1
-                          ? () => setState(() => _seatsPerRow--)
-                          : null,
-                      onIncrement: _seatsPerRow < 10
-                          ? () => setState(() => _seatsPerRow++)
-                          : null,
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: T.primaryContainer(context),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: T.primary(context).withValues(alpha: 0.3),
-                          width: 2,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.confirmation_number,
-                                color: T.primary(context),
-                                size: 28,
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                'إجمالي المقاعد',
-                                style: AppTextStyles.titleSmall.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: T.primary(context),
-                                ),
-                              ),
-                            ],
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: T.primary(context),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              '$totalSeats',
-                              style: AppTextStyles.headlineSmall.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: T.onPrimary(context),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: T.surfaceVariant(context),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: T.outline(context)),
-                      ),
-                      child: SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Row(
-                          children: [
-                            Icon(
-                              Icons.people_outline,
-                              color: T.primary(context),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'منع الاختلاط',
-                              style: AppTextStyles.titleSmall.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                        subtitle: Padding(
-                          padding: const EdgeInsets.only(top: 4, right: 48),
-                          child: Text(
-                            'منع الجلوس بجانب الجنس الآخر',
-                            style: AppTextStyles.bodyMedium.copyWith(
-                              fontSize: 13,
-                              color: T.textSecondary(context),
-                            ),
-                          ),
-                        ),
-                        value: _preventGenderMixing,
-                        activeThumbColor: T.primary(context),
-                        onChanged: (value) {
-                          setState(() => _preventGenderMixing = value);
-                        },
-                      ),
                     ),
                   ],
                 ),
@@ -1018,121 +872,4 @@ class _EditTripScreenState extends State<EditTripScreen> {
     );
   }
 
-  Widget _buildCounterRow({
-    required String label,
-    required int value,
-    required IconData icon,
-    required int min,
-    required int max,
-    VoidCallback? onDecrement,
-    VoidCallback? onIncrement,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: T.surface(context),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: T.outline(context)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: T.primary(context).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: T.primary(context), size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: AppTextStyles.bodyLarge.copyWith(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: T.onSurface(context),
-              ),
-            ),
-          ),
-          Container(
-            decoration: BoxDecoration(
-              color: T.surface(context),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: T.outlineVariant(context)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Material(
-                  color: AppColors.transparent,
-                  child: Semantics(
-                    button: onDecrement != null,
-                    label: 'تقليل $label',
-                    child: InkWell(
-                      onTap: onDecrement,
-                      borderRadius: const BorderRadius.only(
-                        topRight: Radius.circular(12),
-                        bottomRight: Radius.circular(12),
-                      ),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        child: Icon(
-                          Icons.remove,
-                          color: onDecrement != null
-                              ? T.primary(context)
-                              : T.textDisabled(context),
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Text(
-                    '$value',
-                    style: AppTextStyles.titleMedium.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: T.primary(context),
-                    ),
-                  ),
-                ),
-                Material(
-                  color: AppColors.transparent,
-                  child: Semantics(
-                    button: onIncrement != null,
-                    label: 'زيادة $label',
-                    child: InkWell(
-                      onTap: onIncrement,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(12),
-                        bottomLeft: Radius.circular(12),
-                      ),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        child: Icon(
-                          Icons.add,
-                          color: onIncrement != null
-                              ? T.primary(context)
-                              : T.textDisabled(context),
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

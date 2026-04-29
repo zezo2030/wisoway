@@ -4,7 +4,10 @@ import '../../providers/auth_provider.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/theme/colors.dart';
-import '../../core/utils/auth_error_formatter.dart';
+import '../../core/ui/error_surface.dart';
+import '../../core/api/api_client.dart';
+import '../../core/constants/countries.dart';
+import '../../widgets/country_code_picker.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -17,6 +20,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
+  CountryData _selectedCountry = Countries.defaultCountry;
   bool _isLoading = false;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -48,24 +52,24 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      await authProvider.forgotPassword(_phoneController.text.trim());
+      String cleanedPhone = _phoneController.text.trim();
+      if (!cleanedPhone.startsWith('+') && cleanedPhone.startsWith('0')) {
+        cleanedPhone = cleanedPhone.substring(1);
+      }
+      final phoneNumber = '${_selectedCountry.dialCode}$cleanedPhone';
+
+      await authProvider.forgotPassword(phoneNumber);
 
       if (mounted) {
         Navigator.pushNamed(
           context,
           RouteNames.resetPassword,
-          arguments: {'phoneNumber': _phoneController.text.trim()},
+          arguments: {'phoneNumber': phoneNumber},
         );
       }
     } catch (e) {
       if (mounted) {
-        final errorMessage = AuthErrorFormatter.format(e, action: AuthAction.passwordReset);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     } finally {
       if (mounted) {
@@ -83,10 +87,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
         backgroundColor: AppColors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back,
-            color: T.onSurface(context),
-          ),
+          icon: Icon(Icons.arrow_back, color: T.onSurface(context)),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -135,7 +136,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: T.primary(context).withValues(alpha: 0.15),
+                                color: T
+                                    .primary(context)
+                                    .withValues(alpha: 0.15),
                                 blurRadius: 24,
                                 offset: const Offset(0, 8),
                               ),
@@ -172,47 +175,63 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                           key: _formKey,
                           child: Column(
                             children: [
-                              // Phone Number Field
-                              TextFormField(
-                                controller: _phoneController,
-                                keyboardType: TextInputType.phone,
-                                textDirection: TextDirection.ltr,
-                                decoration: InputDecoration(
-                                  labelText: AppStrings.phoneNumber,
-                                  hintText: AppStrings.phoneNumberHint,
-                                  prefixIcon: Icon(
-                                    Icons.phone,
-                                    color: T.onSurfaceVariant(context),
-                                  ),
-                                  filled: true,
-                                  fillColor: T.surfaceVariant(context),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                    borderSide: BorderSide(
-                                      color: T.primary(context),
-                                      width: 2,
-                                    ),
-                                  ),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: T.surfaceVariant(context),
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return AppStrings.phoneRequired;
-                                  }
-                                  // Basic E.164 validation
-                                  final phoneRegex = RegExp(r'^\+[1-9]\d{1,14}$');
-                                  if (!phoneRegex.hasMatch(value.trim())) {
-                                    return 'يرجى إدخال رقم هاتف صحيح (مثال: +201234567890)';
-                                  }
-                                  return null;
-                                },
+                                child: Row(
+                                  children: [
+                                    CountryCodePicker(
+                                      selectedCountry: _selectedCountry,
+                                      onCountryChanged: (country) => setState(
+                                        () => _selectedCountry = country,
+                                      ),
+                                      borderColor: Colors.transparent,
+                                      width: 110,
+                                    ),
+                                    Container(
+                                      width: 1,
+                                      height: 30,
+                                      color: T
+                                          .outline(context)
+                                          .withValues(alpha: 0.3),
+                                    ),
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: _phoneController,
+                                        keyboardType: TextInputType.phone,
+                                        textDirection: TextDirection.ltr,
+                                        decoration: InputDecoration(
+                                          labelText: AppStrings.phoneNumber,
+                                          hintText: '123456789',
+                                          prefixIcon: Icon(
+                                            Icons.phone,
+                                            color: T.onSurfaceVariant(context),
+                                          ),
+                                          border: InputBorder.none,
+                                          enabledBorder: InputBorder.none,
+                                          focusedBorder: InputBorder.none,
+                                        ),
+                                        validator: (value) {
+                                          if (value == null ||
+                                              value.trim().isEmpty) {
+                                            return AppStrings.phoneRequired;
+                                          }
+                                          if (!RegExp(r'^\d{7,15}$').hasMatch(
+                                            value.trim().replaceAll(
+                                              RegExp(r'\s+'),
+                                              '',
+                                            ),
+                                          )) {
+                                            return 'يرجى إدخال رقم هاتف صحيح';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                               const SizedBox(height: 32),
                               // Send Code Button
@@ -236,9 +255,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                                           height: 24,
                                           child: CircularProgressIndicator(
                                             strokeWidth: 2,
-                                            valueColor: AlwaysStoppedAnimation<Color>(
-                                              Colors.white,
-                                            ),
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                  Colors.white,
+                                                ),
                                           ),
                                         )
                                       : Text(

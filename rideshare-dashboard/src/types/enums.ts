@@ -25,9 +25,28 @@ export const BookingStatus = {
   CONFIRMED: 'confirmed',
   CANCELLED: 'cancelled',
   COMPLETED: 'completed',
+  REJECTED: 'rejected',
+  NO_SHOW: 'no_show',
 } as const
 
 export type BookingStatus = typeof BookingStatus[keyof typeof BookingStatus]
+
+export const PendingChargeKind = {
+  LATE_CANCELLATION: 'late_cancellation',
+  PASSENGER_NO_SHOW: 'passenger_no_show',
+  DRIVER_NO_SHOW: 'driver_no_show',
+} as const
+
+export type PendingChargeKind = typeof PendingChargeKind[keyof typeof PendingChargeKind]
+
+export const PendingChargeStatus = {
+  PENDING: 'pending',
+  COLLECTED: 'collected',
+  WAIVED: 'waived',
+  FAILED: 'failed',
+} as const
+
+export type PendingChargeStatus = typeof PendingChargeStatus[keyof typeof PendingChargeStatus]
 
 export const PaymentStatus = {
   PENDING: 'pending',

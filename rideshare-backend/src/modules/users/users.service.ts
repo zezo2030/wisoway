@@ -8,7 +8,6 @@ import { Repository, LessThan } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { UserEntity } from '../../database/entities/user.entity';
 import { OtpCodeEntity } from '../../database/entities/otp-code.entity';
-import { PendingRegistrationEntity } from '../../database/entities/pending-registration.entity';
 import { PgUserRole } from '../../database/entities/shared.enums';
 import { UpdateUserDto } from './dto/update-user.dto';
 
@@ -28,8 +27,6 @@ export class UsersService {
     private userRepo: Repository<UserEntity>,
     @InjectRepository(OtpCodeEntity)
     private otpCodeRepo: Repository<OtpCodeEntity>,
-    @InjectRepository(PendingRegistrationEntity)
-    private pendingRegistrationRepo: Repository<PendingRegistrationEntity>,
   ) {}
 
   async create(userData: Partial<UserEntity>): Promise<UserEntity> {
@@ -43,14 +40,6 @@ export class UsersService {
   async findByEmail(email: string): Promise<UserEntity | null> {
     return this.userRepo
       .createQueryBuilder('user')
-      .where('LOWER(user.email) = LOWER(:email)', { email: email.trim() })
-      .getOne();
-  }
-
-  async findByEmailWithPassword(email: string): Promise<UserEntity | null> {
-    return this.userRepo
-      .createQueryBuilder('user')
-      .addSelect('user.passwordHash')
       .where('LOWER(user.email) = LOWER(:email)', { email: email.trim() })
       .getOne();
   }
@@ -76,7 +65,18 @@ export class UsersService {
 
   async update(id: string, updateUserDto: UpdateUserDto): Promise<UserEntity> {
     const user = await this.findById(id);
-    this.userRepo.merge(user, updateUserDto as any);
+
+    const { city, ...rest } = updateUserDto as UpdateUserDto & {
+      city?: string | null;
+    };
+
+    this.userRepo.merge(user, rest as Partial<UserEntity>);
+
+    if (city !== undefined) {
+      const trimmed = typeof city === 'string' ? city.trim() : '';
+      user.city = trimmed.length > 0 ? trimmed : null;
+    }
+
     return this.userRepo.save(user);
   }
 
@@ -93,13 +93,6 @@ export class UsersService {
 
   async updateFcmToken(id: string, fcmToken: string): Promise<void> {
     await this.userRepo.update(id, { fcmToken });
-  }
-
-  async updatePasswordHash(id: string, passwordHash: string): Promise<void> {
-    const nextPasswordHash = this.shouldHashPassword(passwordHash)
-      ? await bcrypt.hash(passwordHash, 12)
-      : passwordHash;
-    await this.userRepo.update(id, { passwordHash: nextPasswordHash });
   }
 
   async linkPhone(id: string, phoneNumber: string): Promise<UserEntity> {
@@ -156,17 +149,6 @@ export class UsersService {
     await this.userRepo.save(user);
   }
 
-  async updatePasswordAndInvalidateTokens(
-    id: string,
-    passwordHash: string,
-  ): Promise<void> {
-    await this.userRepo.update(id, {
-      passwordHash,
-      passwordChangedAt: new Date(),
-      refreshToken: null,
-    });
-  }
-
   async deactivate(id: string): Promise<void> {
     await this.userRepo.update(id, { isActive: false });
   }
@@ -201,51 +183,6 @@ export class UsersService {
 
   async cleanupExpiredOtpCodes(): Promise<void> {
     await this.otpCodeRepo.delete({ expiresAt: LessThan(new Date()) });
-  }
-
-  // Pending Registration methods
-  async createPendingRegistration(
-    data: any,
-  ): Promise<PendingRegistrationEntity> {
-    if (this.shouldHashPassword(data.passwordHash)) {
-      data.passwordHash = await bcrypt.hash(data.passwordHash, 12);
-    }
-
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-
-    const pending = await this.pendingRegistrationRepo.findOne({
-      where: { phoneNumber: data.phoneNumber },
-    });
-    if (pending) {
-      this.pendingRegistrationRepo.merge(pending, { ...data, expiresAt });
-      return this.pendingRegistrationRepo.save(pending);
-    } else {
-      const newPending = this.pendingRegistrationRepo.create({
-        ...data,
-        expiresAt,
-      } as Partial<PendingRegistrationEntity>);
-      return this.pendingRegistrationRepo.save(newPending);
-    }
-  }
-
-  async findPendingByPhone(
-    phoneNumber: string,
-  ): Promise<PendingRegistrationEntity | null> {
-    return this.pendingRegistrationRepo
-      .createQueryBuilder('pending')
-      .addSelect('pending.passwordHash')
-      .where('pending.phoneNumber = :phoneNumber', { phoneNumber })
-      .getOne();
-  }
-
-  async findPendingByEmail(
-    email: string,
-  ): Promise<PendingRegistrationEntity | null> {
-    return this.pendingRegistrationRepo.findOne({ where: { email } });
-  }
-
-  async deletePendingByPhone(phoneNumber: string): Promise<void> {
-    await this.pendingRegistrationRepo.delete({ phoneNumber });
   }
 
   private shouldHashPassword(

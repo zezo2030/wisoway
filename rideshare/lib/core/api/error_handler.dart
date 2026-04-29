@@ -1,27 +1,33 @@
-import 'package:dio/dio.dart';
+import 'package:rideshare/core/errors/exception_mapper.dart';
+import 'package:rideshare/core/errors/failure.dart';
 
+@Deprecated('Use ExceptionMapper.fromError() + ErrorSurface.showFailure() instead. '
+    'This class will be removed in a future release.')
 class ErrorHandler {
   static String getErrorMessage(dynamic error) {
-    if (error is DioException) {
-      if (error.response != null) {
-        final data = error.response?.data;
-        if (data is Map && data.containsKey('message')) {
-          final message = data['message'];
-          if (message is List) return message.join('\n');
-          return message.toString();
-        }
-      }
-      switch (error.type) {
-        case DioExceptionType.connectionTimeout:
-        case DioExceptionType.sendTimeout:
-        case DioExceptionType.receiveTimeout:
-          return 'انتهى وقت الاتصال';
-        case DioExceptionType.connectionError:
-          return 'يرجى التحقق من اتصالك بالإنترنت';
-        default:
-          return 'حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.';
-      }
+    if (error is Failure) {
+      return _categoryFallback(error.category);
     }
-    return error.toString();
+    final failure = ExceptionMapper.fromError(error);
+    return _categoryFallback(failure.category);
+  }
+
+  static String _categoryFallback(FailureCategory category) {
+    switch (category) {
+      case FailureCategory.network:
+        return 'Network error. Please check your connection.';
+      case FailureCategory.server:
+        return 'Server error. Please try again later.';
+      case FailureCategory.auth:
+        return 'Authentication error. Please sign in again.';
+      case FailureCategory.permission:
+        return 'Permission denied.';
+      case FailureCategory.validation:
+        return 'Invalid input. Please check your data.';
+      case FailureCategory.banned:
+        return 'Your account has been banned. Please contact support.';
+      case FailureCategory.unknown:
+        return 'An unexpected error occurred.';
+    }
   }
 }

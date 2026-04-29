@@ -11,6 +11,10 @@ class BookingCard extends StatelessWidget {
   final TripModel? trip;
   final bool isPastTrip;
   final VoidCallback? onTap;
+  /// Called when the user taps the Chat button (only shown once settled).
+  final VoidCallback? onChat;
+  /// Called when the user taps the Call button (only shown once settled).
+  final VoidCallback? onCall;
 
   const BookingCard({
     super.key,
@@ -18,6 +22,8 @@ class BookingCard extends StatelessWidget {
     this.trip,
     this.isPastTrip = false,
     this.onTap,
+    this.onChat,
+    this.onCall,
   });
 
   @override
@@ -74,6 +80,29 @@ class BookingCard extends StatelessWidget {
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: T.onSurfaceVariant(context),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                // Settlement badge (Phase 7 — US5)
+                if (booking.isSettled && !isPastTrip)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          IconsaxPlusBold.wallet_check,
+                          size: 14,
+                          color: AppColors.success,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'تم تأكيد الدفع',
+                          style: GoogleFonts.tajawal(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.successDark,
                           ),
                         ),
                       ],
@@ -210,12 +239,37 @@ class BookingCard extends StatelessWidget {
                       child: _BookingInfoItem(
                         icon: IconsaxPlusBold.profile_2user,
                         label: 'المقعد',
-                        value: booking.seatNumber,
+                        value: booking.seatNumber ?? '-',
                         mutedStyle: isPastTrip,
                       ),
                     ),
                   ],
                 ),
+                // Chat / Call actions — visible only after settlement
+                if (booking.isSettled && !isPastTrip) ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _SettlementActionButton(
+                          icon: IconsaxPlusBold.message,
+                          label: 'دردشة',
+                          color: T.primary(context),
+                          onTap: onChat,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _SettlementActionButton(
+                          icon: IconsaxPlusBold.call,
+                          label: 'اتصال',
+                          color: AppColors.success,
+                          onTap: onCall,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -270,6 +324,55 @@ class _BookingInfoItem extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
         ),
       ],
+    );
+  }
+}
+
+/// Compact action button shown in the settlement action row of [BookingCard].
+class _SettlementActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback? onTap;
+
+  const _SettlementActionButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: label,
+      child: Material(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 18, color: color),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: GoogleFonts.tajawal(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -6,6 +6,8 @@ import '../../core/constants/route_names.dart';
 import '../../core/services/payment_service.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/text_styles.dart';
+import '../../core/ui/error_surface.dart';
+import '../../core/api/api_client.dart';
 import '../../models/wallet_account_model.dart';
 import '../../models/wallet_model.dart';
 import '../../models/wallet_transaction_model.dart';
@@ -53,12 +55,7 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ: $e'),
-            backgroundColor: T.error(context),
-          ),
-        );
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     }
   }

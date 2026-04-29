@@ -7,7 +7,8 @@ import '../../core/constants/app_constants.dart';
 import '../../core/constants/countries.dart';
 import '../../core/theme/colors.dart';
 import '../../widgets/country_code_picker.dart';
-import '../../core/utils/auth_error_formatter.dart';
+import '../../core/ui/error_surface.dart';
+import '../../core/api/api_client.dart';
 import '../../widgets/common/form_components.dart';
 
 class DriverSignUpScreen extends StatefulWidget {
@@ -22,14 +23,15 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
   final _formKey = GlobalKey<FormState>();
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
   String? _selectedGender;
   CountryData _selectedCountry = Countries.defaultCountry;
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -51,9 +53,9 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
   void dispose() {
     _firstNameController.dispose();
     _lastNameController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
     _phoneController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     _animationController.dispose();
     super.dispose();
   }
@@ -64,30 +66,20 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
       _showSnackBar('يرجى اختيار الجنس', T.error(context));
       return;
     }
+    if (_passwordController.text != _confirmPasswordController.text) {
+      _showSnackBar('كلمتا السر غير متطابقتين', T.error(context));
+      return;
+    }
 
     setState(() => _isLoading = true);
 
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final email = _emailController.text.trim();
-      final password = _passwordController.text;
-      final fullName =
-          '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}';
       final phoneNumber =
           '${_selectedCountry.dialCode}${_phoneController.text.trim()}';
 
-      // 1. Create pending registration with phone verification
-      await authProvider.signUpWithEmailAndPassword(
-        name: fullName,
-        email: email,
-        password: password,
-        phoneNumber: phoneNumber,
-        role: AppConstants.roleDriver,
-        gender: _selectedGender,
-      );
+      await context.read<AuthProvider>().sendOTP(phoneNumber);
 
       if (mounted) {
-        // Navigate to OTP verification
         Navigator.pushReplacementNamed(
           context,
           RouteNames.otpVerification,
@@ -95,14 +87,18 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
             'phoneNumber': phoneNumber,
             'isRegistration': true,
             'role': AppConstants.roleDriver,
+            'firstName': _firstNameController.text.trim(),
+            'lastName': _lastNameController.text.trim(),
+            'gender': _selectedGender,
+            'password': _passwordController.text,
+            'afterVerifyRoute': RouteNames.driverCompleteProfile,
           },
         );
       }
     } catch (e) {
-      _showSnackBar(
-        AuthErrorFormatter.format(e, action: AuthAction.signUp),
-        T.error(context),
-      );
+      if (mounted) {
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -158,39 +154,6 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
                         ],
                       ),
                       const SizedBox(height: 16),
-                      ModernInputField(
-                        controller: _emailController,
-                        label: 'البريد الإلكتروني',
-                        hint: 'example@email.com',
-                        icon: IconsaxPlusLinear.sms,
-                        keyboardType: TextInputType.emailAddress,
-                        validator: (v) => (v == null || !v.contains('@'))
-                            ? 'بريد غير صحيح'
-                            : null,
-                      ),
-                      const SizedBox(height: 16),
-                      ModernInputField(
-                        controller: _passwordController,
-                        label: 'كلمة المرور',
-                        hint: '********',
-                        icon: IconsaxPlusLinear.lock,
-                        obscureText: _obscurePassword,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? IconsaxPlusLinear.eye_slash
-                                : IconsaxPlusLinear.eye,
-                          ),
-                          tooltip: 'إظهار/إخفاء كلمة المرور',
-                          onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword,
-                          ),
-                        ),
-                        validator: (v) => (v == null || v.length < 8)
-                            ? '8 أحرف على الأقل'
-                            : null,
-                      ),
-                      const SizedBox(height: 16),
                       Row(
                         children: [
                           CountryCodePicker(
@@ -223,13 +186,70 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
                         ],
                       ),
                       const SizedBox(height: 24),
+                      ModernInputField(
+                        controller: _passwordController,
+                        label: 'كلمة السر',
+                        hint: '8 أحرف على الأقل وتحتوي حرفاً ورقماً',
+                        icon: IconsaxPlusLinear.password_check,
+                        obscureText: _obscurePassword,
+                        suffixIcon: IconButton(
+                          onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
+                        ),
+                        validator: (v) {
+                          if (v == null || v.isEmpty) {
+                            return 'يرجى إدخال كلمة السر';
+                          }
+                          if (!RegExp(
+                            r'^(?=.*[A-Za-z])(?=.*\d).{8,}$',
+                          ).hasMatch(v)) {
+                            return 'يجب أن تحتوي كلمة السر على 8 أحرف مع حرف ورقم';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      ModernInputField(
+                        controller: _confirmPasswordController,
+                        label: 'تأكيد كلمة السر',
+                        hint: 'أعد إدخال كلمة السر',
+                        icon: IconsaxPlusLinear.password_check,
+                        obscureText: _obscureConfirmPassword,
+                        suffixIcon: IconButton(
+                          onPressed: () => setState(
+                            () => _obscureConfirmPassword =
+                                !_obscureConfirmPassword,
+                          ),
+                          icon: Icon(
+                            _obscureConfirmPassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
+                        ),
+                        validator: (v) {
+                          if (v == null || v.isEmpty) {
+                            return 'يرجى تأكيد كلمة السر';
+                          }
+                          if (v != _passwordController.text) {
+                            return 'كلمتا السر غير متطابقتين';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 24),
                       const SectionTitle(title: 'الجنس', isRequired: true),
                       const SizedBox(height: 12),
                       _buildGenderSelection(),
                       const SizedBox(height: 32),
                       PrimaryGradientButton(
                         onPressed: _isLoading ? null : _signUp,
-                        text: 'التالي (معلومات السيارة)',
+                        text: 'تحقق من رقم الهاتف وأنشئ كلمة السر',
                         isLoading: _isLoading,
                         color: T.secondary(context),
                       ),
@@ -281,7 +301,7 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
               borderRadius: BorderRadius.circular(20),
             ),
             child: const Text(
-              'الخطوة 1 من 2: المعلومات الأساسية',
+              'الخطوة 1 من 3: المعلومات الأساسية والتحقق',
               style: TextStyle(color: AppColors.white, fontSize: 13),
             ),
           ),

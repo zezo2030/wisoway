@@ -34,20 +34,16 @@ class TripCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
-        color: T.surface(context),
+        color: AppColors.teal50,
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: AppColors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-          BoxShadow(
-            color: AppColors.black.withValues(alpha: 0.02),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
+            color: T.primary(context).withValues(alpha: 0.12),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
           ),
         ],
+        border: Border.all(color: AppColors.teal200, width: 1.5),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(32),

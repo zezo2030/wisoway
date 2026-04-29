@@ -6,6 +6,8 @@ import '../../models/chat_model.dart';
 import '../../models/trip_model.dart';
 import '../../widgets/chat_bubble_widget.dart';
 import '../../core/theme/colors.dart';
+import '../../core/ui/error_surface.dart';
+import '../../core/api/api_client.dart';
 import '../../widgets/common/empty_state.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -110,12 +112,7 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في إرسال الرسالة: ${e.toString()}'),
-            backgroundColor: T.error(context),
-          ),
-        );
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     } finally {
       if (mounted) {

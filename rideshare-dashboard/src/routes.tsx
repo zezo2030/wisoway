@@ -21,6 +21,10 @@ import BookingsListPage from "@/pages/bookings/bookings-list"
 import RatingsListPage from "@/pages/ratings/ratings-list"
 import NotificationsPage from "@/pages/notifications/notifications"
 import ChatRoomsPage from "@/pages/chat/chat-rooms"
+import AccountFlagsPage from "@/pages/account-flags/account-flags"
+import PendingChargesPage from "@/pages/pending-charges/PendingChargesPage"
+import ComplaintsPage from "@/pages/complaints/complaints"
+import RefundsPage from "@/pages/refunds/refunds"
 
 // Placeholder pages (will be implemented in later phases)
 
@@ -123,6 +127,22 @@ export function AppRoutes() {
         {
           path: "settings/pricing",
           element: <PricingSettingsPage />,
+        },
+        {
+          path: "account-flags",
+          element: <AccountFlagsPage />,
+        },
+        {
+          path: "pending-charges",
+          element: <PendingChargesPage />,
+        },
+        {
+          path: "complaints",
+          element: <ComplaintsPage />,
+        },
+        {
+          path: "refunds",
+          element: <RefundsPage />,
         },
       ],
     },

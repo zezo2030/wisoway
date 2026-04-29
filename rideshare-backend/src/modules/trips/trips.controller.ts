@@ -25,13 +25,18 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { TripTimeService } from '../trip-time/trip-time.service';
+import { CompleteTripDto } from '../trip-time/dto/complete-trip.dto';
 
 @ApiTags('trips')
 @Controller('trips')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class TripsController {
-  constructor(private readonly tripsService: TripsService) {}
+  constructor(
+    private readonly tripsService: TripsService,
+    private readonly tripTimeService: TripTimeService,
+  ) {}
 
   @Post()
   @UseGuards(RolesGuard)
@@ -162,6 +167,49 @@ export class TripsController {
     return this.tripsService.hide(id, driverId);
   }
 
+  @Post(':id/start')
+  @UseGuards(RolesGuard)
+  @Roles('driver')
+  @ApiOperation({ summary: 'Driver starts the trip' })
+  @ApiResponse({ status: 200, description: 'Trip started' })
+  @ApiResponse({ status: 400, description: 'Timing window violation' })
+  @ApiResponse({ status: 403, description: 'Not the driver' })
+  async startTrip(
+    @Param('id') id: string,
+    @CurrentUser('id') driverId: string,
+  ) {
+    return this.tripTimeService.startTrip(id, driverId);
+  }
+
+  @Post(':id/complete')
+  @UseGuards(RolesGuard)
+  @Roles('driver')
+  @ApiOperation({
+    summary: 'Driver completes the trip with optional no-show seats',
+  })
+  @ApiResponse({ status: 200, description: 'Trip completed' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 403, description: 'Not the driver' })
+  async completeTrip(
+    @Param('id') id: string,
+    @CurrentUser('id') driverId: string,
+    @Body() dto: CompleteTripDto,
+  ) {
+    return this.tripTimeService.completeTrip(id, driverId, dto);
+  }
+
+  @Patch(':id/legacy-complete')
+  @UseGuards(RolesGuard)
+  @Roles('driver')
+  @ApiOperation({ summary: 'Legacy complete trip (kept for backward compat)' })
+  @ApiResponse({ status: 200, description: 'Trip completed successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 403, description: 'Not the owner' })
+  @ApiResponse({ status: 404, description: 'Trip not found' })
+  async complete(@Param('id') id: string, @CurrentUser('id') driverId: string) {
+    return this.tripsService.complete(id, driverId);
+  }
+
   @Patch(':id/show')
   @UseGuards(RolesGuard)
   @Roles('driver')
@@ -171,18 +219,6 @@ export class TripsController {
   @ApiResponse({ status: 404, description: 'Trip not found' })
   async show(@Param('id') id: string, @CurrentUser('id') driverId: string) {
     return this.tripsService.show(id, driverId);
-  }
-
-  @Patch(':id/complete')
-  @UseGuards(RolesGuard)
-  @Roles('driver')
-  @ApiOperation({ summary: 'Complete trip' })
-  @ApiResponse({ status: 200, description: 'Trip completed successfully' })
-  @ApiResponse({ status: 400, description: 'Bad request' })
-  @ApiResponse({ status: 403, description: 'Not the owner' })
-  @ApiResponse({ status: 404, description: 'Trip not found' })
-  async complete(@Param('id') id: string, @CurrentUser('id') driverId: string) {
-    return this.tripsService.complete(id, driverId);
   }
 
   @Delete(':id')

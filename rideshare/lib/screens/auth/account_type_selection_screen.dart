@@ -46,6 +46,15 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: T.surface(context),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: T.onSurface(context)),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      extendBodyBehindAppBar: true,
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,

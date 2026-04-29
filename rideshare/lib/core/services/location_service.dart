@@ -1,39 +1,37 @@
 import 'dart:ui';
 
 import 'package:flutter/services.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../models/location_model.dart';
 
 class LocationService {
   static const String _keyLocationSharing = 'privacy_location_sharing';
-
-  Future<bool> isLocationSharingEnabled() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_keyLocationSharing) ?? true;
-  }
 
   static final RegExp _plusCodeRegex = RegExp(
     r'^[23456789CFGHJMPQRVWX]{2,}\+[23456789CFGHJMPQRVWX]{2,}$',
     caseSensitive: false,
   );
 
+  Future<bool> isLocationSharingEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyLocationSharing) ?? true;
+  }
+
   Future<bool> isLocationServiceEnabled() async {
-    return await Geolocator.isLocationServiceEnabled();
+    return Geolocator.isLocationServiceEnabled();
   }
 
-  // Check location permissions
   Future<LocationPermission> checkPermission() async {
-    return await Geolocator.checkPermission();
+    return Geolocator.checkPermission();
   }
 
-  // Request location permissions
   Future<LocationPermission> requestPermission() async {
-    return await Geolocator.requestPermission();
+    return Geolocator.requestPermission();
   }
 
-  // Get current location
   Future<Position> getCurrentPosition({
     bool checkPrivacyPreference = true,
   }) async {
@@ -44,13 +42,12 @@ class LocationService {
       }
     }
 
-    bool serviceEnabled = await isLocationServiceEnabled();
+    final serviceEnabled = await isLocationServiceEnabled();
     if (!serviceEnabled) {
-      // On some Android devices, we can check this, but we can't force it open without user intervention
       throw Exception('LOCATION_SERVICE_DISABLED');
     }
 
-    LocationPermission permission = await checkPermission();
+    var permission = await checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await requestPermission();
       if (permission == LocationPermission.denied) {
@@ -62,121 +59,77 @@ class LocationService {
       throw Exception('LOCATION_PERMISSION_PERMANENTLY_DENIED');
     }
 
-    return await Geolocator.getCurrentPosition(
+    return Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high,
       timeLimit: const Duration(seconds: 10),
     );
   }
 
-  // Open location settings
   Future<bool> openLocationSettings() async {
-    return await Geolocator.openLocationSettings();
+    return Geolocator.openLocationSettings();
   }
 
-  // Open app settings
   Future<bool> openAppSettings() async {
-    return await Geolocator.openAppSettings();
+    return Geolocator.openAppSettings();
   }
 
-  // Get address from coordinates (Geocoding)
   Future<String> getAddressFromCoordinates({
     required double latitude,
     required double longitude,
   }) async {
     try {
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        latitude,
-        longitude,
+      final placemarks = await _getLocalizedPlacemarks(
+        latitude: latitude,
+        longitude: longitude,
       );
 
-      if (placemarks.isNotEmpty) {
-        final place = placemarks.first;
-        final cleanedCountry = _sanitizeAddressPart(place.country);
-        // Build a readable address and ignore noisy plus-code fragments.
-        final candidateParts = <String?>[
-          if (!_hasText(place.subLocality) && !_hasText(place.locality))
-            place.street,
-          place.subLocality,
-          place.locality,
-          place.subAdministrativeArea,
-          place.administrativeArea,
-          place.country,
-        ];
-
-        final seen = <String>{};
-        final addressParts = <String>[];
-        for (final rawPart in candidateParts) {
-          final cleanedPart = _sanitizeAddressPart(rawPart);
-          if (cleanedPart == null) continue;
-
-          final dedupeKey = cleanedPart.toLowerCase();
-          if (seen.add(dedupeKey)) {
-            addressParts.add(cleanedPart);
-          }
-        }
-
-        if (cleanedCountry != null && addressParts.length > 2) {
-          addressParts.removeWhere(
-            (part) => part.toLowerCase() == cleanedCountry.toLowerCase(),
-          );
-        }
-
-        if (addressParts.length > 3) {
-          addressParts.removeRange(3, addressParts.length);
-        }
-
-        return addressParts.isNotEmpty
-            ? addressParts.join('، ')
-            : _unknownLocationLabel;
+      if (placemarks.isEmpty) {
+        return _unknownLocationLabel;
       }
 
-      return _unknownLocationLabel;
+      return _buildShortAddress(placemarks.first);
     } on PlatformException catch (e) {
-      // IO_ERROR / "Service not Available" = Geocoder backend unavailable
-      // (e.g. emulator without Google Play, no network, or Play Services disabled)
       if (e.code == 'IO_ERROR' ||
           (e.message?.contains('Service not Available') ?? false)) {
         print(
-          '⚠️ Geocoding unavailable (Google Play Services or network). Using fallback.',
+          'Warning: geocoding unavailable (Google Play Services or network).',
         );
       } else {
-        print('❌ Error getting address from coordinates: $e');
+        print('Error getting address from coordinates: $e');
       }
       return _unknownLocationLabel;
     } catch (e) {
-      print('❌ Error getting address from coordinates: $e');
+      print('Error getting address from coordinates: $e');
       return _unknownLocationLabel;
     }
   }
 
-  // Get coordinates from address (Geocoding)
   Future<LocationModel?> getCoordinatesFromAddress(String address) async {
     try {
-      List<Location> locations = await locationFromAddress(address);
+      final locations = await locationFromAddress(address);
 
-      if (locations.isNotEmpty) {
-        final location = locations.first;
-        final addressString = await getAddressFromCoordinates(
-          latitude: location.latitude,
-          longitude: location.longitude,
-        );
-
-        return LocationModel(
-          name: address,
-          latitude: location.latitude,
-          longitude: location.longitude,
-          address: addressString,
-        );
+      if (locations.isEmpty) {
+        return null;
       }
 
-      return null;
+      final location = locations.first;
+      final addressString = await getAddressFromCoordinates(
+        latitude: location.latitude,
+        longitude: location.longitude,
+      );
+
+      return LocationModel(
+        name: address,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        address: addressString,
+      );
     } catch (e) {
-      print('❌ Error getting coordinates from address: $e');
+      print('Error getting coordinates from address: $e');
       return null;
     }
   }
 
-  // Create LocationModel from current position
   Future<LocationModel> getCurrentLocation() async {
     final position = await getCurrentPosition();
     final address = await getAddressFromCoordinates(
@@ -192,18 +145,15 @@ class LocationService {
     );
   }
 
-  // Calculate distance between two locations in kilometers
   double calculateDistance({
     required double lat1,
     required double lon1,
     required double lat2,
     required double lon2,
   }) {
-    return Geolocator.distanceBetween(lat1, lon1, lat2, lon2) /
-        1000; // Convert to km
+    return Geolocator.distanceBetween(lat1, lon1, lat2, lon2) / 1000;
   }
 
-  // Calculate distance between two LocationModel objects
   double calculateDistanceBetweenLocations(
     LocationModel loc1,
     LocationModel loc2,
@@ -214,6 +164,75 @@ class LocationService {
       lat2: loc2.latitude,
       lon2: loc2.longitude,
     );
+  }
+
+  Future<List<Placemark>> _getLocalizedPlacemarks({
+    required double latitude,
+    required double longitude,
+  }) async {
+    final localeCandidates = <String>[
+      if (_isArabicLocale) 'ar',
+      if (_preferredLocaleIdentifier != null) _preferredLocaleIdentifier!,
+    ];
+
+    for (final localeIdentifier in localeCandidates) {
+      await setLocaleIdentifier(localeIdentifier);
+      final placemarks = await placemarkFromCoordinates(latitude, longitude);
+      if (placemarks.isNotEmpty &&
+          (!_isArabicLocale || _placemarkLooksArabic(placemarks.first))) {
+        return placemarks;
+      }
+    }
+
+    return placemarkFromCoordinates(latitude, longitude);
+  }
+
+  String _buildShortAddress(Placemark place) {
+    final primaryParts = _uniqueAddressParts([
+      place.subLocality,
+      place.locality,
+      place.subAdministrativeArea,
+      place.administrativeArea,
+    ]);
+
+    if (primaryParts.length >= 2) {
+      return primaryParts.take(2).join('، ');
+    }
+
+    final fallbackParts = _uniqueAddressParts([
+      if (!_hasText(place.subLocality) && !_hasText(place.locality))
+        place.street,
+      place.subLocality,
+      place.locality,
+      place.subAdministrativeArea,
+      place.administrativeArea,
+      place.country,
+    ]);
+
+    if (fallbackParts.isEmpty) {
+      return _unknownLocationLabel;
+    }
+
+    return fallbackParts.take(2).join('، ');
+  }
+
+  List<String> _uniqueAddressParts(List<String?> values) {
+    final seen = <String>{};
+    final parts = <String>[];
+
+    for (final value in values) {
+      final cleaned = _sanitizeAddressPart(value);
+      if (cleaned == null) {
+        continue;
+      }
+
+      final normalized = cleaned.toLowerCase();
+      if (seen.add(normalized)) {
+        parts.add(cleaned);
+      }
+    }
+
+    return parts;
   }
 
   String? _sanitizeAddressPart(String? value) {
@@ -235,6 +254,19 @@ class LocationService {
     return cleaned;
   }
 
+  bool _placemarkLooksArabic(Placemark place) {
+    final combined = [
+      place.street,
+      place.subLocality,
+      place.locality,
+      place.subAdministrativeArea,
+      place.administrativeArea,
+      place.country,
+    ].whereType<String>().join(' ');
+
+    return RegExp(r'[\u0600-\u06FF]').hasMatch(combined);
+  }
+
   bool _looksLikePlusCode(String value) {
     final compact = value.replaceAll(' ', '').toUpperCase();
     return _plusCodeRegex.hasMatch(compact);
@@ -242,6 +274,21 @@ class LocationService {
 
   bool _hasText(String? value) {
     return value != null && value.trim().isNotEmpty;
+  }
+
+  String? get _preferredLocaleIdentifier {
+    final locale = PlatformDispatcher.instance.locale;
+    final languageCode = locale.languageCode.trim();
+    if (languageCode.isEmpty) {
+      return null;
+    }
+
+    final countryCode = locale.countryCode?.trim();
+    if (countryCode == null || countryCode.isEmpty) {
+      return languageCode;
+    }
+
+    return '${languageCode}_$countryCode';
   }
 
   bool get _isArabicLocale {

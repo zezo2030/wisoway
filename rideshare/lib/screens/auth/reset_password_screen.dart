@@ -8,7 +8,9 @@ import '../../core/constants/route_names.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/theme/colors.dart';
-import '../../core/utils/auth_error_formatter.dart';
+import '../../core/ui/error_surface.dart';
+import '../../core/api/api_client.dart';
+import '../../core/errors/failure.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   const ResetPasswordScreen({super.key});
@@ -195,12 +197,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             ),
           );
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(AuthErrorFormatter.format(e, action: AuthAction.passwordReset)),
-              backgroundColor: T.error(context),
-            ),
-          );
+          ErrorSurface.showFailure(context, ApiClient.mapError(e));
         }
         // Clear OTP fields
         for (var controller in _otpControllers) {
@@ -264,12 +261,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             ),
           );
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(AuthErrorFormatter.format(e, action: AuthAction.passwordReset)),
-              backgroundColor: T.error(context),
-            ),
-          );
+          ErrorSurface.showFailure(context, ApiClient.mapError(e));
         }
       }
     } finally {
@@ -306,10 +298,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     if (_resetToken == null) return;
 
     if (_passwordController.text != _confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(AppStrings.passwordsDontMatch),
-          backgroundColor: AppColors.error,
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.validation,
+          messageKey: 'errorsValidationGeneric',
+          severity: FailureSeverity.warning,
+          developerDetail: 'Passwords do not match',
         ),
       );
       return;
@@ -337,12 +332,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AuthErrorFormatter.format(e, action: AuthAction.passwordReset)),
-            backgroundColor: T.error(context),
-          ),
-        );
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     } finally {
       if (mounted) {

@@ -47,12 +47,24 @@ class NotificationProvider with ChangeNotifier {
       // Get FCM token
       _fcmToken = await FirebaseMessaging.instance.getToken();
       if (_fcmToken != null) {
+        await PushNotificationService.registerDevice(
+          token: _fcmToken!,
+          platform: defaultTargetPlatform == TargetPlatform.iOS
+              ? 'ios'
+              : 'android',
+        );
         await _authService.updateFcmToken(_fcmToken!);
       }
 
       // Listen to token updates
       FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
         _fcmToken = newToken;
+        await PushNotificationService.registerDevice(
+          token: newToken,
+          platform: defaultTargetPlatform == TargetPlatform.iOS
+              ? 'ios'
+              : 'android',
+        );
         await _authService.updateFcmToken(newToken);
         notifyListeners();
       });

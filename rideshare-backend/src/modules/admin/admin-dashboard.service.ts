@@ -250,6 +250,11 @@ export class AdminDashboardService {
     if (user.role !== PgUserRole.DRIVER) {
       throw new BadRequestException('User is not a driver');
     }
+      if (approved && !user.photoUrl) {
+        throw new BadRequestException(
+          'Driver profile photo is required before approval',
+        );
+      }
     user.isDriverApproved = approved;
     await this.userRepo.save(user);
 
@@ -522,7 +527,6 @@ export class AdminDashboardService {
       const data = entities.map((b) => ({
         _id: b.id,
         id: b.id,
-        seatNumber: b.seatNumber,
         status: b.status,
         hasDriverPaidToContact: b.hasDriverPaidToContact,
         sharePhoneWithDriver: b.sharePhoneWithDriver,

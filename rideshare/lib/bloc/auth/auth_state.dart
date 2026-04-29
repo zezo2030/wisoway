@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../../models/user_model.dart';
+import '../../core/errors/failure.dart';
 
 abstract class AuthState extends Equatable {
   const AuthState();
@@ -55,11 +56,12 @@ class AuthUnauthenticated extends AuthState {
 // Error State
 class AuthError extends AuthState {
   final String message;
+  final Failure? failure;
 
-  const AuthError(this.message);
+  const AuthError(this.message, {this.failure});
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [message, failure];
 }
 
 // OTP Sent State

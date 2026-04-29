@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../../core/api/api_client.dart';
+import '../../core/errors/failure.dart';
+import '../../core/services/trip_service.dart';
+import '../../core/theme/colors.dart';
+import '../../core/ui/error_surface.dart';
+import '../../models/trip_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/trip_provider.dart';
-import '../../models/trip_model.dart';
-import '../../core/services/booking_service.dart';
-import '../../core/services/trip_service.dart';
-import '../../widgets/seat_layout_widget.dart';
 import '../../utils/seat_layout_helpers.dart';
 import '../../utils/seat_validation.dart';
-import '../../core/theme/colors.dart';
-import 'package:uuid/uuid.dart';
+import '../../widgets/seat_layout_widget.dart';
+import 'companion_picker_screen.dart';
 
 class SeatSelectionScreen extends StatefulWidget {
   final String tripId;
@@ -21,12 +24,11 @@ class SeatSelectionScreen extends StatefulWidget {
 }
 
 class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
-  final BookingService _bookingService = BookingService();
   final TripService _tripService = TripService();
+  final List<int> _selectedSeats = [];
+
   TripModel? _trip;
   Map<String, dynamic>? _pricingPreview;
-  int? _selectedSeat;
-  bool _sharePhoneWithDriver = true;
   bool _isLoading = true;
   bool _isBooking = false;
 
@@ -44,21 +46,16 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       if (trip != null) {
         preview = await _tripService.getTripPricingPreview(trip.id);
       }
+      if (!mounted) return;
       setState(() {
         _trip = trip;
         _pricingPreview = preview;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في تحميل الرحلة: ${e.toString()}'),
-            backgroundColor: T.error(context),
-          ),
-        );
-      }
+      ErrorSurface.showFailure(context, ApiClient.mapError(e));
     }
   }
 
@@ -69,10 +66,14 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     final userModel = authProvider.userModel;
 
     if (userModel == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('يجب تسجيل الدخول'),
-          backgroundColor: T.error(context),
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.auth,
+          messageKey: 'errorsAuthSessionExpired',
+          severity: FailureSeverity.error,
+          nextAction: FailureAction.reauthenticate,
+          developerDetail: 'User not authenticated',
         ),
       );
       return;
@@ -86,7 +87,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'لا يمكن اختيار هذا المقعد (قد يكون محجوزاً أو يوجد تعارض في الجنس)',
+            'لا يمكن اختيار هذا المقعد، قد يكون محجوزًا أو غير مناسب حسب قواعد الرحلة.',
           ),
           backgroundColor: AppColors.warning,
         ),
@@ -95,16 +96,24 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     }
 
     setState(() {
-      _selectedSeat = seatNumber;
+      if (_selectedSeats.contains(seatNumber)) {
+        _selectedSeats.remove(seatNumber);
+      } else {
+        _selectedSeats.add(seatNumber);
+        _selectedSeats.sort();
+      }
     });
   }
 
-  Future<void> _bookSeat() async {
-    if (_trip == null || _selectedSeat == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('يرجى اختيار مقعد'),
-          backgroundColor: T.error(context),
+  Future<void> _continueToPassengerDetails() async {
+    if (_trip == null || _selectedSeats.isEmpty) {
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.validation,
+          messageKey: 'errorsValidationGeneric',
+          severity: FailureSeverity.warning,
+          developerDetail: 'No seats selected',
         ),
       );
       return;
@@ -112,37 +121,50 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final user = authProvider.userModel;
-    final userModel = authProvider.userModel;
 
-    if (user == null || userModel == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('يجب تسجيل الدخول'),
-          backgroundColor: T.error(context),
+    if (user == null) {
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.auth,
+          messageKey: 'errorsAuthSessionExpired',
+          severity: FailureSeverity.error,
+          nextAction: FailureAction.reauthenticate,
+          developerDetail: 'User not authenticated',
         ),
       );
       return;
     }
 
     if (_trip!.driverId == user.id) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('لا يمكنك حجز مقعد في رحلتك الخاصة'),
-          backgroundColor: T.error(context),
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.validation,
+          messageKey: 'errorsValidationGeneric',
+          severity: FailureSeverity.warning,
+          developerDetail: 'Cannot book seat on own trip',
         ),
       );
       return;
     }
 
-    if (!SeatValidation.canSelectSeat(
-      trip: _trip!,
-      seatNumber: _selectedSeat!,
-      userGender: userModel.gender,
-    )) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('المقعد لم يعد متاحاً. يرجى اختيار مقعد آخر'),
-          backgroundColor: T.error(context),
+    final allSelectedSeatsStillAvailable = _selectedSeats.every(
+      (seatNumber) => SeatValidation.canSelectSeat(
+        trip: _trip!,
+        seatNumber: seatNumber,
+        userGender: user.gender,
+      ),
+    );
+
+    if (!allSelectedSeatsStillAvailable) {
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.validation,
+          messageKey: 'errorsValidationGeneric',
+          severity: FailureSeverity.warning,
+          developerDetail: 'One or more selected seats are no longer available',
         ),
       );
       await _loadTrip();
@@ -151,42 +173,28 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
 
     setState(() => _isBooking = true);
 
-    final backendSeatNumber = SeatLayoutHelpers.displayIndexToBackendSeatId(
-      _selectedSeat!,
-      _trip!.seatLayout,
-    );
+    final backendSeatNumbers = _selectedSeats
+        .map(
+          (seatNumber) => SeatLayoutHelpers.displayIndexToBackendSeatId(
+            seatNumber,
+            _trip!.seatLayout,
+          ),
+        )
+        .toList();
 
     try {
-      final passenger = _pricingPreview?['passenger'];
-      final requiresOnline =
-          passenger is Map && passenger['requiresOnlinePayment'] == true;
-
-      final walletIdempotencyKey = requiresOnline ? const Uuid().v4() : null;
-
-      final bookingId = await _bookingService.createBooking(
-        tripId: _trip!.id,
-        seatNumber: backendSeatNumber,
-        sharePhoneWithDriver: _sharePhoneWithDriver,
-        walletIdempotencyKey: walletIdempotencyKey,
+      final booking = await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => CompanionPickerScreen(
+            trip: _trip!,
+            lockedSeatNumbers: backendSeatNumbers,
+            autoPick: false,
+          ),
+        ),
       );
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم إرسال طلب الحجز بنجاح. انتظر تأكيد السائق'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-        Navigator.pop(context, bookingId);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في الحجز: ${e.toString()}'),
-            backgroundColor: T.error(context),
-          ),
-        );
+      if (mounted && booking != null) {
+        Navigator.pop(context, booking);
       }
     } finally {
       if (mounted) {
@@ -199,14 +207,14 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('اختيار المقعد')),
+        appBar: AppBar(title: const Text('اختيار المقاعد')),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     if (_trip == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('اختيار المقعد')),
+        appBar: AppBar(title: const Text('اختيار المقاعد')),
         body: const Center(child: Text('الرحلة غير موجودة')),
       );
     }
@@ -216,13 +224,13 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
 
     if (userModel == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('اختيار المقعد')),
+        appBar: AppBar(title: const Text('اختيار المقاعد')),
         body: const Center(child: Text('يجب تسجيل الدخول')),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('اختيار المقعد')),
+      appBar: AppBar(title: const Text('اختيار المقاعد')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -244,73 +252,40 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                     const SizedBox(height: 8),
                     Text('من: ${_trip!.from.name}'),
                     Text('إلى: ${_trip!.to.name}'),
-                    Text('السعر: ${_trip!.price} ${_trip!.currency}'),
-                    if (_pricingPreview != null) ...[
-                      const SizedBox(height: 12),
-                      const Divider(),
-                      Builder(
-                        builder: (context) {
-                          final p = _pricingPreview!['passenger'];
-                          if (p is! Map) return const SizedBox.shrink();
-                          final platform = p['platformAmount'];
-                          final driver = p['driverAmount'];
-                          final online = p['requiresOnlinePayment'] == true;
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                online
-                                    ? 'للتطبيق (من المحفظة): $platform ${_trip!.currency}'
-                                    : 'لا يوجد رسم منصة لهذه الرحلة',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              if (online)
-                                Text(
-                                  'للسائق (نقداً): $driver ${_trip!.currency}',
-                                  style: TextStyle(
-                                    color: T.onSurfaceVariant(context),
-                                    fontSize: 13,
-                                  ),
-                                ),
-                            ],
-                          );
-                        },
+                    Text(
+                      'السعر: ${_trip!.price} ${_trip!.currency} لكل مقعد',
+                    ),
+                    const SizedBox(height: 12),
+                    const Divider(),
+                    Text(
+                      'يمكنك اختيار مقعد واحد أو أكثر حسب المقاعد المتاحة.',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: T.primary(context),
                       ),
-                    ],
+                    ),
+                    Text(
+                      'بعد اختيار المقاعد ستدخل بيانات كل مسافر قبل إرسال طلب الحجز.',
+                      style: TextStyle(
+                        color: T.onSurfaceVariant(context),
+                        fontSize: 13,
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 24),
             const Text(
-              'اختر مقعدك',
+              'اختر المقاعد',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             SeatLayoutWidget(
               trip: _trip!,
-              selectedSeat: _selectedSeat,
+              selectedSeats: _selectedSeats,
               userGender: userModel.gender,
               onSeatTap: _onSeatTap,
-            ),
-            const SizedBox(height: 24),
-            Card(
-              child: Semantics(
-                label:
-                    'مشاركة رقم الهاتف مع السائق: ${_sharePhoneWithDriver ? "مفعّل" : "معطّل"}',
-                child: SwitchListTile(
-                  title: const Text('مشاركة رقم الهاتف مع السائق'),
-                  subtitle: const Text('السماح للسائق برؤية رقم هاتفك للتواصل'),
-                  value: _sharePhoneWithDriver,
-                  onChanged: (value) {
-                    setState(() {
-                      _sharePhoneWithDriver = value;
-                    });
-                  },
-                ),
-              ),
             ),
             const SizedBox(height: 24),
             if (_pricingPreview != null &&
@@ -332,7 +307,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'سيتم خصم حصة التطبيق من محفظتك عند إرسال الحجز. تأكد من كفاية الرصيد من «محفظتي» في القائمة.',
+                          'سيتم خصم حصة التطبيق من محفظتك عند إرسال الحجز. تأكد من كفاية الرصيد من صفحة محفظتي.',
                           style: TextStyle(
                             fontSize: 14,
                             color: T.onPrimaryContainer(context),
@@ -346,7 +321,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
               ),
               const SizedBox(height: 24),
             ],
-            if (_selectedSeat != null)
+            if (_selectedSeats.isNotEmpty)
               Card(
                 color: AppColors.success.withValues(alpha: 0.08),
                 child: Padding(
@@ -357,7 +332,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'المقعد المحدد: $_selectedSeat',
+                          'المقاعد المحددة: ${_selectedSeats.join('، ')}',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -372,13 +347,13 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
             const SizedBox(height: 24),
             Semantics(
               button: true,
-              label: 'إرسال طلب الحجز',
+              label: 'متابعة إدخال بيانات المسافرين',
               child: Tooltip(
-                message: 'إرسال طلب حجز للمقعد المحدد',
+                message: 'متابعة لإدخال بيانات المسافرين وإرسال طلب الحجز',
                 child: ElevatedButton(
-                  onPressed: _isBooking || _selectedSeat == null
+                  onPressed: _isBooking || _selectedSeats.isEmpty
                       ? null
-                      : _bookSeat,
+                      : _continueToPassengerDetails,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     minimumSize: const Size(double.infinity, 50),
@@ -394,9 +369,11 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                             ),
                           ),
                         )
-                      : const Text(
-                          'إرسال طلب الحجز',
-                          style: TextStyle(fontSize: 18),
+                      : Text(
+                          _selectedSeats.length == 1
+                              ? 'متابعة لحجز مقعد واحد'
+                              : 'متابعة لحجز ${_selectedSeats.length} مقاعد',
+                          style: const TextStyle(fontSize: 18),
                         ),
                 ),
               ),
@@ -414,7 +391,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'سيتم إرسال طلب الحجز للسائق. انتظر تأكيده قبل أن يتم تأكيد الحجز.',
+                      'سيتم إرسال طلب الحجز للسائق بعد تأكيد بيانات المسافرين. انتظر موافقة السائق قبل اعتماد الحجز.',
                       style: TextStyle(
                         fontSize: 12,
                         color: T.onPrimaryContainer(context),

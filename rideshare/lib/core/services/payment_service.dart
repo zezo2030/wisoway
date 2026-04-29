@@ -183,6 +183,24 @@ class PaymentService {
   }
 
   /// Instant credit via POST /wallet/topup — **admin JWT only**. Riders/drivers must use [createWalletTopup].
+  /// Driver pays the whole trip unlock fee from the driver wallet.
+  Future<WalletTransactionModel> chargeDriverTrip({
+    required String tripId,
+    String? idempotencyKey,
+  }) async {
+    final response = await _api.post(
+      ApiEndpoints.walletDriverTripCharge,
+      data: {
+        'tripId': tripId,
+        if (idempotencyKey != null) 'idempotencyKey': idempotencyKey,
+      },
+    );
+    final raw = response is Map ? (response['data'] ?? response) : response;
+    return WalletTransactionModel.fromJson(
+      Map<String, dynamic>.from(raw as Map),
+    );
+  }
+
   Future<void> topUpWalletAccount({
     required double amount,
     String currency = 'JOD',

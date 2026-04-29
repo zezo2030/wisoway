@@ -532,6 +532,12 @@ export class AdminService implements OnModuleInit {
       throw new BadRequestException('User is not a driver');
     }
 
+      if (approved && !user.photoUrl) {
+        throw new BadRequestException(
+          'Driver profile photo is required before approval',
+        );
+      }
+
     // Update driver approval status
     user.isDriverApproved = approved;
     await user.save();

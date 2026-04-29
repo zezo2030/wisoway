@@ -11,6 +11,8 @@ import type {
   SeatStatus,
   Currency,
   Gender,
+  PendingChargeKind,
+  PendingChargeStatus,
 } from './enums'
 
 // Core Entities
@@ -93,21 +95,83 @@ export interface Trip {
   carImageUrl?: string
   isVisible: boolean
   distanceKm?: number
+  /** Intermediate stops along the route (up to 5). */
+  stops?: TripStop[]
+  /** Free-text driver notes visible to passengers. */
+  notes?: string
+  /** ID of the recurrence rule that generated this trip, if any. */
+  recurrenceRuleId?: string
   createdAt: string
   updatedAt: string
+}
+
+export interface TripStop {
+  name: string
+  lat: number
+  lng: number
+  address?: string
+  order: number
+  note?: string
+}
+
+export interface BookingSeat {
+  id: string
+  bookingId: string
+  seatNumber: string
+  displayName: string
+  gender: Gender
+  isMainBooker: boolean
+  markedAbsentAt?: string
+  createdAt: string
 }
 
 export interface Booking {
   _id: string
   userId: string | UserSummary
   tripId: string | TripSummary
-  seatNumber: string
+  /** Legacy v1 single-seat field — nullable in v2 bookings. */
+  seatNumber: string | null
+  /** v2 multi-seat rows. */
+  seats?: BookingSeat[]
+  seatCount?: number
+  totalAmount?: number
   status: BookingStatus
+  expiresAt?: string
+  rejectedAt?: string
+  rejectionReason?: string
   hasDriverPaidToContact: boolean
   sharePhoneWithDriver: boolean
+  /** Phase 7 settlement fields */
+  settledAt?: string | null
+  settlementGraceUntil?: string | null
   cancellationReason?: string
   cancelledAt?: string
   cancelledBy?: 'passenger' | 'driver' | 'system'
+  createdAt: string
+  updatedAt: string
+}
+
+/** Phase 7 — settlement audit entry */
+export interface SettlementAudit {
+  id: string
+  bookingId: string
+  action: 'mark_paid' | 'unmark_paid' | 'admin_revert'
+  actorId: string | UserSummary
+  reason?: string | null
+  createdAt: string
+}
+
+export interface PendingCharge {
+  id: string
+  userId: string | UserSummary
+  bookingId?: string | BookingSummary
+  kind: PendingChargeKind
+  status: PendingChargeStatus
+  amount: number
+  currency: string
+  collectedAt?: string
+  waivedAt?: string
+  waivedBy?: string
   createdAt: string
   updatedAt: string
 }
@@ -299,4 +363,54 @@ export interface WalletTransaction {
   referenceId: string | null
   metadata: Record<string, unknown> | null
   createdAt: string
+}
+
+// Phase 3 — account safety flags
+export type AccountFlagSeverity = 'low' | 'medium' | 'high' | 'critical'
+export type AccountFlagDisposition = 'open' | 'resolved' | 'dismissed'
+
+export interface AccountFlag {
+  id: string
+  userId: string | UserSummary
+  reason: string           // e.g. 'multi_account_device' | 'mock_location_repeated'
+  severity: AccountFlagSeverity
+  disposition: AccountFlagDisposition
+  metadata?: Record<string, unknown>
+  resolvedBy?: string
+  resolvedAt?: string
+  createdAt: string
+  updatedAt: string
+}
+
+// Phase 8 — complaints & refunds
+
+export type ComplaintStatus = 'pending' | 'under_review' | 'resolved' | 'rejected'
+
+export interface Complaint {
+  id: string
+  reporterId: string | UserSummary
+  againstUserId?: string | UserSummary | null
+  tripId?: string | null
+  category: string          // SAFETY | PAYMENT | VEHICLE_CONDITION | DRIVER_BEHAVIOR | APP_ISSUE | OTHER
+  description: string
+  status: ComplaintStatus
+  adminNotes?: string | null
+  resolvedAt?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type RefundRequestStatus = 'pending' | 'approved' | 'rejected'
+
+export interface RefundRequest {
+  id: string
+  userId: string | UserSummary
+  bookingId: string | BookingSummary
+  reason: string
+  status: RefundRequestStatus
+  adminNotes?: string | null
+  whatsappContactedAt?: string | null
+  resolvedAt?: string | null
+  createdAt: string
+  updatedAt: string
 }

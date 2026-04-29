@@ -400,7 +400,9 @@ export class PaymentsService {
 
       const balance = Number(driver.walletBalance ?? 0);
       if (feeAmount > 0 && balance < feeAmount) {
-        await qr.rollbackTransaction();
+        // Don't roll back here — the outer catch handles it. Doing both
+        // raises TransactionNotStartedError on the second rollback and
+        // hides the real cause (insufficient balance).
         throw new BadRequestException(
           'Insufficient wallet balance. Please top up your wallet to confirm bookings and view passenger details.',
         );
@@ -455,7 +457,9 @@ export class PaymentsService {
         `Wallet charged ${feeAmount} ${currency} for driver ${driverId}, trip ${tripId}`,
       );
     } catch (err) {
-      await qr.rollbackTransaction();
+      if (qr.isTransactionActive) {
+        await qr.rollbackTransaction();
+      }
       throw err;
     } finally {
       await qr.release();

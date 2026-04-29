@@ -45,6 +45,8 @@ const statusColorMap: Record<StatusType, Record<string, StatusVariant>> = {
     confirmed: "default",
     cancelled: "destructive",
     completed: "default",
+    rejected: "destructive",
+    no_show: "outline",
   },
   vehicle: {
     verified: "default",
@@ -77,6 +79,7 @@ const statusLabelMap: Record<string, string> = {
   expired: "Expired",
   // Booking statuses
   confirmed: "Confirmed",
+  no_show: "No-Show",
   // Vehicle statuses
   verified: "Verified",
   unverified: "Unverified",

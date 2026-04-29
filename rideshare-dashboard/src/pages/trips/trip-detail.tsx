@@ -21,7 +21,7 @@ import { formatSeatDisplay } from "@/lib/seat-format"
 import { layoutSummaryText } from "@/lib/seat-layout"
 import { formatDateTime, formatCurrency, cn, getTripLocationName } from "@/lib/utils"
 import type { UserSummary } from "@/types/models"
-import { ArrowLeft, MapPin, User, Calendar, DollarSign, Car, Users, ArrowLeftRight, Activity, CreditCard, ShieldCheck, Route } from "lucide-react"
+import { ArrowLeft, MapPin, User, Calendar, DollarSign, Car, Users, ArrowLeftRight, Activity, CreditCard, ShieldCheck, Route, StickyNote, RefreshCw } from "lucide-react"
 
 // Type guard for populated fields
 function isPopulatedDriver(driverId: string | UserSummary): driverId is UserSummary {
@@ -180,6 +180,26 @@ export default function TripDetailPage() {
                     {trip.communicationFeeStatus}
                   </p>
                 </div>
+
+                {trip.stops && trip.stops.length > 0 && (
+                  <div className="bg-muted/40 p-4 rounded-2xl border border-border/40 flex flex-col items-center justify-center text-center">
+                    <MapPin className="w-6 h-6 text-muted-foreground/50 mb-2" />
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Stops</p>
+                    <p className="font-bold text-lg text-foreground mt-0.5">{trip.stops.length}</p>
+                  </div>
+                )}
+
+                {trip.recurrenceRuleId && (
+                  <div className="col-span-2 bg-violet-50 dark:bg-violet-950/20 p-3 rounded-2xl border border-violet-200 dark:border-violet-900/40 flex items-center gap-3">
+                    <div className="bg-violet-100 dark:bg-violet-900/60 p-2.5 rounded-full text-violet-600 flex-shrink-0">
+                      <RefreshCw className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-violet-600/70 uppercase tracking-widest">Recurring Trip</p>
+                      <p className="text-xs font-mono text-muted-foreground truncate mt-0.5">{trip.recurrenceRuleId}</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -235,6 +255,24 @@ export default function TripDetailPage() {
                   </div>
                 </div>
 
+                {/* Intermediate stops */}
+                {trip.stops && trip.stops.length > 0 && trip.stops.map((stop, i) => (
+                  <div key={i} className="relative">
+                    <div className="absolute -left-[35px] top-1 h-6 w-6 rounded-full bg-background border-4 border-muted-foreground/40 flex items-center justify-center shadow-sm">
+                      <span className="text-[10px] font-black text-muted-foreground">{i + 1}</span>
+                    </div>
+                    <div className="bg-muted/30 p-3 rounded-xl border border-border/30 -mt-2">
+                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                        <MapPin className="w-3 h-3" /> Stop {i + 1}
+                      </p>
+                      <p className="font-semibold text-base mt-1 text-foreground">{stop.name}</p>
+                      {stop.note && (
+                        <p className="text-xs text-muted-foreground mt-1 italic">{stop.note}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
                 <div className="relative">
                   <div className="absolute -left-[35px] top-1 h-6 w-6 rounded-full bg-background border-4 border-emerald-500 flex items-center justify-center shadow-sm">
                     <MapPin className="h-3 w-3 text-emerald-500" />
@@ -252,6 +290,20 @@ export default function TripDetailPage() {
           </Card>
         </div>
       </div>
+
+      {/* Driver Notes */}
+      {trip.notes && (
+        <Card className="border-border/50 shadow-md bg-card/60 backdrop-blur-xl">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-bold flex items-center">
+              <StickyNote className="h-5 w-5 mr-2 text-primary" /> Driver Notes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">{trip.notes}</p>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 grid-cols-1 xl:grid-cols-2">
         {/* Bookings Section */}

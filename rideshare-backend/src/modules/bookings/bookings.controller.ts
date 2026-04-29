@@ -9,6 +9,7 @@ import {
   UseGuards,
   Request,
   ParseIntPipe,
+  Logger,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -31,12 +32,24 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('bookings')
 export class BookingsController {
+  private readonly logger = new Logger(BookingsController.name);
+
   constructor(private readonly bookingsService: BookingsService) {}
 
+  /**
+   * @deprecated Use POST /v2/bookings instead.
+   * V1 shim: maps the legacy single-seat payload to createMultiSeat so that
+   * existing mobile clients continue to work without changes.
+   * Logs a deprecation warning for each call.
+   */
   @Post()
   @Roles('passenger', 'driver')
   @ApiOperation({
-    summary: 'Create a new booking (Passenger or Driver as rider)',
+    summary: '[Deprecated] Create a single-seat booking (v1)',
+    description:
+      'Legacy endpoint kept for backward compatibility. ' +
+      'Use POST /v2/bookings for new integrations.',
+    deprecated: true,
   })
   @ApiResponse({ status: 201, description: 'Booking created successfully' })
   @ApiResponse({
@@ -48,7 +61,25 @@ export class BookingsController {
     @Body() createBookingDto: CreateBookingDto,
     @CurrentUser('id') userId: string,
   ) {
-    return this.bookingsService.create(createBookingDto, userId);
+    this.logger.warn(
+      `Deprecation: POST /bookings (v1 shim) called by user ${userId} for trip ${createBookingDto.tripId}`,
+      'Deprecation',
+    );
+    return this.bookingsService.createMultiSeat(
+      {
+        tripId: createBookingDto.tripId,
+        seats: [
+          {
+            seatNumber: createBookingDto.seatNumber,
+            displayName: '', // v1 clients do not supply a display name
+            gender: 'male', // v1 clients do not supply gender; defaulted safely
+            isMainBooker: true,
+          },
+        ],
+        sharePhoneWithDriver: createBookingDto.sharePhoneWithDriver,
+      },
+      userId,
+    );
   }
 
   @Get('my')

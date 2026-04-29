@@ -5,6 +5,9 @@ import '../../providers/auth_provider.dart';
 import '../../providers/trip_provider.dart';
 import '../../models/trip_model.dart';
 import '../../core/constants/route_names.dart';
+import '../../core/services/payment_service.dart';
+import '../../core/api/api_client.dart';
+import '../../core/ui/error_surface.dart';
 import '../../widgets/notification_icon_button.dart';
 import '../../core/theme/colors.dart';
 import '../../widgets/common/empty_state.dart';
@@ -204,7 +207,7 @@ class _MyTripsScreenState extends State<MyTripsScreen>
               itemCount: trips.length,
               itemBuilder: (context, index) {
                 final trip = trips[index];
-                return _TripCard(trip: trip);
+                return _TripCard(trip: trip, onPaid: _refreshTrips);
               },
             ),
           );
@@ -233,10 +236,110 @@ class _MyTripsScreenState extends State<MyTripsScreen>
   }
 }
 
-class _TripCard extends StatelessWidget {
+class _TripCard extends StatefulWidget {
   final TripModel trip;
+  final Future<void> Function() onPaid;
 
-  const _TripCard({required this.trip});
+  const _TripCard({required this.trip, required this.onPaid});
+
+  @override
+  State<_TripCard> createState() => _TripCardState();
+}
+
+class _TripCardState extends State<_TripCard> {
+  final PaymentService _paymentService = PaymentService();
+  bool _isPaying = false;
+
+  TripModel get trip => widget.trip;
+
+  double get _tripFeeAmount => ((trip.price * trip.totalSeats * 0.05) * 100).round() / 100;
+
+  Future<void> _showFeeInvoice() async {
+    final amount = _tripFeeAmount;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('فاتورة رسوم الرحلة'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _invoiceRow('سعر المقعد', '${trip.price} ${trip.currency}'),
+            _invoiceRow('عدد المقاعد', '${trip.totalSeats}'),
+            _invoiceRow('نسبة الرسوم', '5%'),
+            const Divider(height: 24),
+            _invoiceRow(
+              'الإجمالي',
+              '${amount.toStringAsFixed(2)} ${trip.currency}',
+              isTotal: true,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'سيتم خصم الرسوم من محفظتك وفتح بيانات ركاب هذه الرحلة. لا يتم تغيير عدد المقاعد أو الحجوزات.',
+              style: TextStyle(
+                color: T.onSurfaceVariant(context),
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('دفع الرسوم'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await _payTripFee();
+    }
+  }
+
+  Widget _invoiceRow(String label, String value, {bool isTotal = false}) {
+    final style = TextStyle(
+      fontWeight: isTotal ? FontWeight.w800 : FontWeight.w600,
+      fontSize: isTotal ? 16 : 14,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: style)),
+          Text(value, style: style),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _payTripFee() async {
+    setState(() => _isPaying = true);
+    try {
+      await _paymentService.chargeDriverTrip(
+        tripId: trip.id,
+        idempotencyKey:
+            'driver-trip-fee:${trip.id}:${DateTime.now().millisecondsSinceEpoch}',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('تم دفع رسوم الرحلة بنجاح'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      await widget.onPaid();
+    } catch (e) {
+      if (!mounted) return;
+      ErrorSurface.showFailure(context, ApiClient.mapError(e));
+    } finally {
+      if (mounted) setState(() => _isPaying = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -247,13 +350,57 @@ class _TripCard extends StatelessWidget {
     Color getStatusColor() {
       switch (trip.status) {
         case 'active':
+        case 'published':
           return AppColors.success;
+        case 'fully_booked':
         case 'hidden':
           return AppColors.warning;
+        case 'in_progress':
         case 'completed':
           return AppColors.info;
+        case 'cancelled':
+          return T.error(context);
+        case 'draft':
         default:
           return T.onSurfaceVariant(context);
+      }
+    }
+
+    String getStatusLabel() {
+      switch (trip.status) {
+        case 'active':
+        case 'published':
+          return 'نشطة';
+        case 'draft':
+          return 'مسودة';
+        case 'fully_booked':
+          return 'مكتملة الحجز';
+        case 'in_progress':
+          return 'قيد التنفيذ';
+        case 'hidden':
+          return 'مخفية';
+        case 'completed':
+          return 'مكتملة';
+        case 'cancelled':
+          return 'ملغاة';
+        default:
+          return 'غير معروف';
+      }
+    }
+
+    IconData getStatusIcon() {
+      switch (trip.status) {
+        case 'active':
+        case 'published':
+          return Icons.circle;
+        case 'hidden':
+          return Icons.visibility_off;
+        case 'cancelled':
+          return Icons.cancel;
+        case 'in_progress':
+          return Icons.directions_car;
+        default:
+          return Icons.check_circle;
       }
     }
 
@@ -269,18 +416,18 @@ class _TripCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: AppColors.teal50,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: AppColors.black.withValues(alpha: 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
+            color: T.primary(context).withValues(alpha: 0.14),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
           ),
         ],
         border: Border.all(
-          color: AppColors.slate200.withValues(alpha: 0.5),
-          width: 1.5,
+          color: AppColors.teal200,
+          width: 1.7,
         ),
       ),
       child: Material(
@@ -326,21 +473,13 @@ class _TripCard extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              trip.status == 'active'
-                                  ? Icons.circle
-                                  : trip.status == 'hidden'
-                                  ? Icons.visibility_off
-                                  : Icons.check_circle,
+                              getStatusIcon(),
                               size: 10,
                               color: statusColor,
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              trip.status == 'active'
-                                  ? 'نشطة'
-                                  : trip.status == 'hidden'
-                                  ? 'مخفية'
-                                  : 'مكتملة',
+                              getStatusLabel(),
                               style: TextStyle(
                                 color: statusColor,
                                 fontWeight: FontWeight.bold,
@@ -585,6 +724,61 @@ class _TripCard extends StatelessWidget {
                     ],
                   ),
                 ),
+
+                if (trip.communicationFeeStatus != 'paid')
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _isPaying ? null : _showFeeInvoice,
+                        icon: _isPaying
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.white,
+                                ),
+                              )
+                            : const Icon(IconsaxPlusBold.receipt_2),
+                        label: Text(
+                          _isPaying ? 'جاري الدفع...' : 'دفع الرسوم',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.success,
+                          foregroundColor: AppColors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                else if (trip.communicationFeeStatus == 'paid')
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          IconsaxPlusBold.tick_circle,
+                          size: 18,
+                          color: AppColors.success,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'رسوم الرحلة مدفوعة',
+                          style: TextStyle(
+                            color: AppColors.success,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
                 // Warning for past trips
                 if (isPast) ...[

@@ -1,12 +1,13 @@
 import 'dart:async';
-import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:http/http.dart' as http;
+
 import '../../models/trip_model.dart';
 import '../../core/api/websocket_service.dart';
+import '../../core/services/route_service.dart';
 import '../../core/theme/colors.dart';
-import '../../core/constants/env_config.dart';
+import '../../core/ui/error_surface.dart';
 
 class TripRouteMapScreen extends StatefulWidget {
   final TripModel trip;
@@ -23,6 +24,9 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
   final WebSocketService _socketService = WebSocketService();
   StreamSubscription<Map<String, dynamic>>? _trackingSubscription;
 
+  final RouteService _routeService = RouteService(
+  );
+
   Set<Polyline> _polylines = {};
   Set<Marker> _markers = {};
 
@@ -33,8 +37,6 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
   String _duration = '';
   bool _isLoadingRoute = true;
   bool _isFollowingDriver = false;
-
-  String get _apiKey => EnvConfig.googleMapsApiKey;
 
   late LatLng _fromLatLng;
   late LatLng _toLatLng;
@@ -104,7 +106,6 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
           BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
       infoWindow: const InfoWindow(title: 'موقع السائق'),
       anchor: const Offset(0.5, 0.5),
-      zIndex: 3,
     );
 
     _markers = {
@@ -114,97 +115,44 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
   }
 
   Future<void> _fetchRoute() async {
-    try {
-      final url =
-          'https://maps.googleapis.com/maps/api/directions/json'
-          '?origin=${_fromLatLng.latitude},${_fromLatLng.longitude}'
-          '&destination=${_toLatLng.latitude},${_toLatLng.longitude}'
-          '&key=$_apiKey'
-          '&language=ar';
+    final result = await _routeService.fetchRoute(
+      origin: _fromLatLng,
+      destination: _toLatLng,
+    );
 
-      final response = await http.get(Uri.parse(url));
+    if (!mounted) return;
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['routes'] != null && (data['routes'] as List).isNotEmpty) {
-          final route = data['routes'][0];
-          final overviewPolyline = route['overview_polyline']['points'];
-          final legs = route['legs'][0];
-
-          final points = _decodePolyline(overviewPolyline);
-
-          setState(() {
-            _distance = legs['distance']['text'];
-            _duration = legs['duration']['text'];
-            _polylines = {
-              Polyline(
-                polylineId: const PolylineId('route'),
-                points: points,
-                color: AppColors.teal700,
-                width: 5,
-                patterns: [],
-              ),
-            };
-            _isLoadingRoute = false;
-          });
-        } else {
-          _drawStraightLine();
+    switch (result) {
+      case RouteOk(:final polyline, :final bounds, :final distance, :final duration):
+        setState(() {
+          _distance = distance;
+          _duration = duration;
+          _polylines = {
+            Polyline(
+              polylineId: const PolylineId('route'),
+              points: polyline,
+              color: AppColors.teal700,
+              width: 5,
+              patterns: [],
+            ),
+          };
+          _isLoadingRoute = false;
+        });
+        if (bounds != null && _mapController != null) {
+          _mapController!.animateCamera(
+            CameraUpdate.newLatLngBounds(bounds, 80),
+          );
         }
-      } else {
-        _drawStraightLine();
-      }
-    } catch (e) {
-      _drawStraightLine();
+      case RouteUnavailable(:final failure):
+        setState(() {
+          _isLoadingRoute = false;
+        });
+        ErrorSurface.showFailure(
+          context,
+          failure,
+          onRetry: _fetchRoute,
+        );
     }
-  }
-
-  void _drawStraightLine() {
-    setState(() {
-      _polylines = {
-        Polyline(
-          polylineId: const PolylineId('route'),
-          points: [_fromLatLng, _toLatLng],
-          color: AppColors.teal700,
-          width: 4,
-          patterns: [PatternItem.dash(20), PatternItem.gap(10)],
-        ),
-      };
-      _isLoadingRoute = false;
-    });
-  }
-
-  List<LatLng> _decodePolyline(String encoded) {
-    List<LatLng> points = [];
-    int index = 0;
-    int lat = 0;
-    int lng = 0;
-
-    while (index < encoded.length) {
-      int shift = 0;
-      int result = 0;
-      int b;
-      do {
-        b = encoded.codeUnitAt(index++) - 63;
-        result |= (b & 0x1F) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      int dlat = (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
-      lat += dlat;
-
-      shift = 0;
-      result = 0;
-      do {
-        b = encoded.codeUnitAt(index++) - 63;
-        result |= (b & 0x1F) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      int dlng = (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
-      lng += dlng;
-
-      points.add(LatLng(lat / 1e5, lng / 1e5));
-    }
-
-    return points;
   }
 
   void _onMapCreated(GoogleMapController controller) {
@@ -269,12 +217,6 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
                     icon: Icons.arrow_back,
                     onTap: () => Navigator.pop(context),
                     semanticLabel: 'رجوع',
-                  ),
-                  const Spacer(),
-                  _CircleButton(
-                    icon: Icons.fullscreen,
-                    onTap: _fitBounds,
-                    semanticLabel: 'عرض المسار بالكامل',
                   ),
                   const Spacer(),
                   _CircleButton(

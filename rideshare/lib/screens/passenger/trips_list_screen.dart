@@ -408,7 +408,13 @@ class _TripCard extends StatelessWidget {
     final timeFormat = DateFormat('HH:mm');
 
     return Card(
+      color: AppColors.teal50,
+      elevation: 3,
       margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: AppColors.teal200, width: 1.4),
+      ),
       child: Semantics(
         button: true,
         label: 'تفاصيل الرحلة من ${trip.from.name} إلى ${trip.to.name}',

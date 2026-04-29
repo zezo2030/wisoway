@@ -44,6 +44,15 @@ class TripModel {
   // Distance (km, from PostGIS)
   final double? distanceKm;
 
+  // Stops (up to 5 intermediate waypoints)
+  final List<LocationModel> stops;
+
+  // Driver notes visible to passengers
+  final String? notes;
+
+  // Recurrence rule that spawned this trip (if any)
+  final String? recurrenceRuleId;
+
   // Metadata
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -67,6 +76,9 @@ class TripModel {
     this.isVisible = true,
     this.communicationFeeStatus = 'not_paid',
     this.distanceKm,
+    this.stops = const [],
+    this.notes,
+    this.recurrenceRuleId,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -161,6 +173,13 @@ class TripModel {
       distanceKm: json['distanceKm'] != null
           ? _parseDouble(json['distanceKm'])
           : null,
+      stops: (json['stops'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map((s) => LocationModel.fromStopMap(s))
+              .toList() ??
+          [],
+      notes: json['notes'] as String?,
+      recurrenceRuleId: json['recurrenceRuleId']?.toString(),
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
@@ -189,6 +208,12 @@ class TripModel {
       'isVisible': isVisible,
       'communicationFeeStatus': communicationFeeStatus,
       if (distanceKm != null) 'distanceKm': distanceKm,
+      if (stops.isNotEmpty)
+        'stops': stops.asMap().entries
+            .map((e) => e.value.toStopMap(order: e.key + 1))
+            .toList(),
+      if (notes != null) 'notes': notes,
+      if (recurrenceRuleId != null) 'recurrenceRuleId': recurrenceRuleId,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
@@ -214,6 +239,9 @@ class TripModel {
     bool? isVisible,
     String? communicationFeeStatus,
     double? distanceKm,
+    List<LocationModel>? stops,
+    String? notes,
+    String? recurrenceRuleId,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -236,13 +264,18 @@ class TripModel {
       communicationFeeStatus:
           communicationFeeStatus ?? this.communicationFeeStatus,
       distanceKm: distanceKm ?? this.distanceKm,
+      stops: stops ?? this.stops,
+      notes: notes ?? this.notes,
+      recurrenceRuleId: recurrenceRuleId ?? this.recurrenceRuleId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
   // Helper getters
-  bool get isActive => status == 'active';
+  // Backend uses 'published' as the canonical "active" state; 'active' is
+  // kept as a deprecated alias for older rows.
+  bool get isActive => status == 'active' || status == 'published';
   bool get isHidden => status == 'hidden';
   bool get isCancelled => status == 'cancelled';
   bool get isCompleted => status == 'completed';

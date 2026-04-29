@@ -4,6 +4,8 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../../core/constants/route_names.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/theme/colors.dart';
+import '../../../core/ui/error_surface.dart';
+import '../../../core/api/api_client.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -118,48 +120,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       }
     } catch (e) {
       if (mounted) {
-        final isArabic = _ar(context);
-        final message = _formatError(e, isArabic);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            backgroundColor: T.error(context),
-            duration: const Duration(seconds: 4),
-          ),
-        );
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
-  }
-
-  String _formatError(dynamic error, bool isArabic) {
-    final msg = error.toString().toLowerCase();
-    if (msg.contains('social login') || msg.contains('social')) {
-      return isArabic
-          ? 'تغيير كلمة المرور غير متاح لحسابات تسجيل الدخول الاجتماعي'
-          : 'Password change is not available for social login accounts';
-    }
-    if (msg.contains('current password') || msg.contains('incorrect')) {
-      return isArabic
-          ? 'كلمة المرور الحالية غير صحيحة'
-          : 'Current password is incorrect';
-    }
-    if (msg.contains('different') || msg.contains('same')) {
-      return isArabic
-          ? 'كلمة المرور الجديدة يجب أن تكون مختلفة'
-          : 'New password must be different from current password';
-    }
-    if (msg.contains('8 character') || msg.contains('weak') || msg.contains('letter')) {
-      return isArabic
-          ? 'كلمة المرور يجب أن تكون 8 أحرف على الأقل مع حرف ورقم'
-          : 'Password must be at least 8 characters with one letter and one number';
-    }
-    return isArabic
-        ? 'حدث خطأ. يرجى المحاولة مرة أخرى.'
-        : 'An error occurred. Please try again.';
   }
 
   @override

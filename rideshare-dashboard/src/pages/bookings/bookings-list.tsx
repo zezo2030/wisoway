@@ -15,8 +15,9 @@ import { QUERY_KEYS, DASHBOARD_REFRESH_INTERVAL, BOOKING_STATUS_LABELS } from "@
 import { formatDate } from "@/lib/utils"
 import { formatSeatDisplay } from "@/lib/seat-format"
 import type { Booking, UserSummary, TripSummary } from "@/types/models"
-import { BookOpen, XCircle, AlertCircle } from "lucide-react"
+import { BookOpen, XCircle, AlertCircle, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
+import { SettlementDialog } from "./settlement-dialog"
 
 function isPopulatedUser(val: string | UserSummary): val is UserSummary {
     return typeof val === "object" && val !== null && "name" in val
@@ -39,6 +40,14 @@ export default function BookingsListPage() {
     }>({
         open: false,
         booking: null,
+    })
+
+    const [settlementDialog, setSettlementDialog] = useState<{
+        open: boolean
+        bookingId: string | null
+    }>({
+        open: false,
+        bookingId: null,
     })
 
     const { data, isLoading, error } = useQuery({
@@ -117,16 +126,54 @@ export default function BookingsListPage() {
         },
         {
             key: "seat",
-            header: "Seat",
+            header: "Seat(s)",
             cell: (booking) => {
                 const layout = isPopulatedTrip(booking.tripId)
                     ? booking.tripId.seatLayout
                     : undefined
-                const label = formatSeatDisplay(booking.seatNumber, layout)
+
+                // v2 multi-seat: render each seat as a badge
+                if (booking.seats && booking.seats.length > 0) {
+                    return (
+                        <div className="flex flex-wrap gap-1">
+                            {booking.seats.map((s) => {
+                                const label = formatSeatDisplay(s.seatNumber, layout)
+                                const isAbsent = !!s.markedAbsentAt
+                                return (
+                                    <div
+                                        key={s.id}
+                                        className={[
+                                            "flex items-center gap-1 font-mono text-xs px-2 py-0.5 rounded border",
+                                            isAbsent
+                                                ? "bg-destructive/10 border-destructive/40 text-destructive line-through"
+                                                : "bg-muted/60 border-border/40 text-foreground",
+                                        ].join(" ")}
+                                        title={`${s.displayName} (${s.gender})${isAbsent ? " — absent" : ""}${s.isMainBooker ? " ★" : ""}`}
+                                    >
+                                        #{label}
+                                        <span
+                                            className={[
+                                                "text-[10px] px-1 rounded",
+                                                s.gender === "female"
+                                                    ? "bg-pink-100 text-pink-700"
+                                                    : "bg-blue-100 text-blue-700",
+                                            ].join(" ")}
+                                        >
+                                            {s.gender === "female" ? "F" : "M"}
+                                        </span>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )
+                }
+
+                // v1 legacy: single seat
+                const label = formatSeatDisplay(booking.seatNumber ?? "", layout)
                 return (
                     <div
                         className="font-mono font-bold tracking-wider text-sm bg-muted/60 px-2.5 py-1 rounded w-fit border border-border/40 text-foreground"
-                        title={layout ? `Server seat id: ${booking.seatNumber}` : booking.seatNumber}
+                        title={layout ? `Server seat id: ${booking.seatNumber}` : (booking.seatNumber ?? "")}
                     >
                         #{label}
                     </div>
@@ -138,7 +185,14 @@ export default function BookingsListPage() {
             header: "Status",
             cell: (booking) => (
                 <StatusBadge
-                    status={booking.status === "pending" ? "pending_booking" : booking.status === "confirmed" ? "confirmed" : booking.status === "cancelled" ? "cancelled_booking" : "completed_booking"}
+                    status={
+                        booking.status === "pending" ? "pending_booking"
+                        : booking.status === "confirmed" ? "confirmed"
+                        : booking.status === "cancelled" ? "cancelled_booking"
+                        : booking.status === "rejected" ? "rejected"
+                        : booking.status === "no_show" ? "no_show"
+                        : "completed_booking"
+                    }
                     type="booking"
                     className="shadow-sm"
                 />
@@ -152,9 +206,9 @@ export default function BookingsListPage() {
         {
             key: "actions",
             header: "Actions",
-            className: "w-[120px]",
+            className: "w-[180px]",
             cell: (booking) => (
-                <div onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     {(booking.status === "pending" || booking.status === "confirmed") && (
                         <Button
                             size="sm"
@@ -165,6 +219,19 @@ export default function BookingsListPage() {
                         >
                             <XCircle className="mr-1.5 h-3.5 w-3.5" />
                             Cancel
+                        </Button>
+                    )}
+                    {booking.settledAt && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="font-semibold text-xs shadow-sm border-primary/40 text-primary hover:bg-primary/10"
+                            onClick={() =>
+                                setSettlementDialog({ open: true, bookingId: booking._id })
+                            }
+                        >
+                            <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+                            Settlement
                         </Button>
                     )}
                 </div>
@@ -256,6 +323,16 @@ export default function BookingsListPage() {
                 }}
                 loading={cancelMutation.isPending}
             />
+
+            {settlementDialog.bookingId && (
+                <SettlementDialog
+                    bookingId={settlementDialog.bookingId}
+                    open={settlementDialog.open}
+                    onOpenChange={(open) =>
+                        setSettlementDialog((prev) => ({ ...prev, open }))
+                    }
+                />
+            )}
         </div>
     )
 }

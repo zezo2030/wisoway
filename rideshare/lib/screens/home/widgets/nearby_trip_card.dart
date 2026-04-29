@@ -23,15 +23,16 @@ class NearbyTripCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: T.surface(context),
+        color: AppColors.teal50,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppColors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: T.primary(context).withValues(alpha: 0.12),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
         ],
+        border: Border.all(color: AppColors.teal200, width: 1.4),
       ),
       child: Material(
         color: AppColors.transparent,

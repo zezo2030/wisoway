@@ -5,7 +5,17 @@ export enum PgUserRole {
 }
 
 export enum TripStatus {
+  /**
+   * @deprecated Phase 9 / T180 — shim dropped.
+   * Migration 008.06 converted all 'active' rows to 'published'.
+   * This value is retained in the enum only to avoid breaking any in-flight
+   * code that still references it; all new code MUST use PUBLISHED.
+   */
   ACTIVE = 'active',
+  DRAFT = 'draft',
+  PUBLISHED = 'published',
+  FULLY_BOOKED = 'fully_booked',
+  IN_PROGRESS = 'in_progress',
   HIDDEN = 'hidden',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',

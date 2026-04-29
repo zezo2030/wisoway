@@ -1,11 +1,10 @@
 import {
   IsString,
   IsOptional,
+  IsBoolean,
   MinLength,
   MaxLength,
-  IsEnum,
 } from 'class-validator';
-import { Gender } from '../schemas/user.schema';
 
 export class UpdateUserDto {
   @IsOptional()
@@ -15,11 +14,20 @@ export class UpdateUserDto {
   name?: string;
 
   @IsOptional()
-  @IsEnum(Gender)
-  gender?: Gender;
-
-  @IsOptional()
   @IsString()
   @MaxLength(500)
   photoUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  city?: string;
+
+  /**
+   * When true, in-app calls are routed through a Twilio proxy DID so the
+   * other party never sees the user's real phone number.
+   */
+  @IsOptional()
+  @IsBoolean()
+  hidePhoneNumber?: boolean;
 }

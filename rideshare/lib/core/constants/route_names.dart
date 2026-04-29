@@ -1,5 +1,6 @@
 class RouteNames {
   // Auth Routes
+  static const String welcome = '/welcome';
   static const String signIn = '/sign-in';
   static const String accountTypeSelection = '/account-type-selection';
   static const String signUp = '/sign-up';
@@ -22,6 +23,7 @@ class RouteNames {
   static const String myTrips = '/my-trips';
   static const String tripManagement = '/trip-management';
   static const String passengerDetails = '/passenger-details';
+  static const String vehicleSettings = '/vehicle-settings';
 
   // Passenger Routes
   static const String tripsList = '/trips-list';
@@ -55,6 +57,7 @@ class RouteNames {
   static const String about = '/about';
   static const String notificationSettings = '/notification-settings';
   static const String accountSecurity = '/account-security';
+  static const String accountSecurityDevices = '/account-security-devices';
   static const String privacySettings = '/privacy-settings';
   static const String inAppBrowser = '/in-app-browser';
   static const String changePassword = '/change-password';
@@ -62,4 +65,9 @@ class RouteNames {
   // Future Routes (for later weeks)
   static const String bookings = '/bookings';
   static const String profile = '/profile';
+
+  // Phase 8 Routes
+  static const String banned = '/banned';
+  static const String complaint = '/complaint';
+  static const String refundRequest = '/refund-request';
 }

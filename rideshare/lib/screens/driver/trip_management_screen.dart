@@ -16,6 +16,9 @@ import '../../models/wallet_model.dart';
 import '../../widgets/notification_icon_button.dart';
 import '../../utils/seat_layout_helpers.dart';
 import '../../../widgets/common/section_card.dart';
+import '../../core/ui/error_surface.dart';
+import '../../core/api/api_client.dart';
+import '../../core/errors/failure.dart';
 
 class TripManagementScreen extends StatefulWidget {
   final String tripId;
@@ -33,6 +36,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
   bool _isLoading = true;
   WalletModel? _wallet;
   String _confirmingBookingId = '';
+  bool _isPayingTripFee = false;
 
   @override
   void initState() {
@@ -54,12 +58,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في تحميل الرحلة: ${e.toString()}'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     }
   }
@@ -138,10 +137,13 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(tripProvider.errorMessage ?? 'فشل فتح المقعد'),
-            backgroundColor: AppColors.error,
+        ErrorSurface.showFailure(
+          context,
+          const Failure(
+            category: FailureCategory.validation,
+            messageKey: 'errorsValidationGeneric',
+            severity: FailureSeverity.warning,
+            developerDetail: 'Failed to open seat',
           ),
         );
       }
@@ -185,10 +187,13 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         ),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(tripProvider.errorMessage ?? 'فشل قفل المقعد'),
-          backgroundColor: AppColors.error,
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.validation,
+          messageKey: 'errorsValidationGeneric',
+          severity: FailureSeverity.warning,
+          developerDetail: 'Failed to lock seat',
         ),
       );
     }
@@ -199,6 +204,104 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       final w = await _paymentService.getWalletMe();
       if (mounted) setState(() => _wallet = w);
     } catch (_) {}
+  }
+
+  double _tripFeeAmount(TripModel trip) {
+    return ((trip.price * trip.totalSeats * 0.05) * 100).round() / 100;
+  }
+
+  Future<void> _showTripFeeInvoice(TripModel trip) async {
+    final amount = _tripFeeAmount(trip);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('فاتورة رسوم الرحلة'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _invoiceRow('سعر المقعد', '${trip.price} ${trip.currency}'),
+            _invoiceRow('عدد المقاعد', '${trip.totalSeats}'),
+            _invoiceRow('نسبة الرسوم', '5%'),
+            const Divider(height: 24),
+            _invoiceRow(
+              'الإجمالي',
+              '${amount.toStringAsFixed(2)} ${trip.currency}',
+              isTotal: true,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'الدفع يخص رسوم الرحلة كاملة ولا يغير عدد المقاعد أو الحجوزات.',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: T.textSecondary(context),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('دفع الرسوم'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await _payTripFee(trip);
+    }
+  }
+
+  Widget _invoiceRow(String label, String value, {bool isTotal = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: AppTextStyles.bodyMedium.copyWith(
+                fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: AppTextStyles.bodyMedium.copyWith(
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _payTripFee(TripModel trip) async {
+    setState(() => _isPayingTripFee = true);
+    try {
+      await _paymentService.chargeDriverTrip(
+        tripId: trip.id,
+        idempotencyKey:
+            'driver-trip-fee:${trip.id}:${DateTime.now().millisecondsSinceEpoch}',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('تم دفع رسوم الرحلة بنجاح'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      await _loadTrip();
+      await _loadWallet();
+    } catch (e) {
+      if (!mounted) return;
+      ErrorSurface.showFailure(context, ApiClient.mapError(e));
+    } finally {
+      if (mounted) setState(() => _isPayingTripFee = false);
+    }
   }
 
   Future<void> _hideTrip() async {
@@ -438,6 +541,10 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
 
                   // Status Card
                   _buildStatusCard(_trip!),
+                  const SizedBox(height: 16),
+
+                  // Trip fee payment
+                  _buildTripFeePaymentCard(_trip!),
                   const SizedBox(height: 16),
 
                   // Trip Details Card
@@ -718,6 +825,87 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     );
   }
 
+  Widget _buildTripFeePaymentCard(TripModel trip) {
+    final isPaid = trip.communicationFeeStatus == 'paid';
+    final amount = _tripFeeAmount(trip);
+    return SectionCard(
+      title: 'رسوم الرحلة',
+      icon: Icons.receipt_long_outlined,
+      iconColor: isPaid ? AppColors.success : AppColors.warning,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: (isPaid ? AppColors.success : AppColors.warning)
+                    .withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                isPaid ? IconsaxPlusBold.tick_circle : IconsaxPlusBold.wallet_1,
+                color: isPaid ? AppColors.success : AppColors.warning,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isPaid ? 'رسوم الرحلة مدفوعة' : 'فاتورة رسوم الرحلة جاهزة',
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: T.onSurface(context),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '5% × ${trip.totalSeats} مقاعد × ${trip.price} ${trip.currency} = ${amount.toStringAsFixed(2)} ${trip.currency}',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: T.textSecondary(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        if (!isPaid) ...[
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _isPayingTripFee
+                  ? null
+                  : () => _showTripFeeInvoice(trip),
+              icon: _isPayingTripFee
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.white,
+                      ),
+                    )
+                  : const Icon(IconsaxPlusBold.wallet_1),
+              label: Text(_isPayingTripFee ? 'جاري الدفع...' : 'دفع الرسوم'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.success,
+                foregroundColor: AppColors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildPendingBookingsCard(List<BookingModel> pendingBookings) {
     return SectionCard(
       title: 'حجوزات قيد التأكيد (${pendingBookings.length})',
@@ -814,30 +1002,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       _loadTrip();
     } catch (e) {
       if (!mounted) return;
-      final msg = e.toString();
-      final insufficient =
-          msg.contains('Insufficient') ||
-          msg.contains('wallet') ||
-          msg.contains('balance') ||
-          msg.contains('شحن');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            insufficient
-                ? 'رصيد المحفظة غير كافٍ. يرجى شحن المحفظة ثم تأكيد الحجز.'
-                : msg,
-          ),
-          backgroundColor: AppColors.error,
-          action: insufficient
-              ? SnackBarAction(
-                  label: 'شحن المحفظة',
-                  textColor: AppColors.white,
-                  onPressed: () =>
-                      Navigator.pushNamed(context, RouteNames.driverWallet),
-                )
-              : null,
-        ),
-      );
+      ErrorSurface.showFailure(context, ApiClient.mapError(e));
     } finally {
       if (mounted) setState(() => _confirmingBookingId = '');
     }
@@ -934,9 +1099,25 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
 
     switch (trip.status) {
       case 'active':
+      case 'published':
         statusColor = AppColors.success;
         statusText = 'نشطة';
         statusIcon = IconsaxPlusBold.tick_circle;
+        break;
+      case 'draft':
+        statusColor = T.outlineVariant(context);
+        statusText = 'مسودة';
+        statusIcon = IconsaxPlusLinear.edit;
+        break;
+      case 'fully_booked':
+        statusColor = AppColors.warning;
+        statusText = 'مكتملة الحجز';
+        statusIcon = IconsaxPlusBold.tick_circle;
+        break;
+      case 'in_progress':
+        statusColor = T.primary(context);
+        statusText = 'قيد التنفيذ';
+        statusIcon = IconsaxPlusLinear.routing;
         break;
       case 'hidden':
         statusColor = AppColors.warning;
@@ -947,6 +1128,11 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         statusColor = T.primary(context);
         statusText = 'مكتملة';
         statusIcon = IconsaxPlusBold.tick_circle;
+        break;
+      case 'cancelled':
+        statusColor = T.error(context);
+        statusText = 'ملغاة';
+        statusIcon = IconsaxPlusLinear.close_circle;
         break;
       default:
         statusColor = T.outlineVariant(context);

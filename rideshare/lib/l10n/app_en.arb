@@ -466,6 +466,340 @@
   "close": "Close",
   "@close": {
     "description": "Close button"
+  },
+  "errorsNetworkOffline": "You're offline. Check your connection and try again.",
+  "@errorsNetworkOffline": {
+    "description": "Network offline error message"
+  },
+  "errorsNetworkTimeout": "Connection timed out. Please try again.",
+  "@errorsNetworkTimeout": {
+    "description": "Network timeout error message"
+  },
+  "errorsServerGeneric": "Something went wrong on our end. Please try again later.",
+  "@errorsServerGeneric": {
+    "description": "Generic server error message"
+  },
+  "errorsAuthSessionExpired": "Your session has expired. Please sign in again.",
+  "@errorsAuthSessionExpired": {
+    "description": "Session expired error message"
+  },
+  "errorsAuthInvalidCredentials": "Invalid email or password.",
+  "@errorsAuthInvalidCredentials": {
+    "description": "Invalid credentials error message"
+  },
+  "errorsPermissionDenied": "Permission denied. Check your app settings.",
+  "@errorsPermissionDenied": {
+    "description": "Permission denied error message"
+  },
+  "errorsValidationGeneric": "Invalid input. Please check your data and try again.",
+  "@errorsValidationGeneric": {
+    "description": "Generic validation error message"
+  },
+  "errorsUnknownGeneric": "An unexpected error occurred. Please try again.",
+  "@errorsUnknownGeneric": {
+    "description": "Generic unknown error message"
+  },
+  "errorsActionRetry": "Retry",
+  "@errorsActionRetry": {
+    "description": "Retry action button"
+  },
+  "errorsActionReauthenticate": "Sign in again",
+  "@errorsActionReauthenticate": {
+    "description": "Re-authenticate action button"
+  },
+  "errorsActionOpenSettings": "Open Settings",
+  "@errorsActionOpenSettings": {
+    "description": "Open settings action button"
+  },
+  "errorsRouteUnavailable": "We couldn't load the route. Showing pickup and drop-off points.",
+  "@errorsRouteUnavailable": {
+    "description": "Route unavailable error message"
+  },
+  "notificationsBookingCreatedTitle": "New Booking",
+  "@notificationsBookingCreatedTitle": {
+    "description": "Title for booking created notification"
+  },
+  "notificationsBookingCreatedBody": "A new seat was booked on your trip",
+  "@notificationsBookingCreatedBody": {
+    "description": "Body for booking created notification"
+  },
+  "notificationsBookingConfirmedTitle": "Booking Confirmed",
+  "@notificationsBookingConfirmedTitle": {
+    "description": "Title for booking confirmed notification"
+  },
+  "notificationsBookingConfirmedBody": "Your booking has been confirmed",
+  "@notificationsBookingConfirmedBody": {
+    "description": "Body for booking confirmed notification"
+  },
+  "notificationsBookingRejectedTitle": "Booking Rejected",
+  "@notificationsBookingRejectedTitle": {
+    "description": "Title for booking rejected notification"
+  },
+  "notificationsBookingRejectedBody": "Unfortunately, your booking was rejected",
+  "@notificationsBookingRejectedBody": {
+    "description": "Body for booking rejected notification"
+  },
+  "notificationsBookingCanceledTitle": "Booking Cancelled",
+  "@notificationsBookingCanceledTitle": {
+    "description": "Title for booking cancelled notification"
+  },
+  "notificationsBookingCanceledBody": "Your booking has been cancelled",
+  "@notificationsBookingCanceledBody": {
+    "description": "Body for booking cancelled notification"
+  },
+  "notificationsNewTripPostedTitle": "New Trip Posted",
+  "@notificationsNewTripPostedTitle": {
+    "description": "Title for new trip posted notification"
+  },
+  "notificationsNewTripPostedBody": "A new trip to {destination} is available",
+  "@notificationsNewTripPostedBody": {
+    "description": "Body for new trip posted notification",
+    "placeholders": {
+      "destination": {
+        "type": "String"
+      }
+    }
+  },
+
+  "accountBannedTitle": "Account Suspended",
+  "@accountBannedTitle": {
+    "description": "Ban screen title shown when user account is banned"
+  },
+  "accountBannedMessage": "Your account has been suspended. Reason: {reason}",
+  "@accountBannedMessage": {
+    "description": "Ban screen body message with reason",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "accountBannedContactSupport": "Contact Support",
+  "@accountBannedContactSupport": {
+    "description": "Button on ban screen that opens WhatsApp support"
+  },
+  "accountRestrictedBanner": "Your account is temporarily restricted. Some actions are unavailable pending review.",
+  "@accountRestrictedBanner": {
+    "description": "Banner shown when the account is in restricted state"
+  },
+  "maskedPhoneLabel": "Hidden number",
+  "@maskedPhoneLabel": {
+    "description": "Placeholder shown instead of the actual phone number before settlement"
+  },
+  "maskedPhoneHint": "Revealed after payment is confirmed",
+  "@maskedPhoneHint": {
+    "description": "Hint explaining why the phone number is masked"
+  },
+  "shareLinkTripEnded": "Trip ended",
+  "@shareLinkTripEnded": {
+    "description": "State label shown on the public share-link page when the trip has completed"
+  },
+  "shareLinkLiveTracking": "Live tracking",
+  "@shareLinkLiveTracking": {
+    "description": "Label shown on the public share-link page while the trip is in progress"
+  },
+  "shareLinkGenerate": "Share trip",
+  "@shareLinkGenerate": {
+    "description": "Button to generate a public share link for the trip"
+  },
+  "noShowNotificationTitle": "Driver did not arrive",
+  "@noShowNotificationTitle": {
+    "description": "Push notification title when the driver no-show threshold is reached"
+  },
+  "noShowNotificationBody": "The driver did not start the trip in time. The trip has been cancelled and a penalty has been applied.",
+  "@noShowNotificationBody": {
+    "description": "Push notification body for driver no-show cancellation"
+  },
+  "pendingChargeBanner": "You have an outstanding charge of {amount}. It will be collected on your next confirmed booking.",
+  "@pendingChargeBanner": {
+    "description": "Banner shown to a user who has an outstanding pending charge",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "pendingChargeTitle": "Pending Charges",
+  "@pendingChargeTitle": {
+    "description": "Title for the pending charges section"
+  },
+  "pendingChargeKindPassengerCancellation": "Late cancellation fee",
+  "@pendingChargeKindPassengerCancellation": {
+    "description": "Label for a pending charge of kind passenger_cancellation"
+  },
+  "pendingChargeKindDriverNoShow": "Driver no-show penalty",
+  "@pendingChargeKindDriverNoShow": {
+    "description": "Label for a pending charge of kind driver_no_show"
+  },
+  "pendingChargeKindPassengerNoShow": "Passenger no-show penalty",
+  "@pendingChargeKindPassengerNoShow": {
+    "description": "Label for a pending charge of kind passenger_no_show"
+  },
+  "devicesScreenTitle": "Connected Devices",
+  "@devicesScreenTitle": {
+    "description": "Title for the connected devices management screen"
+  },
+  "devicesRevokeButton": "Remove device",
+  "@devicesRevokeButton": {
+    "description": "Button to revoke a connected device session"
+  },
+  "devicesCurrentDevice": "This device",
+  "@devicesCurrentDevice": {
+    "description": "Label for the current device in the devices list"
+  },
+  "bookingTimeoutNotificationTitle": "Booking expired",
+  "@bookingTimeoutNotificationTitle": {
+    "description": "Push notification title when a pending booking expires after 3 hours"
+  },
+  "bookingTimeoutNotificationBody": "Your booking timed out and was not accepted by the driver. The seats are now available.",
+  "@bookingTimeoutNotificationBody": {
+    "description": "Push notification body for booking timeout cancellation"
+  },
+  "settlementMarkPaid": "Confirm payment",
+  "@settlementMarkPaid": {
+    "description": "Driver CTA button to mark a booking as paid/settled"
+  },
+  "settlementUnmarkPaid": "Undo payment confirmation",
+  "@settlementUnmarkPaid": {
+    "description": "Driver CTA to undo mark-paid within the grace window"
+  },
+  "settlementGraceCountdown": "Can undo within {seconds} seconds",
+  "@settlementGraceCountdown": {
+    "description": "Countdown text shown during the 5-minute grace window",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "chatDisabledUnsettled": "Chat available after payment is confirmed",
+  "@chatDisabledUnsettled": {
+    "description": "Tooltip shown when chat is disabled because the booking is unsettled"
+  },
+  "callDisabledUnsettled": "Calling available after payment is confirmed",
+  "@callDisabledUnsettled": {
+    "description": "Tooltip shown when call is disabled because the booking is unsettled"
+  },
+  "callMaskedNumber": "Calling via masked number",
+  "@callMaskedNumber": {
+    "description": "Label shown when the call is routed through a proxy number"
+  },
+  "hidePhoneNumberToggle": "Hide my phone number",
+  "@hidePhoneNumberToggle": {
+    "description": "Profile settings toggle to hide phone number from other parties"
+  },
+  "hidePhoneNumberSubtitle": "Calls will be routed through a proxy number",
+  "@hidePhoneNumberSubtitle": {
+    "description": "Description for the hide-phone-number toggle"
+  },
+  "complaintScreenTitle": "File a Complaint",
+  "@complaintScreenTitle": {
+    "description": "Title for the complaint filing screen"
+  },
+  "complaintCategoryLabel": "Complaint type",
+  "@complaintCategoryLabel": {
+    "description": "Label for the complaint category picker"
+  },
+  "complaintDescriptionLabel": "Describe the issue",
+  "@complaintDescriptionLabel": {
+    "description": "Label for the complaint description text field"
+  },
+  "complaintSubmitButton": "Submit complaint",
+  "@complaintSubmitButton": {
+    "description": "Submit button for the complaint form"
+  },
+  "complaintSubmittedSuccess": "Your complaint was submitted successfully. We will review it shortly.",
+  "@complaintSubmittedSuccess": {
+    "description": "Success message after complaint submission"
+  },
+  "complaintStatusResolved": "Resolved",
+  "@complaintStatusResolved": {
+    "description": "Complaint status label for resolved complaints"
+  },
+  "refundRequestTitle": "Request a Refund",
+  "@refundRequestTitle": {
+    "description": "Title for the refund request screen"
+  },
+  "refundRequestBody": "WhatsApp will open to connect you with our support team about your refund.",
+  "@refundRequestBody": {
+    "description": "Explainer text on the refund request screen"
+  },
+  "refundRequestButton": "Submit refund request",
+  "@refundRequestButton": {
+    "description": "Button to submit a refund request and open WhatsApp"
+  },
+  "supportScreenTitle": "Support & Help",
+  "@supportScreenTitle": {
+    "description": "Title for the support screen"
+  },
+  "supportWhatsAppButton": "Chat on WhatsApp",
+  "@supportWhatsAppButton": {
+    "description": "Button to open WhatsApp support chat"
+  },
+  "tripStopsLabel": "Stops",
+  "@tripStopsLabel": {
+    "description": "Label for the trip stops section"
+  },
+  "tripNotesLabel": "Trip notes",
+  "@tripNotesLabel": {
+    "description": "Label for the trip notes section"
+  },
+  "tripRecurrenceLabel": "Repeat trip",
+  "@tripRecurrenceLabel": {
+    "description": "Label for the trip recurrence settings"
+  },
+  "recurrenceFrequencyDaily": "Daily",
+  "@recurrenceFrequencyDaily": {
+    "description": "Recurrence frequency option: daily"
+  },
+  "recurrenceFrequencyWeekly": "Weekly",
+  "@recurrenceFrequencyWeekly": {
+    "description": "Recurrence frequency option: weekly"
+  },
+  "recurrenceUntilLabel": "Until date",
+  "@recurrenceUntilLabel": {
+    "description": "Label for the recurrence end date picker"
+  },
+  "companionPickerTitle": "Add companions",
+  "@companionPickerTitle": {
+    "description": "Title for the companion (multi-seat) picker screen"
+  },
+  "companionDisplayNameLabel": "Companion name",
+  "@companionDisplayNameLabel": {
+    "description": "Label for the companion display name field"
+  },
+  "autoPickSeatsButton": "Auto-pick seats",
+  "@autoPickSeatsButton": {
+    "description": "Button to trigger automatic seat selection"
+  },
+  "preTripPromptTitle": "Confirm presence",
+  "@preTripPromptTitle": {
+    "description": "Title for the pre-trip presence confirmation prompt"
+  },
+  "preTripPromptPassengerBody": "Is the driver at the pickup point?",
+  "@preTripPromptPassengerBody": {
+    "description": "Body of the pre-trip prompt shown to the passenger"
+  },
+  "preTripPromptDriverBody": "Is passenger {name} present?",
+  "@preTripPromptDriverBody": {
+    "description": "Body of the pre-trip prompt shown to the driver for each passenger",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "startTripButton": "Start trip",
+  "@startTripButton": {
+    "description": "Driver button to start the trip"
+  },
+  "completeTripButton": "Complete trip",
+  "@completeTripButton": {
+    "description": "Driver button to complete/end the trip"
+  },
+  "markPassengerAbsent": "Mark as absent",
+  "@markPassengerAbsent": {
+    "description": "Driver action to mark a passenger as absent at trip completion"
   }
 }
 

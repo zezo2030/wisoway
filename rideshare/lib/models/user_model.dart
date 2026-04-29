@@ -17,6 +17,8 @@ class UserModel {
   final String? fcmToken;
   final String? photoUrl; // For social login profile picture
   final String? provider; // 'email', 'phone', 'google', 'facebook'
+  /// Hide real phone number from the other party during in-app calls.
+  final bool hidePhoneNumber;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -36,6 +38,7 @@ class UserModel {
     this.fcmToken,
     this.photoUrl,
     this.provider,
+    this.hidePhoneNumber = false,
     required this.createdAt,
     required this.updatedAt,
   });

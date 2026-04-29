@@ -3,11 +3,57 @@ import 'package:flutter/services.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/api/api_client.dart';
 import '../../../core/constants/support_constants.dart';
 import '../../../core/theme/colors.dart';
 
-class SupportScreen extends StatelessWidget {
+class SupportScreen extends StatefulWidget {
   const SupportScreen({super.key});
+
+  @override
+  State<SupportScreen> createState() => _SupportScreenState();
+}
+
+class _SupportScreenState extends State<SupportScreen> {
+  String? _whatsAppE164;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchWhatsAppConfig();
+  }
+
+  Future<void> _fetchWhatsAppConfig() async {
+    try {
+      final data = await ApiClient().get('/support/config');
+      if (mounted) {
+        setState(() {
+          _whatsAppE164 = data['whatsappE164'] as String?;
+        });
+      }
+    } catch (_) {
+      // Non-critical — fall back to constant
+    }
+  }
+
+  String get _whatsAppNumber {
+    final raw = _whatsAppE164 ?? SupportConstants.supportPhone;
+    return raw.replaceAll('+', '').replaceAll(' ', '');
+  }
+
+  Future<void> _launchWhatsApp(BuildContext context) async {
+    final prefill = Uri.encodeComponent(
+      'مرحباً، أحتاج مساعدة في تطبيق VisionWay.',
+    );
+    final uri = Uri.parse('https://wa.me/$_whatsAppNumber?text=$prefill');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return;
+    }
+    if (context.mounted) {
+      _showMessage(context, 'تعذر فتح WhatsApp');
+    }
+  }
 
   Future<void> _launchEmail(BuildContext context) async {
     final uri = Uri(
@@ -118,6 +164,17 @@ class SupportScreen extends StatelessWidget {
                   onPrimaryAction: () => _launchPhone(context),
                 ),
               ],
+              const SizedBox(height: 16),
+              _ContactCard(
+                icon: IconsaxPlusBold.message,
+                accentColor: const Color(0xFF25D366),
+                title: 'راسلنا عبر WhatsApp',
+                value: SupportConstants.supportPhoneDisplay,
+                description:
+                    'تواصل مباشرة مع فريق الدعم عبر WhatsApp للحصول على مساعدة فورية.',
+                primaryActionLabel: 'فتح WhatsApp',
+                onPrimaryAction: () => _launchWhatsApp(context),
+              ),
               const SizedBox(height: 20),
               _InfoPanel(
                 title: 'كيف نساعدك؟',
