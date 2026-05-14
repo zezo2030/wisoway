@@ -151,6 +151,19 @@ export class NotificationsService {
     return JSON.stringify(value);
   }
 
+  private resolveCollapseKey(payload: {
+    type: string;
+    data?: Record<string, unknown>;
+  }): string | undefined {
+    if (payload.type === 'chat_message') {
+      const roomId = payload.data?.chatRoomId;
+      if (roomId !== null && roomId !== undefined) {
+        return `chat_${String(roomId)}`;
+      }
+    }
+    return undefined;
+  }
+
   private buildFcmData(
     userId: string,
     payload: {
@@ -231,6 +244,18 @@ export class NotificationsService {
       const tokenStrings = tokens.map((t) => t.token);
       const data = this.buildFcmData(userId, payload);
 
+      const collapseKey = this.resolveCollapseKey(payload);
+      const androidNotification: admin.messaging.AndroidNotification = {
+        channelId: 'rideshare_notifications',
+      };
+      if (collapseKey) {
+        androidNotification.tag = collapseKey;
+      }
+      const apnsHeaders: Record<string, string> = {};
+      if (collapseKey) {
+        apnsHeaders['apns-collapse-id'] = collapseKey;
+      }
+
       if (tokenStrings.length === 1) {
         await admin.messaging().send({
           token: tokenStrings[0],
@@ -238,9 +263,11 @@ export class NotificationsService {
           data,
           android: {
             priority: 'high',
-            notification: { channelId: 'rideshare_notifications' },
+            ...(collapseKey ? { collapseKey } : {}),
+            notification: androidNotification,
           },
           apns: {
+            ...(Object.keys(apnsHeaders).length ? { headers: apnsHeaders } : {}),
             payload: { aps: { sound: 'default' } },
           },
         });
@@ -251,9 +278,11 @@ export class NotificationsService {
           data,
           android: {
             priority: 'high',
-            notification: { channelId: 'rideshare_notifications' },
+            ...(collapseKey ? { collapseKey } : {}),
+            notification: androidNotification,
           },
           apns: {
+            ...(Object.keys(apnsHeaders).length ? { headers: apnsHeaders } : {}),
             payload: { aps: { sound: 'default' } },
           },
         });

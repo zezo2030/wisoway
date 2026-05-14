@@ -1,4 +1,4 @@
-package com.example.rideshare
+package com.abdelaziz.visionway
 
 import io.flutter.embedding.android.FlutterActivity
 

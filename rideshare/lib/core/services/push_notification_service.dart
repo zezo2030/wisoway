@@ -180,25 +180,49 @@ class PushNotificationService {
       return;
     }
 
+    final type = data['type']?.toString() ?? '';
+    final collapseKey = _collapseKeyFor(type, data);
+
+    final int notificationId = collapseKey != null
+        ? collapseKey.hashCode
+        : (message.messageId?.hashCode ?? message.hashCode);
+
+    final androidDetails = AndroidNotificationDetails(
+      'rideshare_notifications',
+      'إشعارات VisionWay',
+      channelDescription:
+          'إشعارات الحجزات والرحلات والمدفوعات والمحادثات',
+      icon: 'notification_icon',
+      color: const Color(0xFF001B4D),
+      importance: Importance.max,
+      priority: Priority.high,
+      tag: collapseKey,
+    );
+
+    final iosDetails = DarwinNotificationDetails(
+      threadIdentifier: collapseKey,
+    );
+
     await _localNotifications.show(
-      message.messageId?.hashCode ?? message.hashCode,
+      notificationId,
       title ?? 'VisionWay',
       body,
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'rideshare_notifications',
-          'إشعارات VisionWay',
-          channelDescription:
-              'إشعارات الحجزات والرحلات والمدفوعات والمحادثات',
-          icon: 'notification_icon',
-          color: Color(0xFF001B4D),
-          importance: Importance.max,
-          priority: Priority.high,
-        ),
-        iOS: DarwinNotificationDetails(),
-        macOS: DarwinNotificationDetails(),
+      NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+        macOS: iosDetails,
       ),
       payload: jsonEncode(message.data),
     );
+  }
+
+  static String? _collapseKeyFor(String type, Map<String, dynamic> data) {
+    if (type == 'chat_message') {
+      final roomId = data['chatRoomId']?.toString();
+      if (roomId != null && roomId.isNotEmpty) {
+        return 'chat_$roomId';
+      }
+    }
+    return null;
   }
 }

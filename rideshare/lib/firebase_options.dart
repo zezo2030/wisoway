@@ -64,7 +64,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '907014658060',
     projectId: 'rideshare-5f785',
     storageBucket: 'rideshare-5f785.firebasestorage.app',
-    iosBundleId: 'com.example.rideshare',
+    iosBundleId: 'com.abdelaziz.visionway',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
@@ -73,7 +73,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '907014658060',
     projectId: 'rideshare-5f785',
     storageBucket: 'rideshare-5f785.firebasestorage.app',
-    iosBundleId: 'com.example.rideshare',
+    iosBundleId: 'com.abdelaziz.visionway',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
