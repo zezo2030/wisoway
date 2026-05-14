@@ -5,6 +5,8 @@ import { useParams, useNavigate } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { getTripById, getTripSeats, getBookingsForTrip, getUserById } from "@/api/admin"
 import { SeatMap } from "@/components/seat-map"
+import { TripMap } from "@/components/trip-map"
+import { TripChat } from "@/components/trip-chat"
 import { StatusBadge } from "@/components/status-badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -20,7 +22,7 @@ import { QUERY_KEYS } from "@/lib/constants"
 import { formatSeatDisplay } from "@/lib/seat-format"
 import { layoutSummaryText } from "@/lib/seat-layout"
 import { formatDateTime, formatCurrency, cn, getTripLocationName } from "@/lib/utils"
-import type { UserSummary } from "@/types/models"
+import type { UserSummary, Trip } from "@/types/models"
 import { ArrowLeft, MapPin, User, Calendar, DollarSign, Car, Users, ArrowLeftRight, Activity, CreditCard, ShieldCheck, Route, StickyNote, RefreshCw } from "lucide-react"
 
 // Type guard for populated fields
@@ -94,10 +96,15 @@ export default function TripDetailPage() {
   const toName = getTripLocationName(trip as unknown as Record<string, unknown>, "to")
   const driverDisplayName = isPopulatedDriver(trip.driverId)
     ? trip.driverId.name
-    : trip.driverName || driverUser?.name || "Unknown Driver"
+    : (trip as Trip).driver?.name?.trim() ||
+      trip.driverName?.trim() ||
+      driverUser?.name ||
+      "Unknown Driver"
   const driverDisplayContact = isPopulatedDriver(trip.driverId)
     ? trip.driverId.email
-    : driverUser?.email || "No email provided"
+    : (trip as Trip).driver?.email?.trim() ||
+      driverUser?.email ||
+      "No email provided"
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 pb-10">
@@ -358,7 +365,7 @@ export default function TripDetailPage() {
                             className="font-black text-sm bg-muted/60 border border-border/50 px-2.5 py-1 rounded shadow-sm inline-block min-w-[32px]"
                             title={`Server seat id: ${booking.seatNumber}`}
                           >
-                            #{formatSeatDisplay(booking.seatNumber, trip.seatLayout)}
+                            #{formatSeatDisplay(booking.seatNumber ?? undefined, trip.seatLayout)}
                           </span>
                         </TableCell>
                         <TableCell className="text-center">
@@ -414,6 +421,32 @@ export default function TripDetailPage() {
           </Card>
         )}
       </div>
+
+      {/* Trip Map */}
+      <Card className="border-border/50 shadow-md bg-card/60 backdrop-blur-xl overflow-hidden">
+        <CardHeader className="border-b border-border/40 pb-4 pt-5">
+          <CardTitle className="text-lg font-bold flex items-center gap-3">
+            <div className="bg-emerald-500/10 p-2 rounded-xl border border-emerald-500/20">
+              <MapPin className="w-5 h-5 text-emerald-500" />
+            </div>
+            Live Route Map
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4">
+          <TripMap
+            from={trip.from}
+            to={trip.to}
+            stops={trip.stops}
+            fromName={fromName}
+            toName={toName}
+            trip={trip as unknown as Record<string, unknown>}
+            tripId={id}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Trip Chat */}
+      <TripChat tripId={id!} />
     </div>
   )
 }

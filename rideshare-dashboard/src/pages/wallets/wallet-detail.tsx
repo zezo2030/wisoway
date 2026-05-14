@@ -6,6 +6,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { adjustWalletBalance, getWalletById, getWalletTransactions } from "@/api/wallets"
 import { DataTable, type Column } from "@/components/data-table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -17,10 +19,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { QUERY_KEYS } from "@/lib/constants"
+import { QUERY_KEYS, ROUTES } from "@/lib/constants"
 import {
   formatDate,
   formatCurrency,
+  formatPhone,
   formatRelativeTime,
   getWalletTransactionTypeLabel,
   cn,
@@ -40,6 +43,7 @@ import {
   AlertCircle,
   Plus,
   Minus,
+  Hash,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -212,7 +216,7 @@ export default function WalletDetailPage() {
       <div className="space-y-4 animate-in fade-in duration-500">
         <Button
           variant="ghost"
-          onClick={() => navigate("/wallets")}
+          onClick={() => navigate(ROUTES.WALLETS)}
           className="mb-2"
         >
           <ArrowLeft className={cn("w-4 h-4", language === "ar" ? "ml-2" : "mr-2")} />
@@ -229,163 +233,214 @@ export default function WalletDetailPage() {
   }
 
   const balance = wallet ? Number(wallet.balance) : 0
+  const owner = wallet && isPopulatedUser(wallet.userId) ? wallet.userId : null
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 pb-10">
       <Button
         variant="ghost"
-        onClick={() => navigate("/wallets")}
-        className="mb-2"
+        onClick={() => navigate(ROUTES.WALLETS)}
+        className="-ml-2 text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className={cn("w-4 h-4", language === "ar" ? "ml-2" : "mr-2")} />
         {t("backToWallets")}
       </Button>
 
       {walletLoading ? (
-        <div className="grid gap-6 md:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
-                <div className="h-20 bg-muted rounded-lg" />
-              </CardContent>
-            </Card>
-          ))}
+        <div className="grid gap-6 lg:grid-cols-12">
+          <Card className="lg:col-span-7 border-border/50 overflow-hidden animate-pulse">
+            <div className="h-32 bg-muted/60" />
+            <CardContent className="p-6 space-y-4">
+              <div className="h-6 bg-muted rounded-lg w-2/3" />
+              <div className="h-4 bg-muted rounded w-full" />
+              <div className="h-4 bg-muted rounded w-5/6" />
+            </CardContent>
+          </Card>
+          <div className="lg:col-span-5 flex flex-col gap-6">
+            <Card className="h-56 border-border/50 animate-pulse bg-muted/30" />
+            <Card className="h-36 border-border/50 animate-pulse bg-muted/30" />
+          </div>
         </div>
       ) : wallet ? (
         <>
-          {/* Wallet Info Header */}
-          <div className="grid gap-6 md:grid-cols-3">
-            {/* User Info Card */}
-            <Card className="border-border/50 shadow-md bg-card/80 backdrop-blur-sm dark:shadow-none md:col-span-1">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  {t("walletAccountInfo")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isPopulatedUser(wallet.userId) ? (
-                  <>
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-lg shadow-sm border border-primary/20">
-                        {wallet.userId.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <div className="font-bold text-foreground text-lg">
-                          {wallet.userId.name}
+          <div className="flex flex-col gap-1 border-b border-border/40 pb-6">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
+              {t("walletDetail")}
+            </h1>
+            <p className="text-sm text-muted-foreground font-mono break-all">{wallet.id}</p>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-12">
+            <Card className="lg:col-span-7 border-border/50 shadow-lg bg-card/90 backdrop-blur-sm dark:shadow-none overflow-hidden">
+              <CardHeader className="space-y-0 pb-4 bg-gradient-to-br from-primary/[0.06] via-muted/30 to-transparent border-b border-border/40">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
+                      {t("walletAccountInfo")}
+                    </p>
+                    {owner ? (
+                      <>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                          {t("walletOwner")}
+                        </p>
+                        <div className="flex items-center gap-4">
+                          <div
+                            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary text-xl font-black border border-primary/20 shadow-sm"
+                            aria-hidden
+                          >
+                            {owner.name.charAt(0).toUpperCase()}
+                          </div>
+                          <p className="text-2xl md:text-3xl font-black text-foreground tracking-tight leading-tight break-words">
+                            {owner.name}
+                          </p>
                         </div>
-                      </div>
-                    </div>
-                    {wallet.userId.email && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Mail className="w-4 h-4" />
-                        {wallet.userId.email}
-                      </div>
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground font-mono">
+                        {typeof wallet.userId === "string" ? `ID: ${wallet.userId}` : "—"}
+                      </p>
                     )}
-                    {wallet.userId.phoneNumber && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Phone className="w-4 h-4" />
-                        {wallet.userId.phoneNumber}
+                  </div>
+                  {owner && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full shrink-0 border-border/80"
+                      onClick={() => navigate(`${ROUTES.USERS}/${owner._id}`)}
+                    >
+                      <User className={cn("w-4 h-4", language === "ar" ? "ml-1.5" : "mr-1.5")} />
+                      {t("viewUserProfile")}
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6">
+                {owner && (
+                  <div className="space-y-3">
+                    {owner.email ? (
+                      <div className="flex items-start gap-3 text-sm">
+                        <Mail className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
+                        <span className="text-foreground break-all">{owner.email}</span>
                       </div>
-                    )}
-                  </>
-                ) : (
-                  <span className="text-muted-foreground font-mono text-xs">
-                    ID: {wallet.userId}
-                  </span>
+                    ) : null}
+                    {owner.phoneNumber ? (
+                      <div className="flex items-start gap-3 text-sm">
+                        <Phone className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
+                        <span dir="ltr" className="text-foreground">
+                          {formatPhone(owner.phoneNumber)}
+                        </span>
+                      </div>
+                    ) : null}
+                  </div>
                 )}
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Calendar className="w-4 h-4" />
-                  {t("createdAt")}: {formatDate(wallet.createdAt)}
+
+                <Separator className="bg-border/60" />
+
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
+                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">
+                      <Hash className="w-3.5 h-3.5" />
+                      {t("walletInternalId")}
+                    </div>
+                    <p className="font-mono text-xs leading-relaxed break-all text-foreground/90">{wallet.id}</p>
+                  </div>
+                  <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
+                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">
+                      <Calendar className="w-3.5 h-3.5" />
+                      {t("createdAt")}
+                    </div>
+                    <p className="text-sm font-semibold text-foreground">{formatDate(wallet.createdAt)}</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Balance Card */}
-            <Card className="border-border/50 shadow-md bg-card/80 backdrop-blur-sm dark:shadow-none md:col-span-1">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                  <Wallet className="w-4 h-4" />
-                  {t("balance")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-col items-center justify-center py-6">
-                <div
-                  className={cn(
-                    "text-4xl font-black",
-                    balance > 0
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  {formatCurrency(balance, wallet.currency)}
-                </div>
-                <div className="text-sm text-muted-foreground mt-2 font-medium">
-                  {wallet.currency}
-                </div>
-                <div className="mt-4 flex flex-wrap justify-center gap-2">
-                  <Button
-                    size="sm"
-                    className="rounded-full"
-                    onClick={() => {
-                      setAdjustmentMode("credit")
-                      setAdjustmentOpen(true)
-                    }}
+            <div className="lg:col-span-5 flex flex-col gap-6">
+              <Card className="border-border/50 shadow-lg bg-gradient-to-b from-emerald-500/[0.07] to-card dark:from-emerald-500/10 dark:to-card overflow-hidden">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <Wallet className="w-4 h-4" />
+                    {t("balance")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col items-stretch pb-6">
+                  <div
+                    className={cn(
+                      "text-4xl font-black tabular-nums text-center py-2",
+                      balance > 0
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-muted-foreground"
+                    )}
                   >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add Balance
-                  </Button>
-                  <Button
-                    size="sm"
+                    {formatCurrency(balance, wallet.currency)}
+                  </div>
+                  <p className="text-center text-sm font-semibold text-muted-foreground">{wallet.currency}</p>
+                  <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <Button
+                      className="rounded-xl"
+                      onClick={() => {
+                        setAdjustmentMode("credit")
+                        setAdjustmentOpen(true)
+                      }}
+                    >
+                      <Plus className={cn("w-4 h-4", language === "ar" ? "ml-1.5" : "mr-1.5")} />
+                      Add Balance
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="rounded-xl border-border/80"
+                      onClick={() => {
+                        setAdjustmentMode("debit")
+                        setAdjustmentOpen(true)
+                      }}
+                    >
+                      <Minus className={cn("w-4 h-4", language === "ar" ? "ml-1.5" : "mr-1.5")} />
+                      Deduct Balance
+                    </Button>
+                  </div>
+                  <div className="mt-5 flex justify-center">
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-xs font-semibold px-3 py-1.5 rounded-full",
+                        wallet.accountType === WalletAccountType.DRIVER
+                          ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800"
+                          : "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-800"
+                      )}
+                    >
+                      {wallet.accountType === WalletAccountType.DRIVER
+                        ? t("nav_drivers")
+                        : t("nav_passengers")}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-border/50 shadow-md bg-card/80 backdrop-blur-sm dark:shadow-none">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                    {t("status")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center justify-center pb-6 space-y-3">
+                  <Badge
                     variant="outline"
-                    className="rounded-full"
-                    onClick={() => {
-                      setAdjustmentMode("debit")
-                      setAdjustmentOpen(true)
-                    }}
+                    className={cn(
+                      "text-sm font-semibold px-4 py-2 rounded-full",
+                      wallet.isActive
+                        ? "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                        : "bg-red-50 text-red-800 border-red-200 hover:bg-red-50 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800"
+                    )}
                   >
-                    <Minus className="w-4 h-4 mr-1" />
-                    Deduct Balance
-                  </Button>
-                </div>
-                <span
-                  className={cn(
-                    "mt-3 text-xs font-semibold px-3 py-1.5 rounded-full border",
-                    wallet.accountType === WalletAccountType.DRIVER
-                      ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800"
-                      : "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-800"
-                  )}
-                >
-                  {wallet.accountType === WalletAccountType.DRIVER
-                    ? t("nav_drivers")
-                    : t("nav_passengers")}
-                </span>
-              </CardContent>
-            </Card>
-
-            {/* Status Card */}
-            <Card className="border-border/50 shadow-md bg-card/80 backdrop-blur-sm dark:shadow-none md:col-span-1">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                  {t("status")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-col items-center justify-center py-6 space-y-3">
-                <span
-                  className={cn(
-                    "text-sm font-semibold px-4 py-2 rounded-full border",
-                    wallet.isActive
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800"
-                      : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800"
-                  )}
-                >
-                  {wallet.isActive ? t("active") : t("inactive")}
-                </span>
-                <div className="text-xs text-muted-foreground">
-                  {t("lastUpdated")}: {formatDate(wallet.updatedAt)}
-                </div>
-              </CardContent>
-            </Card>
+                    {wallet.isActive ? t("active") : t("inactive")}
+                  </Badge>
+                  <p className="text-xs text-muted-foreground text-center">
+                    {t("lastUpdated")}: {formatDate(wallet.updatedAt)}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
           </div>
 
           {/* Transaction History */}

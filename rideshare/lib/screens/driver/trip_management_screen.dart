@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/text_styles.dart';
 import '../../core/theme/colors.dart';
+import '../../core/widgets/phone_text.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../providers/trip_provider.dart';
 import '../../models/trip_model.dart';
@@ -13,12 +15,16 @@ import '../../core/services/booking_service.dart';
 import '../../core/services/payment_service.dart';
 import '../../core/constants/route_names.dart';
 import '../../models/wallet_model.dart';
+import '../../models/wallet_account_model.dart';
 import '../../widgets/notification_icon_button.dart';
 import '../../utils/seat_layout_helpers.dart';
 import '../../../widgets/common/section_card.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
 import '../../core/errors/failure.dart';
+import '../../core/services/location_service.dart';
+import '../../core/api/websocket_service.dart';
+import '../../core/services/trip_service.dart';
 
 class TripManagementScreen extends StatefulWidget {
   final String tripId;
@@ -31,17 +37,124 @@ class TripManagementScreen extends StatefulWidget {
 
 class _TripManagementScreenState extends State<TripManagementScreen> {
   final BookingService _bookingService = BookingService();
+  final TripService _tripService = TripService();
   final PaymentService _paymentService = PaymentService();
+  final LocationService _locationService = LocationService();
+  final WebSocketService _webSocketService = WebSocketService();
   TripModel? _trip;
   bool _isLoading = true;
   WalletModel? _wallet;
+  /// Postgres ledger (`/wallet/me`); real balance used for trip charges.
+  WalletAccountModel? _walletAccount;
   String _confirmingBookingId = '';
+  String _rejectingBookingId = '';
   bool _isPayingTripFee = false;
+  Timer? _locationTrackingTimer;
+  bool _locationDialogOpen = false;
+  bool _markingArrived = false;
 
   @override
   void initState() {
     super.initState();
     _loadTrip();
+  }
+
+  @override
+  void dispose() {
+    _locationTrackingTimer?.cancel();
+    super.dispose();
+  }
+
+  void _syncLiveTrackingState() {
+    final trip = _trip;
+    if (trip == null) {
+      _locationTrackingTimer?.cancel();
+      _locationTrackingTimer = null;
+      return;
+    }
+
+    final isInProgress = trip.status == 'in_progress';
+    if (!isInProgress) {
+      _locationTrackingTimer?.cancel();
+      _locationTrackingTimer = null;
+      return;
+    }
+
+    _webSocketService.connect();
+    _webSocketService.subscribeToTripTracking(trip.id);
+
+    if (_locationTrackingTimer != null) {
+      return;
+    }
+
+    _pushDriverLocationTick();
+    _locationTrackingTimer = Timer.periodic(
+      const Duration(seconds: 10),
+      (_) => _pushDriverLocationTick(),
+    );
+  }
+
+  Future<void> _pushDriverLocationTick() async {
+    final trip = _trip;
+    if (!mounted || trip == null || trip.status != 'in_progress') {
+      return;
+    }
+
+    final serviceEnabled = await _locationService.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      await _showEnableLocationDialog();
+      return;
+    }
+
+    try {
+      final position = await _locationService.getCurrentPosition();
+      _webSocketService.updateDriverLocation(
+        tripId: trip.id,
+        latitude: position.latitude,
+        longitude: position.longitude,
+        speedKph: position.speed > 0 ? position.speed * 3.6 : null,
+        heading: position.heading,
+        accuracyMeters: position.accuracy,
+      );
+    } catch (_) {
+      await _showEnableLocationDialog();
+    }
+  }
+
+  Future<void> _showEnableLocationDialog() async {
+    if (!mounted || _locationDialogOpen) return;
+    _locationDialogOpen = true;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('تفعيل الموقع مطلوب'),
+        content: const Text(
+          'لا يمكن متابعة الرحلة بدون تشغيل خدمات الموقع. يرجى تفعيل GPS الآن.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await _locationService.openLocationSettings();
+            },
+            child: const Text('فتح إعدادات الموقع'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final enabled = await _locationService.isLocationServiceEnabled();
+              if (!ctx.mounted) return;
+              if (enabled) {
+                Navigator.of(ctx).pop();
+              }
+            },
+            child: const Text('تحقق مجددًا'),
+          ),
+        ],
+      ),
+    );
+
+    _locationDialogOpen = false;
   }
 
   Future<void> _loadTrip() async {
@@ -53,6 +166,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
           _trip = trip;
           _isLoading = false;
         });
+        _syncLiveTrackingState();
         _loadWallet();
       }
     } catch (e) {
@@ -68,6 +182,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     final trip = await tripProvider.getTrip(widget.tripId);
     if (!mounted) return;
     setState(() => _trip = trip);
+    _syncLiveTrackingState();
   }
 
   Future<void> _onDriverSeatLongPress({
@@ -204,13 +319,38 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       final w = await _paymentService.getWalletMe();
       if (mounted) setState(() => _wallet = w);
     } catch (_) {}
+
+    try {
+      final acc = await _paymentService.getWalletAccountMe();
+      if (mounted) setState(() => _walletAccount = acc);
+    } catch (_) {}
   }
 
-  double _tripFeeAmount(TripModel trip) {
+  /// `/wallet/me` (ledger) first; fallback to legacy `users.walletBalance` from `/payments/wallet/me`.
+  double get _walletDisplayBalance =>
+      _walletAccount?.balance ?? _wallet?.balance ?? 0;
+
+  String get _walletDisplayCurrency =>
+      _walletAccount?.currency ?? _wallet?.currency ?? 'JOD';
+
+  bool get _hasWalletSummary =>
+      _wallet != null || _walletAccount != null;
+
+  double _baseTripFeeAmount(TripModel trip) {
     return ((trip.price * trip.totalSeats * 0.05) * 100).round() / 100;
   }
 
+  bool get _hasAvailableFreeTrip =>
+      _wallet != null && !_wallet!.hasUsedLifetimeFreeTrip;
+
+  double _tripFeeAmount(TripModel trip) {
+    if (_hasAvailableFreeTrip) return 0;
+    return _baseTripFeeAmount(trip);
+  }
+
   Future<void> _showTripFeeInvoice(TripModel trip) async {
+    final baseAmount = _baseTripFeeAmount(trip);
+    final hasFreeTrip = _hasAvailableFreeTrip;
     final amount = _tripFeeAmount(trip);
     final confirmed = await showDialog<bool>(
       context: context,
@@ -223,6 +363,11 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
             _invoiceRow('سعر المقعد', '${trip.price} ${trip.currency}'),
             _invoiceRow('عدد المقاعد', '${trip.totalSeats}'),
             _invoiceRow('نسبة الرسوم', '5%'),
+            if (hasFreeTrip)
+              _invoiceRow(
+                'خصم الرحلة المجانية',
+                '-${baseAmount.toStringAsFixed(2)} ${trip.currency} (100%)',
+              ),
             const Divider(height: 24),
             _invoiceRow(
               'الإجمالي',
@@ -231,7 +376,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'الدفع يخص رسوم الرحلة كاملة ولا يغير عدد المقاعد أو الحجوزات.',
+              hasFreeTrip
+                  ? 'لديك رحلة مجانية متاحة. سيتم تطبيق خصم 100% ليصبح الإجمالي 0.'
+                  : 'الدفع يخص رسوم الرحلة كاملة ولا يغير عدد المقاعد أو الحجوزات.',
               style: AppTextStyles.bodySmall.copyWith(
                 color: T.textSecondary(context),
               ),
@@ -534,13 +681,16 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                   const SizedBox(height: 16),
 
                   // Wallet summary (driver)
-                  if (_wallet != null) ...[
+                  if (_hasWalletSummary) ...[
                     _buildWalletCard(),
                     const SizedBox(height: 16),
                   ],
 
                   // Status Card
                   _buildStatusCard(_trip!),
+                  const SizedBox(height: 16),
+
+                  _buildArrivedCard(_trip!),
                   const SizedBox(height: 16),
 
                   // Trip fee payment
@@ -763,7 +913,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
   }
 
   Widget _buildWalletCard() {
-    final w = _wallet!;
+    final balance = _walletDisplayBalance;
+    final cur = _walletDisplayCurrency;
+    final freeTripUsed = _wallet?.hasUsedLifetimeFreeTrip ?? false;
     return InkWell(
       onTap: () => Navigator.pushNamed(
         context,
@@ -797,20 +949,28 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'رصيد المحفظة: ${w.balance.toStringAsFixed(0)} ${w.currency}',
+                    'رصيد المحفظة: ${balance.toStringAsFixed(2)} $cur',
                     style: AppTextStyles.bodyLarge.copyWith(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  Text(
-                    w.hasUsedLifetimeFreeTrip
-                        ? 'تم استخدام الرحلة المجانية'
-                        : 'رحلة مجانية متاحة',
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: T.textSecondary(context),
+                  if (_wallet != null)
+                    Text(
+                      freeTripUsed
+                          ? 'تم استخدام الرحلة المجانية'
+                          : 'رحلة مجانية متاحة',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: T.textSecondary(context),
+                      ),
+                    )
+                  else
+                    Text(
+                      'الرصيد من محفظة المنصة (المحفظة الموحدة)',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: T.textSecondary(context),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -827,6 +987,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
 
   Widget _buildTripFeePaymentCard(TripModel trip) {
     final isPaid = trip.communicationFeeStatus == 'paid';
+    final hasFreeTrip = _hasAvailableFreeTrip;
     final amount = _tripFeeAmount(trip);
     return SectionCard(
       title: 'رسوم الرحلة',
@@ -862,7 +1023,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '5% × ${trip.totalSeats} مقاعد × ${trip.price} ${trip.currency} = ${amount.toStringAsFixed(2)} ${trip.currency}',
+                    hasFreeTrip
+                        ? 'الرسوم: 5% × ${trip.totalSeats} مقاعد × ${trip.price} ${trip.currency}، خصم رحلة مجانية 100% = ${amount.toStringAsFixed(2)} ${trip.currency}'
+                        : '5% × ${trip.totalSeats} مقاعد × ${trip.price} ${trip.currency} = ${amount.toStringAsFixed(2)} ${trip.currency}',
                     style: AppTextStyles.bodySmall.copyWith(
                       color: T.textSecondary(context),
                     ),
@@ -890,7 +1053,13 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                       ),
                     )
                   : const Icon(IconsaxPlusBold.wallet_1),
-              label: Text(_isPayingTripFee ? 'جاري الدفع...' : 'دفع الرسوم'),
+              label: Text(
+                _isPayingTripFee
+                    ? 'جاري الدفع...'
+                    : hasFreeTrip
+                    ? 'تطبيق الرحلة المجانية'
+                    : 'دفع الرسوم',
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.success,
                 foregroundColor: AppColors.white,
@@ -926,6 +1095,17 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
 
   Widget _buildPendingBookingItem(BookingModel booking) {
     final isConfirming = _confirmingBookingId == booking.id;
+    final isRejecting = _rejectingBookingId == booking.id;
+    final seatText = booking.seatSummary.isNotEmpty ? booking.seatSummary : '-';
+    final canOpenPassengerDetails =
+        booking.hasDriverPaidToContact && booking.userPopulated != null;
+    final titleText = canOpenPassengerDetails
+        ? (booking.userPopulated?.name ?? 'راكب')
+        : 'مقعد $seatText';
+    final subtitleText = canOpenPassengerDetails
+        ? 'المحادثة والتواصل متاحان بعد دفع رسوم الرحلة'
+        : 'بانتظار التأكيد';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
@@ -936,52 +1116,177 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       ),
       child: Row(
         children: [
-          Icon(
-            IconsaxPlusLinear.profile_2user,
-            color: AppColors.slate400,
-            size: 22,
-          ),
-          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'مقعد ${booking.seatNumber}',
-                  style: AppTextStyles.labelLarge,
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColors.slate200,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        IconsaxPlusLinear.profile_2user,
+                        color: AppColors.slate500,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            titleText,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.titleSmall.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'المقاعد: $seatText',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: T.textSecondary(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: AppColors.warning.withValues(alpha: 0.25),
+                        ),
+                      ),
+                      child: Text(
+                        'قيد التأكيد',
+                        style: AppTextStyles.labelSmall.copyWith(
+                          color: AppColors.warningDark,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 10),
                 Text(
-                  'بانتظار التأكيد',
+                  subtitleText,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.slate400,
+                    color: T.textSecondary(context),
+                    height: 1.35,
                   ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (canOpenPassengerDetails)
+                      OutlinedButton.icon(
+                        onPressed: () => Navigator.pushNamed(
+                          context,
+                          RouteNames.passengerDetails,
+                          arguments: booking,
+                        ),
+                        icon: const Icon(IconsaxPlusLinear.user, size: 16),
+                        label: Text(
+                          'تفاصيل الراكب',
+                          style: AppTextStyles.labelLarge.copyWith(
+                            fontSize: 12,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: T.primary(context),
+                          side: BorderSide(color: T.primary(context)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ElevatedButton.icon(
+                      onPressed: (isConfirming || isRejecting)
+                          ? null
+                          : () => _confirmBooking(booking.id),
+                      icon: isConfirming
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.white,
+                              ),
+                            )
+                          : const Icon(IconsaxPlusBold.tick_circle, size: 16),
+                      label: Text(
+                        isConfirming ? 'جاري التأكيد...' : 'تأكيد الحجز',
+                        style: AppTextStyles.labelLarge.copyWith(fontSize: 13),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.success,
+                        foregroundColor: AppColors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: (isConfirming || isRejecting)
+                          ? null
+                          : () => _rejectBooking(booking.id),
+                      icon: isRejecting
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.white,
+                              ),
+                            )
+                          : const Icon(IconsaxPlusBold.close_circle, size: 16),
+                      label: Text(
+                        isRejecting ? 'جاري الرفض...' : 'رفض',
+                        style: AppTextStyles.labelLarge.copyWith(fontSize: 13),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.error,
+                        foregroundColor: AppColors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ),
-          ElevatedButton(
-            onPressed: isConfirming ? null : () => _confirmBooking(booking.id),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.success,
-              foregroundColor: AppColors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: isConfirming
-                ? SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.white,
-                    ),
-                  )
-                : Text(
-                    'تأكيد الحجز',
-                    style: AppTextStyles.labelLarge.copyWith(fontSize: 13),
-                  ),
           ),
         ],
       ),
@@ -991,7 +1296,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
   Future<void> _confirmBooking(String bookingId) async {
     setState(() => _confirmingBookingId = bookingId);
     try {
-      await _bookingService.confirmBooking(bookingId);
+      await _bookingService.acceptBooking(bookingId);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1005,6 +1310,26 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       ErrorSurface.showFailure(context, ApiClient.mapError(e));
     } finally {
       if (mounted) setState(() => _confirmingBookingId = '');
+    }
+  }
+
+  Future<void> _rejectBooking(String bookingId) async {
+    setState(() => _rejectingBookingId = bookingId);
+    try {
+      await _bookingService.rejectBooking(bookingId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('تم رفض الحجز'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      _loadTrip();
+    } catch (e) {
+      if (!mounted) return;
+      ErrorSurface.showFailure(context, ApiClient.mapError(e));
+    } finally {
+      if (mounted) setState(() => _rejectingBookingId = '');
     }
   }
 
@@ -1089,6 +1414,138 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _onPressArrived(TripModel trip) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('تأكيد الوصول'),
+        content: const Text(
+          'هل وصلت إلى الوجهة؟ سيتم إنهاء الرحلة ولن يمكن التراجع.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('نعم، وصلت'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _markingArrived = true);
+    try {
+      await _tripService.markTripArrived(trip.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تم إنهاء الرحلة بنجاح.'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      await _reloadTrip();
+    } catch (e) {
+      if (!mounted) return;
+      ErrorSurface.showFailure(context, ApiClient.mapError(e));
+    } finally {
+      if (mounted) setState(() => _markingArrived = false);
+    }
+  }
+
+  /// Shown while the trip is IN_PROGRESS. The trip transitions to IN_PROGRESS
+  /// automatically at departureTime — there is no manual "Start" button.
+  Widget _buildArrivedCard(TripModel trip) {
+    final s = trip.status;
+    if (s == 'completed' || s == 'cancelled') {
+      return const SizedBox.shrink();
+    }
+
+    if (s == 'draft' || s == 'hidden') {
+      return const SizedBox.shrink();
+    }
+
+    if (s != 'in_progress') {
+      // Trip will auto-start at departureTime. Show a small status hint while
+      // the trip is still PUBLISHED/FULLY_BOOKED so drivers know what to expect.
+      final now = DateTime.now();
+      final departure = trip.departureTime;
+      String body;
+      if (now.isBefore(departure)) {
+        final minutes = departure.difference(now).inMinutes;
+        if (minutes >= 60) {
+          final hours = (minutes / 60).floor();
+          body =
+              'ستبدأ الرحلة تلقائياً عند موعد الانطلاق (بعد ~$hours ساعة). لا حاجة للضغط على زر بدء.';
+        } else {
+          body =
+              'ستبدأ الرحلة تلقائياً عند موعد الانطلاق (بعد ~${minutes.clamp(0, 9999)} دقيقة). لا حاجة للضغط على زر بدء.';
+        }
+      } else {
+        body = 'سيتم تحويل الرحلة إلى «قيد التنفيذ» تلقائياً خلال لحظات.';
+      }
+      return SectionCard(
+        title: 'بدء الرحلة',
+        icon: IconsaxPlusLinear.clock,
+        iconColor: T.primary(context),
+        children: [
+          Text(
+            body,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: T.textSecondary(context),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return SectionCard(
+      title: 'إنهاء الرحلة',
+      icon: IconsaxPlusBold.tick_circle,
+      iconColor: AppColors.success,
+      children: [
+        Text(
+          'اضغط «تم الوصول للوجهة» بعد إنزال الركاب لإنهاء الرحلة.',
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: T.textSecondary(context),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed:
+                _markingArrived ? null : () => _onPressArrived(trip),
+            icon: _markingArrived
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.white,
+                    ),
+                  )
+                : const Icon(IconsaxPlusBold.tick_circle),
+            label: Text(
+              _markingArrived ? 'جاري الإنهاء...' : 'تم الوصول للوجهة',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.success,
+              foregroundColor: AppColors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1260,11 +1717,11 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         _buildDetailRow(
           icon: IconsaxPlusLinear.grid_1,
           label: 'تخطيط المقاعد',
-          value:
-              trip.seatLayout.seatsPerRowList != null &&
-                  trip.seatLayout.seatsPerRowList!.isNotEmpty
-              ? 'مخصص: ${trip.seatLayout.seatsPerRowList!.join('، ')}'
-              : '${trip.seatLayout.rows} صف × ${trip.seatLayout.seatsPerRow} مقعد',
+          value: SeatLayoutHelpers.formatTripSeatLayoutPattern(
+            trip.seatLayout,
+            trip.seats,
+            trip.totalSeats,
+          ),
           color: T.primary(context),
         ),
         const Divider(height: 32),
@@ -1517,6 +1974,8 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
   }
 
   Widget _buildPassengerItem(BookingModel booking) {
+    final seatText = booking.seatSummary.isNotEmpty ? booking.seatSummary : '-';
+
     return InkWell(
       onTap: () => Navigator.pushNamed(
         context,
@@ -1576,16 +2035,23 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                         color: T.textSecondary(context),
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        'مقعد ${booking.seatNumber}',
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: T.textSecondary(context),
+                      Expanded(
+                        child: Text(
+                          'مقعد $seatText',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: T.textSecondary(context),
+                          ),
                         ),
                       ),
-                      // Show phone only if driver has paid AND passenger allows sharing
-                      if (booking.hasDriverPaidToContact &&
-                          booking.sharePhoneWithDriver) ...[
-                        const SizedBox(width: 12),
+                    ],
+                  ),
+                  if (booking.hasDriverPaidToContact &&
+                      booking.sharePhoneWithDriver) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
                         Icon(
                           IconsaxPlusLinear.call,
                           size: 14,
@@ -1593,17 +2059,18 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                         ),
                         const SizedBox(width: 4),
                         Expanded(
-                          child: Text(
+                          child: PhoneText(
                             booking.userPopulated?.phoneNumber ?? '',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: AppTextStyles.bodySmall.copyWith(
                               color: T.textSecondary(context),
                             ),
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
-                    ],
-                  ),
+                    ),
+                  ],
                 ],
               ),
             ),

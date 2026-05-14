@@ -15,160 +15,104 @@ class TripCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('EEEE، d MMMM', 'ar');
     final timeFormat = DateFormat('hh:mm a', 'ar');
-    final isPast = trip.departureTime.isBefore(DateTime.now());
+    final showDeadlineBanner = trip.driverShowsStartDeadlinePassedBanner;
 
     Color statusColor;
     String statusText;
 
-    if (trip.status == 'active') {
+    if (trip.status == 'active' || trip.status == 'published') {
       statusColor = AppColors.success;
       statusText = 'نشطة';
+    } else if (trip.status == 'fully_booked') {
+      statusColor = AppColors.warning;
+      statusText = 'مكتملة الحجز';
+    } else if (trip.status == 'in_progress') {
+      statusColor = T.primary(context);
+      statusText = 'قيد التنفيذ';
     } else if (trip.status == 'hidden') {
       statusColor = AppColors.warning;
       statusText = 'مخفية';
     } else {
       statusColor = T.primary(context);
-      statusText = 'مكتملة';
+      statusText = trip.statusDisplayText;
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: AppColors.teal50,
-        borderRadius: BorderRadius.circular(32),
+        color: T.surface(context),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: T.primary(context).withValues(alpha: 0.12),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(color: AppColors.teal200, width: 1.5),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(20),
         child: Material(
           color: AppColors.transparent,
           child: InkWell(
             onTap: onTap,
+            splashColor: statusColor.withValues(alpha: 0.08),
+            highlightColor: statusColor.withValues(alpha: 0.04),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Header: status + date
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(28, 20, 20, 0),
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
+                          horizontal: 10,
+                          vertical: 5,
                         ),
                         decoration: BoxDecoration(
                           color: statusColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            CircleAvatar(
-                              radius: 4,
-                              backgroundColor: statusColor,
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                color: statusColor,
+                                shape: BoxShape.circle,
+                              ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6),
                             Text(
                               statusText,
                               style: GoogleFonts.tajawal(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
                                 color: statusColor,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      Text(
-                        dateFormat.format(trip.departureTime),
-                        style: GoogleFonts.tajawal(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: T.onSurfaceVariant(context),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 28,
-                    vertical: 24,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              trip.from.name,
-                              style: GoogleFonts.tajawal(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w900,
-                                color: T.onSurface(context),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Icon(
-                                  IconsaxPlusLinear.arrow_right_3,
-                                  size: 16,
-                                  color: T.primary(context),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    trip.to.name,
-                                    style: GoogleFonts.tajawal(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w600,
-                                      color: T.onSurfaceVariant(context),
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        height: 70,
-                        width: 1,
-                        color: T
-                            .outlineVariant(context)
-                            .withValues(alpha: 0.15),
-                        margin: const EdgeInsets.symmetric(horizontal: 24),
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                      Row(
                         children: [
-                          Text(
-                            '${trip.price}',
-                            style: GoogleFonts.tajawal(
-                              fontSize: 32,
-                              fontWeight: FontWeight.w900,
-                              color: T.primary(context),
-                              letterSpacing: -1,
-                            ),
+                          Icon(
+                            IconsaxPlusLinear.clock,
+                            color: T.onSurfaceVariant(context),
+                            size: 14,
                           ),
+                          const SizedBox(width: 5),
                           Text(
-                            trip.currency,
+                            dateFormat.format(trip.departureTime),
                             style: GoogleFonts.tajawal(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w500,
                               color: T.onSurfaceVariant(context),
+                              fontSize: 12,
                             ),
                           ),
                         ],
@@ -176,38 +120,184 @@ class TripCard extends StatelessWidget {
                     ],
                   ),
                 ),
+
+                const SizedBox(height: 14),
+
+                // Route: vertical with timeline
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(28, 0, 28, 28),
-                  child: Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _InfoPill(
-                        icon: IconsaxPlusLinear.clock,
-                        text: timeFormat.format(trip.departureTime),
-                        color: T.primary(context),
+                      // Timeline dots & line
+                      Column(
+                        children: [
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: T.primary(context),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          Container(
+                            width: 2,
+                            height: 28,
+                            color: T.primary(context).withValues(alpha: 0.25),
+                          ),
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: AppColors.success,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ],
                       ),
-                      _InfoPill(
-                        icon: IconsaxPlusLinear.profile_2user,
-                        text: '${trip.availableSeats} متاح',
-                        color: AppColors.warning,
-                      ),
-                      _InfoPill(
-                        icon: IconsaxPlusLinear.money_tick,
-                        text: trip.communicationFeeStatus == 'paid'
-                            ? 'مدفوعة'
-                            : 'مستحقة',
-                        color: trip.communicationFeeStatus == 'paid'
-                            ? AppColors.success
-                            : T.error(context),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // From
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'من',
+                                  style: GoogleFonts.tajawal(
+                                    fontSize: 11,
+                                    color: T.onSurfaceVariant(context),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                Text(
+                                  trip.from.name,
+                                  style: GoogleFonts.tajawal(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: T.onSurface(context),
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            // To
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'إلى',
+                                  style: GoogleFonts.tajawal(
+                                    fontSize: 11,
+                                    color: T.onSurfaceVariant(context),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                Text(
+                                  trip.to.name,
+                                  style: GoogleFonts.tajawal(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: T.onSurface(context),
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
-                if (isPast)
+
+                const SizedBox(height: 14),
+
+                // Footer: price, seats, fee status
+                Container(
+                  decoration: BoxDecoration(
+                    color: T.surfaceVariant(context).withValues(alpha: 0.4),
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
+                    ),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        IconsaxPlusLinear.clock,
+                        color: T.primary(context),
+                        size: 16,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        timeFormat.format(trip.departureTime),
+                        style: GoogleFonts.tajawal(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: T.primary(context),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Icon(
+                        IconsaxPlusLinear.profile_2user,
+                        color: AppColors.warning,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        '${trip.availableSeats} متاح',
+                        style: GoogleFonts.tajawal(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.warning,
+                        ),
+                      ),
+                      const Spacer(),
+                      Icon(
+                        IconsaxPlusLinear.money_tick,
+                        color: trip.communicationFeeStatus == 'paid'
+                            ? AppColors.success
+                            : T.error(context),
+                        size: 16,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        trip.communicationFeeStatus == 'paid'
+                            ? 'مدفوعة'
+                            : 'مستحقة',
+                        style: GoogleFonts.tajawal(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: trip.communicationFeeStatus == 'paid'
+                              ? AppColors.success
+                              : T.error(context),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Text(
+                        '${trip.price} ${trip.currency}',
+                        style: GoogleFonts.tajawal(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: T.primary(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                if (showDeadlineBanner)
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
                       color: T.error(context).withValues(alpha: 0.05),
                       border: Border(
@@ -218,7 +308,7 @@ class TripCard extends StatelessWidget {
                     ),
                     child: Center(
                       child: Text(
-                        'انتهى وقت الرحلة',
+                        'انتهى وقت بدء الرحلة (لم يبدأ السائق ضمن المهلة)',
                         style: GoogleFonts.tajawal(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,

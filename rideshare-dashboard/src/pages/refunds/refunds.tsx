@@ -237,6 +237,7 @@ export default function RefundsPage() {
             data={data?.data ?? []}
             page={page}
             totalPages={data?.meta?.totalPages ?? 0}
+            total={data?.meta?.total ?? 0}
             onPageChange={(p) => updateParams({ page: String(p) })}
             loading={isLoading}
           />

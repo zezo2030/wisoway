@@ -78,6 +78,43 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           );
         }
         break;
+
+      case NotificationType.chatMessage:
+        if (tripId != null) {
+          final senderId = data?['senderId'] as String?;
+          final senderName = data?['senderName'] as String?;
+          final senderRole = data?['senderRole'] as String?;
+          final chatRoomId = data?['chatRoomId'] as String?;
+
+          if (senderRole == 'driver') {
+            Navigator.pushNamed(
+              context,
+              RouteNames.chat,
+              arguments: {
+                'tripId': tripId,
+                'chatRoomId': chatRoomId,
+                'driverId': senderId ?? '',
+                'driverName': senderName ?? 'السائق',
+              },
+            );
+          } else {
+            Navigator.pushNamed(
+              context,
+              RouteNames.driverChat,
+              arguments: {
+                'tripId': tripId,
+                'chatRoomId': chatRoomId,
+                'passengerId': senderId,
+                'passengerName': senderName ?? 'الراكب',
+              },
+            );
+          }
+        }
+        break;
+      case NotificationType.walletCredited:
+        // Navigate to the relevant wallet screen
+        Navigator.pushNamed(context, RouteNames.passengerWallet);
+        break;
     }
   }
 

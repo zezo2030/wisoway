@@ -16,11 +16,7 @@ import {
   BookingStatus,
 } from '../../database/entities/booking.entity';
 import { BookingSeatEntity } from '../../database/entities/booking-seat.entity';
-import {
-  PendingChargeEntity,
-  PendingChargeKind,
-  PendingChargeStatus,
-} from '../../database/entities/pending-charge.entity';
+import { PendingChargeEntity } from '../../database/entities/pending-charge.entity';
 import { TripEntity } from '../../database/entities/trip.entity';
 import { PaymentEntity } from '../../database/entities/payment.entity';
 import { TripStatus } from '../../database/entities/shared.enums';
@@ -375,34 +371,14 @@ export class BookingsService {
         departureTime,
         booking.status,
       );
-      if (!policy.allowed) {
-        // Passenger cancelling a confirmed booking inside the 12-hour window:
-        // record a 5% pending charge then proceed with cancellation.
-        if (policy.chargeRate !== null) {
-          const totalAmount = Number(
-            booking.totalAmount ?? booking.seatPriceAtBooking ?? 0,
-          );
-          const chargeAmount = (totalAmount * policy.chargeRate).toFixed(2);
-          const charge = this.pendingChargeRepo.create({
-            userId: booking.userId,
-            kind: PendingChargeKind.PASSENGER_CANCELLATION,
-            amount: chargeAmount,
-            status: PendingChargeStatus.PENDING,
-            bookingId: booking.id,
-            tripId: booking.tripId,
-          });
-          await this.pendingChargeRepo.save(charge);
-          this.logger.log(
-            `Pending charge ${chargeAmount} recorded for passenger cancellation inside window (booking ${booking.id})`,
-          );
-        } else {
-          // Driver attempting to cancel inside the 24-hour window — block.
-          throw new BadRequestException({
-            code: 'CANCELLATION_WINDOW_CLOSED',
-            windowSeconds: policy.windowSeconds,
-            message: `Cancellation is not allowed within ${policy.windowSeconds / 3600} hours of departure`,
-          });
-        }
+      // Drivers are blocked from cancelling inside the 24-hour window. Passengers
+      // are never charged a cancellation fee — admin issues fines manually.
+      if (!policy.allowed && role === 'driver') {
+        throw new BadRequestException({
+          code: 'CANCELLATION_WINDOW_CLOSED',
+          windowSeconds: policy.windowSeconds,
+          message: `Cancellation is not allowed within ${policy.windowSeconds / 3600} hours of departure`,
+        });
       }
     }
 
@@ -415,8 +391,12 @@ export class BookingsService {
 
     const cancelSeats = (booking.seats ?? []).map((s) => s.seatNumber);
     for (const sn of cancelSeats) {
-      await this.tripsService.releaseSeat(booking.tripId, sn).catch(() => undefined);
-      await this.tripsGateway.emitSeatReleased(booking.tripId, sn).catch(() => undefined);
+      await this.tripsService
+        .releaseSeat(booking.tripId, sn)
+        .catch(() => undefined);
+      await this.tripsGateway
+        .emitSeatReleased(booking.tripId, sn)
+        .catch(() => undefined);
     }
 
     // T034: Send push notification based on who cancelled
@@ -468,8 +448,12 @@ export class BookingsService {
 
     const cancelSeats = (booking.seats ?? []).map((s) => s.seatNumber);
     for (const sn of cancelSeats) {
-      await this.tripsService.releaseSeat(booking.tripId, sn).catch(() => undefined);
-      await this.tripsGateway.emitSeatReleased(booking.tripId, sn).catch(() => undefined);
+      await this.tripsService
+        .releaseSeat(booking.tripId, sn)
+        .catch(() => undefined);
+      await this.tripsGateway
+        .emitSeatReleased(booking.tripId, sn)
+        .catch(() => undefined);
     }
 
     const trip =
@@ -499,6 +483,7 @@ export class BookingsService {
     const qb = this.bookingRepo
       .createQueryBuilder('b')
       .leftJoinAndSelect('b.trip', 'trip')
+      .leftJoinAndSelect('b.seats', 'seats')
       .where('b.userId = :userId', { userId })
       .orderBy('b.createdAt', 'DESC');
 
@@ -527,7 +512,11 @@ export class BookingsService {
     tripId: string,
     driverId: string,
     options: { page: number; limit: number },
-  ): Promise<PaginatedResult<BookingEntity>> {
+  ): Promise<
+    PaginatedResult<
+      BookingEntity & { chatEnabled: boolean; callEnabled: boolean }
+    >
+  > {
     const { page = 1, limit = 20 } = options;
     const skip = (page - 1) * limit;
 
@@ -536,16 +525,43 @@ export class BookingsService {
       throw new ForbiddenException('You are not the owner of this trip');
     }
 
-    const [data, total] = await Promise.all([
+    const [rawData, total] = await Promise.all([
       this.bookingRepo.find({
         where: { tripId },
-        relations: ['user'],
+        relations: ['user', 'seats', 'trip'],
         order: { createdAt: 'DESC' },
         skip,
         take: limit,
       }),
       this.bookingRepo.count({ where: { tripId } }),
     ]);
+
+    // Reveal passenger info + enable chat/call once the driver has paid the
+    // trip fee — for any booking on the trip, regardless of status. The
+    // mirror flag (`hasDriverPaidToContact`) is normally kept in sync at
+    // booking-create / accept / confirm and at trip-fee-payment time; the
+    // `trip.driverWalletChargeApplied` fallback guards against a stale
+    // mirror.
+    const data = rawData.map((b) => {
+      const unlocked =
+        b.hasDriverPaidToContact === true ||
+        b.trip?.driverWalletChargeApplied === true;
+      if (unlocked) {
+        return {
+          ...b,
+          hasDriverPaidToContact: true,
+          chatEnabled: true,
+          callEnabled: true,
+        };
+      }
+      return {
+        ...b,
+        user: null as unknown as BookingEntity['user'],
+        hasDriverPaidToContact: false,
+        chatEnabled: false,
+        callEnabled: false,
+      };
+    });
 
     return {
       data,
@@ -768,8 +784,9 @@ export class BookingsService {
       await qr.release();
     }
 
-    // Enqueue timeout job
-    await this.bookingsTimeoutQueue
+    // Enqueue timeout job in background so API response is not blocked by
+    // transient Redis/Bull slowness.
+    void this.bookingsTimeoutQueue
       .add(
         'expire-booking',
         { bookingId: savedBooking.id },
@@ -800,7 +817,12 @@ export class BookingsService {
     this.logger.log(
       `Multi-seat booking created: ${savedBooking.id} for trip ${tripId} (${seatCount} seats)`,
     );
-    return savedBooking;
+    return (
+      (await this.bookingRepo.findOne({
+        where: { id: savedBooking.id },
+        relations: ['trip', 'seats'],
+      })) ?? savedBooking
+    );
   }
 
   // ── T066: autoPick ────────────────────────────────────────────────────────

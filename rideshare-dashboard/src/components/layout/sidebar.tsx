@@ -1,4 +1,4 @@
-// Sidebar: Navigation component with i18n support
+﻿// Sidebar: Navigation component with i18n support
 import { NavLink } from "react-router-dom"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -21,46 +21,114 @@ import {
   MessageSquare,
   Percent,
   ShieldAlert,
+  Zap,
+  Gavel,
+  AlertTriangle,
 } from "lucide-react"
 import { useState } from "react"
 import { ROUTES } from "@/lib/constants"
 import type { TranslationKey } from "@/i18n/translations"
 
-//Nav item definitions using translation keys
-const NAV_ITEMS: { path: string; labelKey: TranslationKey; icon: string }[] = [
-  { path: ROUTES.DASHBOARD,         labelKey: "nav_dashboard",      icon: "LayoutDashboard" },
-  { path: ROUTES.USERS,             labelKey: "nav_users",          icon: "Users" },
-  { path: ROUTES.PAYMENTS,         labelKey: "nav_payments",       icon: "CreditCard" },
-  { path: ROUTES.WALLETS,           labelKey: "nav_wallets",        icon: "Wallet" },
-  { path: ROUTES.VEHICLES,         labelKey: "nav_vehicles",       icon: "Car" },
-  { path: ROUTES.TRIPS,             labelKey: "nav_trips",          icon: "MapPin" },
-  { path: ROUTES.BOOKINGS,         labelKey: "nav_bookings",       icon: "BookOpen" },
-  { path: ROUTES.RATINGS,           labelKey: "nav_ratings",        icon: "Star" },
-  { path: ROUTES.NOTIFICATIONS,     labelKey: "nav_notifications",  icon: "Bell" },
-  { path: ROUTES.CHAT,             labelKey: "nav_chat",           icon: "MessageSquare" },
-  { path: ROUTES.REPORTS,           labelKey: "nav_reports",          icon: "BarChart3" },
-  { path: ROUTES.PRICING_SETTINGS,  labelKey: "nav_pricing",          icon: "Percent" },
-  { path: ROUTES.ACCOUNT_FLAGS,     labelKey: "nav_accountFlags",     icon: "ShieldAlert" },
+const NAV_GROUPS: { labelKey: TranslationKey; items: { path: string; labelKey: TranslationKey; icon: string }[] }[] = [
+  {
+    labelKey: "navGroupMain",
+    items: [
+      { path: ROUTES.DASHBOARD, labelKey: "nav_dashboard", icon: "LayoutDashboard" },
+      { path: ROUTES.TRIPS, labelKey: "nav_trips", icon: "MapPin" },
+      { path: ROUTES.BOOKINGS, labelKey: "nav_bookings", icon: "BookOpen" },
+    ],
+  },
+  {
+    labelKey: "navGroupManagement",
+    items: [
+      { path: ROUTES.USERS, labelKey: "nav_users", icon: "Users" },
+      { path: ROUTES.VEHICLES, labelKey: "nav_vehicles", icon: "Car" },
+      { path: ROUTES.PAYMENTS, labelKey: "nav_payments", icon: "CreditCard" },
+      { path: ROUTES.WALLETS, labelKey: "nav_wallets", icon: "Wallet" },
+      { path: ROUTES.ACCOUNT_FLAGS, labelKey: "nav_accountFlags", icon: "ShieldAlert" },
+      { path: ROUTES.FINES, labelKey: "nav_fines", icon: "Gavel" },
+      { path: ROUTES.NO_SHOW_REPORTS, labelKey: "nav_noShowReports", icon: "AlertTriangle" },
+    ],
+  },
+  {
+    labelKey: "navGroupInsights",
+    items: [
+      { path: ROUTES.REPORTS, labelKey: "nav_reports", icon: "BarChart3" },
+      { path: ROUTES.RATINGS, labelKey: "nav_ratings", icon: "Star" },
+      { path: ROUTES.NOTIFICATIONS, labelKey: "nav_notifications", icon: "Bell" },
+      { path: ROUTES.CHAT, labelKey: "nav_chat", icon: "MessageSquare" },
+      { path: ROUTES.PRICING_SETTINGS, labelKey: "nav_pricing", icon: "Percent" },
+    ],
+  },
 ]
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  LayoutDashboard,
-  Users,
-  CreditCard,
-  Wallet,
-  Car,
-  MapPin,
-  BarChart3,
-  BookOpen,
-  Star,
-  Bell,
-  MessageSquare,
-  Percent,
-  ShieldAlert,
+  LayoutDashboard, Users, CreditCard, Wallet, Car, MapPin, BarChart3,
+  BookOpen, Star, Bell, MessageSquare, Percent, ShieldAlert, Gavel,
+  AlertTriangle,
 }
 
 interface SidebarProps {
   className?: string
+}
+
+function SidebarNav({ collapsed, onNavClick }: { collapsed?: boolean; onNavClick?: () => void }) {
+  const { t } = useLanguage()
+  return (
+    <ScrollArea className="flex-1 py-4">
+      <nav className="flex flex-col px-3 gap-5">
+        {NAV_GROUPS.map((group) => (
+          <div key={group.labelKey}>
+            {!collapsed && (
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-white/25 mb-2 px-2">
+                {t(group.labelKey)}
+              </p>
+            )}
+            <div className="flex flex-col gap-0.5">
+              {group.items.map((item) => {
+                const Icon = iconMap[item.icon]
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    onClick={onNavClick}
+                    title={collapsed ? t(item.labelKey) : undefined}
+                    className={({ isActive }) =>
+                      cn(
+                        "flex items-center gap-2.5 rounded-lg text-[13px] font-medium transition-all duration-150",
+                        collapsed ? "justify-center p-2.5" : "px-2.5 py-2",
+                        isActive
+                          ? "bg-white/10 text-white"
+                          : "text-white/45 hover:text-white/80 hover:bg-white/6"
+                      )
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        {Icon && (
+                          <Icon className={cn(
+                            "flex-shrink-0 transition-colors",
+                            collapsed ? "h-5 w-5" : "h-4 w-4",
+                            isActive ? "text-indigo-300" : ""
+                          )} />
+                        )}
+                        {!collapsed && (
+                          <span className="truncate flex-1">{t(item.labelKey)}</span>
+                        )}
+                        {isActive && !collapsed && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0" />
+                        )}
+                      </>
+                    )}
+                  </NavLink>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </nav>
+    </ScrollArea>
+  )
 }
 
 export function Sidebar({ className }: SidebarProps) {
@@ -71,55 +139,48 @@ export function Sidebar({ className }: SidebarProps) {
   return (
     <div
       className={cn(
-        "flex flex-col h-screen border-r bg-card transition-all duration-300",
-        collapsed ? "w-16" : "w-64",
+        "flex flex-col h-screen transition-all duration-300 ease-in-out",
+        "bg-[#0b0f1e] border-r border-white/[0.06]",
+        collapsed ? "w-[68px]" : "w-[240px]",
         className
       )}
     >
-      <div className="flex h-14 items-center border-b px-4">
+      {/* Brand */}
+      <div className={cn(
+        "flex h-16 items-center border-b border-white/[0.06] px-4 gap-3 flex-shrink-0",
+        collapsed && "justify-center px-0"
+      )}>
+        <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/40">
+          <Zap className="w-[18px] h-[18px] text-white" />
+        </div>
         {!collapsed && (
-          <span className="font-semibold text-lg truncate">{t("adminDashboard")}</span>
+          <span className="font-bold text-white text-[15px] tracking-tight truncate leading-none">
+            {t("adminDashboard")}
+          </span>
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn("ml-auto", collapsed && "ml-0", isRtl && "mr-auto ml-0")}
+      </div>
+
+      <SidebarNav collapsed={collapsed} />
+
+      {/* Collapse toggle */}
+      <div className="border-t border-white/[0.06] p-3 flex-shrink-0">
+        <button
+          className={cn(
+            "flex items-center gap-2 w-full rounded-lg px-2.5 py-2 text-white/30 hover:text-white/60 hover:bg-white/5 transition-all duration-150 text-xs font-medium",
+            collapsed && "justify-center px-0"
+          )}
           onClick={() => setCollapsed(!collapsed)}
         >
           <ChevronLeft
             className={cn(
-              "h-4 w-4 transition-transform",
+              "h-4 w-4 flex-shrink-0 transition-transform duration-300",
               collapsed && !isRtl && "rotate-180",
               !collapsed && isRtl && "rotate-180",
-              collapsed && isRtl && "rotate-0",
             )}
           />
-        </Button>
+          {!collapsed && <span>{t("collapse")}</span>}
+        </button>
       </div>
-      <ScrollArea className="flex-1 py-4">
-        <nav className="flex flex-col gap-2 px-2">
-          {NAV_ITEMS.map((item) => {
-            const Icon = iconMap[item.icon]
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={({ isActive }) =>
-                  cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )
-                }
-              >
-                {Icon && <Icon className="h-4 w-4 flex-shrink-0" />}
-                {!collapsed && <span className="truncate">{t(item.labelKey)}</span>}
-              </NavLink>
-            )
-          })}
-        </nav>
-      </ScrollArea>
     </div>
   )
 }
@@ -136,36 +197,18 @@ export function MobileSidebar() {
           <span className="sr-only">{t("toggleMenu")}</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side={language === "ar" ? "right" : "left"} className="w-64 p-0">
+      <SheetContent
+        side={language === "ar" ? "right" : "left"}
+        className="w-[240px] p-0 bg-[#0b0f1e] border-white/[0.06]"
+      >
         <div className="flex flex-col h-full">
-          <div className="flex h-14 items-center border-b px-4">
-            <span className="font-semibold text-lg">{t("adminDashboard")}</span>
+          <div className="flex h-16 items-center border-b border-white/[0.06] px-4 gap-3 flex-shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/40">
+              <Zap className="w-[18px] h-[18px] text-white" />
+            </div>
+            <span className="font-bold text-white text-[15px]">{t("adminDashboard")}</span>
           </div>
-          <ScrollArea className="flex-1 py-4">
-            <nav className="flex flex-col gap-2 px-2">
-              {NAV_ITEMS.map((item) => {
-                const Icon = iconMap[item.icon]
-                return (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => setOpen(false)}
-                    className={({ isActive }) =>
-                      cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                        isActive
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                      )
-                    }
-                  >
-                    {Icon && <Icon className="h-4 w-4" />}
-                    <span>{t(item.labelKey)}</span>
-                  </NavLink>
-                )
-              })}
-            </nav>
-          </ScrollArea>
+          <SidebarNav onNavClick={() => setOpen(false)} />
         </div>
       </SheetContent>
     </Sheet>

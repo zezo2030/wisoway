@@ -12,10 +12,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { QUERY_KEYS, DASHBOARD_REFRESH_INTERVAL } from "@/lib/constants"
-import { formatDate } from "@/lib/utils"
+import { formatDate, formatPhone } from "@/lib/utils"
 import type { PendingCharge, UserSummary } from "@/types/models"
 import { ReceiptText, AlertCircle, ShieldOff } from "lucide-react"
 import { toast } from "sonner"
+import { useLanguage } from "@/providers/language-provider"
 
 function isPopulatedUser(val: string | UserSummary): val is UserSummary {
     return typeof val === "object" && val !== null && "name" in val
@@ -38,6 +39,7 @@ const STATUS_FILTER_OPTIONS = [
 export default function PendingChargesPage() {
     const [searchParams, setSearchParams] = useSearchParams()
     const queryClient = useQueryClient()
+    const { t } = useLanguage()
     const page = parseInt(searchParams.get("page") || "1", 10)
     const status = searchParams.get("status") as "pending" | "collected" | "waived" | "failed" | undefined || undefined
     const limit = 20
@@ -95,7 +97,7 @@ export default function PendingChargesPage() {
                             </div>
                             <div>
                                 <div className="font-semibold text-sm">{charge.userId.name}</div>
-                                <div className="text-xs text-muted-foreground">{charge.userId.phoneNumber ?? charge.userId.email}</div>
+                                <div className="text-xs text-muted-foreground" dir={charge.userId.phoneNumber ? "ltr" : undefined}>{charge.userId.phoneNumber ? formatPhone(charge.userId.phoneNumber) : charge.userId.email}</div>
                             </div>
                         </>
                     ) : (
@@ -234,7 +236,7 @@ export default function PendingChargesPage() {
                             onPageChange={handlePageChange}
                             pageSize={limit}
                             loading={isLoading}
-                            emptyMessage="No pending charges found."
+                            emptyMessage={t("noPendingChargesFound")}
                         />
                     </div>
                 </CardContent>

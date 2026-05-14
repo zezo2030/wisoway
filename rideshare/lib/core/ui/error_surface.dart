@@ -126,6 +126,11 @@ class ErrorSurface {
         return ErrorLocalizations.resolve(context, 'errorsActionReauthenticate');
       case FailureAction.openSettings:
         return ErrorLocalizations.resolve(context, 'errorsActionOpenSettings');
+      case FailureAction.viewPendingCharges:
+        return ErrorLocalizations.resolve(
+          context,
+          'errorsActionViewPendingCharges',
+        );
     }
   }
 
@@ -145,6 +150,9 @@ class ErrorSurface {
       case FailureAction.openSettings:
         launchUrl(Uri.parse('app-settings:'));
         break;
+      case FailureAction.viewPendingCharges:
+        Navigator.of(context).pushNamed(RouteNames.pendingCharges);
+        break;
     }
   }
 
@@ -153,6 +161,6 @@ class ErrorSurface {
     if (custom != null && custom.isNotEmpty) {
       return custom;
     }
-    return ErrorLocalizations.resolve(context, failure.messageKey);
+    return ErrorLocalizations.resolveFailure(context, failure);
   }
 }

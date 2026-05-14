@@ -203,6 +203,11 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
       throw Exception('بيانات السائق غير مكتملة');
     }
 
+    final carImagePath = args['carImage'] as String?;
+    if (carImagePath == null || carImagePath.isEmpty) {
+      throw Exception('صورة السيارة مفقودة');
+    }
+
     await authProvider.saveDriverProfile(
       firstName: (args['firstName'] as String?)?.trim() ?? '',
       lastName: (args['lastName'] as String?)?.trim() ?? '',
@@ -214,6 +219,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
       seats: args['seats'] as int,
       driverLicenseImage: File(args['driverLicenseImage'] as String),
       vehicleLicenseImage: File(args['vehicleLicenseImage'] as String),
+      carImage: File(carImagePath),
       email: (args['email'] as String?)?.trim(),
       gender: args['gender'] as String?,
     );

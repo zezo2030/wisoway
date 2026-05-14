@@ -32,6 +32,7 @@ class _DriverCompleteProfileScreenState
   File? _profileImage;
   File? _driverLicenseImage;
   File? _vehicleLicenseImage;
+  File? _carImage;
   String? _selectedVehicleType;
   bool _isLoading = false;
   bool _isLoadingUserData = true;
@@ -253,6 +254,19 @@ class _DriverCompleteProfileScreenState
       return;
     }
 
+    if (_carImage == null) {
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.validation,
+          messageKey: 'errorsValidationGeneric',
+          severity: FailureSeverity.warning,
+          developerDetail: 'Car photo not uploaded',
+        ),
+      );
+      return;
+    }
+
     if (_selectedVehicleType == null) {
       ErrorSurface.showFailure(
         context,
@@ -290,6 +304,7 @@ class _DriverCompleteProfileScreenState
         seats: int.parse(_seatsController.text.trim()),
         driverLicenseImage: _driverLicenseImage!,
         vehicleLicenseImage: _vehicleLicenseImage!,
+        carImage: _carImage!,
         email: _email,
         gender: _gender, // Pass gender from step 1
       );
@@ -773,6 +788,15 @@ class _DriverCompleteProfileScreenState
                               image: _vehicleLicenseImage,
                               onImagePicked: (image) {
                                 setState(() => _vehicleLicenseImage = image);
+                              },
+                            ),
+                            const SizedBox(height: 20),
+                            // Car Photo (mandatory — shown on every trip)
+                            _buildImagePicker(
+                              title: 'صورة السيارة *',
+                              image: _carImage,
+                              onImagePicked: (image) {
+                                setState(() => _carImage = image);
                               },
                             ),
                             const SizedBox(height: 32),

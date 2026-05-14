@@ -28,7 +28,7 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
   int _seatsPerRow = 2;
   bool _isCustomLayout = false;
   List<int> _customRowConfigs = [1, 3];
-  bool _preventGenderMixing = true;
+  bool _preventGenderMixing = false;
 
   @override
   void initState() {

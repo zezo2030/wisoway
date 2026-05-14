@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/services/localization_service.dart';
 import '../../../core/constants/route_names.dart';
 import '../../../core/theme/colors.dart';
+import '../../../core/widgets/phone_text.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../widgets/settings/settings_section.dart';
 
@@ -46,6 +47,7 @@ class AccountSecurityScreen extends StatelessWidget {
                 icon: IconsaxPlusBroken.call,
                 label: isArabic ? 'رقم الهاتف' : 'Phone',
                 value: user.phoneNumber,
+                isPhone: true,
                 trailing: user.isPhoneVerified
                     ? null
                     : TextButton(
@@ -143,16 +145,21 @@ class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
   final Widget? trailing;
+  final bool isPhone;
 
   const _InfoRow({
     required this.icon,
     required this.label,
     required this.value,
     this.trailing,
+    this.isPhone = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final valueStyle = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.copyWith(color: T.onSurface(context));
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
       child: Row(
@@ -170,12 +177,10 @@ class _InfoRow extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  value.isNotEmpty ? value : '-',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: T.onSurface(context)),
-                ),
+                if (isPhone && value.isNotEmpty)
+                  PhoneText(value, style: valueStyle)
+                else
+                  Text(value.isNotEmpty ? value : '-', style: valueStyle),
               ],
             ),
           ),

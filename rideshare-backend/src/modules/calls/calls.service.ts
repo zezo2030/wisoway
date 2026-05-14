@@ -45,13 +45,12 @@ export class CallsService {
     });
     if (!booking) throw new NotFoundException('Booking not found');
 
-    // Must be settled
-    if (!booking.settledAt) {
+    // Calls require the driver to have paid the contact-unlock fee.
+    if (!booking.hasDriverPaidToContact) {
       throw new ForbiddenException({
         statusCode: 403,
         code: ErrorCodes.BOOKING_NOT_SETTLED,
-        message:
-          'Calls are only available after the driver marks the booking as paid',
+        message: 'Calls are only available after the driver unlocks contact',
       });
     }
 

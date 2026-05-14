@@ -789,13 +789,9 @@
       }
     }
   },
-  "startTripButton": "بدء الرحلة",
-  "@startTripButton": {
-    "description": "Driver button to start the trip"
-  },
-  "completeTripButton": "إنهاء الرحلة",
-  "@completeTripButton": {
-    "description": "Driver button to complete/end the trip"
+  "arrivedAtDestinationButton": "تم الوصول للوجهة",
+  "@arrivedAtDestinationButton": {
+    "description": "Driver button to mark trip as arrived (completes the trip)"
   },
   "markPassengerAbsent": "غياب الراكب",
   "@markPassengerAbsent": {

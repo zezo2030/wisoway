@@ -5,6 +5,7 @@ import '../../../providers/auth_provider.dart';
 import '../../../core/constants/route_names.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/theme/colors.dart';
+import '../../../core/widgets/phone_text.dart';
 import '../../../widgets/notification_icon_button.dart';
 
 class HomeTab extends StatelessWidget {
@@ -193,6 +194,7 @@ class HomeTab extends StatelessWidget {
                             icon: IconsaxPlusLinear.call,
                             label: 'رقم الهاتف',
                             value: user.phoneNumber,
+                            isPhone: true,
                           ),
                           const Divider(height: 24),
                           _buildInfoRow(
@@ -262,7 +264,13 @@ class HomeTab extends StatelessWidget {
     required IconData icon,
     required String label,
     required String value,
+    bool isPhone = false,
   }) {
+    final valueStyle = TextStyle(
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+      color: T.onSurface(context),
+    );
     return Row(
       children: [
         Icon(icon, size: 20, color: T.onSurfaceVariant(context)),
@@ -273,14 +281,10 @@ class HomeTab extends StatelessWidget {
             style: TextStyle(fontSize: 14, color: T.onSurfaceVariant(context)),
           ),
         ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: T.onSurface(context),
-          ),
-        ),
+        if (isPhone)
+          PhoneText(value, style: valueStyle)
+        else
+          Text(value, style: valueStyle),
       ],
     );
   }

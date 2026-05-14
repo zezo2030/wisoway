@@ -19,6 +19,7 @@ import { SecurityEventEntity } from '../../database/entities/security-event.enti
 import { TripRecurrenceRuleEntity } from '../../database/entities/trip-recurrence-rule.entity';
 import { ComplaintEntity } from '../../database/entities/complaint.entity';
 import { RefundRequestEntity } from '../../database/entities/refund-request.entity';
+import { PendingChargeEntity } from '../../database/entities/pending-charge.entity';
 import { AdminDashboardController } from './admin-dashboard.controller';
 import { AdminDashboardService } from './admin-dashboard.service';
 import { AdminFlagsController } from './admin-flags.controller';
@@ -28,12 +29,17 @@ import { AdminBanController } from './admin-ban.controller';
 import { AdminBanService } from './admin-ban.service';
 import { AdminComplaintsController } from './admin-complaints.controller';
 import { AdminRefundsController } from './admin-refunds.controller';
+import { AdminFinesController } from './admin-fines.controller';
+import { AdminFinesService } from './admin-fines.service';
+import { AdminNoShowController } from './admin-no-show.controller';
+import { AdminNoShowService } from './admin-no-show.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { BookingsModule } from '../bookings/bookings.module';
 import { WalletModule } from '../wallet/wallet.module';
 import { AuthModule } from '../auth/auth.module';
 import { ComplaintsModule } from '../complaints/complaints.module';
 import { RefundsModule } from '../refunds/refunds.module';
+import { PendingChargesModule } from '../pending-charges/pending-charges.module';
 
 @Module({
   imports: [
@@ -56,6 +62,7 @@ import { RefundsModule } from '../refunds/refunds.module';
       TripRecurrenceRuleEntity,
       ComplaintEntity,
       RefundRequestEntity,
+      PendingChargeEntity,
     ]),
     BullModule.registerQueue({ name: 'recurrence-spawn' }),
     NotificationsModule,
@@ -64,6 +71,7 @@ import { RefundsModule } from '../refunds/refunds.module';
     AuthModule,
     ComplaintsModule,
     RefundsModule,
+    PendingChargesModule,
   ],
   controllers: [
     AdminDashboardController,
@@ -72,8 +80,16 @@ import { RefundsModule } from '../refunds/refunds.module';
     AdminBanController,
     AdminComplaintsController,
     AdminRefundsController,
+    AdminFinesController,
+    AdminNoShowController,
   ],
-  providers: [AdminDashboardService, AdminFlagsService, AdminBanService],
+  providers: [
+    AdminDashboardService,
+    AdminFlagsService,
+    AdminBanService,
+    AdminFinesService,
+    AdminNoShowService,
+  ],
   exports: [AdminDashboardService],
 })
 export class AdminModule {}

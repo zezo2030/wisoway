@@ -789,13 +789,9 @@
       }
     }
   },
-  "startTripButton": "Start trip",
-  "@startTripButton": {
-    "description": "Driver button to start the trip"
-  },
-  "completeTripButton": "Complete trip",
-  "@completeTripButton": {
-    "description": "Driver button to complete/end the trip"
+  "arrivedAtDestinationButton": "Arrived at destination",
+  "@arrivedAtDestinationButton": {
+    "description": "Driver button to mark trip as arrived (completes the trip)"
   },
   "markPassengerAbsent": "Mark as absent",
   "@markPassengerAbsent": {

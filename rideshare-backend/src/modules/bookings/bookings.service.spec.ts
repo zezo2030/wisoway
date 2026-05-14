@@ -7,17 +7,18 @@
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
+import { getQueueToken } from '@nestjs/bull';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource, QueryRunner, Repository } from 'typeorm';
 import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
-  ConflictException,
-  UnprocessableEntityException,
 } from '@nestjs/common';
 import { BookingsService } from './bookings.service';
 import { BookingEntity } from '../../database/entities/booking.entity';
+import { BookingSeatEntity } from '../../database/entities/booking-seat.entity';
+import { PendingChargeEntity } from '../../database/entities/pending-charge.entity';
 import { TripEntity } from '../../database/entities/trip.entity';
 import { PaymentEntity } from '../../database/entities/payment.entity';
 import { TripsGateway } from '../trips/trips.gateway';
@@ -38,7 +39,7 @@ const BOOKING_ID = 'booking-uuid';
 const mockTrip = () => ({
   id: TRIP_ID,
   driverId: DRIVER_ID,
-  status: 'active',
+  status: 'published',
   price: '5.00',
   currency: 'JOD',
   departureTime: new Date(Date.now() + 48 * 3600 * 1000),
@@ -76,6 +77,7 @@ const makeQueryRunner = (): Partial<QueryRunner> => ({
   connect: jest.fn().mockResolvedValue(undefined),
   startTransaction: jest.fn().mockResolvedValue(undefined),
   commitTransaction: jest.fn().mockResolvedValue(undefined),
+  rollbackTransaction: jest.fn().mockResolvedValue(undefined),
   abortTransaction: jest.fn().mockResolvedValue(undefined),
   release: jest.fn().mockResolvedValue(undefined),
   manager: {
@@ -90,16 +92,19 @@ const makeRepo = <T>(): jest.Mocked<Partial<Repository<T>>> => ({
   find: jest.fn(),
   save: jest.fn(),
   create: jest.fn(),
+  update: jest.fn(),
   createQueryBuilder: jest.fn().mockReturnValue({
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
     getOne: jest.fn().mockResolvedValue(null),
     getMany: jest.fn().mockResolvedValue([]),
     leftJoinAndSelect: jest.fn().mockReturnThis(),
+    clone: jest.fn().mockReturnThis(),
     select: jest.fn().mockReturnThis(),
     skip: jest.fn().mockReturnThis(),
     take: jest.fn().mockReturnThis(),
     orderBy: jest.fn().mockReturnThis(),
+    getCount: jest.fn().mockResolvedValue(0),
     getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
   }),
   count: jest.fn(),
@@ -131,7 +136,15 @@ describe('BookingsService (TypeORM)', () => {
           useValue: makeRepo(),
         },
         {
+          provide: getRepositoryToken(BookingSeatEntity),
+          useValue: makeRepo(),
+        },
+        {
           provide: getRepositoryToken(TripEntity),
+          useValue: makeRepo(),
+        },
+        {
+          provide: getRepositoryToken(PendingChargeEntity),
           useValue: makeRepo(),
         },
         {
@@ -154,7 +167,14 @@ describe('BookingsService (TypeORM)', () => {
         },
         {
           provide: NotificationsService,
-          useValue: { create: jest.fn(), sendPush: jest.fn() },
+          useValue: {
+            create: jest.fn(),
+            sendPush: jest.fn(),
+            notifyDriverOfNewBooking: jest.fn().mockResolvedValue(undefined),
+            notifyPassengerOfBookingDecision: jest
+              .fn()
+              .mockResolvedValue(undefined),
+          },
         },
         {
           provide: PaymentsService,
@@ -169,6 +189,7 @@ describe('BookingsService (TypeORM)', () => {
             getActiveFeeRow: jest.fn().mockResolvedValue({}),
             passengerSeatPricing: jest.fn().mockReturnValue({
               requiresOnlinePayment: false,
+              seatPrice: '5.00',
               seatPriceAtBooking: '5.00',
               platformAmount: '0.25',
               driverAmount: '4.75',
@@ -181,7 +202,14 @@ describe('BookingsService (TypeORM)', () => {
         },
         {
           provide: TripsService,
-          useValue: { findById: jest.fn() },
+          useValue: { findById: jest.fn(), releaseSeat: jest.fn() },
+        },
+        {
+          provide: getQueueToken('bookings-timeout'),
+          useValue: {
+            add: jest.fn().mockResolvedValue(undefined),
+            getJob: jest.fn().mockResolvedValue(null),
+          },
         },
       ],
     }).compile();
@@ -333,21 +361,37 @@ describe('BookingsService (TypeORM)', () => {
   // findByUser
   // -------------------------------------------------------------------------
   describe('findByUser', () => {
-    it('should return a paginated result', async () => {
-      (bookingRepo.createQueryBuilder as any).mockReturnValue({
+    it('should return a paginated result with booking seats', async () => {
+      const qb = {
         leftJoinAndSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),
         take: jest.fn().mockReturnThis(),
-        getManyAndCount: jest.fn().mockResolvedValue([[mockBooking()], 1]),
+        getMany: jest.fn().mockResolvedValue([
+          {
+            ...mockBooking(),
+            seats: [{ seatNumber: '0-0' }, { seatNumber: '0-1' }],
+          },
+        ]),
+        clone: jest.fn(),
+      };
+      const countQb = {
+        getCount: jest.fn().mockResolvedValue(1),
+      };
+      qb.clone.mockReturnValue(countQb);
+      (bookingRepo.createQueryBuilder as any).mockReturnValue({
+        ...qb,
       });
 
       const result = await service.findByUser(USER_ID, { page: 1, limit: 20 });
 
       expect(result).toBeDefined();
       expect(result.data).toHaveLength(1);
+      expect(result.data[0].seats).toHaveLength(2);
+      expect(qb.leftJoinAndSelect).toHaveBeenCalledWith('b.trip', 'trip');
+      expect(qb.leftJoinAndSelect).toHaveBeenCalledWith('b.seats', 'seats');
     });
   });
 
@@ -356,11 +400,97 @@ describe('BookingsService (TypeORM)', () => {
   // -------------------------------------------------------------------------
   describe('findByTrip', () => {
     it('should throw ForbiddenException when caller is not the trip driver', async () => {
-      tripRepo.findOne.mockResolvedValue(mockTrip() as any);
+      tripsService.findById.mockResolvedValue(mockTrip() as any);
 
       await expect(
         service.findByTrip(TRIP_ID, 'not-the-driver', { page: 1, limit: 20 }),
       ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should reveal user and enable chat/call when booking.hasDriverPaidToContact is true', async () => {
+      tripsService.findById.mockResolvedValue(mockTrip() as any);
+      const passenger = { id: USER_ID, fullName: 'P1' };
+      bookingRepo.find.mockResolvedValue([
+        {
+          ...mockBooking(),
+          hasDriverPaidToContact: true,
+          user: passenger,
+          trip: { driverWalletChargeApplied: false },
+        } as any,
+      ]);
+      bookingRepo.count.mockResolvedValue(1);
+
+      const result = await service.findByTrip(TRIP_ID, DRIVER_ID, {
+        page: 1,
+        limit: 20,
+      });
+
+      expect(result.data[0].user).toEqual(passenger);
+      expect(result.data[0].chatEnabled).toBe(true);
+      expect(result.data[0].callEnabled).toBe(true);
+      expect(result.data[0].hasDriverPaidToContact).toBe(true);
+    });
+
+    it('should reveal user via trip.driverWalletChargeApplied fallback when mirror is stale', async () => {
+      tripsService.findById.mockResolvedValue(mockTrip() as any);
+      const passenger = { id: USER_ID, fullName: 'P1' };
+      bookingRepo.find.mockResolvedValue([
+        {
+          ...mockBooking(),
+          hasDriverPaidToContact: false,
+          user: passenger,
+          trip: { driverWalletChargeApplied: true },
+        } as any,
+      ]);
+      bookingRepo.count.mockResolvedValue(1);
+
+      const result = await service.findByTrip(TRIP_ID, DRIVER_ID, {
+        page: 1,
+        limit: 20,
+      });
+
+      expect(result.data[0].user).toEqual(passenger);
+      expect(result.data[0].chatEnabled).toBe(true);
+      expect(result.data[0].callEnabled).toBe(true);
+      expect(result.data[0].hasDriverPaidToContact).toBe(true);
+    });
+
+    it('should mask user and disable chat/call when both flags are false', async () => {
+      tripsService.findById.mockResolvedValue(mockTrip() as any);
+      const passenger = { id: USER_ID, fullName: 'P1' };
+      bookingRepo.find.mockResolvedValue([
+        {
+          ...mockBooking(),
+          hasDriverPaidToContact: false,
+          user: passenger,
+          trip: { driverWalletChargeApplied: false },
+        } as any,
+      ]);
+      bookingRepo.count.mockResolvedValue(1);
+
+      const result = await service.findByTrip(TRIP_ID, DRIVER_ID, {
+        page: 1,
+        limit: 20,
+      });
+
+      expect(result.data[0].user).toBeNull();
+      expect(result.data[0].chatEnabled).toBe(false);
+      expect(result.data[0].callEnabled).toBe(false);
+      expect(result.data[0].hasDriverPaidToContact).toBe(false);
+    });
+
+    it('should request the trip relation', async () => {
+      tripsService.findById.mockResolvedValue(mockTrip() as any);
+      bookingRepo.find.mockResolvedValue([]);
+      bookingRepo.count.mockResolvedValue(0);
+
+      await service.findByTrip(TRIP_ID, DRIVER_ID, { page: 1, limit: 20 });
+
+      expect(bookingRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          relations: expect.arrayContaining(['trip']),
+        }),
+      );
     });
   });
 
@@ -396,14 +526,62 @@ describe('BookingsService (TypeORM)', () => {
       expect(typeof (service as any).autoPick).toBe('function');
     });
 
-    it('createMultiSeat should throw ConflictException on SEATS_TAKEN', async () => {
+    it('createMultiSeat should return the created booking with trip and seats', async () => {
+      const trip = mockTrip();
+      tripRepo.findOne.mockResolvedValue(trip as any);
+
+      const qr = (dataSource.createQueryRunner as jest.Mock)();
+      (qr.manager.findOne as jest.Mock).mockResolvedValue({ ...trip });
+      (qr.manager.create as jest.Mock).mockImplementation((_, value) => value);
+      (qr.manager.save as jest.Mock).mockImplementation((target, value) => {
+        if (target === BookingEntity) {
+          return Promise.resolve({ ...value, id: BOOKING_ID });
+        }
+        return Promise.resolve(value);
+      });
+
+      const hydratedBooking = {
+        ...mockBooking(),
+        trip,
+        seats: [{ seatNumber: '0-0' }, { seatNumber: '0-1' }],
+      } as any;
+      bookingRepo.findOne.mockResolvedValue(hydratedBooking);
+
+      const result = await service.createMultiSeat(
+        {
+          tripId: TRIP_ID,
+          seats: [
+            {
+              seatNumber: '0-0',
+              displayName: 'A',
+              gender: 'male',
+              isMainBooker: true,
+            },
+            {
+              seatNumber: '0-1',
+              displayName: 'B',
+              gender: 'male',
+              isMainBooker: false,
+            },
+          ],
+        },
+        USER_ID,
+      );
+
+      expect(result).toBe(hydratedBooking);
+      expect(bookingRepo.findOne).toHaveBeenCalledWith({
+        where: { id: BOOKING_ID },
+        relations: ['trip', 'seats'],
+      });
+    });
+
+    it('createMultiSeat should throw BadRequestException on SEATS_TAKEN', async () => {
       // Stub: until T065 the test fails (method does not exist yet).
       if (typeof (service as any).createMultiSeat !== 'function') {
         return; // skip gracefully before implementation
       }
 
-      const qr = (dataSource.createQueryRunner as jest.Mock)();
-      (qr.manager.findOne as jest.Mock).mockResolvedValue({
+      tripRepo.findOne.mockResolvedValue({
         ...mockTrip(),
         seats: [
           {
@@ -413,7 +591,7 @@ describe('BookingsService (TypeORM)', () => {
             gender: 'male',
           },
         ],
-      });
+      } as any);
 
       await expect(
         (service as any).createMultiSeat(
@@ -430,7 +608,7 @@ describe('BookingsService (TypeORM)', () => {
           },
           USER_ID,
         ),
-      ).rejects.toThrow(ConflictException);
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

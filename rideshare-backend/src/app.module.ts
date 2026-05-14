@@ -29,9 +29,8 @@ import { TripsModule } from './modules/trips/trips.module';
 import { LocationsModule } from './modules/locations/locations.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
 import { PaymentsModule } from './modules/payments/payments.module';
-// TODO: re-enable after TypeORM migration: RatingsModule
 import { ChatPostgresModule } from './modules/chat/chat-postgres.module';
-// import { RatingsModule } from './modules/ratings/ratings.module';
+import { RatingsModule } from './modules/ratings/ratings.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { JobsModule } from './jobs/jobs.module';
 import { AdminModule } from './modules/admin/admin.module';
@@ -84,7 +83,7 @@ import { SupportModule } from './modules/support/support.module';
     BookingsModule,
     PaymentsModule,
     ChatPostgresModule,
-    // RatingsModule,
+    RatingsModule,
     NotificationsModule,
     JobsModule,
     AdminModule,

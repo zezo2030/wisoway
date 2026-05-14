@@ -25,6 +25,8 @@ import { NotificationsModule } from '../modules/notifications/notifications.modu
       { name: 'pre-trip-confirm' },
       { name: 'recurrence-spawn' },
       { name: 'pending-charge-collect' },
+      { name: 'trip-auto-start' },
+      { name: 'trip-auto-complete' },
     ),
     TypeOrmModule.forFeature([
       TripEntity,

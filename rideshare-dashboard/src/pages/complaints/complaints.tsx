@@ -28,6 +28,8 @@ import { QUERY_KEYS } from "@/lib/constants"
 import { getComplaints, updateComplaint } from "@/api/admin"
 import type { Complaint, ComplaintStatus } from "@/types/models"
 import type { Column } from "@/components/data-table"
+import { toast } from "sonner"
+import { MessageSquareWarning, Clock, CheckCircle2, XCircle } from "lucide-react"
 
 const STATUS_COLORS: Record<ComplaintStatus, string> = {
   pending:      "bg-yellow-50 text-yellow-700 border-yellow-200",
@@ -236,6 +238,7 @@ export default function ComplaintsPage() {
             data={data?.data ?? []}
             page={page}
             totalPages={data?.meta?.totalPages ?? 0}
+            total={data?.meta?.total ?? 0}
             onPageChange={(p) => updateParams({ page: String(p) })}
             loading={isLoading}
           />

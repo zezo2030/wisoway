@@ -105,6 +105,8 @@ export class AdminDashboardController {
   @ApiQuery({ name: 'role', required: false, enum: PgUserRole })
   @ApiQuery({ name: 'search', required: false, type: String })
   @ApiQuery({ name: 'isActive', required: false, type: Boolean })
+  @ApiQuery({ name: 'registeredWithinDays', required: false, type: Number })
+  @ApiQuery({ name: 'isConfirmed', required: false, type: Boolean })
   @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
   async getUsers(@Query() query: AdminUsersQueryDto) {
     return this.adminDashboardService.getUsers({
@@ -113,6 +115,8 @@ export class AdminDashboardController {
       role: query.role,
       search: query.search,
       isActive: query.isActive,
+      registeredWithinDays: query.registeredWithinDays,
+      isConfirmed: query.isConfirmed,
     });
   }
 
@@ -322,6 +326,7 @@ export class AdminDashboardController {
   })
   @ApiQuery({ name: 'userId', required: false, type: String })
   @ApiQuery({ name: 'tripId', required: false, type: String })
+  @ApiQuery({ name: 'driverId', required: false, type: String })
   @ApiResponse({ status: 200, description: 'Bookings retrieved successfully' })
   async getBookings(@Query() query: AdminBookingsQueryDto) {
     return this.adminDashboardService.getBookings({
@@ -330,6 +335,7 @@ export class AdminDashboardController {
       status: query.status,
       userId: query.userId,
       tripId: query.tripId,
+      driverId: query.driverId,
     });
   }
 
@@ -382,12 +388,29 @@ export class AdminDashboardController {
   @ApiOperation({ summary: 'Get paginated chat rooms' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'tripId', required: false, type: String })
   @ApiResponse({
     status: 200,
     description: 'Chat rooms retrieved successfully',
   })
   async getChatRooms(@Query() query: AdminChatQueryDto) {
     return this.adminDashboardService.getChatRooms({
+      page: query.page,
+      limit: query.limit,
+      tripId: query.tripId,
+    });
+  }
+
+  @Get('chat/rooms/:id/messages')
+  @ApiOperation({ summary: 'Get messages for a chat room' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Messages retrieved successfully' })
+  async getChatRoomMessages(
+    @Param('id') id: string,
+    @Query() query: AdminChatQueryDto,
+  ) {
+    return this.adminDashboardService.getChatRoomMessages(id, {
       page: query.page,
       limit: query.limit,
     });

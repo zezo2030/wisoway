@@ -23,6 +23,7 @@ import { formatDate, formatCurrency, getPaymentTypeLabel, cn, getTripLocationNam
 import type { Payment, UserSummary, TripSummary } from "@/types/models"
 import { CheckCircle, XCircle, AlertCircle, ArrowLeftRight, Clock, Info, User } from "lucide-react"
 import { toast } from "sonner"
+import { useLanguage } from "@/providers/language-provider"
 
 // Type guard for populated fields
 function isPopulatedUser(userId: string | UserSummary): userId is UserSummary {
@@ -36,6 +37,7 @@ function isPopulatedTrip(tripId: string | TripSummary | undefined): tripId is Tr
 export default function PendingQueuePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
+  const { t } = useLanguage()
   const page = parseInt(searchParams.get("page") || "1", 10)
   const limit = 20
 
@@ -316,7 +318,7 @@ export default function PendingQueuePage() {
               onPageChange={handlePageChange}
               pageSize={limit}
               loading={isLoading}
-              emptyMessage="No pending payments require approval right now. Awesome!"
+              emptyMessage={t("noPendingPaymentsFound")}
             />
           </div>
         </CardContent>

@@ -29,6 +29,7 @@ class ChatModel {
   final String? lastMessage;
   final DateTime? lastMessageTime;
   final String? lastMessageSenderId;
+  final String? tripStatus;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -39,6 +40,7 @@ class ChatModel {
     this.lastMessage,
     this.lastMessageTime,
     this.lastMessageSenderId,
+    this.tripStatus,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -54,8 +56,12 @@ class ChatModel {
 
     final rawId = json['_id'] ?? json['id'];
     final rawTripId = json['tripId'];
+    final rawTrip = json['trip'];
     final idStr = rawId == null ? '' : (rawId is Map ? (rawId['_id'] ?? rawId['id'])?.toString() ?? '' : rawId.toString());
     final tripIdStr = rawTripId == null ? '' : (rawTripId is Map ? (rawTripId['_id'] ?? rawTripId['id'])?.toString() ?? '' : rawTripId.toString());
+    final tripStatus = rawTrip is Map
+        ? rawTrip['status']?.toString()
+        : json['tripStatus']?.toString();
 
     return ChatModel(
       id: idStr,
@@ -66,6 +72,7 @@ class ChatModel {
           ? DateTime.parse(json['lastMessageTime'])
           : null,
       lastMessageSenderId: json['lastMessageSenderId'],
+      tripStatus: tripStatus,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
@@ -83,6 +90,7 @@ class ChatModel {
       'lastMessage': lastMessage,
       'lastMessageTime': lastMessageTime?.toIso8601String(),
       'lastMessageSenderId': lastMessageSenderId,
+      'tripStatus': tripStatus,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
@@ -97,6 +105,7 @@ class ChatModel {
     String? lastMessage,
     DateTime? lastMessageTime,
     String? lastMessageSenderId,
+    String? tripStatus,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -107,6 +116,7 @@ class ChatModel {
       lastMessage: lastMessage ?? this.lastMessage,
       lastMessageTime: lastMessageTime ?? this.lastMessageTime,
       lastMessageSenderId: lastMessageSenderId ?? this.lastMessageSenderId,
+      tripStatus: tripStatus ?? this.tripStatus,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -114,6 +124,9 @@ class ChatModel {
 
   bool hasParticipant(String userId) =>
       participants.any((p) => p.userId == userId);
+
+  bool get isClosedForSending =>
+      tripStatus == 'completed' || tripStatus == 'cancelled';
 }
 
 class MessageModel {

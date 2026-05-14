@@ -30,10 +30,10 @@ class _MyTripsScreenState extends State<MyTripsScreen>
     final user = authProvider.userModel;
     if (user == null) return;
 
-    await Provider.of<TripProvider>(context, listen: false).fetchDriverTrips(
-      driverId: user.id,
-      status: _selectedStatus,
-    );
+    await Provider.of<TripProvider>(
+      context,
+      listen: false,
+    ).fetchDriverTrips(driverId: user.id, status: _selectedStatus);
   }
 
   @override
@@ -252,7 +252,8 @@ class _TripCardState extends State<_TripCard> {
 
   TripModel get trip => widget.trip;
 
-  double get _tripFeeAmount => ((trip.price * trip.totalSeats * 0.05) * 100).round() / 100;
+  double get _tripFeeAmount =>
+      ((trip.price * trip.totalSeats * 0.05) * 100).round() / 100;
 
   Future<void> _showFeeInvoice() async {
     final amount = _tripFeeAmount;
@@ -345,8 +346,6 @@ class _TripCardState extends State<_TripCard> {
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('yyyy-MM-dd');
     final timeFormat = DateFormat('HH:mm');
-    final isPast = trip.departureTime.isBefore(DateTime.now());
-
     Color getStatusColor() {
       switch (trip.status) {
         case 'active':
@@ -414,30 +413,26 @@ class _TripCardState extends State<_TripCard> {
         : (trip.to.address ?? 'موقع غير معروف');
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 20),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: AppColors.teal50,
-        borderRadius: BorderRadius.circular(24),
+        color: T.surface(context),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: T.primary(context).withValues(alpha: 0.14),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(
-          color: AppColors.teal200,
-          width: 1.7,
-        ),
       ),
       child: Material(
         color: AppColors.transparent,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         child: Semantics(
           button: true,
           label: 'رحلة من ${trip.from.name} إلى ${trip.to.name}',
           child: InkWell(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(20),
             onTap: () {
               Navigator.pushNamed(
                 context,
@@ -445,45 +440,45 @@ class _TripCardState extends State<_TripCard> {
                 arguments: trip.id,
               );
             },
-            splashColor: statusColor.withOpacity(0.1),
-            highlightColor: statusColor.withOpacity(0.05),
+            splashColor: statusColor.withOpacity(0.08),
+            highlightColor: statusColor.withOpacity(0.04),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ---------------- TOP PART: Status & Time ----------------
+                // ---------------- HEADER: Status & Time ----------------
                 Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Status Badge
+                      // Status chip
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
+                          horizontal: 10,
+                          vertical: 5,
                         ),
                         decoration: BoxDecoration(
                           color: statusColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(
-                            color: statusColor.withOpacity(0.2),
-                            width: 1.5,
-                          ),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
-                              getStatusIcon(),
-                              size: 10,
-                              color: statusColor,
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                color: statusColor,
+                                shape: BoxShape.circle,
+                              ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6),
                             Text(
                               getStatusLabel(),
                               style: TextStyle(
                                 color: statusColor,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
                               ),
                             ),
                           ],
@@ -495,15 +490,15 @@ class _TripCardState extends State<_TripCard> {
                           Icon(
                             IconsaxPlusLinear.clock,
                             color: T.onSurfaceVariant(context),
-                            size: 18,
+                            size: 14,
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 5),
                           Text(
-                            '${dateFormat.format(trip.departureTime)} • ${timeFormat.format(trip.departureTime)}',
+                            '${dateFormat.format(trip.departureTime)}  ${timeFormat.format(trip.departureTime)}',
                             style: TextStyle(
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                               color: T.onSurfaceVariant(context),
-                              fontSize: 13,
+                              fontSize: 12,
                             ),
                           ),
                         ],
@@ -512,89 +507,92 @@ class _TripCardState extends State<_TripCard> {
                   ),
                 ),
 
-                // ---------------- MIDDLE PART: Route (Horizontal) ----------------
+                const SizedBox(height: 14),
+
+                // ---------------- ROUTE: Vertical ----------------
                 Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 4,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // FROM
+                      // Timeline dots & line
+                      Column(
+                        children: [
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: T.primary(context),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          Container(
+                            width: 2,
+                            height: 28,
+                            color: T.primary(context).withOpacity(0.25),
+                          ),
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: AppColors.success,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 12),
+                      // From & To labels
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'من',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: T.onSurfaceVariant(context),
-                                fontWeight: FontWeight.w600,
-                              ),
+                            // FROM
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'من',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: T.onSurfaceVariant(context),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                Text(
+                                  fromName,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: T.onSurface(context),
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 6),
-                            Text(
-                              fromName,
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: T.onSurface(context),
-                                height: 1.2,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                      // CAR ICON Divider
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Column(
-                          children: [
-                            Icon(
-                              IconsaxPlusBold.car,
-                              color: T.primary(context),
-                              size: 28,
-                            ),
-                            Container(
-                              width: 60,
-                              height: 2,
-                              margin: const EdgeInsets.symmetric(vertical: 6),
-                              decoration: BoxDecoration(
-                                color: T.primary(context).withOpacity(0.3),
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // TO
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              'إلى',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: T.onSurfaceVariant(context),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              toName,
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: T.onSurface(context),
-                                height: 1.2,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.end,
+                            const SizedBox(height: 10),
+                            // TO
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'إلى',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: T.onSurfaceVariant(context),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                Text(
+                                  toName,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: T.onSurface(context),
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -603,123 +601,71 @@ class _TripCardState extends State<_TripCard> {
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 14),
 
-                // Dotted Divider
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        children: List.generate(
-                          (constraints.constrainWidth() / 10).floor(),
-                          (index) => Expanded(
-                            child: Container(
-                              height: 1.5,
-                              color: index % 2 == 0
-                                  ? AppColors.slate400.withValues(alpha: 0.3)
-                                  : AppColors.transparent,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-
-                // ---------------- BOTTOM PART: Price & Seats ----------------
+                // ---------------- FOOTER: Price & Seats ----------------
                 Container(
                   decoration: BoxDecoration(
-                    color: T.surface(context).withOpacity(0.6),
+                    color: T.surfaceVariant(context).withOpacity(0.4),
                     borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(24),
-                      bottomRight: Radius.circular(24),
+                      bottomLeft: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
                     ),
                   ),
                   padding: const EdgeInsets.symmetric(
-                    vertical: 16,
-                    horizontal: 20,
+                    vertical: 12,
+                    horizontal: 16,
                   ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       // Price
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppColors.success.withOpacity(0.12),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              IconsaxPlusBold.wallet_1,
-                              color: AppColors.success,
-                              size: 22,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'سعر المقعد',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: T.onSurfaceVariant(context),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              Text(
-                                '${trip.price} ${trip.currency}',
-                                style: const TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.success,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                      Icon(
+                        IconsaxPlusBold.wallet_1,
+                        color: AppColors.success,
+                        size: 18,
                       ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${trip.price} ${trip.currency}',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.success,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '/ مقعد',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: T.onSurfaceVariant(context),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const Spacer(),
                       // Seats
-                      Row(
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                'المقاعد',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: T.onSurfaceVariant(context),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              Text(
-                                '${trip.availableSeats} من ${trip.totalSeats}',
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.bold,
-                                  color: T.primary(context),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(width: 12),
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: T.primary(context).withOpacity(0.12),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              IconsaxPlusBold.people,
-                              color: T.primary(context),
-                              size: 22,
-                            ),
-                          ),
-                        ],
+                      Icon(
+                        IconsaxPlusBold.people,
+                        color: T.primary(context),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${trip.availableSeats}/${trip.totalSeats}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: T.primary(context),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'مقاعد',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: T.onSurfaceVariant(context),
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),
@@ -780,42 +726,6 @@ class _TripCardState extends State<_TripCard> {
                     ),
                   ),
 
-                // Warning for past trips
-                if (isPast) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 12,
-                      horizontal: 20,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.warning.withOpacity(0.15),
-                      borderRadius: const BorderRadius.only(
-                        bottomLeft: Radius.circular(24),
-                        bottomRight: Radius.circular(24),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          IconsaxPlusBold.info_circle,
-                          size: 18,
-                          color: AppColors.warning,
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'هذه الرحلة في الماضي',
-                          style: TextStyle(
-                            color: AppColors.warning,
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
               ],
             ),
           ),

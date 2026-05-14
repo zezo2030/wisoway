@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { ChatRoomEntity } from '../../database/entities/chat-room.entity';
 import { MessageEntity } from '../../database/entities/message.entity';
 import { TripEntity } from '../../database/entities/trip.entity';
@@ -47,20 +47,24 @@ export class ChatPostgresService {
       throw new ForbiddenException('You are not the driver of this trip');
     }
     const booking = await this.bookingRepo.findOne({
-      where: { tripId, userId: passengerId, status: 'confirmed' },
+      where: {
+        tripId,
+        userId: passengerId,
+        status: In(['pending', 'confirmed']),
+      },
     });
     if (!booking) {
       throw new ForbiddenException(
-        'Passenger must have a confirmed booking for this trip',
+        'Passenger must have a pending or confirmed booking for this trip',
       );
     }
     // Phase 7 (US5): chat is gated on settlement — booking must be marked paid.
-    if (!booking.settledAt) {
+    if (!booking.hasDriverPaidToContact && !trip.driverWalletChargeApplied) {
       throw new ForbiddenException({
         statusCode: 403,
-        code: 'BOOKING_NOT_SETTLED',
+        code: 'COMMUNICATION_FEE_REQUIRED',
         message:
-          'Chat is only available after the driver marks the booking as paid',
+          'Chat is available after the driver pays the communication fee',
       });
     }
 
@@ -135,20 +139,20 @@ export class ChatPostgresService {
     const isDriver = trip.driverId === userId;
     if (!isDriver) {
       const booking = await this.bookingRepo.findOne({
-        where: { tripId, userId, status: 'confirmed' },
+        where: { tripId, userId, status: In(['pending', 'confirmed']) },
       });
       if (!booking) {
         throw new ForbiddenException(
-          'You must have a confirmed booking to access this chat',
+          'You must have a pending or confirmed booking to access this chat',
         );
       }
       // Phase 7 (US5): settlement gate — booking must be marked paid.
-      if (!booking.settledAt) {
+      if (!booking.hasDriverPaidToContact && !trip.driverWalletChargeApplied) {
         throw new ForbiddenException({
           statusCode: 403,
-          code: 'BOOKING_NOT_SETTLED',
+          code: 'COMMUNICATION_FEE_REQUIRED',
           message:
-            'Chat is only available after the driver marks the booking as paid',
+            'Chat is available after the driver pays the communication fee',
         });
       }
     }
@@ -203,20 +207,28 @@ export class ChatPostgresService {
     }
 
     // Phase 7 (US5): settlement gate — reject messages on unsettled rooms.
+    if (['completed', 'cancelled'].includes(room.trip?.status)) {
+      throw new BadRequestException({
+        statusCode: 400,
+        code: 'CHAT_CLOSED_TRIP_ENDED',
+        message: 'This trip has ended, so you can no longer send messages',
+      });
+    }
+
     if (room.passengerId) {
       const booking = await this.bookingRepo.findOne({
         where: {
           tripId: room.tripId,
           userId: room.passengerId,
-          status: 'confirmed',
+          status: In(['pending', 'confirmed']),
         },
       });
-      if (booking && !booking.settledAt) {
+      if (booking && !booking.hasDriverPaidToContact) {
         throw new ForbiddenException({
           statusCode: 403,
-          code: 'BOOKING_NOT_SETTLED',
+          code: 'COMMUNICATION_FEE_REQUIRED',
           message:
-            'Chat is only available after the driver marks the booking as paid',
+            'Chat is available after the driver pays the communication fee',
         });
       }
     }
@@ -246,9 +258,15 @@ export class ChatPostgresService {
         await this.notificationsService.create({
           userId: p.userId,
           type: 'chat_message',
-          title: 'New Message',
+          title: 'رسالة جديدة',
           body: `${user.name}: ${text.substring(0, 50)}${text.length > 50 ? '...' : ''}`,
-          data: { chatRoomId: roomId, tripId },
+          data: {
+            chatRoomId: roomId,
+            tripId,
+            senderId: userId,
+            senderName: user.name,
+            senderRole: user.role,
+          },
         });
       }
     }

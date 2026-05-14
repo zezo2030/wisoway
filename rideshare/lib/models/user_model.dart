@@ -151,8 +151,9 @@ class UserModel {
   // Check if user is admin
   bool get isAdmin => role == AppConstants.roleAdmin;
 
-  // Check if user can book trips (passenger or driver - drivers can also book trips)
-  bool get canBookTrips => isPassenger || isDriver;
+  // Check if user can book trips — passengers only. Drivers cannot search
+  // or book rides; their app is dedicated to publishing trips.
+  bool get canBookTrips => isPassenger;
 
   // Driver approved by admin; only approved drivers can create trips
   bool get isApprovedDriver => isDriver && isDriverApproved;

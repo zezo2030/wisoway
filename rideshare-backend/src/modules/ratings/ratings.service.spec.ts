@@ -1,29 +1,50 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getModelToken } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { RatingsService } from './ratings.service';
-import { Rating, RatingDocument } from './schemas/rating.schema';
-import { User, UserDocument } from '../users/schemas/user.schema';
-import { Trip, TripDocument } from '../trips/schemas/trip.schema';
-import { Booking, BookingDocument } from '../bookings/schemas/booking.schema';
+import { RatingEntity } from '../../database/entities/rating.entity';
+import { UserEntity } from '../../database/entities/user.entity';
+import { TripEntity } from '../../database/entities/trip.entity';
+import { BookingEntity } from '../../database/entities/booking.entity';
+import { TripStatus } from '../../database/entities/shared.enums';
 import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
+import { NotificationsService } from '../notifications/notifications.service';
 
 describe('RatingsService', () => {
   let service: RatingsService;
-  let ratingModel: Model<RatingDocument>;
-  let userModel: Model<UserDocument>;
-  let tripModel: Model<TripDocument>;
-  let bookingModel: Model<BookingDocument>;
+  let ratingRepo: jest.Mocked<Repository<RatingEntity>>;
+  let userRepo: jest.Mocked<Repository<UserEntity>>;
+  let tripRepo: jest.Mocked<Repository<TripEntity>>;
+  let bookingRepo: jest.Mocked<Repository<BookingEntity>>;
 
-  const mockRating = {
-    _id: '507f1f77bcf86cd799439011',
-    fromUserId: '507f1f77bcf86cd799439012',
-    toUserId: '507f1f77bcf86cd799439013',
-    tripId: '507f1f77bcf86cd799439014',
+  const uid = {
+    passenger: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    driver: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+    trip: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
+  };
+
+  const mockTrip: Partial<TripEntity> = {
+    id: uid.trip,
+    driverId: uid.driver,
+    status: TripStatus.COMPLETED,
+  };
+
+  const mockBooking: Partial<BookingEntity> = {
+    id: 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    tripId: uid.trip,
+    userId: uid.passenger,
+    status: 'completed',
+  };
+
+  const mockRating: Partial<RatingEntity> = {
+    id: 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
+    fromUserId: uid.passenger,
+    toUserId: uid.driver,
+    tripId: uid.trip,
     rating: 5,
     comment: 'Great driver!',
     userRole: 'passenger',
@@ -31,34 +52,9 @@ describe('RatingsService', () => {
     createdAt: new Date(),
   };
 
-  const mockUser = {
-    _id: '507f1f77bcf86cd799439012',
-    name: 'John Doe',
-    role: 'passenger',
-    rating: 4.5,
-    totalRatings: 10,
-  };
-
-  const mockDriver = {
-    _id: '507f1f77bcf86cd799439013',
+  const mockDriver: Partial<UserEntity> = {
+    id: uid.driver,
     name: 'Jane Driver',
-    role: 'driver',
-    rating: 4.8,
-    totalRatings: 50,
-    save: jest.fn(),
-  };
-
-  const mockTrip = {
-    _id: '507f1f77bcf86cd799439014',
-    driverId: '507f1f77bcf86cd799439013',
-    status: 'completed',
-  };
-
-  const mockBooking = {
-    _id: '507f1f77bcf86cd799439015',
-    tripId: '507f1f77bcf86cd799439014',
-    userId: '507f1f77bcf86cd799439012',
-    status: 'confirmed',
   };
 
   beforeEach(async () => {
@@ -66,57 +62,48 @@ describe('RatingsService', () => {
       providers: [
         RatingsService,
         {
-          provide: getModelToken(Rating.name),
+          provide: getRepositoryToken(RatingEntity),
           useValue: {
-            new: jest.fn().mockResolvedValue(mockRating),
-            constructor: jest.fn().mockResolvedValue(mockRating),
-            find: jest.fn().mockReturnValue({
-              populate: jest.fn().mockReturnThis(),
-              skip: jest.fn().mockReturnThis(),
-              limit: jest.fn().mockReturnThis(),
-              sort: jest.fn().mockReturnThis(),
-              exec: jest.fn().mockResolvedValue([]),
-            }),
-            findOne: jest.fn().mockReturnThis(),
-            findById: jest.fn().mockReturnThis(),
-            create: jest.fn().mockResolvedValue(mockRating),
-            countDocuments: jest.fn().mockResolvedValue(0),
-            exec: jest.fn().mockResolvedValue(mockRating),
-            save: jest.fn().mockResolvedValue(mockRating),
+            findOne: jest.fn(),
+            findAndCount: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+            createQueryBuilder: jest.fn(),
           },
         },
         {
-          provide: getModelToken(User.name),
+          provide: getRepositoryToken(UserEntity),
           useValue: {
-            findById: jest.fn().mockReturnThis(),
-            findByIdAndUpdate: jest.fn().mockReturnThis(),
-            exec: jest.fn().mockResolvedValue(mockDriver),
+            findOne: jest.fn(),
+            update: jest.fn(),
           },
         },
         {
-          provide: getModelToken(Trip.name),
+          provide: getRepositoryToken(TripEntity),
           useValue: {
-            findById: jest.fn().mockReturnThis(),
-            exec: jest.fn().mockResolvedValue(mockTrip),
+            findOne: jest.fn(),
           },
         },
         {
-          provide: getModelToken(Booking.name),
+          provide: getRepositoryToken(BookingEntity),
           useValue: {
-            findOne: jest.fn().mockReturnThis(),
-            exec: jest.fn().mockResolvedValue(mockBooking),
+            findOne: jest.fn(),
+          },
+        },
+        {
+          provide: NotificationsService,
+          useValue: {
+            create: jest.fn().mockResolvedValue({}),
           },
         },
       ],
     }).compile();
 
-    service = module.get<RatingsService>(RatingsService);
-    ratingModel = module.get<Model<RatingDocument>>(getModelToken(Rating.name));
-    userModel = module.get<Model<UserDocument>>(getModelToken(User.name));
-    tripModel = module.get<Model<TripDocument>>(getModelToken(Trip.name));
-    bookingModel = module.get<Model<BookingDocument>>(
-      getModelToken(Booking.name),
-    );
+    service = module.get(RatingsService);
+    ratingRepo = module.get(getRepositoryToken(RatingEntity));
+    userRepo = module.get(getRepositoryToken(UserEntity));
+    tripRepo = module.get(getRepositoryToken(TripEntity));
+    bookingRepo = module.get(getRepositoryToken(BookingEntity));
   });
 
   it('should be defined', () => {
@@ -125,116 +112,81 @@ describe('RatingsService', () => {
 
   describe('create', () => {
     const createRatingDto = {
-      toUserId: '507f1f77bcf86cd799439013',
-      tripId: '507f1f77bcf86cd799439014',
+      toUserId: uid.driver,
+      tripId: uid.trip,
       rating: 5,
       comment: 'Great driver!',
     };
 
+    const qbMock = () => ({
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      getRawOne: jest.fn().mockResolvedValue({ cnt: '1', sum: '5' }),
+    });
+
     it('should create a rating successfully', async () => {
-      jest.spyOn(tripModel, 'findById').mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockTrip),
-      } as any);
-
-      jest.spyOn(bookingModel, 'findOne').mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockBooking),
-      } as any);
-
-      jest.spyOn(ratingModel, 'findOne').mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null),
-      } as any);
-
-      jest.spyOn(userModel, 'findById').mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockDriver),
-      } as any);
-
-      jest.spyOn(ratingModel, 'create').mockResolvedValue(mockRating as any);
-
-      jest.spyOn(ratingModel, 'find').mockReturnValue({
-        exec: jest.fn().mockResolvedValue([]),
-      } as any);
+      tripRepo.findOne.mockResolvedValue(mockTrip as TripEntity);
+      bookingRepo.findOne.mockResolvedValue(mockBooking as BookingEntity);
+      ratingRepo.findOne.mockResolvedValue(null);
+      userRepo.findOne.mockResolvedValue(mockDriver as UserEntity);
+      ratingRepo.create.mockReturnValue(mockRating as RatingEntity);
+      ratingRepo.save.mockResolvedValue(mockRating as RatingEntity);
+      ratingRepo.createQueryBuilder.mockReturnValue(qbMock() as any);
+      userRepo.update.mockResolvedValue({} as any);
 
       const result = await service.create(
         createRatingDto,
-        '507f1f77bcf86cd799439012',
+        uid.passenger,
         'passenger',
       );
       expect(result).toBeDefined();
+      expect(ratingRepo.save).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if trip not found', async () => {
-      jest.spyOn(tripModel, 'findById').mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null),
-      } as any);
+      tripRepo.findOne.mockResolvedValue(null);
 
       await expect(
-        service.create(
-          createRatingDto,
-          '507f1f77bcf86cd799439012',
-          'passenger',
-        ),
+        service.create(createRatingDto, uid.passenger, 'passenger'),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException if trip not completed', async () => {
-      jest.spyOn(tripModel, 'findById').mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ ...mockTrip, status: 'active' }),
-      } as any);
+      tripRepo.findOne.mockResolvedValue({
+        ...mockTrip,
+        status: TripStatus.IN_PROGRESS,
+      } as TripEntity);
 
       await expect(
-        service.create(
-          createRatingDto,
-          '507f1f77bcf86cd799439012',
-          'passenger',
-        ),
+        service.create(createRatingDto, uid.passenger, 'passenger'),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw ForbiddenException if user not a participant', async () => {
-      jest.spyOn(tripModel, 'findById').mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockTrip),
-      } as any);
-
-      jest.spyOn(bookingModel, 'findOne').mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null),
-      } as any);
+      tripRepo.findOne.mockResolvedValue(mockTrip as TripEntity);
+      bookingRepo.findOne.mockResolvedValue(null);
 
       await expect(
-        service.create(
-          createRatingDto,
-          '507f1f77bcf86cd799439012',
-          'passenger',
-        ),
+        service.create(createRatingDto, uid.passenger, 'passenger'),
       ).rejects.toThrow(ForbiddenException);
     });
 
     it('should throw BadRequestException if already rated', async () => {
-      jest.spyOn(tripModel, 'findById').mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockTrip),
-      } as any);
-
-      jest.spyOn(bookingModel, 'findOne').mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockBooking),
-      } as any);
-
-      jest.spyOn(ratingModel, 'findOne').mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockRating),
-      } as any);
+      tripRepo.findOne.mockResolvedValue(mockTrip as TripEntity);
+      bookingRepo.findOne.mockResolvedValue(mockBooking as BookingEntity);
+      ratingRepo.findOne.mockResolvedValue(mockRating as RatingEntity);
 
       await expect(
-        service.create(
-          createRatingDto,
-          '507f1f77bcf86cd799439012',
-          'passenger',
-        ),
+        service.create(createRatingDto, uid.passenger, 'passenger'),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException if rating yourself', async () => {
       await expect(
         service.create(
-          { ...createRatingDto, toUserId: '507f1f77bcf86cd799439012' },
-          '507f1f77bcf86cd799439012',
+          { ...createRatingDto, toUserId: uid.passenger },
+          uid.passenger,
           'passenger',
         ),
       ).rejects.toThrow(BadRequestException);
@@ -243,24 +195,20 @@ describe('RatingsService', () => {
 
   describe('updateUserAverage', () => {
     it('should update user average rating correctly', async () => {
-      const ratings = [{ rating: 5 }, { rating: 4 }, { rating: 5 }];
-
-      jest.spyOn(ratingModel, 'find').mockReturnValue({
-        exec: jest.fn().mockResolvedValue(ratings),
+      ratingRepo.createQueryBuilder.mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getRawOne: jest
+          .fn()
+          .mockResolvedValue({ cnt: '3', sum: '14' }),
       } as any);
+      userRepo.update.mockResolvedValue({} as any);
 
-      jest.spyOn(ratingModel, 'countDocuments').mockReturnValue({
-        exec: jest.fn().mockResolvedValue(3),
-      } as any);
+      await service.updateUserAverage(uid.driver);
 
-      jest.spyOn(userModel, 'findByIdAndUpdate').mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockDriver),
-      } as any);
-
-      await service.updateUserAverage('507f1f77bcf86cd799439013');
-
-      expect(userModel.findByIdAndUpdate).toHaveBeenCalledWith(
-        '507f1f77bcf86cd799439013',
+      expect(userRepo.update).toHaveBeenCalledWith(
+        uid.driver,
         expect.objectContaining({
           rating: expect.any(Number),
           totalRatings: 3,
@@ -271,21 +219,9 @@ describe('RatingsService', () => {
 
   describe('findByUser', () => {
     it('should return paginated user ratings', async () => {
-      const mockRatings = [mockRating];
+      ratingRepo.findAndCount.mockResolvedValue([[mockRating as RatingEntity], 1]);
 
-      jest.spyOn(ratingModel, 'find').mockReturnValue({
-        populate: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockReturnThis(),
-        exec: jest.fn().mockResolvedValue(mockRatings),
-      } as any);
-
-      jest.spyOn(ratingModel, 'countDocuments').mockReturnValue({
-        exec: jest.fn().mockResolvedValue(1),
-      } as any);
-
-      const result = await service.findByUser('507f1f77bcf86cd799439013', {
+      const result = await service.findByUser(uid.driver, {
         page: 1,
         limit: 20,
       });
@@ -297,21 +233,9 @@ describe('RatingsService', () => {
 
   describe('findByTrip', () => {
     it('should return paginated trip ratings', async () => {
-      const mockRatings = [mockRating];
+      ratingRepo.findAndCount.mockResolvedValue([[mockRating as RatingEntity], 1]);
 
-      jest.spyOn(ratingModel, 'find').mockReturnValue({
-        populate: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockReturnThis(),
-        exec: jest.fn().mockResolvedValue(mockRatings),
-      } as any);
-
-      jest.spyOn(ratingModel, 'countDocuments').mockReturnValue({
-        exec: jest.fn().mockResolvedValue(1),
-      } as any);
-
-      const result = await service.findByTrip('507f1f77bcf86cd799439014', {
+      const result = await service.findByTrip(uid.trip, {
         page: 1,
         limit: 20,
       });
@@ -323,21 +247,9 @@ describe('RatingsService', () => {
 
   describe('findByRater', () => {
     it('should return paginated ratings by rater', async () => {
-      const mockRatings = [mockRating];
+      ratingRepo.findAndCount.mockResolvedValue([[mockRating as RatingEntity], 1]);
 
-      jest.spyOn(ratingModel, 'find').mockReturnValue({
-        populate: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockReturnThis(),
-        exec: jest.fn().mockResolvedValue(mockRatings),
-      } as any);
-
-      jest.spyOn(ratingModel, 'countDocuments').mockReturnValue({
-        exec: jest.fn().mockResolvedValue(1),
-      } as any);
-
-      const result = await service.findByRater('507f1f77bcf86cd799439012', {
+      const result = await service.findByRater(uid.passenger, {
         page: 1,
         limit: 20,
       });

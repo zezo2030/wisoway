@@ -13,4 +13,8 @@ export class AdminBookingsQueryDto extends PaginationDto {
   @IsOptional()
   @IsString()
   tripId?: string;
+
+  @IsOptional()
+  @IsString()
+  driverId?: string;
 }

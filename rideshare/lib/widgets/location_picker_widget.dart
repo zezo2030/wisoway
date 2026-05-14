@@ -47,10 +47,14 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
           widget.initialLocation!.latitude,
           widget.initialLocation!.longitude,
         );
+        final localizedAddress = await _locationService
+            .getAddressFromCoordinates(
+              latitude: widget.initialLocation!.latitude,
+              longitude: widget.initialLocation!.longitude,
+            );
         _selectedLocation = initialPosition;
-        _selectedAddress =
-            widget.initialLocation!.address ?? widget.initialLocation!.name;
-        _searchController.text = widget.initialLocation!.name;
+        _selectedAddress = localizedAddress;
+        _searchController.text = localizedAddress;
       } else {
         // Get current location
         final currentLocation = await _locationService.getCurrentLocation();
@@ -311,7 +315,7 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                             vertical: 12,
                           ),
                         ),
-                        textDirection: TextDirection.ltr,
+                        textDirection: TextDirection.rtl,
                         onSubmitted: (_) => _searchByAddress(),
                       ),
                     ),

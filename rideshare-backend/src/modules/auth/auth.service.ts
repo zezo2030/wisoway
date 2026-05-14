@@ -4,6 +4,7 @@ import {
   BadRequestException,
   NotFoundException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
@@ -27,6 +28,7 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { Twilio } from 'twilio';
 import { DeviceFingerprintService } from './device-fingerprint.service';
 import { AccountRiskService } from './account-risk.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export interface AuthResponse {
   user: {
@@ -62,11 +64,14 @@ export class AuthService {
   private twilioVerifyServiceSid: string | undefined;
   private otpProvider: OtpProvider;
 
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private usersService: UsersService,
     private configService: ConfigService,
     private deviceFingerprintService: DeviceFingerprintService,
     private accountRiskService: AccountRiskService,
+    private notificationsService: NotificationsService,
     @InjectRepository(UserEntity)
     private userRepo: Repository<UserEntity>,
     @InjectRepository(PasswordResetSessionEntity)
@@ -189,6 +194,12 @@ export class AuthService {
         isPhoneVerified: true,
         isActive: true,
       });
+
+      this.notifyAdminsOfNewUser(user).catch((err) => {
+        this.logger.error(
+          `Failed to notify admins of new user ${user.id}: ${(err as Error).message}`,
+        );
+      });
     }
 
     // ── Device binding (optional) ──────────────────────────────────────────
@@ -268,19 +279,25 @@ export class AuthService {
   }
 
   async login(signInDto: SignInDto): Promise<AuthResponse> {
-    const { phoneNumber, password } = signInDto;
-    const user = await this.findUserByPhoneWithPassword(phoneNumber);
+    const { email, phoneNumber, password } = signInDto;
+    const user = email
+      ? await this.findAdminByEmailWithPassword(email)
+      : await this.findUserByPhoneWithPassword(phoneNumber!);
 
     if (!user || !user.passwordHash) {
-      throw new UnauthorizedException('Invalid phone number or password');
+      throw new UnauthorizedException(
+        email ? 'Invalid admin email or password' : 'Invalid phone number or password',
+      );
     }
 
     const passwordMatches = await bcrypt.compare(password, user.passwordHash);
     if (!passwordMatches) {
-      throw new UnauthorizedException('Invalid phone number or password');
+      throw new UnauthorizedException(
+        email ? 'Invalid admin email or password' : 'Invalid phone number or password',
+      );
     }
 
-    if (!user.isPhoneVerified) {
+    if (!email && !user.isPhoneVerified) {
       throw new UnauthorizedException(
         'Phone number must be verified before signing in.',
       );
@@ -592,6 +609,17 @@ export class AuthService {
       .getOne() as Promise<(UserEntity & { passwordHash: string | null }) | null>;
   }
 
+  private async findAdminByEmailWithPassword(
+    email: string,
+  ): Promise<(UserEntity & { passwordHash: string | null }) | null> {
+    return this.userRepo
+      .createQueryBuilder('user')
+      .addSelect('user.passwordHash')
+      .where('LOWER(user.email) = LOWER(:email)', { email: email.trim() })
+      .andWhere('user.role = :role', { role: PgUserRole.ADMIN })
+      .getOne() as Promise<(UserEntity & { passwordHash: string | null }) | null>;
+  }
+
   private async findUserByIdWithPassword(
     id: string,
   ): Promise<UserEntity & { passwordHash: string | null }> {
@@ -645,5 +673,44 @@ export class AuthService {
       console.error('Failed to verify OTP via Twilio Verify:', error);
       throw new UnauthorizedException('Invalid or expired OTP code');
     }
+  }
+
+  private async notifyAdminsOfNewUser(newUser: UserEntity): Promise<void> {
+    const admins = await this.userRepo.find({
+      where: { role: PgUserRole.ADMIN, isActive: true },
+      select: ['id'],
+    });
+    if (admins.length === 0) return;
+
+    const displayName =
+      newUser.name && newUser.name.trim().length > 0
+        ? newUser.name.trim()
+        : (newUser.phoneNumber ?? newUser.email ?? 'New user');
+    const title = 'New user registered';
+    const body = `${displayName} just signed up as a ${newUser.role}.`;
+    const data = {
+      newUserId: newUser.id,
+      role: newUser.role,
+      phoneNumber: newUser.phoneNumber,
+      email: newUser.email,
+    };
+
+    await Promise.all(
+      admins.map((admin) =>
+        this.notificationsService
+          .create({
+            userId: admin.id,
+            type: 'new_user_registered',
+            title,
+            body,
+            data,
+          })
+          .catch((err) => {
+            this.logger.error(
+              `Failed to deliver new-user notification to admin ${admin.id}: ${(err as Error).message}`,
+            );
+          }),
+      ),
+    );
   }
 }

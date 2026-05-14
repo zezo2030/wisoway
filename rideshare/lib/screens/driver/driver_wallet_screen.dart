@@ -145,6 +145,8 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildBalanceCard(),
+                    const SizedBox(height: 12),
+                    _buildPendingChargesShortcut(context),
                     const SizedBox(height: 16),
                     _buildFreeTripCard(),
                     const SizedBox(height: 24),
@@ -218,6 +220,65 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
             ),
           ),
           backgroundColor: AppColors.warning,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPendingChargesShortcut(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () async {
+          await Navigator.pushNamed(context, RouteNames.pendingCharges);
+          if (mounted) _load();
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: T.surfaceVariant(context),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: T.outline(context).withValues(alpha: 0.25),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                IconsaxPlusBold.warning_2,
+                color: AppColors.warning,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'الرسوم المستحقة',
+                      style: AppTextStyles.titleSmall.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'عرض الغرامات والرسوم المعلّقة وشحن المحفظة',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: T.onSurfaceVariant(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                IconsaxPlusLinear.arrow_left_2,
+                size: 18,
+                color: T.onSurfaceVariant(context),
+              ),
+            ],
+          ),
         ),
       ),
     );

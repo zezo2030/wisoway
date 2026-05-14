@@ -12,6 +12,7 @@ import '../../widgets/common/empty_state.dart';
 
 class DriverChatScreen extends StatefulWidget {
   final String tripId;
+  final String? chatRoomId;
   final TripModel? trip;
   final String? passengerId;
   final String? passengerName;
@@ -19,6 +20,7 @@ class DriverChatScreen extends StatefulWidget {
   const DriverChatScreen({
     super.key,
     required this.tripId,
+    this.chatRoomId,
     this.trip,
     this.passengerId,
     this.passengerName,
@@ -37,6 +39,13 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
   bool _isLoading = true;
   bool _isSending = false;
   String? _errorMessage;
+  String? _readOnlyReason;
+
+  String? _closedReasonFor(ChatModel chat) {
+    return chat.isClosedForSending
+        ? 'انتهت الرحلة، ولا يمكن إرسال رسائل جديدة.'
+        : null;
+  }
 
   @override
   void initState() {
@@ -58,7 +67,9 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
       }
 
       ChatModel chat;
-      if (widget.passengerId != null) {
+      if (widget.chatRoomId != null && widget.chatRoomId!.isNotEmpty) {
+        chat = await _chatService.getRoomById(widget.chatRoomId!);
+      } else if (widget.passengerId != null) {
         chat = await _chatService.getOrCreateRoomForDriverPassenger(
           widget.tripId,
           widget.passengerId!,
@@ -68,6 +79,7 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
       }
       setState(() {
         _chatId = chat.id;
+        _readOnlyReason = _closedReasonFor(chat);
         _isLoading = false;
       });
     } catch (e) {
@@ -80,6 +92,12 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
 
   Future<void> _sendMessage() async {
     if (_messageController.text.trim().isEmpty) return;
+    if (_readOnlyReason != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_readOnlyReason!)),
+      );
+      return;
+    }
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final currentUser = authProvider.userModel;
@@ -93,7 +111,9 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
 
       if (chatId.isEmpty) {
         ChatModel chat;
-        if (widget.passengerId != null) {
+        if (widget.chatRoomId != null && widget.chatRoomId!.isNotEmpty) {
+          chat = await _chatService.getRoomById(widget.chatRoomId!);
+        } else if (widget.passengerId != null) {
           chat = await _chatService.getOrCreateRoomForDriverPassenger(
             widget.tripId,
             widget.passengerId!,
@@ -102,7 +122,16 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
           chat = await _chatService.getOrCreateRoomForTrip(widget.tripId);
         }
         chatId = chat.id;
-        setState(() => _chatId = chatId);
+        setState(() {
+          _chatId = chatId;
+          _readOnlyReason = _closedReasonFor(chat);
+        });
+        if (_readOnlyReason != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(_readOnlyReason!)),
+          );
+          return;
+        }
       }
 
       if (chatId.isEmpty) {
@@ -184,6 +213,7 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
     }
 
     final chatId = _chatId ?? '';
+    final readOnlyReason = _readOnlyReason;
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -262,6 +292,19 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
                     },
                   ),
           ),
+          if (readOnlyReason != null)
+            Container(
+              width: double.infinity,
+              color: T.surfaceVariant(context),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Text(
+                readOnlyReason,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: T.onSurfaceVariant(context),
+                    ),
+              ),
+            ),
           Container(
             decoration: BoxDecoration(
               color: T.surface(context),
@@ -284,8 +327,9 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
                         label: 'اكتب رسالة',
                         child: TextField(
                           controller: _messageController,
+                          enabled: readOnlyReason == null,
                           decoration: InputDecoration(
-                            hintText: 'اكتب رسالة...',
+                            hintText: readOnlyReason ?? 'اكتب رسالة...',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(24),
                             ),
@@ -296,7 +340,9 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
                           ),
                           maxLines: null,
                           textInputAction: TextInputAction.send,
-                          onSubmitted: (_) => _sendMessage(),
+                          onSubmitted: (_) {
+                            if (readOnlyReason == null) _sendMessage();
+                          },
                         ),
                       ),
                     ),
@@ -305,7 +351,9 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
                       button: true,
                       label: 'إرسال الرسالة',
                       child: IconButton(
-                        onPressed: _isSending ? null : _sendMessage,
+                        onPressed: _isSending || readOnlyReason != null
+                            ? null
+                            : _sendMessage,
                         tooltip: 'إرسال',
                         icon: _isSending
                             ? const SizedBox(

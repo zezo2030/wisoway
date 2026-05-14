@@ -7,12 +7,17 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { PaymentEntity } from '../../database/entities/payment.entity';
 import { CommunicationFeeEntity } from '../../database/entities/communication-fee.entity';
 import { TripEntity } from '../../database/entities/trip.entity';
 import { UserEntity } from '../../database/entities/user.entity';
-import { PgUserRole, WalletAccountType } from '../../database/entities';
+import {
+  BookingEntity,
+  BookingStatus,
+  PgUserRole,
+  WalletAccountType,
+} from '../../database/entities';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { CreateCommunicationFeeDto } from './dto/create-communication-fee.dto';
 import { CreateWalletTopupDto } from './dto/create-wallet-topup.dto';
@@ -26,6 +31,13 @@ import { A2aCliqService } from './a2a-cliq.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PlatformPricingService } from './platform-pricing.service';
 import { WalletService } from '../wallet/wallet.service';
+import { InjectQueue } from '@nestjs/bull';
+import type { Queue } from 'bull';
+import {
+  CLIQ_POLL_QUEUE,
+  CLIQ_POLL_JOB,
+  CliqPollJobData,
+} from './processors/cliq-poll.processor';
 
 /**
  * Maps raw A2A CliQ error codes / descriptions to user-friendly Arabic messages.
@@ -60,6 +72,8 @@ export class PaymentsService {
     private a2aCliqService: A2aCliqService,
     private platformPricing: PlatformPricingService,
     private walletService: WalletService,
+    @InjectQueue(CLIQ_POLL_QUEUE)
+    private cliqPollQueue: Queue<CliqPollJobData>,
   ) {}
 
   /**
@@ -391,6 +405,14 @@ export class PaymentsService {
             communicationFeeStatus: 'paid',
           },
         );
+        await qr.manager.update(
+          BookingEntity,
+          {
+            tripId,
+            status: In([BookingStatus.PENDING, BookingStatus.CONFIRMED]),
+          },
+          { hasDriverPaidToContact: true },
+        );
         await qr.commitTransaction();
         this.logger.log(
           `Lifetime free trip used for driver ${driverId}, trip ${tripId}`,
@@ -417,6 +439,14 @@ export class PaymentsService {
             driverWalletChargeAt: new Date(),
             communicationFeeStatus: 'paid',
           },
+        );
+        await qr.manager.update(
+          BookingEntity,
+          {
+            tripId,
+            status: In([BookingStatus.PENDING, BookingStatus.CONFIRMED]),
+          },
+          { hasDriverPaidToContact: true },
         );
         await qr.commitTransaction();
         this.logger.log(
@@ -451,6 +481,14 @@ export class PaymentsService {
           driverWalletChargeAt: new Date(),
           communicationFeeStatus: 'paid',
         },
+      );
+      await qr.manager.update(
+        BookingEntity,
+        {
+          tripId,
+          status: In([BookingStatus.PENDING, BookingStatus.CONFIRMED]),
+        },
+        { hasDriverPaidToContact: true },
       );
       await qr.commitTransaction();
       this.logger.log(
@@ -526,64 +564,118 @@ export class PaymentsService {
       const saved = await this.paymentRepo.save(p);
 
       try {
-        const purchaseResult = await this.a2aCliqService.purchase({
+        // المنطق الجديد:
+        //   1. purchaseAndAwait يبعت Purchase + يـ poll لمدة ~120 ثانية
+        //   2. لو StatusCode=0 → نشحن المحفظة ونعتبرها approved
+        //   3. لو رفض نهائي فوري (مثل 3010) → status=rejected
+        //   4. لو لسه pending بعد الـ 120s → نسيب status=pending ونضيف
+        //      job للـ background polling لمدة 24 ساعة
+        const result = await this.a2aCliqService.purchaseAndAwait({
           messageTrxId,
           aliasType: dto.aliasType,
           aliasValue: dto.aliasValue,
           amount: dto.amount,
+          // foreground polling: 120s إجمالي، كل 3 ثوانٍ
+          inquiryMaxWaitMs: 120_000,
+          inquiryIntervalMs: 3_000,
         });
 
-        if (purchaseResult.MSGID) {
-          saved.paymentGatewayRef = purchaseResult.MSGID;
+        if (result.MSGID) {
+          saved.paymentGatewayRef = result.MSGID;
           await this.paymentRepo.save(saved);
         }
 
-        const rawCode = String(purchaseResult.errorCode ?? '');
-        const isSuccess = rawCode === '0';
+        // (1) نجاح مؤكد
+        if (result.isSuccess) {
+          const user = await this.userRepo.findOne({ where: { id: userId } });
+          if (user) {
+            const accountType =
+              user.role === PgUserRole.DRIVER
+                ? WalletAccountType.DRIVER
+                : WalletAccountType.RIDER;
+            try {
+              await this.walletService.creditPostedTopup({
+                userId,
+                accountType,
+                amount: dto.amount,
+                currency: dto.currency ?? 'JOD',
+                idempotencyKey: `cliq-topup:${saved.id}`,
+                note: `CliQ A2A wallet top-up ${saved.id}`,
+              });
+              saved.status = 'approved';
+              await this.paymentRepo.save(saved);
+              this.logger.log(
+                `CliQ payment ${saved.id} succeeded immediately (StatusCode=0)`,
+              );
+            } catch (creditErr) {
+              // العملية ناجحة عند uWallet لكن شحن المحفظة فشل — admin يحلها يدوياً
+              this.logger.error(
+                `CliQ payment ${saved.id} succeeded but wallet credit failed: ${creditErr instanceof Error ? creditErr.message : String(creditErr)}`,
+              );
+              saved.adminNote =
+                `CliQ succeeded but wallet credit failed: ${creditErr instanceof Error ? creditErr.message : String(creditErr)}`.slice(
+                  0,
+                  500,
+                );
+              await this.paymentRepo.save(saved);
+            }
+          }
+          return saved;
+        }
 
-        if (!isSuccess) {
-          const userMessage =
-            purchaseResult.description_ar ??
-            resolveCliqError(rawCode, purchaseResult.description);
+        // (2) رفض نهائي مؤكد (مثلاً 3010 self-payment) — terminal بدون نجاح
+        if (result.isTerminal && !result.isSuccess) {
+          const code = String(result.StatusCode ?? '');
+          const userMessage = resolveCliqError(code, result.StatusDescription);
           saved.status = 'rejected';
           saved.adminNote =
-            `[${rawCode}] ${purchaseResult.description ?? ''}`.trim();
+            `[${code}] ${result.StatusDescription ?? ''}`.trim().slice(0, 500);
           await this.paymentRepo.save(saved);
           throw new BadRequestException(userMessage);
         }
 
-        const user = await this.userRepo.findOne({ where: { id: userId } });
-        if (user) {
-          const accountType =
-            user.role === PgUserRole.DRIVER
-              ? WalletAccountType.DRIVER
-              : WalletAccountType.RIDER;
-          try {
-            await this.walletService.creditPostedTopup({
-              userId,
-              accountType,
-              amount: dto.amount,
-              currency: dto.currency ?? 'JOD',
-              idempotencyKey: `cliq-topup:${saved.id}`,
-              note: `CliQ A2A wallet top-up ${saved.id}`,
-            });
-            saved.status = 'approved';
-            await this.paymentRepo.save(saved);
-            this.logger.log(
-              `CliQ purchase succeeded (errorCode=0), wallet credited immediately for payment ${saved.id}`,
-            );
-          } catch (creditErr) {
-            this.logger.error(
-              `CliQ purchase succeeded but wallet credit failed for payment ${saved.id}: ${creditErr}`,
-            );
-          }
-        }
+        // (3) لسه pending — نضيف Job للـ background polling لـ ~24 ساعة
+        // كل 10 دقائق × 144 محاولة = 24 ساعة
+        await this.cliqPollQueue.add(
+          CLIQ_POLL_JOB,
+          {
+            paymentId: saved.id,
+            messageTrxId,
+            attempt: 1,
+            maxAttempts: 144,
+            intervalSeconds: 600,
+          },
+          {
+            delay: 60_000, // أول محاولة بعد دقيقة من نهاية الـ foreground polling
+            removeOnComplete: true,
+            removeOnFail: false,
+          },
+        );
+        this.logger.log(
+          `CliQ payment ${saved.id} is pending (last StatusCode=${result.StatusCode}); background polling enqueued`,
+        );
+        // المعاملة هترجع للمستخدم بـ status='pending' وهيشوفها معلقة لحد ما تتأكد
       } catch (err) {
         if (err instanceof BadRequestException) throw err;
-        saved.status = 'rejected';
-        saved.adminNote = 'CliQ gateway error';
-        await this.paymentRepo.save(saved);
-        throw new BadRequestException('تعذّر الاتصال ببوابة CliQ، حاول مجدداً');
+        // خطأ شبكة أو نظام — مش معناه فشل المعاملة. نسيبها pending ونعمل polling.
+        this.logger.error(
+          `CliQ purchaseAndAwait threw for payment ${saved.id}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        await this.cliqPollQueue.add(
+          CLIQ_POLL_JOB,
+          {
+            paymentId: saved.id,
+            messageTrxId,
+            attempt: 1,
+            maxAttempts: 144,
+            intervalSeconds: 600,
+          },
+          {
+            delay: 60_000,
+            removeOnComplete: true,
+            removeOnFail: false,
+          },
+        );
       }
 
       return saved;

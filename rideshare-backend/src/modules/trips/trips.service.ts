@@ -25,6 +25,12 @@ import { TripsGateway } from './trips.gateway';
 import { ErrorCodes } from '../../common/errors/error-codes';
 import { RecurrenceService } from '../recurrence/recurrence.service';
 import { RecurrenceFrequency } from '../../database/entities/trip-recurrence-rule.entity';
+import { PendingChargesService } from '../pending-charges/pending-charges.service';
+import {
+  computeTripAutoStartDelayMs,
+  TRIP_AUTO_START_JOB_ID_PREFIX,
+  TRIP_AUTO_COMPLETE_JOB_ID_PREFIX,
+} from './trip-auto-start.util';
 
 function getFromLatLng(trip: TripEntity): { lat: number; lng: number } {
   const c = trip.fromPoint?.coordinates;
@@ -49,7 +55,12 @@ export class TripsService {
     private platformPricing: PlatformPricingService,
     private tripsGateway: TripsGateway,
     @InjectQueue('no-show-detector') private noShowQueue: Queue,
+    @InjectQueue('trip-auto-start')
+    private tripAutoStartQueue: Queue,
+    @InjectQueue('trip-auto-complete')
+    private tripAutoCompleteQueue: Queue,
     private recurrenceService: RecurrenceService,
+    private pendingChargesService: PendingChargesService,
   ) {}
 
   async getPricingPreview(tripId: string, countryCode: string = 'JO') {
@@ -86,6 +97,17 @@ export class TripsService {
       throw new ForbiddenException({
         message: 'يجب إضافة صورة شخصية قبل نشر رحلة.',
         code: ErrorCodes.PROFILE_PHOTO_REQUIRED,
+      });
+    }
+
+    const outstanding =
+      await this.pendingChargesService.getOutstandingSummary(driverId);
+    if (outstanding.count > 0) {
+      throw new ForbiddenException({
+        code: ErrorCodes.OUTSTANDING_CHARGES,
+        message: `لا يمكنك نشر رحلة جديدة قبل تسوية الرسوم المستحقة (${outstanding.count}) بإجمالي ${outstanding.totalAmount.toFixed(2)}.`,
+        count: outstanding.count,
+        totalAmount: outstanding.totalAmount,
       });
     }
 
@@ -131,7 +153,10 @@ export class TripsService {
       status: TripStatus.PUBLISHED,
       isVisible: true,
       communicationFeeStatus: 'not_paid',
-      carImageUrl: createTripDto.carImageUrl ?? null,
+      // Car photo always comes from the driver's vehicle profile — drivers
+      // don't upload it per trip. Fall back to the DTO only if a vehicle row
+      // doesn't have one yet (legacy data).
+      carImageUrl: vehicle.carImageUrl ?? createTripDto.carImageUrl ?? null,
     });
 
     const savedTrip = await this.tripRepo.save(trip);
@@ -158,7 +183,7 @@ export class TripsService {
         seatLayout,
         stops: createTripDto.stops ?? [],
         notes: createTripDto.notes ?? null,
-        carImageUrl: createTripDto.carImageUrl ?? null,
+        carImageUrl: vehicle.carImageUrl ?? createTripDto.carImageUrl ?? null,
       };
 
       const rule = await this.recurrenceService.createRule(
@@ -183,6 +208,11 @@ export class TripsService {
         `Failed to enqueue city fan-out for trip ${savedTrip.id}: ${err.message}`,
       );
     });
+
+    void this.scheduleTripAutoStart(
+      savedTrip.id,
+      new Date(savedTrip.departureTime),
+    );
 
     return savedTrip;
   }
@@ -501,7 +531,12 @@ export class TripsService {
     if (updateTripDto.notes !== undefined) trip.notes = updateTripDto.notes;
     if (updateTripDto.stops !== undefined) trip.stops = updateTripDto.stops;
 
-    return this.tripRepo.save(trip);
+    const saved = await this.tripRepo.save(trip);
+    await this.rescheduleTripAutoStart(
+      saved.id,
+      new Date(saved.departureTime),
+    );
+    return saved;
   }
 
   async hide(tripId: string, driverId: string): Promise<TripEntity> {
@@ -534,6 +569,8 @@ export class TripsService {
     }
     trip.status = TripStatus.COMPLETED;
     const savedTrip = await this.tripRepo.save(trip);
+
+    await this.removeTripLifecycleJobs(tripId);
 
     await this.bookingsService.markAsCompleted(tripId);
     const bookings = await this.bookingsService.findByTripInternal(tripId);
@@ -603,6 +640,8 @@ export class TripsService {
 
     trip.status = TripStatus.CANCELLED;
     const savedTrip = await this.tripRepo.save(trip);
+
+    await this.removeTripLifecycleJobs(tripId);
 
     await this.bookingsService.cancelAllForTrip(
       tripId,
@@ -845,7 +884,7 @@ export class TripsService {
     const total = Math.max(1, Math.min(50, vehicle.seats));
     const seatsPerRow = Math.max(1, Math.ceil(total / 2));
     const rows = Math.max(1, Math.ceil(total / seatsPerRow));
-    return { rows, seatsPerRow, preventGenderMixing: true };
+    return { rows, seatsPerRow, preventGenderMixing: false };
   }
 
   private generateSeatsFromLayout(layout: {
@@ -889,5 +928,61 @@ export class TripsService {
       }
     }
     return seats;
+  }
+
+  /** Schedule auto-transition PUBLISHED/FULLY_BOOKED → IN_PROGRESS at departureTime. */
+  private async scheduleTripAutoStart(
+    tripId: string,
+    departureTime: Date,
+  ): Promise<void> {
+    const delay = computeTripAutoStartDelayMs(departureTime);
+    try {
+      await this.tripAutoStartQueue.add(
+        'enforce',
+        { tripId },
+        {
+          delay,
+          jobId: `${TRIP_AUTO_START_JOB_ID_PREFIX}${tripId}`,
+          removeOnComplete: true,
+          attempts: 2,
+          backoff: { type: 'exponential', delay: 15000 },
+        },
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Failed to schedule trip auto-start for trip ${tripId}: ${(err as Error).message}`,
+      );
+    }
+  }
+
+  async removeTripLifecycleJobs(tripId: string): Promise<void> {
+    try {
+      const startJob = await this.tripAutoStartQueue.getJob(
+        `${TRIP_AUTO_START_JOB_ID_PREFIX}${tripId}`,
+      );
+      await startJob?.remove();
+    } catch (err) {
+      this.logger.warn(
+        `remove trip-auto-start job ${tripId}: ${(err as Error).message}`,
+      );
+    }
+    try {
+      const completeJob = await this.tripAutoCompleteQueue.getJob(
+        `${TRIP_AUTO_COMPLETE_JOB_ID_PREFIX}${tripId}`,
+      );
+      await completeJob?.remove();
+    } catch (err) {
+      this.logger.warn(
+        `remove trip-auto-complete job ${tripId}: ${(err as Error).message}`,
+      );
+    }
+  }
+
+  private async rescheduleTripAutoStart(
+    tripId: string,
+    departureTime: Date,
+  ): Promise<void> {
+    await this.removeTripLifecycleJobs(tripId);
+    await this.scheduleTripAutoStart(tripId, departureTime);
   }
 }

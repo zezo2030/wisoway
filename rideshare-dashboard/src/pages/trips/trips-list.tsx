@@ -39,6 +39,22 @@ function getDriverName(driverId: string | UserSummary): string | null {
   return name || null
 }
 
+function getTripDriverDisplayName(trip: Trip): string | null {
+  const fromDriverId = getDriverName(trip.driverId)
+  if (fromDriverId) {
+    return fromDriverId
+  }
+  const fromColumn = trip.driverName?.trim()
+  if (fromColumn) {
+    return fromColumn
+  }
+  const joined = trip.driver?.name?.trim()
+  if (joined) {
+    return joined
+  }
+  return null
+}
+
 export default function TripsListPage() {
   const navigate = useNavigate()
   const { t, language } = useLanguage()
@@ -91,8 +107,8 @@ export default function TripsListPage() {
       key: "route",
       header: t("route"),
       cell: (trip) => {
-        const fromName = getTripLocationName(trip as Record<string, unknown>, "from")
-        const toName = getTripLocationName(trip as Record<string, unknown>, "to")
+        const fromName = getTripLocationName(trip, "from")
+        const toName = getTripLocationName(trip, "to")
         return (
           <div className="flex items-center gap-2 py-1">
             <div className="bg-primary/10 p-2 rounded-lg border border-primary/20 shadow-inner flex-shrink-0">
@@ -111,7 +127,7 @@ export default function TripsListPage() {
       key: "driver",
       header: t("driver"),
       cell: (trip) => {
-        const driverName = getDriverName(trip.driverId)
+        const driverName = getTripDriverDisplayName(trip)
         return (
           <div className="flex items-center gap-2">
             {driverName ? (
@@ -122,7 +138,7 @@ export default function TripsListPage() {
                 <div className="font-semibold">{driverName}</div>
               </>
             ) : (
-              <span className="text-muted-foreground font-mono text-xs">ID: {trip.driverId}</span>
+              <span className="text-muted-foreground font-mono text-xs">ID: {typeof trip.driverId === "string" ? trip.driverId : (trip.driverId as UserSummary)?.name ?? ""}</span>
             )}
           </div>
         )

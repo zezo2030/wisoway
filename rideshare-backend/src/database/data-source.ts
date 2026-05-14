@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import * as path from 'path';
 import { DataSource } from 'typeorm';
 import {
   AccountFlagEntity,
@@ -74,6 +75,6 @@ export const AppDataSource = new DataSource({
     WalletHoldEntity,
     WalletTransactionEntity,
   ],
-  migrations: ['src/database/migrations/*.ts'],
+  migrations: [path.join(__dirname, 'migrations', '*.{js,ts}')],
   migrationsTransactionMode: 'each',
 });

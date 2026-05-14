@@ -2,6 +2,7 @@ import {
   IsString,
   IsOptional,
   IsBoolean,
+  IsIn,
   MinLength,
   MaxLength,
 } from 'class-validator';
@@ -17,6 +18,11 @@ export class UpdateUserDto {
   @IsString()
   @MaxLength(500)
   photoUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['male', 'female'])
+  gender?: string;
 
   @IsOptional()
   @IsString()

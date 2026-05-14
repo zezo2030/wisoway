@@ -9,6 +9,8 @@ class NotificationType {
   static const String driverArrived = 'driver_arrived';
   static const String tripCancelled = 'trip_cancelled';
   static const String communicationActivated = 'communication_activated';
+  static const String chatMessage = 'chat_message';
+  static const String walletCredited = 'wallet_credited';
 }
 
 class NotificationModel {
@@ -154,6 +156,10 @@ class NotificationModel {
         return isDriver == true
             ? 'تم تفعيل التواصل مع الراكب'
             : 'تم تفعيل التواصل مع السائق';
+      case NotificationType.chatMessage:
+        return 'رسالة جديدة';
+      case NotificationType.walletCredited:
+        return 'تم إضافة رصيد إلى محفظتك';
       default:
         return _sanitizeFallback(fallbackTitle, defaultValue: 'إشعار جديد');
     }
@@ -170,10 +176,12 @@ class NotificationModel {
     }
 
     final driverName = _stringFromData(data, ['driverName', 'driver', 'name']);
-    final passengerName = _stringFromData(
-      data,
-      ['passengerName', 'passenger', 'userName', 'user'],
-    );
+    final passengerName = _stringFromData(data, [
+      'passengerName',
+      'passenger',
+      'userName',
+      'user',
+    ]);
     final amount = _stringFromData(data, ['amount']);
     final currency = _stringFromData(data, ['currency']);
 
@@ -228,6 +236,18 @@ class NotificationModel {
         return driverName != null
             ? 'تم تفعيل التواصل بينك وبين السائق $driverName لهذه الرحلة.'
             : 'تم تفعيل التواصل بينك وبين السائق لهذه الرحلة.';
+      case NotificationType.chatMessage:
+        final senderName = _stringFromData(data, ['senderName']);
+        return senderName != null
+            ? '$senderName أرسل لك رسالة جديدة.'
+            : 'لديك رسالة جديدة في المحادثة.';
+      case NotificationType.walletCredited:
+        final amount = _stringFromData(data, ['amount']);
+        final currency = _stringFromData(data, ['currency']);
+        if (amount != null && currency != null) {
+          return 'تمت إضافة $amount $currency إلى محفظتك بنجاح.';
+        }
+        return 'تمت إضافة رصيد جديد إلى محفظتك.';
       default:
         return _sanitizeFallback(
           fallbackBody,
@@ -236,7 +256,10 @@ class NotificationModel {
     }
   }
 
-  static String _sanitizeFallback(String? text, {required String defaultValue}) {
+  static String _sanitizeFallback(
+    String? text, {
+    required String defaultValue,
+  }) {
     final value = text?.trim();
     return value == null || value.isEmpty ? defaultValue : value;
   }

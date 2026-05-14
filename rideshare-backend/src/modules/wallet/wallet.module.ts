@@ -4,6 +4,7 @@ import {
   BookingEntity,
   PayoutRequestEntity,
   TripEntity,
+  UserEntity,
   WalletAccountEntity,
   WalletTransactionEntity,
 } from '../../database/entities';
@@ -18,6 +19,7 @@ import { WalletService } from './wallet.service';
       PayoutRequestEntity,
       TripEntity,
       BookingEntity,
+      UserEntity,
     ]),
   ],
   controllers: [WalletController],

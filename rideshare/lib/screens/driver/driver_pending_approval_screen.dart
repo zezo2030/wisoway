@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/theme/colors.dart';
+import '../../core/widgets/phone_text.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 class DriverPendingApprovalScreen extends StatefulWidget {
@@ -100,7 +101,10 @@ class _DriverPendingApprovalScreenState
                       const SizedBox(height: 12),
                       _buildProfileItem(
                         'رقم الهاتف',
-                        user.phoneNumber ?? 'غير محدد',
+                        user.phoneNumber.isNotEmpty
+                            ? user.phoneNumber
+                            : 'غير محدد',
+                        isPhone: user.phoneNumber.isNotEmpty,
                       ),
                       const SizedBox(height: 12),
                       _buildProfileItem('الجنس', user.gender),
@@ -184,7 +188,12 @@ class _DriverPendingApprovalScreenState
     );
   }
 
-  Widget _buildProfileItem(String label, String value) {
+  Widget _buildProfileItem(String label, String value, {bool isPhone = false}) {
+    final valueStyle = TextStyle(
+      fontSize: 16,
+      fontWeight: FontWeight.w500,
+      color: T.onSurface(context),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -193,14 +202,7 @@ class _DriverPendingApprovalScreenState
           style: TextStyle(fontSize: 14, color: T.onSurfaceVariant(context)),
         ),
         const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-            color: T.onSurface(context),
-          ),
-        ),
+        if (isPhone) PhoneText(value, style: valueStyle) else Text(value, style: valueStyle),
       ],
     );
   }

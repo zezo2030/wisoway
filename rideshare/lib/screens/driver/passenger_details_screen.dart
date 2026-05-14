@@ -3,9 +3,9 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/text_styles.dart';
+import '../../core/widgets/phone_text.dart';
 import '../../models/booking_model.dart';
 import '../../core/constants/route_names.dart';
-import '../../core/services/booking_service.dart';
 
 class PassengerDetailsScreen extends StatefulWidget {
   final BookingModel booking;
@@ -17,9 +17,7 @@ class PassengerDetailsScreen extends StatefulWidget {
 }
 
 class _PassengerDetailsScreenState extends State<PassengerDetailsScreen> {
-  final _bookingService = BookingService();
   late BookingModel _booking;
-  bool _markingPaid = false;
 
   @override
   void initState() {
@@ -42,38 +40,12 @@ class _PassengerDetailsScreenState extends State<PassengerDetailsScreen> {
     }
   }
 
-  Future<void> _onMarkPaid() async {
-    setState(() => _markingPaid = true);
-    try {
-      final updated = await _bookingService.markPaid(_booking.id);
-      if (mounted) {
-        setState(() => _booking = updated);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم تأكيد استلام المبلغ بنجاح'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('حدث خطأ: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _markingPaid = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final user = _booking.userPopulated;
-    // Post-settlement reveal: show full passenger details once booking is settled
-    final hasData = _booking.isSettled && user != null;
+    // Communication-fee reveal: once the driver pays the trip unlock fee,
+    // passenger details and chat are available even while the booking is pending.
+    final hasData = _booking.hasDriverPaidToContact && user != null;
 
     return Scaffold(
       appBar: AppBar(
@@ -139,7 +111,7 @@ class _PassengerDetailsScreenState extends State<PassengerDetailsScreen> {
                       ),
                     ),
                     child: Text(
-                      'مقعد ${_booking.seatNumber ?? '-'}',
+                      'مقعد ${_booking.seatSummary.isNotEmpty ? _booking.seatSummary : '-'}',
                       style: AppTextStyles.labelLarge.copyWith(
                         color: AppColors.success,
                       ),
@@ -149,48 +121,12 @@ class _PassengerDetailsScreenState extends State<PassengerDetailsScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            // ── Mark-paid CTA (only when booking is confirmed and not yet settled) ──
-            if (_booking.status == 'confirmed' && !_booking.isSettled) ...[
-              _MarkPaidButton(
-                loading: _markingPaid,
-                onPressed: _onMarkPaid,
-              ),
-              const SizedBox(height: 16),
-              // Hint about PII reveal
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.warning.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppColors.warning.withValues(alpha: 0.25),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      IconsaxPlusLinear.info_circle,
-                      color: AppColors.warning,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'بيانات الراكب والمحادثة تظهر فقط بعد تأكيد استلام المبلغ',
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color: AppColors.warningDark,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
             if (hasData) ...[
               _InfoCard(
                 icon: IconsaxPlusLinear.call,
                 label: 'رقم الهاتف',
                 value: user.phoneNumber,
+                isPhone: true,
                 onTap: user.phoneNumber.isNotEmpty
                     ? () => _launchCall(user.phoneNumber)
                     : null,
@@ -212,42 +148,6 @@ class _PassengerDetailsScreenState extends State<PassengerDetailsScreen> {
               ),
             ],
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MarkPaidButton extends StatelessWidget {
-  final bool loading;
-  final VoidCallback onPressed;
-
-  const _MarkPaidButton({required this.loading, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: loading ? null : onPressed,
-        icon: loading
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : const Icon(IconsaxPlusBold.wallet_check),
-        label: Text(
-          loading ? 'جاري التأكيد...' : 'تأكيد استلام المبلغ',
-          style: AppTextStyles.titleSmall.copyWith(fontWeight: FontWeight.bold),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.success,
-          foregroundColor: AppColors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
         ),
       ),
     );
@@ -343,12 +243,14 @@ class _InfoCard extends StatelessWidget {
   final String label;
   final String value;
   final VoidCallback? onTap;
+  final bool isPhone;
 
   const _InfoCard({
     required this.icon,
     required this.label,
     required this.value,
     this.onTap,
+    this.isPhone = false,
   });
 
   @override
@@ -397,15 +299,24 @@ class _InfoCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      value.isNotEmpty ? value : '-',
-                      style: AppTextStyles.titleSmall.copyWith(
-                        color: value.isNotEmpty
-                            ? T.onSurface(context).withValues(alpha: 0.87)
-                            : T.outlineVariant(context),
+                    if (isPhone && value.isNotEmpty)
+                      PhoneText(
+                        value,
+                        style: AppTextStyles.titleSmall.copyWith(
+                          color: T.onSurface(context).withValues(alpha: 0.87),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      )
+                    else
+                      Text(
+                        value.isNotEmpty ? value : '-',
+                        style: AppTextStyles.titleSmall.copyWith(
+                          color: value.isNotEmpty
+                              ? T.onSurface(context).withValues(alpha: 0.87)
+                              : T.outlineVariant(context),
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
                   ],
                 ),
               ),

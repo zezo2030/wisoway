@@ -7,6 +7,7 @@ import {
 
 import { cn } from "@/lib/utils"
 import { buttonVariants, type Button } from "@/components/ui/button"
+import { useLanguage } from "@/providers/language-provider"
 
 function Pagination({ className, ...props }: React.ComponentProps<"nav">) {
   return (
@@ -69,6 +70,7 @@ function PaginationPrevious({
   className,
   ...props
 }: React.ComponentProps<typeof PaginationLink>) {
+  const { t, dir } = useLanguage()
   return (
     <PaginationLink
       aria-label="Go to previous page"
@@ -76,8 +78,8 @@ function PaginationPrevious({
       className={cn("gap-1 px-2.5 sm:pl-2.5", className)}
       {...props}
     >
-      <ChevronLeftIcon />
-      <span className="hidden sm:block">Previous</span>
+      {dir === "rtl" ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+      <span className="hidden sm:block">{t("previous")}</span>
     </PaginationLink>
   )
 }
@@ -86,6 +88,7 @@ function PaginationNext({
   className,
   ...props
 }: React.ComponentProps<typeof PaginationLink>) {
+  const { t, dir } = useLanguage()
   return (
     <PaginationLink
       aria-label="Go to next page"
@@ -93,8 +96,8 @@ function PaginationNext({
       className={cn("gap-1 px-2.5 sm:pr-2.5", className)}
       {...props}
     >
-      <span className="hidden sm:block">Next</span>
-      <ChevronRightIcon />
+      <span className="hidden sm:block">{t("next")}</span>
+      {dir === "rtl" ? <ChevronLeftIcon /> : <ChevronRightIcon />}
     </PaginationLink>
   )
 }

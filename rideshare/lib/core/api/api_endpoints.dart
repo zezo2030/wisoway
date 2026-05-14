@@ -43,12 +43,13 @@ class ApiEndpoints {
   static String tripSeatLock(String id) => '/trips/$id/seats/lock';
   static String hideTrip(String id) => '/trips/$id/hide';
   static String showTrip(String id) => '/trips/$id/show';
-  static String completeTrip(String id) => '/trips/$id/complete';
-  static String startTrip(String id) => '/trips/$id/start';
+  static String arriveTrip(String id) => '/trips/$id/arrived';
   static String shareLink(String tripId) => '/trips/$tripId/share-link';
   static String publicShare(String token) => '/share/$token';
-  static String passengerConfirm(String bookingId) => '/bookings/$bookingId/passenger-confirm';
-  static String driverConfirm(String bookingId) => '/bookings/$bookingId/driver-confirm';
+  static String passengerConfirm(String bookingId) =>
+      '/bookings/$bookingId/passenger-confirm';
+  static String driverConfirm(String bookingId) =>
+      '/bookings/$bookingId/driver-confirm';
   static String cancelTrip(String id) => '/trips/$id';
 
   // Bookings (v1 — legacy)
@@ -91,6 +92,7 @@ class ApiEndpoints {
 
   // Chat
   static const String chatRooms = '/chat/rooms';
+  static String chatRoomById(String roomId) => '/chat/rooms/$roomId';
   static String chatRoomByTrip(String tripId) => '/chat/rooms/$tripId';
   static String chatRoomByTripAndPassenger(String tripId, String passengerId) =>
       '/chat/rooms/trip/$tripId/passenger/$passengerId';

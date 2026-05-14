@@ -438,14 +438,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         );
                       },
                     ),
-                    SettingsTile(
-                      icon: IconsaxPlusBroken.receipt_item,
-                      title: isArabic ? 'سجل المدفوعات' : 'Payment History',
-                      trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
-                      onTap: () {
-                        Navigator.pushNamed(context, RouteNames.paymentHistory);
-                      },
-                    ),
                   ],
                 ),
                 SettingsSection(

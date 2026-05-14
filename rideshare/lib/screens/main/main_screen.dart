@@ -7,7 +7,7 @@ import '../../core/utils/responsive_layout.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/auth_provider.dart';
 import 'tabs/home_tab.dart';
-import 'tabs/my_trips_tab.dart';
+import '../driver/my_trips_screen.dart';
 import 'tabs/profile_tab.dart';
 
 class MainScreen extends StatefulWidget {
@@ -22,7 +22,7 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _tabs = [
     const HomeTab(),
-    const MyTripsTab(),
+    const MyTripsScreen(),
     const ProfileTab(),
   ];
 

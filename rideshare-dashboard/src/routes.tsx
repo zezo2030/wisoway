@@ -21,10 +21,13 @@ import BookingsListPage from "@/pages/bookings/bookings-list"
 import RatingsListPage from "@/pages/ratings/ratings-list"
 import NotificationsPage from "@/pages/notifications/notifications"
 import ChatRoomsPage from "@/pages/chat/chat-rooms"
+import TripChatLivePage from "@/pages/chat/trip-chat-live"
 import AccountFlagsPage from "@/pages/account-flags/account-flags"
 import PendingChargesPage from "@/pages/pending-charges/PendingChargesPage"
 import ComplaintsPage from "@/pages/complaints/complaints"
 import RefundsPage from "@/pages/refunds/refunds"
+import FinesPage from "@/pages/fines/fines-list"
+import NoShowReportsPage from "@/pages/no-show-reports/no-show-reports-list"
 
 // Placeholder pages (will be implemented in later phases)
 
@@ -105,6 +108,10 @@ export function AppRoutes() {
           element: <TripDetailPage />,
         },
         {
+          path: "trips/:id/chat",
+          element: <TripChatLivePage />,
+        },
+        {
           path: "bookings",
           element: <BookingsListPage />,
         },
@@ -143,6 +150,14 @@ export function AppRoutes() {
         {
           path: "refunds",
           element: <RefundsPage />,
+        },
+        {
+          path: "fines",
+          element: <FinesPage />,
+        },
+        {
+          path: "no-show-reports",
+          element: <NoShowReportsPage />,
         },
       ],
     },

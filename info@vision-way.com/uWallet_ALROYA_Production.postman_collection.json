@@ -1,0 +1,493 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+		"name": "uWallet ALROYA - Production",
+		"description": "Production Postman collection for uWallet A2A CliQ Merchant Interface (ALROYA).\n\n## Features\n- Auto-token refresh: token is fetched and reused automatically across requests\n- Auto CorrelationID generation for every request\n- Auto MessageTrxID generation for Purchase requests\n\n## Setup\nAll credentials are stored as collection variables. To rotate them, edit the collection variables (NOT the requests).\n\n## Security\nNEVER commit this file to public repositories. Treat it as a secret.\n\n## Endpoints\n1. **Get Token** - manual token fetch (auto-refresh handles this normally)\n2. **Purchase** - create a payment request\n3. **Payment Inquiry** - check payment status\n4. **Health Check (DNS)** - quick connectivity sanity check",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Get Token (manual)",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"// Skip the collection-level auto-refresh for this request (it IS the token request)",
+							"pm.collectionVariables.set('skipAutoToken', 'true');",
+							"pm.collectionVariables.set('correlationId', 'REQ-' + Date.now() + '-' + Math.floor(Math.random()*100000));"
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.collectionVariables.set('skipAutoToken', 'false');",
+							"",
+							"pm.test('Status code is 200', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"const data = pm.response.json();",
+							"if (data && data.TokenInfo && data.TokenInfo.Token) {",
+							"    pm.collectionVariables.set('token', data.TokenInfo.Token);",
+							"    const expiry = new Date(data.TokenInfo.ExpiryDate).getTime();",
+							"    pm.collectionVariables.set('tokenExpiry', expiry.toString());",
+							"    console.log('Token saved. Expires at:', data.TokenInfo.ExpiryDate);",
+							"} else {",
+							"    console.error('Token not found in response:', data);",
+							"}"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "CorrelationID",
+						"value": "{{correlationId}}"
+					},
+					{
+						"key": "MerchantID",
+						"value": "{{merchantId}}"
+					},
+					{
+						"key": "UserID",
+						"value": "{{userId}}"
+					},
+					{
+						"key": "Password",
+						"value": "{{password}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"SecurityKey\": \"{{securityKey}}\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/A2AMerchantInterface/GetToken",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"A2AMerchantInterface",
+						"GetToken"
+					]
+				},
+				"description": "Manually fetch a token. Normally you don't need to run this — the collection-level pre-request script auto-refreshes the token before any other request."
+			},
+			"response": []
+		},
+		{
+			"name": "2. Purchase",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"// Auto-generate a unique MessageTrxID for this purchase if not set",
+							"const today = new Date();",
+							"const yyyymmdd = today.getFullYear().toString() + ",
+							"    String(today.getMonth() + 1).padStart(2, '0') + ",
+							"    String(today.getDate()).padStart(2, '0');",
+							"const seq = Date.now().toString().slice(-9);",
+							"pm.collectionVariables.set('messageTrxId', 'ALROYA-' + yyyymmdd + '-' + seq);",
+							"console.log('Generated MessageTrxID:', pm.collectionVariables.get('messageTrxId'));"
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test('Status code is 200', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"const body = pm.response.json();",
+							"console.log('Purchase response:', JSON.stringify(body, null, 2));",
+							"",
+							"// Save MSGID for later inquiry",
+							"if (body && body.MSGID) {",
+							"    pm.collectionVariables.set('lastMsgId', body.MSGID);",
+							"}"
+						]
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "CorrelationID",
+						"value": "{{correlationId}}"
+					},
+					{
+						"key": "MerchantID",
+						"value": "{{merchantId}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"MessageTrxID\": \"{{messageTrxId}}\",\n    \"MerchantID\": \"{{merchantId}}\",\n    \"RAliasType\": \"MOBL\",\n    \"RAliasValue\": \"962XXXXXXXXX\",\n    \"Amount\": 1.000,\n    \"CallBackURL\": \"{{callbackUrl}}\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/A2AMerchantInterface/Purchase",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"A2AMerchantInterface",
+						"Purchase"
+					]
+				},
+				"description": "Create a purchase request.\n\n**Body fields:**\n- `MessageTrxID`: auto-generated as `ALROYA-YYYYMMDD-XXXXXXXXX`\n- `RAliasType`: `MOBL` (mobile number) or `ALIAS` (CliQ alias)\n- `RAliasValue`: customer wallet number/alias\n- `Amount`: payment amount\n- `CallBackURL`: your endpoint that uWallet will POST status updates to"
+			},
+			"response": []
+		},
+		{
+			"name": "3. Payment Inquiry",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"// Uses the messageTrxId from the last Purchase by default.",
+							"// Override by editing the body below."
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test('Status code is 200', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"const body = pm.response.json();",
+							"console.log('Inquiry response:', JSON.stringify(body, null, 2));",
+							"",
+							"if (body && body.StatusCode !== undefined) {",
+							"    const statusMap = {",
+							"        '0': 'Success',",
+							"        '300': 'Rejected',",
+							"        '310': 'Rejected - No response from PSP',",
+							"        '350': 'Timeout'",
+							"    };",
+							"    console.log('Payment status:', statusMap[body.StatusCode] || 'Unknown', '(' + body.StatusCode + ')');",
+							"}"
+						]
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "CorrelationID",
+						"value": "{{correlationId}}"
+					},
+					{
+						"key": "MerchantID",
+						"value": "{{merchantId}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"MessageTrxID\": \"{{messageTrxId}}\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/A2AMerchantInterface/PaymentInquiry",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"A2AMerchantInterface",
+						"PaymentInquiry"
+					]
+				},
+				"description": "Inquire about a previous purchase by `MessageTrxID`.\n\n**StatusCode values:**\n- `0`: Success\n- `300`: Rejected\n- `310`: Rejected - No response from PSP\n- `350`: Timeout"
+			},
+			"response": []
+		},
+		{
+			"name": "4. Force Token Refresh (utility)",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"// Clear cached token to force refresh",
+							"pm.collectionVariables.set('token', '');",
+							"pm.collectionVariables.set('tokenExpiry', '');",
+							"console.log('Token cache cleared. The collection-level pre-request script will fetch a new one.');"
+						]
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "CorrelationID",
+						"value": "{{correlationId}}"
+					},
+					{
+						"key": "MerchantID",
+						"value": "{{merchantId}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"MessageTrxID\": \"{{messageTrxId}}\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/A2AMerchantInterface/PaymentInquiry",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"A2AMerchantInterface",
+						"PaymentInquiry"
+					]
+				},
+				"description": "Utility request: clears the cached token, then runs an inquiry which triggers the auto-refresh script. Useful for testing the refresh flow."
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// =====================================================",
+					"// Collection-level Pre-Request Script",
+					"// 1) Generates a fresh CorrelationID for every request",
+					"// 2) Auto-refreshes the bearer token if missing/expired",
+					"// =====================================================",
+					"",
+					"// 1. Always generate a fresh CorrelationID",
+					"pm.collectionVariables.set(",
+					"    'correlationId',",
+					"    'REQ-' + Date.now() + '-' + Math.floor(Math.random() * 100000)",
+					");",
+					"",
+					"// 2. Skip auto-refresh if this IS the GetToken request",
+					"if (pm.collectionVariables.get('skipAutoToken') === 'true') {",
+					"    console.log('Auto-token refresh skipped (manual GetToken request).');",
+					"    return;",
+					"}",
+					"",
+					"const currentToken = pm.collectionVariables.get('token');",
+					"const tokenExpiry = pm.collectionVariables.get('tokenExpiry');",
+					"const now = Date.now();",
+					"const bufferMs = 60 * 1000; // refresh 60s before expiry",
+					"",
+					"const tokenIsValid = currentToken && tokenExpiry && (parseInt(tokenExpiry) - now > bufferMs);",
+					"",
+					"if (tokenIsValid) {",
+					"    console.log('Using cached token. Expires in', Math.round((parseInt(tokenExpiry) - now) / 1000), 'sec.');",
+					"    return;",
+					"}",
+					"",
+					"console.log('Fetching new token...');",
+					"",
+					"const refreshCorrelationId = 'TKN-' + Date.now() + '-' + Math.floor(Math.random() * 100000);",
+					"",
+					"pm.sendRequest({",
+					"    url: pm.collectionVariables.get('baseUrl') + '/A2AMerchantInterface/GetToken',",
+					"    method: 'POST',",
+					"    header: {",
+					"        'Content-Type': 'application/json',",
+					"        'CorrelationID': refreshCorrelationId,",
+					"        'MerchantID': pm.collectionVariables.get('merchantId'),",
+					"        'UserID': pm.collectionVariables.get('userId'),",
+					"        'Password': pm.collectionVariables.get('password')",
+					"    },",
+					"    body: {",
+					"        mode: 'raw',",
+					"        raw: JSON.stringify({",
+					"            SecurityKey: pm.collectionVariables.get('securityKey')",
+					"        })",
+					"    }",
+					"}, function (err, response) {",
+					"    if (err) {",
+					"        console.error('Token refresh failed:', err);",
+					"        return;",
+					"    }",
+					"    try {",
+					"        const data = response.json();",
+					"        if (data && data.TokenInfo && data.TokenInfo.Token) {",
+					"            pm.collectionVariables.set('token', data.TokenInfo.Token);",
+					"            const expiry = new Date(data.TokenInfo.ExpiryDate).getTime();",
+					"            pm.collectionVariables.set('tokenExpiry', expiry.toString());",
+					"            console.log('Token refreshed. Expires at:', data.TokenInfo.ExpiryDate);",
+					"        } else {",
+					"            console.error('Invalid token response:', JSON.stringify(data));",
+					"        }",
+					"    } catch (e) {",
+					"        console.error('Failed to parse token response:', e);",
+					"    }",
+					"});"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Collection-level test: log the response code for every request",
+					"console.log('Response code:', pm.response.code, '|', pm.info.requestName);"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://api.uwallet.jo",
+			"type": "string"
+		},
+		{
+			"key": "merchantId",
+			"value": "ALROYA26",
+			"type": "string",
+			"description": "VERIFY with provider — could be ALROYA26 (CliQ alias) or a separate merchant code"
+		},
+		{
+			"key": "userId",
+			"value": "ALROYAAPI",
+			"type": "string"
+		},
+		{
+			"key": "password",
+			"value": "wBkx2aqDgjzAIq7hRr8V3Q==",
+			"type": "string",
+			"description": "Channel Token Password (encrypted)"
+		},
+		{
+			"key": "securityKey",
+			"value": "ALROYA@2026",
+			"type": "string"
+		},
+		{
+			"key": "callbackUrl",
+			"value": "https://yourdomain.com/uwallet/callback",
+			"type": "string",
+			"description": "REPLACE with your real callback endpoint"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string",
+			"description": "Auto-populated by the pre-request script"
+		},
+		{
+			"key": "tokenExpiry",
+			"value": "",
+			"type": "string",
+			"description": "Auto-populated (epoch ms)"
+		},
+		{
+			"key": "correlationId",
+			"value": "",
+			"type": "string",
+			"description": "Auto-generated per request"
+		},
+		{
+			"key": "messageTrxId",
+			"value": "",
+			"type": "string",
+			"description": "Auto-generated for Purchase requests"
+		},
+		{
+			"key": "skipAutoToken",
+			"value": "false",
+			"type": "string"
+		},
+		{
+			"key": "lastMsgId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

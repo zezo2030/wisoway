@@ -1,17 +1,53 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/route_names.dart';
 import '../../../core/theme/colors.dart';
 import '../../../models/user_model.dart';
+import '../../../providers/auth_provider.dart';
 import '../../../widgets/notification_icon_button.dart';
 import '../../../widgets/common/logout_confirmation_dialog.dart';
 import '../widgets/profile_menu_item.dart';
 
-class ProfileTab extends StatelessWidget {
+class ProfileTab extends StatefulWidget {
   final UserModel? user;
 
   const ProfileTab({super.key, this.user});
+
+  @override
+  State<ProfileTab> createState() => _ProfileTabState();
+}
+
+class _ProfileTabState extends State<ProfileTab> {
+  bool _refreshing = false;
+
+  UserModel? get user => widget.user;
+
+  Future<void> _onRefresh() async {
+    if (_refreshing) return;
+    setState(() => _refreshing = true);
+    try {
+      await context.read<AuthProvider>().loadUserProfile();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تم تحديث البيانات'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('تعذر تحديث البيانات: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _refreshing = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,6 +56,25 @@ class ProfileTab extends StatelessWidget {
         title: const Text('الملف الشخصي'),
         automaticallyImplyLeading: false,
         actions: [
+          IconButton(
+            tooltip: 'تحديث البيانات',
+            onPressed: _refreshing ? null : _onRefresh,
+            icon: _refreshing
+                ? SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.4,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        T.onSurface(context),
+                      ),
+                    ),
+                  )
+                : Icon(
+                    IconsaxPlusLinear.refresh,
+                    color: T.onSurface(context),
+                  ),
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: NotificationIconButton(

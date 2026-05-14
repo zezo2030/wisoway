@@ -7,6 +7,7 @@ enum FailureCategory {
   auth,
   permission,
   banned,
+  outstandingCharges,
   unknown,
 }
 
@@ -20,6 +21,7 @@ enum FailureAction {
   retry,
   reauthenticate,
   openSettings,
+  viewPendingCharges,
 }
 
 class Failure extends Equatable {
@@ -35,6 +37,10 @@ class Failure extends Equatable {
   final String? banReason;
   final String? supportWhatsApp;
 
+  /// Only populated when category == FailureCategory.outstandingCharges
+  final int? outstandingCount;
+  final double? outstandingTotal;
+
   const Failure({
     required this.category,
     required this.messageKey,
@@ -45,6 +51,8 @@ class Failure extends Equatable {
     required this.developerDetail,
     this.banReason,
     this.supportWhatsApp,
+    this.outstandingCount,
+    this.outstandingTotal,
   });
 
   @override
@@ -58,5 +66,7 @@ class Failure extends Equatable {
         developerDetail,
         banReason,
         supportWhatsApp,
+        outstandingCount,
+        outstandingTotal,
       ];
 }

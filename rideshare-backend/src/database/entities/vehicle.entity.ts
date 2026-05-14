@@ -49,6 +49,11 @@ export class VehicleEntity {
   @Column({ type: 'text', nullable: true })
   vehicleLicenseImageUrl: string | null;
 
+  /** A photo of the car itself. Captured once at vehicle registration and
+   * shown on every trip detail screen. */
+  @Column({ type: 'text', nullable: true })
+  carImageUrl: string | null;
+
   @Column({ type: 'boolean', default: false })
   isVerified: boolean;
 

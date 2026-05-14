@@ -23,6 +23,9 @@ export const ErrorCodes = {
   /** Driver attempted to publish a trip or get approved without a profile photo. */
   PROFILE_PHOTO_REQUIRED: 'PROFILE_PHOTO_REQUIRED',
 
+  /** Driver attempted to publish a trip while owing one or more pending charges. */
+  OUTSTANDING_CHARGES: 'OUTSTANDING_CHARGES',
+
   /** Admin approval has not been granted to this driver yet. */
   DRIVER_REQUIRES_APPROVAL: 'DRIVER_REQUIRES_APPROVAL',
 

@@ -70,4 +70,8 @@ export class CreateVehicleDto {
   @IsString()
   @MaxLength(500)
   vehicleLicenseImageUrl?: string;
+
+  @IsString()
+  @MaxLength(500)
+  carImageUrl: string;
 }

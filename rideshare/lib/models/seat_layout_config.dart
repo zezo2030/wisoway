@@ -8,7 +8,7 @@ class SeatLayoutConfig {
     required this.rows,
     required this.seatsPerRow,
     this.seatsPerRowList,
-    this.preventGenderMixing = true,
+    this.preventGenderMixing = false,
   });
 
   // Calculate total seats
@@ -40,7 +40,7 @@ class SeatLayoutConfig {
       rows: map['rows'] ?? 2,
       seatsPerRow: map['seatsPerRow'] ?? 2,
       seatsPerRowList: customList,
-      preventGenderMixing: map['preventGenderMixing'] ?? true,
+      preventGenderMixing: map['preventGenderMixing'] ?? false,
     );
   }
 

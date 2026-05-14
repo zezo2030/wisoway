@@ -26,6 +26,8 @@ export const ROUTES = {
   PENDING_CHARGES: "/pending-charges",
   COMPLAINTS: "/complaints",
   REFUNDS: "/refunds",
+  FINES: "/fines",
+  NO_SHOW_REPORTS: "/no-show-reports",
 } as const
 
 // Navigation Items (for sidebar)
@@ -199,6 +201,13 @@ export const QUERY_KEYS = {
   },
   REFUNDS: {
     LIST: "refunds",
+  },
+  FINES: {
+    LIST: "fines",
+  },
+  NO_SHOW_REPORTS: {
+    LIST: "no-show-reports",
+    DETAIL: "no-show-reports-detail",
   },
   SETTLEMENT: {
     AUDITS: "settlement-audits",

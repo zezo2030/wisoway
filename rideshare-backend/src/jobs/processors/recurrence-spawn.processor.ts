@@ -7,8 +7,8 @@
  * See contracts/recurrence.contract.md "Spawn algorithm".
  */
 
-import { Processor, Process } from '@nestjs/bull';
-import type { Job } from 'bull';
+import { Processor, Process, InjectQueue } from '@nestjs/bull';
+import type { Job, Queue } from 'bull';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan, MoreThanOrEqual } from 'typeorm';
 import { TripEntity } from '../../database/entities/trip.entity';
@@ -19,6 +19,10 @@ import {
 import { TripStatus } from '../../database/entities/shared.enums';
 import { NotificationsService } from '../../modules/notifications/notifications.service';
 import { Logger } from '@nestjs/common';
+import {
+  computeTripAutoStartDelayMs,
+  TRIP_AUTO_START_JOB_ID_PREFIX,
+} from '../../modules/trips/trip-auto-start.util';
 
 @Processor('recurrence-spawn')
 export class RecurrenceSpawnProcessor {
@@ -30,6 +34,8 @@ export class RecurrenceSpawnProcessor {
     @InjectRepository(TripEntity)
     private tripRepo: Repository<TripEntity>,
     private notificationsService: NotificationsService,
+    @InjectQueue('trip-auto-start')
+    private tripAutoStartQueue: Queue,
   ) {}
 
   @Process('spawn-occurrences')
@@ -177,6 +183,25 @@ export class RecurrenceSpawnProcessor {
       .catch((err) =>
         this.logger.warn(
           `Failed to enqueue city fanout for spawned trip ${saved.id}: ${err.message}`,
+        ),
+      );
+
+    const delay = computeTripAutoStartDelayMs(saved.departureTime);
+    this.tripAutoStartQueue
+      .add(
+        'enforce',
+        { tripId: saved.id },
+        {
+          delay,
+          jobId: `${TRIP_AUTO_START_JOB_ID_PREFIX}${saved.id}`,
+          removeOnComplete: true,
+          attempts: 2,
+          backoff: { type: 'exponential', delay: 15000 },
+        },
+      )
+      .catch((err) =>
+        this.logger.warn(
+          `trip-auto-start spawn failed ${saved.id}: ${(err as Error).message}`,
         ),
       );
 

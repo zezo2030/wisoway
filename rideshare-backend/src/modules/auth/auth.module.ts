@@ -5,6 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { UsersModule } from '../users/users.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { DeviceFingerprintService } from './device-fingerprint.service';
@@ -20,6 +21,7 @@ import {
 @Module({
   imports: [
     UsersModule,
+    NotificationsModule,
     PassportModule,
     TypeOrmModule.forFeature([
       UserDeviceEntity,

@@ -4,6 +4,7 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../models/trip_model.dart';
+import '../../../utils/seat_layout_helpers.dart';
 import '../../../widgets/common/section_card.dart';
 
 class TripDetailsCard extends StatelessWidget {
@@ -59,11 +60,11 @@ class TripDetailsCard extends StatelessWidget {
         _DetailRow(
           icon: IconsaxPlusLinear.grid_1,
           label: 'تخطيط المقاعد',
-          value:
-              trip.seatLayout.seatsPerRowList != null &&
-                  trip.seatLayout.seatsPerRowList!.isNotEmpty
-              ? 'مخصص: ${trip.seatLayout.seatsPerRowList!.join('، ')}'
-              : '${trip.seatLayout.rows} صف × ${trip.seatLayout.seatsPerRow} مقعد',
+          value: SeatLayoutHelpers.formatTripSeatLayoutPattern(
+            trip.seatLayout,
+            trip.seats,
+            trip.totalSeats,
+          ),
           color: AppColors.teal600,
         ),
         const Divider(height: 32),

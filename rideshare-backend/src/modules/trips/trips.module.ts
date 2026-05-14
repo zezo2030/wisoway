@@ -16,11 +16,16 @@ import { WsAuthGuard } from '../../common/guards/ws-auth.guard';
 import { WsRateLimitGuard } from '../../common/guards/ws-rate-limit.guard';
 import { TripTimeModule } from '../trip-time/trip-time.module';
 import { RecurrenceModule } from '../recurrence/recurrence.module';
+import { PendingChargesModule } from '../pending-charges/pending-charges.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([TripEntity]),
-    BullModule.registerQueue({ name: 'no-show-detector' }),
+    BullModule.registerQueue(
+      { name: 'no-show-detector' },
+      { name: 'trip-auto-start' },
+      { name: 'trip-auto-complete' },
+    ),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -38,6 +43,7 @@ import { RecurrenceModule } from '../recurrence/recurrence.module';
     forwardRef(() => RecurrenceModule),
     VehiclesModule,
     UsersModule,
+    PendingChargesModule,
   ],
   controllers: [TripsController],
   providers: [TripsService, TripsGateway, WsAuthGuard, WsRateLimitGuard],

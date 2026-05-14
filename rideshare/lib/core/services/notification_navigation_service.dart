@@ -45,6 +45,10 @@ class NotificationNavigationService {
         _handleCommunicationNotification(data);
         break;
 
+      case 'chat_message':
+        _handleChatMessageNotification(data);
+        break;
+
       default:
         // Navigate to notifications screen for unknown types
         _navigateToRoute(RouteNames.notifications);
@@ -97,6 +101,46 @@ class NotificationNavigationService {
       _navigateToRoute(RouteNames.tripDetails, arguments: tripId);
     } else {
       _navigateToRoute(RouteNames.notifications);
+    }
+  }
+
+  /// Handle incoming chat message notification — opens the correct chat screen
+  /// based on the sender's role (driver → passenger chat; passenger → driver chat).
+  static void _handleChatMessageNotification(Map<String, dynamic> data) {
+    final tripId = data['tripId'] as String?;
+    final senderId = data['senderId'] as String?;
+    final senderName = data['senderName'] as String?;
+    final chatRoomId = data['chatRoomId'] as String?;
+    // senderRole: 'driver' | 'passenger' (set by backend)
+    final senderRole = data['senderRole'] as String?;
+
+    if (tripId == null) {
+      _navigateToRoute(RouteNames.notifications);
+      return;
+    }
+
+    if (senderRole == 'driver') {
+      // Recipient is a passenger → open passenger chat screen
+      _navigateToRoute(
+        RouteNames.chat,
+        arguments: {
+          'tripId': tripId,
+          'chatRoomId': chatRoomId,
+          'driverId': senderId ?? '',
+          'driverName': senderName ?? 'السائق',
+        },
+      );
+    } else {
+      // Recipient is a driver → open driver chat screen
+      _navigateToRoute(
+        RouteNames.driverChat,
+        arguments: {
+          'tripId': tripId,
+          'chatRoomId': chatRoomId,
+          'passengerId': senderId,
+          'passengerName': senderName ?? 'الراكب',
+        },
+      );
     }
   }
 

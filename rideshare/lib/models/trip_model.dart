@@ -287,6 +287,50 @@ class TripModel {
   bool get isPast => departureTime.isBefore(DateTime.now());
   bool get isUpcoming => departureTime.isAfter(DateTime.now());
 
+  /// Same window as backend `POST /trips/:id/start`.
+  static const int driverStartTripEarlyMinutes = 15;
+  static const int driverStartTripLateMinutes = 30;
+
+  DateTime get driverStartWindowOpens => departureTime.subtract(
+        const Duration(minutes: driverStartTripEarlyMinutes),
+      );
+
+  DateTime get driverStartWindowCloses => departureTime.add(
+        const Duration(minutes: driverStartTripLateMinutes),
+      );
+
+  bool get _canDriverAttemptStartStatus =>
+      status == 'published' ||
+      status == 'fully_booked' ||
+      status == 'active';
+
+  bool get isDriverStartWindowActive {
+    if (!_canDriverAttemptStartStatus) return false;
+    final n = DateTime.now();
+    return !n.isBefore(driverStartWindowOpens) &&
+        !n.isAfter(driverStartWindowCloses);
+  }
+
+  /// True when the server-side start window has closed and the trip was never started.
+  bool get isDriverStartDeadlinePassed {
+    if (status == 'in_progress' ||
+        status == 'completed' ||
+        status == 'cancelled') {
+      return false;
+    }
+    if (!(status == 'published' ||
+        status == 'fully_booked' ||
+        status == 'active' ||
+        status == 'hidden')) {
+      return false;
+    }
+    return DateTime.now().isAfter(driverStartWindowCloses);
+  }
+
+  /// Red banner on driver-facing cards: only after the real deadline, not at raw departure instant.
+  bool get driverShowsStartDeadlinePassedBanner =>
+      isDriverStartDeadlinePassed;
+
   bool get isLocked => (isActive && isPast) || isExpired;
 
   bool get canBeBooked => isActive && !isPast && hasAvailableSeats;
@@ -304,7 +348,14 @@ class TripModel {
   String get statusDisplayText {
     switch (status) {
       case 'active':
+      case 'published':
         return 'نشطة';
+      case 'fully_booked':
+        return 'مكتملة الحجز';
+      case 'in_progress':
+        return 'قيد التنفيذ';
+      case 'draft':
+        return 'مسودة';
       case 'hidden':
         return 'مخفية';
       case 'completed':

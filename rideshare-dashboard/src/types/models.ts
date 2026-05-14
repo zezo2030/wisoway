@@ -40,7 +40,10 @@ export interface User {
 
 export interface Vehicle {
   _id: string
+  id?: string
   driverId: string | UserSummary
+  /** Present when admin vehicles API joins driver (Postgres). */
+  driver?: { id?: string; name?: string; email?: string | null; phoneNumber?: string | null }
   vehicleType: string
   model: string
   plateNumber: string
@@ -78,6 +81,8 @@ export interface Trip {
   _id: string
   id?: string
   driverId: string | UserSummary
+  /** Present on admin trip list when API joins the driver (Postgres). */
+  driver?: { id?: string; name?: string; email?: string | null; phoneNumber?: string | null }
   driverName?: string
   from?: Location | string
   to?: Location | string
@@ -128,6 +133,8 @@ export interface BookingSeat {
 export interface Booking {
   _id: string
   userId: string | UserSummary
+  /** Optional raw join shape from some API builds. */
+  user?: { id?: string; name?: string; email?: string | null; phoneNumber?: string | null }
   tripId: string | TripSummary
   /** Legacy v1 single-seat field — nullable in v2 bookings. */
   seatNumber: string | null
@@ -208,7 +215,8 @@ export interface Rating {
 
 export interface Notification {
   _id: string
-  userId: string
+  id?: string
+  userId: string | UserSummary
   type: string
   title: string
   body: string
@@ -219,7 +227,13 @@ export interface Notification {
 
 export interface ChatRoom {
   _id: string
+  /** PG entity uses `id` (UUID) instead of `_id` */
+  id?: string
   tripId: string | TripSummary
+  /** PG 1:1 rooms — UUID of the passenger in this driver-passenger chat */
+  passengerId?: string | null
+  /** Resolved passenger info from PG dashboard endpoint (1:1 rooms only) */
+  passenger?: { id: string; name: string; email: string | null } | null
   participants: Array<{
     userId: string | UserSummary
     joinedAt: string

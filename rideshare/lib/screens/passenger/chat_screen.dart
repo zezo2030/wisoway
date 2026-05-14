@@ -12,6 +12,7 @@ import '../../widgets/common/empty_state.dart';
 
 class ChatScreen extends StatefulWidget {
   final String tripId;
+  final String? chatRoomId;
   final TripModel? trip;
   final String driverId;
   final String driverName;
@@ -19,6 +20,7 @@ class ChatScreen extends StatefulWidget {
   const ChatScreen({
     super.key,
     required this.tripId,
+    this.chatRoomId,
     this.trip,
     required this.driverId,
     required this.driverName,
@@ -38,6 +40,13 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isSending = false;
   bool _chatEnabled = false;
   String? _errorMessage;
+  String? _readOnlyReason;
+
+  String? _closedReasonFor(ChatModel chat) {
+    return chat.isClosedForSending
+        ? 'انتهت الرحلة، ولا يمكن إرسال رسائل جديدة.'
+        : null;
+  }
 
   @override
   void initState() {
@@ -54,6 +63,17 @@ class _ChatScreenState extends State<ChatScreen> {
         setState(() {
           _isLoading = false;
           _errorMessage = 'يجب تسجيل الدخول أولاً';
+        });
+        return;
+      }
+
+      if (widget.chatRoomId != null && widget.chatRoomId!.isNotEmpty) {
+        final chat = await _chatService.getRoomById(widget.chatRoomId!);
+        setState(() {
+          _chatId = chat.id;
+          _chatEnabled = true;
+          _readOnlyReason = _closedReasonFor(chat);
+          _isLoading = false;
         });
         return;
       }
@@ -75,6 +95,7 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() {
         _chatId = chat.id;
         _chatEnabled = true;
+        _readOnlyReason = _closedReasonFor(chat);
         _isLoading = false;
       });
     } catch (e) {
@@ -87,6 +108,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _sendMessage() async {
     if (_messageController.text.trim().isEmpty || _chatId == null) return;
+    if (_readOnlyReason != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_readOnlyReason!)),
+      );
+      return;
+    }
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final currentUser = authProvider.userModel;
@@ -174,6 +201,8 @@ class _ChatScreenState extends State<ChatScreen> {
       );
     }
 
+    final readOnlyReason = _readOnlyReason;
+
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
@@ -239,6 +268,19 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
           ),
+          if (readOnlyReason != null)
+            Container(
+              width: double.infinity,
+              color: T.surfaceVariant(context),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Text(
+                readOnlyReason,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: T.onSurfaceVariant(context),
+                    ),
+              ),
+            ),
           Container(
             decoration: BoxDecoration(
               color: T.surface(context),
@@ -261,8 +303,9 @@ class _ChatScreenState extends State<ChatScreen> {
                         label: 'اكتب رسالة',
                         child: TextField(
                           controller: _messageController,
+                          enabled: readOnlyReason == null,
                           decoration: InputDecoration(
-                            hintText: 'اكتب رسالة...',
+                            hintText: readOnlyReason ?? 'اكتب رسالة...',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(24),
                             ),
@@ -273,13 +316,17 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                           maxLines: null,
                           textInputAction: TextInputAction.send,
-                          onSubmitted: (_) => _sendMessage(),
+                          onSubmitted: (_) {
+                            if (readOnlyReason == null) _sendMessage();
+                          },
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      onPressed: _isSending ? null : _sendMessage,
+                      onPressed: _isSending || readOnlyReason != null
+                          ? null
+                          : _sendMessage,
                       icon: _isSending
                           ? const SizedBox(
                               width: 20,

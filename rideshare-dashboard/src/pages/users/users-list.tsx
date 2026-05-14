@@ -26,7 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { QUERY_KEYS, DEFAULT_PAGE_SIZE } from "@/lib/constants"
-import { cn, formatDate } from "@/lib/utils"
+import { cn, formatDate, formatPhone } from "@/lib/utils"
 import { UserRole } from "@/types/enums"
 import type { User } from "@/types/models"
 import {
@@ -57,6 +57,8 @@ export default function UsersListPage() {
   const search = searchParams.get("search") || ""
   const roleFilter = searchParams.get("role") || ""
   const statusFilter = searchParams.get("status") || ""
+  const newOnlyFilter = searchParams.get("newOnly") === "1"
+  const confirmFilter = searchParams.get("confirmation") || ""
 
   // Local state for search input (debounced)
   const [searchInput, setSearchInput] = useState(search)
@@ -79,7 +81,10 @@ export default function UsersListPage() {
 
   // Fetch users
   const { data, isLoading, error } = useQuery({
-    queryKey: [QUERY_KEYS.ADMIN.USERS, { page, limit, search, role: roleFilter, status: statusFilter }],
+    queryKey: [
+      QUERY_KEYS.ADMIN.USERS,
+      { page, limit, search, role: roleFilter, status: statusFilter, newOnly: newOnlyFilter, confirmation: confirmFilter },
+    ],
     queryFn: () =>
       getUsers({
         page,
@@ -87,6 +92,13 @@ export default function UsersListPage() {
         search: search || undefined,
         role: (roleFilter as UserRole) || undefined,
         isActive: statusFilter === "active" ? true : statusFilter === "banned" ? false : undefined,
+        registeredWithinDays: newOnlyFilter ? 7 : undefined,
+        isConfirmed:
+          confirmFilter === "confirmed"
+            ? true
+            : confirmFilter === "pending"
+              ? false
+              : undefined,
       }),
   })
 
@@ -289,7 +301,11 @@ export default function UsersListPage() {
     {
       key: "phone",
       header: t("phone"),
-      cell: (user) => <div className="font-medium">{user.phoneNumber || "N/A"}</div>,
+      cell: (user) => (
+        <div className="font-medium" dir="ltr">
+          {user.phoneNumber ? formatPhone(user.phoneNumber) : "N/A"}
+        </div>
+      ),
     },
     {
       key: "role",
@@ -499,6 +515,42 @@ export default function UsersListPage() {
                     <SelectItem value="banned">{t("status_banned")}</SelectItem>
                   </SelectContent>
                 </Select>
+
+                <Select
+                  value={confirmFilter || "all"}
+                  onValueChange={(value) =>
+                    updateSearchParams({ confirmation: value === "all" ? null : value, page: "1" })
+                  }
+                >
+                  <SelectTrigger className="w-full sm:w-[170px] bg-background/80 border-border/50 rounded-full font-medium shadow-sm px-4">
+                    <SelectValue placeholder={t("allConfirmation")} />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl shadow-lg border-border/50">
+                    <SelectItem value="all">{t("allConfirmation")}</SelectItem>
+                    <SelectItem value="pending">{t("pendingConfirmation")}</SelectItem>
+                    <SelectItem value="confirmed">{t("confirmedUsers")}</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Button
+                  type="button"
+                  variant={newOnlyFilter ? "default" : "outline"}
+                  onClick={() =>
+                    updateSearchParams({
+                      newOnly: newOnlyFilter ? null : "1",
+                      page: "1",
+                    })
+                  }
+                  className={cn(
+                    "rounded-full font-semibold shadow-sm px-4 whitespace-nowrap",
+                    newOnlyFilter
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                      : "bg-background/80 border-border/50",
+                  )}
+                >
+                  <UserCheck className={cn("h-4 w-4", language === "ar" ? "ml-2" : "mr-2")} />
+                  {t("newUsersFilter")}
+                </Button>
               </div>
             </div>
 

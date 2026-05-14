@@ -5,7 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { UserEntity } from '../../database/entities/user.entity';
 import { TripEntity } from '../../database/entities/trip.entity';
 import { VehicleEntity } from '../../database/entities/vehicle.entity';
@@ -42,6 +42,8 @@ export interface AdminUsersQuery {
   role?: PgUserRole;
   search?: string;
   isActive?: boolean;
+  registeredWithinDays?: number;
+  isConfirmed?: boolean;
 }
 
 export interface AdminPaymentsQuery {
@@ -73,6 +75,7 @@ export interface AdminBookingsQuery {
   status?: string;
   userId?: string;
   tripId?: string;
+  driverId?: string;
 }
 
 export interface AdminRatingsQuery {
@@ -227,14 +230,13 @@ export class AdminDashboardService {
     user.isEmailVerified = true;
     await this.userRepo.save(user);
 
-    const notification = this.notificationRepo.create({
+    await this.notificationsService.create({
       userId,
       type: 'account_verified',
       title: 'Account Verified',
       body: 'Your account has been verified by the administrator.',
       data: { isPhoneVerified: true, isEmailVerified: true, isActive: true },
     });
-    await this.notificationRepo.save(notification);
 
     return user;
   }
@@ -250,24 +252,23 @@ export class AdminDashboardService {
     if (user.role !== PgUserRole.DRIVER) {
       throw new BadRequestException('User is not a driver');
     }
-      if (approved && !user.photoUrl) {
-        throw new BadRequestException(
-          'Driver profile photo is required before approval',
-        );
-      }
+    if (approved && !user.photoUrl) {
+      throw new BadRequestException(
+        'Driver profile photo is required before approval',
+      );
+    }
     user.isDriverApproved = approved;
     await this.userRepo.save(user);
 
-    const notification = this.notificationRepo.create({
+    await this.notificationsService.create({
       userId,
       type: approved ? 'driver_approved' : 'driver_rejected',
-      title: approved ? 'Driver Approved' : 'Driver Rejected',
+      title: approved ? 'تم قبول حسابك كسائق' : 'تم رفض طلب حسابك كسائق',
       body: approved
-        ? 'Congratulations! Your driver account has been approved. You can now create trips.'
-        : 'Your driver account application has been rejected.',
+        ? 'تهانينا! تم قبول حسابك كسائق. يمكنك الآن إنشاء الرحلات.'
+        : 'تم رفض طلب تسجيلك كسائق. يرجى التواصل مع الدعم لمزيد من المعلومات.',
       data: { approved },
     });
-    await this.notificationRepo.save(notification);
 
     return user;
   }
@@ -338,6 +339,23 @@ export class AdminDashboardService {
         { term },
       );
     }
+    if (query.registeredWithinDays != null && query.registeredWithinDays > 0) {
+      const since = new Date(
+        Date.now() - query.registeredWithinDays * 24 * 60 * 60 * 1000,
+      );
+      qb.andWhere('user.createdAt >= :since', { since });
+    }
+    if (query.isConfirmed !== undefined) {
+      if (query.isConfirmed) {
+        qb.andWhere(
+          '(user.isPhoneVerified = true AND user.isEmailVerified = true)',
+        );
+      } else {
+        qb.andWhere(
+          '(user.isPhoneVerified = false OR user.isEmailVerified = false)',
+        );
+      }
+    }
 
     const [data, total] = await qb.getManyAndCount();
 
@@ -354,14 +372,15 @@ export class AdminDashboardService {
 
   async getPayments(
     query: AdminPaymentsQuery,
-  ): Promise<PaginatedResult<PaymentEntity>> {
+  ): Promise<PaginatedResult<Record<string, unknown>>> {
     const page = Math.max(1, query.page ?? 1);
     const limit = Math.min(100, Math.max(1, query.limit ?? 20));
     const skip = (page - 1) * limit;
     try {
       const qb = this.paymentRepo
         .createQueryBuilder('p')
-        .leftJoinAndSelect('p.user', 'user')
+        // Avoid SQL alias "user" — reserved in PostgreSQL and can break the join.
+        .leftJoinAndSelect('p.user', 'payer')
         .leftJoinAndSelect('p.trip', 'trip')
         .orderBy('p.createdAt', 'DESC')
         .skip(skip)
@@ -383,7 +402,77 @@ export class AdminDashboardService {
         });
       }
 
-      const [data, total] = await qb.getManyAndCount();
+      const [entities, total] = await qb.getManyAndCount();
+
+      const missingUserIds = [
+        ...new Set(
+          entities
+            .filter((p) => !p.user && typeof p.userId === 'string' && p.userId)
+            .map((p) => p.userId as string),
+        ),
+      ];
+      const payerById = new Map<string, UserEntity>();
+      if (missingUserIds.length > 0) {
+        const payers = await this.userRepo.find({
+          where: { id: In(missingUserIds) },
+        });
+        for (const u of payers) {
+          payerById.set(u.id, u);
+        }
+      }
+
+      const data = entities.map((p) => {
+        const payer =
+          p.user ??
+          (typeof p.userId === 'string' ? payerById.get(p.userId) : undefined);
+        const userSummary = payer
+          ? {
+              _id: payer.id,
+              name: payer.name,
+              email: payer.email ?? '',
+              phoneNumber: payer.phoneNumber ?? undefined,
+            }
+          : typeof p.userId === 'string'
+            ? { _id: p.userId, name: 'User not found', email: '' }
+            : p.userId;
+
+        const trip = p.trip;
+        const tripSummary = trip
+          ? {
+              _id: trip.id,
+              id: trip.id,
+              fromName: trip.fromName,
+              toName: trip.toName,
+              from: { name: trip.fromName },
+              to: { name: trip.toName },
+              departureTime: trip.departureTime,
+            }
+          : p.tripId;
+
+        return {
+          _id: p.id,
+          id: p.id,
+          userId: userSummary,
+          tripId: tripSummary,
+          bookingId: p.bookingId,
+          amount: Number(p.amount),
+          currency: p.currency,
+          method: p.method,
+          paymentType: p.paymentType,
+          status: p.status,
+          direction: p.direction,
+          proofImageUrl: p.proofImageUrl,
+          walletNumber: p.walletNumber,
+          transactionId: p.transactionId,
+          paymentGatewayRef: p.paymentGatewayRef,
+          adminNote: p.adminNote,
+          recipientAliasType: p.recipientAliasType,
+          recipientAliasValue: p.recipientAliasValue,
+          createdAt: p.createdAt,
+          updatedAt: p.updatedAt,
+        };
+      });
+
       return {
         data,
         meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
@@ -398,7 +487,7 @@ export class AdminDashboardService {
 
   async getPendingPayments(
     query: AdminPaymentsQuery,
-  ): Promise<PaginatedResult<PaymentEntity>> {
+  ): Promise<PaginatedResult<Record<string, unknown>>> {
     return this.getPayments({ ...query, status: 'pending' });
   }
 
@@ -509,8 +598,9 @@ export class AdminDashboardService {
     try {
       const qb = this.bookingRepo
         .createQueryBuilder('b')
-        .leftJoinAndSelect('b.user', 'user')
+        .leftJoinAndSelect('b.user', 'passenger')
         .leftJoinAndSelect('b.trip', 'trip')
+        .leftJoinAndSelect('b.seats', 'seats')
         .orderBy('b.createdAt', 'DESC')
         .skip(skip)
         .take(limit);
@@ -523,11 +613,51 @@ export class AdminDashboardService {
       if (query.tripId) {
         qb.andWhere('b.tripId = :tripId', { tripId: query.tripId });
       }
+      if (query.driverId) {
+        qb.andWhere('trip.driverId = :driverId', { driverId: query.driverId });
+      }
       const [entities, total] = await qb.getManyAndCount();
-      const data = entities.map((b) => ({
+
+      const missingPassengerIds = [
+        ...new Set(
+          entities
+            .filter((b) => !b.user && typeof b.userId === 'string' && b.userId)
+            .map((b) => b.userId as string),
+        ),
+      ];
+      const passengerById = new Map<string, UserEntity>();
+      if (missingPassengerIds.length > 0) {
+        const passengers = await this.userRepo.find({
+          where: { id: In(missingPassengerIds) },
+        });
+        for (const u of passengers) {
+          passengerById.set(u.id, u);
+        }
+      }
+
+      const data = entities.map((b) => {
+        const passenger =
+          b.user ??
+          (typeof b.userId === 'string'
+            ? passengerById.get(b.userId)
+            : undefined);
+        return {
         _id: b.id,
         id: b.id,
         status: b.status,
+        seatNumber: null,
+        seatCount: b.seatCount,
+        totalAmount: Number(b.totalAmount ?? 0),
+        seats: (b.seats ?? []).map((seat) => ({
+          id: seat.id,
+          bookingId: seat.bookingId,
+          seatNumber: seat.seatNumber,
+          displayName: seat.displayName,
+          gender: seat.gender,
+          isMainBooker: seat.isMainBooker,
+          markedAbsentAt: seat.markedAbsentAt,
+          createdAt: seat.createdAt,
+        })),
         hasDriverPaidToContact: b.hasDriverPaidToContact,
         sharePhoneWithDriver: b.sharePhoneWithDriver,
         cancellationReason: b.cancellationReason,
@@ -535,26 +665,36 @@ export class AdminDashboardService {
         cancelledBy: b.cancelledBy,
         createdAt: b.createdAt,
         updatedAt: b.updatedAt,
-        userId: b.user
+        userId: passenger
           ? {
-              _id: b.user.id,
-              name: b.user.name,
-              email: b.user.email ?? '',
-              phoneNumber: b.user.phoneNumber ?? undefined,
+              _id: passenger.id,
+              name: passenger.name,
+              email: passenger.email ?? '',
+              phoneNumber: passenger.phoneNumber ?? undefined,
             }
-          : b.userId,
+          : typeof b.userId === 'string'
+            ? {
+                _id: b.userId,
+                name: 'User not found',
+                email: '',
+              }
+            : b.userId,
         tripId: b.trip
           ? {
               _id: b.trip.id,
+              id: b.trip.id,
               fromName: b.trip.fromName,
               toName: b.trip.toName,
               from: { name: b.trip.fromName },
               to: { name: b.trip.toName },
               departureTime: b.trip.departureTime,
+              price: b.trip.price,
+              currency: b.trip.currency,
               seatLayout: b.trip.seatLayout ?? undefined,
             }
           : b.tripId,
-      }));
+        };
+      });
       return {
         data,
         meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
@@ -570,7 +710,7 @@ export class AdminDashboardService {
 
   async getRatings(
     query: AdminRatingsQuery,
-  ): Promise<PaginatedResult<RatingEntity>> {
+  ): Promise<PaginatedResult<Record<string, unknown>>> {
     const page = Math.max(1, query.page ?? 1);
     const limit = Math.min(100, Math.max(1, query.limit ?? 20));
     const skip = (page - 1) * limit;
@@ -594,7 +734,70 @@ export class AdminDashboardService {
       if (query.minRating != null) {
         qb.andWhere('r.rating >= :minRating', { minRating: query.minRating });
       }
-      const [data, total] = await qb.getManyAndCount();
+      const [entities, total] = await qb.getManyAndCount();
+
+      const missingUserIds = new Set<string>();
+      for (const r of entities) {
+        if (!r.fromUser && typeof r.fromUserId === 'string') {
+          missingUserIds.add(r.fromUserId);
+        }
+        if (!r.toUser && typeof r.toUserId === 'string') {
+          missingUserIds.add(r.toUserId);
+        }
+      }
+      const userById = new Map<string, UserEntity>();
+      if (missingUserIds.size > 0) {
+        const users = await this.userRepo.find({
+          where: { id: In([...missingUserIds]) },
+        });
+        for (const u of users) {
+          userById.set(u.id, u);
+        }
+      }
+
+      const toUserSummary = (
+        rel: UserEntity | undefined,
+        rawId: string,
+      ): Record<string, unknown> => {
+        const u = rel ?? userById.get(rawId);
+        if (u) {
+          return {
+            _id: u.id,
+            name: u.name,
+            email: u.email ?? '',
+            phoneNumber: u.phoneNumber ?? undefined,
+          };
+        }
+        return { _id: rawId, name: 'User not found', email: '' };
+      };
+
+      const data = entities.map((r) => {
+        const trip = r.trip;
+        return {
+          _id: r.id,
+          id: r.id,
+          fromUserId: toUserSummary(r.fromUser, r.fromUserId),
+          toUserId: toUserSummary(r.toUser, r.toUserId),
+          tripId: trip
+            ? {
+                _id: trip.id,
+                id: trip.id,
+                fromName: trip.fromName,
+                toName: trip.toName,
+                from: { name: trip.fromName },
+                to: { name: trip.toName },
+                departureTime: trip.departureTime,
+              }
+            : r.tripId,
+          rating: r.rating,
+          comment: r.comment,
+          userRole: r.userRole,
+          ratedRole: r.ratedRole,
+          createdAt: r.createdAt,
+          updatedAt: r.updatedAt,
+        };
+      });
+
       return {
         data,
         meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
@@ -606,21 +809,68 @@ export class AdminDashboardService {
 
   async getNotifications(
     query: AdminNotificationsQuery,
-  ): Promise<PaginatedResult<NotificationEntity>> {
+  ): Promise<PaginatedResult<Record<string, unknown>>> {
     const page = Math.max(1, query.page ?? 1);
     const limit = Math.min(100, Math.max(1, query.limit ?? 20));
     const skip = (page - 1) * limit;
     try {
       const qb = this.notificationRepo
         .createQueryBuilder('n')
-        .leftJoinAndSelect('n.user', 'user')
+        .leftJoinAndSelect('n.user', 'notifUser')
         .orderBy('n.createdAt', 'DESC')
         .skip(skip)
         .take(limit);
       if (query.type) {
         qb.andWhere('n.type = :type', { type: query.type });
       }
-      const [data, total] = await qb.getManyAndCount();
+      const [entities, total] = await qb.getManyAndCount();
+
+      const missingIds = [
+        ...new Set(
+          entities
+            .filter((n) => !n.user && typeof n.userId === 'string' && n.userId)
+            .map((n) => n.userId as string),
+        ),
+      ];
+      const userById = new Map<string, UserEntity>();
+      if (missingIds.length > 0) {
+        const users = await this.userRepo.find({
+          where: { id: In(missingIds) },
+        });
+        for (const u of users) {
+          userById.set(u.id, u);
+        }
+      }
+
+      const data = entities.map((n) => {
+        const u = n.user ?? userById.get(n.userId);
+        const userSummary = u
+          ? {
+              _id: u.id,
+              name: u.name,
+              email: u.email ?? '',
+              phoneNumber: u.phoneNumber ?? undefined,
+            }
+          : typeof n.userId === 'string'
+            ? { _id: n.userId, name: 'User not found', email: '' }
+            : n.userId;
+
+        return {
+          _id: n.id,
+          id: n.id,
+          userId: userSummary,
+          type: n.type,
+          title: n.title,
+          body: n.body,
+          channel: n.channel,
+          isRead: n.isRead,
+          data: n.data,
+          expiresAt: n.expiresAt,
+          createdAt: n.createdAt,
+          updatedAt: n.updatedAt,
+        };
+      });
+
       return {
         data,
         meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
@@ -672,7 +922,14 @@ export class AdminDashboardService {
   async getChatRooms(query: {
     page?: number;
     limit?: number;
-  }): Promise<PaginatedResult<ChatRoomEntity>> {
+    tripId?: string;
+  }): Promise<
+    PaginatedResult<
+      ChatRoomEntity & {
+        passenger: { id: string; name: string; email: string | null } | null;
+      }
+    >
+  > {
     const page = Math.max(1, query.page ?? 1);
     const limit = Math.min(100, Math.max(1, query.limit ?? 20));
     const skip = (page - 1) * limit;
@@ -684,7 +941,44 @@ export class AdminDashboardService {
         .addOrderBy('c.createdAt', 'DESC')
         .skip(skip)
         .take(limit);
-      const [data, total] = await qb.getManyAndCount();
+      if (query.tripId) {
+        qb.andWhere('c.tripId = :tripId', { tripId: query.tripId });
+      }
+      const [rooms, total] = await qb.getManyAndCount();
+
+      const passengerIds = Array.from(
+        new Set(
+          rooms
+            .map((r) => r.passengerId)
+            .filter((id): id is string => typeof id === 'string'),
+        ),
+      );
+      const passengerById = new Map<
+        string,
+        { id: string; name: string; email: string | null }
+      >();
+      if (passengerIds.length > 0) {
+        const users = await this.userRepo
+          .createQueryBuilder('u')
+          .select(['u.id', 'u.name', 'u.email'])
+          .whereInIds(passengerIds)
+          .getMany();
+        for (const u of users) {
+          passengerById.set(u.id, {
+            id: u.id,
+            name: u.name,
+            email: u.email ?? null,
+          });
+        }
+      }
+
+      const data = rooms.map((r) => ({
+        ...r,
+        passenger: r.passengerId
+          ? (passengerById.get(r.passengerId) ?? null)
+          : null,
+      }));
+
       return {
         data,
         meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
@@ -692,6 +986,32 @@ export class AdminDashboardService {
     } catch {
       return { data: [], meta: { page, limit, total: 0, totalPages: 0 } };
     }
+  }
+
+  async getChatRoomMessages(
+    roomId: string,
+    query: { page?: number; limit?: number },
+  ): Promise<PaginatedResult<MessageEntity>> {
+    const page = Math.max(1, query.page ?? 1);
+    const limit = Math.min(200, Math.max(1, query.limit ?? 50));
+    const skip = (page - 1) * limit;
+
+    const room = await this.chatRoomRepo.findOne({ where: { id: roomId } });
+    if (!room) {
+      throw new NotFoundException('Chat room not found');
+    }
+
+    const [raw, total] = await this.messageRepo.findAndCount({
+      where: { chatRoomId: roomId },
+      order: { createdAt: 'ASC' },
+      skip,
+      take: limit,
+    });
+
+    return {
+      data: raw,
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   async generateReport(query: AdminReportsQuery): Promise<ReportResponse> {
@@ -822,14 +1142,14 @@ export class AdminDashboardService {
 
   async getWallets(
     query: AdminWalletsQuery,
-  ): Promise<PaginatedResult<WalletAccountEntity>> {
+  ): Promise<PaginatedResult<Record<string, unknown>>> {
     const page = Math.max(1, query.page ?? 1);
     const limit = Math.min(100, Math.max(1, query.limit ?? 20));
     const skip = (page - 1) * limit;
 
     const qb = this.walletAccountRepo
       .createQueryBuilder('wa')
-      .leftJoinAndSelect('wa.user', 'user')
+      .leftJoinAndSelect('wa.user', 'walletUser')
       .select([
         'wa.id',
         'wa.userId',
@@ -839,11 +1159,11 @@ export class AdminDashboardService {
         'wa.isActive',
         'wa.createdAt',
         'wa.updatedAt',
-        'user.id',
-        'user.name',
-        'user.email',
-        'user.phoneNumber',
-        'user.role',
+        'walletUser.id',
+        'walletUser.name',
+        'walletUser.email',
+        'walletUser.phoneNumber',
+        'walletUser.role',
       ])
       .orderBy('wa.updatedAt', 'DESC')
       .skip(skip)
@@ -860,7 +1180,7 @@ export class AdminDashboardService {
     if (query.search?.trim()) {
       const term = `%${query.search.trim()}%`;
       qb.andWhere(
-        '(user.name ILIKE :term OR user.email ILIKE :term OR user.phoneNumber ILIKE :term)',
+        '(walletUser.name ILIKE :term OR walletUser.email ILIKE :term OR walletUser.phoneNumber ILIKE :term)',
         { term },
       );
     }
@@ -875,14 +1195,64 @@ export class AdminDashboardService {
       });
     }
 
-    const [data, total] = await qb.getManyAndCount();
+    const [entities, total] = await qb.getManyAndCount();
+
+    const missingOwnerIds = [
+      ...new Set(
+        entities
+          .filter((wa) => !wa.user && typeof wa.userId === 'string' && wa.userId)
+          .map((wa) => wa.userId as string),
+      ),
+    ];
+    const ownerById = new Map<string, UserEntity>();
+    if (missingOwnerIds.length > 0) {
+      const owners = await this.userRepo.find({
+        where: { id: In(missingOwnerIds) },
+      });
+      for (const u of owners) {
+        ownerById.set(u.id, u);
+      }
+    }
+
+    const data = entities.map((wa) => this.mapWalletToAdminDto(wa, ownerById));
+
     return {
       data,
       meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }
 
-  async getWalletById(walletId: string): Promise<WalletAccountEntity> {
+  private mapWalletToAdminDto(
+    wa: WalletAccountEntity,
+    ownerById: Map<string, UserEntity>,
+  ): Record<string, unknown> {
+    const owner =
+      wa.user ??
+      (typeof wa.userId === 'string' ? ownerById.get(wa.userId) : undefined);
+    const userSummary = owner
+      ? {
+          _id: owner.id,
+          name: owner.name,
+          email: owner.email ?? '',
+          phoneNumber: owner.phoneNumber ?? undefined,
+        }
+      : typeof wa.userId === 'string'
+        ? { _id: wa.userId, name: 'User not found', email: '' }
+        : wa.userId;
+
+    return {
+      id: wa.id,
+      userId: userSummary,
+      accountType: wa.accountType,
+      currency: wa.currency,
+      balance: String(wa.balance),
+      isActive: wa.isActive,
+      createdAt: wa.createdAt,
+      updatedAt: wa.updatedAt,
+    };
+  }
+
+  async getWalletById(walletId: string): Promise<Record<string, unknown>> {
     const wallet = await this.walletAccountRepo.findOne({
       where: { id: walletId },
       relations: ['user'],
@@ -890,7 +1260,18 @@ export class AdminDashboardService {
     if (!wallet) {
       throw new NotFoundException('Wallet account not found');
     }
-    return wallet;
+
+    const ownerById = new Map<string, UserEntity>();
+    if (!wallet.user && typeof wallet.userId === 'string') {
+      const owner = await this.userRepo.findOne({
+        where: { id: wallet.userId },
+      });
+      if (owner) {
+        ownerById.set(owner.id, owner);
+      }
+    }
+
+    return this.mapWalletToAdminDto(wallet, ownerById);
   }
 
   async getWalletTransactions(
@@ -934,7 +1315,7 @@ export class AdminDashboardService {
       currency?: string;
       adminId: string;
     },
-  ): Promise<WalletAccountEntity> {
+  ): Promise<Record<string, unknown>> {
     const wallet = await this.walletAccountRepo.findOne({
       where: { id: walletId },
       relations: ['user'],
@@ -958,7 +1339,44 @@ export class AdminDashboardService {
     if (!refreshed) {
       throw new NotFoundException('Wallet account not found');
     }
-    return refreshed;
+
+    // ── Push notification to the wallet owner (credits only) ────────────────
+    if (params.amount > 0) {
+      const currency = refreshed.currency ?? 'JOD';
+      const formatted = params.amount.toFixed(2);
+      const newBalance = Number(refreshed.balance).toFixed(2);
+
+      try {
+        await this.notificationsService.create({
+          userId: wallet.userId,
+          type: 'wallet_credited',
+          title: 'تم إضافة رصيد إلى محفظتك',
+          body: `تمت إضافة ${formatted} ${currency} إلى محفظتك. رصيدك الحالي: ${newBalance} ${currency}.`,
+          data: {
+            walletId: refreshed.id,
+            amount: formatted,
+            newBalance,
+            currency,
+          },
+        });
+      } catch (err) {
+        this.logger.warn(
+          `Failed to send wallet_credited notification to user ${wallet.userId}: ${err?.message}`,
+        );
+      }
+    }
+
+    const ownerById = new Map<string, UserEntity>();
+    if (!refreshed.user && typeof refreshed.userId === 'string') {
+      const owner = await this.userRepo.findOne({
+        where: { id: refreshed.userId },
+      });
+      if (owner) {
+        ownerById.set(owner.id, owner);
+      }
+    }
+
+    return this.mapWalletToAdminDto(refreshed, ownerById);
   }
 
   private async getPendingManualTopupsCount(): Promise<number> {

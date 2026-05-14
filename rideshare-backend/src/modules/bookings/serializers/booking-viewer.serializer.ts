@@ -2,14 +2,14 @@
  * BookingViewerSerializer — Phase 7 (US5 / 013-settle-and-call) implementation.
  *
  * Masking contract:
- *  - UNSETTLED (settledAt IS NULL):
+ *  - LOCKED (hasDriverPaidToContact is false):
  *      • otherParty.displayName  → '***'
  *      • otherParty.phone        → '***'
  *      • otherParty.phoneNumber  → '***'
  *      • otherParty.photoUrl     → '***'
  *      • chatEnabled             → false
  *      • callEnabled             → false
- *  - SETTLED (settledAt IS NOT NULL): full reveal; chatEnabled/callEnabled = true.
+ *  - UNLOCKED (hasDriverPaidToContact is true): full reveal; chatEnabled/callEnabled = true.
  *  - ADMIN viewer: always sees raw values regardless of settlement state.
  */
 
@@ -20,6 +20,7 @@ const MASK = '***';
 /** Minimum shape the serializer needs to make masking decisions. */
 export interface MaskableBookingView {
   settledAt?: Date | string | null;
+  hasDriverPaidToContact?: boolean;
   chatEnabled?: boolean;
   callEnabled?: boolean;
   /** Driver-side: the passenger's contact details. */
@@ -47,9 +48,9 @@ export class BookingViewerSerializer {
     // Admins always see raw values.
     if (viewer === 'admin') return data;
 
-    const settled = data.settledAt != null;
+    const unlocked = data.hasDriverPaidToContact === true;
 
-    if (settled) {
+    if (unlocked) {
       return {
         ...data,
         chatEnabled: true,

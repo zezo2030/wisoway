@@ -1,44 +1,130 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+﻿import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import { getDashboardStats } from "@/api/admin"
-import { Button } from "@/components/ui/button"
+import type { DashboardStats } from "@/types/models"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { QUERY_KEYS, DASHBOARD_REFRESH_INTERVAL, ROUTES } from "@/lib/constants"
 import { cn, formatNumber } from "@/lib/utils"
 import { useLanguage } from "@/providers/language-provider"
 import {
   Users,
   UserCog,
-  User,
-  CheckCircle,
   DollarSign,
   CreditCard,
   ShieldAlert,
   RefreshCw,
   AlertCircle,
-  ArrowRight,
+  ArrowUpRight,
   TrendingUp,
   Activity,
-  Zap
+  User,
+  CheckCircle,
+  ArrowRight,
 } from "lucide-react"
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  Cell,
+} from "recharts"
 
-// Illustrative mock data for the growth chart showing a positive trend
-const mockChartData = [
-  { name: "Mon", revenue: 4200, trips: 240 },
-  { name: "Tue", revenue: 3800, trips: 189 },
-  { name: "Wed", revenue: 5100, trips: 310 },
-  { name: "Thu", revenue: 4780, trips: 390 },
-  { name: "Fri", revenue: 6890, trips: 480 },
-  { name: "Sat", revenue: 8390, trips: 680 },
-  { name: "Sun", revenue: 9490, trips: 730 },
+const mockWeekData = [
+  { day: "Mon", revenue: 4200, trips: 240 },
+  { day: "Tue", revenue: 3800, trips: 189 },
+  { day: "Wed", revenue: 5100, trips: 310 },
+  { day: "Thu", revenue: 4780, trips: 390 },
+  { day: "Fri", revenue: 6890, trips: 480 },
+  { day: "Sat", revenue: 8390, trips: 680 },
+  { day: "Sun", revenue: 9490, trips: 730 },
 ]
+
+interface KpiCardProps {
+  label: string
+  value: React.ReactNode
+  icon: React.ComponentType<{ className?: string }>
+  iconBg: string
+  iconColor: string
+  onClick: () => void
+  badge?: string
+  badgeColor?: string
+  index: number
+}
+
+function KpiCard({ label, value, icon: Icon, iconBg, iconColor, onClick, badge, badgeColor, index }: KpiCardProps) {
+  return (
+    <button
+      onClick={onClick}
+      className="group w-full text-left bg-white rounded-2xl p-5 shadow-sm border border-border/60 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+      style={{ animationDelay: `${index * 80}ms` }}
+    >
+      <div className="flex items-start justify-between mb-4">
+        <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0", iconBg)}>
+          <Icon className={cn("w-5 h-5", iconColor)} />
+        </div>
+        {badge && (
+          <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full", badgeColor)}>
+            {badge}
+          </span>
+        )}
+        <ArrowUpRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-200" />
+      </div>
+      <div className="space-y-1">
+        <p className="text-2xl font-bold text-foreground tracking-tight leading-none">{value}</p>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</p>
+      </div>
+    </button>
+  )
+}
+
+interface OperationRowProps {
+  label: string
+  desc: string
+  value: React.ReactNode
+  icon: React.ComponentType<{ className?: string }>
+  alert?: boolean
+  onClick: () => void
+}
+
+function OperationRow({ label, desc, value, icon: Icon, alert, onClick }: OperationRowProps) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "group w-full flex items-center gap-4 p-4 rounded-xl border transition-all duration-200 hover:-translate-y-0.5",
+        alert
+          ? "bg-rose-50 border-rose-200/60 hover:border-rose-300 hover:shadow-sm"
+          : "bg-white border-border/60 hover:border-border hover:shadow-sm"
+      )}
+    >
+      <div className={cn(
+        "w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-110",
+        alert ? "bg-rose-100 text-rose-600" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
+      )}>
+        <Icon className="w-4 h-4" />
+      </div>
+      <div className="flex-1 text-left min-w-0">
+        <p className={cn("text-sm font-semibold leading-none mb-0.5", alert ? "text-rose-700" : "text-foreground")}>{label}</p>
+        <p className="text-xs text-muted-foreground truncate">{desc}</p>
+      </div>
+      <div className={cn("text-xl font-black tabular-nums", alert ? "text-rose-600" : "text-foreground")}>
+        {value}
+      </div>
+      <ArrowRight className={cn("w-4 h-4 flex-shrink-0 transition-all duration-200 group-hover:translate-x-0.5", alert ? "text-rose-400" : "text-muted-foreground/40 group-hover:text-primary")} />
+    </button>
+  )
+}
 
 export default function DashboardPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { t, language } = useLanguage()
+  const isRtl = language === "ar"
 
   const {
     data: stats,
@@ -54,288 +140,271 @@ export default function DashboardPage() {
     staleTime: DASHBOARD_REFRESH_INTERVAL / 2,
   })
 
-  // Primary stats meant to grab immediate attention with premium gradients
-  const primaryStats = [
-    {
-      key: "totalRevenue" as const,
-      titleKey: "totalRevenue" as const,
-      icon: DollarSign,
-      route: ROUTES.REPORTS,
-      color: "from-emerald-500 to-teal-400",
-      gradient: "bg-gradient-to-br",
-      textColor: "text-emerald-500",
-      bgLight: "bg-emerald-50 dark:bg-emerald-500/10",
-      isCurrency: true
-    },
-    {
-      key: "activeTrips" as const,
-      titleKey: "activeTrips" as const,
-      icon: Activity,
-      route: ROUTES.TRIPS,
-      color: "from-blue-500 to-indigo-500",
-      gradient: "bg-gradient-to-br",
-      textColor: "text-blue-500",
-      bgLight: "bg-blue-50 dark:bg-blue-500/10",
-      isCurrency: false
-    },
-    {
-      key: "totalUsers" as const,
-      titleKey: "totalUsers" as const,
-      icon: Users,
-      route: ROUTES.USERS,
-      color: "from-violet-500 to-purple-500",
-      gradient: "bg-gradient-to-br",
-      textColor: "text-violet-500",
-      bgLight: "bg-violet-50 dark:bg-violet-500/10",
-      isCurrency: false
-    },
-    {
-      key: "totalDrivers" as const,
-      titleKey: "totalDrivers" as const,
-      icon: UserCog,
-      route: ROUTES.USERS,
-      color: "from-orange-500 to-rose-400",
-      gradient: "bg-gradient-to-br",
-      textColor: "text-orange-500",
-      bgLight: "bg-orange-50 dark:bg-orange-500/10",
-      isCurrency: false
-    },
-  ]
+  const skeleton = <div className="h-7 w-20 animate-pulse rounded-lg bg-muted" />
 
-  // Secondary operational stats focused on list format
-  const secondaryStats = [
-    {
-      key: "totalPassengers" as const,
-      titleKey: "totalPassengers" as const,
-      descKey: "registeredAccounts" as const,
-      icon: User,
-      route: ROUTES.USERS,
-    },
-    {
-      key: "completedTrips" as const,
-      titleKey: "completedTrips" as const,
-      descKey: "successfullyFinished" as const,
-      icon: CheckCircle,
-      route: ROUTES.TRIPS,
-    },
-    {
-      key: "pendingPayments" as const,
-      titleKey: "pendingPayments" as const,
-      descKey: "awaitingSettlement" as const,
-      icon: CreditCard,
-      route: ROUTES.PAYMENTS_PENDING,
-    },
-    {
-      key: "pendingManualTopups" as const,
-      titleKey: "walletTopup" as const,
-      descKey: "awaitingSettlement" as const,
-      icon: CreditCard,
-      route: `${ROUTES.PAYMENTS}?type=wallet_topup&method=manual&status=pending`,
-    },
-    {
-      key: "pendingVehicleVerifications" as const,
-      titleKey: "unverifiedVehicles" as const,
-      descKey: "needsAdminReview" as const,
-      icon: ShieldAlert,
-      route: ROUTES.VEHICLES,
-      alert: true,
-    },
-  ]
+  const val = (key: keyof DashboardStats, currency = false) => {
+    if (isLoading || stats === undefined) return skeleton
+    const n = stats?.[key] ?? 0
+    return <>{currency && "$"}{formatNumber(n as number)}</>
+  }
 
   if (isError) {
     return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="space-y-5 animate-in fade-in duration-300">
         <div>
-          <h1 className="text-4xl font-extrabold tracking-tight">{t("dashboardTitle")}</h1>
-          <p className="text-muted-foreground mt-1 text-lg">{t("dashboardSubtitle")}</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t("dashboardTitle")}</h1>
+          <p className="text-muted-foreground text-sm mt-1">{t("dashboardSubtitle")}</p>
         </div>
-        <Alert variant="destructive" className="border-red-500/50 bg-red-50 dark:bg-red-900/10">
+        <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>{t("errorLoadingStats")}</AlertTitle>
-          <AlertDescription className="flex flex-col gap-3 mt-2">
+          <AlertDescription className="mt-2 flex flex-col gap-2">
             <p>{error instanceof Error ? error.message : t("failedToFetchStats")}</p>
-            <Button variant="outline" size="sm" onClick={() => refetch()} className="w-fit border-red-200 hover:bg-red-100 text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/30">
-              <RefreshCw className="mr-2 h-4 w-4" /> {t("tryAgain")}
-            </Button>
+            <button
+              onClick={() => refetch()}
+              className="flex items-center gap-1.5 w-fit text-sm font-semibold text-destructive hover:underline"
+            >
+              <RefreshCw className="w-3.5 h-3.5" /> {t("tryAgain")}
+            </button>
           </AlertDescription>
         </Alert>
       </div>
     )
   }
 
-  const renderStatValue = (val: number | undefined, isCurrency = false) => {
-    if (isLoading || val === undefined) return <div className="h-8 w-24 animate-pulse rounded-md bg-muted/60" />
-    return (
-      <span className="text-3xl font-bold tracking-tight text-foreground">
-        {isCurrency ? "$" : ""}{formatNumber(val)}
-      </span>
-    )
-  }
+  const kpiCards: KpiCardProps[] = [
+    {
+      label: t("totalRevenue"),
+      value: val("totalRevenue", true),
+      icon: DollarSign,
+      iconBg: "bg-emerald-100",
+      iconColor: "text-emerald-600",
+      onClick: () => navigate(ROUTES.REPORTS),
+      badge: "+12%",
+      badgeColor: "bg-emerald-100 text-emerald-700",
+      index: 0,
+    },
+    {
+      label: t("activeTrips"),
+      value: val("activeTrips"),
+      icon: Activity,
+      iconBg: "bg-blue-100",
+      iconColor: "text-blue-600",
+      onClick: () => navigate(ROUTES.TRIPS),
+      badge: t("liveTracking"),
+      badgeColor: "bg-blue-100 text-blue-700",
+      index: 1,
+    },
+    {
+      label: t("totalUsers"),
+      value: val("totalUsers"),
+      icon: Users,
+      iconBg: "bg-violet-100",
+      iconColor: "text-violet-600",
+      onClick: () => navigate(ROUTES.USERS),
+      index: 2,
+    },
+    {
+      label: t("totalDrivers"),
+      value: val("totalDrivers"),
+      icon: UserCog,
+      iconBg: "bg-orange-100",
+      iconColor: "text-orange-600",
+      onClick: () => navigate(ROUTES.USERS),
+      index: 3,
+    },
+  ]
+
+  const operationRows: OperationRowProps[] = [
+    {
+      label: t("totalPassengers"),
+      desc: t("registeredAccounts"),
+      value: isLoading ? "-" : formatNumber(stats?.totalPassengers ?? 0),
+      icon: User,
+      onClick: () => navigate(ROUTES.USERS),
+    },
+    {
+      label: t("completedTrips"),
+      desc: t("successfullyFinished"),
+      value: isLoading ? "-" : formatNumber(stats?.completedTrips ?? 0),
+      icon: CheckCircle,
+      onClick: () => navigate(ROUTES.TRIPS),
+    },
+    {
+      label: t("pendingPayments"),
+      desc: t("awaitingSettlement"),
+      value: isLoading ? "-" : formatNumber(stats?.pendingPayments ?? 0),
+      icon: CreditCard,
+      onClick: () => navigate(ROUTES.PAYMENTS_PENDING),
+    },
+    {
+      label: t("walletTopup"),
+      desc: t("awaitingSettlement"),
+      value: isLoading ? "-" : formatNumber(stats?.pendingManualTopups ?? 0),
+      icon: CreditCard,
+      onClick: () => navigate(`${ROUTES.PAYMENTS}?type=wallet_topup&method=manual&status=pending`),
+    },
+    {
+      label: t("unverifiedVehicles"),
+      desc: t("needsAdminReview"),
+      value: isLoading ? "-" : formatNumber(stats?.pendingVehicleVerifications ?? 0),
+      icon: ShieldAlert,
+      alert: Number(stats?.pendingVehicleVerifications) > 0,
+      onClick: () => navigate(ROUTES.VEHICLES),
+    },
+  ]
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 pb-10">
+    <div className="space-y-7 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-8">
 
-      {/* Header section with live indicator */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      {/* Page Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-4xl font-extrabold tracking-tight text-foreground/90 leading-tight">
+          <h1 className="text-[22px] font-bold tracking-tight text-foreground leading-tight">
             {t("dashboardTitle")}
           </h1>
-          <p className="text-muted-foreground mt-1.5 text-lg font-medium">
-            {t("goodToSeeYou")}
-          </p>
+          <p className="text-sm text-muted-foreground mt-0.5">{t("dashboardSubtitle")}</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           {stats && (
-            <div className="hidden sm:flex items-center text-sm font-semibold text-muted-foreground bg-muted/30 px-4 py-2 rounded-full border border-border/40 backdrop-blur-md shadow-sm">
-              <span className={cn("relative flex h-2.5 w-2.5", language === 'ar' ? "ml-2.5" : "mr-2.5")}>
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            <div className={cn(
+              "hidden sm:flex items-center gap-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-3 py-1.5 rounded-full"
+            )}>
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
               </span>
               {t("liveTracking")}
             </div>
           )}
-          <Button
-            variant="outline"
-            className="rounded-full shadow-sm hover:shadow-md transition-all duration-300 border-primary/20 hover:border-primary/50 font-semibold"
+          <button
             onClick={() => queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.DASHBOARD_STATS] })}
             disabled={isFetching}
+            className={cn(
+              "flex items-center gap-2 h-9 px-4 rounded-full text-sm font-semibold transition-all duration-200",
+              "bg-white border border-border/70 shadow-sm hover:shadow hover:border-border text-foreground/80 hover:text-foreground",
+              isFetching && "opacity-60 cursor-not-allowed"
+            )}
           >
-            <RefreshCw className={cn("h-4 w-4 text-primary", language === 'ar' ? "ml-2" : "mr-2", isFetching && "animate-spin")} />
+            <RefreshCw className={cn("h-3.5 w-3.5", isFetching && "animate-spin")} />
             {isFetching ? t("refreshing") : t("refreshData")}
-          </Button>
+          </button>
         </div>
       </div>
 
-      {/* Hero / Primary Metrics */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {primaryStats.map((stat, idx) => {
-          const Icon = stat.icon
-          const value = stats?.[stat.key]
-
-          return (
-            <Card
-              key={stat.key}
-              className={cn(
-                "group relative overflow-hidden transition-all duration-500 hover:-translate-y-1.5 hover:shadow-xl cursor-pointer border-none bg-background/60 backdrop-blur-2xl shadow-lg dark:shadow-none dark:bg-card/40 dark:border dark:border-white/10"
-              )}
-              onClick={() => navigate(stat.route)}
-              style={{ animationFillMode: "both", animationDelay: `${idx * 100}ms` }}
-            >
-              <div className={cn("absolute inset-0 opacity-[0.08] transition-opacity duration-500 group-hover:opacity-[0.2]", stat.gradient, stat.color)} />
-              <div className={cn("absolute top-0 opacity-[0.15] transform p-4 transition-transform duration-700 ease-out group-hover:scale-110 group-hover:-rotate-12", language === 'ar' ? "left-0 -translate-x-4 -translate-y-4" : "right-0 translate-x-4 -translate-y-4")}>
-                <Icon className={cn("w-24 h-24", stat.textColor)} />
-              </div>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-5">
-                  <div className={cn("p-3.5 rounded-2xl shadow-sm transition-transform duration-300 group-hover:scale-110", stat.bgLight)}>
-                    <Icon className={cn("w-6 h-6", stat.textColor)} />
-                  </div>
-                  <div className={cn("text-muted-foreground bg-background/50 rounded-full p-2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 shadow-sm border border-border/50", language === 'ar' ? "translate-x-4" : "-translate-x-4")}>
-                    <ArrowRight className={cn("w-4 h-4", language === 'ar' && "rotate-180")} />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t(stat.titleKey)}</p>
-                  <div className="flex items-baseline space-x-2">
-                    {renderStatValue(value, stat.isCurrency)}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
+      {/* KPI Cards */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+        {kpiCards.map((card) => (
+          <KpiCard key={card.label} {...card} />
+        ))}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-7 lg:gap-8">
-        {/* Main Chart Section */}
-        <Card className="md:col-span-4 lg:col-span-5 overflow-hidden border-border/50 shadow-lg bg-card/60 backdrop-blur-xl transition-all duration-300 hover:shadow-xl dark:shadow-none dark:border-white/10">
-          <CardHeader className="flex flex-row items-center justify-between border-b border-border/30 bg-muted/10 pb-4 pt-5 px-6">
-            <div className="space-y-1.5 overflow-hidden">
-              <CardTitle className="text-xl font-bold flex items-center tracking-tight">
-                <div className={cn("p-2 bg-primary/10 rounded-lg", language === 'ar' ? "ml-3" : "mr-3")}>
-                  <TrendingUp className="w-5 h-5 text-primary" />
-                </div>
-                {t("platformGrowth")} <span className="opacity-70 text-sm font-medium ml-1">({t("simulated")})</span>
-              </CardTitle>
-              <p className="text-sm text-muted-foreground font-medium">{t("revenueMomentum")}</p>
+      {/* Chart + Operations */}
+      <div className="grid gap-5 lg:grid-cols-5">
+
+        {/* Revenue Chart */}
+        <div className="lg:col-span-3 bg-white rounded-2xl border border-border/60 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center">
+                <TrendingUp className="w-4 h-4 text-indigo-600" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-foreground">{t("platformGrowth")}</p>
+                <p className="text-xs text-muted-foreground">{t("revenueMomentum")}</p>
+              </div>
             </div>
-            <div className="hidden sm:block bg-background px-3 py-1.5 rounded-full text-xs font-bold text-primary shadow-sm border border-border/50">
+            <span className="text-[11px] font-semibold text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
               {t("weeklyOverview")}
-            </div>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="h-[320px] w-full mt-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={mockChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#818cf8" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-muted opacity-20" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'currentColor', fontSize: 13, fontWeight: 500 }} className="text-muted-foreground" dy={15} />
-                  <YAxis axisLine={false} tickLine={false} orientation={language === 'ar' ? 'right' : 'left'} tick={{ fill: 'currentColor', fontSize: 13, fontWeight: 500 }} className="text-muted-foreground" dx={language === 'ar' ? 15 : -15} tickFormatter={(val) => `$${val / 1000}k`} />
-                  <Tooltip
-                    contentStyle={{ borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', backgroundColor: 'var(--card)', color: 'var(--foreground)', fontWeight: 600, padding: '12px 16px', textAlign: language === 'ar' ? 'right' : 'left' }}
-                    itemStyle={{ color: '#4f46e5', fontWeight: 700 }}
-                  />
-                  <Area type="monotone" dataKey="revenue" stroke="#4f46e5" strokeWidth={4} fill="url(#colorRevenue)" animationDuration={1500} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+            </span>
+          </div>
 
-        {/* Secondary Metrics Column */}
-        <div className="md:col-span-3 lg:col-span-2 space-y-5 flex flex-col justify-between">
-          <h3 className="font-bold text-xl flex items-center px-1 text-foreground/90 tracking-tight">
-            <div className={cn("p-2 bg-amber-500/10 rounded-lg", language === 'ar' ? "ml-3" : "mr-3")}>
-              <Zap className="w-5 h-5 text-amber-500 drop-shadow-sm" />
-            </div>
-            {t("operations")}
-          </h3>
-          <div className="grid gap-4 flex-1">
-            {secondaryStats.map((stat, idx) => {
-              const Icon = stat.icon
-              const value = stats?.[stat.key]
-              const hasAlert = stat.alert && Number(value) > 0;
+          {/* Area Chart */}
+          <div className="px-4 pt-4 pb-2 h-[260px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={mockWeekData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="gradRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#4f46e5" stopOpacity={0.25} />
+                    <stop offset="100%" stopColor="#4f46e5" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis
+                  dataKey="day"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11, fill: "#94a3b8", fontWeight: 600 }}
+                  dy={8}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  orientation={isRtl ? "right" : "left"}
+                  tick={{ fontSize: 11, fill: "#94a3b8", fontWeight: 600 }}
+                  tickFormatter={(v) => `$${v / 1000}k`}
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: "12px",
+                    border: "1px solid #e2e8f0",
+                    boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+                    backgroundColor: "#fff",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                  }}
+                  itemStyle={{ color: "#4f46e5" }}
+                  formatter={(v) => [`$${Number(v ?? 0).toLocaleString()}`, "Revenue"]}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="#4f46e5"
+                  strokeWidth={2.5}
+                  fill="url(#gradRevenue)"
+                  dot={{ r: 3, fill: "#4f46e5", strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: "#4f46e5" }}
+                  animationDuration={1200}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
 
-              return (
-                <Card
-                  key={stat.key}
-                  className={cn(
-                    "group cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-all duration-300 bg-card/60 backdrop-blur-xl border-border/40 shadow-sm",
-                    hasAlert && "border-rose-500/30 bg-rose-50/40 dark:bg-rose-900/10 shadow-rose-500/10"
-                  )}
-                  onClick={() => navigate(stat.route)}
-                  style={{ animationFillMode: "both", animationDelay: `${idx * 150 + 400}ms` }}
-                >
-                  <CardContent className="p-5 flex items-center justify-between">
-                    <div className="flex items-center space-x-4 rtl:space-x-reverse">
-                      <div className={cn(
-                        "p-3 rounded-xl transition-all duration-300 group-hover:scale-110",
-                        hasAlert ? "bg-rose-100/80 text-rose-600 dark:bg-rose-900/50 dark:text-rose-400 shadow-inner" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary shadow-inner"
-                      )}>
-                        <Icon className="w-5 h-5" />
-                      </div>
-                      <div className="space-y-0.5">
-                        <p className={cn("text-sm font-bold leading-none text-foreground", hasAlert && "text-rose-700 dark:text-rose-300")}>{t(stat.titleKey)}</p>
-                        <p className="text-xs font-medium text-muted-foreground/80">{t(stat.descKey)}</p>
-                      </div>
-                    </div>
-                    <div className={cn(
-                      "text-2xl font-black tracking-tight",
-                      language === 'ar' ? "pr-3" : "pl-3",
-                      hasAlert ? "text-rose-600 dark:text-rose-400" : "text-foreground"
-                    )}>
-                      {isLoading ? "-" : formatNumber(value ?? 0)}
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
+          {/* Bar Chart - Trips */}
+          <div className="px-4 pb-4 h-[120px]">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 mb-2 pl-1">
+              {t("activeTrips")}
+            </p>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={mockWeekData} margin={{ top: 0, right: 10, left: -20, bottom: 0 }} barSize={18}>
+                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#cbd5e1" }} dy={6} />
+                <Tooltip
+                  contentStyle={{ borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "12px", fontWeight: 600 }}
+                  itemStyle={{ color: "#10b981" }}
+                  formatter={(v) => [Number(v ?? 0), "Trips"]}
+                />
+                <Bar dataKey="trips" radius={[4, 4, 0, 0]}>
+                  {mockWeekData.map((_, i) => (
+                    <Cell
+                      key={`cell-${i}`}
+                      fill={i === mockWeekData.length - 1 ? "#10b981" : "#d1fae5"}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Operations Panel */}
+        <div className="lg:col-span-2 flex flex-col gap-3">
+          <div className="flex items-center justify-between px-1">
+            <p className="text-sm font-bold text-foreground">{t("operations")}</p>
+          </div>
+          <div className="flex flex-col gap-2.5">
+            {operationRows.map((row) => (
+              <OperationRow key={row.label} {...row} />
+            ))}
           </div>
         </div>
       </div>

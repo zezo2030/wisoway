@@ -1,13 +1,10 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/trip_provider.dart';
 import '../../core/constants/route_names.dart';
-import '../../core/services/storage_service.dart';
 import '../../core/services/vehicle_service.dart';
 import '../../models/location_model.dart';
 import '../../models/vehicle_model.dart';
@@ -31,12 +28,9 @@ class _CreateTripScreenState extends State<CreateTripScreen>
   final _toController = TextEditingController();
   final _priceController = TextEditingController();
 
-  final StorageService _storageService = StorageService();
-
   LocationModel? _fromLocation;
   LocationModel? _toLocation;
   DateTime? _departureTime;
-  File? _carImage;
   VehicleModel? _vehicle;
   bool _isLoadingVehicle = true;
   bool _isLoading = false;
@@ -106,15 +100,6 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     _notesController.dispose();
     _fadeController.dispose();
     super.dispose();
-  }
-
-  Future<void> _pickCarImage() async {
-    final XFile? image = await _storageService.pickImage(
-      source: ImageSource.gallery,
-    );
-    if (image != null) {
-      setState(() => _carImage = File(image.path));
-    }
   }
 
   Future<void> _selectFromLocation() async {
@@ -430,8 +415,6 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                         _buildRecurrenceCard(),
                         SizedBox(height: _cardGap(context)),
                         _buildVehicleSeatingSummaryCard(),
-                        SizedBox(height: _cardGap(context)),
-                        _buildCarImageCard(),
                         SizedBox(height: _verticalSpacing(context) * 1.5),
                         _buildSubmitButton(),
                         SizedBox(height: _verticalSpacing(context)),
@@ -781,121 +764,6 @@ class _CreateTripScreenState extends State<CreateTripScreen>
         ),
       ),
     );
-  }
-
-  Widget _buildCarImageCard() {
-    return _buildGlassCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'صورة السيارة',
-                style: AppTextStyles.titleMedium.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: T.onSurface(context),
-                ),
-              ),
-              Text(
-                'اختياري',
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: T.outlineVariant(context),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Semantics(
-            button: true,
-            label: 'إضافة صورة للسيارة',
-            child: GestureDetector(
-              onTap: _pickCarImage,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: _carImageHeight(context),
-                  maxHeight: _carImageHeight(context) * 1.5,
-                ),
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: T.surface(context),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: _carImage != null
-                          ? T.primary(context)
-                          : T.outline(context),
-                      width: 2,
-                      style: BorderStyle.solid,
-                    ),
-                    image: _carImage != null
-                        ? DecorationImage(
-                            image: FileImage(_carImage!),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-                  ),
-                  child: _carImage == null
-                      ? Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: T
-                                    .primary(context)
-                                    .withValues(alpha: 0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                IconsaxPlusBroken.camera,
-                                color: T.primary(context),
-                                size: 32,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'انقر لإضافة صورة لسيارتك',
-                              style: AppTextStyles.labelLarge.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: T.textSecondary(context),
-                              ),
-                            ),
-                          ],
-                        )
-                      : Align(
-                          alignment: Alignment.topRight,
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppColors.black.withValues(alpha: 0.5),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.edit,
-                                color: AppColors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                        ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  double _carImageHeight(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    if (width < 360) return 120;
-    if (width >= 600) return 180;
-    return 160;
   }
 
   Widget _buildSubmitButton() {

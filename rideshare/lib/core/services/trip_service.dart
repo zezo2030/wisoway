@@ -59,7 +59,9 @@ class TripService {
         'currency': currency,
         'carImageUrl': carImageUrl,
         if (stops != null && stops.isNotEmpty)
-          'stops': stops.asMap().entries
+          'stops': stops
+              .asMap()
+              .entries
               .map((e) => e.value.toStopMap(order: e.key + 1))
               .toList(),
         if (notes != null && notes.isNotEmpty) 'notes': notes,
@@ -263,9 +265,11 @@ class TripService {
     await _api.delete(ApiEndpoints.cancelTrip(tripId));
   }
 
-  // Complete trip
-  Future<void> completeTrip(String tripId) async {
-    await _api.patch(ApiEndpoints.completeTrip(tripId));
+  /// Driver presses "تم الوصول للوجهة" — marks the trip as completed.
+  /// The trip auto-transitions to IN_PROGRESS at departureTime server-side, so
+  /// there is no longer a manual "Start Trip" action.
+  Future<void> markTripArrived(String tripId) async {
+    await _api.post(ApiEndpoints.arriveTrip(tripId));
   }
 
   /// Driver: lock seat (external booking) or unlock back to available.

@@ -40,6 +40,7 @@ import 'screens/driver/vehicle_settings_screen.dart';
 import 'screens/driver/trip_management_screen.dart';
 import 'screens/driver/passenger_details_screen.dart';
 import 'screens/driver/driver_wallet_screen.dart';
+import 'screens/driver/pending_charges_screen.dart';
 import 'screens/wallet/wallet_topup_request_screen.dart';
 import 'screens/passenger/trips_list_screen.dart';
 import 'screens/passenger/trip_details_screen.dart';
@@ -135,14 +136,6 @@ class MyApp extends StatelessWidget {
                     GlobalWidgetsLocalizations.delegate,
                     GlobalCupertinoLocalizations.delegate,
                   ],
-                  builder: (context, child) {
-                    return Directionality(
-                      textDirection: localizationService.isRTL
-                          ? TextDirection.rtl
-                          : TextDirection.ltr,
-                      child: child!,
-                    );
-                  },
                   home: const AuthWrapper(),
                   routes: {
                     RouteNames.welcome: (context) => const WelcomeScreen(),
@@ -191,11 +184,12 @@ class MyApp extends StatelessWidget {
                     RouteNames.accountSecurityDevices: (context) =>
                         const AccountSecurityDevicesScreen(),
                     RouteNames.banned: (context) => const BannedScreen(),
+                    RouteNames.pendingCharges: (context) =>
+                        const PendingChargesScreen(),
                   },
                   onGenerateRoute: (settings) {
                     if (settings.name == RouteNames.complaint) {
-                      final args =
-                          settings.arguments as Map<String, dynamic>?;
+                      final args = settings.arguments as Map<String, dynamic>?;
                       return MaterialPageRoute(
                         settings: settings,
                         builder: (context) => ComplaintScreen(
@@ -205,8 +199,7 @@ class MyApp extends StatelessWidget {
                       );
                     }
                     if (settings.name == RouteNames.refundRequest) {
-                      final args =
-                          settings.arguments as Map<String, dynamic>;
+                      final args = settings.arguments as Map<String, dynamic>;
                       return MaterialPageRoute(
                         settings: settings,
                         builder: (context) => RefundRequestScreen(
@@ -247,9 +240,18 @@ class MyApp extends StatelessWidget {
                       );
                     }
                     if (settings.name == RouteNames.tripDetails) {
-                      final tripId = settings.arguments as String;
+                      final args = settings.arguments;
+                      final tripId = args is Map<String, dynamic>
+                          ? args['tripId'] as String
+                          : args as String;
+                      final booking = args is Map<String, dynamic>
+                          ? args['booking'] as BookingModel?
+                          : null;
                       return MaterialPageRoute(
-                        builder: (context) => TripDetailsScreen(tripId: tripId),
+                        builder: (context) => TripDetailsScreen(
+                          tripId: tripId,
+                          initialBooking: booking,
+                        ),
                       );
                     }
                     if (settings.name == RouteNames.seatSelection) {
@@ -279,8 +281,9 @@ class MyApp extends StatelessWidget {
                       return MaterialPageRoute(
                         builder: (context) => ChatScreen(
                           tripId: args['tripId'],
+                          chatRoomId: args['chatRoomId'],
                           trip: args['trip'],
-                          driverId: args['driverId'],
+                          driverId: args['driverId'] ?? '',
                           driverName: args['driverName'],
                         ),
                       );
@@ -290,6 +293,7 @@ class MyApp extends StatelessWidget {
                       return MaterialPageRoute(
                         builder: (context) => driver_chat.DriverChatScreen(
                           tripId: args['tripId'],
+                          chatRoomId: args['chatRoomId'],
                           trip: args['trip'],
                           passengerId: args['passengerId'],
                           passengerName: args['passengerName'],
@@ -356,6 +360,3 @@ class AuthWrapper extends StatelessWidget {
     );
   }
 }
-
-
-

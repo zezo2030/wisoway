@@ -15,6 +15,7 @@ class VehicleService {
     required String plateNumber,
     required String modelName,
     required int seats,
+    required File carImage,
     SeatLayoutConfig? seatLayout,
     File? licenseImage,
     File? vehicleLicenseImage,
@@ -31,6 +32,8 @@ class VehicleService {
         vehicleLicenseImageUrl = await uploadFile(vehicleLicenseImage);
       }
 
+      final carImageUrl = await uploadFile(carImage);
+
       final response = await _api.post(
         ApiEndpoints.vehicles,
         data: {
@@ -41,6 +44,7 @@ class VehicleService {
           if (seatLayout != null) 'seatLayout': seatLayout.toMap(),
           'licenseImageUrl': licenseImageUrl,
           'vehicleLicenseImageUrl': vehicleLicenseImageUrl,
+          'carImageUrl': carImageUrl,
         },
       );
 

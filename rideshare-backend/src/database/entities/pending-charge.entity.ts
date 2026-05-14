@@ -107,6 +107,14 @@ export class PendingChargeEntity {
   @Column({ type: 'timestamp', nullable: true })
   waivedAt: Date | null;
 
+  /** Free-text justification entered by the admin when issuing a fine. */
+  @Column({ type: 'text', nullable: true, default: null })
+  reason: string | null;
+
+  /** Admin user that issued the fine (null for system-applied charges). */
+  @Column({ name: 'createdByAdminId', type: 'uuid', nullable: true })
+  createdByAdminId: string | null;
+
   /**
    * Optional HTTP request / trace correlation ID (Phase 9 / T187).
    * Set from the `X-Request-ID` header (or gateway-assigned trace ID) so a

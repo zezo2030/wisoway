@@ -24,6 +24,7 @@ import {
 import { BookingsService } from '../bookings.service';
 import { TripsService } from '../../trips/trips.service';
 import { TripsGateway } from '../../trips/trips.gateway';
+import { NotificationsService } from '../../notifications/notifications.service';
 
 @Processor('bookings-timeout')
 export class BookingsTimeoutProcessor {
@@ -34,6 +35,8 @@ export class BookingsTimeoutProcessor {
     private bookingRepo: Repository<BookingEntity>,
     @Inject(forwardRef(() => TripsService)) private tripsService: TripsService,
     @Inject(forwardRef(() => TripsGateway)) private tripsGateway: TripsGateway,
+    @Inject(forwardRef(() => NotificationsService))
+    private notificationsService: NotificationsService,
   ) {}
 
   @Process('expire-booking')
@@ -76,6 +79,15 @@ export class BookingsTimeoutProcessor {
         .emitSeatReleased(booking.tripId, sn)
         .catch(() => undefined);
     }
+
+    // Notify the passenger that their booking was auto-cancelled
+    this.notificationsService
+      .notifyPassengerOfBookingDecision(bookingId, 'canceled')
+      .catch((err: Error) =>
+        this.logger.warn(
+          `Failed to notify passenger of auto-cancellation for booking ${bookingId}: ${err.message}`,
+        ),
+      );
 
     this.logger.log(
       `Booking ${bookingId} auto-cancelled (timeout) — released ${seatNumbers.length} seat(s)`,

@@ -5,6 +5,8 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bull';
+import type { Queue } from 'bull';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
@@ -13,15 +15,18 @@ import {
 } from '../../database/entities/booking.entity';
 import { BookingSeatEntity } from '../../database/entities/booking-seat.entity';
 import { TripEntity } from '../../database/entities/trip.entity';
-import { TripStatus } from '../../database/entities/shared.enums';
+import { TripStatus, PgUserRole } from '../../database/entities/shared.enums';
+import { UserEntity } from '../../database/entities/user.entity';
 import { PassengerConfirmDto } from './dto/passenger-confirm.dto';
 import { DriverConfirmDto } from './dto/driver-confirm.dto';
 import { CompleteTripDto } from './dto/complete-trip.dto';
-import { PendingChargesService } from '../pending-charges/pending-charges.service';
-import { PendingChargeKind } from '../../database/entities/pending-charge.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { TripShareLinkEntity } from '../../database/entities/trip-share-link.entity';
 import { ErrorCodes } from '../../common/errors/error-codes';
+import {
+  TRIP_AUTO_START_JOB_ID_PREFIX,
+  TRIP_AUTO_COMPLETE_JOB_ID_PREFIX,
+} from '../trips/trip-auto-start.util';
 
 @Injectable()
 export class TripTimeService {
@@ -36,8 +41,11 @@ export class TripTimeService {
     private tripRepo: Repository<TripEntity>,
     @InjectRepository(TripShareLinkEntity)
     private shareLinkRepo: Repository<TripShareLinkEntity>,
-    private pendingChargesService: PendingChargesService,
     private notificationsService: NotificationsService,
+    @InjectQueue('trip-auto-start')
+    private readonly tripAutoStartQueue: Queue,
+    @InjectQueue('trip-auto-complete')
+    private readonly tripAutoCompleteQueue: Queue,
   ) {}
 
   async passengerConfirm(
@@ -98,9 +106,54 @@ export class TripTimeService {
             `Failed to notify driver of absence report: ${err.message}`,
           ),
         );
+
+      void this.notifyAdminsOnAbsenceReport(trip, bookingId);
     }
 
     return saved;
+  }
+
+  /**
+   * Surfaces a passenger no-show report to all admins. Fines remain manual —
+   * admins decide whether to charge via POST /admin/fines after reviewing.
+   */
+  private async notifyAdminsOnAbsenceReport(
+    trip: TripEntity,
+    bookingId: string,
+  ): Promise<void> {
+    try {
+      const admins = await this.bookingRepo.manager
+        .getRepository(UserEntity)
+        .find({ where: { role: PgUserRole.ADMIN } });
+
+      const absentCount = await this.bookingRepo.count({
+        where: { tripId: trip.id },
+      });
+
+      for (const admin of admins) {
+        await this.notificationsService
+          .create({
+            userId: admin.id,
+            type: 'admin_no_show_report',
+            title: 'بلاغ غياب سائق',
+            body: `راكب بلّغ أن السائق لم يحضر للرحلة إلى ${trip.toName}.`,
+            data: {
+              tripId: trip.id,
+              bookingId,
+              driverId: trip.driverId,
+              reportedAt: new Date().toISOString(),
+              bookingsOnTrip: absentCount,
+            },
+          })
+          .catch((err: Error) =>
+            this.logger.warn(`admin no-show notify: ${err.message}`),
+          );
+      }
+    } catch (err) {
+      this.logger.warn(
+        `notifyAdminsOnAbsenceReport: ${(err as Error).message}`,
+      );
+    }
   }
 
   async driverConfirm(
@@ -157,61 +210,10 @@ export class TripTimeService {
     return saved;
   }
 
-  async startTrip(tripId: string, driverId: string): Promise<TripEntity> {
-    const trip = await this.tripRepo.findOne({ where: { id: tripId } });
-    if (!trip) throw new NotFoundException('Trip not found');
-    if (trip.driverId !== driverId) {
-      throw new ForbiddenException({
-        message: 'Only the trip driver can start the trip',
-        code: ErrorCodes.NOT_TRIP_DRIVER,
-      });
-    }
-    if (trip.status === TripStatus.IN_PROGRESS) {
-      throw new BadRequestException('Trip is already in progress');
-    }
-    if (
-      trip.status !== TripStatus.PUBLISHED &&
-      trip.status !== TripStatus.FULLY_BOOKED &&
-      trip.status !== TripStatus.ACTIVE
-    ) {
-      throw new BadRequestException(
-        'Trip must be published or fully booked to start',
-      );
-    }
-
-    const departureTime = new Date(trip.departureTime);
-    const now = new Date();
-    const windowStart = new Date(departureTime.getTime() - 15 * 60 * 1000);
-    const windowEnd = new Date(departureTime.getTime() + 30 * 60 * 1000);
-
-    if (now < windowStart || now > windowEnd) {
-      throw new BadRequestException({
-        code: ErrorCodes.TIMING_WINDOW,
-        message:
-          'Trip can only be started between 15 minutes before and 30 minutes after departure',
-        windowSeconds:
-          now < windowStart
-            ? Math.ceil((windowStart.getTime() - now.getTime()) / 1000)
-            : 0,
-      });
-    }
-
-    trip.status = TripStatus.IN_PROGRESS;
-    trip.tripStartedAt = now;
-    const savedTrip = await this.tripRepo.save(trip);
-
-    const bookings = await this.bookingRepo.find({
-      where: { tripId, status: BookingStatus.CONFIRMED },
-    });
-    for (const booking of bookings) {
-      booking.status = BookingStatus.IN_PROGRESS;
-      await this.bookingRepo.save(booking);
-    }
-
-    this.logger.log(`Trip ${tripId} started by driver ${driverId}`);
-    return savedTrip;
-  }
-
+  /**
+   * Driver presses "تم الوصول للوجهة" (arrived). The trip must already be
+   * IN_PROGRESS (set automatically at departureTime by TripAutoStartProcessor).
+   */
   async completeTrip(
     tripId: string,
     driverId: string,
@@ -226,7 +228,9 @@ export class TripTimeService {
       });
     }
     if (trip.status !== TripStatus.IN_PROGRESS) {
-      throw new BadRequestException('Trip must be in progress to complete');
+      throw new BadRequestException(
+        'Trip must be in progress to mark as arrived',
+      );
     }
 
     const now = new Date();
@@ -265,20 +269,6 @@ export class TripTimeService {
             booking.status = BookingStatus.NO_SHOW;
             booking.driverMarkedAbsentAt = now;
             await this.bookingRepo.save(booking);
-
-            const totalAmount = Number(
-              booking.totalAmount ?? booking.seatPriceAtBooking ?? 0,
-            );
-            const chargeAmount = totalAmount * 0.05;
-            if (chargeAmount > 0) {
-              await this.pendingChargesService.record({
-                userId: booking.userId,
-                kind: PendingChargeKind.PASSENGER_NO_SHOW,
-                amount: chargeAmount,
-                bookingId: booking.id,
-                tripId: booking.tripId,
-              });
-            }
           }
         }
       }
@@ -291,6 +281,10 @@ export class TripTimeService {
       booking.status = BookingStatus.COMPLETED;
       await this.bookingRepo.save(booking);
     }
+
+    // Driver no-show is tracked via passengerReportedDriverAbsentAt for admin
+    // review. Fines are no longer auto-applied; admin creates them manually via
+    // POST /admin/fines after investigating.
 
     const allBookings = await this.bookingRepo.find({
       where: { tripId },
@@ -318,7 +312,31 @@ export class TripTimeService {
       .where('tripId = :tripId', { tripId })
       .execute();
 
-    this.logger.log(`Trip ${tripId} completed by driver ${driverId}`);
+    this.logger.log(`Trip ${tripId} marked arrived by driver ${driverId}`);
+    await this.cancelTripLifecycleJobs(tripId);
     return savedTrip;
+  }
+
+  private async cancelTripLifecycleJobs(tripId: string): Promise<void> {
+    try {
+      const startJob = await this.tripAutoStartQueue.getJob(
+        `${TRIP_AUTO_START_JOB_ID_PREFIX}${tripId}`,
+      );
+      await startJob?.remove();
+    } catch (err) {
+      this.logger.warn(
+        `cancel trip-auto-start ${tripId}: ${(err as Error).message}`,
+      );
+    }
+    try {
+      const completeJob = await this.tripAutoCompleteQueue.getJob(
+        `${TRIP_AUTO_COMPLETE_JOB_ID_PREFIX}${tripId}`,
+      );
+      await completeJob?.remove();
+    } catch (err) {
+      this.logger.warn(
+        `cancel trip-auto-complete ${tripId}: ${(err as Error).message}`,
+      );
+    }
   }
 }

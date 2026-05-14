@@ -64,13 +64,6 @@ class BookingModel {
   // Status
   final String status; // 'pending' | 'confirmed' | 'cancelled' | 'rejected' | 'completed' | 'no_show'
 
-  // Settlement (Phase 7 — US5)
-  final DateTime? settledAt;
-  final DateTime? settlementGraceUntil;
-
-  /// Whether the booking has been marked as paid by the driver.
-  bool get isSettled => settledAt != null;
-
   /// Whether chat/call contact is allowed (post-settlement reveal).
   final bool chatEnabled;
   final bool callEnabled;
@@ -95,8 +88,6 @@ class BookingModel {
     this.seats = const [],
     this.sharePhoneWithDriver = true,
     this.hasDriverPaidToContact = false,
-    this.settledAt,
-    this.settlementGraceUntil,
     this.chatEnabled = false,
     this.callEnabled = false,
     this.status = 'pending',
@@ -172,8 +163,6 @@ class BookingModel {
       seats: parsedSeats,
       sharePhoneWithDriver: json['sharePhoneWithDriver'] ?? true,
       hasDriverPaidToContact: json['hasDriverPaidToContact'] ?? false,
-      settledAt: _dateOrNull(json['settledAt']),
-      settlementGraceUntil: _dateOrNull(json['settlementGraceUntil']),
       chatEnabled: json['chatEnabled'] ?? false,
       callEnabled: json['callEnabled'] ?? false,
       status: json['status'] ?? 'pending',
@@ -219,8 +208,6 @@ class BookingModel {
     List<BookingSeatModel>? seats,
     bool? sharePhoneWithDriver,
     bool? hasDriverPaidToContact,
-    DateTime? settledAt,
-    DateTime? settlementGraceUntil,
     bool? chatEnabled,
     bool? callEnabled,
     String? status,
@@ -244,8 +231,6 @@ class BookingModel {
       sharePhoneWithDriver: sharePhoneWithDriver ?? this.sharePhoneWithDriver,
       hasDriverPaidToContact:
           hasDriverPaidToContact ?? this.hasDriverPaidToContact,
-      settledAt: settledAt ?? this.settledAt,
-      settlementGraceUntil: settlementGraceUntil ?? this.settlementGraceUntil,
       chatEnabled: chatEnabled ?? this.chatEnabled,
       callEnabled: callEnabled ?? this.callEnabled,
       status: status ?? this.status,

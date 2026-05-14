@@ -49,38 +49,38 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
-  --radius: 0.625rem;
+  --background: oklch(0.97 0.005 247);
+  --foreground: oklch(0.13 0.04 264);
+  --radius: 0.75rem;
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
+  --card-foreground: oklch(0.13 0.04 264);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
+  --popover-foreground: oklch(0.13 0.04 264);
+  --primary: oklch(0.476 0.234 265);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.94 0.01 247);
   --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
+  --muted: oklch(0.94 0.01 247);
+  --muted-foreground: oklch(0.52 0.04 257);
+  --accent: oklch(0.94 0.01 247);
   --accent-foreground: oklch(0.208 0.042 265.755);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
+  --border: oklch(0.91 0.012 255);
+  --input: oklch(0.91 0.012 255);
+  --ring: oklch(0.476 0.234 265 / 40%);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-3: oklch(0.476 0.234 265);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
+  --sidebar: oklch(0.08 0.03 264);
+  --sidebar-foreground: oklch(0.984 0.003 247.858);
+  --sidebar-primary: oklch(0.476 0.234 265);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.15 0.04 265);
+  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
+  --sidebar-border: oklch(1 0 0 / 6%);
+  --sidebar-ring: oklch(0.476 0.234 265);
 }
 
 
@@ -96,10 +96,47 @@ body {
   font-family: 'Cairo', ui-sans-serif, system-ui, sans-serif;
 }
 
-/* RTL spacing utilities */
+/* ─── RTL spacing utilities ─────────────────────────────────── */
 [dir="rtl"] .rtl\:mr-0 { margin-right: 0; }
 [dir="rtl"] .rtl\:ml-2 { margin-left: 0.5rem; }
 [dir="rtl"] .rtl\:ml-auto { margin-left: auto; margin-right: 0; }
+
+/* ─── RTL table alignment ───────────────────────────────────── */
+[dir="rtl"] th,
+[dir="rtl"] td {
+  text-align: right;
+}
+
+/* ─── RTL card / form label alignment ──────────────────────── */
+[dir="rtl"] label {
+  text-align: right;
+}
+
+/* ─── RTL select & input padding mirror ────────────────────── */
+[dir="rtl"] [data-slot="select-trigger"],
+[dir="rtl"] input,
+[dir="rtl"] textarea {
+  text-align: right;
+}
+
+/* ─── RTL badge / status pill alignment ────────────────────── */
+[dir="rtl"] .badge-group {
+  flex-direction: row-reverse;
+}
+
+/* ─── RTL dropdown menu alignment ──────────────────────────── */
+[dir="rtl"] [data-slot="dropdown-menu-content"],
+[dir="rtl"] [data-slot="popover-content"] {
+  text-align: right;
+}
+
+/* ─── RTL icon spacing inside flex rows ────────────────────── */
+[dir="rtl"] .icon-row > svg:first-child {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+/* ─── RTL sidebar collapse chevron handled in component ─────── */
 
 .dark {
   --background: oklch(0.129 0.042 264.695);

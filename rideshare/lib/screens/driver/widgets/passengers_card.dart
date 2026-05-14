@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
+import '../../../core/widgets/phone_text.dart';
 import '../../../models/booking_model.dart';
 import '../../../widgets/common/section_card.dart';
 
@@ -102,7 +103,7 @@ class _PassengerItem extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Expanded(
-                          child: Text(
+                          child: PhoneText(
                             booking.userPopulated?.phoneNumber ?? '',
                             style: AppTextStyles.bodySmall.copyWith(
                               color: AppColors.slate400,

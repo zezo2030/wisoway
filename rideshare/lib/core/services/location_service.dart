@@ -9,6 +9,7 @@ import '../../models/location_model.dart';
 
 class LocationService {
   static const String _keyLocationSharing = 'privacy_location_sharing';
+  static const String _arabicLocaleIdentifier = 'ar';
 
   static final RegExp _plusCodeRegex = RegExp(
     r'^[23456789CFGHJMPQRVWX]{2,}\+[23456789CFGHJMPQRVWX]{2,}$',
@@ -106,6 +107,7 @@ class LocationService {
 
   Future<LocationModel?> getCoordinatesFromAddress(String address) async {
     try {
+      await _useArabicLocale();
       final locations = await locationFromAddress(address);
 
       if (locations.isEmpty) {
@@ -119,7 +121,7 @@ class LocationService {
       );
 
       return LocationModel(
-        name: address,
+        name: addressString,
         latitude: location.latitude,
         longitude: location.longitude,
         address: addressString,
@@ -170,21 +172,17 @@ class LocationService {
     required double latitude,
     required double longitude,
   }) async {
-    final localeCandidates = <String>[
-      if (_isArabicLocale) 'ar',
-      if (_preferredLocaleIdentifier != null) _preferredLocaleIdentifier!,
-    ];
-
-    for (final localeIdentifier in localeCandidates) {
-      await setLocaleIdentifier(localeIdentifier);
-      final placemarks = await placemarkFromCoordinates(latitude, longitude);
-      if (placemarks.isNotEmpty &&
-          (!_isArabicLocale || _placemarkLooksArabic(placemarks.first))) {
-        return placemarks;
-      }
+    await _useArabicLocale();
+    final placemarks = await placemarkFromCoordinates(latitude, longitude);
+    if (placemarks.isNotEmpty && _placemarkLooksArabic(placemarks.first)) {
+      return placemarks;
     }
 
-    return placemarkFromCoordinates(latitude, longitude);
+    return placemarks;
+  }
+
+  Future<void> _useArabicLocale() {
+    return setLocaleIdentifier(_arabicLocaleIdentifier);
   }
 
   String _buildShortAddress(Placemark place) {
@@ -298,6 +296,6 @@ class LocationService {
   }
 
   String get _unknownLocationLabel {
-    return _isArabicLocale ? 'موقع غير معروف' : 'Unknown location';
+    return 'موقع غير معروف';
   }
 }

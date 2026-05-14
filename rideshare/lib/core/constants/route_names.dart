@@ -70,4 +70,7 @@ class RouteNames {
   static const String banned = '/banned';
   static const String complaint = '/complaint';
   static const String refundRequest = '/refund-request';
+
+  // Pending charges
+  static const String pendingCharges = '/pending-charges';
 }

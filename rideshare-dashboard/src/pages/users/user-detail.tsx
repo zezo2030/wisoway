@@ -4,10 +4,12 @@
 import { useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useLanguage } from "@/providers/language-provider"
 import {
   getUserById,
   getUserStats,
   getTrips,
+  getBookings,
   getDriverVehicle,
   changeUserRole,
   confirmUser,
@@ -41,8 +43,10 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { QUERY_KEYS } from "@/lib/constants"
-import { cn, formatDate, formatLocationName, getUserRoleLabel, getTripLocationName } from "@/lib/utils"
+import { cn, formatDate, formatLocationName, formatPhone, getUserRoleLabel, getTripLocationName } from "@/lib/utils"
+import { formatSeatDisplay } from "@/lib/seat-format"
 import { UserRole } from "@/types/enums"
+import type { Booking, TripSummary, UserSummary } from "@/types/models"
 import {
   ArrowLeft,
   MoreHorizontal,
@@ -72,6 +76,7 @@ export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { t } = useLanguage()
   const [activeTab, setActiveTab] = useState("trips")
 
   // Ban reason dialog state
@@ -123,16 +128,26 @@ export default function UserDetailPage() {
     enabled: !!id && user?.role === UserRole.DRIVER,
   })
 
+  const bookingsParams = user?.role === UserRole.DRIVER
+    ? { driverId: id!, page: 1, limit: 20 }
+    : { userId: id!, page: 1, limit: 20 }
+
+  const { data: bookings, isLoading: isLoadingBookings } = useQuery({
+    queryKey: [QUERY_KEYS.ADMIN.BOOKINGS, bookingsParams],
+    queryFn: () => getBookings(bookingsParams),
+    enabled: !!id && !!user && activeTab === "bookings",
+  })
+
   // Change role mutation
   const changeRoleMutation = useMutation({
     mutationFn: ({ userId, role }: { userId: string; role: UserRole }) =>
       changeUserRole(userId, role),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.USER, id] })
-      toast.success("User role updated successfully")
+      toast.success(t("userRoleUpdated"))
     },
     onError: () => {
-      toast.error("Failed to update user role")
+      toast.error(t("failedToUpdateRole"))
     },
   })
 
@@ -143,10 +158,10 @@ export default function UserDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.USER, id] })
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.USER_DEVICES, id] })
-      toast.success("User banned successfully")
+      toast.success(t("userBanned"))
     },
     onError: () => {
-      toast.error("Failed to ban user")
+      toast.error(t("failedToBanUser"))
     },
   })
 
@@ -156,10 +171,10 @@ export default function UserDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.USER, id] })
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.USER_DEVICES, id] })
-      toast.success("User unbanned successfully")
+      toast.success(t("userUnbanned"))
     },
     onError: () => {
-      toast.error("Failed to unban user")
+      toast.error(t("failedToUnbanUser"))
     },
   })
 
@@ -174,10 +189,10 @@ export default function UserDetailPage() {
     mutationFn: (userId: string) => confirmUser(userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.USER, id] })
-      toast.success("User confirmed successfully")
+      toast.success(t("userConfirmed"))
     },
     onError: () => {
-      toast.error("Failed to confirm user")
+      toast.error(t("failedToConfirmUser"))
     },
   })
 
@@ -186,21 +201,21 @@ export default function UserDetailPage() {
       approveDriver(userId, approved),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.USER, id] })
-      toast.success(variables.approved ? "Driver approved successfully" : "Driver approval removed")
+      toast.success(variables.approved ? t("driverApproved") : t("driverRejected"))
     },
     onError: () => {
-      toast.error("Failed to update driver approval")
+      toast.error(t("failedToUpdateDriverApproval"))
     },
   })
 
   const deleteUserMutation = useMutation({
     mutationFn: (userId: string) => deleteUser(userId),
     onSuccess: () => {
-      toast.success("User deleted successfully")
+      toast.success(t("userDeleted"))
       navigate("/users")
     },
     onError: () => {
-      toast.error("Failed to delete user")
+      toast.error(t("failedToDeleteUser"))
     },
   })
 
@@ -209,14 +224,14 @@ export default function UserDetailPage() {
 
     const userId = (user as { id?: string }).id ?? user._id
     if (!userId) {
-      toast.error("Cannot change role: missing user ID")
+      toast.error(t("cannotChangeRoleMissingId"))
       return
     }
 
     setConfirmDialog({
       open: true,
-      title: "Change User Role",
-      description: `Are you sure you want to change this user's role to ${getUserRoleLabel(newRole)}?`,
+      title: t("roleConfirmTitle"),
+      description: `${t("roleConfirmDesc")} ${getUserRoleLabel(newRole)}?`,
       variant: "default",
       onConfirm: () => {
         changeRoleMutation.mutate({ userId, role: newRole })
@@ -228,12 +243,12 @@ export default function UserDetailPage() {
   const handleBanClick = () => {
     if (!user) return
     if (user.role === UserRole.ADMIN) {
-      toast.error("Cannot ban admin users")
+      toast.error(t("cannotBanAdmin"))
       return
     }
     const userId = (user as { id?: string }).id ?? user._id
     if (!userId) {
-      toast.error("Cannot ban user: missing user ID")
+      toast.error(t("cannotBanMissingId"))
       return
     }
     setBanDialog({ open: true, userId, banReason: "" })
@@ -243,13 +258,13 @@ export default function UserDetailPage() {
     if (!user) return
     const userId = (user as { id?: string }).id ?? user._id
     if (!userId) {
-      toast.error("Cannot unban user: missing user ID")
+      toast.error(t("cannotUnbanMissingId"))
       return
     }
     setConfirmDialog({
       open: true,
-      title: "Unban User",
-      description: "Are you sure you want to unban this user? They will regain full access to the platform.",
+      title: t("unbanConfirmTitle"),
+      description: t("unbanConfirmDescDetail"),
       variant: "default",
       onConfirm: () => {
         unbanMutation.mutate(userId)
@@ -263,14 +278,14 @@ export default function UserDetailPage() {
 
     const userId = (user as { id?: string }).id ?? user._id
     if (!userId) {
-      toast.error("Cannot confirm user: missing user ID")
+      toast.error(t("cannotConfirmMissingId"))
       return
     }
 
     setConfirmDialog({
       open: true,
-      title: "Confirm User",
-      description: "Are you sure you want to confirm this user account?",
+      title: t("confirmUserTitle"),
+      description: t("confirmUserDesc"),
       variant: "default",
       onConfirm: () => {
         confirmUserMutation.mutate(userId)
@@ -284,15 +299,15 @@ export default function UserDetailPage() {
 
     const userId = (user as { id?: string }).id ?? user._id
     if (!userId) {
-      toast.error("Cannot delete user: missing user ID")
+      toast.error(t("cannotDeleteMissingId"))
       return
     }
 
     setConfirmDialog({
       open: true,
-      title: "Delete User",
+      title: t("deleteConfirmTitle"),
       description:
-        "Are you sure you want to permanently delete this user? This action cannot be undone.",
+        t("deleteConfirmDesc"),
       variant: "destructive",
       onConfirm: () => {
         deleteUserMutation.mutate(userId)
@@ -306,17 +321,17 @@ export default function UserDetailPage() {
 
     const userId = (user as { id?: string }).id ?? user._id
     if (!userId) {
-      toast.error("Cannot update driver approval: missing user ID")
+      toast.error(t("cannotApprovalMissingId"))
       return
     }
 
     const approving = !user.isDriverApproved
     setConfirmDialog({
       open: true,
-      title: approving ? "Approve Driver" : "Reject Driver",
+      title: approving ? t("approveDriverTitle") : t("rejectDriverTitle"),
       description: approving
-        ? "Approve this driver to allow creating trips?"
-        : "Reject this driver? They will no longer be allowed to create trips.",
+        ? t("approveDriverDesc")
+        : t("rejectDriverDesc"),
       variant: approving ? "default" : "destructive",
       onConfirm: () => {
         approveDriverMutation.mutate({ userId, approved: approving })
@@ -359,7 +374,31 @@ export default function UserDetailPage() {
       }
     }
 
-    return "Location not provided"
+    return t("locationNotProvided")
+  }
+
+  const isPopulatedUser = (value: Booking["userId"]): value is UserSummary =>
+    typeof value === "object" && value !== null && "name" in value
+
+  const isPopulatedTrip = (value: Booking["tripId"]): value is TripSummary =>
+    typeof value === "object" && value !== null
+
+  const getBookingTripText = (booking: Booking): string => {
+    if (!isPopulatedTrip(booking.tripId)) return booking.tripId
+    const tripRecord = booking.tripId as unknown as Record<string, unknown>
+    const from = getTripLocationName(tripRecord, "from", "-")
+    const to = getTripLocationName(tripRecord, "to", "-")
+    return `${from || "-"} → ${to || "-"}`
+  }
+
+  const getBookingSeatText = (booking: Booking): string => {
+    const layout = isPopulatedTrip(booking.tripId) ? booking.tripId.seatLayout : undefined
+    if (booking.seats && booking.seats.length > 0) {
+      return booking.seats
+        .map((seat) => formatSeatDisplay(seat.seatNumber, layout))
+        .join(", ")
+    }
+    return formatSeatDisplay(booking.seatNumber ?? "", layout)
   }
 
   if (isLoadingUser) {
@@ -378,13 +417,13 @@ export default function UserDetailPage() {
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <Button variant="ghost" onClick={() => navigate(-1)} className="rounded-full shadow-sm bg-background border border-border/50">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Users
+          {t("backToUsers")}
         </Button>
         <Card className="border-border/50 shadow-lg bg-card/60 backdrop-blur-xl">
           <CardContent className="flex flex-col items-center justify-center h-64 text-muted-foreground">
             <User className="h-12 w-12 mb-4 text-muted-foreground/30" />
-            <h3 className="text-xl font-bold text-foreground">User Not Found</h3>
-            <p className="mt-2 text-center text-sm">The user you are looking for does not exist or has been removed.</p>
+            <h3 className="text-xl font-bold text-foreground">{t("userNotFound")}</h3>
+            <p className="mt-2 text-center text-sm">{t("userNotFoundDesc")}</p>
           </CardContent>
         </Card>
       </div>
@@ -393,7 +432,7 @@ export default function UserDetailPage() {
 
   const statCardsData = [
     {
-      title: "Total Trips",
+      title: t("totalTripsLabel"),
       value: stats?.totalTrips || 0,
       icon: Car,
       color: "from-blue-500/20 to-indigo-500/20",
@@ -401,7 +440,7 @@ export default function UserDetailPage() {
       iconColor: "text-blue-500"
     },
     {
-      title: "Total Bookings",
+      title: t("totalBookingsLabel"),
       value: stats?.totalBookings || 0,
       icon: MapPin,
       color: "from-violet-500/20 to-purple-500/20",
@@ -409,7 +448,7 @@ export default function UserDetailPage() {
       iconColor: "text-violet-500"
     },
     {
-      title: "Avg. Rating",
+      title: t("avgRating"),
       value: (stats?.averageRating != null ? Number(stats.averageRating).toFixed(1) : "0.0"),
       icon: Award,
       color: "from-amber-500/20 to-orange-500/20",
@@ -418,7 +457,7 @@ export default function UserDetailPage() {
       isRating: true
     },
     {
-      title: "Payments",
+      title: t("paymentsLabel"),
       value: "$" + (stats?.totalPayments || 0),
       icon: CreditCard,
       color: "from-emerald-500/20 to-teal-500/20",
@@ -437,7 +476,7 @@ export default function UserDetailPage() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground/90 flex items-center">
-              User Profile
+              {t("userProfile")}
               {user.isActive ? (
                 <CheckCircle className="ml-3 h-5 w-5 text-emerald-500" />
               ) : (
@@ -450,31 +489,31 @@ export default function UserDetailPage() {
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="rounded-full shadow-sm hover:shadow-md transition-all border-primary/20 hover:border-primary/50">
               <MoreHorizontal className="mr-2 h-4 w-4 text-primary" />
-              <span className="font-semibold text-primary">Manage User</span>
+              <span className="font-semibold text-primary">{t("manageUser")}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48 shadow-lg rounded-xl border-border/50 backdrop-blur-md bg-background/95">
-            <div className="text-xs font-semibold px-2 py-1.5 text-muted-foreground uppercase tracking-wider">Roles</div>
+            <div className="text-xs font-semibold px-2 py-1.5 text-muted-foreground uppercase tracking-wider">{t("roles")}</div>
             <DropdownMenuItem
               onClick={() => handleRoleChange(UserRole.PASSENGER)}
               disabled={user.role === UserRole.PASSENGER || changeRoleMutation.isPending}
               className="font-medium cursor-pointer"
             >
-              <User className="mr-2 h-4 w-4" /> Make Passenger
+              <User className="mr-2 h-4 w-4" /> {t("makePassenger")}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleRoleChange(UserRole.DRIVER)}
               disabled={user.role === UserRole.DRIVER || changeRoleMutation.isPending}
               className="font-medium cursor-pointer"
             >
-              <UserCog className="mr-2 h-4 w-4" /> Make Driver
+              <UserCog className="mr-2 h-4 w-4" /> {t("makeDriver")}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleRoleChange(UserRole.ADMIN)}
               disabled={user.role === UserRole.ADMIN || changeRoleMutation.isPending}
               className="font-medium cursor-pointer"
             >
-              <Shield className="mr-2 h-4 w-4" /> Make Admin
+              <Shield className="mr-2 h-4 w-4" /> {t("makeAdmin")}
             </DropdownMenuItem>
             <div className="h-px bg-border my-1" />
             <DropdownMenuItem
@@ -483,21 +522,20 @@ export default function UserDetailPage() {
               className={cn("font-medium cursor-pointer", user.isActive ? "text-rose-600 focus:text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-950/30" : "text-emerald-600 focus:text-emerald-600 focus:bg-emerald-50 dark:focus:bg-emerald-950/30")}
             >
               {user.isActive ? (
-                <><Ban className="mr-2 h-4 w-4" /> Ban User</>
+                <><Ban className="mr-2 h-4 w-4" /> {t("banUser")}</>
               ) : (
-                <><CheckCircle className="mr-2 h-4 w-4" /> Unban User</>
+                <><CheckCircle className="mr-2 h-4 w-4" /> {t("unbanUser")}</>
               )}
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={handleConfirmUser}
-              disabled={
-                confirmUserMutation.isPending ||
-                (user.isActive && user.isPhoneVerified && user.isEmailVerified)
-              }
-              className="font-medium cursor-pointer text-blue-600 focus:text-blue-600 focus:bg-blue-50 dark:focus:bg-blue-950/30"
-            >
-              <UserCheck className="mr-2 h-4 w-4" /> Confirm User
-            </DropdownMenuItem>
+            {!user.isPhoneVerified && (
+              <DropdownMenuItem
+                onClick={handleConfirmUser}
+                disabled={confirmUserMutation.isPending}
+                className="font-medium cursor-pointer text-blue-600 focus:text-blue-600 focus:bg-blue-50 dark:focus:bg-blue-950/30"
+              >
+                <UserCheck className="mr-2 h-4 w-4" /> {t("confirmUser")}
+              </DropdownMenuItem>
+            )}
             {user.role === UserRole.DRIVER && (
               <DropdownMenuItem
                 onClick={handleApproveDriver}
@@ -510,7 +548,7 @@ export default function UserDetailPage() {
                 )}
               >
                 <CarFront className="mr-2 h-4 w-4" />
-                {user.isDriverApproved ? "Reject Driver" : "Approve Driver"}
+                {user.isDriverApproved ? t("rejectDriver") : t("approveDriver")}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
@@ -518,7 +556,7 @@ export default function UserDetailPage() {
               disabled={deleteUserMutation.isPending || user.role === UserRole.ADMIN}
               className="font-medium cursor-pointer text-rose-600 focus:text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-950/30"
             >
-              <Trash2 className="mr-2 h-4 w-4" /> Delete User
+              <Trash2 className="mr-2 h-4 w-4" /> {t("deleteUser")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -545,7 +583,7 @@ export default function UserDetailPage() {
 
             <div className="flex items-center gap-1.5 mb-6 text-muted-foreground/80 font-medium">
               <Shield className="w-4 h-4" />
-              <span>{user.isEmailVerified || user.isPhoneVerified ? "Verified Account" : "Account Not Verified"}</span> • <span className="capitalize">{user.gender || "Not specified"}</span>
+              <span>{user.isEmailVerified || user.isPhoneVerified ? t("verifiedAccount") : t("accountNotVerified")}</span> • <span className="capitalize">{user.gender || t("notSpecified")}</span>
             </div>
 
             <div className="flex flex-wrap gap-2 justify-center mb-6">
@@ -570,20 +608,20 @@ export default function UserDetailPage() {
                   )}
                 >
                   <CarFront className="w-3 h-3 mr-1" />
-                  {user.isDriverApproved ? "Driver Approved" : "Driver Pending"}
+                  {user.isDriverApproved ? t("driverApprovedBadge") : t("driverPending")}
                 </span>
               )}
             </div>
 
             <div className="grid grid-cols-2 gap-4 w-full p-4 bg-background/50 rounded-2xl border border-border/40 shadow-inner">
               <div className="flex flex-col items-center p-3 rounded-xl bg-card shadow-sm border border-border/50">
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Reviews</span>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">{t("reviews")}</span>
                 <div className="flex items-center gap-1 text-lg font-black text-amber-500">
                   <Star className="h-4 w-4 fill-amber-500" /> {Number(user.rating ?? 0).toFixed(1)}
                 </div>
               </div>
               <div className="flex flex-col items-center p-3 rounded-xl bg-card shadow-sm border border-border/50">
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Joined</span>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">{t("joined")}</span>
                 <span className="text-sm font-semibold text-foreground/80 mt-1">{new Date(user.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</span>
               </div>
             </div>
@@ -595,34 +633,34 @@ export default function UserDetailPage() {
           <Card className="border-border/50 shadow-md bg-card/60 backdrop-blur-xl">
             <CardHeader className="pb-4">
               <CardTitle className="text-lg font-bold flex items-center">
-                <User className="h-5 w-5 mr-2 text-primary" /> Contact & Details
+                <User className="h-5 w-5 mr-2 text-primary" /> {t("contactDetails")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid gap-5 sm:grid-cols-2">
                 <div className="space-y-1 p-4 rounded-xl relative overflow-hidden bg-muted/20 border border-border/40 hover:bg-muted/40 transition-colors">
                   <Mail className="w-16 h-16 absolute -right-4 -bottom-4 opacity-[0.03] text-foreground" />
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2"><Mail className="w-3.5 h-3.5" /> Email Address</p>
-                  <p className="font-semibold text-foreground truncate">{user.email || "Not Provided"}</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2"><Mail className="w-3.5 h-3.5" /> {t("emailAddress")}</p>
+                  <p className="font-semibold text-foreground truncate">{user.email || t("notProvided")}</p>
                 </div>
                 <div className="space-y-1 p-4 rounded-xl relative overflow-hidden bg-muted/20 border border-border/40 hover:bg-muted/40 transition-colors">
                   <Phone className="w-16 h-16 absolute -right-4 -bottom-4 opacity-[0.03] text-foreground" />
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2"><Phone className="w-3.5 h-3.5" /> Phone Number</p>
-                  <p className="font-semibold text-foreground">{user.phoneNumber || "Not Provided"}</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2"><Phone className="w-3.5 h-3.5" /> {t("phoneNumber")}</p>
+                  <p className="font-semibold text-foreground" dir="ltr">{user.phoneNumber ? formatPhone(user.phoneNumber) : t("notProvided")}</p>
                 </div>
                 <div className="space-y-1 p-4 rounded-xl relative overflow-hidden bg-muted/20 border border-border/40 hover:bg-muted/40 transition-colors">
                   <Shield className="w-16 h-16 absolute -right-4 -bottom-4 opacity-[0.03] text-foreground" />
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2"><Shield className="w-3.5 h-3.5" /> Provider Auth</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2"><Shield className="w-3.5 h-3.5" /> {t("providerAuth")}</p>
                   <p className="font-semibold text-foreground capitalize">{user.provider}</p>
                 </div>
                 <div className="space-y-1 p-4 rounded-xl relative overflow-hidden bg-muted/20 border border-border/40 hover:bg-muted/40 transition-colors">
                   <Calendar className="w-16 h-16 absolute -right-4 -bottom-4 opacity-[0.03] text-foreground" />
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2"><Calendar className="w-3.5 h-3.5" /> Exact Registration</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2"><Calendar className="w-3.5 h-3.5" /> {t("exactRegistration")}</p>
                   <p className="font-medium text-sm text-foreground">{formatDate(user.createdAt)}</p>
                 </div>
                 <div className="space-y-1 p-4 rounded-xl relative overflow-hidden bg-muted/20 border border-border/40 hover:bg-muted/40 transition-colors sm:col-span-2">
                   <MapPin className="w-16 h-16 absolute -right-4 -bottom-4 opacity-[0.03] text-foreground" />
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2"><MapPin className="w-3.5 h-3.5" /> Location</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2"><MapPin className="w-3.5 h-3.5" /> {t("locationLabel")}</p>
                   <p className="font-semibold text-foreground">{getUserLocationText()}</p>
                 </div>
               </div>
@@ -633,37 +671,37 @@ export default function UserDetailPage() {
             <Card className="border-border/50 shadow-md bg-card/60 backdrop-blur-xl">
               <CardHeader className="pb-4">
                 <CardTitle className="text-lg font-bold flex items-center">
-                  <CarFront className="h-5 w-5 mr-2 text-primary" /> Vehicle Information
+                <CarFront className="h-5 w-5 mr-2 text-primary" /> {t("vehicleInformation")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {vehicle ? (
                   <div className="grid gap-5 sm:grid-cols-2">
                     <div className="space-y-1 p-4 rounded-xl bg-muted/20 border border-border/40">
-                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Type</p>
+                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("type")}</p>
                       <p className="font-semibold text-foreground capitalize">{vehicle.vehicleType}</p>
                     </div>
                     <div className="space-y-1 p-4 rounded-xl bg-muted/20 border border-border/40">
-                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Model</p>
+                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("vehicleModel")}</p>
                       <p className="font-semibold text-foreground">{vehicle.model}</p>
                     </div>
                     <div className="space-y-1 p-4 rounded-xl bg-muted/20 border border-border/40">
-                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Plate Number</p>
+                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("plateNumber")}</p>
                       <p className="font-semibold text-foreground">{vehicle.plateNumber}</p>
                     </div>
                     <div className="space-y-1 p-4 rounded-xl bg-muted/20 border border-border/40">
-                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Seats</p>
+                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("seats")}</p>
                       <p className="font-semibold text-foreground">{vehicle.seats}</p>
                     </div>
                     <div className="space-y-1 p-4 rounded-xl bg-muted/20 border border-border/40 sm:col-span-2">
-                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Verification</p>
+                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("vehicleVerification")}</p>
                       <p className={cn("font-semibold", vehicle.isVerified ? "text-emerald-600" : "text-orange-600")}>
-                        {vehicle.isVerified ? "Verified" : "Pending / Rejected"}
+                        {vehicle.isVerified ? t("verified") : t("vehiclePendingRejected")}
                       </p>
                     </div>
                     {/* Driver License Image */}
                     <div className="space-y-2 p-4 rounded-xl bg-muted/20 border border-border/40 sm:col-span-2">
-                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Driver License</p>
+                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("driverLicense")}</p>
                       {vehicle.licenseImageUrl ? (
                         vehicle.licenseImageUrl.toLowerCase().endsWith(".pdf") ? (
                           <a
@@ -673,22 +711,22 @@ export default function UserDetailPage() {
                             className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 dark:bg-blue-950/30 px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-900/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
                           >
                             <FileText className="h-4 w-4" />
-                            PDF Document
+                            {t("pdfDocument")}
                           </a>
                         ) : (
                           <ImagePreview
                             imageUrl={vehicle.licenseImageUrl}
-                            alt="Driver License"
+                            alt={t("driverLicense")}
                             thumbnailClassName="h-24 w-auto max-w-[200px] rounded-lg shadow-sm border border-border/50 object-cover cursor-zoom-in hover:opacity-90 transition-opacity"
                           />
                         )
                       ) : (
-                        <span className="text-sm text-muted-foreground">No image uploaded</span>
+                        <span className="text-sm text-muted-foreground">{t("noImageUploaded")}</span>
                       )}
                     </div>
                     {/* Vehicle Registration Image */}
                     <div className="space-y-2 p-4 rounded-xl bg-muted/20 border border-border/40 sm:col-span-2">
-                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Vehicle Registration</p>
+                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("vehicleRegistration")}</p>
                       {vehicle.vehicleLicenseImageUrl ? (
                         vehicle.vehicleLicenseImageUrl.toLowerCase().endsWith(".pdf") ? (
                           <a
@@ -698,23 +736,23 @@ export default function UserDetailPage() {
                             className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 dark:bg-blue-950/30 px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-900/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
                           >
                             <FileText className="h-4 w-4" />
-                            PDF Document
+                            {t("pdfDocument")}
                           </a>
                         ) : (
                           <ImagePreview
                             imageUrl={vehicle.vehicleLicenseImageUrl}
-                            alt="Vehicle Registration"
+                            alt={t("vehicleRegistration")}
                             thumbnailClassName="h-24 w-auto max-w-[200px] rounded-lg shadow-sm border border-border/50 object-cover cursor-zoom-in hover:opacity-90 transition-opacity"
                           />
                         )
                       ) : (
-                        <span className="text-sm text-muted-foreground">No image uploaded</span>
+                        <span className="text-sm text-muted-foreground">{t("noImageUploaded")}</span>
                       )}
                     </div>
                   </div>
                 ) : (
                   <div className="p-6 rounded-xl bg-muted/20 border border-border/40 text-sm text-muted-foreground">
-                    No vehicle data found for this driver.
+                    {t("noVehicleData")}
                   </div>
                 )}
               </CardContent>
@@ -746,7 +784,7 @@ export default function UserDetailPage() {
             </div>
           ) : (
             <div className="h-32 rounded-xl bg-muted/50 border border-border/40 animate-pulse flex items-center justify-center text-muted-foreground font-medium">
-              Loading user metrics...
+              {t("loadingMetrics")}
             </div>
           )}
         </div>
@@ -757,19 +795,19 @@ export default function UserDetailPage() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="bg-muted/40 p-1.5 rounded-2xl border border-border/40 w-full flex overflow-x-auto overflow-y-hidden justify-start sm:w-auto h-auto min-w-min">
             <TabsTrigger value="trips" className="rounded-xl px-5 py-2.5 font-semibold text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary flex-shrink-0">
-              <Car className="mr-2 h-4 w-4" /> Trips Log
+              <Car className="mr-2 h-4 w-4" /> {t("tripsLog")}
             </TabsTrigger>
             <TabsTrigger value="bookings" className="rounded-xl px-5 py-2.5 font-semibold text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary flex-shrink-0">
-              <MapPin className="mr-2 h-4 w-4" /> Bookings
+              <MapPin className="mr-2 h-4 w-4" /> {t("bookingsTitle")}
             </TabsTrigger>
             <TabsTrigger value="payments" className="rounded-xl px-5 py-2.5 font-semibold text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary flex-shrink-0">
-              <CreditCard className="mr-2 h-4 w-4" /> Payments
+              <CreditCard className="mr-2 h-4 w-4" /> {t("paymentsLabel")}
             </TabsTrigger>
             <TabsTrigger value="ratings" className="rounded-xl px-5 py-2.5 font-semibold text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary flex-shrink-0">
-              <Star className="mr-2 h-4 w-4" /> Ratings
+              <Star className="mr-2 h-4 w-4" /> {t("ratingsTab")}
             </TabsTrigger>
             <TabsTrigger value="devices" className="rounded-xl px-5 py-2.5 font-semibold text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary flex-shrink-0">
-              <Smartphone className="mr-2 h-4 w-4" /> Devices
+              <Smartphone className="mr-2 h-4 w-4" /> {t("userDevicesTab")}
             </TabsTrigger>
           </TabsList>
 
@@ -780,9 +818,9 @@ export default function UserDetailPage() {
                   <div>
                     <CardHeader className="border-b border-border/30 bg-muted/10 pb-4 pt-5 px-6">
                       <CardTitle className="text-lg font-bold flex items-center">
-                        <Activity className="w-5 h-5 mr-3 text-primary" /> Active & Past Driver Trips
+                        <Activity className="w-5 h-5 mr-3 text-primary" /> {t("activePastDriverTrips")}
                       </CardTitle>
-                      <CardDescription className="text-sm font-medium">Recent drives organized by this user.</CardDescription>
+                      <CardDescription className="text-sm font-medium">{t("recentDrives")}</CardDescription>
                     </CardHeader>
                     <div className="p-0">
                       <div className="divide-y divide-border/50">
@@ -816,8 +854,8 @@ export default function UserDetailPage() {
                     <div className="bg-muted p-4 rounded-full mb-4">
                       <Car className="h-8 w-8 text-muted-foreground/50" />
                     </div>
-                    <h3 className="text-lg font-bold">No trips on record</h3>
-                    <p className="text-muted-foreground mt-1 text-sm max-w-[250px]">This driver hasn't completed or scheduled any trips yet.</p>
+                    <h3 className="text-lg font-bold">{t("noTripsOnRecord")}</h3>
+                    <p className="text-muted-foreground mt-1 text-sm max-w-[250px]">{t("driverNoTrips")}</p>
                   </div>
                 )
               ) : (
@@ -825,33 +863,111 @@ export default function UserDetailPage() {
                   <div className="bg-muted w-16 h-16 rounded-full flex items-center justify-center mb-4">
                     <User className="h-8 w-8 text-muted-foreground/50" />
                   </div>
-                  <h3 className="text-lg font-bold">Cannot show trips</h3>
-                  <p className="text-muted-foreground mt-1 text-sm max-w-[250px]">This account is registered as a passenger, so they do not organize trips.</p>
+                  <h3 className="text-lg font-bold">{t("cannotShowTrips")}</h3>
+                  <p className="text-muted-foreground mt-1 text-sm max-w-[250px]">{t("passengerNoTrips")}</p>
                 </div>
               )}
             </TabsContent>
 
             <TabsContent value="bookings" className="m-0 focus-visible:outline-none focus-visible:ring-0">
-              <div className="p-16 flex flex-col items-center justify-center text-center">
-                <MapPin className="h-12 w-12 mb-4 text-muted-foreground/30" />
-                <h3 className="text-xl font-bold">Total Bookings: {stats?.totalBookings || 0}</h3>
-                <p className="mt-2 text-sm text-muted-foreground font-medium">Full booking details feature is in development.</p>
-              </div>
+              {isLoadingBookings ? (
+                <div className="p-16 flex flex-col items-center justify-center text-center">
+                  <MapPin className="h-12 w-12 mb-4 text-muted-foreground/30 animate-pulse" />
+                  <p className="text-sm text-muted-foreground font-medium">{t("loading")}</p>
+                </div>
+              ) : bookings && bookings.data.length > 0 ? (
+                <div>
+                  <CardHeader className="border-b border-border/30 bg-muted/10 pb-4 pt-5 px-6">
+                    <CardTitle className="text-lg font-bold flex items-center">
+                      <MapPin className="w-5 h-5 mr-3 text-primary" /> {t("bookingsTitle")}
+                    </CardTitle>
+                    <CardDescription className="text-sm font-medium">
+                      {t("totalBookingsLabel")}: {bookings.meta.total}
+                    </CardDescription>
+                  </CardHeader>
+                  <div className="divide-y divide-border/50">
+                    {bookings.data.map((booking) => (
+                      <div
+                        key={booking._id}
+                        className="p-5 flex flex-col gap-4 hover:bg-muted/30 transition-colors lg:flex-row lg:items-center lg:justify-between"
+                      >
+                        <div className="space-y-2 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h4 className="font-bold text-base text-foreground">
+                              {getBookingTripText(booking)}
+                            </h4>
+                            <StatusBadge
+                              status={
+                                booking.status === "pending" ? "pending_booking"
+                                : booking.status === "confirmed" ? "confirmed"
+                                : booking.status === "cancelled" ? "cancelled_booking"
+                                : booking.status === "rejected" ? "rejected"
+                                : booking.status === "no_show" ? "no_show"
+                                : "completed_booking"
+                              }
+                              type="booking"
+                              className="shadow-sm"
+                            />
+                          </div>
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground font-medium">
+                            {isPopulatedTrip(booking.tripId) && (
+                              <span className="flex items-center">
+                                <Calendar className="w-3.5 h-3.5 mr-1.5" />
+                                {formatDate(booking.tripId.departureTime)}
+                              </span>
+                            )}
+                            {user.role === UserRole.DRIVER && isPopulatedUser(booking.userId) && (
+                              <span className="flex items-center">
+                                <User className="w-3.5 h-3.5 mr-1.5" />
+                                {booking.userId.name}
+                              </span>
+                            )}
+                            <span className="flex items-center">
+                              <CreditCard className="w-3.5 h-3.5 mr-1.5" />
+                              {booking.totalAmount ?? 0}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="secondary" className="font-mono">
+                            #{getBookingSeatText(booking)}
+                          </Badge>
+                          {booking.seatCount && booking.seatCount > 1 && (
+                            <Badge variant="outline">
+                              {booking.seatCount} {t("seatsColumn")}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-16 flex flex-col items-center justify-center text-center">
+                  <div className="bg-muted w-16 h-16 rounded-full flex items-center justify-center mb-4">
+                    <MapPin className="h-8 w-8 text-muted-foreground/50" />
+                  </div>
+                  <h3 className="text-lg font-bold">{t("noBookingsFound")}</h3>
+                  <p className="text-muted-foreground mt-1 text-sm max-w-[280px]">
+                    {t("noBookingsFound")}
+                  </p>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="payments" className="m-0 focus-visible:outline-none focus-visible:ring-0">
               <div className="p-16 flex flex-col items-center justify-center text-center">
                 <CreditCard className="h-12 w-12 mb-4 text-emerald-500/30" />
-                <h3 className="text-xl font-bold">Total Payments: ${stats?.totalPayments || 0}</h3>
-                <p className="mt-2 text-sm text-muted-foreground font-medium">Detailed transaction history coming soon.</p>
+                <h3 className="text-xl font-bold">{t("totalPaymentsLabel")}: ${stats?.totalPayments || 0}</h3>
+                <p className="mt-2 text-sm text-muted-foreground font-medium">{t("paymentsComingSoon")}</p>
               </div>
             </TabsContent>
 
             <TabsContent value="ratings" className="m-0 focus-visible:outline-none focus-visible:ring-0">
               <div className="p-16 flex flex-col items-center justify-center text-center">
                 <Star className="h-12 w-12 mb-4 text-yellow-500/30" />
-                <h3 className="text-xl font-bold">Total Ratings given/received: {stats?.totalRatings || 0}</h3>
-                <p className="mt-2 text-sm text-muted-foreground font-medium">Ratings breakdown module coming soon.</p>
+                <h3 className="text-xl font-bold">{t("totalRatingsLabel")}: {stats?.totalRatings || 0}</h3>
+                <p className="mt-2 text-sm text-muted-foreground font-medium">{t("ratingsComingSoon")}</p>
               </div>
             </TabsContent>
 
@@ -859,16 +975,16 @@ export default function UserDetailPage() {
               {isLoadingDevices ? (
                 <div className="p-16 flex flex-col items-center justify-center text-center">
                   <Smartphone className="h-12 w-12 mb-4 text-muted-foreground/30 animate-pulse" />
-                  <p className="text-sm text-muted-foreground font-medium">Loading devices...</p>
+                  <p className="text-sm text-muted-foreground font-medium">{t("loadingDevices")}</p>
                 </div>
               ) : devices && devices.length > 0 ? (
                 <div>
                   <CardHeader className="border-b border-border/30 bg-muted/10 pb-4 pt-5 px-6">
                     <CardTitle className="text-lg font-bold flex items-center">
-                      <Smartphone className="w-5 h-5 mr-3 text-primary" /> Registered Devices
-                    </CardTitle>
-                    <CardDescription className="text-sm font-medium">
-                      {devices.filter((d) => d.status === "active").length} active · {devices.filter((d) => d.status === "revoked").length} revoked
+                        <Smartphone className="w-5 h-5 mr-3 text-primary" /> {t("registeredDevices")}
+                      </CardTitle>
+                      <CardDescription className="text-sm font-medium">
+                        {devices.filter((d) => d.status === "active").length} {t("activeDevices")} · {devices.filter((d) => d.status === "revoked").length} {t("revokedDevices")}
                     </CardDescription>
                   </CardHeader>
                   <div className="divide-y divide-border/50">
@@ -890,11 +1006,11 @@ export default function UserDetailPage() {
                             <p className="text-sm text-muted-foreground capitalize">
                               {device.platform}
                               {device.lastSeenAt && (
-                                <span className="ml-2">· Last seen {formatDate(device.lastSeenAt)}</span>
+                                <span className="ml-2">· {t("lastSeenLabel")} {formatDate(device.lastSeenAt)}</span>
                               )}
                             </p>
                             {device.revokeReason && (
-                              <p className="text-xs text-rose-500 mt-0.5">Revoked: {device.revokeReason}</p>
+                              <p className="text-xs text-rose-500 mt-0.5">{t("revokedLabel")} {device.revokeReason}</p>
                             )}
                           </div>
                         </div>
@@ -914,8 +1030,8 @@ export default function UserDetailPage() {
               ) : (
                 <div className="p-16 flex flex-col items-center justify-center text-center">
                   <Smartphone className="h-12 w-12 mb-4 text-muted-foreground/30" />
-                  <h3 className="text-xl font-bold">No devices registered</h3>
-                  <p className="mt-2 text-sm text-muted-foreground font-medium">This user has no registered devices on record.</p>
+                  <h3 className="text-xl font-bold">{t("noDevicesRegistered")}</h3>
+                  <p className="mt-2 text-sm text-muted-foreground font-medium">{t("noDevicesDesc")}</p>
                 </div>
               )}
             </TabsContent>
@@ -940,20 +1056,20 @@ export default function UserDetailPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-rose-600">
-              <Ban className="h-5 w-5" /> Ban User
+              <Ban className="h-5 w-5" /> {t("banUser")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <p className="text-sm text-muted-foreground">
-              This user will immediately lose access to the platform. All active devices will be revoked.
+              {t("banDialogDesc")}
             </p>
             <div className="space-y-1.5">
               <Label htmlFor="ban-reason" className="text-sm font-semibold">
-                Reason <span className="text-muted-foreground font-normal">(optional)</span>
+                {t("reasonLabel")} <span className="text-muted-foreground font-normal">({t("optional")})</span>
               </Label>
               <Textarea
                 id="ban-reason"
-                placeholder="e.g. Repeated policy violations, fraud report..."
+                placeholder={t("banReasonPlaceholder")}
                 className="resize-none min-h-[90px]"
                 value={banDialog.banReason}
                 onChange={(e) => setBanDialog((prev) => ({ ...prev, banReason: e.target.value }))}
@@ -965,7 +1081,7 @@ export default function UserDetailPage() {
               variant="outline"
               onClick={() => setBanDialog({ open: false, userId: "", banReason: "" })}
             >
-              Cancel
+              {t("cancel")}
             </Button>
             <Button
               variant="destructive"
@@ -978,7 +1094,7 @@ export default function UserDetailPage() {
                 setBanDialog({ open: false, userId: "", banReason: "" })
               }}
             >
-              {banMutation.isPending ? "Banning..." : "Confirm Ban"}
+              {banMutation.isPending ? t("banning") : t("confirmBan")}
             </Button>
           </DialogFooter>
         </DialogContent>

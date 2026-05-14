@@ -35,17 +35,71 @@ export function formatRelativeTime(date: string | Date): string {
   return formatDistanceToNow(new Date(date), { addSuffix: true })
 }
 
-// Currency formatter
+const currencyMaxFractionDigitsCache = new Map<string, number>()
+
+function getMaxFractionDigitsForCurrency(currencyCode: string): number {
+  const cached = currencyMaxFractionDigitsCache.get(currencyCode)
+  if (cached !== undefined) return cached
+  let max = 2
+  try {
+    const resolved = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: currencyCode,
+    }).resolvedOptions()
+    max = resolved.maximumFractionDigits ?? 2
+  } catch {
+    max = 2
+  }
+  currencyMaxFractionDigitsCache.set(currencyCode, max)
+  return max
+}
+
+// Currency formatter — omits trailing fractional zeros (e.g. JOD 30,020 instead of 30,020.000)
 export function formatCurrency(amount: number, currency: string): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency,
-  }).format(amount)
+  const code = (currency || "JOD").toUpperCase()
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: code,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: getMaxFractionDigitsForCurrency(code),
+    }).format(amount)
+  } catch {
+    return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(amount)} ${code}`
+  }
 }
 
 // Number formatter
 export function formatNumber(num: number): string {
   return new Intl.NumberFormat("en-US").format(num)
+}
+
+// Phone formatter — always renders LTR with country-code separator:
+//   "+201234567890" -> "+20 123 456 7890"
+//   "0791234567"    -> "0791234567"
+export function formatPhone(raw: string | null | undefined): string {
+  if (!raw) return ""
+  const trimmed = raw.trim()
+  if (!trimmed) return ""
+  if (!trimmed.startsWith("+")) return trimmed
+
+  const digits = trimmed.slice(1).replace(/\D/g, "")
+  if (!digits) return trimmed
+
+  let ccLen = 1
+  if (digits.length > 10) ccLen = 3
+  else if (digits.length > 7) ccLen = 2
+  if (ccLen >= digits.length) return `+${digits}`
+
+  const cc = digits.slice(0, ccLen)
+  let rest = digits.slice(ccLen)
+  const groups: string[] = []
+  while (rest.length > 4) {
+    groups.push(rest.slice(0, 3))
+    rest = rest.slice(3)
+  }
+  if (rest) groups.push(rest)
+  return `+${cc} ${groups.join(" ")}`
 }
 
 // Status label mappers
@@ -75,6 +129,8 @@ export function getBookingStatusLabel(status: BookingStatus): string {
     [BookingStatus.CONFIRMED]: "Confirmed",
     [BookingStatus.CANCELLED]: "Cancelled",
     [BookingStatus.COMPLETED]: "Completed",
+    [BookingStatus.REJECTED]: "Rejected",
+    [BookingStatus.NO_SHOW]: "No-show",
   }
   return labels[status] || status
 }
@@ -197,11 +253,12 @@ export function formatLocationName(value: unknown, fallback = "Location not set"
 }
 
 export function getTripLocationName(
-  trip: Record<string, unknown>,
+  trip: object,
   side: "from" | "to",
   fallback = "Location not set",
 ): string {
-  const locationValue = trip[side]
+  const tripRecord = trip as Record<string, unknown>
+  const locationValue = tripRecord[side]
   if (typeof locationValue === "object" && locationValue !== null) {
     const location = locationValue as Record<string, unknown>
     const fromName = formatLocationName(location.name, "")
@@ -227,7 +284,7 @@ export function getTripLocationName(
   }
 
   const fallbackKey = side === "from" ? "fromName" : "toName"
-  const fallbackValue = formatLocationName(trip[fallbackKey], "")
+  const fallbackValue = formatLocationName(tripRecord[fallbackKey], "")
   if (fallbackValue) {
     return fallbackValue
   }

@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/constants/support_constants.dart';
 import '../../../core/theme/colors.dart';
+import '../../../core/widgets/phone_text.dart';
 
 class SupportScreen extends StatefulWidget {
   const SupportScreen({super.key});
@@ -42,14 +43,41 @@ class _SupportScreenState extends State<SupportScreen> {
   }
 
   Future<void> _launchWhatsApp(BuildContext context) async {
-    final prefill = Uri.encodeComponent(
-      'مرحباً، أحتاج مساعدة في تطبيق VisionWay.',
-    );
-    final uri = Uri.parse('https://wa.me/$_whatsAppNumber?text=$prefill');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final phone = _whatsAppNumber;
+    if (phone.isEmpty) {
+      if (context.mounted) {
+        _showMessage(context, 'رقم الدعم غير متاح حاليًا');
+      }
       return;
     }
+
+    final prefillText = 'مرحباً، أحتاج مساعدة في تطبيق VisionWay.';
+
+    // Try the wa.me HTTPS link first (works whether or not WhatsApp is
+    // installed — falls back to the browser). If that fails, try the
+    // native whatsapp:// scheme as a backup.
+    final waMeUri = Uri.https(
+      'wa.me',
+      '/$phone',
+      {'text': prefillText},
+    );
+    final deepLinkUri = Uri.parse(
+      'whatsapp://send?phone=$phone'
+      '&text=${Uri.encodeQueryComponent(prefillText)}',
+    );
+
+    for (final uri in [waMeUri, deepLinkUri]) {
+      try {
+        final launched = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+        if (launched) return;
+      } catch (_) {
+        // try the next URI
+      }
+    }
+
     if (context.mounted) {
       _showMessage(context, 'تعذر فتح WhatsApp');
     }
@@ -158,6 +186,7 @@ class _SupportScreenState extends State<SupportScreen> {
                   accentColor: AppColors.warningDark,
                   title: 'اتصل بفريق الدعم',
                   value: SupportConstants.supportPhoneDisplay,
+                  isPhone: true,
                   description:
                       'اضغط على الرقم لبدء الاتصال المباشر بفريق الدعم.',
                   primaryActionLabel: 'اتصال الآن',
@@ -170,6 +199,7 @@ class _SupportScreenState extends State<SupportScreen> {
                 accentColor: const Color(0xFF25D366),
                 title: 'راسلنا عبر WhatsApp',
                 value: SupportConstants.supportPhoneDisplay,
+                isPhone: true,
                 description:
                     'تواصل مباشرة مع فريق الدعم عبر WhatsApp للحصول على مساعدة فورية.',
                 primaryActionLabel: 'فتح WhatsApp',
@@ -310,6 +340,7 @@ class _ContactCard extends StatelessWidget {
     required this.onPrimaryAction,
     this.secondaryActionLabel,
     this.onSecondaryAction,
+    this.isPhone = false,
   });
 
   final IconData icon;
@@ -321,6 +352,7 @@ class _ContactCard extends StatelessWidget {
   final VoidCallback onPrimaryAction;
   final String? secondaryActionLabel;
   final VoidCallback? onSecondaryAction;
+  final bool isPhone;
 
   @override
   Widget build(BuildContext context) {
@@ -366,14 +398,24 @@ class _ContactCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      value,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: accentColor,
+                    if (isPhone)
+                      PhoneText(
+                        value,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: accentColor,
+                        ),
+                      )
+                    else
+                      Text(
+                        value,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: accentColor,
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),

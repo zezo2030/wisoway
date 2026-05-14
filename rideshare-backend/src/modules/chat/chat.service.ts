@@ -49,7 +49,8 @@ export class ChatService {
       );
 
       if (!isParticipant) {
-        // Check if user is a trip participant (driver or passenger with confirmed booking)
+        // Check if user is a trip participant (driver or passenger with an
+        // active booking after communication is unlocked)
         await this.validateTripParticipation(tripId, userId);
 
         // Add user to room
@@ -94,18 +95,18 @@ export class ChatService {
     const isDriver = trip.driverId.toString() === userId;
 
     if (!isDriver) {
-      // Check if user has a confirmed booking
+      // Check if user has a pending or confirmed booking.
       const booking = await this.bookingModel
         .findOne({
           tripId: tripId,
           userId: userId,
-          status: 'confirmed',
+          status: { $in: ['pending', 'confirmed'] },
         })
         .exec();
 
       if (!booking) {
         throw new ForbiddenException(
-          'You must have a confirmed booking to access this chat',
+          'You must have a pending or confirmed booking to access this chat',
         );
       }
 
@@ -115,7 +116,7 @@ export class ChatService {
         trip.driverId.toString(),
       );
 
-      if (!hasPaidFee) {
+      if (!hasPaidFee && !(trip as any).driverWalletChargeApplied) {
         throw new ForbiddenException(
           'Driver has not paid the communication fee to unlock chat',
         );

@@ -6,20 +6,29 @@ import 'package:intl/intl.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/trip_provider.dart';
+import '../../models/booking_model.dart';
 import '../../models/trip_model.dart';
 import '../../core/constants/route_names.dart';
-import '../../widgets/seat_layout_widget.dart';
+import '../../core/services/booking_service.dart';
 import '../../core/services/chat_service.dart';
 import '../../core/services/rating_service.dart';
 import '../../core/api/websocket_service.dart';
 import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
+import '../../utils/booking_seat_formatter.dart';
+import '../../utils/seat_layout_helpers.dart';
+import '../../widgets/seat_layout_widget.dart';
 
 class TripDetailsScreen extends StatefulWidget {
   final String tripId;
+  final BookingModel? initialBooking;
 
-  const TripDetailsScreen({super.key, required this.tripId});
+  const TripDetailsScreen({
+    super.key,
+    required this.tripId,
+    this.initialBooking,
+  });
 
   @override
   State<TripDetailsScreen> createState() => _TripDetailsScreenState();
@@ -27,6 +36,7 @@ class TripDetailsScreen extends StatefulWidget {
 
 class _TripDetailsScreenState extends State<TripDetailsScreen> {
   TripModel? _trip;
+  BookingModel? _activeBooking;
   bool _isLoading = true;
   GoogleMapController? _mapController;
   final WebSocketService _socketService = WebSocketService();
@@ -37,6 +47,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   @override
   void initState() {
     super.initState();
+    _activeBooking = _isActiveTripBooking(widget.initialBooking)
+        ? widget.initialBooking
+        : null;
     _loadTrip();
     _initTracking();
   }
@@ -64,8 +77,11 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     try {
       final tripProvider = Provider.of<TripProvider>(context, listen: false);
       final trip = await tripProvider.getTrip(widget.tripId);
+      final activeBooking = _activeBooking ?? await _loadActiveBooking();
+      if (!mounted) return;
       setState(() {
         _trip = trip;
+        _activeBooking = activeBooking;
         _isLoading = false;
         _buildMarkers();
       });
@@ -75,6 +91,23 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     }
+  }
+
+  bool _isActiveTripBooking(BookingModel? booking) {
+    if (booking == null || booking.tripId != widget.tripId) return false;
+    return booking.isPending || booking.isConfirmed;
+  }
+
+  Future<BookingModel?> _loadActiveBooking() async {
+    try {
+      final bookings = await BookingService().getMyBookings();
+      for (final booking in bookings) {
+        if (_isActiveTripBooking(booking)) return booking;
+      }
+    } catch (e) {
+      debugPrint('Could not load active booking for trip details: $e');
+    }
+    return null;
   }
 
   void _onMapCreated(GoogleMapController controller) {
@@ -159,6 +192,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     final userModel = authProvider.userModel;
     final dateFormat = DateFormat('yyyy-MM-dd');
     final timeFormat = DateFormat('HH:mm');
+    final activeBookingSeatIndexes = _activeBooking == null
+        ? <int>[]
+        : BookingSeatFormatter.displaySeatIndexes(_activeBooking!, trip);
 
     return Scaffold(
       appBar: AppBar(title: const Text('تفاصيل الرحلة')),
@@ -344,8 +380,11 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                     _DetailRow(
                       icon: Icons.grid_view,
                       label: 'تخطيط المقاعد',
-                      value:
-                          '${trip.seatLayout.rows} صف × ${trip.seatLayout.seatsPerRow} مقعد',
+                      value: SeatLayoutHelpers.formatTripSeatLayoutPattern(
+                        trip.seatLayout,
+                        trip.seats,
+                        trip.totalSeats,
+                      ),
                     ),
                     if (trip.seatLayout.preventGenderMixing) ...[
                       const Divider(),
@@ -430,6 +469,33 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   ),
                 ),
               ),
+            if (_activeBooking != null) ...[
+              const SizedBox(height: 16),
+              Card(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'تخطيط المقاعد',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SeatLayoutWidget(
+                        trip: trip,
+                        selectedSeats: activeBookingSeatIndexes,
+                        userGender: userModel?.gender,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
             if (userModel != null && trip.carImageUrl != null) ...[
               Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -470,7 +536,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               ),
               const SizedBox(height: 16),
             ],
-            if (userModel != null && trip.hasAvailableSeats && trip.isUpcoming)
+            if (userModel != null &&
+                _activeBooking == null &&
+                trip.hasAvailableSeats &&
+                trip.isUpcoming)
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Semantics(
@@ -495,7 +564,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   ),
                 ),
               )
-            else if (userModel != null && !trip.hasAvailableSeats)
+            else if (userModel != null &&
+                _activeBooking == null &&
+                !trip.hasAvailableSeats)
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Container(

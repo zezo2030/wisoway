@@ -18,30 +18,30 @@ class HomeDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Drawer(
       width: MediaQuery.of(context).size.width * 0.85,
-      child: SafeArea(
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [
-                    T.primary(context),
-                    T.primary(context).withValues(alpha: 0.8),
-                    T.primary(context).withValues(alpha: 0.6),
-                  ],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: T.primary(context).withValues(alpha: 0.3),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: [
+                  T.primary(context),
+                  T.primary(context).withValues(alpha: 0.8),
+                  T.primary(context).withValues(alpha: 0.6),
                 ],
               ),
-              child: Column(
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(16),
+              ),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+                child: Column(
                 children: [
                   Stack(
                     children: [
@@ -181,8 +181,10 @@ class HomeDrawer extends StatelessWidget {
                     ),
                 ],
               ),
+              ),
             ),
-            Expanded(
+          ),
+          Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 children: [
@@ -216,7 +218,8 @@ class HomeDrawer extends StatelessWidget {
                       title: 'رحلاتي',
                       onTap: () {
                         Navigator.pop(context);
-                        onTabSelect?.call(2);
+                        final ridesTabIndex = user?.isDriver == true ? 1 : 2;
+                        onTabSelect?.call(ridesTabIndex);
                       },
                     ),
                     DrawerMenuItem(
@@ -241,11 +244,20 @@ class HomeDrawer extends StatelessWidget {
                     ),
                   ],
                   DrawerMenuItem(
+                    icon: IconsaxPlusLinear.receipt_2,
+                    title: 'الرسوم المستحقة',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, RouteNames.pendingCharges);
+                    },
+                  ),
+                  DrawerMenuItem(
                     icon: IconsaxPlusLinear.profile,
                     title: 'الملف الشخصي',
                     onTap: () {
                       Navigator.pop(context);
-                      onTabSelect?.call(3);
+                      final profileIndex = user?.isDriver == true ? 2 : 3;
+                      onTabSelect?.call(profileIndex);
                     },
                   ),
                   DrawerMenuItem(
@@ -275,8 +287,7 @@ class HomeDrawer extends StatelessWidget {
                 ],
               ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }

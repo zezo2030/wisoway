@@ -31,6 +31,17 @@ class ChatService {
   Future<ChatModel> getOrCreateChat(String tripId) =>
       getOrCreateRoomForTrip(tripId);
 
+  Future<ChatModel> getRoomById(String roomId) async {
+    try {
+      final response = await _api.get(ApiEndpoints.chatRoomById(roomId));
+      final data = response['data'] ?? response;
+      return ChatModel.fromJson(data);
+    } catch (e) {
+      print('Error getting chat room by ID: $e');
+      rethrow;
+    }
+  }
+
   // Get or Create a chat room for a specific trip (passenger: 1:1 with driver)
   Future<ChatModel> getOrCreateRoomForTrip(String tripId) async {
     try {

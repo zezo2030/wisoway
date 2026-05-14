@@ -283,6 +283,7 @@ class AuthProvider extends ChangeNotifier {
     required int seats,
     required File driverLicenseImage,
     required File vehicleLicenseImage,
+    required File carImage,
     String? email,
     String? gender,
   }) async {
@@ -309,7 +310,8 @@ class AuthProvider extends ChangeNotifier {
       // 3. Update role to Driver
       await _authService.updateRole(AppConstants.roleDriver);
 
-      // 4. Create Vehicle (VehicleService internal uploads the vehicle and driver license images)
+      // 4. Create Vehicle (VehicleService internally uploads the car photo plus
+      //    the vehicle and driver license images).
       await _vehicleService.addVehicle(
         driverId: _userModel!.id,
         vehicleType: vehicleType,
@@ -318,6 +320,7 @@ class AuthProvider extends ChangeNotifier {
         seats: seats,
         licenseImage: driverLicenseImage,
         vehicleLicenseImage: vehicleLicenseImage,
+        carImage: carImage,
       );
 
       await loadUserProfile(); // Refresh user details

@@ -295,25 +295,4 @@ class BookingService {
     }
   }
 
-  // ── Settlement (Phase 7 — US5) ─────────────────────────────────────────────
-
-  /// Driver marks booking as paid. Returns the updated [BookingModel].
-  Future<BookingModel> markPaid(String bookingId) async {
-    final response = await _api.post(
-      '/bookings/$bookingId/mark-paid',
-      data: {},
-    );
-    final data = response['data'] ?? response;
-    return BookingModel.fromJson(data as Map<String, dynamic>);
-  }
-
-  /// Driver reverses the mark-paid within the 5-minute grace window.
-  Future<BookingModel> unmarkPaid(String bookingId) async {
-    final response = await _api.post(
-      '/bookings/$bookingId/unmark-paid',
-      data: {},
-    );
-    final data = response['data'] ?? response;
-    return BookingModel.fromJson(data as Map<String, dynamic>);
-  }
 }

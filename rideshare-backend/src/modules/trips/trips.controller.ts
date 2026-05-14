@@ -167,29 +167,28 @@ export class TripsController {
     return this.tripsService.hide(id, driverId);
   }
 
-  @Post(':id/start')
+  @Post(':id/arrived')
   @UseGuards(RolesGuard)
   @Roles('driver')
-  @ApiOperation({ summary: 'Driver starts the trip' })
-  @ApiResponse({ status: 200, description: 'Trip started' })
-  @ApiResponse({ status: 400, description: 'Timing window violation' })
+  @ApiOperation({
+    summary: 'Driver marks arrival at destination (completes the trip)',
+  })
+  @ApiResponse({ status: 200, description: 'Trip completed' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
   @ApiResponse({ status: 403, description: 'Not the driver' })
-  async startTrip(
+  async markArrived(
     @Param('id') id: string,
     @CurrentUser('id') driverId: string,
+    @Body() dto: CompleteTripDto,
   ) {
-    return this.tripTimeService.startTrip(id, driverId);
+    return this.tripTimeService.completeTrip(id, driverId, dto);
   }
 
   @Post(':id/complete')
   @UseGuards(RolesGuard)
   @Roles('driver')
-  @ApiOperation({
-    summary: 'Driver completes the trip with optional no-show seats',
-  })
+  @ApiOperation({ summary: 'Legacy alias for /arrived (kept for clients)' })
   @ApiResponse({ status: 200, description: 'Trip completed' })
-  @ApiResponse({ status: 400, description: 'Bad request' })
-  @ApiResponse({ status: 403, description: 'Not the driver' })
   async completeTrip(
     @Param('id') id: string,
     @CurrentUser('id') driverId: string,

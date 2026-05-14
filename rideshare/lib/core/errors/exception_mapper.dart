@@ -135,6 +135,21 @@ class ExceptionMapper {
           supportWhatsApp: supportWhatsApp,
         );
       }
+      if (code == 'OUTSTANDING_CHARGES') {
+        final count = data is Map ? (data['count'] as num?)?.toInt() : null;
+        final total = data is Map
+            ? (data['totalAmount'] as num?)?.toDouble()
+            : null;
+        return Failure(
+          category: FailureCategory.outstandingCharges,
+          messageKey: 'errorsOutstandingCharges',
+          severity: FailureSeverity.error,
+          nextAction: FailureAction.viewPendingCharges,
+          developerDetail: detail,
+          outstandingCount: count,
+          outstandingTotal: total,
+        );
+      }
     }
 
     if (statusCode != null && statusCode >= 500) {

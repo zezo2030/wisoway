@@ -50,6 +50,8 @@ export interface GetUsersParams extends PaginationParams {
   role?: UserRole;
   search?: string;
   isActive?: boolean;
+  registeredWithinDays?: number;
+  isConfirmed?: boolean;
 }
 
 export interface ChangeUserRoleRequest {
@@ -103,6 +105,7 @@ export interface GetBookingsParams extends PaginationParams {
   status?: BookingStatus;
   userId?: string;
   tripId?: string;
+  driverId?: string;
 }
 
 // Rating API Types
@@ -115,7 +118,9 @@ export interface GetRatingsParams extends PaginationParams {
 
 // Chat API Types
 
-export interface GetChatRoomsParams extends PaginationParams { }
+export interface GetChatRoomsParams extends PaginationParams {
+  tripId?: string;
+}
 
 export interface GetChatMessagesParams extends PaginationParams { }
 

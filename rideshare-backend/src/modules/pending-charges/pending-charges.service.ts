@@ -28,6 +28,13 @@ import {
   WalletTransactionType,
 } from '../../database/entities';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
+import { pickPrimaryWalletLedgerAccount, WalletService } from '../wallet/wallet.service';
+
+function walletAccountTypeForCharge(kind: PendingChargeKind): WalletAccountType {
+  return kind === PendingChargeKind.DRIVER_NO_SHOW
+    ? WalletAccountType.DRIVER
+    : WalletAccountType.RIDER;
+}
 
 export interface RecordChargeParams {
   userId: string;
@@ -54,6 +61,7 @@ export class PendingChargesService {
     @InjectRepository(WalletTransactionEntity)
     private walletTxRepo: Repository<WalletTransactionEntity>,
     private dataSource: DataSource,
+    private readonly walletService: WalletService,
   ) {}
 
   // ── T074: record ──────────────────────────────────────────────────────────
@@ -78,7 +86,7 @@ export class PendingChargesService {
 
     // Attempt immediate collection
     try {
-      const result = await this.deductFromWallet(userId, amount, saved.id);
+      const result = await this.deductFromWallet(userId, amount, saved.id, kind);
       if (result) {
         saved.status = PendingChargeStatus.APPLIED;
         saved.walletTransactionId = result.id;
@@ -123,6 +131,7 @@ export class PendingChargesService {
           userId,
           Number(charge.amount),
           charge.id,
+          charge.kind,
         );
         if (tx) {
           charge.status = PendingChargeStatus.APPLIED;
@@ -174,6 +183,25 @@ export class PendingChargesService {
     };
   }
 
+  /**
+   * Summary of a user's outstanding (PENDING) charges. Used as a gate before
+   * actions like driver trip creation — drivers with unsettled penalties must
+   * clear them (top up wallet, or admin waiver) before publishing again.
+   */
+  async getOutstandingSummary(
+    userId: string,
+  ): Promise<{ count: number; totalAmount: number }> {
+    const charges = await this.chargeRepo.find({
+      where: { userId, status: PendingChargeStatus.PENDING },
+      select: ['id', 'amount'],
+    });
+    const totalAmount = charges.reduce(
+      (sum, c) => sum + Number(c.amount ?? 0),
+      0,
+    );
+    return { count: charges.length, totalAmount };
+  }
+
   // ── T077: waive ───────────────────────────────────────────────────────────
 
   async waive(chargeId: string, adminId: string): Promise<PendingChargeEntity> {
@@ -193,24 +221,44 @@ export class PendingChargesService {
   // ── Internal helpers ──────────────────────────────────────────────────────
 
   /**
-   * Attempt to deduct `amount` from the user's RIDER wallet.
-   * Returns the created WalletTransactionEntity on success, or null if the
-   * wallet balance is insufficient (no exception — caller decides).
+   * Attempt to deduct `amount` from the user's wallet — DRIVER wallet for
+   * driver_no_show charges, RIDER wallet for passenger charges. Returns the
+   * created WalletTransactionEntity on success, or null if the wallet balance
+   * is insufficient (no exception — caller decides).
    */
   private async deductFromWallet(
     userId: string,
     amount: number,
     chargeId: string,
+    kind: PendingChargeKind,
   ): Promise<WalletTransactionEntity | null> {
+    const accountType = walletAccountTypeForCharge(kind);
     return this.dataSource.transaction(async (manager) => {
-      const account = await manager.findOne(WalletAccountEntity, {
-        where: { userId, accountType: WalletAccountType.RIDER },
-        lock: { mode: 'pessimistic_write' },
-      });
+      const lockedRows = await manager
+        .createQueryBuilder(WalletAccountEntity, 'wa')
+        .setLock('pessimistic_write')
+        .where('wa.userId = :userId', { userId })
+        .andWhere('wa.accountType = :accountType', { accountType })
+        .orderBy('wa.id', 'ASC')
+        .getMany();
+
+      if (lockedRows.length === 0) {
+        const created = manager.create(WalletAccountEntity, {
+          userId,
+          accountType,
+          currency: 'JOD',
+          balance: '0.00',
+          isActive: true,
+        });
+        await manager.save(WalletAccountEntity, created);
+        return null;
+      }
+
+      const account = pickPrimaryWalletLedgerAccount(lockedRows);
       if (!account) return null;
 
       const current = Number(account.balance);
-      if (current < amount) return null; // insufficient balance — carry forward
+      if (current < amount) return null;
 
       account.balance = (current - amount).toFixed(2);
       await manager.save(WalletAccountEntity, account);
@@ -225,7 +273,13 @@ export class PendingChargesService {
         referenceType: 'pending_charge',
         referenceId: chargeId,
       });
-      return manager.save(WalletTransactionEntity, tx);
+      const saved = await manager.save(WalletTransactionEntity, tx);
+      await this.walletService.syncUserLegacyWalletMirror(
+        userId,
+        accountType,
+        manager,
+      );
+      return saved;
     });
   }
 }

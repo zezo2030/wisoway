@@ -193,7 +193,7 @@ export class AuthController {
   @Post('login')
   @Public()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Login with phone number and password' })
+  @ApiOperation({ summary: 'Login with phone number for users or email for admins' })
   login(@Body() signInDto: SignInDto) {
     return this.authService.login(signInDto);
   }

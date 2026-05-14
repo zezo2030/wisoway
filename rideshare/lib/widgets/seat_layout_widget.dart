@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/trip_model.dart';
 import '../models/seat_data.dart';
+import '../utils/seat_layout_helpers.dart';
 import '../utils/seat_validation.dart';
 import '../core/theme/colors.dart';
 
@@ -22,8 +23,6 @@ class SeatLayoutWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final seatLayout = trip.seatLayout;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -55,8 +54,11 @@ class SeatLayoutWidget extends StatelessWidget {
         Builder(
           builder: (context) {
             final List<int> rowConfigs =
-                seatLayout.seatsPerRowList ??
-                List.generate(seatLayout.rows, (_) => seatLayout.seatsPerRow);
+                SeatLayoutHelpers.effectiveRowSeatCountsForTrip(
+              trip.seatLayout,
+              trip.seats,
+              trip.totalSeats,
+            );
 
             var currentSeatCount = 0;
 

@@ -23,6 +23,15 @@ function isPopulatedDriver(driverId: string | UserSummary): driverId is UserSumm
   return typeof driverId === "object" && driverId !== null && "name" in driverId
 }
 
+function getVehicleDriverDisplayName(vehicle: Vehicle): string | null {
+  if (isPopulatedDriver(vehicle.driverId)) {
+    const n = vehicle.driverId.name?.trim()
+    return n || null
+  }
+  const joined = vehicle.driver?.name?.trim()
+  return joined || null
+}
+
 export default function VehiclesListPage() {
   const { t, language } = useLanguage()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -99,23 +108,29 @@ export default function VehiclesListPage() {
     {
       key: "driver",
       header: t("driver"),
-      cell: (vehicle) => (
+      cell: (vehicle) => {
+        const driverName = getVehicleDriverDisplayName(vehicle)
+        const email = isPopulatedDriver(vehicle.driverId)
+          ? vehicle.driverId.email
+          : vehicle.driver?.email ?? ""
+        return (
         <div className="flex items-center gap-3 py-1">
-          {isPopulatedDriver(vehicle.driverId) ? (
+          {driverName ? (
             <>
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm shadow-sm border border-primary/20 flex-shrink-0">
-                {vehicle.driverId.name.charAt(0).toUpperCase()}
+                {driverName.charAt(0).toUpperCase()}
               </div>
               <div>
-                <div className="font-semibold text-foreground">{vehicle.driverId.name}</div>
-                <div className="text-xs font-medium text-muted-foreground">{vehicle.driverId.email}</div>
+                <div className="font-semibold text-foreground">{driverName}</div>
+                <div className="text-xs font-medium text-muted-foreground">{email}</div>
               </div>
             </>
           ) : (
-            <span className="text-muted-foreground font-mono text-xs">ID: {vehicle.driverId}</span>
+            <span className="text-muted-foreground font-mono text-xs">ID: {typeof vehicle.driverId === "string" ? vehicle.driverId : (vehicle.driverId as { name?: string })?.name ?? ""}</span>
           )}
         </div>
-      ),
+        )
+      },
     },
     {
       key: "type",
@@ -320,7 +335,7 @@ export default function VehiclesListPage() {
               ? t("revokeConfirmDesc")
               : t("rejectConfirmDesc")
         }
-        variant={confirmDialog.action === "reject" || (confirmDialog.action === "reject" && confirmDialog.vehicle?.isVerified) ? "destructive" : "default"}
+        variant={confirmDialog.action === "reject" || (confirmDialog.action === "verify" && confirmDialog.vehicle?.isVerified) ? "destructive" : "default"}
         onConfirm={handleConfirmAction}
         loading={verifyMutation.isPending}
       />

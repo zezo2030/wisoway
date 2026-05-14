@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/colors.dart';
 import '../../../models/booking_model.dart';
 import '../../../models/trip_model.dart';
+import '../../../utils/booking_seat_formatter.dart';
 
 class BookingCard extends StatelessWidget {
   final BookingModel booking;
@@ -15,6 +16,8 @@ class BookingCard extends StatelessWidget {
   final VoidCallback? onChat;
   /// Called when the user taps the Call button (only shown once settled).
   final VoidCallback? onCall;
+  /// Called when the user taps the Cancel booking button.
+  final VoidCallback? onCancel;
 
   const BookingCard({
     super.key,
@@ -24,6 +27,7 @@ class BookingCard extends StatelessWidget {
     this.onTap,
     this.onChat,
     this.onCall,
+    this.onCancel,
   });
 
   @override
@@ -36,6 +40,7 @@ class BookingCard extends StatelessWidget {
     final muted = isPastTrip
         ? T.onSurfaceVariant(context)
         : T.onSurface(context);
+    final seatSummary = BookingSeatFormatter.summary(booking, trip);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -80,29 +85,6 @@ class BookingCard extends StatelessWidget {
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: T.onSurfaceVariant(context),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                // Settlement badge (Phase 7 — US5)
-                if (booking.isSettled && !isPastTrip)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          IconsaxPlusBold.wallet_check,
-                          size: 14,
-                          color: AppColors.success,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'تم تأكيد الدفع',
-                          style: GoogleFonts.tajawal(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.successDark,
                           ),
                         ),
                       ],
@@ -239,14 +221,33 @@ class BookingCard extends StatelessWidget {
                       child: _BookingInfoItem(
                         icon: IconsaxPlusBold.profile_2user,
                         label: 'المقعد',
-                        value: booking.seatNumber ?? '-',
+                        value: seatSummary.isNotEmpty ? seatSummary : '-',
                         mutedStyle: isPastTrip,
                       ),
                     ),
                   ],
                 ),
-                // Chat / Call actions — visible only after settlement
-                if (booking.isSettled && !isPastTrip) ...[
+                // Cancel booking action — visible for cancellable bookings.
+                if (booking.canBeCancelled && !isPastTrip && onCancel != null) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: onCancel,
+                      icon: const Icon(IconsaxPlusBold.close_circle, size: 16),
+                      label: const Text('إلغاء الحجز'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.error,
+                        side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                if (booking.hasDriverPaidToContact && !isPastTrip) ...[
                   const SizedBox(height: 16),
                   Row(
                     children: [
