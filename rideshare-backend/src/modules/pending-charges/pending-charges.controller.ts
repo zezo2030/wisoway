@@ -57,6 +57,33 @@ export class PendingChargesController {
     });
   }
 
+  /**
+   * Manually trigger wallet collection of the caller's outstanding (PENDING)
+   * pending charges. Returns counts so the client can refresh and show a
+   * meaningful message ("paid", "still pending — top up needed").
+   */
+  @Post('me/pending-charges/collect')
+  @Roles('passenger', 'driver')
+  @ApiOperation({
+    summary: "Settle caller's outstanding pending charges from wallet",
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Collection attempted',
+  })
+  async collectMyCharges(@CurrentUser('id') userId: string) {
+    const { applied, skipped } = await this.service.collectOutstanding(
+      userId,
+      null,
+    );
+    return {
+      appliedCount: applied.length,
+      skippedCount: skipped.length,
+      appliedTotal: applied.reduce((s, c) => s + Number(c.amount ?? 0), 0),
+      skippedTotal: skipped.reduce((s, c) => s + Number(c.amount ?? 0), 0),
+    };
+  }
+
   // ── T077 ──────────────────────────────────────────────────────────────────
 
   @Post('admin/pending-charges/:id/waive')

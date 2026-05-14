@@ -115,7 +115,7 @@ export class PendingChargesService {
    */
   async collectOutstanding(
     userId: string,
-    triggeringBookingId: string,
+    triggeringBookingId: string | null,
   ): Promise<CollectResult> {
     const charges = await this.chargeRepo.find({
       where: { userId, status: PendingChargeStatus.PENDING },

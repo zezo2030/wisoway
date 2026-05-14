@@ -5,9 +5,11 @@ import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/api/api_client.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/services/booking_service.dart';
+import '../../core/services/payment_service.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/text_styles.dart';
 import '../../core/ui/error_surface.dart';
+import '../../models/wallet_account_model.dart';
 import '../../widgets/common/empty_state.dart';
 
 class PendingChargesScreen extends StatefulWidget {
@@ -19,8 +21,11 @@ class PendingChargesScreen extends StatefulWidget {
 
 class _PendingChargesScreenState extends State<PendingChargesScreen> {
   final BookingService _bookingService = BookingService();
+  final PaymentService _paymentService = PaymentService();
   List<Map<String, dynamic>> _charges = [];
+  WalletAccountModel? _walletAccount;
   bool _loading = true;
+  bool _settling = false;
 
   @override
   void initState() {
@@ -32,15 +37,91 @@ class _PendingChargesScreenState extends State<PendingChargesScreen> {
     setState(() => _loading = true);
     try {
       final charges = await _bookingService.getMyPendingCharges();
+      WalletAccountModel? wallet;
+      try {
+        wallet = await _paymentService.getWalletAccountMe();
+      } catch (_) {
+        wallet = null;
+      }
       if (!mounted) return;
       setState(() {
         _charges = charges;
+        _walletAccount = wallet;
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
       ErrorSurface.showFailure(context, ApiClient.mapError(e));
+    }
+  }
+
+  Future<void> _payFromWallet(double outstanding, bool ar) async {
+    final balance = _walletAccount?.balance ?? 0;
+    final remaining = (balance - outstanding).clamp(0, double.infinity);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(ar ? 'تأكيد دفع الغرامة' : 'Confirm fine payment'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(ar
+                ? 'المبلغ المستحق: ${outstanding.toStringAsFixed(2)} د.أ'
+                : 'Amount due: ${outstanding.toStringAsFixed(2)} JOD'),
+            const SizedBox(height: 4),
+            Text(ar
+                ? 'رصيد المحفظة الحالي: ${balance.toStringAsFixed(2)} د.أ'
+                : 'Current wallet balance: ${balance.toStringAsFixed(2)} JOD'),
+            const SizedBox(height: 4),
+            Text(ar
+                ? 'الرصيد بعد الدفع: ${remaining.toStringAsFixed(2)} د.أ'
+                : 'Balance after payment: ${remaining.toStringAsFixed(2)} JOD'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(ar ? 'إلغاء' : 'Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(ar ? 'تأكيد ودفع' : 'Confirm & pay'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _settling = true);
+    try {
+      final result = await _bookingService.collectMyPendingCharges();
+      if (!mounted) return;
+      final appliedCount = (result['appliedCount'] as num?)?.toInt() ?? 0;
+      final skippedCount = (result['skippedCount'] as num?)?.toInt() ?? 0;
+      final messenger = ScaffoldMessenger.of(context);
+      String msg;
+      if (appliedCount > 0 && skippedCount == 0) {
+        msg = ar
+            ? 'تم دفع الغرامة من محفظتك بنجاح'
+            : 'Fine paid from your wallet successfully';
+      } else if (appliedCount > 0 && skippedCount > 0) {
+        msg = ar
+            ? 'تم دفع جزء من الرسوم، تبقى رصيد غير كافٍ للباقي'
+            : 'Some charges paid; insufficient balance for the rest';
+      } else {
+        msg = ar
+            ? 'الرصيد غير كافٍ لدفع الرسوم'
+            : 'Insufficient wallet balance to pay the charges';
+      }
+      messenger.showSnackBar(SnackBar(content: Text(msg)));
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+      ErrorSurface.showFailure(context, ApiClient.mapError(e));
+    } finally {
+      if (mounted) setState(() => _settling = false);
     }
   }
 
@@ -100,6 +181,8 @@ class _PendingChargesScreenState extends State<PendingChargesScreen> {
   Widget build(BuildContext context) {
     final ar = _isAr(context);
     final outstanding = _totalOutstanding();
+    final balance = _walletAccount?.balance ?? 0;
+    final canPayFromWallet = balance >= outstanding && outstanding > 0;
 
     return Scaffold(
       backgroundColor: T.surface(context),
@@ -141,7 +224,11 @@ class _PendingChargesScreenState extends State<PendingChargesScreen> {
                         if (outstanding > 0)
                           _OutstandingBanner(
                             total: outstanding,
+                            walletBalance: balance,
+                            canPayFromWallet: canPayFromWallet,
+                            settling: _settling,
                             ar: ar,
+                            onPay: () => _payFromWallet(outstanding, ar),
                             onTopUp: () => Navigator.pushNamed(
                               context,
                               RouteNames.driverWalletTopup,
@@ -166,12 +253,20 @@ class _PendingChargesScreenState extends State<PendingChargesScreen> {
 
 class _OutstandingBanner extends StatelessWidget {
   final double total;
+  final double walletBalance;
+  final bool canPayFromWallet;
+  final bool settling;
   final bool ar;
+  final VoidCallback onPay;
   final VoidCallback onTopUp;
 
   const _OutstandingBanner({
     required this.total,
+    required this.walletBalance,
+    required this.canPayFromWallet,
+    required this.settling,
     required this.ar,
+    required this.onPay,
     required this.onTopUp,
   });
 
@@ -214,8 +309,21 @@ class _OutstandingBanner extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             ar
-                ? 'سيتم خصم الرسوم تلقائيًا عند توفر رصيد كافٍ في محفظتك.'
-                : 'Charges are deducted automatically once your wallet has enough balance.',
+                ? 'رصيد المحفظة: ${walletBalance.toStringAsFixed(2)} د.أ'
+                : 'Wallet balance: ${walletBalance.toStringAsFixed(2)} JOD',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: T.onSurfaceVariant(context),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            canPayFromWallet
+                ? (ar
+                    ? 'رصيدك يكفي لدفع الغرامة من المحفظة.'
+                    : 'Your wallet balance is enough to pay this fine.')
+                : (ar
+                    ? 'رصيدك غير كافٍ — اشحن المحفظة لتسوية الغرامة.'
+                    : 'Your balance is not enough — top up your wallet to settle.'),
             style: AppTextStyles.bodySmall.copyWith(
               color: T.onSurfaceVariant(context),
             ),
@@ -224,9 +332,27 @@ class _OutstandingBanner extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: onTopUp,
-              icon: const Icon(IconsaxPlusBold.wallet_add),
-              label: Text(ar ? 'شحن المحفظة' : 'Top Up Wallet'),
+              onPressed: settling
+                  ? null
+                  : (canPayFromWallet ? onPay : onTopUp),
+              icon: settling
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Icon(canPayFromWallet
+                      ? IconsaxPlusBold.empty_wallet_tick
+                      : IconsaxPlusBold.wallet_add),
+              label: Text(
+                canPayFromWallet
+                    ? (ar ? 'ادفع الغرامة' : 'Pay Fine')
+                    : (ar ? 'شحن المحفظة' : 'Top Up Wallet'),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: T.error(context),
                 foregroundColor: T.onError(context),

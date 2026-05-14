@@ -279,6 +279,15 @@ class BookingService {
     }
   }
 
+  /// Trigger wallet collection of the caller's pending charges.
+  /// Returns a summary: applied/skipped counts and totals.
+  Future<Map<String, dynamic>> collectMyPendingCharges() async {
+    final response = await _api.post(ApiEndpoints.myPendingChargesCollect);
+    final raw = response is Map ? (response['data'] ?? response) : response;
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    return <String, dynamic>{};
+  }
+
   /// Fetch outstanding pending charges for the current user.
   Future<List<Map<String, dynamic>>> getMyPendingCharges() async {
     try {

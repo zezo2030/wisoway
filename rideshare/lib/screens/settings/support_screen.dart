@@ -100,23 +100,6 @@ class _SupportScreenState extends State<SupportScreen> {
     }
   }
 
-  Future<void> _launchPhone(BuildContext context) async {
-    if (SupportConstants.supportPhone.isEmpty) {
-      _showMessage(context, 'رقم الدعم غير متاح حاليًا');
-      return;
-    }
-
-    final uri = Uri.parse('tel:${SupportConstants.supportPhone}');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-      return;
-    }
-
-    if (context.mounted) {
-      _showMessage(context, 'تعذر بدء الاتصال الآن');
-    }
-  }
-
   Future<void> _copyEmail(BuildContext context) async {
     await Clipboard.setData(
       const ClipboardData(text: SupportConstants.supportEmail),
@@ -137,8 +120,6 @@ class _SupportScreenState extends State<SupportScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final showPhoneCard = SupportConstants.supportPhoneDisplay.isNotEmpty;
-
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -179,20 +160,6 @@ class _SupportScreenState extends State<SupportScreen> {
                 onPrimaryAction: () => _launchEmail(context),
                 onSecondaryAction: () => _copyEmail(context),
               ),
-              if (showPhoneCard) ...[
-                const SizedBox(height: 16),
-                _ContactCard(
-                  icon: IconsaxPlusBold.call_calling,
-                  accentColor: AppColors.warningDark,
-                  title: 'اتصل بفريق الدعم',
-                  value: SupportConstants.supportPhoneDisplay,
-                  isPhone: true,
-                  description:
-                      'اضغط على الرقم لبدء الاتصال المباشر بفريق الدعم.',
-                  primaryActionLabel: 'اتصال الآن',
-                  onPrimaryAction: () => _launchPhone(context),
-                ),
-              ],
               const SizedBox(height: 16),
               _ContactCard(
                 icon: IconsaxPlusBold.message,

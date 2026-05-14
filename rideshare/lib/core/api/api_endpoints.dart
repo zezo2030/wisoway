@@ -6,8 +6,8 @@
 class ApiEndpoints {
   static const String baseUrl = String.fromEnvironment(
     'BASE_URL',
-    // defaultValue: 'http://localhost:3003/api/v1',
-    defaultValue: 'http://192.168.1.5:3003/api/v1',
+    defaultValue: 'https://vision-way.tech/api/v1',
+    // defaultValue: 'http://192.168.1.5:3003/api/v1',
   );
 
   // Auth
@@ -68,6 +68,7 @@ class ApiEndpoints {
 
   // Pending charges
   static const String myPendingCharges = '/me/pending-charges';
+  static const String myPendingChargesCollect = '/me/pending-charges/collect';
 
   // Payments
   static const String payments = '/payments';
