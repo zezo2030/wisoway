@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/theme/colors.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class AccountTypeSelectionScreen extends StatefulWidget {
   const AccountTypeSelectionScreen({super.key});
@@ -92,7 +93,7 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              'اختر نوع الحساب',
+                              context.l10n.accountTypeTitle,
                               style: TextStyle(
                                 fontSize: 26,
                                 fontWeight: FontWeight.bold,
@@ -101,7 +102,7 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'ما نوع الحساب الذي تريد إنشاءه؟',
+                              context.l10n.accountTypeSubtitle,
                               style: TextStyle(
                                 fontSize: 14,
                                 color: T.onSurfaceVariant(context),
@@ -121,8 +122,8 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
                                 child: _buildAccountTypeCard(
                                   context: context,
                                   icon: Icons.person,
-                                  title: 'راكب',
-                                  description: 'احجز رحلاتك بسهولة',
+                                  title: context.l10n.accountTypePassenger,
+                                  description: context.l10n.accountTypePassengerDesc,
                                   color: T.primary(context),
                                   onTap: () {
                                     Navigator.pushReplacementNamed(
@@ -139,8 +140,8 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
                                 child: _buildAccountTypeCard(
                                   context: context,
                                   icon: Icons.drive_eta,
-                                  title: 'سائق',
-                                  description: 'أنشئ رحلاتك واكسب المال',
+                                  title: context.l10n.accountTypeDriver,
+                                  description: context.l10n.accountTypeDriverDesc,
                                   color: T.secondary(context),
                                   onTap: () {
                                     Navigator.pushReplacementNamed(
@@ -160,7 +161,7 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                'لديك حساب بالفعل؟ ',
+                                context.l10n.alreadyHaveAccount,
                                 style: TextStyle(
                                   color: T.onSurfaceVariant(context),
                                   fontSize: 13,
@@ -180,7 +181,7 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
                                   ),
                                 ),
                                 child: Text(
-                                  'تسجيل الدخول',
+                                  context.l10n.signIn,
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.bold,
@@ -315,7 +316,7 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              'ابدأ الآن',
+                              context.l10n.startNow,
                               style: TextStyle(
                                 fontSize: chipFontSize,
                                 fontWeight: FontWeight.w600,

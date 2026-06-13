@@ -10,6 +10,7 @@ import '../../core/services/trip_service.dart';
 import '../../widgets/location_picker_widget.dart';
 import '../../widgets/notification_icon_button.dart';
 import '../../core/theme/colors.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class TripsListScreen extends StatefulWidget {
   const TripsListScreen({super.key});
@@ -56,22 +57,22 @@ class _TripsListScreenState extends State<TripsListScreen> {
       print('❌ Error loading location: $e');
       setState(() => _isLoadingLocation = false);
 
-      String message = 'تعذر الحصول على الموقع.';
-      String actionLabel = 'إغلاق';
+      String message = context.l10n.locationUnavailable;
+      String actionLabel = context.l10n.close;
       VoidCallback? onAction;
 
       final errorStr = e.toString();
       if (errorStr.contains('LOCATION_SERVICE_DISABLED')) {
-        message = 'خدمات الموقع معطلة.';
-        actionLabel = 'تفعيل';
+        message = context.l10n.locationServicesDisabled;
+        actionLabel = context.l10n.enableAction;
         onAction = () => _locationService.openLocationSettings();
       } else if (errorStr.contains('LOCATION_PERMISSION_DENIED')) {
-        message = 'تصريح الموقع مطلوب.';
-        actionLabel = 'منح';
+        message = context.l10n.locationPermissionRequired;
+        actionLabel = context.l10n.grantAction;
         onAction = () => _loadUserLocation();
       } else if (errorStr.contains('LOCATION_PERMISSION_PERMANENTLY_DENIED')) {
-        message = 'تم رفض التصريح بشكل دائم.';
-        actionLabel = 'الإعدادات';
+        message = context.l10n.locationPermissionPermanentlyDenied;
+        actionLabel = context.l10n.settings;
         onAction = () => _locationService.openAppSettings();
       }
 
@@ -96,7 +97,7 @@ class _TripsListScreenState extends State<TripsListScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => LocationPickerWidget(
-          title: 'اختر موقعك',
+          title: context.l10n.chooseYourLocation,
           initialLocation: _userLocation,
           onLocationSelected: (location) {},
         ),
@@ -154,15 +155,25 @@ class _TripsListScreenState extends State<TripsListScreen> {
       _selectedDate != null ||
       _sortBy != 'nearest';
 
-  String get _activeFiltersText {
+  String _activeFiltersText(BuildContext context) {
     final parts = <String>[];
-    if (_fromFilter != null) parts.add('من: ${_fromFilter!.name}');
-    if (_toFilter != null) parts.add('إلى: ${_toFilter!.name}');
-    if (_cityFilter.trim().isNotEmpty) parts.add('مدينة: $_cityFilter');
-    if (_selectedDate != null) {
-      parts.add('تاريخ: ${DateFormat('yyyy-MM-dd').format(_selectedDate!)}');
+    if (_fromFilter != null) {
+      parts.add(context.l10n.filterFromValue(_fromFilter!.name));
     }
-    if (_sortBy == 'newest') parts.add('ترتيب: الأحدث');
+    if (_toFilter != null) {
+      parts.add(context.l10n.filterToValue(_toFilter!.name));
+    }
+    if (_cityFilter.trim().isNotEmpty) {
+      parts.add(context.l10n.filterCityValue(_cityFilter));
+    }
+    if (_selectedDate != null) {
+      parts.add(
+        context.l10n.filterDateValue(
+          DateFormat('yyyy-MM-dd').format(_selectedDate!),
+        ),
+      );
+    }
+    if (_sortBy == 'newest') parts.add(context.l10n.filterSortNewest);
     return parts.join(' • ');
   }
 
@@ -211,14 +222,14 @@ class _TripsListScreenState extends State<TripsListScreen> {
 
     if (userModel == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('الرحلات المتاحة')),
-        body: const Center(child: Text('يجب تسجيل الدخول لعرض الرحلات')),
+        appBar: AppBar(title: Text(context.l10n.availableTripsTitle)),
+        body: Center(child: Text(context.l10n.signInToViewTrips)),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('الرحلات المتاحة'),
+        title: Text(context.l10n.availableTripsTitle),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -230,7 +241,7 @@ class _TripsListScreenState extends State<TripsListScreen> {
           IconButton(
             icon: const Icon(Icons.location_on),
             onPressed: _changeLocation,
-            tooltip: 'تغيير الموقع',
+            tooltip: context.l10n.changeLocation,
           ),
           Stack(
             alignment: Alignment.topRight,
@@ -238,7 +249,7 @@ class _TripsListScreenState extends State<TripsListScreen> {
               IconButton(
                 icon: const Icon(Icons.tune),
                 onPressed: _showFilterSheet,
-                tooltip: 'تصفية وترتيب',
+                tooltip: context.l10n.filterAndSort,
               ),
               if (_hasActiveFilters)
                 Positioned(
@@ -271,14 +282,14 @@ class _TripsListScreenState extends State<TripsListScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'موقعك الحالي:',
+                        context.l10n.currentLocationLabel,
                         style: TextStyle(
                           fontSize: 12,
                           color: T.onSurfaceVariant(context),
                         ),
                       ),
                       Text(
-                        _userLocation?.name ?? 'جاري تحديد الموقع...',
+                        _userLocation?.name ?? context.l10n.detectingLocation,
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -303,7 +314,7 @@ class _TripsListScreenState extends State<TripsListScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 _FilterChip(
-                  label: 'رحلات قريبة',
+                  label: context.l10n.nearbyTrips,
                   isSelected: _filterType == 'nearby',
                   onTap: () {
                     setState(() => _filterType = 'nearby');
@@ -312,7 +323,7 @@ class _TripsListScreenState extends State<TripsListScreen> {
                 ),
                 const SizedBox(width: 8),
                 _FilterChip(
-                  label: 'رحلات مفضلة',
+                  label: context.l10n.preferredTrips,
                   isSelected: _filterType == 'preferred',
                   onTap: () {
                     setState(() => _filterType = 'preferred');
@@ -321,7 +332,7 @@ class _TripsListScreenState extends State<TripsListScreen> {
                 ),
                 const SizedBox(width: 8),
                 _FilterChip(
-                  label: 'كل الرحلات',
+                  label: context.l10n.allTrips,
                   isSelected: _filterType == 'all',
                   onTap: () {
                     setState(() => _filterType = 'all');
@@ -341,7 +352,7 @@ class _TripsListScreenState extends State<TripsListScreen> {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      _activeFiltersText,
+                      _activeFiltersText(context),
                       style: TextStyle(fontSize: 12, color: T.primary(context)),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -395,14 +406,18 @@ class _TripsListScreenState extends State<TripsListScreen> {
                                   color: T.error(context),
                                 ),
                                 const SizedBox(height: 16),
-                                Text('خطأ: ${snapshot.error}'),
+                                Text(
+                                  context.l10n.errorWithDetail(
+                                    '${snapshot.error}',
+                                  ),
+                                ),
                                 const SizedBox(height: 16),
                                 Semantics(
                                   button: true,
-                                  label: 'إعادة المحاولة',
+                                  label: context.l10n.tryAgain,
                                   child: ElevatedButton(
                                     onPressed: _reloadTrips,
-                                    child: const Text('إعادة المحاولة'),
+                                    child: Text(context.l10n.tryAgain),
                                   ),
                                 ),
                               ],
@@ -483,8 +498,8 @@ class _TripsListScreenState extends State<TripsListScreen> {
                                 const SizedBox(height: 16),
                                 Text(
                                   locationRequired
-                                      ? 'فعّل الموقع لعرض هذه الرحلات'
-                                      : 'لا توجد رحلات متاحة',
+                                      ? context.l10n.enableLocationForTrips
+                                      : context.l10n.noTripsAvailable,
                                   style: TextStyle(
                                     fontSize: 18,
                                     color: T.onSurfaceVariant(context),
@@ -493,8 +508,8 @@ class _TripsListScreenState extends State<TripsListScreen> {
                                 const SizedBox(height: 8),
                                 Text(
                                   locationRequired
-                                      ? 'اختر موقعك الحالي ثم أعد المحاولة'
-                                      : 'جرب تغيير الفلتر أو الموقع',
+                                      ? context.l10n.chooseLocationThenRetry
+                                      : context.l10n.tryChangingFilterOrLocation,
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: T.outlineVariant(context),
@@ -503,10 +518,10 @@ class _TripsListScreenState extends State<TripsListScreen> {
                                 const SizedBox(height: 16),
                                 Semantics(
                                   button: true,
-                                  label: 'تحديث قائمة الرحلات',
+                                  label: context.l10n.refreshTripsList,
                                   child: ElevatedButton(
                                     onPressed: _reloadTrips,
-                                    child: const Text('تحديث'),
+                                    child: Text(context.l10n.refresh),
                                   ),
                                 ),
                               ],
@@ -614,7 +629,7 @@ class _FilterSheetState extends State<_FilterSheet> {
             ),
             const SizedBox(height: 16),
             Text(
-              'تصفية وترتيب الرحلات',
+              ctx.l10n.filterAndSortTrips,
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -624,7 +639,7 @@ class _FilterSheetState extends State<_FilterSheet> {
             const SizedBox(height: 20),
             // From location
             Text(
-              'من',
+              ctx.l10n.fromLabel,
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 color: T.onSurfaceVariant(ctx),
@@ -638,7 +653,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                   ctx,
                   MaterialPageRoute(
                     builder: (_) => LocationPickerWidget(
-                      title: 'اختر نقطة الانطلاق',
+                      title: ctx.l10n.chooseDeparturePoint,
                       initialLocation: _tmpFrom,
                       onLocationSelected: (_) {},
                     ),
@@ -665,7 +680,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        _tmpFrom?.name ?? 'اختر نقطة الانطلاق',
+                        _tmpFrom?.name ?? ctx.l10n.chooseDeparturePoint,
                         style: TextStyle(
                           color: _tmpFrom != null
                               ? T.onSurface(ctx)
@@ -689,7 +704,7 @@ class _FilterSheetState extends State<_FilterSheet> {
             const SizedBox(height: 12),
             // To location
             Text(
-              'إلى',
+              ctx.l10n.toLabel,
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 color: T.onSurfaceVariant(ctx),
@@ -703,7 +718,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                   ctx,
                   MaterialPageRoute(
                     builder: (_) => LocationPickerWidget(
-                      title: 'اختر الوجهة',
+                      title: ctx.l10n.chooseDestination,
                       initialLocation: _tmpTo,
                       onLocationSelected: (_) {},
                     ),
@@ -726,7 +741,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        _tmpTo?.name ?? 'اختر الوجهة',
+                        _tmpTo?.name ?? ctx.l10n.chooseDestination,
                         style: TextStyle(
                           color: _tmpTo != null
                               ? T.onSurface(ctx)
@@ -750,7 +765,7 @@ class _FilterSheetState extends State<_FilterSheet> {
             const SizedBox(height: 12),
             // City filter
             Text(
-              'المدينة',
+              ctx.l10n.cityLabel,
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 color: T.onSurfaceVariant(ctx),
@@ -760,7 +775,7 @@ class _FilterSheetState extends State<_FilterSheet> {
             TextField(
               controller: _cityController,
               decoration: InputDecoration(
-                hintText: 'ابحث باسم المدينة',
+                hintText: ctx.l10n.searchByCityName,
                 prefixIcon: const Icon(Icons.location_city),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -784,7 +799,7 @@ class _FilterSheetState extends State<_FilterSheet> {
             const SizedBox(height: 12),
             // Date filter
             Text(
-              'التاريخ',
+              ctx.l10n.dateLabel,
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 color: T.onSurfaceVariant(ctx),
@@ -823,7 +838,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                       child: Text(
                         _tmpDate != null
                             ? DateFormat('yyyy-MM-dd').format(_tmpDate!)
-                            : 'اختر التاريخ',
+                            : ctx.l10n.chooseDate,
                         style: TextStyle(
                           color: _tmpDate != null
                               ? T.onSurface(ctx)
@@ -847,7 +862,7 @@ class _FilterSheetState extends State<_FilterSheet> {
             const SizedBox(height: 20),
             // Sort options
             Text(
-              'الترتيب',
+              ctx.l10n.sortLabel,
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 color: T.onSurfaceVariant(ctx),
@@ -858,7 +873,7 @@ class _FilterSheetState extends State<_FilterSheet> {
               children: [
                 Expanded(
                   child: _SortOptionChip(
-                    label: 'الأقرب',
+                    label: ctx.l10n.sortNearest,
                     icon: Icons.near_me,
                     isSelected: _tmpSort == 'nearest',
                     onTap: () => setState(() => _tmpSort = 'nearest'),
@@ -867,7 +882,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: _SortOptionChip(
-                    label: 'الأحدث',
+                    label: ctx.l10n.sortNewest,
                     icon: Icons.schedule,
                     isSelected: _tmpSort == 'newest',
                     onTap: () => setState(() => _tmpSort = 'newest'),
@@ -893,9 +908,9 @@ class _FilterSheetState extends State<_FilterSheet> {
                         border: Border.all(color: const Color(0xFFE0E0D8)),
                       ),
                       alignment: Alignment.center,
-                      child: const Text(
-                        'مسح الكل',
-                        style: TextStyle(
+                      child: Text(
+                        ctx.l10n.clearAll,
+                        style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF555550),
@@ -933,9 +948,9 @@ class _FilterSheetState extends State<_FilterSheet> {
                         ],
                       ),
                       alignment: Alignment.center,
-                      child: const Text(
-                        'تطبيق',
-                        style: TextStyle(
+                      child: Text(
+                        ctx.l10n.apply,
+                        style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF222220),
@@ -996,7 +1011,7 @@ class _TripCard extends StatelessWidget {
       ),
       child: Semantics(
         button: true,
-        label: 'تفاصيل الرحلة من ${trip.from.name} إلى ${trip.to.name}',
+        label: context.l10n.tripDetailsFromTo(trip.from.name, trip.to.name),
         child: InkWell(
           onTap: () {
             Navigator.pushNamed(
@@ -1092,7 +1107,7 @@ class _TripCard extends StatelessWidget {
                     Expanded(
                       child: _InfoItem(
                         icon: Icons.access_time,
-                        label: 'الانطلاق',
+                        label: context.l10n.departureLabel,
                         value:
                             '${dateFormat.format(trip.departureTime)}\n${timeFormat.format(trip.departureTime)}',
                       ),
@@ -1100,14 +1115,14 @@ class _TripCard extends StatelessWidget {
                     Expanded(
                       child: _InfoItem(
                         icon: Icons.attach_money,
-                        label: 'السعر',
+                        label: context.l10n.priceLabel,
                         value: '${trip.price} ${trip.currency}',
                       ),
                     ),
                     Expanded(
                       child: _InfoItem(
                         icon: Icons.person,
-                        label: 'السائق',
+                        label: context.l10n.driverLabel,
                         value: trip.driverName ?? '',
                       ),
                     ),

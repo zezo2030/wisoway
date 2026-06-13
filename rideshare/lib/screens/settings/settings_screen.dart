@@ -16,6 +16,7 @@ import '../../../widgets/settings/settings_tile.dart';
 import '../../../widgets/settings/settings_switch_tile.dart';
 import 'account_security_screen.dart';
 import 'in_app_browser_screen.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -29,10 +30,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _pushNotifications = false;
   bool _notifSound = false;
   bool _notifVibration = false;
-
-  bool _ar(BuildContext context) {
-    return Directionality.of(context) == TextDirection.rtl;
-  }
 
   @override
   void initState() {
@@ -51,7 +48,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _showThemeBottomSheet(BuildContext context) {
     final themeService = context.read<ThemeService>();
     final currentMode = themeService.themeMode;
-    final isAr = _ar(context);
 
     showModalBottomSheet(
       context: context,
@@ -65,12 +61,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
-                isAr ? 'اختر السمة' : 'Choose Theme',
+                context.l10n.selectTheme,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
             RadioListTile<ThemeMode>(
-              title: Text(isAr ? 'النظام' : 'System'),
+              title: Text(context.l10n.themeSystem),
               value: ThemeMode.system,
               groupValue: currentMode,
               onChanged: (value) {
@@ -81,7 +77,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             ),
             RadioListTile<ThemeMode>(
-              title: Text(isAr ? 'فاتح' : 'Light'),
+              title: Text(context.l10n.themeLight),
               value: ThemeMode.light,
               groupValue: currentMode,
               onChanged: (value) {
@@ -92,7 +88,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             ),
             RadioListTile<ThemeMode>(
-              title: Text(isAr ? 'داكن' : 'Dark'),
+              title: Text(context.l10n.themeDark),
               value: ThemeMode.dark,
               groupValue: currentMode,
               onChanged: (value) {
@@ -111,7 +107,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _showLanguageBottomSheet(BuildContext context) {
     final localizationService = context.read<LocalizationService>();
-    final isAr = _ar(context);
 
     showModalBottomSheet(
       context: context,
@@ -125,7 +120,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
-                isAr ? 'اختر اللغة' : 'Choose Language',
+                context.l10n.selectLanguage,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
@@ -158,31 +153,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Future<void> _launchWhatsApp() async {
-    final uri = Uri.parse(
-      'https://wa.me/+201234567890?text=${Uri.encodeComponent('مرحباً، أحتاج مساعدة في تطبيق VisionWay')}',
-    );
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
-
   void _showDeleteAccountDialog(BuildContext context) {
-    final isArabic = _ar(context);
-
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(isArabic ? 'حذف الحساب' : 'Delete Account'),
-        content: Text(
-          isArabic
-              ? 'هل أنت متأكد من رغبتك في حذف حسابك؟ هذا الإجراء لا يمكن التراجع عنه.'
-              : 'Are you sure you want to delete your account? This action cannot be undone.',
-        ),
+        title: Text(ctx.l10n.deleteAccount),
+        content: Text(ctx.l10n.deleteAccountWarning),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(isArabic ? 'إلغاء' : 'Cancel'),
+            child: Text(ctx.l10n.cancel),
           ),
           TextButton(
             onPressed: () {
@@ -190,7 +170,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _showSecondConfirmationDialog(context);
             },
             style: TextButton.styleFrom(foregroundColor: T.error(context)),
-            child: Text(isArabic ? 'نعم، حذف الحساب' : 'Yes, Delete Account'),
+            child: Text(ctx.l10n.deleteAccountConfirm),
           ),
         ],
       ),
@@ -198,21 +178,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showSecondConfirmationDialog(BuildContext context) {
-    final isArabic = _ar(context);
-
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(isArabic ? 'تأكيد الحذف' : 'Confirm Deletion'),
-        content: Text(
-          isArabic
-              ? 'تحذير أخير: سيتم حذف جميع بياناتك بشكل نهائي ولن تتمكن من استرجاعها.'
-              : 'Final warning: All your data will be permanently deleted and cannot be recovered.',
-        ),
+        title: Text(ctx.l10n.deleteAccountSecondTitle),
+        content: Text(ctx.l10n.deleteAccountSecondWarning),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(isArabic ? 'إلغاء' : 'Cancel'),
+            child: Text(ctx.l10n.cancel),
           ),
           TextButton(
             onPressed: () {
@@ -220,7 +194,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _attemptDeleteAccount(context);
             },
             style: TextButton.styleFrom(foregroundColor: T.error(context)),
-            child: Text(isArabic ? 'حذف نهائي' : 'Delete Permanently'),
+            child: Text(ctx.l10n.deleteAccountSecondConfirm),
           ),
         ],
       ),
@@ -228,7 +202,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _attemptDeleteAccount(BuildContext context) async {
-    final isArabic = _ar(context);
     try {
       final authProvider = context.read<AuthProvider>();
       await authProvider.signOut();
@@ -238,24 +211,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showContactSupportDialog(BuildContext context) {
-    final isArabic = _ar(context);
-
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(isArabic ? 'تواصل مع الدعم' : 'Contact Support'),
-        content: Text(
-          isArabic
-              ? 'لا يمكن حذف الحساب حالياً. تواصل مع الدعم الفني عبر واتساب أو البريد الإلكتروني.'
-              : 'Account deletion is currently unavailable. Please contact support by email.',
-        ),
+        title: Text(ctx.l10n.contactSupportTitle),
+        content: Text(ctx.l10n.contactSupportMessage),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
               Navigator.pushNamed(context, RouteNames.support);
             },
-            child: Text(isArabic ? 'تواصل عبر واتساب' : 'WhatsApp'),
+            child: Text(ctx.l10n.contactWhatsApp),
           ),
           TextButton(
             onPressed: () async {
@@ -269,11 +236,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 await launchUrl(uri);
               }
             },
-            child: Text(isArabic ? 'تواصل عبر البريد' : 'Email'),
+            child: Text(ctx.l10n.contactEmail),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(isArabic ? 'إغلاق' : 'Close'),
+            child: Text(ctx.l10n.close),
           ),
         ],
       ),
@@ -282,23 +249,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final localizationService = context.watch<LocalizationService>();
     final themeService = context.watch<ThemeService>();
-    final isArabic = localizationService.isArabic;
 
     return Scaffold(
-      appBar: AppBar(title: Text(isArabic ? 'الإعدادات' : 'Settings')),
+      appBar: AppBar(title: Text(context.l10n.settings)),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
                 SettingsSection(
-                  title: isArabic ? 'المظهر' : 'Appearance',
+                  title: context.l10n.appearance,
                   children: [
                     SettingsSwitchTile(
                       icon: IconsaxPlusBroken.moon,
-                      title: isArabic ? 'الوضع الداكن' : 'Dark Mode',
+                      title: context.l10n.darkMode,
                       value: themeService.themeMode == ThemeMode.dark,
                       onChanged: (value) {
                         themeService.setThemeMode(
@@ -308,35 +273,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     SettingsTile(
                       icon: IconsaxPlusBroken.color_swatch,
-                      title: isArabic ? 'سمة التطبيق' : 'App Theme',
+                      title: context.l10n.themeMode,
                       subtitle: themeService.themeMode == ThemeMode.system
-                          ? (isArabic ? 'النظام' : 'System')
+                          ? context.l10n.themeSystem
                           : themeService.themeMode == ThemeMode.light
-                          ? (isArabic ? 'فاتح' : 'Light')
-                          : (isArabic ? 'داكن' : 'Dark'),
+                          ? context.l10n.themeLight
+                          : context.l10n.themeDark,
                       trailing: const Icon(IconsaxPlusBroken.arrow_down_1),
                       onTap: () => _showThemeBottomSheet(context),
                     ),
                   ],
                 ),
                 SettingsSection(
-                  title: isArabic ? 'اللغة' : 'Language',
+                  title: context.l10n.language,
                   children: [
                     SettingsTile(
                       icon: IconsaxPlusBroken.language_square,
-                      title: isArabic ? 'اللغة' : 'Language',
-                      subtitle: isArabic ? 'العربية' : 'English',
+                      title: context.l10n.language,
+                      subtitle: context.l10n.currentLanguageAr,
                       trailing: const Icon(IconsaxPlusBroken.arrow_down_1),
                       onTap: () => _showLanguageBottomSheet(context),
                     ),
                   ],
                 ),
                 SettingsSection(
-                  title: isArabic ? 'الإشعارات' : 'Notifications',
+                  title: context.l10n.notifications,
                   children: [
                     SettingsSwitchTile(
                       icon: IconsaxPlusBroken.notification,
-                      title: isArabic ? 'الإشعارات' : 'Push Notifications',
+                      title: context.l10n.pushNotifications,
                       value: _pushNotifications,
                       onChanged: (value) {
                         final settings = SettingsService();
@@ -346,7 +311,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     SettingsSwitchTile(
                       icon: IconsaxPlusBroken.volume_high,
-                      title: isArabic ? 'الصوت' : 'Sound',
+                      title: context.l10n.notificationSound,
                       value: _notifSound,
                       enabled: _pushNotifications,
                       onChanged: _pushNotifications
@@ -359,7 +324,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     SettingsSwitchTile(
                       icon: IconsaxPlusBroken.mobile,
-                      title: isArabic ? 'الاهتزاز' : 'Vibration',
+                      title: context.l10n.notificationVibration,
                       value: _notifVibration,
                       enabled: _pushNotifications,
                       onChanged: _pushNotifications
@@ -373,11 +338,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
                 SettingsSection(
-                  title: isArabic ? 'الحساب والأمان' : 'Account & Security',
+                  title: context.l10n.accountSecurity,
                   children: [
                     SettingsTile(
                       icon: IconsaxPlusBroken.user,
-                      title: isArabic ? 'معلومات الحساب' : 'Account Info',
+                      title: context.l10n.accountInfo,
                       trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
                       onTap: () {
                         Navigator.push(
@@ -390,7 +355,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     SettingsTile(
                       icon: IconsaxPlusBroken.lock,
-                      title: isArabic ? 'تغيير كلمة المرور' : 'Change Password',
+                      title: context.l10n.changePassword,
                       trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
                       onTap: () {
                         Navigator.pushNamed(context, RouteNames.changePassword);
@@ -401,13 +366,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (context.watch<AuthProvider>().userModel?.role ==
                     AppConstants.roleDriver)
                   SettingsSection(
-                    title: isArabic ? 'السائق' : 'Driver',
+                    title: context.l10n.driverSection,
                     children: [
                       SettingsTile(
                         icon: IconsaxPlusBroken.car,
-                        title: isArabic
-                            ? 'إعدادات السيارة وتخطيط المقاعد'
-                            : 'Vehicle & Seat Layout',
+                        title: context.l10n.vehicleAndSeatLayout,
                         trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
                         onTap: () {
                           Navigator.pushNamed(
@@ -419,11 +382,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                 SettingsSection(
-                  title: isArabic ? 'الدفع والمحفظة' : 'Payment & Wallet',
+                  title: context.l10n.paymentAndWallet,
                   children: [
                     SettingsTile(
                       icon: IconsaxPlusBroken.wallet,
-                      title: isArabic ? 'المحفظة' : 'Wallet',
+                      title: context.l10n.wallet,
                       trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
                       onTap: () {
                         final authProvider = context.read<AuthProvider>();
@@ -441,11 +404,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
                 SettingsSection(
-                  title: isArabic ? 'الدعم والمساعدة' : 'Support & Help',
+                  title: context.l10n.supportAndHelp,
                   children: [
                     SettingsTile(
                       icon: IconsaxPlusBroken.message,
-                      title: isArabic ? 'تواصل معنا' : 'Contact Us',
+                      title: context.l10n.contactUs,
                       trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
                       onTap: () {
                         Navigator.pushNamed(context, RouteNames.support);
@@ -453,16 +416,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     SettingsTile(
                       icon: IconsaxPlusBroken.document_text,
-                      title: isArabic ? 'شروط الاستخدام' : 'Terms of Service',
+                      title: context.l10n.termsOfService,
                       trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => InAppBrowserScreen(
-                              title: isArabic
-                                  ? 'شروط الاستخدام'
-                                  : 'Terms of Service',
+                              title: context.l10n.termsOfService,
                               url: 'https://rideshare.app/terms',
                             ),
                           ),
@@ -471,16 +432,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     SettingsTile(
                       icon: IconsaxPlusBroken.shield_security,
-                      title: isArabic ? 'سياسة الخصوصية' : 'Privacy Policy',
+                      title: context.l10n.privacyPolicy,
                       trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => InAppBrowserScreen(
-                              title: isArabic
-                                  ? 'سياسة الخصوصية'
-                                  : 'Privacy Policy',
+                              title: context.l10n.privacyPolicy,
                               url: 'https://rideshare.app/privacy',
                             ),
                           ),
@@ -490,11 +449,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
                 SettingsSection(
-                  title: isArabic ? 'حول التطبيق' : 'About',
+                  title: context.l10n.aboutApp,
                   children: [
                     SettingsTile(
                       icon: IconsaxPlusBroken.info_circle,
-                      title: isArabic ? 'حول التطبيق' : 'About',
+                      title: context.l10n.aboutApp,
                       trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
                       onTap: () {
                         Navigator.pushNamed(context, RouteNames.about);
@@ -519,7 +478,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         color: T.error(context),
                       ),
                       title: Text(
-                        isArabic ? 'حذف الحساب' : 'Delete Account',
+                        context.l10n.deleteAccount,
                         style: TextStyle(
                           color: T.error(context),
                           fontWeight: FontWeight.w600,

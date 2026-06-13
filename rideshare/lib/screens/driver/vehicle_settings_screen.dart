@@ -8,6 +8,7 @@ import '../../core/theme/text_styles.dart';
 import '../../core/ui/error_surface.dart';
 import '../../models/seat_layout_config.dart';
 import '../../models/vehicle_model.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class VehicleSettingsScreen extends StatefulWidget {
   const VehicleSettingsScreen({super.key});
@@ -91,7 +92,7 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
           behavior: SnackBarBehavior.floating,
           backgroundColor: T.success(context),
           content: Text(
-            'تم حفظ تخطيط مقاعد السيارة',
+            context.l10n.seatLayoutSavedSuccess,
             style: AppTextStyles.bodyLarge.copyWith(
               color: T.onPrimary(context),
             ),
@@ -112,7 +113,7 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
       appBar: AppBar(
         backgroundColor: T.primary(context),
         title: Text(
-          'إعدادات السيارة',
+          context.l10n.vehicleSettingsTitle,
           style: AppTextStyles.titleMedium.copyWith(
             fontWeight: FontWeight.bold,
             color: T.onPrimary(context),
@@ -142,7 +143,7 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
             Icon(IconsaxPlusBold.car, size: 80, color: T.primary(context)),
             const SizedBox(height: 24),
             Text(
-              'لم يتم تسجيل سيارة بعد',
+              context.l10n.noVehicleRegistered,
               style: AppTextStyles.titleLarge.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -150,7 +151,7 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'تحتاج إلى تسجيل سيارتك من خلال إكمال ملف السائق قبل تخصيص تخطيط المقاعد.',
+              context.l10n.noVehicleRegisteredBody,
               style: AppTextStyles.bodyMedium.copyWith(
                 color: T.onSurfaceVariant(context),
               ),
@@ -187,17 +188,17 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'بيانات السيارة',
+            context.l10n.vehicleDataSection,
             style: AppTextStyles.titleMedium.copyWith(
               fontWeight: FontWeight.bold,
               color: T.onSurface(context),
             ),
           ),
           const SizedBox(height: 12),
-          _summaryRow('الموديل', vehicle.model),
-          _summaryRow('النوع', vehicle.vehicleType),
-          _summaryRow('رقم اللوحة', vehicle.plateNumber),
-          _summaryRow('عدد المقاعد المسجل', '${vehicle.seats}'),
+          _summaryRow(context.l10n.vehicleModelLabel, vehicle.model),
+          _summaryRow(context.l10n.vehicleTypeLabel, vehicle.vehicleType),
+          _summaryRow(context.l10n.vehiclePlateNumberLabel, vehicle.plateNumber),
+          _summaryRow(context.l10n.registeredSeatsCount, '${vehicle.seats}'),
         ],
       ),
     );
@@ -240,7 +241,7 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'تخطيط المقاعد',
+                context.l10n.seatLayoutSection,
                 style: AppTextStyles.titleMedium.copyWith(
                   fontWeight: FontWeight.bold,
                   color: T.onSurface(context),
@@ -256,7 +257,7 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  '$totalSeats مقعد',
+                  context.l10n.seatsCount(totalSeats),
                   style: AppTextStyles.titleMedium.copyWith(
                     fontWeight: FontWeight.bold,
                     color: T.primary(context),
@@ -267,7 +268,7 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'هذا التخطيط يُستخدم لكل الرحلات التي تنشئها بهذه السيارة.',
+            context.l10n.seatLayoutUsedForAllTrips,
             style: AppTextStyles.bodyMedium.copyWith(
               color: T.onSurfaceVariant(context),
             ),
@@ -283,14 +284,14 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
               children: [
                 Expanded(
                   child: _buildModeToggle(
-                    title: 'نظام الشبكة',
+                    title: context.l10n.gridSystem,
                     isActive: !_isCustomLayout,
                     onTap: () => setState(() => _isCustomLayout = false),
                   ),
                 ),
                 Expanded(
                   child: _buildModeToggle(
-                    title: 'توزيع مخصص',
+                    title: context.l10n.customLayout,
                     isActive: _isCustomLayout,
                     onTap: () => setState(() => _isCustomLayout = true),
                   ),
@@ -304,7 +305,7 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
               children: [
                 Expanded(
                   child: _buildCounter(
-                    label: 'الصفوف',
+                    label: context.l10n.rowsLabel,
                     value: _rows,
                     icon: IconsaxPlusBroken.row_vertical,
                     onDecrease: _rows > 1
@@ -318,7 +319,7 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: _buildCounter(
-                    label: 'بكل صف',
+                    label: context.l10n.perRowLabel,
                     value: _seatsPerRow,
                     icon: Icons.airline_seat_recline_normal_rounded,
                     onDecrease: _seatsPerRow > 1
@@ -333,7 +334,7 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
             )
           else ...[
             Text(
-              'حدد عدد المقاعد في كل صف:',
+              context.l10n.setSeatsPerRow,
               style: AppTextStyles.labelLarge.copyWith(
                 color: T.onSurface(context).withValues(alpha: 0.54),
               ),
@@ -365,8 +366,8 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
                     Expanded(
                       child: _buildCounter(
                         label: index == 0
-                            ? 'بجانب السائق'
-                            : 'الصف ${index + 1}',
+                            ? context.l10n.nextToDriver
+                            : context.l10n.rowNumberLabel(index + 1),
                         value: _customRowConfigs[index],
                         icon: Icons.airline_seat_recline_normal_rounded,
                         onDecrease: _customRowConfigs[index] > 1
@@ -398,7 +399,7 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
                   color: T.primary(context),
                 ),
                 label: Text(
-                  'إضافة صف جديد',
+                  context.l10n.addNewRow,
                   style: AppTextStyles.bodyLarge.copyWith(
                     color: T.primary(context),
                   ),
@@ -469,7 +470,7 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
               ),
               const SizedBox(width: 12),
               Text(
-                'منع الاختلاط',
+                context.l10n.preventGenderMixing,
                 style: AppTextStyles.bodyLarge.copyWith(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
@@ -610,7 +611,7 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
                 ),
               )
             : Text(
-                'حفظ التغييرات',
+                context.l10n.saveChangesVehicle,
                 style: AppTextStyles.titleMedium.copyWith(
                   fontWeight: FontWeight.bold,
                 ),

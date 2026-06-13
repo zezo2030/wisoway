@@ -12,6 +12,7 @@ import '../../providers/trip_provider.dart';
 import '../../utils/seat_layout_helpers.dart';
 import '../../utils/seat_validation.dart';
 import '../../widgets/seat_layout_widget.dart';
+import '../../l10n/l10n_extensions.dart';
 import 'companion_picker_screen.dart';
 
 class SeatSelectionScreen extends StatefulWidget {
@@ -85,10 +86,8 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       userGender: userModel.gender,
     )) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'لا يمكن اختيار هذا المقعد، قد يكون محجوزًا أو غير مناسب حسب قواعد الرحلة.',
-          ),
+        SnackBar(
+          content: Text(context.l10n.seatNotSelectable),
           backgroundColor: AppColors.warning,
         ),
       );
@@ -207,15 +206,15 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('اختيار المقاعد')),
+        appBar: AppBar(title: Text(context.l10n.selectSeats)),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     if (_trip == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('اختيار المقاعد')),
-        body: const Center(child: Text('الرحلة غير موجودة')),
+        appBar: AppBar(title: Text(context.l10n.selectSeats)),
+        body: Center(child: Text(context.l10n.tripNotFound)),
       );
     }
 
@@ -224,13 +223,13 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
 
     if (userModel == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('اختيار المقاعد')),
-        body: const Center(child: Text('يجب تسجيل الدخول')),
+        appBar: AppBar(title: Text(context.l10n.selectSeats)),
+        body: Center(child: Text(context.l10n.signInRequired)),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('اختيار المقاعد')),
+      appBar: AppBar(title: Text(context.l10n.selectSeats)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -242,30 +241,33 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'معلومات الرحلة',
-                      style: TextStyle(
+                    Text(
+                      context.l10n.tripInfoTitle,
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text('من: ${_trip!.from.name}'),
-                    Text('إلى: ${_trip!.to.name}'),
+                    Text(context.l10n.fromValue(_trip!.from.name)),
+                    Text(context.l10n.toValue(_trip!.to.name)),
                     Text(
-                      'السعر: ${_trip!.price} ${_trip!.currency} لكل مقعد',
+                      context.l10n.pricePerSeatValue(
+                        '${_trip!.price}',
+                        _trip!.currency,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     const Divider(),
                     Text(
-                      'يمكنك اختيار مقعد واحد أو أكثر حسب المقاعد المتاحة.',
+                      context.l10n.selectOneOrMoreSeats,
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         color: T.primary(context),
                       ),
                     ),
                     Text(
-                      'بعد اختيار المقاعد ستدخل بيانات كل مسافر قبل إرسال طلب الحجز.',
+                      context.l10n.enterPassengerDataAfterSeats,
                       style: TextStyle(
                         color: T.onSurfaceVariant(context),
                         fontSize: 13,
@@ -276,9 +278,9 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
-              'اختر المقاعد',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              context.l10n.selectSeats,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             SeatLayoutWidget(
@@ -307,7 +309,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'سيتم خصم حصة التطبيق من محفظتك عند إرسال الحجز. تأكد من كفاية الرصيد من صفحة محفظتي.',
+                          context.l10n.appShareWalletNotice,
                           style: TextStyle(
                             fontSize: 14,
                             color: T.onPrimaryContainer(context),
@@ -332,7 +334,9 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'المقاعد المحددة: ${_selectedSeats.join('، ')}',
+                          context.l10n.selectedSeatsValue(
+                            _selectedSeats.join('، '),
+                          ),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -347,9 +351,9 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
             const SizedBox(height: 24),
             Semantics(
               button: true,
-              label: 'متابعة إدخال بيانات المسافرين',
+              label: context.l10n.continueToPassengerData,
               child: Tooltip(
-                message: 'متابعة لإدخال بيانات المسافرين وإرسال طلب الحجز',
+                message: context.l10n.continueToPassengerDataTooltip,
                 child: ElevatedButton(
                   onPressed: _isBooking || _selectedSeats.isEmpty
                       ? null
@@ -371,8 +375,10 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                         )
                       : Text(
                           _selectedSeats.length == 1
-                              ? 'متابعة لحجز مقعد واحد'
-                              : 'متابعة لحجز ${_selectedSeats.length} مقاعد',
+                              ? context.l10n.continueBookOneSeat
+                              : context.l10n.continueBookSeats(
+                                  _selectedSeats.length,
+                                ),
                           style: const TextStyle(fontSize: 18),
                         ),
                 ),
@@ -391,7 +397,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'سيتم إرسال طلب الحجز للسائق بعد تأكيد بيانات المسافرين. انتظر موافقة السائق قبل اعتماد الحجز.',
+                      context.l10n.bookingRequestSentNotice,
                       style: TextStyle(
                         fontSize: 12,
                         color: T.onPrimaryContainer(context),

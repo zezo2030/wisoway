@@ -12,6 +12,7 @@ import '../../core/ui/error_surface.dart';
 import '../../models/booking_model.dart';
 import '../../models/trip_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../l10n/l10n_extensions.dart';
 
 /// Full-screen companion picker for multi-seat bookings.
 ///
@@ -165,8 +166,8 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
       listener: (context, state) {
         if (state is BookingCreated) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('تم إرسال طلب الحجز. انتظر تأكيد السائق.'),
+            SnackBar(
+              content: Text(context.l10n.bookingRequestSentWaitConfirm),
               backgroundColor: AppColors.success,
             ),
           );
@@ -181,7 +182,11 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(widget.autoPick ? 'اختيار تلقائي' : 'بيانات المسافرين'),
+          title: Text(
+            widget.autoPick
+                ? context.l10n.autoPickTitle
+                : context.l10n.passengerDataTitle,
+          ),
         ),
         body: BlocBuilder<BookingBloc, BookingState>(
           builder: (context, state) {
@@ -207,7 +212,10 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'السعر: ${widget.trip.price} ${widget.trip.currency} للمقعد',
+                            context.l10n.pricePerSeatValue(
+                              '${widget.trip.price}',
+                              widget.trip.currency,
+                            ),
                             style: TextStyle(
                               color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
@@ -220,9 +228,12 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
 
                   // ── Seat count stepper (auto-pick or extra seats) ──────
                   if (widget.autoPick) ...[
-                    const Text(
-                      'عدد المقاعد',
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                    Text(
+                      context.l10n.seatCountLabel,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     _SeatCountStepper(
@@ -235,9 +246,12 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
                   ],
 
                   // ── Passenger rows ────────────────────────────────────
-                  const Text(
-                    'بيانات المسافرين',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                  Text(
+                    context.l10n.passengerDataTitle,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   ...List.generate(_rows.length, (i) {
@@ -245,7 +259,9 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
                     return _PassengerFormRow(
                       index: i,
                       data: _rows[i],
-                      label: isMain ? 'الحاجز الرئيسي' : 'مرافق $i',
+                      label: isMain
+                          ? context.l10n.mainBookerLabel
+                          : context.l10n.companionLabel(i),
                       readOnlyName: isMain,
                       onGenderChanged: (g) {
                         setState(() => _rows[i].gender = g);
@@ -258,8 +274,8 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
                   // ── Share phone toggle ─────────────────────────────────
                   Card(
                     child: SwitchListTile(
-                      title: const Text('مشاركة رقم الهاتف مع السائق'),
-                      subtitle: const Text('السماح للسائق برؤية رقمك للتواصل'),
+                      title: Text(context.l10n.sharePhoneWithDriver),
+                      subtitle: Text(context.l10n.sharePhoneWithDriverSubtitle),
                       value: _sharePhone,
                       onChanged: (v) => setState(() => _sharePhone = v),
                     ),
@@ -281,9 +297,9 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
                               color: Colors.white,
                             ),
                           )
-                        : const Text(
-                            'إرسال طلب الحجز',
-                            style: TextStyle(fontSize: 16),
+                        : Text(
+                            context.l10n.sendBookingRequest,
+                            style: const TextStyle(fontSize: 16),
                           ),
                   ),
                   const SizedBox(height: 16),
@@ -344,19 +360,26 @@ class _PassengerFormRow extends StatelessWidget {
               TextFormField(
                 controller: data.nameCtrl,
                 readOnly: readOnlyName,
-                decoration: const InputDecoration(
-                  labelText: 'الاسم',
+                decoration: InputDecoration(
+                  labelText: context.l10n.name,
                   isDense: true,
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
                 ),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'الاسم مطلوب' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? context.l10n.nameRequired
+                    : null,
               ),
               const SizedBox(height: 8),
               SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'male', label: Text('ذكر')),
-                  ButtonSegment(value: 'female', label: Text('أنثى')),
+                segments: [
+                  ButtonSegment(
+                    value: 'male',
+                    label: Text(context.l10n.male),
+                  ),
+                  ButtonSegment(
+                    value: 'female',
+                    label: Text(context.l10n.female),
+                  ),
                 ],
                 selected: {data.gender},
                 onSelectionChanged: readOnlyName
@@ -405,7 +428,7 @@ class _SeatCountStepper extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Text(
-          'مقعد',
+          context.l10n.seatWord,
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),

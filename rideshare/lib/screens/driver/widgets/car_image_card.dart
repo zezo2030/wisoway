@@ -5,6 +5,7 @@ import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../models/trip_model.dart';
 import '../../../widgets/common/section_card.dart';
+import '../../../l10n/l10n_extensions.dart';
 
 class CarImageCard extends StatelessWidget {
   final TripModel trip;
@@ -16,7 +17,7 @@ class CarImageCard extends StatelessWidget {
     if (trip.carImageUrl == null) return const SizedBox.shrink();
 
     return SectionCard(
-      title: 'صورة السيارة',
+      title: context.l10n.carImage,
       icon: IconsaxPlusBold.car,
       iconColor: AppColors.teal600,
       children: [
@@ -44,7 +45,7 @@ class CarImageCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'فشل تحميل الصورة',
+                      context.l10n.imageLoadFailed,
                       style: AppTextStyles.bodyMedium.copyWith(
                         color: AppColors.slate400,
                       ),

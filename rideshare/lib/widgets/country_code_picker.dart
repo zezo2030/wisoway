@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import '../core/constants/countries.dart';
 import '../core/theme/colors.dart';
+import '../l10n/l10n_extensions.dart';
 
 class CountryCodePicker extends StatelessWidget {
   final CountryData selectedCountry;
@@ -25,8 +26,9 @@ class CountryCodePicker extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label:
-          'اختر رمز الدولة، الحالي: ${selectedCountry.nameAr} ${selectedCountry.dialCode}',
+      label: context.l10n.countryCodePickerSemantic(
+        '${selectedCountry.nameAr} ${selectedCountry.dialCode}',
+      ),
       child: GestureDetector(
         onTap: () => _showCountryPicker(context),
         child: Container(
@@ -172,7 +174,7 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
-              'اختر الدولة',
+              context.l10n.selectCountry,
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -187,7 +189,7 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
               focusNode: _searchFocus,
               onChanged: _filterCountries,
               decoration: InputDecoration(
-                hintText: 'ابحث بالاسم أو رمز الدولة...',
+                hintText: context.l10n.searchCountryHint,
                 prefixIcon: Icon(
                   IconsaxPlusLinear.search_normal_1,
                   color: T.onSurfaceVariant(context),

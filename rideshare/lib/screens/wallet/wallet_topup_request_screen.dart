@@ -6,6 +6,7 @@ import '../../core/theme/colors.dart';
 import '../../core/theme/text_styles.dart';
 import '../../core/services/payment_service.dart';
 import '../../models/payment_model.dart';
+import '../../l10n/l10n_extensions.dart';
 
 enum _TopupMethod { manual, cliqA2a }
 
@@ -52,18 +53,18 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
     if (!_formKey.currentState!.validate()) return;
     final amount = double.tryParse(_amountController.text.trim());
     if (amount == null || amount < 0.01) {
-      _showSnack('أدخل مبلغاً صحيحاً', isError: true);
+      _showSnack(context.l10n.enterValidAmount, isError: true);
       return;
     }
 
     if (_selectedMethod == _TopupMethod.manual && _proofImage == null) {
-      _showSnack('يرجى رفع صورة إثبات التحويل', isWarning: true);
+      _showSnack(context.l10n.uploadTransferProofRequired, isWarning: true);
       return;
     }
 
     if (_selectedMethod == _TopupMethod.cliqA2a &&
         _aliasValueController.text.trim().isEmpty) {
-      _showSnack('أدخل قيمة الـ CliQ alias', isError: true);
+      _showSnack(context.l10n.enterCliqAliasValue, isError: true);
       return;
     }
 
@@ -81,7 +82,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
         );
         if (!mounted) return;
         _showSnack(
-          'تم إرسال طلب الشحن. سيُضاف الرصيد بعد التحقق من التحويل',
+          context.l10n.topupRequestSent,
           isSuccess: true,
         );
         Navigator.pop(context, true);
@@ -91,7 +92,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        _showSnack('خطأ: $e', isError: true);
+        _showSnack(context.l10n.errorWithDetail(e.toString()), isError: true);
       }
     }
   }
@@ -109,7 +110,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
     setState(() {
       _isLoading = false;
       _isPolling = true;
-      _pollingStatus = 'جاري التحقق من حالة الدفع...';
+      _pollingStatus = context.l10n.verifyingPaymentStatus;
     });
 
     await _pollStatus(payment.id);
@@ -127,7 +128,8 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
       if (!mounted) return;
 
       setState(() {
-        _pollingStatus = 'جاري التحقق من حالة الدفع... ($attempt/$maxAttempts)';
+        _pollingStatus =
+            context.l10n.verifyingPaymentStatusProgress(attempt, maxAttempts);
       });
 
       try {
@@ -138,7 +140,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
 
         if (updated.status == PaymentStatus.approved) {
           setState(() => _isPolling = false);
-          _showSnack('تم شحن المحفظة بنجاح عبر CliQ', isSuccess: true);
+          _showSnack(context.l10n.walletToppedUpViaCliq, isSuccess: true);
           Navigator.pop(context, true);
           return;
         } else if (updated.status == PaymentStatus.rejected) {
@@ -149,8 +151,8 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
           final note = (updated.adminNote ?? '').trim();
           _showSnack(
             note.isEmpty
-                ? 'فشلت عملية الدفع عبر CliQ'
-                : 'فشلت عملية الدفع: $note',
+                ? context.l10n.cliqPaymentFailed
+                : context.l10n.cliqPaymentFailedWithNote(note),
             isError: true,
           );
           Navigator.pop(context, false);
@@ -160,13 +162,15 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
         consecutiveErrors++;
         if (!mounted) return;
         setState(() {
-          _pollingStatus =
-              'تعذّر الاتصال مؤقتاً ($attempt/$maxAttempts). إعادة المحاولة...';
+          _pollingStatus = context.l10n.connectionTemporarilyFailed(
+            attempt,
+            maxAttempts,
+          );
         });
         if (consecutiveErrors >= 5) {
           setState(() => _isPolling = false);
           _showSnack(
-            'تعذّر التحقق من الدفع: $e',
+            context.l10n.cannotVerifyPayment(e.toString()),
             isError: true,
           );
           Navigator.pop(context, false);
@@ -178,7 +182,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
     if (mounted) {
       setState(() => _isPolling = false);
       _showSnack(
-        'انتهى وقت التحقق. إذا اكتمل الدفع عند CliQ سيظهر الرصيد خلال دقائق، أو تحقق من سجل المدفوعات.',
+        context.l10n.verificationTimedOut,
         isWarning: true,
       );
       Navigator.pop(context, false);
@@ -214,7 +218,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
         backgroundColor: T.surface(context),
         foregroundColor: T.onSurface(context),
         title: Text(
-          'شحن المحفظة',
+          context.l10n.walletTopupTitle,
           style: AppTextStyles.titleMedium.copyWith(fontSize: 20),
         ),
       ),
@@ -232,13 +236,13 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
             const CircularProgressIndicator(),
             const SizedBox(height: 24),
             Text(
-              _pollingStatus ?? 'جاري التحقق من حالة الدفع...',
+              _pollingStatus ?? context.l10n.verifyingPaymentStatus,
               style: AppTextStyles.bodyMedium,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             Text(
-              'يرجى الانتظار وعدم إغلاق الشاشة',
+              context.l10n.pleaseWaitDoNotClose,
               style: AppTextStyles.bodySmall.copyWith(
                 color: T.onSurfaceVariant(context),
               ),
@@ -291,7 +295,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
       child: Row(
         children: [
           _buildMethodTab(
-            label: 'تحويل يدوي',
+            label: context.l10n.topupMethodManual,
             icon: IconsaxPlusLinear.gallery_add,
             value: _TopupMethod.manual,
           ),
@@ -354,8 +358,8 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
 
   Widget _buildDescription() {
     final text = _selectedMethod == _TopupMethod.manual
-        ? 'حوّل المبلغ إلى حساب المنصة ثم أدخل المبلغ وارفع صورة واضحة للتحويل. لا يُضاف رصيد تلقائياً قبل مراجعة الطلب.'
-        : 'سيتم الدفع مباشرة عبر نظام CliQ. أدخل المبلغ وبيانات حسابك في CliQ وسيُضاف الرصيد تلقائياً عند تأكيد الدفع.';
+        ? context.l10n.topupManualDescription
+        : context.l10n.topupCliqDescription;
     return Text(
       text,
       style: AppTextStyles.bodyMedium.copyWith(
@@ -371,7 +375,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
       keyboardType:
           const TextInputType.numberWithOptions(decimal: true),
       decoration: InputDecoration(
-        labelText: 'المبلغ ($currency)',
+        labelText: context.l10n.amountWithCurrency(currency),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -379,7 +383,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
       ),
       validator: (v) {
         final n = double.tryParse(v ?? '');
-        if (n == null || n < 0.01) return 'أدخل مبلغاً صحيحاً';
+        if (n == null || n < 0.01) return context.l10n.enterValidAmount;
         return null;
       },
     );
@@ -389,8 +393,8 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
     return TextFormField(
       controller: _walletRefController,
       decoration: InputDecoration(
-        labelText: 'رقم العملية / المرجع (اختياري)',
-        hintText: 'إن وُجد',
+        labelText: context.l10n.transactionReferenceOptional,
+        hintText: context.l10n.ifAvailable,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -406,8 +410,8 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
         Semantics(
           button: true,
           label: _proofImage == null
-              ? 'رفع صورة إثبات التحويل'
-              : 'تم اختيار صورة',
+              ? context.l10n.uploadTransferProof
+              : context.l10n.imageSelected,
           child: OutlinedButton.icon(
             onPressed: _pickImage,
             icon: Icon(
@@ -417,8 +421,8 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
             ),
             label: Text(
               _proofImage == null
-                  ? 'رفع صورة إثبات التحويل'
-                  : 'تم اختيار صورة',
+                  ? context.l10n.uploadTransferProof
+                  : context.l10n.imageSelected,
               style: AppTextStyles.labelLarge,
             ),
             style: OutlinedButton.styleFrom(
@@ -450,7 +454,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'نوع الـ Alias',
+          context.l10n.aliasType,
           style: AppTextStyles.titleSmall.copyWith(
             fontWeight: FontWeight.bold,
           ),
@@ -459,14 +463,14 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
         Row(
           children: [
             _buildAliasTypeOption(
-              label: 'رقم موبايل',
+              label: context.l10n.mobileNumber,
               subtitle: 'MOBL',
               value: 'MOBL',
               icon: IconsaxPlusLinear.mobile,
             ),
             const SizedBox(width: 12),
             _buildAliasTypeOption(
-              label: 'اسم مستعار',
+              label: context.l10n.aliasName,
               subtitle: 'ALIAS',
               value: 'ALIAS',
               icon: IconsaxPlusLinear.user_tag,
@@ -530,12 +534,14 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
 
   Widget _buildAliasValueField() {
     final hint = _aliasType == 'MOBL'
-        ? 'مثال: 00962XXXXXXXXX'
-        : 'مثال: yourname@cliq';
+        ? context.l10n.mobileNumberHint
+        : context.l10n.aliasNameHint;
     return TextFormField(
       controller: _aliasValueController,
       decoration: InputDecoration(
-        labelText: _aliasType == 'MOBL' ? 'رقم الموبايل' : 'الاسم المستعار (Alias)',
+        labelText: _aliasType == 'MOBL'
+            ? context.l10n.mobileNumber
+            : context.l10n.aliasNameLabel,
         hintText: hint,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -549,8 +555,8 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
       validator: (v) {
         if (v == null || v.trim().isEmpty) {
           return _aliasType == 'MOBL'
-              ? 'أدخل رقم الموبايل'
-              : 'أدخل الاسم المستعار';
+              ? context.l10n.enterMobileNumber
+              : context.l10n.enterAliasName;
         }
         return null;
       },
@@ -559,7 +565,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
 
   Widget _buildSubmitButton() {
     return Semantics(
-      label: 'إرسال طلب الشحن',
+      label: context.l10n.submitTopupRequest,
       button: true,
       child: ElevatedButton(
         onPressed: _isLoading ? null : _submit,
@@ -582,8 +588,8 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
               )
             : Text(
                 _selectedMethod == _TopupMethod.manual
-                    ? 'إرسال طلب الشحن'
-                    : 'الدفع عبر CliQ',
+                    ? context.l10n.submitTopupRequest
+                    : context.l10n.payViaCliq,
                 style: AppTextStyles.titleSmall.copyWith(
                   fontWeight: FontWeight.bold,
                 ),

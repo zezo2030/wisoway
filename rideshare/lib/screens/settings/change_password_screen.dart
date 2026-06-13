@@ -6,6 +6,7 @@ import '../../../core/services/auth_service.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/ui/error_surface.dart';
 import '../../../core/api/api_client.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -25,10 +26,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   bool _obscureNewPassword = true;
   bool _obscureConfirmPassword = true;
 
-  bool _ar(BuildContext context) {
-    return Directionality.of(context) == TextDirection.rtl;
-  }
-
   @override
   void dispose() {
     _currentPasswordController.dispose();
@@ -39,29 +36,25 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   String? _validateNewPassword(String? value) {
     if (value == null || value.isEmpty) {
-      return _ar(context) ? 'يرجى إدخال كلمة المرور الجديدة' : 'Please enter new password';
+      return context.l10n.enterNewPassword;
     }
     if (value.length < 8) {
-      return _ar(context)
-          ? 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'
-          : 'Password must be at least 8 characters';
+      return context.l10n.passwordTooShort;
     }
     final hasLetter = value.contains(RegExp(r'[A-Za-z]'));
     final hasDigit = value.contains(RegExp(r'\d'));
     if (!hasLetter || !hasDigit) {
-      return _ar(context)
-          ? 'كلمة المرور يجب أن تحتوي على حرف ورقم على الأقل'
-          : 'Password must contain at least one letter and one number';
+      return context.l10n.passwordPolicyError;
     }
     return null;
   }
 
   String? _validateConfirmPassword(String? value) {
     if (value == null || value.isEmpty) {
-      return _ar(context) ? 'يرجى تأكيد كلمة المرور' : 'Please confirm password';
+      return context.l10n.confirmPasswordRequired;
     }
     if (value != _newPasswordController.text) {
-      return _ar(context) ? 'كلمات المرور غير متطابقة' : 'Passwords do not match';
+      return context.l10n.passwordsDoNotMatch;
     }
     return null;
   }
@@ -79,7 +72,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       );
 
       if (mounted) {
-        final isArabic = _ar(context);
         showDialog(
           context: context,
           barrierDismissible: false,
@@ -92,17 +84,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 Icon(IconsaxPlusBroken.tick_circle, color: T.success(context)),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    isArabic ? 'تم تغيير كلمة المرور' : 'Password Changed',
-                  ),
+                  child: Text(ctx.l10n.passwordChangedTitle),
                 ),
               ],
             ),
-            content: Text(
-              isArabic
-                  ? 'تم تغيير كلمة المرور بنجاح. يرجى تسجيل الدخول مرة أخرى.'
-                  : 'Your password has been changed successfully. Please sign in again.',
-            ),
+            content: Text(ctx.l10n.passwordChangedMessage),
             actions: [
               TextButton(
                 onPressed: () {
@@ -112,7 +98,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     (route) => false,
                   );
                 },
-                child: Text(isArabic ? 'حسناً' : 'OK'),
+                child: Text(ctx.l10n.ok),
               ),
             ],
           ),
@@ -131,11 +117,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isArabic = _ar(context);
-
     return Scaffold(
       appBar: AppBar(
-        title: Text(isArabic ? 'تغيير كلمة المرور' : 'Change Password'),
+        title: Text(context.l10n.changePassword),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -146,9 +130,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  isArabic
-                      ? 'أدخل كلمة المرور الحالية وكلمة المرور الجديدة'
-                      : 'Enter your current password and new password',
+                  context.l10n.changePasswordSubtitle,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: T.textSecondary(context),
                   ),
@@ -156,7 +138,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 const SizedBox(height: 24),
                 _buildPasswordField(
                   controller: _currentPasswordController,
-                  label: isArabic ? 'كلمة المرور الحالية' : 'Current Password',
+                  label: context.l10n.currentPassword,
                   obscureText: _obscureCurrentPassword,
                   onToggleVisibility: () {
                     setState(() {
@@ -167,7 +149,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 const SizedBox(height: 16),
                 _buildPasswordField(
                   controller: _newPasswordController,
-                  label: isArabic ? 'كلمة المرور الجديدة' : 'New Password',
+                  label: context.l10n.newPassword,
                   obscureText: _obscureNewPassword,
                   onToggleVisibility: () {
                     setState(() {
@@ -180,7 +162,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 const SizedBox(height: 16),
                 _buildPasswordField(
                   controller: _confirmPasswordController,
-                  label: isArabic ? 'تأكيد كلمة المرور الجديدة' : 'Confirm New Password',
+                  label: context.l10n.confirmNewPassword,
                   obscureText: _obscureConfirmPassword,
                   onToggleVisibility: () {
                     setState(() {
@@ -213,7 +195,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                             ),
                           )
                         : Text(
-                            isArabic ? 'تغيير كلمة المرور' : 'Change Password',
+                            context.l10n.changePassword,
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -271,7 +253,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   }
 
   Widget _buildStrengthIndicator(String password) {
-    final isArabic = _ar(context);
     final hasMinLength = password.length >= 8;
     final hasLetter = password.contains(RegExp(r'[A-Za-z]'));
     final hasDigit = password.contains(RegExp(r'\d'));
@@ -281,13 +262,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     final String label;
     if (strength == 3) {
       barColor = T.success(context);
-      label = isArabic ? 'قوية' : 'Strong';
+      label = context.l10n.passwordStrengthStrong;
     } else if (strength == 2) {
       barColor = AppColors.warning;
-      label = isArabic ? 'متوسطة' : 'Medium';
+      label = context.l10n.passwordStrengthMedium;
     } else {
       barColor = T.error(context);
-      label = isArabic ? 'ضعيفة' : 'Weak';
+      label = context.l10n.passwordStrengthWeak;
     }
 
     return Column(
@@ -316,9 +297,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          isArabic
-              ? 'يجب أن تكون 8 أحرف على الأقل مع حرف ورقم'
-              : 'Must be at least 8 characters with one letter and one number',
+          context.l10n.passwordPolicyHint,
           style: TextStyle(
             fontSize: 11,
             color: T.textSecondary(context),

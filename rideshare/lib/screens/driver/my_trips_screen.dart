@@ -12,6 +12,7 @@ import '../../widgets/notification_icon_button.dart';
 import '../../core/theme/colors.dart';
 import '../../widgets/common/empty_state.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class MyTripsScreen extends StatefulWidget {
   const MyTripsScreen({super.key});
@@ -71,7 +72,7 @@ class _MyTripsScreenState extends State<MyTripsScreen>
 
     if (user == null || userModel == null || !userModel.canCreateTrips) {
       return Scaffold(
-        appBar: AppBar(title: const Text('رحلاتي')),
+        appBar: AppBar(title: Text(context.l10n.myTripsTitleLabel)),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -79,8 +80,8 @@ class _MyTripsScreenState extends State<MyTripsScreen>
               userModel != null &&
                       userModel.isDriver &&
                       !userModel.isDriverApproved
-                  ? 'حسابك كسائق قيد المراجعة. لا يمكنك إنشاء أو إدارة رحلات حتى تتم الموافقة عليه.'
-                  : 'يجب أن تكون سائقاً معتمداً لعرض الرحلات.',
+                  ? context.l10n.driverAccountUnderReviewTrips
+                  : context.l10n.mustBeApprovedDriver,
               textAlign: TextAlign.center,
             ),
           ),
@@ -95,7 +96,7 @@ class _MyTripsScreenState extends State<MyTripsScreen>
         elevation: 0,
         centerTitle: true,
         title: Text(
-          'رحلاتي',
+          context.l10n.myTripsTitleLabel,
           style: TextStyle(
             color: T.onSurface(context),
             fontWeight: FontWeight.bold,
@@ -119,10 +120,10 @@ class _MyTripsScreenState extends State<MyTripsScreen>
           ),
           indicatorWeight: 3,
           dividerColor: Colors.transparent,
-          tabs: const [
-            Tab(text: 'نشطة'),
-            Tab(text: 'مخفية'),
-            Tab(text: 'مكتملة'),
+          tabs: [
+            Tab(text: context.l10n.tabActive),
+            Tab(text: context.l10n.tabHidden),
+            Tab(text: context.l10n.tabCompleted),
           ],
         ),
       ),
@@ -143,11 +144,11 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                 children: [
                   const Icon(Icons.error_outline, size: 64, color: Colors.red),
                   const SizedBox(height: 16),
-                  Text('خطأ: ${snapshot.error}'),
+                  Text(context.l10n.errorWithDetail('${snapshot.error}')),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () => setState(() {}),
-                    child: const Text('إعادة المحاولة'),
+                    child: Text(context.l10n.retryLabel),
                   ),
                 ],
               ),
@@ -171,10 +172,10 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                         ? Icons.visibility_off_outlined
                         : Icons.check_circle_outline,
                     title: _selectedStatus == 'active'
-                        ? 'لا توجد رحلات نشطة'
+                        ? context.l10n.noActiveTrips
                         : _selectedStatus == 'hidden'
-                        ? 'لا توجد رحلات مخفية'
-                        : 'لا توجد رحلات مكتملة',
+                        ? context.l10n.noHiddenTrips
+                        : context.l10n.noCompletedTrips,
                     showCircleBackground: false,
                     iconSize: 64,
                     action: _selectedStatus == 'active'
@@ -186,7 +187,7 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                               );
                             },
                             icon: const Icon(IconsaxPlusBold.add_circle),
-                            label: const Text('إنشاء رحلة'),
+                            label: Text(context.l10n.createTripShort),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: T.primary(context),
                             ),
@@ -215,17 +216,17 @@ class _MyTripsScreenState extends State<MyTripsScreen>
       ),
       floatingActionButton: Semantics(
         button: true,
-        label: 'إنشاء رحلة جديدة',
+        label: context.l10n.createNewTripSemantic,
         child: FloatingActionButton.extended(
           onPressed: () {
             Navigator.pushNamed(context, RouteNames.createTrip);
           },
-          tooltip: 'رحلة جديدة',
+          tooltip: context.l10n.newTrip,
           backgroundColor: T.primary(context),
           icon: const Icon(IconsaxPlusBold.add, color: AppColors.white),
-          label: const Text(
-            'رحلة جديدة',
-            style: TextStyle(
+          label: Text(
+            context.l10n.newTrip,
+            style: const TextStyle(
               color: AppColors.white,
               fontWeight: FontWeight.bold,
             ),
@@ -260,23 +261,26 @@ class _TripCardState extends State<_TripCard> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('فاتورة رسوم الرحلة'),
+        title: Text(context.l10n.tripFeeInvoiceTitle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _invoiceRow('سعر المقعد', '${trip.price} ${trip.currency}'),
-            _invoiceRow('عدد المقاعد', '${trip.totalSeats}'),
-            _invoiceRow('نسبة الرسوم', '5%'),
+            _invoiceRow(
+              context.l10n.seatPrice,
+              '${trip.price} ${trip.currency}',
+            ),
+            _invoiceRow(context.l10n.seatsCountLabel, '${trip.totalSeats}'),
+            _invoiceRow(context.l10n.feePercentage, '5%'),
             const Divider(height: 24),
             _invoiceRow(
-              'الإجمالي',
+              context.l10n.totalLabel,
               '${amount.toStringAsFixed(2)} ${trip.currency}',
               isTotal: true,
             ),
             const SizedBox(height: 12),
             Text(
-              'سيتم خصم الرسوم من محفظتك وفتح بيانات ركاب هذه الرحلة. لا يتم تغيير عدد المقاعد أو الحجوزات.',
+              context.l10n.tripFeeDeductExplanation,
               style: TextStyle(
                 color: T.onSurfaceVariant(context),
                 fontSize: 13,
@@ -288,11 +292,11 @@ class _TripCardState extends State<_TripCard> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('دفع الرسوم'),
+            child: Text(context.l10n.payFees),
           ),
         ],
       ),
@@ -329,7 +333,7 @@ class _TripCardState extends State<_TripCard> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('تم دفع رسوم الرحلة بنجاح'),
+          content: Text(context.l10n.tripFeePaidSuccess),
           backgroundColor: AppColors.success,
         ),
       );
@@ -369,21 +373,21 @@ class _TripCardState extends State<_TripCard> {
       switch (trip.status) {
         case 'active':
         case 'published':
-          return 'نشطة';
+          return context.l10n.statusActive;
         case 'draft':
-          return 'مسودة';
+          return context.l10n.statusDraft;
         case 'fully_booked':
-          return 'مكتملة الحجز';
+          return context.l10n.statusFullyBooked;
         case 'in_progress':
-          return 'قيد التنفيذ';
+          return context.l10n.statusInProgress;
         case 'hidden':
-          return 'مخفية';
+          return context.l10n.statusHidden;
         case 'completed':
-          return 'مكتملة';
+          return context.l10n.statusCompleted;
         case 'cancelled':
-          return 'ملغاة';
+          return context.l10n.statusCancelled;
         default:
-          return 'غير معروف';
+          return context.l10n.statusUnknown;
       }
     }
 
@@ -407,10 +411,10 @@ class _TripCardState extends State<_TripCard> {
 
     final String fromName = trip.from.name.isNotEmpty
         ? trip.from.name
-        : (trip.from.address ?? 'موقع غير معروف');
+        : (trip.from.address ?? context.l10n.unknownLocation);
     final String toName = trip.to.name.isNotEmpty
         ? trip.to.name
-        : (trip.to.address ?? 'موقع غير معروف');
+        : (trip.to.address ?? context.l10n.unknownLocation);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -430,7 +434,10 @@ class _TripCardState extends State<_TripCard> {
         borderRadius: BorderRadius.circular(20),
         child: Semantics(
           button: true,
-          label: 'رحلة من ${trip.from.name} إلى ${trip.to.name}',
+          label: context.l10n.tripFromToSemantic(
+            trip.from.name,
+            trip.to.name,
+          ),
           child: InkWell(
             borderRadius: BorderRadius.circular(20),
             onTap: () {
@@ -552,7 +559,7 @@ class _TripCardState extends State<_TripCard> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'من',
+                                  context.l10n.fromShort,
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: T.onSurfaceVariant(context),
@@ -576,7 +583,7 @@ class _TripCardState extends State<_TripCard> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'إلى',
+                                  context.l10n.toShort,
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: T.onSurfaceVariant(context),
@@ -635,7 +642,7 @@ class _TripCardState extends State<_TripCard> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        '/ مقعد',
+                        context.l10n.perSeatSuffix,
                         style: TextStyle(
                           fontSize: 12,
                           color: T.onSurfaceVariant(context),
@@ -660,7 +667,7 @@ class _TripCardState extends State<_TripCard> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'مقاعد',
+                        context.l10n.seatsWord,
                         style: TextStyle(
                           fontSize: 12,
                           color: T.onSurfaceVariant(context),
@@ -689,7 +696,9 @@ class _TripCardState extends State<_TripCard> {
                               )
                             : const Icon(IconsaxPlusBold.receipt_2),
                         label: Text(
-                          _isPaying ? 'جاري الدفع...' : 'دفع الرسوم',
+                          _isPaying
+                              ? context.l10n.payingInProgress
+                              : context.l10n.payFees,
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         style: ElevatedButton.styleFrom(
@@ -716,8 +725,8 @@ class _TripCardState extends State<_TripCard> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'رسوم الرحلة مدفوعة',
-                          style: TextStyle(
+                          context.l10n.tripFeePaidLabel,
+                          style: const TextStyle(
                             color: AppColors.success,
                             fontWeight: FontWeight.bold,
                           ),

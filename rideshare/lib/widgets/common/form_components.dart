@@ -14,6 +14,7 @@ class ModernInputField extends StatelessWidget {
   final bool readOnly;
   final bool enabled;
   final VoidCallback? onTap;
+  final TextDirection? textDirection;
 
   const ModernInputField({
     super.key,
@@ -28,6 +29,7 @@ class ModernInputField extends StatelessWidget {
     this.readOnly = false,
     this.enabled = true,
     this.onTap,
+    this.textDirection,
   });
 
   @override
@@ -42,6 +44,7 @@ class ModernInputField extends StatelessWidget {
         enabled: enabled,
         readOnly: readOnly,
         onTap: onTap,
+        textDirection: textDirection,
         style: TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w500,

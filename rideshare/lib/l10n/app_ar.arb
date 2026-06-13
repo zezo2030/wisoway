@@ -560,7 +560,6 @@
       }
     }
   },
-
   "accountBannedTitle": "تم تعليق حسابك",
   "@accountBannedTitle": {
     "description": "Ban screen title shown when user account is banned"
@@ -796,7 +795,1646 @@
   "markPassengerAbsent": "غياب الراكب",
   "@markPassengerAbsent": {
     "description": "Driver action to mark a passenger as absent at trip completion"
-  }
+  },
+  "welcomeTitle": "مرحباً بك في VisionWay",
+  "welcomeSubtitle": "رحلتك تبدأ من هنا. اختر وجهتك وانطلق معنا بكل أمان وراحة.",
+  "signIn": "تسجيل الدخول",
+  "createNewAccount": "إنشاء حساب جديد",
+  "signInSubtitle": "أهلاً بك مجدداً! سجل دخولك للمتابعة.",
+  "password": "كلمة المرور",
+  "passwordRequired": "كلمة المرور مطلوبة",
+  "passwordTooShort": "كلمة المرور قصيرة",
+  "forgotPassword": "نسيت كلمة السر؟",
+  "noAccountQuestion": "ليس لديك حساب؟ ",
+  "phoneNumberFirst": "يرجى إدخال رقم الهاتف أولاً",
+  "passwordResetLinkSent": "تم إرسال رابط إعادة تعيين كلمة المرور",
+  "required": "مطلوب",
+  "accountTypePassenger": "راكب",
+  "accountTypeDriver": "سائق",
+  "accountTypeTitle": "اختر نوع الحساب",
+  "accountTypeSubtitle": "حدد كيف تريد استخدام التطبيق",
+  "accountTypePassengerDesc": "احجز رحلتك بسهولة",
+  "accountTypeDriverDesc": "اعرض رحلاتك للركاب",
+  "continueLabel": "متابعة",
+  "signUpTitle": "إنشاء حساب",
+  "signUpSubtitle": "أنشئ حسابك للبدء",
+  "fullName": "الاسم الكامل",
+  "fullNameRequired": "الاسم مطلوب",
+  "emailOptional": "البريد الإلكتروني (اختياري)",
+  "invalidEmail": "بريد إلكتروني غير صحيح",
+  "confirmPassword": "تأكيد كلمة المرور",
+  "passwordsDoNotMatch": "كلمتا المرور غير متطابقتين",
+  "alreadyHaveAccount": "لديك حساب بالفعل؟ ",
+  "phoneAuthTitle": "تأكيد رقم الهاتف",
+  "phoneAuthSubtitle": "سنرسل لك رمز تحقق عبر رسالة نصية",
+  "linkPhoneTitle": "ربط رقم الهاتف",
+  "linkPhoneSubtitle": "أكد رقم هاتفك للمتابعة",
+  "otpScreenTitle": "إدخال رمز التحقق",
+  "otpScreenSubtitle": "أدخل الرمز المرسل إلى {phone}",
+  "@otpScreenSubtitle": {
+    "placeholders": {
+      "phone": {
+        "type": "String"
+      }
+    }
+  },
+  "verifyButton": "تحقق",
+  "didntReceiveCode": "لم يصلك الرمز؟ ",
+  "forgotPasswordTitle": "نسيت كلمة المرور",
+  "forgotPasswordSubtitle": "أدخل رقم هاتفك وسنرسل لك رمز إعادة التعيين",
+  "sendResetCode": "إرسال رمز إعادة التعيين",
+  "resetPasswordTitle": "إعادة تعيين كلمة المرور",
+  "resetPasswordSubtitle": "أدخل الرمز وكلمة المرور الجديدة",
+  "newPassword": "كلمة المرور الجديدة",
+  "resetCode": "رمز إعادة التعيين",
+  "resetCodeRequired": "الرمز مطلوب",
+  "resetPasswordButton": "إعادة تعيين",
+  "passwordResetSuccess": "تم تغيير كلمة المرور بنجاح",
+  "driverSignUpTitle": "إنشاء حساب سائق",
+  "driverSignUpSubtitle": "ابدأ بإدخال بياناتك الأساسية",
+  "driverCompleteProfileTitle": "أكمل ملف السائق",
+  "driverCompleteProfileSubtitle": "نحتاج بعض البيانات لاعتماد حسابك",
+  "vehicleMake": "ماركة السيارة",
+  "vehicleModel": "موديل السيارة",
+  "vehicleYear": "سنة الصنع",
+  "vehicleColor": "اللون",
+  "vehiclePlate": "رقم اللوحة",
+  "vehicleSeats": "عدد المقاعد",
+  "licenseNumber": "رقم رخصة القيادة",
+  "vehicleMakeRequired": "ماركة السيارة مطلوبة",
+  "vehicleModelRequired": "موديل السيارة مطلوب",
+  "vehicleYearRequired": "سنة الصنع مطلوبة",
+  "vehicleColorRequired": "اللون مطلوب",
+  "vehiclePlateRequired": "رقم اللوحة مطلوب",
+  "vehicleSeatsRequired": "عدد المقاعد مطلوب",
+  "licenseNumberRequired": "رقم الرخصة مطلوب",
+  "submitButton": "إرسال",
+  "driverPendingApprovalTitle": "حسابك قيد المراجعة",
+  "driverPendingApprovalBody": "سنراجع بياناتك وسنخبرك فور الموافقة. حتى ذلك الحين، يمكنك استخدام التطبيق كراكب.",
+  "driverPendingApprovalAction": "متابعة كراكب",
+  "homeTitle": "الرئيسية",
+  "tripsTab": "الرحلات",
+  "bookingsTab": "حجوزاتي",
+  "searchTab": "بحث",
+  "profileTab": "حسابي",
+  "myTripsTitle": "رحلاتي",
+  "createTripTitle": "إنشاء رحلة",
+  "editTripTitle": "تعديل الرحلة",
+  "fromLabel": "من",
+  "toLabel": "إلى",
+  "departureDate": "تاريخ المغادرة",
+  "departureTime": "وقت المغادرة",
+  "pricePerSeat": "السعر لكل مقعد",
+  "availableSeats": "المقاعد المتاحة",
+  "notes": "ملاحظات",
+  "createTripButton": "إنشاء الرحلة",
+  "saveChangesButton": "حفظ التغييرات",
+  "cancelTripButton": "إلغاء الرحلة",
+  "startTripButton": "بدء الرحلة",
+  "completeTripButton": "إنهاء الرحلة",
+  "tripCreated": "تم إنشاء الرحلة بنجاح",
+  "tripUpdated": "تم تحديث الرحلة",
+  "tripCanceled": "تم إلغاء الرحلة",
+  "tripStarted": "بدأت الرحلة",
+  "tripCompleted": "انتهت الرحلة",
+  "noTripsYet": "لا توجد رحلات بعد",
+  "noBookingsYet": "لا توجد حجوزات بعد",
+  "searchTripsHint": "ابحث عن رحلة...",
+  "bookSeatButton": "احجز مقعدًا",
+  "selectSeats": "اختر المقاعد",
+  "selectedSeats": "المقاعد المختارة",
+  "totalPrice": "الإجمالي",
+  "confirmBooking": "تأكيد الحجز",
+  "bookingConfirmed": "تم تأكيد الحجز",
+  "viewTripDetails": "تفاصيل الرحلة",
+  "tripDetailsTitle": "تفاصيل الرحلة",
+  "passengersLabel": "الركاب",
+  "driverLabel": "السائق",
+  "vehicleLabel": "المركبة",
+  "departureLabel": "المغادرة",
+  "arrivalLabel": "الوصول",
+  "priceLabel": "السعر",
+  "statusLabel": "الحالة",
+  "callDriver": "اتصال بالسائق",
+  "chatWithDriver": "محادثة السائق",
+  "rateDriver": "تقييم السائق",
+  "rateTrip": "قيّم الرحلة",
+  "submitRating": "إرسال التقييم",
+  "ratingSubmitted": "تم إرسال التقييم",
+  "shareRideButton": "مشاركة الرحلة",
+  "trackRideButton": "تتبع الرحلة",
+  "startNow": "ابدأ الآن",
+  "phoneNumberRequired2": "أدخل رقم الهاتف",
+  "verifyOtpTitle": "التحقق من رقم الهاتف",
+  "otpSentTo": "أرسلنا رمز تحقق إلى",
+  "resendCodeIn": "إعادة الإرسال بعد {seconds} ث",
+  "@resendCodeIn": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "resendCode": "إعادة الإرسال",
+  "verifyAndContinue": "تحقق ومتابعة",
+  "changeNumber": "تغيير الرقم",
+  "personalInfoTitle": "البيانات الشخصية",
+  "vehicleInfoTitle": "بيانات المركبة",
+  "documentsTitle": "المستندات",
+  "uploadIdFront": "صورة الهوية - الوجه",
+  "uploadIdBack": "صورة الهوية - الخلف",
+  "uploadLicense": "صورة رخصة القيادة",
+  "uploadVehicleRegistration": "صورة دفتر المركبة",
+  "uploadProfilePhoto": "صورة الملف الشخصي",
+  "uploadingFile": "جاري الرفع...",
+  "tapToUpload": "اضغط للرفع",
+  "tapToChange": "اضغط للتغيير",
+  "complete": "إكمال",
+  "next": "التالي",
+  "back": "السابق",
+  "skip": "تخطي",
+  "yes": "نعم",
+  "no": "لا",
+  "confirm": "تأكيد",
+  "delete": "حذف",
+  "edit": "تعديل",
+  "share": "مشاركة",
+  "copy": "نسخ",
+  "search": "بحث",
+  "tryAgain": "إعادة المحاولة",
+  "logoutButton": "تسجيل الخروج",
+  "logoutConfirmTitle": "تأكيد تسجيل الخروج",
+  "logoutConfirmMessage": "هل تريد بالتأكيد تسجيل الخروج؟",
+  "noNotifications": "لا توجد إشعارات",
+  "markAllAsRead": "تعيين الكل كمقروء",
+  "clearAll": "مسح الكل",
+  "signUpAs": "سجل الآن كـ {role} لبدء رحلتك معنا.",
+  "@signUpAs": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "fullNameHint": "أدخل اسمك بالكامل",
+  "validNameRequired": "يرجى إدخال اسم صحيح",
+  "passwordHint": "8 أحرف على الأقل وتحتوي حرفاً ورقماً",
+  "passwordPolicyError": "يجب أن تحتوي كلمة السر على 8 أحرف مع حرف ورقم",
+  "confirmPasswordHint": "أعد إدخال كلمة السر",
+  "confirmPasswordRequired": "يرجى تأكيد كلمة السر",
+  "createAccountDev": "إنشاء حساب (تطوير)",
+  "sendOtpAndCreateAccount": "إرسال رمز التحقق وإنشاء الحساب",
+  "selectGenderError": "يرجى اختيار الجنس",
+  "couldNotOpenWhatsApp": "تعذر فتح WhatsApp",
+  "contactSupportViaWhatsApp": "تواصل مع الدعم عبر WhatsApp",
+  "pickImageFromGallery": "اختيار صورة من المعرض",
+  "captureImageFromCamera": "التقاط صورة من الكاميرا",
+  "fromGallery": "من المعرض",
+  "fromCamera": "من الكاميرا",
+  "driverProfileSubmittedFull": "تم رفع بياناتك بنجاح. طلبك قيد المراجعة من الإدارة؛ سيتم اعتمادك قريباً وستستطيع إنشاء رحلات بعد الاعتماد.",
+  "driverProfileSubmitted": "تم رفع بياناتك بنجاح. طلبك قيد المراجعة من الإدارة.",
+  "driverProfileStep2": "الخطوة 2 من 2: المعلومات الإضافية",
+  "profilePhotoRequired": "الصورة الشخصية *",
+  "vehicleType": "نوع المركبة",
+  "vehicleTypeRequired": "نوع المركبة *",
+  "vehicleTypeValidation": "يرجى اختيار نوع المركبة",
+  "vehiclePlateRequiredLabel": "رقم اللوحة *",
+  "vehicleModelRequiredLabel": "موديل السيارة *",
+  "vehicleSeatsRequiredLabel": "عدد المقاعد *",
+  "vehicleSeatsInvalid": "عدد المقاعد يجب أن يكون رقم صحيح أكبر من 0",
+  "driverLicenseRequired": "رخصة القيادة *",
+  "vehicleLicenseRequired": "رخصة المركبة *",
+  "carPhotoRequired": "صورة السيارة *",
+  "uploadFileLabel": "رفع {title}",
+  "@uploadFileLabel": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "firstName": "الاسم الأول",
+  "firstNameHint": "أحمد",
+  "lastName": "اسم العائلة",
+  "lastNameHint": "علي",
+  "driverSignUpVerifyButton": "تحقق من رقم الهاتف وأنشئ كلمة السر",
+  "driverSignUpStep1": "الخطوة 1 من 3: المعلومات الأساسية والتحقق",
+  "backToSignIn": "العودة إلى تسجيل الدخول",
+  "otpResent": "تم إرسال رمز التحقق مرة أخرى",
+  "otpSentToPhone": "تم إرسال الرمز المكون من 6 أرقام إلى\n",
+  "otpDigitLabel": "رمز التحقق {index}",
+  "@otpDigitLabel": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "enterPhoneToConfirm": "أدخل رقم هاتفك للتأكيد",
+  "enterYourPhone": "أدخل رقم هاتفك",
+  "devModeDirectLogin": "وضع التطوير: سيتم الدخول مباشرة",
+  "otpWillBeSentViaSms": "سنرسل لك رمز التحقق عبر SMS",
+  "enterAction": "دخول",
+  "emailHint": "example@email.com",
+  "selectedRoleLabel": "لقد اخترت دور: {role}",
+  "@selectedRoleLabel": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "passengerDescription": "ابحث عن رحلات واحجز مقعدك",
+  "tripOwnerDescription": "أنشئ رحلات واعرض مقاعدك",
+  "tripOwnerNote": "ستحتاج إلى إكمال بيانات المركبة والوثائق ليتم اعتماد حسابك كسائق.",
+  "saveAndComplete": "حفظ وإكمال",
+  "profileSetupSubtitle": "أكمل بياناتك للمتابعة",
+  "otpTooManyAttempts": "محاولات كثيرة جداً. يرجى طلب رمز جديد.",
+  "otpExpired": "انتهت صلاحية رمز التحقق. يرجى طلب رمز جديد.",
+  "requestNewCode": "طلب رمز جديد",
+  "newOtpSent": "تم إرسال رمز تحقق جديد",
+  "waitBeforeResend": "يرجى الانتظار {seconds} ثانية قبل طلب رمز جديد",
+  "@waitBeforeResend": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "otpSentToYourPhone": "تم إرسال رمز التحقق إلى رقم هاتفك",
+  "newPasswordRequired": "يرجى إدخال كلمة مرور جديدة",
+  "yourProfile": "ملفك الشخصي",
+  "notSpecified": "غير محدد",
+  "viewProfile": "عرض الملف الشخصي",
+  "userFallback": "المستخدم",
+  "browseTrips": "تصفح الرحلات",
+  "myWallet": "محفظتي",
+  "pendingChargesTitle": "الرسوم المستحقة",
+  "profileTitle": "الملف الشخصي",
+  "locationServicesDisabledTitle": "خدمات الموقع معطلة",
+  "locationServicesDisabledMessage": "يرجى تفعيل خدمات الموقع (GPS) لتتمكن من استخدام التطبيق ومشاركة موقعك.",
+  "enable": "تفعيل",
+  "locationPermissionRequiredTitle": "تصريح الموقع مطلوب",
+  "locationPermissionRequiredMessage": "يحتاج التطبيق إلى تصريح الوصول للموقع لتتمكن من مشاركة رحلاتك.",
+  "grantPermission": "منح التصريح",
+  "later": "لاحقاً",
+  "chooseYourLocation": "اختر موقعك",
+  "defaultCityName": "عمّان",
+  "defaultCityAddress": "عمّان، الأردن",
+  "myBookings": "حجوزاتي",
+  "profileTabLabel": "البروفايل",
+  "createNewTrip": "إنشاء رحلة جديدة",
+  "mustSignIn": "يجب تسجيل الدخول",
+  "noBookingsCurrently": "لا توجد حجوزات حالياً",
+  "upcoming": "قادمة",
+  "past": "سابقة",
+  "cannotCancel": "لا يمكن الإلغاء",
+  "cannotCancelWithin12Hours": "لا يمكن إلغاء الحجز خلال 12 ساعة من موعد الرحلة.\n\nموعد الرحلة: {departure}",
+  "@cannotCancelWithin12Hours": {
+    "placeholders": {
+      "departure": {
+        "type": "String"
+      }
+    }
+  },
+  "unknown": "غير معروف",
+  "confirmCancelBooking": "تأكيد إلغاء الحجز",
+  "cancellationFeeNotice": "سيتم خصم رسوم إلغاء بنسبة 5% من قيمة حجزك، وستُطبَّق على رحلتك القادمة.",
+  "confirmCancelBookingQuestion": "هل أنت متأكد من إلغاء الحجز؟",
+  "goBack": "تراجع",
+  "cancelBooking": "إلغاء الحجز",
+  "bookingCancelledSuccess": "تم إلغاء الحجز بنجاح",
+  "noTripsTitle": "لا توجد رحلات",
+  "noTripsSubtitle": "ابدأ بإنشاء رحلة جديدة وشارك\nرحلتك مع الآخرين",
+  "errorOccurred": "حدث خطأ",
+  "openMenu": "فتح القائمة",
+  "sideMenu": "القائمة الجانبية",
+  "whereWillYourTripStart": "إلى أين ستنطلق رحلتك؟",
+  "createTripCtaSubtitle": "ابدأ رحلتك واستقبل الحجوزات من الركاب",
+  "currentLocation": "موقعك الحالي",
+  "determiningLocation": "جاري تحديد الموقع...",
+  "detectLocationAutomatically": "تحديد الموقع تلقائياً",
+  "chooseLocationManually": "اختيار الموقع يدوياً",
+  "myActiveTrips": "رحلاتي القائمة",
+  "errorLoadingTrips": "خطأ في تحميل الرحلات",
+  "noActiveTripsTitle": "لا توجد رحلات قائمة",
+  "noActiveTripsSubtitle": "ابدأ بإنشاء رحلة لتظهر هنا.",
+  "whereDoYouWantToGo": "إلى أين تريد الذهاب؟",
+  "haveAPlaceInMind": "هل لديك مكان في الاعتبار؟",
+  "nearbyTrips": "رحلات قريبة منك",
+  "viewAll": "عرض الكل",
+  "noNearbyTripsTitle": "لا توجد رحلات قريبة",
+  "noNearbyTripsSubtitle": "جرب تغيير موقعك أو عرض جميع الرحلات",
+  "viewAllTrips": "عرض جميع الرحلات",
+  "showMoreTrips": "عرض {count} رحلة أخرى",
+  "@showMoreTrips": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dataUpdated": "تم تحديث البيانات",
+  "dataUpdateFailed": "تعذر تحديث البيانات: {error}",
+  "@dataUpdateFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "refreshData": "تحديث البيانات",
+  "driverDataApproved": "تمت الموافقة على بياناتك",
+  "driverAccountUnderReview": "حسابك كسائق قيد المراجعة",
+  "driverApprovedDescription": "يمكنك إنشاء رحلات وإدارتها من تبويب \"رحلاتي\".",
+  "driverPendingDescription": "لا يمكنك إنشاء رحلات حتى تتم الموافقة على بياناتك من الإدارة. يمكنك حالياً الحجز كراكب.",
+  "checkVerificationStatus": "معرفة حالة التوثيق",
+  "editProfile": "تعديل الملف الشخصي",
+  "helpAndSupport": "المساعدة والدعم",
+  "searchForTrip": "بحث عن رحلة",
+  "showAllAvailableTrips": "عرض جميع الرحلات المتاحة",
+  "showTrips": "عرض الرحلات",
+  "completedTrip": "رحلة منتهية",
+  "tripUnavailable": "رحلة غير متاحة",
+  "bookingStatusPending": "قيد الانتظار",
+  "bookingStatusConfirmed": "مؤكد",
+  "bookingStatusCancelled": "ملغي",
+  "dateLabel": "التاريخ",
+  "timeLabel": "الوقت",
+  "seatLabel": "المقعد",
+  "chat": "دردشة",
+  "call": "اتصال",
+  "distanceKm": "{distance} كم",
+  "@distanceKm": {
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "tripStatusActive": "نشطة",
+  "tripStatusFullyBooked": "مكتملة الحجز",
+  "tripStatusInProgress": "قيد التنفيذ",
+  "tripStatusHidden": "مخفية",
+  "seatsAvailable": "{count} متاح",
+  "@seatsAvailable": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "feePaid": "مدفوعة",
+  "feeDue": "مستحقة",
+  "tripStartDeadlinePassed": "انتهى وقت بدء الرحلة (لم يبدأ السائق ضمن المهلة)",
+  "homeGreeting": "مرحباً",
+  "defaultUserName": "المستخدم",
+  "homeStartTripTitle": "ابدأ رحلتك",
+  "homeStartTripSubtitle": "أنشئ رحلة جديدة واكسب المال",
+  "homeCreateTripButton": "إنشاء رحلة جديدة",
+  "userInfoTitle": "معلومات المستخدم",
+  "roleLabel": "الدور",
+  "statisticsTitle": "إحصائيات",
+  "tripsStatLabel": "الرحلات",
+  "passengersStatLabel": "الركاب",
+  "editProfilePhoto": "تعديل الصورة الشخصية",
+  "phoneNotVerified": "رقم الهاتف غير مؤكد",
+  "editProfileMenuItem": "تعديل الملف الشخصي",
+  "logout": "تسجيل الخروج",
+  "locationUnavailable": "تعذر الحصول على الموقع.",
+  "locationServicesDisabled": "خدمات الموقع معطلة.",
+  "enableAction": "تفعيل",
+  "locationPermissionRequired": "تصريح الموقع مطلوب.",
+  "grantAction": "منح",
+  "locationPermissionPermanentlyDenied": "تم رفض التصريح بشكل دائم.",
+  "filterFromValue": "من: {value}",
+  "@filterFromValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "filterToValue": "إلى: {value}",
+  "@filterToValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "filterCityValue": "مدينة: {value}",
+  "@filterCityValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "filterDateValue": "تاريخ: {value}",
+  "@filterDateValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "filterSortNewest": "ترتيب: الأحدث",
+  "availableTripsTitle": "الرحلات المتاحة",
+  "signInToViewTrips": "يجب تسجيل الدخول لعرض الرحلات",
+  "changeLocation": "تغيير الموقع",
+  "filterAndSort": "تصفية وترتيب",
+  "currentLocationLabel": "موقعك الحالي:",
+  "detectingLocation": "جاري تحديد الموقع...",
+  "preferredTrips": "رحلات مفضلة",
+  "allTrips": "كل الرحلات",
+  "errorWithDetail": "خطأ: {detail}",
+  "@errorWithDetail": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "enableLocationForTrips": "فعّل الموقع لعرض هذه الرحلات",
+  "noTripsAvailable": "لا توجد رحلات متاحة",
+  "chooseLocationThenRetry": "اختر موقعك الحالي ثم أعد المحاولة",
+  "tryChangingFilterOrLocation": "جرب تغيير الفلتر أو الموقع",
+  "refreshTripsList": "تحديث قائمة الرحلات",
+  "refresh": "تحديث",
+  "filterAndSortTrips": "تصفية وترتيب الرحلات",
+  "chooseDeparturePoint": "اختر نقطة الانطلاق",
+  "chooseDestination": "اختر الوجهة",
+  "cityLabel": "المدينة",
+  "searchByCityName": "ابحث باسم المدينة",
+  "chooseDate": "اختر التاريخ",
+  "sortLabel": "الترتيب",
+  "sortNearest": "الأقرب",
+  "sortNewest": "الأحدث",
+  "apply": "تطبيق",
+  "tripDetailsFromTo": "تفاصيل الرحلة من {from} إلى {to}",
+  "@tripDetailsFromTo": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "liveDriverLocation": "موقع السائق المباشر",
+  "tripNotFound": "الرحلة غير موجودة",
+  "tripRouteTitle": "مسار الرحلة",
+  "viewRouteOnMap": "عرض المسار على الخريطة",
+  "tripDistanceLabel": "مسافة الرحلة",
+  "distanceKmValue": "{value} كم",
+  "@distanceKmValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "departureTimeLabel": "وقت الانطلاق",
+  "seatsCountOfTotal": "{available} من {total}",
+  "@seatsCountOfTotal": {
+    "placeholders": {
+      "available": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "seatLayoutLabel": "تخطيط المقاعد",
+  "preventGenderMixingLabel": "منع الاختلاط",
+  "enabledValue": "مفعل",
+  "driverInfoTitle": "معلومات السائق",
+  "carImageTitle": "صورة السيارة",
+  "noSeatsAvailable": "لا توجد مقاعد متاحة",
+  "chatLabel": "المحادثة",
+  "chatNotEnabledYet": "لم يتم تفعيل التواصل بعد. يجب على السائق دفع رسوم التواصل أولاً.",
+  "rateLabel": "تقييم",
+  "alreadyRatedTrip": "لقد قمت بتقييم هذه الرحلة بالفعل",
+  "thanksForRating": "شكراً لتقييمك!",
+  "canRateAfterTripEnds": "يمكنك التقييم بعد انتهاء الرحلة",
+  "seatNotSelectable": "لا يمكن اختيار هذا المقعد، قد يكون محجوزًا أو غير مناسب حسب قواعد الرحلة.",
+  "signInRequired": "يجب تسجيل الدخول",
+  "tripInfoTitle": "معلومات الرحلة",
+  "fromValue": "من: {value}",
+  "@fromValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "toValue": "إلى: {value}",
+  "@toValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "pricePerSeatValue": "السعر: {price} {currency} لكل مقعد",
+  "@pricePerSeatValue": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      }
+    }
+  },
+  "selectOneOrMoreSeats": "يمكنك اختيار مقعد واحد أو أكثر حسب المقاعد المتاحة.",
+  "enterPassengerDataAfterSeats": "بعد اختيار المقاعد ستدخل بيانات كل مسافر قبل إرسال طلب الحجز.",
+  "appShareWalletNotice": "سيتم خصم حصة التطبيق من محفظتك عند إرسال الحجز. تأكد من كفاية الرصيد من صفحة محفظتي.",
+  "selectedSeatsValue": "المقاعد المحددة: {seats}",
+  "@selectedSeatsValue": {
+    "placeholders": {
+      "seats": {
+        "type": "String"
+      }
+    }
+  },
+  "continueToPassengerData": "متابعة إدخال بيانات المسافرين",
+  "continueToPassengerDataTooltip": "متابعة لإدخال بيانات المسافرين وإرسال طلب الحجز",
+  "continueBookOneSeat": "متابعة لحجز مقعد واحد",
+  "continueBookSeats": "متابعة لحجز {count} مقاعد",
+  "@continueBookSeats": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bookingRequestSentNotice": "سيتم إرسال طلب الحجز للسائق بعد تأكيد بيانات المسافرين. انتظر موافقة السائق قبل اعتماد الحجز.",
+  "departurePointTitle": "نقطة الانطلاق",
+  "arrivalPointTitle": "نقطة الوصول",
+  "destinationTitle": "الوجهة",
+  "driverLocationTitle": "موقع السائق",
+  "viewFullRoute": "عرض المسار بالكامل",
+  "loadingRouteLabel": "جاري تحميل المسار",
+  "loadingRoute": "جاري تحميل المسار...",
+  "stopFollowingDriver": "إيقاف تتبع السائق",
+  "followDriver": "تتبع السائق",
+  "liveTrackingEnabled": "التتبع المباشر مفعل",
+  "bookingRequestSentWaitConfirm": "تم إرسال طلب الحجز. انتظر تأكيد السائق.",
+  "autoPickTitle": "اختيار تلقائي",
+  "passengerDataTitle": "بيانات المسافرين",
+  "seatCountLabel": "عدد المقاعد",
+  "mainBookerLabel": "الحاجز الرئيسي",
+  "companionLabel": "مرافق {index}",
+  "@companionLabel": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "sharePhoneWithDriver": "مشاركة رقم الهاتف مع السائق",
+  "sharePhoneWithDriverSubtitle": "السماح للسائق برؤية رقمك للتواصل",
+  "sendBookingRequest": "إرسال طلب الحجز",
+  "seatWord": "مقعد",
+  "chatClosedForSending": "انتهت الرحلة، ولا يمكن إرسال رسائل جديدة.",
+  "errorMustSignInFirst": "يجب تسجيل الدخول أولاً",
+  "chatLoadError": "خطأ في تحميل المحادثة: {error}",
+  "@chatLoadError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "chatTitleWithDriver": "محادثة - {driverName}",
+  "@chatTitleWithDriver": {
+    "placeholders": {
+      "driverName": {
+        "type": "String"
+      }
+    }
+  },
+  "chatLoadErrorShort": "خطأ في تحميل المحادثة",
+  "errorWithMessage": "خطأ: {error}",
+  "@errorWithMessage": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "chatNoMessagesYet": "لا توجد رسائل بعد",
+  "chatStartConversationNow": "ابدأ المحادثة الآن",
+  "chatTypeMessageLabel": "اكتب رسالة",
+  "chatTypeMessageHint": "اكتب رسالة...",
+  "chatSendMessageTooltip": "إرسال الرسالة",
+  "complaintCategorySafety": "سلامة",
+  "complaintCategoryPayment": "مدفوعات",
+  "complaintCategoryVehicleCondition": "حالة المركبة",
+  "complaintCategoryDriverBehavior": "سلوك السائق",
+  "complaintCategoryAppIssue": "مشكلة في التطبيق",
+  "complaintCategoryOther": "أخرى",
+  "complaintSubmittedSuccessMessage": "تم إرسال شكواك بنجاح. سنراجعها في أقرب وقت.",
+  "complaintHeroTitle": "أخبرنا بما حدث",
+  "complaintHeroSubtitle": "شكواك تساعدنا على تحسين الخدمة وضمان سلامة الجميع.",
+  "complaintTypeLabel": "نوع الشكوى",
+  "complaintProblemDescriptionLabel": "وصف المشكلة",
+  "complaintDescriptionHint": "اشرح المشكلة بتفصيل كافٍ لمساعدتنا في مراجعتها…",
+  "complaintDescriptionRequired": "يرجى كتابة وصف للمشكلة",
+  "complaintDescriptionTooShort": "الوصف قصير جداً (10 أحرف على الأقل)",
+  "walletMyWallet": "محفظتي",
+  "walletTopUpDescription": "تُستخدم لدفع تكلفة الحجز عند تفعيل الدفع من المحفظة. الشحن بالدينار الأردني (JOD) عبر CliQ أو تحويل يدوي مع إثبات؛ يُضاف الرصيد بعد التأكد أو موافقة الإدارة حسب الطريقة.",
+  "walletTransactionHistory": "سجل الحركات",
+  "walletTopUp": "شحن",
+  "walletTopUpSemantics": "شحن المحفظة",
+  "walletNoTransactionsYet": "لا توجد حركات بعد",
+  "walletPendingChargesTitle": "الرسوم المستحقة",
+  "walletPendingChargesSubtitle": "عرض الغرامات والرسوم المعلّقة وشحن المحفظة",
+  "walletBalanceLabel": "رصيد المحفظة",
+  "walletAccountInactive": "الحساب غير مفعّل — تواصل مع الدعم",
+  "walletTxTopup": "شحن",
+  "walletTxTripPayment": "دفع رحلة",
+  "walletTxTripDebit": "خصم رحلة",
+  "walletTxRefund": "استرداد",
+  "walletTxPayout": "سحب أرباح",
+  "walletTxAdjustment": "تعديل رصيد",
+  "walletTxHold": "حجز مبلغ",
+  "walletTxReleaseHold": "إلغاء حجز",
+  "ratingPleaseSelectRating": "يرجى اختيار تقييم",
+  "ratingAlreadyRated": "لقد قمت بتقييم هذه الرحلة بالفعل",
+  "ratingSubmittedSuccess": "تم إرسال التقييم بنجاح",
+  "ratingTripTitle": "تقييم الرحلة",
+  "ratingHowWasExperience": "كيف كانت تجربتك مع السائق؟",
+  "ratingCommentLabel": "حقل تعليق",
+  "ratingCommentHint": "شاركنا رأيك في الرحلة",
+  "ratingCommentOptional": "تعليق (اختياري)",
+  "ratingCommentHintEllipsis": "شاركنا رأيك في الرحلة...",
+  "ratingSubmitButton": "إرسال التقييم",
+  "ratingLabelVeryBad": "سيء جداً",
+  "ratingLabelBad": "سيء",
+  "ratingLabelAverage": "متوسط",
+  "ratingLabelGood": "جيد",
+  "ratingLabelExcellent": "ممتاز",
+  "refundSubmittedSuccess": "تم تسجيل طلب الاسترداد. سيتم تحويلك إلى WhatsApp لاستكمال الإجراء.",
+  "refundRequestScreenTitle": "طلب استرداد المبلغ",
+  "refundHeroTitle": "استرداد رسوم الحجز",
+  "refundTripRef": "الرحلة: {tripRef}",
+  "@refundTripRef": {
+    "placeholders": {
+      "tripRef": {
+        "type": "String"
+      }
+    }
+  },
+  "refundContactViaWhatsApp": "سيتواصل معك فريقنا عبر WhatsApp لإتمام الإجراء.",
+  "refundReasonLabel": "سبب طلب الاسترداد",
+  "refundReasonHint": "اشرح سبب طلبك لاسترداد المبلغ بإيجاز…",
+  "refundReasonRequired": "يرجى كتابة سبب الطلب",
+  "refundReasonTooShort": "السبب قصير جداً (10 أحرف على الأقل)",
+  "refundWhatsAppNote": "بعد الإرسال، ستُفتح محادثة WhatsApp مع فريق الدعم لإتمام إجراء الاسترداد.",
+  "refundSubmitButton": "إرسال الطلب",
+  "chatClosedTripEnded": "انتهت الرحلة، ولا يمكن إرسال رسائل جديدة.",
+  "mustSignInFirst": "يجب تسجيل الدخول أولاً",
+  "chatCreateFailed": "لا يمكن إنشاء المحادثة",
+  "tripChatTitle": "محادثة الرحلة",
+  "chatWithPerson": "محادثة مع {name}",
+  "@chatWithPerson": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "noMessagesYet": "لا توجد رسائل بعد",
+  "startChatNow": "ابدأ المحادثة الآن",
+  "typeMessage": "اكتب رسالة",
+  "typeMessageHint": "اكتب رسالة...",
+  "sendMessage": "إرسال الرسالة",
+  "send": "إرسال",
+  "selectOriginPoint": "اختر نقطة الانطلاق",
+  "selectDestination": "اختر الوجهة",
+  "completeLocationAndTimeData": "الرجاء إكمال بيانات المواقع والوقت",
+  "departureTimeMustBeFuture": "وقت الانطلاق يجب أن يكون في المستقبل",
+  "userNotSignedIn": "المستخدم غير مسجل دخول",
+  "tripCreatedSuccess": "تم إنشاء الرحلة بنجاح",
+  "tripCreateFailed": "فشل إنشاء الرحلة",
+  "weekdaySun": "أحد",
+  "weekdayMon": "اثنين",
+  "weekdayTue": "ثلاثاء",
+  "weekdayWed": "أربعاء",
+  "weekdayThu": "خميس",
+  "weekdayFri": "جمعة",
+  "weekdaySat": "سبت",
+  "driverAccountUnderReviewBody": "لا يمكنك إنشاء رحلات حتى تتم الموافقة على بياناتك من الإدارة. يمكنك حالياً تصفح الرحلات والحجز كراكب.",
+  "backToHome": "العودة للرئيسية",
+  "createNewTripTitle": "إنشاء رحلة جديدة",
+  "backLabel": "رجوع",
+  "shareYourNextTrip": "شارك رحلتك القادمة",
+  "createTripHeaderSubtitle": "قم بتحديد وجهتك ووقت الانطلاق لتبدأ مشاركة رحلتك مع الركاب.",
+  "tripRoute": "مسار الرحلة",
+  "whereAreYouNow": "أين أنت الآن؟",
+  "whereIsYourDestination": "أين وجهتك؟",
+  "departureAndPriceDetails": "تفاصيل الانطلاق والسعر",
+  "pricePerSeatHint": "السعر لكل مقعد",
+  "enterPrice": "أدخل السعر",
+  "enterValidNumber": "أدخل رقماً صحيحاً",
+  "seatsCount": "{count} مقعد",
+  "@seatsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "seatLayoutFromSettings": "تخطيط المقاعد ومنع الاختلاط مأخوذان من إعدادات سيارتك ويُطبَّقان على كل رحلاتك.",
+  "noSeatLayoutSet": "لم تضبط بعد تخطيط مقاعد لسيارتك — سيتم استخدام تخطيط افتراضي. اضبطه من إعدادات السيارة لتجربة أدق.",
+  "editVehicleSettings": "تعديل إعدادات السيارة",
+  "confirmAndPublishTrip": "تأكيد ونشر الرحلة",
+  "stopsLabel": "محطات التوقف",
+  "optionalLabel": "اختياري",
+  "addStop": "إضافة محطة توقف",
+  "stopsHint": "أضف حتى 5 محطات توقف وسيطة على طول الطريق.",
+  "deleteStopNumber": "حذف المحطة {number}",
+  "@deleteStopNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "selectStopNumber": "اختر محطة توقف {number}",
+  "@selectStopNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "notesForPassengers": "ملاحظات للركاب",
+  "tripNotesHint": "مثال: التوقف في صيدلية البتراء، لا تأخر أكثر من 5 دقائق...",
+  "tripRecurrence": "تكرار الرحلة",
+  "enableTripRecurrenceSemantic": "تفعيل تكرار الرحلة: {state}",
+  "@enableTripRecurrenceSemantic": {
+    "placeholders": {
+      "state": {
+        "type": "String"
+      }
+    }
+  },
+  "recurrenceStateEnabled": "مفعّل",
+  "recurrenceStateDisabled": "معطّل",
+  "recurrenceDisabledHint": "فعّل هذا الخيار لجدولة الرحلة بشكل تلقائي (يومياً أو أسبوعياً).",
+  "recurrenceDaily": "يومياً",
+  "recurrenceWeekly": "أسبوعياً",
+  "recurrenceDaysLabel": "أيام التكرار",
+  "weekdaySelectedSemantic": "{day} (محدد)",
+  "@weekdaySelectedSemantic": {
+    "placeholders": {
+      "day": {
+        "type": "String"
+      }
+    }
+  },
+  "recurrenceUntilHint": "تاريخ انتهاء التكرار (اختياري)",
+  "recurrenceUntilHelp": "تاريخ انتهاء التكرار",
+  "uploadCarImageFailed": "فشل رفع صورة السيارة",
+  "tripUpdatedSuccess": "تم تحديث الرحلة بنجاح",
+  "tripUpdateFailed": "فشل تحديث الرحلة",
+  "editTripScreenTitle": "تعديل الرحلة",
+  "editYourTrip": "تعديل رحلتك",
+  "updateTripInfo": "قم بتحديث معلومات الرحلة",
+  "tripDetailsSection": "تفاصيل الرحلة",
+  "originPointLabel": "نقطة الانطلاق",
+  "originExampleHint": "مثال: عمّان",
+  "destinationLabel": "الوجهة",
+  "destinationExampleHint": "مثال: الإسكندرية",
+  "pickDateAndTime": "اختر التاريخ والوقت",
+  "priceExampleHint": "مثال: 100",
+  "selectOriginValidator": "يرجى اختيار نقطة الانطلاق",
+  "selectDestinationValidator": "يرجى اختيار الوجهة",
+  "selectDepartureTimeValidator": "يرجى اختيار وقت الانطلاق",
+  "enterPriceValidator": "يرجى إدخال السعر",
+  "priceMustBeValidPositive": "السعر يجب أن يكون رقم صحيح أكبر من 0",
+  "carImageSection": "صورة السيارة",
+  "optionalParen": "(اختياري)",
+  "uploadCarImage": "رفع صورة السيارة",
+  "tapToUploadCarImage": "اضغط لرفع صورة السيارة",
+  "saveChanges": "حفظ التعديلات",
+  "selectFromMap": "اختيار من الخريطة",
+  "warningTitle": "تحذير",
+  "pastDateWarningBody": "أنت تختار تاريخ في الماضي. الرحلات في الماضي لن تظهر في نتائج البحث للركاب. هل تريد المتابعة؟",
+  "bookedSeatsEditWarning": "هذه الرحلة تحتوي على {count} مقعد محجوز. تعديل بعض المعلومات قد يؤثر على الحجوزات الموجودة. هل تريد المتابعة؟",
+  "@bookedSeatsEditWarning": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "myTripsTitleLabel": "رحلاتي",
+  "driverAccountUnderReviewTrips": "حسابك كسائق قيد المراجعة. لا يمكنك إنشاء أو إدارة رحلات حتى تتم الموافقة عليه.",
+  "mustBeApprovedDriver": "يجب أن تكون سائقاً معتمداً لعرض الرحلات.",
+  "tabActive": "نشطة",
+  "tabHidden": "مخفية",
+  "tabCompleted": "مكتملة",
+  "retryLabel": "إعادة المحاولة",
+  "noActiveTrips": "لا توجد رحلات نشطة",
+  "noHiddenTrips": "لا توجد رحلات مخفية",
+  "noCompletedTrips": "لا توجد رحلات مكتملة",
+  "createTripShort": "إنشاء رحلة",
+  "newTrip": "رحلة جديدة",
+  "createNewTripSemantic": "إنشاء رحلة جديدة",
+  "tripFeeInvoiceTitle": "فاتورة رسوم الرحلة",
+  "seatPrice": "سعر المقعد",
+  "seatsCountLabel": "عدد المقاعد",
+  "feePercentage": "نسبة الرسوم",
+  "totalLabel": "الإجمالي",
+  "tripFeeDeductExplanation": "سيتم خصم الرسوم من محفظتك وفتح بيانات ركاب هذه الرحلة. لا يتم تغيير عدد المقاعد أو الحجوزات.",
+  "payFees": "دفع الرسوم",
+  "tripFeePaidSuccess": "تم دفع رسوم الرحلة بنجاح",
+  "payingInProgress": "جاري الدفع...",
+  "unknownLocation": "موقع غير معروف",
+  "tripFromToSemantic": "رحلة من {from} إلى {to}",
+  "@tripFromToSemantic": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "statusActive": "نشطة",
+  "statusDraft": "مسودة",
+  "statusFullyBooked": "مكتملة الحجز",
+  "statusInProgress": "قيد التنفيذ",
+  "statusHidden": "مخفية",
+  "statusCompleted": "مكتملة",
+  "statusCancelled": "ملغاة",
+  "statusUnknown": "غير معروف",
+  "fromShort": "من",
+  "toShort": "إلى",
+  "perSeatSuffix": "/ مقعد",
+  "seatsWord": "مقاعد",
+  "tripFeePaidLabel": "رسوم الرحلة مدفوعة",
+  "passengerDetailsTitle": "تفاصيل الراكب",
+  "seatLabelWithValue": "مقعد {seat}",
+  "@seatLabelWithValue": {
+    "placeholders": {
+      "seat": {
+        "type": "String"
+      }
+    }
+  },
+  "phoneNumberLabel": "رقم الهاتف",
+  "privateChatWithSemantic": "محادثة خاصة مع {name}",
+  "@privateChatWithSemantic": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "privateChat": "محادثة خاصة",
+  "messagePerson": "مراسلة {name}",
+  "@messagePerson": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmFinePayment": "تأكيد دفع الغرامة",
+  "amountDue": "المبلغ المستحق: {amount} د.أ",
+  "@amountDue": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "currentWalletBalance": "رصيد المحفظة الحالي: {amount} د.أ",
+  "@currentWalletBalance": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "balanceAfterPayment": "الرصيد بعد الدفع: {amount} د.أ",
+  "@balanceAfterPayment": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmAndPay": "تأكيد ودفع",
+  "finePaidSuccess": "تم دفع الغرامة من محفظتك بنجاح",
+  "finePartiallyPaid": "تم دفع جزء من الرسوم، تبقى رصيد غير كافٍ للباقي",
+  "insufficientBalanceForFine": "الرصيد غير كافٍ لدفع الرسوم",
+  "chargeKindDriverNoShow": "عدم حضور السائق",
+  "chargeKindPassengerNoShow": "عدم حضور الراكب",
+  "chargeKindLateCancellation": "إلغاء الحجز",
+  "chargeStatusPending": "مستحق",
+  "chargeStatusCollected": "مدفوع",
+  "chargeStatusWaived": "ملغى",
+  "noOutstandingCharges": "لا توجد رسوم مستحقة",
+  "accountInGoodStanding": "حسابك خالٍ من الرسوم.",
+  "cannotPublishUntilSettled": "لا يمكنك نشر رحلة جديدة قبل التسوية",
+  "totalDue": "الإجمالي المستحق: {amount} د.أ",
+  "@totalDue": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "walletBalanceAmount": "رصيد المحفظة: {amount} د.أ",
+  "@walletBalanceAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "balanceEnoughForFine": "رصيدك يكفي لدفع الغرامة من المحفظة.",
+  "balanceNotEnoughForFine": "رصيدك غير كافٍ — اشحن المحفظة لتسوية الغرامة.",
+  "payFine": "ادفع الغرامة",
+  "topUpWallet": "شحن المحفظة",
+  "amountAmount": "المبلغ: {amount} د.أ",
+  "@amountAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "walletTitle": "المحفظة",
+  "pleaseSignIn": "يرجى تسجيل الدخول",
+  "txTypeTopup": "شحن محفظة",
+  "txTypeTripPayment": "دفع رحلة",
+  "txTypeTripDebit": "رسوم رحلة",
+  "txTypeRefund": "استرداد",
+  "txTypePayout": "سحب أرباح",
+  "txTypeAdjustment": "تعديل رصيد",
+  "txTypeHold": "حجز مبلغ",
+  "txTypeReleaseHold": "إلغاء حجز",
+  "transactionsLog": "سجل الحركات",
+  "topUpShort": "شحن",
+  "noTransactionsYet": "لا توجد حركات بعد",
+  "pendingChargesShortcutTitle": "الرسوم المستحقة",
+  "pendingChargesShortcutSubtitle": "عرض الغرامات والرسوم المعلّقة وشحن المحفظة",
+  "freeTripUsed": "تم استخدام الرحلة المجانية",
+  "freeTripAvailableDriver": "لديك رحلة مجانية واحدة لفتح بيانات الركاب",
+  "vehicleSettingsTitle": "إعدادات السيارة",
+  "seatLayoutSavedSuccess": "تم حفظ تخطيط مقاعد السيارة",
+  "noVehicleRegistered": "لم يتم تسجيل سيارة بعد",
+  "noVehicleRegisteredBody": "تحتاج إلى تسجيل سيارتك من خلال إكمال ملف السائق قبل تخصيص تخطيط المقاعد.",
+  "vehicleDataSection": "بيانات السيارة",
+  "vehicleModelLabel": "الموديل",
+  "vehicleTypeLabel": "النوع",
+  "vehiclePlateNumberLabel": "رقم اللوحة",
+  "registeredSeatsCount": "عدد المقاعد المسجل",
+  "seatLayoutSection": "تخطيط المقاعد",
+  "seatLayoutUsedForAllTrips": "هذا التخطيط يُستخدم لكل الرحلات التي تنشئها بهذه السيارة.",
+  "gridSystem": "نظام الشبكة",
+  "customLayout": "توزيع مخصص",
+  "rowsLabel": "الصفوف",
+  "perRowLabel": "بكل صف",
+  "setSeatsPerRow": "حدد عدد المقاعد في كل صف:",
+  "nextToDriver": "بجانب السائق",
+  "rowNumberLabel": "الصف {number}",
+  "@rowNumberLabel": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "addNewRow": "إضافة صف جديد",
+  "preventGenderMixing": "منع الاختلاط",
+  "saveChangesVehicle": "حفظ التغييرات",
+  "editingForActiveTripsOnly": "التعديل متاح للرحلات النشطة فقط",
+  "bookedSeatsManagedByBookings": "المقاعد المحجوزة عبر التطبيق تُدار من طلبات الحجز",
+  "openSeatTitle": "فتح المقعد",
+  "openSeatBody": "إلغاء قفل المقعد رقم {number} ليصبح متاحاً للحجز في التطبيق؟",
+  "@openSeatBody": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "openSeat": "فتح المقعد",
+  "seatOpenedSuccess": "تم فتح المقعد",
+  "lockSeatTitle": "قفل المقعد",
+  "lockSeatBody": "قفل المقعد رقم {number}؟ لن يتمكن الركاب من حجزه في التطبيق (مثلاً إذا بيع خارج التطبيق).",
+  "@lockSeatBody": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "lockSeat": "قفل",
+  "seatLockedSuccess": "تم قفل المقعد",
+  "enableLocationRequired": "تفعيل الموقع مطلوب",
+  "enableLocationBody": "لا يمكن متابعة الرحلة بدون تشغيل خدمات الموقع. يرجى تفعيل GPS الآن.",
+  "openLocationSettings": "فتح إعدادات الموقع",
+  "checkAgain": "تحقق مجددًا",
+  "tripManagementTitle": "إدارة الرحلة",
+  "freeTripDiscountLabel": "خصم الرحلة المجانية",
+  "freeTripDiscountValue": "-{amount} {currency} (100%)",
+  "@freeTripDiscountValue": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      }
+    }
+  },
+  "freeTripAvailableExplanation": "لديك رحلة مجانية متاحة. سيتم تطبيق خصم 100% ليصبح الإجمالي 0.",
+  "tripFeeFullExplanation": "الدفع يخص رسوم الرحلة كاملة ولا يغير عدد المقاعد أو الحجوزات.",
+  "hideTripTitle": "إخفاء الرحلة",
+  "hideTripConfirm": "هل أنت متأكد من إخفاء هذه الرحلة؟",
+  "hideAction": "إخفاء",
+  "tripHiddenSuccess": "تم إخفاء الرحلة بنجاح",
+  "tripShownSuccess": "تم إظهار الرحلة بنجاح",
+  "deleteTripTitle": "حذف الرحلة",
+  "deleteTripConfirm": "هل أنت متأكد من حذف هذه الرحلة؟ لا يمكن التراجع عن هذا الإجراء.",
+  "deleteAction": "حذف",
+  "tripDeletedSuccess": "تم حذف الرحلة بنجاح",
+  "hideTripTooltip": "إخفاء الرحلة",
+  "showTripTooltip": "إظهار الرحلة",
+  "deleteTripTooltip": "حذف الرحلة",
+  "walletBalanceWithAmount": "رصيد المحفظة: {amount} {currency}",
+  "@walletBalanceWithAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      }
+    }
+  },
+  "freeTripAvailableShort": "رحلة مجانية متاحة",
+  "balanceFromPlatformWallet": "الرصيد من محفظة المنصة (المحفظة الموحدة)",
+  "tripFeeLabel": "رسوم الرحلة",
+  "tripFeeReady": "فاتورة رسوم الرحلة جاهزة",
+  "tripFeeBreakdownWithFreeTrip": "الرسوم: 5% × {seats} مقاعد × {price} {currency}، خصم رحلة مجانية 100% = {amount} {currency}",
+  "@tripFeeBreakdownWithFreeTrip": {
+    "placeholders": {
+      "seats": {
+        "type": "int"
+      },
+      "price": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "tripFeeBreakdown": "5% × {seats} مقاعد × {price} {currency} = {amount} {currency}",
+  "@tripFeeBreakdown": {
+    "placeholders": {
+      "seats": {
+        "type": "int"
+      },
+      "price": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "applyFreeTrip": "تطبيق الرحلة المجانية",
+  "pendingBookingsCard": "حجوزات قيد التأكيد ({count})",
+  "@pendingBookingsCard": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "confirmBookingUnlocksDetails": "تأكيد الحجز يفتح بيانات الراكب (رحلة مجانية أو خصم من المحفظة مرة واحدة للرحلة)",
+  "passengerFallback": "راكب",
+  "seatLabelShort": "مقعد {seat}",
+  "@seatLabelShort": {
+    "placeholders": {
+      "seat": {
+        "type": "String"
+      }
+    }
+  },
+  "chatAvailableAfterFee": "المحادثة والتواصل متاحان بعد دفع رسوم الرحلة",
+  "awaitingConfirmation": "بانتظار التأكيد",
+  "seatsWithValue": "المقاعد: {seat}",
+  "@seatsWithValue": {
+    "placeholders": {
+      "seat": {
+        "type": "String"
+      }
+    }
+  },
+  "pendingConfirmationBadge": "قيد التأكيد",
+  "passengerDetailsButton": "تفاصيل الراكب",
+  "confirmingInProgress": "جاري التأكيد...",
+  "rejectingInProgress": "جاري الرفض...",
+  "rejectAction": "رفض",
+  "bookingRejected": "تم رفض الحجز",
+  "bookedSeatsLabel": "المقاعد المحجوزة",
+  "ofCount": "من {count}",
+  "@ofCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "revenueLabel": "الإيرادات",
+  "confirmArrivalTitle": "تأكيد الوصول",
+  "confirmArrivalBody": "هل وصلت إلى الوجهة؟ سيتم إنهاء الرحلة ولن يمكن التراجع.",
+  "yesArrived": "نعم، وصلت",
+  "tripEndedSuccess": "تم إنهاء الرحلة بنجاح.",
+  "autoStartHours": "ستبدأ الرحلة تلقائياً عند موعد الانطلاق (بعد ~{hours} ساعة). لا حاجة للضغط على زر بدء.",
+  "@autoStartHours": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "autoStartMinutes": "ستبدأ الرحلة تلقائياً عند موعد الانطلاق (بعد ~{minutes} دقيقة). لا حاجة للضغط على زر بدء.",
+  "@autoStartMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "tripWillConvertSoon": "سيتم تحويل الرحلة إلى «قيد التنفيذ» تلقائياً خلال لحظات.",
+  "startTripSection": "بدء الرحلة",
+  "endTripSection": "إنهاء الرحلة",
+  "endTripHint": "اضغط «تم الوصول للوجهة» بعد إنزال الركاب لإنهاء الرحلة.",
+  "endingInProgress": "جاري الإنهاء...",
+  "arrivedAtDestination": "تم الوصول للوجهة",
+  "tripStatusLabel": "حالة الرحلة",
+  "departureTimeDetailLabel": "وقت الانطلاق",
+  "pricePerSeatLabel": "السعر لكل مقعد",
+  "seatsDetailLabel": "المقاعد",
+  "seatsAvailableTotal": "{available} متاح / {total} إجمالي",
+  "@seatsAvailableTotal": {
+    "placeholders": {
+      "available": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "seatLayoutDetailLabel": "تخطيط المقاعد",
+  "yesLabel": "نعم",
+  "noLabel": "لا",
+  "seatLayoutCardTitle": "تخطيط المقاعد",
+  "seatLayoutLongPressHint": "اضغط مطولاً على مقعد أخضر لقفله (حجز خارجي)، أو على مقعد مقفل لفتحه.",
+  "driverSeat": "مقعد السائق",
+  "legendAvailable": "متاح",
+  "legendLocked": "مقفل",
+  "legendBookedMale": "محجوز - رجل",
+  "legendBookedFemale": "محجوز - أنثى",
+  "passengersCardTitle": "الركاب ({count})",
+  "@passengersCardTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "anonymousPassenger": "راكب مجهول",
+  "confirmedBadge": "مؤكد",
+  "imageLoadFailed": "فشل تحميل الصورة",
+  "quickActionsTitle": "إجراءات سريعة",
+  "shareAction": "مشاركة",
+  "shareFeatureComingSoon": "قريباً: ميزة المشاركة",
+  "editAction": "تعديل",
+  "carImage": "صورة السيارة",
+  "passengersWithCount": "الركاب ({count})",
+  "@passengersWithCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "passengerLabel": "راكب",
+  "seatNumberLabel": "مقعد {number}",
+  "@seatNumberLabel": {
+    "placeholders": {
+      "number": {
+        "type": "Object"
+      }
+    }
+  },
+  "confirmedLabel": "مؤكد",
+  "pendingBookingsWithCount": "حجوزات قيد التأكيد ({count})",
+  "@pendingBookingsWithCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingBookingHint": "تأكيد الحجز يفتح بيانات الراكب (رحلة مجانية أو خصم من المحفظة مرة واحدة للرحلة)",
+  "pendingConfirmation": "قيد التأكيد",
+  "confirmingBooking": "جاري التأكيد...",
+  "quickActions": "إجراءات سريعة",
+  "bookedSeats": "المقاعد المحجوزة",
+  "ofTotalSeats": "من {total}",
+  "@ofTotalSeats": {
+    "placeholders": {
+      "total": {
+        "type": "Object"
+      }
+    }
+  },
+  "revenue": "الإيرادات",
+  "tripDetails": "تفاصيل الرحلة",
+  "tripDistance": "مسافة الرحلة",
+  "distanceInKm": "{distance} كم",
+  "@distanceInKm": {
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "seatsLabel": "المقاعد",
+  "availableOfTotalSeats": "{available} متاح / {total} إجمالي",
+  "@availableOfTotalSeats": {
+    "placeholders": {
+      "available": {
+        "type": "Object"
+      },
+      "total": {
+        "type": "Object"
+      }
+    }
+  },
+  "seatLayout": "تخطيط المقاعد",
+  "tripInfo": "معلومات الرحلة",
+  "tripStatusCompleted": "مكتملة",
+  "tripStatusUnknown": "غير معروف",
+  "tripStatusTitle": "حالة الرحلة",
+  "freeTripAvailable": "رحلة مجانية متاحة",
+  "markAllNotificationsRead": "قراءة جميع الإشعارات ({count} غير مقروء)",
+  "@markAllNotificationsRead": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "allNotificationsRead": "تم قراءة جميع الإشعارات",
+  "markAllReadCount": "قراءة الكل ({count})",
+  "@markAllReadCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notificationsWillAppearHere": "ستظهر الإشعارات هنا عند وصولها",
+  "manualPaymentTitle": "الدفع اليدوي",
+  "completePayment": "إتمام الدفع",
+  "walletType": "نوع المحفظة",
+  "walletTypeOther": "أخرى",
+  "jordan": "الأردن",
+  "walletNumber": "رقم المحفظة",
+  "walletNumberHint": "مثال: 0791234567",
+  "walletNumberRequired": "يرجى إدخال رقم المحفظة",
+  "walletNumberTooShort": "رقم المحفظة يجب أن يكون 8 أرقام على الأقل",
+  "paymentProofImage": "صورة إثبات الدفع",
+  "requiredLabel": "(مطلوب)",
+  "requiredWord": "مطلوب",
+  "uploadPaymentProof": "رفع صورة إثبات الدفع",
+  "tapToUploadPaymentProof": "اضغط لرفع صورة إثبات الدفع",
+  "notesLabel": "ملاحظات",
+  "additionalNotes": "ملاحظات إضافية",
+  "additionalNotesHint": "أي معلومات إضافية...",
+  "submitPaymentRequest": "إرسال طلب الدفع",
+  "paymentTabAll": "الكل",
+  "paymentStatusPending": "قيد المراجعة",
+  "paymentStatusApproved": "مقبولة",
+  "paymentStatusRejected": "مرفوضة",
+  "paymentStatusRefunded": "مستردة",
+  "errorLoadingData": "حدث خطأ في تحميل البيانات",
+  "noPayments": "لا توجد مدفوعات",
+  "paymentMethodWallet": "محفظة التطبيق",
+  "paymentMethodManual": "محفظة إلكترونية",
+  "paymentMethodCommunicationFee": "رسوم تواصل",
+  "amountLabel": "المبلغ",
+  "purposeLabel": "الغرض",
+  "communicationUnlockFee": "رسوم فتح التواصل",
+  "paymentMethodLabel": "طريقة الدفع",
+  "profileUpdatedSuccess": "تم تحديث الملف الشخصي بنجاح",
+  "gallery": "المعرض",
+  "camera": "الكاميرا",
+  "editProfileTitle": "تعديل الملف الشخصي",
+  "chooseProfilePhoto": "اختر صورة الملف الشخصي",
+  "changeProfilePhoto": "تغيير صورة الملف الشخصي",
+  "hidePhoneFromDriver": "إخفاء رقم الهاتف عن السائق",
+  "loadingVersion": "جارٍ تحميل الإصدار...",
+  "versionLabel": "الإصدار {version}",
+  "@versionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "aboutAppTagline": "منصة تنقل ذكية تربط السائقين والركاب بتجربة عربية واضحة، سريعة، وموثوقة.",
+  "whatMakesVisionWaySpecial": "ما الذي يميز VisionWay؟",
+  "aboutFeatureArabicFirst": "واجهة عربية أولًا مع تجربة استخدام واضحة وسريعة.",
+  "aboutFeatureFlexibleManagement": "إدارة مرنة للرحلات والحجوزات والتواصل بين السائق والراكب.",
+  "aboutFeatureTrustDesign": "تصميم يركز على الثقة والبساطة وسهولة الوصول للمعلومات المهمة.",
+  "revokeDeviceTitle": "إلغاء الجهاز",
+  "revokeDeviceMessage": "هل أنت متأكد من إلغاء هذا الجهاز؟ ستحتاج إلى تسجيل الدخول مرة أخرى على هذا الجهاز.",
+  "deviceRevokedSuccess": "تم إلغاء الجهاز بنجاح",
+  "retry": "إعادة المحاولة",
+  "noDevicesRegistered": "لا توجد أجهزة مسجلة",
+  "deviceLastSeen": "آخر نشاط: {date}",
+  "@deviceLastSeen": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceCurrentBadge": "الحالي",
+  "roleDriver": "سائق",
+  "rolePassenger": "راكب",
+  "manageDevices": "إدارة الأجهزة",
+  "manageDevicesSubtitle": "عرض وإلغاء الأجهزة المرتبطة بحسابك",
+  "enterNewPassword": "يرجى إدخال كلمة المرور الجديدة",
+  "passwordChangedTitle": "تم تغيير كلمة المرور",
+  "passwordChangedMessage": "تم تغيير كلمة المرور بنجاح. يرجى تسجيل الدخول مرة أخرى.",
+  "changePasswordSubtitle": "أدخل كلمة المرور الحالية وكلمة المرور الجديدة",
+  "currentPassword": "كلمة المرور الحالية",
+  "confirmNewPassword": "تأكيد كلمة المرور الجديدة",
+  "passwordStrengthStrong": "قوية",
+  "passwordStrengthMedium": "متوسطة",
+  "passwordStrengthWeak": "ضعيفة",
+  "passwordPolicyHint": "يجب أن تكون 8 أحرف على الأقل مع حرف ورقم",
+  "deleteAccountSecondTitle": "تأكيد الحذف",
+  "driverSection": "السائق",
+  "vehicleAndSeatLayout": "إعدادات السيارة وتخطيط المقاعد",
+  "supportNumberUnavailable": "رقم الدعم غير متاح حاليًا",
+  "supportWhatsAppPrefill": "مرحباً، أحتاج مساعدة في تطبيق VisionWay.",
+  "cannotOpenWhatsApp": "تعذر فتح WhatsApp",
+  "cannotOpenEmailApp": "تعذر فتح تطبيق البريد الإلكتروني",
+  "supportEmailCopied": "تم نسخ بريد الدعم",
+  "supportHeroTitle": "نحن هنا لمساعدتك",
+  "supportHeroSubtitle": "إذا واجهتك مشكلة في الحجز أو الحساب أو المدفوعات، يمكنك التواصل مباشرة مع فريق VisionWay.",
+  "supportContactEmailTitle": "راسلنا عبر البريد الإلكتروني",
+  "supportContactEmailDescription": "أرسل استفسارك وسنراجع الرسالة في أقرب وقت ممكن.",
+  "supportSendEmail": "إرسال بريد",
+  "supportCopyEmail": "نسخ البريد",
+  "supportContactWhatsAppTitle": "راسلنا عبر WhatsApp",
+  "supportContactWhatsAppDescription": "تواصل مباشرة مع فريق الدعم عبر WhatsApp للحصول على مساعدة فورية.",
+  "supportHowWeHelpTitle": "كيف نساعدك؟",
+  "supportHelpItemLogin": "مشكلة في تسجيل الدخول أو تحديث بيانات الحساب",
+  "supportHelpItemBookings": "استفسارات الحجز والرحلات والمدفوعات",
+  "supportHelpItemTechnical": "مراجعة المشاكل الفنية أو الاقتراحات",
+  "supportQuickTipTitle": "نصيحة سريعة",
+  "supportTipIncludeContact": "اذكر رقم الهاتف أو البريد المسجل داخل التطبيق لتسريع المراجعة.",
+  "supportTipDescribeProblem": "أضف وصفًا مختصرًا للمشكلة والخطوات التي حدثت قبلها.",
+  "enterValidAmount": "أدخل مبلغاً صحيحاً",
+  "uploadTransferProofRequired": "يرجى رفع صورة إثبات التحويل",
+  "enterCliqAliasValue": "أدخل قيمة الـ CliQ alias",
+  "topupRequestSent": "تم إرسال طلب الشحن. سيُضاف الرصيد بعد التحقق من التحويل",
+  "verifyingPaymentStatus": "جاري التحقق من حالة الدفع...",
+  "verifyingPaymentStatusProgress": "جاري التحقق من حالة الدفع... ({attempt}/{total})",
+  "@verifyingPaymentStatusProgress": {
+    "placeholders": {
+      "attempt": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "walletToppedUpViaCliq": "تم شحن المحفظة بنجاح عبر CliQ",
+  "cliqPaymentFailed": "فشلت عملية الدفع عبر CliQ",
+  "cliqPaymentFailedWithNote": "فشلت عملية الدفع: {note}",
+  "@cliqPaymentFailedWithNote": {
+    "placeholders": {
+      "note": {
+        "type": "String"
+      }
+    }
+  },
+  "connectionTemporarilyFailed": "تعذّر الاتصال مؤقتاً ({attempt}/{total}). إعادة المحاولة...",
+  "@connectionTemporarilyFailed": {
+    "placeholders": {
+      "attempt": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "cannotVerifyPayment": "تعذّر التحقق من الدفع: {detail}",
+  "@cannotVerifyPayment": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "verificationTimedOut": "انتهى وقت التحقق. إذا اكتمل الدفع عند CliQ سيظهر الرصيد خلال دقائق، أو تحقق من سجل المدفوعات.",
+  "walletTopupTitle": "شحن المحفظة",
+  "pleaseWaitDoNotClose": "يرجى الانتظار وعدم إغلاق الشاشة",
+  "topupMethodManual": "تحويل يدوي",
+  "topupManualDescription": "حوّل المبلغ إلى حساب المنصة ثم أدخل المبلغ وارفع صورة واضحة للتحويل. لا يُضاف رصيد تلقائياً قبل مراجعة الطلب.",
+  "topupCliqDescription": "سيتم الدفع مباشرة عبر نظام CliQ. أدخل المبلغ وبيانات حسابك في CliQ وسيُضاف الرصيد تلقائياً عند تأكيد الدفع.",
+  "amountWithCurrency": "المبلغ ({currency})",
+  "@amountWithCurrency": {
+    "placeholders": {
+      "currency": {
+        "type": "String"
+      }
+    }
+  },
+  "transactionReferenceOptional": "رقم العملية / المرجع (اختياري)",
+  "ifAvailable": "إن وُجد",
+  "uploadTransferProof": "رفع صورة إثبات التحويل",
+  "imageSelected": "تم اختيار صورة",
+  "aliasType": "نوع الـ Alias",
+  "mobileNumber": "رقم الموبايل",
+  "aliasName": "اسم مستعار",
+  "aliasNameLabel": "الاسم المستعار (Alias)",
+  "mobileNumberHint": "مثال: 00962XXXXXXXXX",
+  "aliasNameHint": "مثال: yourname@cliq",
+  "enterMobileNumber": "أدخل رقم الموبايل",
+  "enterAliasName": "أدخل الاسم المستعار",
+  "submitTopupRequest": "إرسال طلب الشحن",
+  "payViaCliq": "الدفع عبر CliQ",
+  "chatYourMessage": "رسالتك",
+  "chatMessageFrom": "رسالة من {name}",
+  "@chatMessageFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chatYesterdayAt": "أمس {time}",
+  "@chatYesterdayAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "chatDaysAgo": "{count} أيام",
+  "@chatDaysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "countryCodePickerSemantic": "اختر رمز الدولة، الحالي: {country}",
+  "@countryCodePickerSemantic": {
+    "placeholders": {
+      "country": {
+        "type": "String"
+      }
+    }
+  },
+  "selectCountry": "اختر الدولة",
+  "searchCountryHint": "ابحث بالاسم أو رمز الدولة...",
+  "locationDefaultAmman": "عمّان، الأردن",
+  "locationCurrentUnavailable": "تعذر الحصول على الموقع الحالي.",
+  "locationServicesDisabledEnableGps": "خدمات الموقع معطلة. يرجى تفعيل GPS.",
+  "locationEnable": "تفعيل",
+  "locationGrantPermission": "منح التصريح",
+  "locationSettings": "الإعدادات",
+  "locationUnknown": "موقع غير معروف",
+  "locationGetError": "خطأ في الحصول على الموقع.",
+  "locationGrant": "منح",
+  "locationPermissionDeniedPermanently": "تم رفض التصريح بشكل دائم.",
+  "locationSearchNoResults": "لم يتم العثور على نتائج. جرّب اسم مكان أو عنوان أوضح.",
+  "locationSearchError": "خطأ في البحث: {error}",
+  "@locationSearchError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "locationUseCurrent": "استخدام الموقع الحالي",
+  "locationSearchSemantic": "البحث عن مكان أو عنوان",
+  "locationSearchHint": "ابحث عن مكان أو عنوان...",
+  "locationSearchOnMap": "بحث على الخريطة",
+  "locationLoadingMap": "جاري تحميل الخريطة...",
+  "locationMapLoadError": "خطأ في تحميل الخريطة",
+  "locationPickOnMap": "اختر موقعاً على الخريطة",
+  "locationConfirm": "تأكيد الموقع",
+  "notificationDeleted": "تم حذف الإشعار",
+  "notificationsWithUnread": "الإشعارات ({count} غير مقروء)",
+  "@notificationsWithUnread": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ratingStars": "{count} نجوم",
+  "@ratingStars": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ratingStarsSelected": "{count} نجوم (مختارة)",
+  "@ratingStarsSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "seatDriverSeat": "مقعد السائق",
+  "seatStatusAvailable": "متاح",
+  "seatStatusBooked": "محجوز",
+  "seatStatusLocked": "مقفل",
+  "seatStatusUnavailable": "غير متاح",
+  "seatStatusInvalid": "غير صالح",
+  "seatLabelSelected": "مقعد {number} {status}، محدد",
+  "@seatLabelSelected": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      },
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "seatLegendSelected": "محدد",
+  "seatLegendLockedExternal": "مقفل (خارج التطبيق)",
+  "seatColorGuide": "دليل الألوان: {label}",
+  "@seatColorGuide": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "walletBalanceWithValue": "رصيد المحفظة: {balance} {currency}",
+  "@walletBalanceWithValue": {
+    "placeholders": {
+      "balance": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      }
+    }
+  },
+  "seatLabelNumbered": "مقعد {number} {status}",
+  "@seatLabelNumbered": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      },
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "accountBannedNoReason": "تم تعليق حسابك. تواصل مع الدعم لمزيد من التفاصيل.",
+  "bannedWhatsAppPrefill": "مرحباً، حسابي على تطبيق VisionWay موقوف وأحتاج مساعدة."
 }
-
-

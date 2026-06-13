@@ -13,16 +13,34 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../core/api/api_client.dart';
 import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
+import '../../l10n/l10n_extensions.dart';
 
 // Must mirror ComplaintCategory const-enum in complaint.entity.ts
-const _kCategories = [
-  ('SAFETY', 'سلامة'),
-  ('PAYMENT', 'مدفوعات'),
-  ('VEHICLE_CONDITION', 'حالة المركبة'),
-  ('DRIVER_BEHAVIOR', 'سلوك السائق'),
-  ('APP_ISSUE', 'مشكلة في التطبيق'),
-  ('OTHER', 'أخرى'),
+const _kCategoryCodes = [
+  'SAFETY',
+  'PAYMENT',
+  'VEHICLE_CONDITION',
+  'DRIVER_BEHAVIOR',
+  'APP_ISSUE',
+  'OTHER',
 ];
+
+String _categoryLabel(BuildContext context, String code) {
+  switch (code) {
+    case 'SAFETY':
+      return context.l10n.complaintCategorySafety;
+    case 'PAYMENT':
+      return context.l10n.complaintCategoryPayment;
+    case 'VEHICLE_CONDITION':
+      return context.l10n.complaintCategoryVehicleCondition;
+    case 'DRIVER_BEHAVIOR':
+      return context.l10n.complaintCategoryDriverBehavior;
+    case 'APP_ISSUE':
+      return context.l10n.complaintCategoryAppIssue;
+    default:
+      return context.l10n.complaintCategoryOther;
+  }
+}
 
 class ComplaintScreen extends StatefulWidget {
   final String? againstUserId;
@@ -42,7 +60,7 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
   final _formKey = GlobalKey<FormState>();
   final _descController = TextEditingController();
 
-  String _category = _kCategories.first.$1;
+  String _category = _kCategoryCodes.first;
   bool _submitting = false;
 
   @override
@@ -67,8 +85,8 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم إرسال شكواك بنجاح. سنراجعها في أقرب وقت.'),
+          SnackBar(
+            content: Text(context.l10n.complaintSubmittedSuccessMessage),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -117,7 +135,7 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'تقديم شكوى',
+                        context.l10n.complaintScreenTitle,
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w700,
@@ -132,14 +150,13 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                 // ── Hero card ────────────────────────────────────────────
                 _HeroCard(
                   icon: IconsaxPlusBold.message_question,
-                  title: 'أخبرنا بما حدث',
-                  subtitle:
-                      'شكواك تساعدنا على تحسين الخدمة وضمان سلامة الجميع.',
+                  title: context.l10n.complaintHeroTitle,
+                  subtitle: context.l10n.complaintHeroSubtitle,
                 ),
                 const SizedBox(height: 24),
 
                 // ── Category picker ──────────────────────────────────────
-                _SectionLabel('نوع الشكوى'),
+                _SectionLabel(context.l10n.complaintTypeLabel),
                 const SizedBox(height: 8),
                 Container(
                   decoration: BoxDecoration(
@@ -156,11 +173,11 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                       contentPadding:
                           EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     ),
-                    items: _kCategories
+                    items: _kCategoryCodes
                         .map(
-                          (c) => DropdownMenuItem(
-                            value: c.$1,
-                            child: Text(c.$2),
+                          (code) => DropdownMenuItem(
+                            value: code,
+                            child: Text(_categoryLabel(context, code)),
                           ),
                         )
                         .toList(),
@@ -172,7 +189,7 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                 const SizedBox(height: 20),
 
                 // ── Description ──────────────────────────────────────────
-                _SectionLabel('وصف المشكلة'),
+                _SectionLabel(context.l10n.complaintProblemDescriptionLabel),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _descController,
@@ -180,7 +197,7 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                   maxLength: 1000,
                   textInputAction: TextInputAction.newline,
                   decoration: InputDecoration(
-                    hintText: 'اشرح المشكلة بتفصيل كافٍ لمساعدتنا في مراجعتها…',
+                    hintText: context.l10n.complaintDescriptionHint,
                     filled: true,
                     fillColor: T.surface(context),
                     border: OutlineInputBorder(
@@ -205,10 +222,10 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                   ),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) {
-                      return 'يرجى كتابة وصف للمشكلة';
+                      return context.l10n.complaintDescriptionRequired;
                     }
                     if (v.trim().length < 10) {
-                      return 'الوصف قصير جداً (10 أحرف على الأقل)';
+                      return context.l10n.complaintDescriptionTooShort;
                     }
                     return null;
                   },
@@ -233,9 +250,9 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                             color: Colors.white,
                           ),
                         )
-                      : const Text(
-                          'إرسال الشكوى',
-                          style: TextStyle(
+                      : Text(
+                          context.l10n.complaintSubmitButton,
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),

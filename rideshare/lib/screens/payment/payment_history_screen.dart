@@ -8,6 +8,7 @@ import '../../core/theme/text_styles.dart';
 import '../../models/payment_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/common/empty_state.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class PaymentHistoryScreen extends StatefulWidget {
   const PaymentHistoryScreen({super.key});
@@ -62,13 +63,13 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen>
       return Scaffold(
         appBar: AppBar(
           title: Text(
-            'سجل المدفوعات',
+            context.l10n.paymentHistory,
             style: AppTextStyles.titleMedium.copyWith(
               fontWeight: FontWeight.bold,
             ),
           ),
         ),
-        body: const Center(child: Text('يرجى تسجيل الدخول')),
+        body: Center(child: Text(context.l10n.pleaseSignIn)),
       );
     }
 
@@ -79,7 +80,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen>
         backgroundColor: T.surface(context),
         foregroundColor: T.onSurface(context),
         title: Text(
-          'سجل المدفوعات',
+          context.l10n.paymentHistory,
           style: AppTextStyles.titleMedium.copyWith(fontSize: 20),
         ),
         centerTitle: true,
@@ -91,11 +92,11 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen>
           labelStyle: AppTextStyles.titleMedium.copyWith(
             fontWeight: FontWeight.bold,
           ),
-          tabs: const [
-            Tab(text: 'الكل'),
-            Tab(text: 'قيد المراجعة'),
-            Tab(text: 'مقبولة'),
-            Tab(text: 'مرفوضة'),
+          tabs: [
+            Tab(text: context.l10n.paymentTabAll),
+            Tab(text: context.l10n.paymentStatusPending),
+            Tab(text: context.l10n.paymentStatusApproved),
+            Tab(text: context.l10n.paymentStatusRejected),
           ],
         ),
       ),
@@ -118,7 +119,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen>
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'حدث خطأ في تحميل البيانات',
+                    context.l10n.errorLoadingData,
                     style: AppTextStyles.titleMedium.copyWith(
                       color: T.onSurfaceVariant(context),
                     ),
@@ -134,9 +135,9 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen>
               : allPayments.where((p) => p.status == _selectedStatus).toList();
 
           if (payments.isEmpty) {
-            return const EmptyState(
+            return EmptyState(
               icon: IconsaxPlusLinear.wallet,
-              title: 'لا توجد مدفوعات',
+              title: context.l10n.noPayments,
               showCircleBackground: false,
               iconSize: 64,
             );
@@ -150,7 +151,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen>
               padding: const EdgeInsets.all(16),
               itemCount: payments.length,
               itemBuilder: (context, index) {
-                return _buildPaymentCard(payments[index]);
+                return _buildPaymentCard(context, payments[index]);
               },
             ),
           );
@@ -159,7 +160,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen>
     );
   }
 
-  Widget _buildPaymentCard(PaymentModel payment) {
+  Widget _buildPaymentCard(BuildContext context, PaymentModel payment) {
     Color statusColor;
     String statusText;
     IconData statusIcon;
@@ -167,22 +168,22 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen>
     switch (payment.status) {
       case PaymentStatus.pending:
         statusColor = AppColors.warning;
-        statusText = 'قيد المراجعة';
+        statusText = context.l10n.paymentStatusPending;
         statusIcon = IconsaxPlusLinear.clock;
         break;
       case PaymentStatus.approved:
         statusColor = AppColors.success;
-        statusText = 'مقبولة';
+        statusText = context.l10n.paymentStatusApproved;
         statusIcon = IconsaxPlusBold.tick_circle;
         break;
       case PaymentStatus.rejected:
         statusColor = T.error(context);
-        statusText = 'مرفوضة';
+        statusText = context.l10n.paymentStatusRejected;
         statusIcon = IconsaxPlusLinear.danger;
         break;
       case PaymentStatus.refunded:
         statusColor = T.primary(context);
-        statusText = 'مستردة';
+        statusText = context.l10n.paymentStatusRefunded;
         statusIcon = IconsaxPlusLinear.wallet;
         break;
     }
@@ -193,7 +194,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen>
 
     switch (payment.method) {
       case PaymentMethod.wallet:
-        methodText = 'محفظة التطبيق';
+        methodText = context.l10n.paymentMethodWallet;
         methodIcon = IconsaxPlusBold.wallet_3;
         methodColor = T.primary(context);
         break;
@@ -203,12 +204,12 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen>
         methodColor = AppColors.success;
         break;
       case PaymentMethod.manual:
-        methodText = 'محفظة إلكترونية';
+        methodText = context.l10n.paymentMethodManual;
         methodIcon = IconsaxPlusBold.wallet;
         methodColor = T.primary(context);
         break;
       case PaymentMethod.communication_fee:
-        methodText = 'رسوم تواصل';
+        methodText = context.l10n.paymentMethodCommunicationFee;
         methodIcon = IconsaxPlusBold.wallet;
         methodColor = T.primary(context);
         break;
@@ -310,7 +311,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'المبلغ',
+                    context.l10n.amountLabel,
                     style: AppTextStyles.bodyMedium.copyWith(
                       color: T.onSurfaceVariant(context),
                     ),
@@ -330,13 +331,13 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'الغرض',
+                    context.l10n.purposeLabel,
                     style: AppTextStyles.bodyMedium.copyWith(
                       color: T.onSurfaceVariant(context),
                     ),
                   ),
                   Text(
-                    'رسوم فتح التواصل',
+                    context.l10n.communicationUnlockFee,
                     style: AppTextStyles.labelLarge.copyWith(
                       color: T.onSurface(context),
                     ),
@@ -352,7 +353,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'طريقة الدفع',
+                      context.l10n.paymentMethodLabel,
                       style: AppTextStyles.bodyMedium.copyWith(
                         color: T.onSurfaceVariant(context),
                       ),
@@ -370,7 +371,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'رقم المحفظة',
+                      context.l10n.walletNumber,
                       style: AppTextStyles.bodyMedium.copyWith(
                         color: T.onSurfaceVariant(context),
                       ),

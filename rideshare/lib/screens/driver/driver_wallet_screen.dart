@@ -13,6 +13,7 @@ import '../../models/wallet_model.dart';
 import '../../models/wallet_transaction_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/common/empty_state.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class DriverWalletScreen extends StatefulWidget {
   const DriverWalletScreen({super.key});
@@ -83,24 +84,24 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
     if (result == true && mounted) _load();
   }
 
-  String _typeLabel(String type) {
+  String _typeLabel(BuildContext context, String type) {
     switch (type) {
       case 'topup':
-        return 'شحن محفظة';
+        return context.l10n.txTypeTopup;
       case 'trip_payment':
-        return 'دفع رحلة';
+        return context.l10n.txTypeTripPayment;
       case 'trip_debit':
-        return 'رسوم رحلة';
+        return context.l10n.txTypeTripDebit;
       case 'refund':
-        return 'استرداد';
+        return context.l10n.txTypeRefund;
       case 'payout':
-        return 'سحب أرباح';
+        return context.l10n.txTypePayout;
       case 'adjustment':
-        return 'تعديل رصيد';
+        return context.l10n.txTypeAdjustment;
       case 'hold':
-        return 'حجز مبلغ';
+        return context.l10n.txTypeHold;
       case 'release_hold':
-        return 'إلغاء حجز';
+        return context.l10n.txTypeReleaseHold;
       default:
         return type;
     }
@@ -113,13 +114,13 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
       return Scaffold(
         appBar: AppBar(
           title: Text(
-            'المحفظة',
+            context.l10n.walletTitle,
             style: AppTextStyles.titleMedium.copyWith(
               fontWeight: FontWeight.bold,
             ),
           ),
         ),
-        body: const Center(child: Text('يرجى تسجيل الدخول')),
+        body: Center(child: Text(context.l10n.pleaseSignIn)),
       );
     }
 
@@ -130,7 +131,7 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
         backgroundColor: T.surface(context),
         foregroundColor: T.onSurface(context),
         title: Text(
-          'المحفظة',
+          context.l10n.walletTitle,
           style: AppTextStyles.titleMedium.copyWith(fontSize: 20),
         ),
       ),
@@ -154,13 +155,13 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'سجل الحركات',
+                          context.l10n.transactionsLog,
                           style: AppTextStyles.titleMedium.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         Semantics(
-                          label: 'شحن المحفظة',
+                          label: context.l10n.topUpWallet,
                           button: true,
                           child: TextButton.icon(
                             onPressed: _openTopUp,
@@ -169,7 +170,7 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
                               size: 20,
                             ),
                             label: Text(
-                              'شحن المحفظة',
+                              context.l10n.topUpWallet,
                               style: AppTextStyles.titleMedium.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
@@ -185,10 +186,10 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
                             child: Center(child: CircularProgressIndicator()),
                           )
                         : _transactions.isEmpty
-                        ? const Padding(
-                            padding: EdgeInsets.all(24),
+                        ? Padding(
+                            padding: const EdgeInsets.all(24),
                             child: EmptyState(
-                              title: 'لا توجد حركات بعد',
+                              title: context.l10n.noTransactionsYet,
                               icon: IconsaxPlusLinear.wallet,
                               showCircleBackground: false,
                               iconSize: 48,
@@ -208,13 +209,13 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
               ),
             ),
       floatingActionButton: Semantics(
-        label: 'شحن المحفظة',
+        label: context.l10n.topUpWallet,
         button: true,
         child: FloatingActionButton.extended(
           onPressed: _openTopUp,
           icon: const Icon(IconsaxPlusBold.wallet_add),
           label: Text(
-            'شحن',
+            context.l10n.topUpShort,
             style: AppTextStyles.titleMedium.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -257,14 +258,14 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'الرسوم المستحقة',
+                      context.l10n.pendingChargesShortcutTitle,
                       style: AppTextStyles.titleSmall.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'عرض الغرامات والرسوم المعلّقة وشحن المحفظة',
+                      context.l10n.pendingChargesShortcutSubtitle,
                       style: AppTextStyles.bodySmall.copyWith(
                         color: T.onSurfaceVariant(context),
                       ),
@@ -312,7 +313,7 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
               Icon(IconsaxPlusBold.wallet_3, color: AppColors.white, size: 28),
               const SizedBox(width: 12),
               Text(
-                'رصيد المحفظة',
+                context.l10n.walletBalanceLabel,
                 style: AppTextStyles.titleSmall.copyWith(
                   color: AppColors.white.withValues(alpha: 0.7),
                 ),
@@ -357,8 +358,8 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
           Expanded(
             child: Text(
               used
-                  ? 'تم استخدام الرحلة المجانية'
-                  : 'لديك رحلة مجانية واحدة لفتح بيانات الركاب',
+                  ? context.l10n.freeTripUsed
+                  : context.l10n.freeTripAvailableDriver,
               style: AppTextStyles.labelLarge.copyWith(
                 color: used ? AppColors.slate700 : AppColors.successDark,
               ),
@@ -408,7 +409,7 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _typeLabel(tx.type),
+                  _typeLabel(context, tx.type),
                   style: AppTextStyles.bodyLarge.copyWith(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,

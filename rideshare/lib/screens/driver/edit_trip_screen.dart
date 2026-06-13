@@ -15,6 +15,7 @@ import '../../../widgets/common/section_card.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
 import '../../core/errors/failure.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class EditTripScreen extends StatefulWidget {
   final String tripId;
@@ -113,7 +114,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => LocationPickerWidget(
-          title: 'اختر نقطة الانطلاق',
+          title: context.l10n.selectOriginPoint,
           initialLocation: _fromLocation,
           onLocationSelected: (location) {},
         ),
@@ -133,7 +134,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => LocationPickerWidget(
-          title: 'اختر الوجهة',
+          title: context.l10n.selectDestination,
           initialLocation: _toLocation,
           onLocationSelected: (location) {},
         ),
@@ -187,16 +188,12 @@ class _EditTripScreenState extends State<EditTripScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
-              title: const Text('تحذير'),
-              content: const Text(
-                'أنت تختار تاريخ في الماضي. '
-                'الرحلات في الماضي لن تظهر في نتائج البحث للركاب. '
-                'هل تريد المتابعة؟',
-              ),
+              title: Text(context.l10n.warningTitle),
+              content: Text(context.l10n.pastDateWarningBody),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
-                  child: const Text('إلغاء'),
+                  child: Text(context.l10n.cancel),
                 ),
                 ElevatedButton(
                   onPressed: () => Navigator.pop(context, true),
@@ -204,7 +201,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                     backgroundColor: AppColors.warning,
                     foregroundColor: AppColors.white,
                   ),
-                  child: const Text('متابعة'),
+                  child: Text(context.l10n.continueLabel),
                 ),
               ],
             ),
@@ -288,16 +285,14 @@ class _EditTripScreenState extends State<EditTripScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
-            title: const Text('تحذير'),
+            title: Text(context.l10n.warningTitle),
             content: Text(
-              'هذه الرحلة تحتوي على $bookedSeats مقعد محجوز. '
-              'تعديل بعض المعلومات قد يؤثر على الحجوزات الموجودة. '
-              'هل تريد المتابعة؟',
+              context.l10n.bookedSeatsEditWarning(bookedSeats),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text('إلغاء'),
+                child: Text(context.l10n.cancel),
               ),
               ElevatedButton(
                 onPressed: () => Navigator.pop(context, true),
@@ -305,7 +300,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                   backgroundColor: AppColors.warning,
                   foregroundColor: AppColors.white,
                 ),
-                child: const Text('متابعة'),
+                child: Text(context.l10n.continueLabel),
               ),
             ],
           ),
@@ -345,8 +340,8 @@ class _EditTripScreenState extends State<EditTripScreen> {
 
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم تحديث الرحلة بنجاح'),
+          SnackBar(
+            content: Text(context.l10n.tripUpdatedSuccess),
             backgroundColor: AppColors.success,
           ),
         );
@@ -373,7 +368,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
         appBar: AppBar(
           elevation: 0,
           title: Text(
-            'تعديل الرحلة',
+            context.l10n.editTripScreenTitle,
             style: AppTextStyles.titleMedium.copyWith(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -391,7 +386,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
         appBar: AppBar(
           elevation: 0,
           title: Text(
-            'تعديل الرحلة',
+            context.l10n.editTripScreenTitle,
             style: AppTextStyles.titleMedium.copyWith(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -399,7 +394,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
           ),
           centerTitle: true,
         ),
-        body: const Center(child: Text('الرحلة غير موجودة')),
+        body: Center(child: Text(context.l10n.tripNotFound)),
       );
     }
 
@@ -408,7 +403,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
       appBar: AppBar(
         elevation: 0,
         title: Text(
-          'تعديل الرحلة',
+          context.l10n.editTripScreenTitle,
           style: AppTextStyles.titleMedium.copyWith(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -460,7 +455,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'تعديل رحلتك',
+                        context.l10n.editYourTrip,
                         style: AppTextStyles.titleLarge.copyWith(
                           fontWeight: FontWeight.bold,
                           color: T.onPrimary(context),
@@ -469,7 +464,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'قم بتحديث معلومات الرحلة',
+                        context.l10n.updateTripInfo,
                         style: AppTextStyles.bodyMedium.copyWith(
                           color: T.onPrimary(context).withValues(alpha: 0.8),
                         ),
@@ -481,21 +476,21 @@ class _EditTripScreenState extends State<EditTripScreen> {
                 const SizedBox(height: 24),
 
                 SectionCard(
-                  title: 'تفاصيل الرحلة',
+                  title: context.l10n.tripDetailsSection,
                   icon: Icons.route,
                   iconColor: T.info(context),
                   children: [
                     const SizedBox(height: 8),
                     _buildModernTextField(
                       controller: _fromController,
-                      label: 'نقطة الانطلاق',
-                      hint: 'مثال: عمّان',
-                      icon: Icons.location_on,
-                      color: T.error(context),
+                      label: context.l10n.originPointLabel,
+                      hint: context.l10n.originExampleHint,
+                      icon: Icons.trip_origin,
+                      color: T.success(context),
                       onTap: _selectFromLocation,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'يرجى اختيار نقطة الانطلاق';
+                          return context.l10n.selectOriginValidator;
                         }
                         return null;
                       },
@@ -518,14 +513,14 @@ class _EditTripScreenState extends State<EditTripScreen> {
                     const SizedBox(height: 16),
                     _buildModernTextField(
                       controller: _toController,
-                      label: 'الوجهة',
-                      hint: 'مثال: الإسكندرية',
-                      icon: Icons.location_city,
-                      color: T.success(context),
+                      label: context.l10n.destinationLabel,
+                      hint: context.l10n.destinationExampleHint,
+                      icon: Icons.location_on,
+                      color: T.error(context),
                       onTap: _selectToLocation,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'يرجى اختيار الوجهة';
+                          return context.l10n.selectDestinationValidator;
                         }
                         return null;
                       },
@@ -539,14 +534,14 @@ class _EditTripScreenState extends State<EditTripScreen> {
                               ).format(_departureTime!)
                             : '',
                       ),
-                      label: 'وقت الانطلاق',
-                      hint: 'اختر التاريخ والوقت',
+                      label: context.l10n.departureTimeLabel,
+                      hint: context.l10n.pickDateAndTime,
                       icon: Icons.access_time,
                       color: T.secondary(context),
                       onTap: _selectDepartureTime,
                       validator: (value) {
                         if (_departureTime == null) {
-                          return 'يرجى اختيار وقت الانطلاق';
+                          return context.l10n.selectDepartureTimeValidator;
                         }
                         return null;
                       },
@@ -554,8 +549,8 @@ class _EditTripScreenState extends State<EditTripScreen> {
                     const SizedBox(height: 16),
                     _buildModernTextField(
                       controller: _priceController,
-                      label: 'السعر لكل مقعد',
-                      hint: 'مثال: 100',
+                      label: context.l10n.pricePerSeatLabel,
+                      hint: context.l10n.priceExampleHint,
                       icon: Icons.attach_money,
                       color: T.success(context),
                       keyboardType: TextInputType.number,
@@ -579,11 +574,11 @@ class _EditTripScreenState extends State<EditTripScreen> {
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'يرجى إدخال السعر';
+                          return context.l10n.enterPriceValidator;
                         }
                         final price = double.tryParse(value);
                         if (price == null || price <= 0) {
-                          return 'السعر يجب أن يكون رقم صحيح أكبر من 0';
+                          return context.l10n.priceMustBeValidPositive;
                         }
                         return null;
                       },
@@ -593,15 +588,15 @@ class _EditTripScreenState extends State<EditTripScreen> {
                 const SizedBox(height: 20),
 
                 SectionCard(
-                  title: 'صورة السيارة',
+                  title: context.l10n.carImageSection,
                   icon: Icons.car_rental,
                   iconColor: T.primary(context),
-                  subtitle: '(اختياري)',
+                  subtitle: context.l10n.optionalParen,
                   children: [
                     const SizedBox(height: 8),
                     Semantics(
                       button: true,
-                      label: 'رفع صورة السيارة',
+                      label: context.l10n.uploadCarImage,
                       child: GestureDetector(
                         onTap: _pickCarImage,
                         child: Container(
@@ -713,14 +708,14 @@ class _EditTripScreenState extends State<EditTripScreen> {
                                     ),
                                     const SizedBox(height: 16),
                                     Text(
-                                      'اضغط لرفع صورة السيارة',
+                                      context.l10n.tapToUploadCarImage,
                                       style: AppTextStyles.labelLarge.copyWith(
                                         color: T.textSecondary(context),
                                       ),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'اختياري',
+                                      context.l10n.optionalLabel,
                                       style: AppTextStyles.bodySmall.copyWith(
                                         color: T.textSecondary(context),
                                       ),
@@ -747,7 +742,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                   ),
                   child: Semantics(
                     button: true,
-                    label: 'حفظ التعديلات',
+                    label: context.l10n.saveChanges,
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _updateTrip,
                       style: ElevatedButton.styleFrom(
@@ -776,7 +771,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                                 const Icon(Icons.save, size: 24),
                                 const SizedBox(width: 12),
                                 Text(
-                                  'حفظ التعديلات',
+                                  context.l10n.saveChanges,
                                   style: AppTextStyles.titleMedium.copyWith(
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -848,7 +843,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
                     child: IconButton(
                       icon: Icon(Icons.map, color: color),
                       onPressed: onTap,
-                      tooltip: 'اختيار من الخريطة',
+                      tooltip: context.l10n.selectFromMap,
                     ),
                   )
                 : suffixWidget != null

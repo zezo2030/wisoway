@@ -11,6 +11,7 @@ import '../../core/constants/app_strings.dart';
 import '../../core/theme/colors.dart';
 import '../../core/services/storage_service.dart';
 import '../../widgets/common/form_components.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -64,12 +65,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           children: [
             ListTile(
               leading: Icon(IconsaxPlusLinear.gallery),
-              title: Text('المعرض'),
+              title: Text(context.l10n.gallery),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
             ListTile(
               leading: Icon(IconsaxPlusLinear.camera),
-              title: Text('الكاميرا'),
+              title: Text(context.l10n.camera),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
           ],
@@ -104,7 +105,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       );
 
       if (mounted) {
-        _showSnackBar('تم تحديث الملف الشخصي بنجاح', AppColors.success);
+        _showSnackBar(context.l10n.profileUpdatedSuccess, AppColors.success);
         Navigator.pop(context);
       }
     } catch (e) {
@@ -175,7 +176,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       child: Row(
         children: [
           IconButton(
-            tooltip: 'رجوع',
+            tooltip: context.l10n.back,
             onPressed: () => Navigator.pop(context),
             icon: const Icon(IconsaxPlusLinear.arrow_right_2),
             style: IconButton.styleFrom(
@@ -186,7 +187,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
           const SizedBox(width: 16),
           Text(
-            'تعديل الملف الشخصي',
+            context.l10n.editProfileTitle,
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -203,7 +204,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       children: [
         Semantics(
           button: true,
-          label: 'اختر صورة الملف الشخصي',
+          label: context.l10n.chooseProfilePhoto,
           child: GestureDetector(
             onTap: _pickProfileImage,
             child: Container(
@@ -250,7 +251,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           right: 0,
           child: Semantics(
             button: true,
-            label: 'تغيير صورة الملف الشخصي',
+            label: context.l10n.changeProfilePhoto,
             child: GestureDetector(
               onTap: _pickProfileImage,
               child: Container(
@@ -377,7 +378,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ),
       child: Semantics(
         toggled: _hidePhoneNumber,
-        label: 'إخفاء رقم الهاتف عن السائق',
+        label: context.l10n.hidePhoneFromDriver,
         child: SwitchListTile.adaptive(
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
@@ -396,7 +397,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           ),
           title: Text(
-            'إخفاء رقم الهاتف',
+            context.l10n.hidePhoneNumberToggle,
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
@@ -404,7 +405,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           ),
           subtitle: Text(
-            'استخدام الاتصال المخفي بدلاً من مشاركة رقمك الحقيقي',
+            context.l10n.hidePhoneNumberSubtitle,
             style: TextStyle(
               fontSize: 12,
               color: T.onSurfaceVariant(context),
@@ -451,10 +452,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       builder: (context, authProvider, child) {
         return Semantics(
           button: true,
-          label: 'حفظ التغييرات',
+          label: context.l10n.saveChanges,
           child: PrimaryGradientButton(
             onPressed: authProvider.isLoading ? null : _onSavePressed,
-            text: 'حفظ التغييرات',
+            text: context.l10n.saveChanges,
             isLoading: authProvider.isLoading,
             trailingIcon: IconsaxPlusLinear.arrow_left_2,
           ),

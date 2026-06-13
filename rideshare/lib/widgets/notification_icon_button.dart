@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../core/theme/colors.dart';
 import '../core/constants/route_names.dart';
 import '../providers/notification_provider.dart';
+import '../l10n/l10n_extensions.dart';
 
 class NotificationIconButton extends StatelessWidget {
   final double? iconSize;
@@ -35,8 +36,9 @@ class NotificationIconButton extends StatelessWidget {
 
         return Semantics(
           button: true,
-          label:
-              'الإشعارات${unreadCount > 0 ? " ($unreadCount غير مقروء)" : ""}',
+          label: unreadCount > 0
+              ? context.l10n.notificationsWithUnread(unreadCount)
+              : context.l10n.notifications,
           child: GestureDetector(
             onTap: () {
               Navigator.pushNamed(context, RouteNames.notifications);

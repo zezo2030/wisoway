@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/colors.dart';
+import '../../../l10n/l10n_extensions.dart';
 import '../../../models/trip_model.dart';
 
 class TripCard extends StatelessWidget {
@@ -13,8 +14,9 @@ class TripCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('EEEE، d MMMM', 'ar');
-    final timeFormat = DateFormat('hh:mm a', 'ar');
+    final localeName = Localizations.localeOf(context).languageCode;
+    final dateFormat = DateFormat('EEEE، d MMMM', localeName);
+    final timeFormat = DateFormat('hh:mm a', localeName);
     final showDeadlineBanner = trip.driverShowsStartDeadlinePassedBanner;
 
     Color statusColor;
@@ -22,16 +24,16 @@ class TripCard extends StatelessWidget {
 
     if (trip.status == 'active' || trip.status == 'published') {
       statusColor = AppColors.success;
-      statusText = 'نشطة';
+      statusText = context.l10n.tripStatusActive;
     } else if (trip.status == 'fully_booked') {
       statusColor = AppColors.warning;
-      statusText = 'مكتملة الحجز';
+      statusText = context.l10n.tripStatusFullyBooked;
     } else if (trip.status == 'in_progress') {
       statusColor = T.primary(context);
-      statusText = 'قيد التنفيذ';
+      statusText = context.l10n.tripStatusInProgress;
     } else if (trip.status == 'hidden') {
       statusColor = AppColors.warning;
-      statusText = 'مخفية';
+      statusText = context.l10n.tripStatusHidden;
     } else {
       statusColor = T.primary(context);
       statusText = trip.statusDisplayText;
@@ -165,7 +167,7 @@ class TripCard extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'من',
+                                  context.l10n.fromLabel,
                                   style: GoogleFonts.tajawal(
                                     fontSize: 11,
                                     color: T.onSurfaceVariant(context),
@@ -189,7 +191,7 @@ class TripCard extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'إلى',
+                                  context.l10n.toLabel,
                                   style: GoogleFonts.tajawal(
                                     fontSize: 11,
                                     color: T.onSurfaceVariant(context),
@@ -253,7 +255,7 @@ class TripCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 5),
                       Text(
-                        '${trip.availableSeats} متاح',
+                        context.l10n.seatsAvailable(trip.availableSeats),
                         style: GoogleFonts.tajawal(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -271,8 +273,8 @@ class TripCard extends StatelessWidget {
                       const SizedBox(width: 5),
                       Text(
                         trip.communicationFeeStatus == 'paid'
-                            ? 'مدفوعة'
-                            : 'مستحقة',
+                            ? context.l10n.feePaid
+                            : context.l10n.feeDue,
                         style: GoogleFonts.tajawal(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -308,7 +310,7 @@ class TripCard extends StatelessWidget {
                     ),
                     child: Center(
                       child: Text(
-                        'انتهى وقت بدء الرحلة (لم يبدأ السائق ضمن المهلة)',
+                        context.l10n.tripStartDeadlinePassed,
                         style: GoogleFonts.tajawal(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,

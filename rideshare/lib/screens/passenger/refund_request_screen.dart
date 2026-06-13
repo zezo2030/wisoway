@@ -14,6 +14,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/api/api_client.dart';
 import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class RefundRequestScreen extends StatefulWidget {
   final String bookingId;
@@ -58,11 +59,10 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'تم تسجيل طلب الاسترداد. سيتم تحويلك إلى WhatsApp لاستكمال الإجراء.'),
+          SnackBar(
+            content: Text(context.l10n.refundSubmittedSuccess),
             behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 3),
+            duration: const Duration(seconds: 3),
           ),
         );
 
@@ -120,7 +120,7 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'طلب استرداد المبلغ',
+                        context.l10n.refundRequestScreenTitle,
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w700,
@@ -167,7 +167,7 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'استرداد رسوم الحجز',
+                              context.l10n.refundHeroTitle,
                               style: TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w700,
@@ -177,8 +177,8 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                             const SizedBox(height: 4),
                             Text(
                               widget.tripRef != null
-                                  ? 'الرحلة: ${widget.tripRef}'
-                                  : 'سيتواصل معك فريقنا عبر WhatsApp لإتمام الإجراء.',
+                                  ? context.l10n.refundTripRef(widget.tripRef!)
+                                  : context.l10n.refundContactViaWhatsApp,
                               style: TextStyle(
                                 fontSize: 13,
                                 height: 1.5,
@@ -195,7 +195,7 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
 
                 // ── Reason ───────────────────────────────────────────────
                 Text(
-                  'سبب طلب الاسترداد',
+                  context.l10n.refundReasonLabel,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -209,8 +209,7 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                   maxLength: 500,
                   textInputAction: TextInputAction.newline,
                   decoration: InputDecoration(
-                    hintText:
-                        'اشرح سبب طلبك لاسترداد المبلغ بإيجاز…',
+                    hintText: context.l10n.refundReasonHint,
                     filled: true,
                     fillColor: T.surface(context),
                     border: OutlineInputBorder(
@@ -235,10 +234,10 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                   ),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) {
-                      return 'يرجى كتابة سبب الطلب';
+                      return context.l10n.refundReasonRequired;
                     }
                     if (v.trim().length < 10) {
-                      return 'السبب قصير جداً (10 أحرف على الأقل)';
+                      return context.l10n.refundReasonTooShort;
                     }
                     return null;
                   },
@@ -263,7 +262,7 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'بعد الإرسال، ستُفتح محادثة WhatsApp مع فريق الدعم لإتمام إجراء الاسترداد.',
+                          context.l10n.refundWhatsAppNote,
                           style: TextStyle(
                             fontSize: 13,
                             height: 1.55,
@@ -295,9 +294,9 @@ class _RefundRequestScreenState extends State<RefundRequestScreen> {
                             color: Colors.white,
                           ),
                         )
-                      : const Text(
-                          'إرسال الطلب',
-                          style: TextStyle(
+                      : Text(
+                          context.l10n.refundSubmitButton,
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),

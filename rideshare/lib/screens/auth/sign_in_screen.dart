@@ -7,6 +7,7 @@ import '../../core/constants/countries.dart';
 import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
+import '../../l10n/l10n_extensions.dart';
 import '../../widgets/common/form_components.dart';
 import '../../widgets/country_code_picker.dart';
 
@@ -106,7 +107,7 @@ class _SignInScreenState extends State<SignInScreen>
   Future<void> _handleForgotPassword() async {
     final phoneNumber = _phoneController.text.trim();
     if (phoneNumber.isEmpty) {
-      ErrorSurface.showInfo(context, 'يرجى إدخال رقم الهاتف أولاً');
+      ErrorSurface.showInfo(context, context.l10n.phoneNumberFirst);
       return;
     }
 
@@ -123,7 +124,7 @@ class _SignInScreenState extends State<SignInScreen>
       if (mounted) {
         ErrorSurface.showSuccess(
           context,
-          'تم إرسال رابط إعادة تعيين كلمة المرور',
+          context.l10n.passwordResetLinkSent,
         );
       }
     } catch (e) {
@@ -201,7 +202,7 @@ class _SignInScreenState extends State<SignInScreen>
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'تسجيل الدخول',
+                          context.l10n.signIn,
                           style: TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.bold,
@@ -212,7 +213,7 @@ class _SignInScreenState extends State<SignInScreen>
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'أهلاً بك مجدداً! سجل دخولك للمتابعة.',
+                          context.l10n.signInSubtitle,
                           style: TextStyle(
                             fontSize: 14,
                             color: T.textSecondary(context),
@@ -257,7 +258,7 @@ class _SignInScreenState extends State<SignInScreen>
                                     color: T.onSurface(context),
                                   ),
                                   decoration: InputDecoration(
-                                    hintText: 'رقم الهاتف',
+                                    hintText: context.l10n.phoneNumber,
                                     hintStyle: TextStyle(
                                       color: T
                                           .onSurfaceVariant(context)
@@ -276,7 +277,7 @@ class _SignInScreenState extends State<SignInScreen>
                                     ),
                                   ),
                                   validator: (v) =>
-                                      (v == null || v.isEmpty) ? 'مطلوب' : null,
+                                      (v == null || v.isEmpty) ? context.l10n.required : null,
                                 ),
                               ),
                             ],
@@ -287,10 +288,11 @@ class _SignInScreenState extends State<SignInScreen>
                         // Password Field
                         ModernInputField(
                           controller: _passwordController,
-                          label: 'كلمة المرور',
+                          label: context.l10n.password,
                           hint: '••••••••',
                           icon: IconsaxPlusLinear.lock,
                           obscureText: _obscurePassword,
+                          textDirection: TextDirection.ltr,
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscurePassword
@@ -304,7 +306,7 @@ class _SignInScreenState extends State<SignInScreen>
                             ),
                           ),
                           validator: (v) => (v == null || v.length < 6)
-                              ? 'كلمة المرور قصيرة'
+                              ? context.l10n.passwordTooShort
                               : null,
                         ),
                         Align(
@@ -312,7 +314,7 @@ class _SignInScreenState extends State<SignInScreen>
                           child: TextButton(
                             onPressed: _handleForgotPassword,
                             child: Text(
-                              'نسيت كلمة السر؟',
+                              context.l10n.forgotPassword,
                               style: TextStyle(
                                 color: T.primary(context),
                                 fontSize: 13,
@@ -327,7 +329,7 @@ class _SignInScreenState extends State<SignInScreen>
                         // Login Button
                         PrimaryGradientButton(
                           onPressed: _isLoading ? null : _handleSignIn,
-                          text: 'تسجيل الدخول',
+                          text: context.l10n.signIn,
                           isLoading: _isLoading,
                         ),
 
@@ -338,7 +340,7 @@ class _SignInScreenState extends State<SignInScreen>
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              'ليس لديك حساب؟ ',
+                              context.l10n.noAccountQuestion,
                               style: TextStyle(
                                 color: T.textSecondary(context),
                                 fontSize: 14,
@@ -350,7 +352,7 @@ class _SignInScreenState extends State<SignInScreen>
                                 RouteNames.accountTypeSelection,
                               ),
                               child: Text(
-                                'إنشاء حساب جديد',
+                                context.l10n.createNewAccount,
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: T.primary(context),

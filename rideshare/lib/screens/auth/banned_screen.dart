@@ -14,6 +14,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/api/api_client.dart';
 import '../../core/theme/colors.dart';
 import '../../core/constants/support_constants.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class BannedScreen extends StatefulWidget {
   const BannedScreen({super.key});
@@ -44,7 +45,7 @@ class _BannedScreenState extends State<BannedScreen> {
 
   Future<void> _openWhatsApp() async {
     final prefill = Uri.encodeComponent(
-      'مرحباً، حسابي على تطبيق VisionWay موقوف وأحتاج مساعدة.',
+      context.l10n.bannedWhatsAppPrefill,
     );
     final uri = Uri.parse('https://wa.me/$_whatsAppNumber?text=$prefill');
     if (await canLaunchUrl(uri)) {
@@ -52,8 +53,8 @@ class _BannedScreenState extends State<BannedScreen> {
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تعذر فتح WhatsApp'),
+          SnackBar(
+            content: Text(context.l10n.couldNotOpenWhatsApp),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -123,7 +124,7 @@ class _BannedScreenState extends State<BannedScreen> {
 
                 // ── Title ─────────────────────────────────────────────────
                 Text(
-                  'تم تعليق حسابك',
+                  context.l10n.accountBannedTitle,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 26,
@@ -137,8 +138,7 @@ class _BannedScreenState extends State<BannedScreen> {
                 Text(
                   _banReason?.isNotEmpty == true
                       ? _banReason!
-                      : 'خالف حسابك سياسات الاستخدام المقبول للمنصة.\n'
-                          'إذا كنت تعتقد أن هذا خطأ، يرجى التواصل مع فريق الدعم.',
+                      : context.l10n.accountBannedNoReason,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 15,
@@ -154,9 +154,9 @@ class _BannedScreenState extends State<BannedScreen> {
                   child: FilledButton.icon(
                     onPressed: _fetchConfigAndOpen,
                     icon: const Icon(IconsaxPlusBold.message, size: 20),
-                    label: const Text(
-                      'تواصل مع الدعم عبر WhatsApp',
-                      style: TextStyle(
+                    label: Text(
+                      context.l10n.contactSupportViaWhatsApp,
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),

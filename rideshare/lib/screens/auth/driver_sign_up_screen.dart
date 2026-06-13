@@ -10,6 +10,7 @@ import '../../widgets/country_code_picker.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
 import '../../widgets/common/form_components.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class DriverSignUpScreen extends StatefulWidget {
   const DriverSignUpScreen({super.key});
@@ -63,11 +64,11 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedGender == null) {
-      _showSnackBar('يرجى اختيار الجنس', T.error(context));
+      _showSnackBar(context.l10n.selectGenderError, T.error(context));
       return;
     }
     if (_passwordController.text != _confirmPasswordController.text) {
-      _showSnackBar('كلمتا السر غير متطابقتين', T.error(context));
+      _showSnackBar(context.l10n.passwordsDoNotMatch, T.error(context));
       return;
     }
 
@@ -133,22 +134,24 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
                           Expanded(
                             child: ModernInputField(
                               controller: _firstNameController,
-                              label: 'الاسم الأول',
-                              hint: 'أحمد',
+                              label: context.l10n.firstName,
+                              hint: context.l10n.firstNameHint,
                               icon: IconsaxPlusLinear.user,
-                              validator: (v) =>
-                                  (v == null || v.isEmpty) ? 'مطلوب' : null,
+                              validator: (v) => (v == null || v.isEmpty)
+                                  ? context.l10n.required
+                                  : null,
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: ModernInputField(
                               controller: _lastNameController,
-                              label: 'اسم العائلة',
-                              hint: 'علي',
+                              label: context.l10n.lastName,
+                              hint: context.l10n.lastNameHint,
                               icon: IconsaxPlusLinear.user,
-                              validator: (v) =>
-                                  (v == null || v.isEmpty) ? 'مطلوب' : null,
+                              validator: (v) => (v == null || v.isEmpty)
+                                  ? context.l10n.required
+                                  : null,
                             ),
                           ),
                         ],
@@ -168,16 +171,16 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
                           Expanded(
                             child: ModernInputField(
                               controller: _phoneController,
-                              label: 'رقم الهاتف',
+                              label: context.l10n.phoneNumber,
                               hint: '1234567890',
                               icon: IconsaxPlusLinear.call,
                               keyboardType: TextInputType.phone,
                               validator: (v) {
                                 if (v == null || v.isEmpty) {
-                                  return 'يرجى إدخال رقم الهاتف';
+                                  return context.l10n.phoneNumberRequired;
                                 }
                                 if (!RegExp(r'^\d{7,15}$').hasMatch(v)) {
-                                  return 'رقم هاتف غير صحيح';
+                                  return context.l10n.invalidPhoneNumber;
                                 }
                                 return null;
                               },
@@ -188,10 +191,11 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
                       const SizedBox(height: 24),
                       ModernInputField(
                         controller: _passwordController,
-                        label: 'كلمة السر',
-                        hint: '8 أحرف على الأقل وتحتوي حرفاً ورقماً',
+                        label: context.l10n.password,
+                        hint: context.l10n.passwordHint,
                         icon: IconsaxPlusLinear.password_check,
                         obscureText: _obscurePassword,
+                        textDirection: TextDirection.ltr,
                         suffixIcon: IconButton(
                           onPressed: () => setState(
                             () => _obscurePassword = !_obscurePassword,
@@ -204,12 +208,12 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
                         ),
                         validator: (v) {
                           if (v == null || v.isEmpty) {
-                            return 'يرجى إدخال كلمة السر';
+                            return context.l10n.passwordRequired;
                           }
                           if (!RegExp(
                             r'^(?=.*[A-Za-z])(?=.*\d).{8,}$',
                           ).hasMatch(v)) {
-                            return 'يجب أن تحتوي كلمة السر على 8 أحرف مع حرف ورقم';
+                            return context.l10n.passwordPolicyError;
                           }
                           return null;
                         },
@@ -217,10 +221,11 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
                       const SizedBox(height: 16),
                       ModernInputField(
                         controller: _confirmPasswordController,
-                        label: 'تأكيد كلمة السر',
-                        hint: 'أعد إدخال كلمة السر',
+                        label: context.l10n.confirmPassword,
+                        hint: context.l10n.confirmPasswordHint,
                         icon: IconsaxPlusLinear.password_check,
                         obscureText: _obscureConfirmPassword,
+                        textDirection: TextDirection.ltr,
                         suffixIcon: IconButton(
                           onPressed: () => setState(
                             () => _obscureConfirmPassword =
@@ -234,22 +239,22 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
                         ),
                         validator: (v) {
                           if (v == null || v.isEmpty) {
-                            return 'يرجى تأكيد كلمة السر';
+                            return context.l10n.confirmPasswordRequired;
                           }
                           if (v != _passwordController.text) {
-                            return 'كلمتا السر غير متطابقتين';
+                            return context.l10n.passwordsDoNotMatch;
                           }
                           return null;
                         },
                       ),
                       const SizedBox(height: 24),
-                      const SectionTitle(title: 'الجنس', isRequired: true),
+                      SectionTitle(title: context.l10n.gender, isRequired: true),
                       const SizedBox(height: 12),
                       _buildGenderSelection(),
                       const SizedBox(height: 32),
                       PrimaryGradientButton(
                         onPressed: _isLoading ? null : _signUp,
-                        text: 'تحقق من رقم الهاتف وأنشئ كلمة السر',
+                        text: context.l10n.driverSignUpVerifyButton,
                         isLoading: _isLoading,
                         color: T.secondary(context),
                       ),
@@ -285,9 +290,9 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
         children: [
           const Icon(IconsaxPlusBold.driver, size: 60, color: AppColors.white),
           const SizedBox(height: 16),
-          const Text(
-            'تسجيل سائق جديد',
-            style: TextStyle(
+          Text(
+            context.l10n.driverSignUpTitle,
+            style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
               color: AppColors.white,
@@ -300,9 +305,9 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
               color: AppColors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Text(
-              'الخطوة 1 من 3: المعلومات الأساسية والتحقق',
-              style: TextStyle(color: AppColors.white, fontSize: 13),
+            child: Text(
+              context.l10n.driverSignUpStep1,
+              style: const TextStyle(color: AppColors.white, fontSize: 13),
             ),
           ),
         ],
@@ -316,7 +321,7 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
         Expanded(
           child: ModernSelectionCard(
             icon: IconsaxPlusLinear.man,
-            title: 'ذكر',
+            title: context.l10n.male,
             isSelected: _selectedGender == AppConstants.genderMale,
             onTap: () =>
                 setState(() => _selectedGender = AppConstants.genderMale),
@@ -327,7 +332,7 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
         Expanded(
           child: ModernSelectionCard(
             icon: IconsaxPlusLinear.woman,
-            title: 'أنثى',
+            title: context.l10n.female,
             isSelected: _selectedGender == AppConstants.genderFemale,
             onTap: () =>
                 setState(() => _selectedGender = AppConstants.genderFemale),
@@ -343,17 +348,17 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
-          'لديك حساب بالفعل؟ ',
+          context.l10n.alreadyHaveAccount,
           style: TextStyle(color: T.onSurfaceVariant(context)),
         ),
         Semantics(
           button: true,
-          label: 'تسجيل الدخول',
+          label: context.l10n.signIn,
           child: TextButton(
             onPressed: () =>
                 Navigator.pushReplacementNamed(context, RouteNames.signIn),
             child: Text(
-              'تسجيل الدخول',
+              context.l10n.signIn,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: T.secondary(context),

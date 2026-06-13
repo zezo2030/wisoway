@@ -4,6 +4,7 @@ import '../models/seat_data.dart';
 import '../utils/seat_layout_helpers.dart';
 import '../utils/seat_validation.dart';
 import '../core/theme/colors.dart';
+import '../l10n/l10n_extensions.dart';
 
 class SeatLayoutWidget extends StatelessWidget {
   final TripModel trip;
@@ -39,7 +40,7 @@ class SeatLayoutWidget extends StatelessWidget {
               Icon(Icons.drive_eta, size: 16, color: T.primary(context)),
               const SizedBox(width: 8),
               Text(
-                'مقعد السائق',
+                context.l10n.seatDriverSeat,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -167,16 +168,18 @@ class _SeatWidget extends StatelessWidget {
     }
 
     final seatStatusLabel = switch (status) {
-      SeatStatus.available => 'متاح',
-      SeatStatus.booked => 'محجوز',
-      SeatStatus.locked => 'مقفل',
-      SeatStatus.unavailable => 'غير متاح',
-      SeatStatus.invalid => 'غير صالح',
+      SeatStatus.available => context.l10n.seatStatusAvailable,
+      SeatStatus.booked => context.l10n.seatStatusBooked,
+      SeatStatus.locked => context.l10n.seatStatusLocked,
+      SeatStatus.unavailable => context.l10n.seatStatusUnavailable,
+      SeatStatus.invalid => context.l10n.seatStatusInvalid,
     };
 
     return Semantics(
       button: onTap != null && status == SeatStatus.available,
-      label: 'مقعد $seatNumber $seatStatusLabel${isSelected ? '، محدد' : ''}',
+      label: isSelected
+          ? context.l10n.seatLabelSelected(seatNumber, seatStatusLabel)
+          : context.l10n.seatLabelNumbered(seatNumber, seatStatusLabel),
       child: GestureDetector(
         onTap: onTap != null && status == SeatStatus.available ? onTap : null,
         child: Container(
@@ -226,19 +229,25 @@ class _SeatLegend extends StatelessWidget {
         runSpacing: 8,
         alignment: WrapAlignment.center,
         children: [
-          _LegendItem(color: T.surfaceVariant(context), label: 'متاح'),
-          _LegendItem(color: T.success(context), label: 'محدد'),
+          _LegendItem(
+            color: T.surfaceVariant(context),
+            label: context.l10n.seatStatusAvailable,
+          ),
+          _LegendItem(
+            color: T.success(context),
+            label: context.l10n.seatLegendSelected,
+          ),
           _LegendItem(
             color: T.error(context).withValues(alpha: 0.6),
-            label: 'محجوز',
+            label: context.l10n.seatStatusBooked,
           ),
           _LegendItem(
             color: T.secondary(context).withValues(alpha: 0.2),
-            label: 'مقفل (خارج التطبيق)',
+            label: context.l10n.seatLegendLockedExternal,
           ),
           _LegendItem(
             color: T.outlineVariant(context).withValues(alpha: 0.3),
-            label: 'غير متاح',
+            label: context.l10n.seatStatusUnavailable,
           ),
         ],
       ),
@@ -255,7 +264,7 @@ class _LegendItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'دليل الألوان: $label',
+      label: context.l10n.seatColorGuide(label),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

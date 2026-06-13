@@ -6,11 +6,11 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/constants/app_constants.dart';
-import '../../core/constants/app_strings.dart';
 import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
 import '../../core/errors/failure.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   const ResetPasswordScreen({super.key});
@@ -71,10 +71,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       // If no phone number provided, go back to forgot password
       Navigator.pushReplacementNamed(context, RouteNames.forgotPassword);
     }
-  }
-
-  bool _ar(BuildContext context) {
-    return Directionality.of(context) == TextDirection.rtl;
   }
 
   String _extractErrorMessage(Object error) {
@@ -155,15 +151,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         if (errorMsg.contains('too many attempts') || errorMsg.contains('locked')) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                _ar(context)
-                    ? 'محاولات كثيرة جداً. يرجى طلب رمز جديد.'
-                    : 'Too many attempts. Please request a new code.',
-              ),
+              content: Text(context.l10n.otpTooManyAttempts),
               backgroundColor: T.error(context),
               duration: const Duration(seconds: 4),
               action: SnackBarAction(
-                label: _ar(context) ? 'طلب رمز جديد' : 'Request New Code',
+                label: context.l10n.requestNewCode,
                 textColor: T.onPrimary(context),
                 onPressed: () {
                   Navigator.pushReplacementNamed(
@@ -177,15 +169,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         } else if (errorMsg.contains('expired')) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                _ar(context)
-                    ? 'انتهت صلاحية رمز التحقق. يرجى طلب رمز جديد.'
-                    : 'Verification code has expired. Please request a new one.',
-              ),
+              content: Text(context.l10n.otpExpired),
               backgroundColor: T.error(context),
               duration: const Duration(seconds: 4),
               action: SnackBarAction(
-                label: _ar(context) ? 'طلب رمز جديد' : 'Request New Code',
+                label: context.l10n.requestNewCode,
                 textColor: T.onPrimary(context),
                 onPressed: () {
                   Navigator.pushReplacementNamed(
@@ -223,8 +211,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم إرسال رمز تحقق جديد'),
+          SnackBar(
+            content: Text(context.l10n.newOtpSent),
             backgroundColor: AppColors.success,
           ),
         );
@@ -253,9 +241,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           });
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                'يرجى الانتظار $_resendTimer ثانية قبل طلب رمز جديد',
-              ),
+              content: Text(context.l10n.waitBeforeResend(_resendTimer)),
               backgroundColor: AppColors.warning,
               duration: const Duration(seconds: 3),
             ),
@@ -319,7 +305,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppStrings.passwordResetSuccess),
+            content: Text(context.l10n.passwordResetSuccess),
             backgroundColor: AppColors.success,
           ),
         );
@@ -398,7 +384,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           const SizedBox(height: 32),
 
           Text(
-            AppStrings.enterVerificationCode,
+            context.l10n.enterOTP,
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w800,
@@ -408,7 +394,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'تم إرسال رمز التحقق إلى رقم هاتفك',
+            context.l10n.otpSentToYourPhone,
             style: TextStyle(
               fontSize: 16,
               color: T.onSurfaceVariant(context),
@@ -430,6 +416,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
           // OTP Input Fields
           Row(
+            // Keep the OTP digits ordered left-to-right even in RTL (Arabic)
+            // so the code reads in entry order.
+            textDirection: TextDirection.ltr,
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(
               AppConstants.otpLength,
@@ -476,7 +465,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             TextButton(
               onPressed: _isLoading ? null : _resendOTP,
               child: Text(
-                AppStrings.resendCode,
+                context.l10n.resendCode,
                 style: TextStyle(
                   color: T.primary(context),
                   fontSize: 16,
@@ -486,7 +475,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             )
           else
             Text(
-              'يمكنك إعادة الإرسال خلال $_resendTimer ثانية',
+              context.l10n.resendCodeIn(_resendTimer),
               style: TextStyle(
                 color: T.onSurfaceVariant(context),
                 fontSize: 14,
@@ -526,7 +515,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           const SizedBox(height: 32),
 
           Text(
-            AppStrings.setNewPassword,
+            context.l10n.resetPasswordTitle,
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w800,
@@ -540,8 +529,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           TextFormField(
             controller: _passwordController,
             obscureText: true,
+            textDirection: TextDirection.ltr,
             decoration: InputDecoration(
-              labelText: AppStrings.newPassword,
+              labelText: context.l10n.newPassword,
               filled: true,
               fillColor: T.surfaceVariant(context),
               border: OutlineInputBorder(
@@ -562,15 +552,15 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'يرجى إدخال كلمة مرور جديدة';
+                return context.l10n.newPasswordRequired;
               }
               if (value.length < 8) {
-                return 'كلمة المرور يجب أن تكون 8 أحرف على الأقل';
+                return context.l10n.passwordTooShort;
               }
               final hasLetter = RegExp(r'[A-Za-z]').hasMatch(value);
               final hasNumber = RegExp(r'[0-9]').hasMatch(value);
               if (!hasLetter || !hasNumber) {
-                return 'كلمة المرور يجب أن تحتوي على حرف و رقم على الأقل';
+                return context.l10n.passwordPolicyError;
               }
               return null;
             },
@@ -581,8 +571,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           TextFormField(
             controller: _confirmPasswordController,
             obscureText: true,
+            textDirection: TextDirection.ltr,
             decoration: InputDecoration(
-              labelText: AppStrings.confirmNewPassword,
+              labelText: context.l10n.confirmPassword,
               filled: true,
               fillColor: T.surfaceVariant(context),
               border: OutlineInputBorder(
@@ -603,7 +594,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             ),
             validator: (value) {
               if (value != _passwordController.text) {
-                return AppStrings.passwordsDontMatch;
+                return context.l10n.passwordsDoNotMatch;
               }
               return null;
             },
@@ -635,7 +626,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       ),
                     )
                   : Text(
-                      'إعادة تعيين كلمة المرور',
+                      context.l10n.resetPasswordButton,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,

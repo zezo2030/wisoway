@@ -25,6 +25,7 @@ import '../../core/errors/failure.dart';
 import '../../core/services/location_service.dart';
 import '../../core/api/websocket_service.dart';
 import '../../core/services/trip_service.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class TripManagementScreen extends StatefulWidget {
   final String tripId;
@@ -129,16 +130,14 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: const Text('تفعيل الموقع مطلوب'),
-        content: const Text(
-          'لا يمكن متابعة الرحلة بدون تشغيل خدمات الموقع. يرجى تفعيل GPS الآن.',
-        ),
+        title: Text(context.l10n.enableLocationRequired),
+        content: Text(context.l10n.enableLocationBody),
         actions: [
           TextButton(
             onPressed: () async {
               await _locationService.openLocationSettings();
             },
-            child: const Text('فتح إعدادات الموقع'),
+            child: Text(context.l10n.openLocationSettings),
           ),
           FilledButton(
             onPressed: () async {
@@ -148,7 +147,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                 Navigator.of(ctx).pop();
               }
             },
-            child: const Text('تحقق مجددًا'),
+            child: Text(context.l10n.checkAgain),
           ),
         ],
       ),
@@ -195,7 +194,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('التعديل متاح للرحلات النشطة فقط'),
+          content: Text(context.l10n.editingForActiveTripsOnly),
           backgroundColor: AppColors.warning,
         ),
       );
@@ -205,8 +204,8 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     if (seatData.isBooked) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('المقاعد المحجوزة عبر التطبيق تُدار من طلبات الحجز'),
+        SnackBar(
+          content: Text(context.l10n.bookedSeatsManagedByBookings),
         ),
       );
       return;
@@ -218,18 +217,18 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       final ok = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('فتح المقعد'),
+          title: Text(context.l10n.openSeatTitle),
           content: Text(
-            'إلغاء قفل المقعد رقم $displaySeatNumber ليصبح متاحاً للحجز في التطبيق؟',
+            context.l10n.openSeatBody(displaySeatNumber),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('إلغاء'),
+              child: Text(context.l10n.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('فتح المقعد'),
+              child: Text(context.l10n.openSeat),
             ),
           ],
         ),
@@ -247,7 +246,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('تم فتح المقعد'),
+            content: Text(context.l10n.seatOpenedSuccess),
             backgroundColor: AppColors.success,
           ),
         );
@@ -268,18 +267,18 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('قفل المقعد'),
+        title: Text(context.l10n.lockSeatTitle),
         content: Text(
-          'قفل المقعد رقم $displaySeatNumber؟ لن يتمكن الركاب من حجزه في التطبيق (مثلاً إذا بيع خارج التطبيق).',
+          context.l10n.lockSeatBody(displaySeatNumber),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('إلغاء'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('قفل'),
+            child: Text(context.l10n.lockSeat),
           ),
         ],
       ),
@@ -297,7 +296,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('تم قفل المقعد'),
+          content: Text(context.l10n.seatLockedSuccess),
           backgroundColor: AppColors.success,
         ),
       );
@@ -355,30 +354,36 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('فاتورة رسوم الرحلة'),
+        title: Text(context.l10n.tripFeeInvoiceTitle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _invoiceRow('سعر المقعد', '${trip.price} ${trip.currency}'),
-            _invoiceRow('عدد المقاعد', '${trip.totalSeats}'),
-            _invoiceRow('نسبة الرسوم', '5%'),
+            _invoiceRow(
+              context.l10n.seatPrice,
+              '${trip.price} ${trip.currency}',
+            ),
+            _invoiceRow(context.l10n.seatsCountLabel, '${trip.totalSeats}'),
+            _invoiceRow(context.l10n.feePercentage, '5%'),
             if (hasFreeTrip)
               _invoiceRow(
-                'خصم الرحلة المجانية',
-                '-${baseAmount.toStringAsFixed(2)} ${trip.currency} (100%)',
+                context.l10n.freeTripDiscountLabel,
+                context.l10n.freeTripDiscountValue(
+                  baseAmount.toStringAsFixed(2),
+                  trip.currency,
+                ),
               ),
             const Divider(height: 24),
             _invoiceRow(
-              'الإجمالي',
+              context.l10n.totalLabel,
               '${amount.toStringAsFixed(2)} ${trip.currency}',
               isTotal: true,
             ),
             const SizedBox(height: 12),
             Text(
               hasFreeTrip
-                  ? 'لديك رحلة مجانية متاحة. سيتم تطبيق خصم 100% ليصبح الإجمالي 0.'
-                  : 'الدفع يخص رسوم الرحلة كاملة ولا يغير عدد المقاعد أو الحجوزات.',
+                  ? context.l10n.freeTripAvailableExplanation
+                  : context.l10n.tripFeeFullExplanation,
               style: AppTextStyles.bodySmall.copyWith(
                 color: T.textSecondary(context),
               ),
@@ -388,11 +393,11 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('دفع الرسوم'),
+            child: Text(context.l10n.payFees),
           ),
         ],
       ),
@@ -437,7 +442,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('تم دفع رسوم الرحلة بنجاح'),
+          content: Text(context.l10n.tripFeePaidSuccess),
           backgroundColor: AppColors.success,
         ),
       );
@@ -456,12 +461,12 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('إخفاء الرحلة'),
-        content: const Text('هل أنت متأكد من إخفاء هذه الرحلة؟'),
+        title: Text(context.l10n.hideTripTitle),
+        content: Text(context.l10n.hideTripConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
+            child: Text(context.l10n.cancel),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
@@ -469,7 +474,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
               backgroundColor: AppColors.warning,
               foregroundColor: AppColors.white,
             ),
-            child: const Text('إخفاء'),
+            child: Text(context.l10n.hideAction),
           ),
         ],
       ),
@@ -482,7 +487,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('تم إخفاء الرحلة بنجاح'),
+            content: Text(context.l10n.tripHiddenSuccess),
             backgroundColor: AppColors.success,
           ),
         );
@@ -500,7 +505,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('تم إظهار الرحلة بنجاح'),
+          content: Text(context.l10n.tripShownSuccess),
           backgroundColor: AppColors.success,
         ),
       );
@@ -513,14 +518,12 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('حذف الرحلة'),
-        content: const Text(
-          'هل أنت متأكد من حذف هذه الرحلة؟ لا يمكن التراجع عن هذا الإجراء.',
-        ),
+        title: Text(context.l10n.deleteTripTitle),
+        content: Text(context.l10n.deleteTripConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
+            child: Text(context.l10n.cancel),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
@@ -528,7 +531,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
               backgroundColor: AppColors.error,
               foregroundColor: AppColors.white,
             ),
-            child: const Text('حذف'),
+            child: Text(context.l10n.deleteAction),
           ),
         ],
       ),
@@ -541,7 +544,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('تم حذف الرحلة بنجاح'),
+            content: Text(context.l10n.tripDeletedSuccess),
             backgroundColor: AppColors.success,
           ),
         );
@@ -568,7 +571,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         appBar: AppBar(
           elevation: 0,
           title: Text(
-            'إدارة الرحلة',
+            context.l10n.tripManagementTitle,
             style: AppTextStyles.titleMedium.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -584,7 +587,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         appBar: AppBar(
           elevation: 0,
           title: Text(
-            'إدارة الرحلة',
+            context.l10n.tripManagementTitle,
             style: AppTextStyles.titleMedium.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -601,7 +604,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'الرحلة غير موجودة',
+                context.l10n.tripNotFound,
                 style: AppTextStyles.titleMedium.copyWith(
                   color: T.textSecondary(context),
                 ),
@@ -622,7 +625,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       appBar: AppBar(
         elevation: 0,
         title: Text(
-          'إدارة الرحلة',
+          context.l10n.tripManagementTitle,
           style: AppTextStyles.titleMedium.copyWith(
             fontWeight: FontWeight.bold,
           ),
@@ -639,18 +642,18 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
             IconButton(
               icon: const Icon(IconsaxPlusLinear.eye_slash),
               onPressed: _hideTrip,
-              tooltip: 'إخفاء الرحلة',
+              tooltip: context.l10n.hideTripTooltip,
             )
           else if (_trip!.isHidden)
             IconButton(
               icon: const Icon(IconsaxPlusLinear.eye),
               onPressed: _showTrip,
-              tooltip: 'إظهار الرحلة',
+              tooltip: context.l10n.showTripTooltip,
             ),
           IconButton(
             icon: const Icon(IconsaxPlusLinear.trash),
             onPressed: _deleteTrip,
-            tooltip: 'حذف الرحلة',
+            tooltip: context.l10n.deleteTripTooltip,
             color: AppColors.error,
           ),
         ],
@@ -784,7 +787,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'معلومات الرحلة',
+                        context.l10n.tripInfoTitle,
                         style: AppTextStyles.titleMedium.copyWith(
                           fontSize: 20,
                           color: T.onPrimary(context),
@@ -830,7 +833,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'من',
+                          context.l10n.fromShort,
                           style: AppTextStyles.bodySmall.copyWith(
                             color: T.onPrimary(context).withValues(alpha: 0.8),
                           ),
@@ -887,7 +890,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'إلى',
+                          context.l10n.toShort,
                           style: AppTextStyles.bodySmall.copyWith(
                             color: T.onPrimary(context).withValues(alpha: 0.8),
                           ),
@@ -949,7 +952,10 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'رصيد المحفظة: ${balance.toStringAsFixed(2)} $cur',
+                    context.l10n.walletBalanceWithAmount(
+                      balance.toStringAsFixed(2),
+                      cur,
+                    ),
                     style: AppTextStyles.bodyLarge.copyWith(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
@@ -958,15 +964,15 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                   if (_wallet != null)
                     Text(
                       freeTripUsed
-                          ? 'تم استخدام الرحلة المجانية'
-                          : 'رحلة مجانية متاحة',
+                          ? context.l10n.freeTripUsed
+                          : context.l10n.freeTripAvailableShort,
                       style: AppTextStyles.bodySmall.copyWith(
                         color: T.textSecondary(context),
                       ),
                     )
                   else
                     Text(
-                      'الرصيد من محفظة المنصة (المحفظة الموحدة)',
+                      context.l10n.balanceFromPlatformWallet,
                       style: AppTextStyles.bodySmall.copyWith(
                         color: T.textSecondary(context),
                       ),
@@ -990,7 +996,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     final hasFreeTrip = _hasAvailableFreeTrip;
     final amount = _tripFeeAmount(trip);
     return SectionCard(
-      title: 'رسوم الرحلة',
+      title: context.l10n.tripFeeLabel,
       icon: Icons.receipt_long_outlined,
       iconColor: isPaid ? AppColors.success : AppColors.warning,
       children: [
@@ -1015,7 +1021,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isPaid ? 'رسوم الرحلة مدفوعة' : 'فاتورة رسوم الرحلة جاهزة',
+                    isPaid
+                        ? context.l10n.tripFeePaidLabel
+                        : context.l10n.tripFeeReady,
                     style: AppTextStyles.bodyLarge.copyWith(
                       fontWeight: FontWeight.bold,
                       color: T.onSurface(context),
@@ -1024,8 +1032,18 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                   const SizedBox(height: 4),
                   Text(
                     hasFreeTrip
-                        ? 'الرسوم: 5% × ${trip.totalSeats} مقاعد × ${trip.price} ${trip.currency}، خصم رحلة مجانية 100% = ${amount.toStringAsFixed(2)} ${trip.currency}'
-                        : '5% × ${trip.totalSeats} مقاعد × ${trip.price} ${trip.currency} = ${amount.toStringAsFixed(2)} ${trip.currency}',
+                        ? context.l10n.tripFeeBreakdownWithFreeTrip(
+                            trip.totalSeats,
+                            '${trip.price}',
+                            trip.currency,
+                            amount.toStringAsFixed(2),
+                          )
+                        : context.l10n.tripFeeBreakdown(
+                            trip.totalSeats,
+                            '${trip.price}',
+                            trip.currency,
+                            amount.toStringAsFixed(2),
+                          ),
                     style: AppTextStyles.bodySmall.copyWith(
                       color: T.textSecondary(context),
                     ),
@@ -1055,10 +1073,10 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                   : const Icon(IconsaxPlusBold.wallet_1),
               label: Text(
                 _isPayingTripFee
-                    ? 'جاري الدفع...'
+                    ? context.l10n.payingInProgress
                     : hasFreeTrip
-                    ? 'تطبيق الرحلة المجانية'
-                    : 'دفع الرسوم',
+                    ? context.l10n.applyFreeTrip
+                    : context.l10n.payFees,
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.success,
@@ -1077,12 +1095,12 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
 
   Widget _buildPendingBookingsCard(List<BookingModel> pendingBookings) {
     return SectionCard(
-      title: 'حجوزات قيد التأكيد (${pendingBookings.length})',
+      title: context.l10n.pendingBookingsCard(pendingBookings.length),
       icon: IconsaxPlusBold.clock,
       iconColor: AppColors.warning,
       children: [
         Text(
-          'تأكيد الحجز يفتح بيانات الراكب (رحلة مجانية أو خصم من المحفظة مرة واحدة للرحلة)',
+          context.l10n.confirmBookingUnlocksDetails,
           style: AppTextStyles.bodySmall.copyWith(
             color: T.textSecondary(context),
           ),
@@ -1100,11 +1118,11 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     final canOpenPassengerDetails =
         booking.hasDriverPaidToContact && booking.userPopulated != null;
     final titleText = canOpenPassengerDetails
-        ? (booking.userPopulated?.name ?? 'راكب')
-        : 'مقعد $seatText';
+        ? (booking.userPopulated?.name ?? context.l10n.passengerFallback)
+        : context.l10n.seatLabelShort(seatText);
     final subtitleText = canOpenPassengerDetails
-        ? 'المحادثة والتواصل متاحان بعد دفع رسوم الرحلة'
-        : 'بانتظار التأكيد';
+        ? context.l10n.chatAvailableAfterFee
+        : context.l10n.awaitingConfirmation;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1150,7 +1168,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'المقاعد: $seatText',
+                            context.l10n.seatsWithValue(seatText),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: AppTextStyles.bodySmall.copyWith(
@@ -1173,7 +1191,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                         ),
                       ),
                       child: Text(
-                        'قيد التأكيد',
+                        context.l10n.pendingConfirmationBadge,
                         style: AppTextStyles.labelSmall.copyWith(
                           color: AppColors.warningDark,
                           fontWeight: FontWeight.bold,
@@ -1206,7 +1224,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                         ),
                         icon: const Icon(IconsaxPlusLinear.user, size: 16),
                         label: Text(
-                          'تفاصيل الراكب',
+                          context.l10n.passengerDetailsButton,
                           style: AppTextStyles.labelLarge.copyWith(
                             fontSize: 12,
                           ),
@@ -1238,7 +1256,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                             )
                           : const Icon(IconsaxPlusBold.tick_circle, size: 16),
                       label: Text(
-                        isConfirming ? 'جاري التأكيد...' : 'تأكيد الحجز',
+                        isConfirming
+                            ? context.l10n.confirmingInProgress
+                            : context.l10n.confirmBooking,
                         style: AppTextStyles.labelLarge.copyWith(fontSize: 13),
                       ),
                       style: ElevatedButton.styleFrom(
@@ -1268,7 +1288,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                             )
                           : const Icon(IconsaxPlusBold.close_circle, size: 16),
                       label: Text(
-                        isRejecting ? 'جاري الرفض...' : 'رفض',
+                        isRejecting
+                            ? context.l10n.rejectingInProgress
+                            : context.l10n.rejectAction,
                         style: AppTextStyles.labelLarge.copyWith(fontSize: 13),
                       ),
                       style: ElevatedButton.styleFrom(
@@ -1300,7 +1322,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('تم تأكيد الحجز'),
+          content: Text(context.l10n.bookingConfirmed),
           backgroundColor: AppColors.success,
         ),
       );
@@ -1320,7 +1342,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('تم رفض الحجز'),
+          content: Text(context.l10n.bookingRejected),
           backgroundColor: AppColors.error,
         ),
       );
@@ -1343,9 +1365,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         Expanded(
           child: _buildStatCard(
             icon: IconsaxPlusBold.profile_2user,
-            label: 'المقاعد المحجوزة',
+            label: context.l10n.bookedSeatsLabel,
             value: '$bookedSeats',
-            subtitle: 'من ${trip.totalSeats}',
+            subtitle: context.l10n.ofCount(trip.totalSeats),
             color: T.primary(context),
           ),
         ),
@@ -1353,7 +1375,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         Expanded(
           child: _buildStatCard(
             icon: IconsaxPlusBold.dollar_circle,
-            label: 'الإيرادات',
+            label: context.l10n.revenueLabel,
             value: totalRevenue.toStringAsFixed(0),
             subtitle: trip.currency,
             color: AppColors.success,
@@ -1421,18 +1443,16 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('تأكيد الوصول'),
-        content: const Text(
-          'هل وصلت إلى الوجهة؟ سيتم إنهاء الرحلة ولن يمكن التراجع.',
-        ),
+        title: Text(context.l10n.confirmArrivalTitle),
+        content: Text(context.l10n.confirmArrivalBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('إلغاء'),
+            child: Text(context.l10n.cancel),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('نعم، وصلت'),
+            child: Text(context.l10n.yesArrived),
           ),
         ],
       ),
@@ -1444,8 +1464,8 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       await _tripService.markTripArrived(trip.id);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('تم إنهاء الرحلة بنجاح.'),
+        SnackBar(
+          content: Text(context.l10n.tripEndedSuccess),
           backgroundColor: AppColors.success,
         ),
       );
@@ -1480,17 +1500,15 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         final minutes = departure.difference(now).inMinutes;
         if (minutes >= 60) {
           final hours = (minutes / 60).floor();
-          body =
-              'ستبدأ الرحلة تلقائياً عند موعد الانطلاق (بعد ~$hours ساعة). لا حاجة للضغط على زر بدء.';
+          body = context.l10n.autoStartHours(hours);
         } else {
-          body =
-              'ستبدأ الرحلة تلقائياً عند موعد الانطلاق (بعد ~${minutes.clamp(0, 9999)} دقيقة). لا حاجة للضغط على زر بدء.';
+          body = context.l10n.autoStartMinutes(minutes.clamp(0, 9999));
         }
       } else {
-        body = 'سيتم تحويل الرحلة إلى «قيد التنفيذ» تلقائياً خلال لحظات.';
+        body = context.l10n.tripWillConvertSoon;
       }
       return SectionCard(
-        title: 'بدء الرحلة',
+        title: context.l10n.startTripSection,
         icon: IconsaxPlusLinear.clock,
         iconColor: T.primary(context),
         children: [
@@ -1505,12 +1523,12 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     }
 
     return SectionCard(
-      title: 'إنهاء الرحلة',
+      title: context.l10n.endTripSection,
       icon: IconsaxPlusBold.tick_circle,
       iconColor: AppColors.success,
       children: [
         Text(
-          'اضغط «تم الوصول للوجهة» بعد إنزال الركاب لإنهاء الرحلة.',
+          context.l10n.endTripHint,
           style: AppTextStyles.bodyMedium.copyWith(
             color: T.textSecondary(context),
           ),
@@ -1532,7 +1550,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                   )
                 : const Icon(IconsaxPlusBold.tick_circle),
             label: Text(
-              _markingArrived ? 'جاري الإنهاء...' : 'تم الوصول للوجهة',
+              _markingArrived
+                  ? context.l10n.endingInProgress
+                  : context.l10n.arrivedAtDestination,
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             style: ElevatedButton.styleFrom(
@@ -1558,42 +1578,42 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       case 'active':
       case 'published':
         statusColor = AppColors.success;
-        statusText = 'نشطة';
+        statusText = context.l10n.statusActive;
         statusIcon = IconsaxPlusBold.tick_circle;
         break;
       case 'draft':
         statusColor = T.outlineVariant(context);
-        statusText = 'مسودة';
+        statusText = context.l10n.statusDraft;
         statusIcon = IconsaxPlusLinear.edit;
         break;
       case 'fully_booked':
         statusColor = AppColors.warning;
-        statusText = 'مكتملة الحجز';
+        statusText = context.l10n.statusFullyBooked;
         statusIcon = IconsaxPlusBold.tick_circle;
         break;
       case 'in_progress':
         statusColor = T.primary(context);
-        statusText = 'قيد التنفيذ';
+        statusText = context.l10n.statusInProgress;
         statusIcon = IconsaxPlusLinear.routing;
         break;
       case 'hidden':
         statusColor = AppColors.warning;
-        statusText = 'مخفية';
+        statusText = context.l10n.statusHidden;
         statusIcon = IconsaxPlusLinear.eye_slash;
         break;
       case 'completed':
         statusColor = T.primary(context);
-        statusText = 'مكتملة';
+        statusText = context.l10n.statusCompleted;
         statusIcon = IconsaxPlusBold.tick_circle;
         break;
       case 'cancelled':
         statusColor = T.error(context);
-        statusText = 'ملغاة';
+        statusText = context.l10n.statusCancelled;
         statusIcon = IconsaxPlusLinear.close_circle;
         break;
       default:
         statusColor = T.outlineVariant(context);
-        statusText = 'غير معروف';
+        statusText = context.l10n.statusUnknown;
         statusIcon = IconsaxPlusLinear.info_circle;
     }
 
@@ -1626,7 +1646,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'حالة الرحلة',
+                  context.l10n.tripStatusLabel,
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: T.textSecondary(context),
                   ),
@@ -1679,22 +1699,24 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     DateFormat timeFormat,
   ) {
     return SectionCard(
-      title: 'تفاصيل الرحلة',
+      title: context.l10n.tripDetailsSection,
       icon: IconsaxPlusLinear.info_circle,
       iconColor: T.primary(context),
       children: [
         if (trip.distanceKm != null) ...[
           _buildDetailRow(
             icon: IconsaxPlusBold.routing_2,
-            label: 'مسافة الرحلة',
-            value: '${trip.distanceKm!.toStringAsFixed(1)} كم',
+            label: context.l10n.tripDistanceLabel,
+            value: context.l10n.distanceKm(
+              trip.distanceKm!.toStringAsFixed(1),
+            ),
             color: T.primary(context),
           ),
           const Divider(height: 32),
         ],
         _buildDetailRow(
           icon: IconsaxPlusBold.clock,
-          label: 'وقت الانطلاق',
+          label: context.l10n.departureTimeDetailLabel,
           value:
               '${dateFormat.format(trip.departureTime)} ${timeFormat.format(trip.departureTime)}',
           color: AppColors.warning,
@@ -1702,21 +1724,24 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         const Divider(height: 32),
         _buildDetailRow(
           icon: IconsaxPlusBold.dollar_circle,
-          label: 'السعر لكل مقعد',
+          label: context.l10n.pricePerSeatLabel,
           value: '${trip.price} ${trip.currency}',
           color: AppColors.success,
         ),
         const Divider(height: 32),
         _buildDetailRow(
           icon: IconsaxPlusBold.profile_2user,
-          label: 'المقاعد',
-          value: '${trip.availableSeats} متاح / ${trip.totalSeats} إجمالي',
+          label: context.l10n.seatsDetailLabel,
+          value: context.l10n.seatsAvailableTotal(
+            trip.availableSeats,
+            trip.totalSeats,
+          ),
           color: T.primary(context),
         ),
         const Divider(height: 32),
         _buildDetailRow(
           icon: IconsaxPlusLinear.grid_1,
-          label: 'تخطيط المقاعد',
+          label: context.l10n.seatLayoutDetailLabel,
           value: SeatLayoutHelpers.formatTripSeatLayoutPattern(
             trip.seatLayout,
             trip.seats,
@@ -1727,8 +1752,10 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         const Divider(height: 32),
         _buildDetailRow(
           icon: IconsaxPlusLinear.people,
-          label: 'منع الاختلاط',
-          value: trip.seatLayout.preventGenderMixing ? 'نعم' : 'لا',
+          label: context.l10n.preventGenderMixingLabel,
+          value: trip.seatLayout.preventGenderMixing
+              ? context.l10n.yesLabel
+              : context.l10n.noLabel,
           color: trip.seatLayout.preventGenderMixing
               ? AppColors.error
               : T.outlineVariant(context),
@@ -1777,12 +1804,12 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
 
   Widget _buildSeatLayoutCard(TripModel trip) {
     return SectionCard(
-      title: 'تخطيط المقاعد',
+      title: context.l10n.seatLayoutCardTitle,
       icon: IconsaxPlusBold.profile_2user,
       iconColor: T.primary(context),
       children: [
         Text(
-          'اضغط مطولاً على مقعد أخضر لقفله (حجز خارجي)، أو على مقعد مقفل لفتحه.',
+          context.l10n.seatLayoutLongPressHint,
           style: AppTextStyles.bodySmall.copyWith(
             color: T.textSecondary(context),
           ),
@@ -1819,7 +1846,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'مقعد السائق',
+                      context.l10n.driverSeat,
                       style: AppTextStyles.bodySmall.copyWith(
                         color: T.primary(context),
                       ),
@@ -1836,10 +1863,22 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                 spacing: 16,
                 runSpacing: 8,
                 children: [
-                  _buildLegendItem(AppColors.success, 'متاح'),
-                  _buildLegendItem(T.secondary(context), 'مقفل'),
-                  _buildLegendItem(T.primary(context), 'محجوز - رجل'),
-                  _buildLegendItem(T.accentPink(context), 'محجوز - أنثى'),
+                  _buildLegendItem(
+                    AppColors.success,
+                    context.l10n.legendAvailable,
+                  ),
+                  _buildLegendItem(
+                    T.secondary(context),
+                    context.l10n.legendLocked,
+                  ),
+                  _buildLegendItem(
+                    T.primary(context),
+                    context.l10n.legendBookedMale,
+                  ),
+                  _buildLegendItem(
+                    T.accentPink(context),
+                    context.l10n.legendBookedFemale,
+                  ),
                 ],
               ),
             ],
@@ -1966,7 +2005,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
 
   Widget _buildPassengersCard(List<BookingModel> bookings) {
     return SectionCard(
-      title: 'الركاب (${bookings.length})',
+      title: context.l10n.passengersCardTitle(bookings.length),
       icon: IconsaxPlusBold.profile_2user,
       iconColor: T.primary(context),
       children: [...bookings.map((booking) => _buildPassengerItem(booking))],
@@ -2017,8 +2056,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                   // Show passenger name only if driver has paid to contact
                   Text(
                     booking.hasDriverPaidToContact
-                        ? (booking.userPopulated?.name ?? 'راكب')
-                        : 'راكب مجهول',
+                        ? (booking.userPopulated?.name ??
+                            context.l10n.passengerFallback)
+                        : context.l10n.anonymousPassenger,
                     style: AppTextStyles.titleSmall.copyWith(
                       fontWeight: FontWeight.bold,
                       color: booking.hasDriverPaidToContact
@@ -2037,7 +2077,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          'مقعد $seatText',
+                          context.l10n.seatLabelShort(seatText),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppTextStyles.bodySmall.copyWith(
@@ -2084,7 +2124,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                 ),
               ),
               child: Text(
-                'مؤكد',
+                context.l10n.confirmedBadge,
                 style: AppTextStyles.labelSmall.copyWith(
                   fontWeight: FontWeight.bold,
                   color: T.success(context),
@@ -2099,7 +2139,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
 
   Widget _buildCarImageCard(TripModel trip) {
     return SectionCard(
-      title: 'صورة السيارة',
+      title: context.l10n.carImageSection,
       icon: IconsaxPlusBold.car,
       iconColor: T.primary(context),
       children: [
@@ -2127,7 +2167,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'فشل تحميل الصورة',
+                      context.l10n.imageLoadFailed,
                       style: AppTextStyles.bodyMedium.copyWith(
                         color: T.textSecondary(context),
                       ),
@@ -2144,7 +2184,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
 
   Widget _buildQuickActionsCard(TripModel trip) {
     return SectionCard(
-      title: 'إجراءات سريعة',
+      title: context.l10n.quickActionsTitle,
       icon: IconsaxPlusLinear.setting_2,
       iconColor: T.primary(context),
       children: [
@@ -2153,12 +2193,14 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
             Expanded(
               child: _buildActionButton(
                 icon: IconsaxPlusLinear.share,
-                label: 'مشاركة',
+                label: context.l10n.shareAction,
                 color: T.primary(context),
                 onTap: () {
                   // TODO: Implement share functionality
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('قريباً: ميزة المشاركة')),
+                    SnackBar(
+                      content: Text(context.l10n.shareFeatureComingSoon),
+                    ),
                   );
                 },
               ),
@@ -2167,7 +2209,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
             Expanded(
               child: _buildActionButton(
                 icon: IconsaxPlusLinear.edit,
-                label: 'تعديل',
+                label: context.l10n.editAction,
                 color: AppColors.warning,
                 onTap: () async {
                   final result = await Navigator.pushNamed(

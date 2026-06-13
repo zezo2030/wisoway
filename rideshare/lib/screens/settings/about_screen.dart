@@ -3,6 +3,7 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/theme/colors.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
@@ -34,8 +35,10 @@ class _AboutScreenState extends State<AboutScreen> {
   @override
   Widget build(BuildContext context) {
     final versionLabel = _version.isEmpty
-        ? 'جارٍ تحميل الإصدار...'
-        : 'الإصدار $_version${_buildNumber.isNotEmpty ? '+$_buildNumber' : ''}';
+        ? context.l10n.loadingVersion
+        : context.l10n.versionLabel(
+            '$_version${_buildNumber.isNotEmpty ? '+$_buildNumber' : ''}',
+          );
 
     return Scaffold(
       body: Container(
@@ -103,7 +106,7 @@ class _AboutScreenState extends State<AboutScreen> {
                     ),
                     const SizedBox(height: 14),
                     Text(
-                      'منصة تنقل ذكية تربط السائقين والركاب بتجربة عربية واضحة، سريعة، وموثوقة.',
+                      context.l10n.aboutAppTagline,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14,
@@ -116,11 +119,11 @@ class _AboutScreenState extends State<AboutScreen> {
               ),
               const SizedBox(height: 18),
               _InfoCard(
-                title: 'ما الذي يميز VisionWay؟',
-                items: const [
-                  'واجهة عربية أولًا مع تجربة استخدام واضحة وسريعة.',
-                  'إدارة مرنة للرحلات والحجوزات والتواصل بين السائق والراكب.',
-                  'تصميم يركز على الثقة والبساطة وسهولة الوصول للمعلومات المهمة.',
+                title: context.l10n.whatMakesVisionWaySpecial,
+                items: [
+                  context.l10n.aboutFeatureArabicFirst,
+                  context.l10n.aboutFeatureFlexibleManagement,
+                  context.l10n.aboutFeatureTrustDesign,
                 ],
               ),
             ],
@@ -150,7 +153,7 @@ class _TopBar extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Text(
-          'حول التطبيق',
+          context.l10n.aboutApp,
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w700,

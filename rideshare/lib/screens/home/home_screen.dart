@@ -8,6 +8,7 @@ import '../../models/location_model.dart';
 import '../../core/theme/colors.dart';
 import '../../core/services/location_service.dart';
 import '../../core/utils/responsive_layout.dart';
+import '../../l10n/l10n_extensions.dart';
 import '../../widgets/location_picker_widget.dart';
 import 'home_drawer.dart';
 import 'tabs/home_tab_content.dart';
@@ -74,21 +75,19 @@ class _HomeScreenState extends State<HomeScreen> {
       final errorStr = e.toString();
       if (errorStr.contains('LOCATION_SERVICE_DISABLED')) {
         _showLocationRequirementDialog(
-          title: 'خدمات الموقع معطلة',
-          message:
-              'يرجى تفعيل خدمات الموقع (GPS) لتتمكن من استخدام التطبيق ومشاركة موقعك.',
+          title: context.l10n.locationServicesDisabledTitle,
+          message: context.l10n.locationServicesDisabledMessage,
           onAction: () async {
             await _locationService.openLocationSettings();
             _loadUserLocation();
           },
-          actionLabel: 'تفعيل',
+          actionLabel: context.l10n.enable,
         );
       } else if (errorStr.contains('LOCATION_PERMISSION_DENIED') ||
           errorStr.contains('LOCATION_PERMISSION_PERMANENTLY_DENIED')) {
         _showLocationRequirementDialog(
-          title: 'تصريح الموقع مطلوب',
-          message:
-              'يحتاج التطبيق إلى تصريح الوصول للموقع لتتمكن من مشاركة رحلاتك.',
+          title: context.l10n.locationPermissionRequiredTitle,
+          message: context.l10n.locationPermissionRequiredMessage,
           onAction: () async {
             if (errorStr.contains('PERMANENTLY_DENIED')) {
               await _locationService.openAppSettings();
@@ -96,16 +95,16 @@ class _HomeScreenState extends State<HomeScreen> {
               _loadUserLocation();
             }
           },
-          actionLabel: 'منح التصريح',
+          actionLabel: context.l10n.grantPermission,
         );
       }
 
       setState(() {
         _userLocation = LocationModel(
-          name: 'عمّان',
+          name: context.l10n.defaultCityName,
           latitude: 31.9539,
           longitude: 35.9106,
-          address: 'عمّان، الأردن',
+          address: context.l10n.defaultCityAddress,
         );
       });
     }
@@ -130,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
-              'لاحقاً',
+              context.l10n.later,
               style: GoogleFonts.tajawal(color: T.onSurfaceVariant(context)),
             ),
           ),
@@ -157,7 +156,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => LocationPickerWidget(
-          title: 'اختر موقعك',
+          title: context.l10n.chooseYourLocation,
           initialLocation: _userLocation,
           onLocationSelected: (location) {},
         ),
@@ -279,16 +278,16 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             destinations: [
-              const NavigationRailDestination(
-                icon: Icon(IconsaxPlusLinear.home),
-                selectedIcon: Icon(IconsaxPlusBold.home),
-                label: Text('الرئيسية'),
+              NavigationRailDestination(
+                icon: const Icon(IconsaxPlusLinear.home),
+                selectedIcon: const Icon(IconsaxPlusBold.home),
+                label: Text(context.l10n.home),
               ),
               if (!isDriver)
-                const NavigationRailDestination(
-                  icon: Icon(IconsaxPlusLinear.search_normal),
-                  selectedIcon: Icon(IconsaxPlusBold.search_normal),
-                  label: Text('بحث'),
+                NavigationRailDestination(
+                  icon: const Icon(IconsaxPlusLinear.search_normal),
+                  selectedIcon: const Icon(IconsaxPlusBold.search_normal),
+                  label: Text(context.l10n.searchTab),
                 ),
               NavigationRailDestination(
                 icon: Icon(
@@ -300,12 +299,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   isDriver ? IconsaxPlusBold.car : IconsaxPlusBold.bookmark,
                   color: T.primary(context),
                 ),
-                label: Text(isDriver ? 'رحلاتي' : 'حجوزاتي'),
+                label: Text(
+                  isDriver ? context.l10n.myTripsTitle : context.l10n.myBookings,
+                ),
               ),
-              const NavigationRailDestination(
-                icon: Icon(IconsaxPlusLinear.profile),
-                selectedIcon: Icon(IconsaxPlusBold.profile),
-                label: Text('البروفايل'),
+              NavigationRailDestination(
+                icon: const Icon(IconsaxPlusLinear.profile),
+                selectedIcon: const Icon(IconsaxPlusBold.profile),
+                label: Text(context.l10n.profileTabLabel),
               ),
             ],
           ),
@@ -374,7 +375,7 @@ class _HomeScreenState extends State<HomeScreen> {
       BottomNavigationBarItem(
         icon: const Icon(IconsaxPlusLinear.home),
         activeIcon: Icon(IconsaxPlusBold.home, color: T.primary(context)),
-        label: 'الرئيسية',
+        label: context.l10n.home,
       ),
       if (!isDriver)
         BottomNavigationBarItem(
@@ -383,7 +384,7 @@ class _HomeScreenState extends State<HomeScreen> {
             IconsaxPlusBold.search_normal,
             color: T.primary(context),
           ),
-          label: 'بحث',
+          label: context.l10n.searchTab,
         ),
       BottomNavigationBarItem(
         icon: isDriver
@@ -392,12 +393,12 @@ class _HomeScreenState extends State<HomeScreen> {
         activeIcon: isDriver
             ? Icon(IconsaxPlusBold.car, color: T.primary(context))
             : Icon(IconsaxPlusBold.bookmark, color: T.primary(context)),
-        label: isDriver ? 'رحلاتي' : 'حجوزاتي',
+        label: isDriver ? context.l10n.myTripsTitle : context.l10n.myBookings,
       ),
       BottomNavigationBarItem(
         icon: const Icon(IconsaxPlusLinear.profile),
         activeIcon: Icon(IconsaxPlusBold.profile, color: T.primary(context)),
-        label: 'الملف الشخصي',
+        label: context.l10n.profileTitle,
       ),
     ];
 

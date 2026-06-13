@@ -9,6 +9,7 @@ import '../../core/api/api_client.dart';
 import '../../models/wallet_account_model.dart';
 import '../../models/wallet_transaction_model.dart';
 import '../../widgets/common/empty_state.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class PassengerWalletScreen extends StatefulWidget {
   const PassengerWalletScreen({super.key});
@@ -64,24 +65,24 @@ class _PassengerWalletScreenState extends State<PassengerWalletScreen> {
     }
   }
 
-  String _typeLabel(String type) {
+  String _typeLabel(BuildContext context, String type) {
     switch (type) {
       case 'topup':
-        return 'شحن';
+        return context.l10n.walletTxTopup;
       case 'trip_payment':
-        return 'دفع رحلة';
+        return context.l10n.walletTxTripPayment;
       case 'trip_debit':
-        return 'خصم رحلة';
+        return context.l10n.walletTxTripDebit;
       case 'refund':
-        return 'استرداد';
+        return context.l10n.walletTxRefund;
       case 'payout':
-        return 'سحب أرباح';
+        return context.l10n.walletTxPayout;
       case 'adjustment':
-        return 'تعديل رصيد';
+        return context.l10n.walletTxAdjustment;
       case 'hold':
-        return 'حجز مبلغ';
+        return context.l10n.walletTxHold;
       case 'release_hold':
-        return 'إلغاء حجز';
+        return context.l10n.walletTxReleaseHold;
       default:
         return type;
     }
@@ -104,7 +105,7 @@ class _PassengerWalletScreenState extends State<PassengerWalletScreen> {
         backgroundColor: T.surface(context),
         foregroundColor: T.onSurface(context),
         title: Text(
-          'محفظتي',
+          context.l10n.walletMyWallet,
           style: AppTextStyles.titleMedium.copyWith(fontSize: 20),
         ),
       ),
@@ -123,7 +124,7 @@ class _PassengerWalletScreenState extends State<PassengerWalletScreen> {
                     _buildPendingChargesShortcut(context),
                     const SizedBox(height: 8),
                     Text(
-                      'تُستخدم لدفع تكلفة الحجز عند تفعيل الدفع من المحفظة. الشحن بالدينار الأردني (JOD) عبر CliQ أو تحويل يدوي مع إثبات؛ يُضاف الرصيد بعد التأكد أو موافقة الإدارة حسب الطريقة.',
+                      context.l10n.walletTopUpDescription,
                       style: AppTextStyles.bodySmall.copyWith(
                         color: T.onSurfaceVariant(context),
                       ),
@@ -133,13 +134,13 @@ class _PassengerWalletScreenState extends State<PassengerWalletScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'سجل الحركات',
+                          context.l10n.walletTransactionHistory,
                           style: AppTextStyles.titleMedium.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         Semantics(
-                          label: 'شحن المحفظة',
+                          label: context.l10n.walletTopUpSemantics,
                           button: true,
                           child: TextButton.icon(
                             onPressed: _openTopUpRequest,
@@ -148,7 +149,7 @@ class _PassengerWalletScreenState extends State<PassengerWalletScreen> {
                               size: 20,
                             ),
                             label: Text(
-                              'شحن',
+                              context.l10n.walletTopUp,
                               style: AppTextStyles.titleMedium.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
@@ -164,10 +165,10 @@ class _PassengerWalletScreenState extends State<PassengerWalletScreen> {
                             child: Center(child: CircularProgressIndicator()),
                           )
                         : _transactions.isEmpty
-                        ? const Padding(
-                            padding: EdgeInsets.all(24),
+                        ? Padding(
+                            padding: const EdgeInsets.all(24),
                             child: EmptyState(
-                              title: 'لا توجد حركات بعد',
+                              title: context.l10n.walletNoTransactionsYet,
                               icon: IconsaxPlusLinear.wallet,
                               showCircleBackground: false,
                               iconSize: 48,
@@ -187,13 +188,13 @@ class _PassengerWalletScreenState extends State<PassengerWalletScreen> {
               ),
             ),
       floatingActionButton: Semantics(
-        label: 'شحن المحفظة',
+        label: context.l10n.walletTopUpSemantics,
         button: true,
         child: FloatingActionButton.extended(
           onPressed: _openTopUpRequest,
           icon: const Icon(IconsaxPlusBold.wallet_add),
           label: Text(
-            'شحن',
+            context.l10n.walletTopUp,
             style: AppTextStyles.titleMedium.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -236,14 +237,14 @@ class _PassengerWalletScreenState extends State<PassengerWalletScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'الرسوم المستحقة',
+                      context.l10n.walletPendingChargesTitle,
                       style: AppTextStyles.titleSmall.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'عرض الغرامات والرسوم المعلّقة وشحن المحفظة',
+                      context.l10n.walletPendingChargesSubtitle,
                       style: AppTextStyles.bodySmall.copyWith(
                         color: T.onSurfaceVariant(context),
                       ),
@@ -296,7 +297,7 @@ class _PassengerWalletScreenState extends State<PassengerWalletScreen> {
               ),
               const SizedBox(width: 12),
               Text(
-                'رصيد المحفظة',
+                context.l10n.walletBalanceLabel,
                 style: AppTextStyles.titleSmall.copyWith(
                   color: AppColors.white.withValues(alpha: 0.7),
                 ),
@@ -313,7 +314,7 @@ class _PassengerWalletScreenState extends State<PassengerWalletScreen> {
           if (!active) ...[
             const SizedBox(height: 8),
             Text(
-              'الحساب غير مفعّل — تواصل مع الدعم',
+              context.l10n.walletAccountInactive,
               style: AppTextStyles.bodySmall.copyWith(
                 color: AppColors.white.withValues(alpha: 0.7),
               ),
@@ -363,7 +364,7 @@ class _PassengerWalletScreenState extends State<PassengerWalletScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _typeLabel(t.type),
+                  _typeLabel(context, t.type),
                   style: AppTextStyles.bodyLarge.copyWith(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,

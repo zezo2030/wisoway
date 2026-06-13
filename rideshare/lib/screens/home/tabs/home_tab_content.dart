@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../../core/constants/route_names.dart';
 import '../../../core/theme/colors.dart';
+import '../../../l10n/l10n_extensions.dart';
 import '../../../models/location_model.dart';
 import '../../../models/trip_model.dart';
 import '../../../models/user_model.dart';
@@ -90,20 +91,20 @@ class _HomeTabContentState extends State<HomeTabContent> {
         children: [
           Builder(
             builder: (context) => Semantics(
-              label: 'فتح القائمة',
+              label: context.l10n.openMenu,
               button: true,
               child: IconButton(
                 icon: const Icon(IconsaxPlusLinear.menu_1, size: 28),
                 onPressed: widget.onOpenDrawer,
                 color: T.onSurface(context),
-                tooltip: 'القائمة الجانبية',
+                tooltip: context.l10n.sideMenu,
               ),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'إلى أين تريد الذهاب؟',
+              context.l10n.whereDoYouWantToGo,
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
@@ -166,7 +167,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
         ),
         child: TextField(
           decoration: InputDecoration(
-            hintText: 'هل لديك مكان في الاعتبار؟',
+            hintText: context.l10n.haveAPlaceInMind,
             hintStyle: TextStyle(
               color: T.onSurfaceVariant(context).withValues(alpha: 0.6),
               fontSize: 16,
@@ -241,7 +242,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'موقعك الحالي',
+                  context.l10n.currentLocation,
                   style: TextStyle(
                     fontSize: 12,
                     color: T.onSurfaceVariant(context),
@@ -249,7 +250,8 @@ class _HomeTabContentState extends State<HomeTabContent> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  widget.userLocation?.name ?? 'جاري تحديد الموقع...',
+                  widget.userLocation?.name ??
+                      context.l10n.determiningLocation,
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -278,7 +280,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
                     size: 20,
                   ),
                   onPressed: widget.onRefreshLocation,
-                  tooltip: 'تحديد الموقع تلقائياً',
+                  tooltip: context.l10n.detectLocationAutomatically,
                 ),
                 IconButton(
                   icon: Icon(
@@ -287,7 +289,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
                     size: 20,
                   ),
                   onPressed: widget.onChangeLocation,
-                  tooltip: 'اختيار الموقع يدوياً',
+                  tooltip: context.l10n.chooseLocationManually,
                 ),
               ],
             ),
@@ -310,7 +312,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'رحلات قريبة منك',
+                context.l10n.nearbyTrips,
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -322,7 +324,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
                   Navigator.pushNamed(context, RouteNames.tripsList);
                 },
                 child: Text(
-                  'عرض الكل',
+                  context.l10n.viewAll,
                   style: TextStyle(
                     fontSize: 16,
                     color: T.primary(context),
@@ -381,7 +383,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'خطأ في تحميل الرحلات',
+                          context.l10n.errorLoadingTrips,
                           style: TextStyle(color: T.onSurfaceVariant(context)),
                         ),
                       ],
@@ -395,8 +397,8 @@ class _HomeTabContentState extends State<HomeTabContent> {
               if (trips.isEmpty) {
                 return EmptyState(
                   icon: IconsaxPlusBold.location,
-                  title: 'لا توجد رحلات قريبة',
-                  subtitle: 'جرب تغيير موقعك أو عرض جميع الرحلات',
+                  title: context.l10n.noNearbyTripsTitle,
+                  subtitle: context.l10n.noNearbyTripsSubtitle,
                   showCircleBackground: false,
                   iconSize: 48,
                   action: ElevatedButton(
@@ -406,7 +408,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: T.primary(context),
                     ),
-                    child: const Text('عرض جميع الرحلات'),
+                    child: Text(context.l10n.viewAllTrips),
                   ),
                 );
               }
@@ -445,7 +447,9 @@ class _HomeTabContentState extends State<HomeTabContent> {
                           onPressed: () {
                             Navigator.pushNamed(context, RouteNames.tripsList);
                           },
-                          child: Text('عرض ${trips.length - 5} رحلة أخرى'),
+                          child: Text(
+                            context.l10n.showMoreTrips(trips.length - 5),
+                          ),
                         ),
                       ),
                     ),

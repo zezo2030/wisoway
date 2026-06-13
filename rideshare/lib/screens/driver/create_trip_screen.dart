@@ -13,6 +13,7 @@ import '../../core/theme/text_styles.dart';
 import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class CreateTripScreen extends StatefulWidget {
   const CreateTripScreen({super.key});
@@ -47,15 +48,36 @@ class _CreateTripScreenState extends State<CreateTripScreen>
   final Set<String> _selectedWeekdays = {};
   DateTime? _recurrenceUntil;
 
-  static const Map<String, String> _weekdayLabels = {
-    'sun': 'أحد',
-    'mon': 'اثنين',
-    'tue': 'ثلاثاء',
-    'wed': 'أربعاء',
-    'thu': 'خميس',
-    'fri': 'جمعة',
-    'sat': 'سبت',
-  };
+  static const List<String> _weekdayKeys = [
+    'sun',
+    'mon',
+    'tue',
+    'wed',
+    'thu',
+    'fri',
+    'sat',
+  ];
+
+  String _weekdayLabel(BuildContext context, String key) {
+    switch (key) {
+      case 'sun':
+        return context.l10n.weekdaySun;
+      case 'mon':
+        return context.l10n.weekdayMon;
+      case 'tue':
+        return context.l10n.weekdayTue;
+      case 'wed':
+        return context.l10n.weekdayWed;
+      case 'thu':
+        return context.l10n.weekdayThu;
+      case 'fri':
+        return context.l10n.weekdayFri;
+      case 'sat':
+        return context.l10n.weekdaySat;
+      default:
+        return key;
+    }
+  }
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -107,7 +129,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
       context,
       MaterialPageRoute(
         builder: (context) => LocationPickerWidget(
-          title: 'اختر نقطة الانطلاق',
+          title: context.l10n.selectOriginPoint,
           initialLocation: _fromLocation,
           onLocationSelected: (_) {},
         ),
@@ -126,7 +148,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
       context,
       MaterialPageRoute(
         builder: (context) => LocationPickerWidget(
-          title: 'اختر الوجهة',
+          title: context.l10n.selectDestination,
           initialLocation: _toLocation,
           onLocationSelected: (_) {},
         ),
@@ -199,11 +221,11 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     if (_fromLocation == null ||
         _toLocation == null ||
         _departureTime == null) {
-      _showError('الرجاء إكمال بيانات المواقع والوقت');
+      _showError(context.l10n.completeLocationAndTimeData);
       return;
     }
     if (_departureTime!.isBefore(DateTime.now())) {
-      _showError('وقت الانطلاق يجب أن يكون في المستقبل');
+      _showError(context.l10n.departureTimeMustBeFuture);
       return;
     }
 
@@ -239,7 +261,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
       );
 
       if (tripId != null && mounted) {
-        _showSuccess('تم إنشاء الرحلة بنجاح');
+        _showSuccess(context.l10n.tripCreatedSuccess);
         Navigator.pop(context, tripId);
       } else {
         throw Exception('فشل إنشاء الرحلة');
@@ -320,7 +342,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'حسابك كسائق قيد المراجعة',
+                  context.l10n.driverAccountUnderReview,
                   style: AppTextStyles.titleLarge.copyWith(
                     fontWeight: FontWeight.bold,
                     color: T.onSurface(context).withValues(alpha: 0.87),
@@ -329,7 +351,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'لا يمكنك إنشاء رحلات حتى تتم الموافقة على بياناتك من الإدارة. يمكنك حالياً تصفح الرحلات والحجز كراكب.',
+                  context.l10n.driverAccountUnderReviewBody,
                   style: AppTextStyles.bodyLarge.copyWith(
                     fontSize: 15,
                     color: T.onSurface(context).withValues(alpha: 0.54),
@@ -341,7 +363,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                   onPressed: () => Navigator.maybePop(context),
                   icon: const Icon(Icons.arrow_back),
                   label: Text(
-                    'العودة للرئيسية',
+                    context.l10n.backToHome,
                     style: AppTextStyles.titleMedium.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -372,7 +394,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
         elevation: 0,
         centerTitle: true,
         title: Text(
-          'إنشاء رحلة جديدة',
+          context.l10n.createNewTripTitle,
           style: AppTextStyles.titleMedium.copyWith(
             fontWeight: FontWeight.bold,
             color: T.onPrimary(context),
@@ -380,7 +402,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
         ),
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new, color: T.onPrimary(context)),
-          tooltip: 'رجوع',
+          tooltip: context.l10n.backLabel,
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -488,7 +510,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
           ),
           const SizedBox(height: 16),
           Text(
-            'شارك رحلتك القادمة',
+            context.l10n.shareYourNextTrip,
             style: AppTextStyles.titleLarge.copyWith(
               fontWeight: FontWeight.w800,
               color: T.onSurface(context),
@@ -496,7 +518,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            'قم بتحديد وجهتك ووقت الانطلاق لتبدأ مشاركة رحلتك مع الركاب.',
+            context.l10n.createTripHeaderSubtitle,
             textAlign: TextAlign.center,
             style: AppTextStyles.bodyMedium.copyWith(
               color: T.onSurfaceVariant(context),
@@ -520,7 +542,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'مسار الرحلة',
+            context.l10n.tripRoute,
             style: AppTextStyles.titleMedium.copyWith(
               fontWeight: FontWeight.bold,
               color: T.onSurface(context),
@@ -542,17 +564,17 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                 children: [
                   _buildInteractiveField(
                     controller: _fromController,
-                    hint: 'أين أنت الآن؟',
-                    icon: Icons.my_location_rounded,
-                    iconColor: T.primary(context),
+                    hint: context.l10n.departurePointTitle,
+                    icon: Icons.trip_origin,
+                    iconColor: T.success(context),
                     onTap: _selectFromLocation,
                   ),
                   const SizedBox(height: 16),
                   _buildInteractiveField(
                     controller: _toController,
-                    hint: 'أين وجهتك؟',
-                    icon: Icons.location_on_rounded,
-                    iconColor: T.primary(context),
+                    hint: context.l10n.arrivalPointTitle,
+                    icon: Icons.location_on,
+                    iconColor: T.error(context),
                     onTap: _selectToLocation,
                   ),
                 ],
@@ -570,7 +592,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'تفاصيل الانطلاق والسعر',
+            context.l10n.departureAndPriceDetails,
             style: AppTextStyles.titleMedium.copyWith(
               fontWeight: FontWeight.bold,
               color: T.onSurface(context),
@@ -583,7 +605,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                   ? DateFormat('yyyy-MM-dd hh:mm a').format(_departureTime!)
                   : '',
             ),
-            hint: 'وقت الانطلاق',
+            hint: context.l10n.departureTimeLabel,
             icon: IconsaxPlusBroken.calendar_1,
             iconColor: T.secondary(context),
             onTap: _selectDepartureTime,
@@ -598,7 +620,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
             decoration: InputDecoration(
               filled: true,
               fillColor: T.surface(context),
-              hintText: 'السعر لكل مقعد',
+              hintText: context.l10n.pricePerSeatHint,
               hintStyle: AppTextStyles.bodyLarge.copyWith(
                 color: AppColors.slate400,
               ),
@@ -633,8 +655,10 @@ class _CreateTripScreenState extends State<CreateTripScreen>
               ),
             ),
             validator: (v) {
-              if (v == null || v.isEmpty) return 'أدخل السعر';
-              if (double.tryParse(v) == null) return 'أدخل رقماً صحيحاً';
+              if (v == null || v.isEmpty) return context.l10n.enterPrice;
+              if (double.tryParse(v) == null) {
+                return context.l10n.enterValidNumber;
+              }
               return null;
             },
           ),
@@ -660,7 +684,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'مقاعد السيارة',
+                context.l10n.vehicleSeats,
                 style: AppTextStyles.titleMedium.copyWith(
                   fontWeight: FontWeight.bold,
                   color: T.onSurface(context),
@@ -677,7 +701,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    '$totalSeats مقعد',
+                    context.l10n.seatsCount(totalSeats),
                     style: AppTextStyles.titleMedium.copyWith(
                       fontWeight: FontWeight.bold,
                       color: T.primary(context),
@@ -695,8 +719,8 @@ class _CreateTripScreenState extends State<CreateTripScreen>
           else
             Text(
               layout != null
-                  ? 'تخطيط المقاعد ومنع الاختلاط مأخوذان من إعدادات سيارتك ويُطبَّقان على كل رحلاتك.'
-                  : 'لم تضبط بعد تخطيط مقاعد لسيارتك — سيتم استخدام تخطيط افتراضي. اضبطه من إعدادات السيارة لتجربة أدق.',
+                  ? context.l10n.seatLayoutFromSettings
+                  : context.l10n.noSeatLayoutSet,
               style: AppTextStyles.bodyMedium.copyWith(
                 color: T.onSurfaceVariant(context),
               ),
@@ -709,7 +733,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
             },
             icon: Icon(IconsaxPlusBroken.car, color: T.primary(context)),
             label: Text(
-              'تعديل إعدادات السيارة',
+              context.l10n.editVehicleSettings,
               style: AppTextStyles.bodyLarge.copyWith(
                 color: T.primary(context),
                 fontWeight: FontWeight.bold,
@@ -785,7 +809,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
         ),
         child: Semantics(
           button: true,
-          label: 'تأكيد ونشر الرحلة',
+          label: context.l10n.confirmAndPublishTrip,
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.transparent,
@@ -805,7 +829,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                     ),
                   )
                 : Text(
-                    'تأكيد ونشر الرحلة',
+                    context.l10n.confirmAndPublishTrip,
                     style: AppTextStyles.titleMedium.copyWith(
                       fontWeight: FontWeight.bold,
                       color: T.onPrimary(context),
@@ -826,7 +850,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'محطات التوقف',
+                context.l10n.stopsLabel,
                 style: AppTextStyles.titleMedium.copyWith(
                   fontWeight: FontWeight.bold,
                   color: T.onSurface(context),
@@ -835,7 +859,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
               Row(
                 children: [
                   Text(
-                    'اختياري',
+                    context.l10n.optionalLabel,
                     style: AppTextStyles.bodyMedium.copyWith(
                       color: T.outlineVariant(context),
                     ),
@@ -844,7 +868,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                   if (_stops.length < 5)
                     Semantics(
                       button: true,
-                      label: 'إضافة محطة توقف',
+                      label: context.l10n.addStop,
                       child: GestureDetector(
                         onTap: _addStop,
                         child: Container(
@@ -868,7 +892,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
           if (_stops.isEmpty) ...[
             const SizedBox(height: 12),
             Text(
-              'أضف حتى 5 محطات توقف وسيطة على طول الطريق.',
+              context.l10n.stopsHint,
               style: AppTextStyles.bodyMedium.copyWith(
                 color: T.onSurfaceVariant(context),
               ),
@@ -923,7 +947,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                       ),
                       Semantics(
                         button: true,
-                        label: 'حذف المحطة ${i + 1}',
+                        label: context.l10n.deleteStopNumber(i + 1),
                         child: GestureDetector(
                           onTap: () => setState(() => _stops.removeAt(i)),
                           child: Padding(
@@ -952,7 +976,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
       context,
       MaterialPageRoute(
         builder: (context) => LocationPickerWidget(
-          title: 'اختر محطة توقف ${_stops.length + 1}',
+          title: context.l10n.selectStopNumber(_stops.length + 1),
           onLocationSelected: (_) {},
         ),
       ),
@@ -971,14 +995,14 @@ class _CreateTripScreenState extends State<CreateTripScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'ملاحظات للركاب',
+                context.l10n.notesForPassengers,
                 style: AppTextStyles.titleMedium.copyWith(
                   fontWeight: FontWeight.bold,
                   color: T.onSurface(context),
                 ),
               ),
               Text(
-                'اختياري',
+                context.l10n.optionalLabel,
                 style: AppTextStyles.bodyMedium.copyWith(
                   color: T.outlineVariant(context),
                 ),
@@ -996,7 +1020,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
             decoration: InputDecoration(
               filled: true,
               fillColor: T.surface(context),
-              hintText: 'مثال: التوقف في صيدلية البتراء، لا تأخر أكثر من 5 دقائق...',
+              hintText: context.l10n.tripNotesHint,
               hintStyle: AppTextStyles.bodyMedium.copyWith(
                 color: T.onSurfaceVariant(context),
               ),
@@ -1032,14 +1056,18 @@ class _CreateTripScreenState extends State<CreateTripScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'تكرار الرحلة',
+                context.l10n.tripRecurrence,
                 style: AppTextStyles.titleMedium.copyWith(
                   fontWeight: FontWeight.bold,
                   color: T.onSurface(context),
                 ),
               ),
               Semantics(
-                label: 'تفعيل تكرار الرحلة: ${_enableRecurrence ? "مفعّل" : "معطّل"}',
+                label: context.l10n.enableTripRecurrenceSemantic(
+                  _enableRecurrence
+                      ? context.l10n.recurrenceStateEnabled
+                      : context.l10n.recurrenceStateDisabled,
+                ),
                 child: Switch(
                   value: _enableRecurrence,
                   activeThumbColor: T.primary(context).withValues(alpha: 0.3),
@@ -1052,7 +1080,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                'فعّل هذا الخيار لجدولة الرحلة بشكل تلقائي (يومياً أو أسبوعياً).',
+                context.l10n.recurrenceDisabledHint,
                 style: AppTextStyles.bodyMedium.copyWith(
                   color: T.onSurfaceVariant(context),
                 ),
@@ -1072,7 +1100,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                 children: [
                   Expanded(
                     child: _buildModeToggle(
-                      title: 'يومياً',
+                      title: context.l10n.recurrenceDaily,
                       isActive: _recurrenceFrequency == 'daily',
                       onTap: () => setState(() {
                         _recurrenceFrequency = 'daily';
@@ -1082,7 +1110,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                   ),
                   Expanded(
                     child: _buildModeToggle(
-                      title: 'أسبوعياً',
+                      title: context.l10n.recurrenceWeekly,
                       isActive: _recurrenceFrequency == 'weekly',
                       onTap: () =>
                           setState(() => _recurrenceFrequency = 'weekly'),
@@ -1096,7 +1124,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
             if (_recurrenceFrequency == 'weekly') ...[
               const SizedBox(height: 16),
               Text(
-                'أيام التكرار',
+                context.l10n.recurrenceDaysLabel,
                 style: AppTextStyles.labelLarge.copyWith(
                   color: T.onSurface(context).withValues(alpha: 0.54),
                 ),
@@ -1105,13 +1133,14 @@ class _CreateTripScreenState extends State<CreateTripScreen>
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: _weekdayLabels.entries.map((entry) {
-                  final key = entry.key;
-                  final label = entry.value;
+                children: _weekdayKeys.map((key) {
+                  final label = _weekdayLabel(context, key);
                   final selected = _selectedWeekdays.contains(key);
                   return Semantics(
                     button: true,
-                    label: '$label ${selected ? "(محدد)" : ""}',
+                    label: selected
+                        ? context.l10n.weekdaySelectedSemantic(label)
+                        : label,
                     child: FilterChip(
                       label: Text(
                         label,
@@ -1154,7 +1183,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                     ? DateFormat('yyyy-MM-dd').format(_recurrenceUntil!)
                     : '',
               ),
-              hint: 'تاريخ انتهاء التكرار (اختياري)',
+              hint: context.l10n.recurrenceUntilHint,
               icon: IconsaxPlusBroken.calendar_1,
               iconColor: T.secondary(context),
               onTap: _selectRecurrenceUntil,
@@ -1173,7 +1202,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
       ),
       firstDate: DateTime.now().add(const Duration(days: 1)),
       lastDate: DateTime.now().add(const Duration(days: 365)),
-      helpText: 'تاريخ انتهاء التكرار',
+      helpText: context.l10n.recurrenceUntilHelp,
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(

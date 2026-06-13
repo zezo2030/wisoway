@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../../core/constants/route_names.dart';
 import '../../../core/theme/colors.dart';
+import '../../../l10n/l10n_extensions.dart';
 import '../../../models/booking_model.dart';
 import '../../../models/trip_model.dart';
 import '../../../models/user_model.dart';
@@ -65,7 +66,7 @@ class _BookingsTabState extends State<BookingsTab> {
       backgroundColor: T.surface(context),
       appBar: AppBar(
         title: Text(
-          'رحلاتي',
+          context.l10n.myTripsTitle,
           style: GoogleFonts.tajawal(fontWeight: FontWeight.bold),
         ),
         automaticallyImplyLeading: false,
@@ -78,7 +79,7 @@ class _BookingsTabState extends State<BookingsTab> {
             ),
           ),
           Semantics(
-            label: 'إنشاء رحلة جديدة',
+            label: context.l10n.createNewTrip,
             button: true,
             child: Container(
               margin: const EdgeInsets.only(left: 8),
@@ -92,7 +93,7 @@ class _BookingsTabState extends State<BookingsTab> {
                 onPressed: () {
                   Navigator.pushNamed(context, RouteNames.createTrip);
                 },
-                tooltip: 'إنشاء رحلة جديدة',
+                tooltip: context.l10n.createNewTrip,
               ),
             ),
           ),
@@ -159,7 +160,7 @@ class _BookingsTabState extends State<BookingsTab> {
         backgroundColor: T.surface(context),
         appBar: AppBar(
           title: Text(
-            'حجوزاتي',
+            context.l10n.myBookings,
             style: GoogleFonts.tajawal(fontWeight: FontWeight.bold),
           ),
           automaticallyImplyLeading: false,
@@ -174,7 +175,7 @@ class _BookingsTabState extends State<BookingsTab> {
             ),
           ],
         ),
-        body: const Center(child: Text('يجب تسجيل الدخول')),
+        body: Center(child: Text(context.l10n.mustSignIn)),
       );
     }
 
@@ -182,7 +183,7 @@ class _BookingsTabState extends State<BookingsTab> {
       backgroundColor: T.surface(context),
       appBar: AppBar(
         title: Text(
-          'حجوزاتي',
+          context.l10n.myBookings,
           style: GoogleFonts.tajawal(fontWeight: FontWeight.bold),
         ),
         automaticallyImplyLeading: false,
@@ -221,17 +222,17 @@ class _BookingsTabState extends State<BookingsTab> {
               if (bookings.isEmpty) {
                 return EmptyState(
                   icon: IconsaxPlusBold.bookmark,
-                  title: 'حجوزاتي',
-                  subtitle: 'لا توجد حجوزات حالياً',
+                  title: context.l10n.myBookings,
+                  subtitle: context.l10n.noBookingsCurrently,
                   action: Semantics(
-                    label: 'تصفح الرحلات',
+                    label: context.l10n.browseTrips,
                     button: true,
                     child: ElevatedButton.icon(
                       onPressed: () {
                         Navigator.pushNamed(context, RouteNames.tripsList);
                       },
                       icon: const Icon(IconsaxPlusBold.search_normal),
-                      label: const Text('تصفح الرحلات'),
+                      label: Text(context.l10n.browseTrips),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: T.primary(context),
                         padding: const EdgeInsets.symmetric(
@@ -270,7 +271,7 @@ class _BookingsTabState extends State<BookingsTab> {
                   padding: const EdgeInsets.all(20),
                   children: [
                     if (upcoming.isNotEmpty) ...[
-                      _buildSectionTitle('قادمة'),
+                      _buildSectionTitle(context.l10n.upcoming),
                       const SizedBox(height: 12),
                       ...upcoming.map((booking) {
                         final trip =
@@ -297,7 +298,7 @@ class _BookingsTabState extends State<BookingsTab> {
                     ],
                     if (past.isNotEmpty) ...[
                       if (upcoming.isNotEmpty) const SizedBox(height: 24),
-                      _buildSectionTitle('سابقة'),
+                      _buildSectionTitle(context.l10n.past),
                       const SizedBox(height: 12),
                       ...past.map((booking) {
                         final trip =
@@ -361,19 +362,22 @@ class _BookingsTabState extends State<BookingsTab> {
             children: [
               Icon(IconsaxPlusBold.warning_2, color: AppColors.error, size: 22),
               const SizedBox(width: 8),
-              Text('لا يمكن الإلغاء',
+              Text(context.l10n.cannotCancel,
                   style: GoogleFonts.tajawal(fontWeight: FontWeight.bold)),
             ],
           ),
           content: Text(
-            'لا يمكن إلغاء الحجز خلال 12 ساعة من موعد الرحلة.\n\n'
-            'موعد الرحلة: ${departureTime != null ? _formatDeparture(departureTime) : "غير معروف"}',
+            context.l10n.cannotCancelWithin12Hours(
+              departureTime != null
+                  ? _formatDeparture(departureTime)
+                  : context.l10n.unknown,
+            ),
             style: GoogleFonts.tajawal(height: 1.5),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: Text('حسناً',
+              child: Text(context.l10n.ok,
                   style: GoogleFonts.tajawal(fontWeight: FontWeight.bold)),
             ),
           ],
@@ -393,7 +397,7 @@ class _BookingsTabState extends State<BookingsTab> {
           children: [
             Icon(IconsaxPlusBold.warning_2, color: AppColors.warning, size: 22),
             const SizedBox(width: 8),
-            Text('تأكيد إلغاء الحجز',
+            Text(context.l10n.confirmCancelBooking,
                 style: GoogleFonts.tajawal(fontWeight: FontWeight.bold)),
           ],
         ),
@@ -419,8 +423,7 @@ class _BookingsTabState extends State<BookingsTab> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'سيتم خصم رسوم إلغاء بنسبة 5% من قيمة حجزك، '
-                        'وستُطبَّق على رحلتك القادمة.',
+                        context.l10n.cancellationFeeNotice,
                         style: GoogleFonts.tajawal(
                           color: AppColors.warningDark,
                           height: 1.5,
@@ -433,7 +436,7 @@ class _BookingsTabState extends State<BookingsTab> {
               ),
             const SizedBox(height: 12),
             Text(
-              'هل أنت متأكد من إلغاء الحجز؟',
+              context.l10n.confirmCancelBookingQuestion,
               style: GoogleFonts.tajawal(height: 1.5),
             ),
           ],
@@ -441,7 +444,7 @@ class _BookingsTabState extends State<BookingsTab> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('تراجع',
+            child: Text(context.l10n.goBack,
                 style: GoogleFonts.tajawal(color: T.onSurfaceVariant(context))),
           ),
           ElevatedButton(
@@ -453,7 +456,7 @@ class _BookingsTabState extends State<BookingsTab> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: Text('إلغاء الحجز',
+            child: Text(context.l10n.cancelBooking,
                 style: GoogleFonts.tajawal(fontWeight: FontWeight.bold)),
           ),
         ],
@@ -468,7 +471,7 @@ class _BookingsTabState extends State<BookingsTab> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('تم إلغاء الحجز بنجاح',
+          content: Text(context.l10n.bookingCancelledSuccess,
               style: GoogleFonts.tajawal()),
           backgroundColor: AppColors.success,
         ),
@@ -498,8 +501,8 @@ class _BookingsTabState extends State<BookingsTab> {
         padding: const EdgeInsets.all(20),
         child: EmptyState(
           icon: IconsaxPlusBold.car,
-          title: 'لا توجد رحلات',
-          subtitle: 'ابدأ بإنشاء رحلة جديدة وشارك\nرحلتك مع الآخرين',
+          title: context.l10n.noTripsTitle,
+          subtitle: context.l10n.noTripsSubtitle,
           action: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -522,7 +525,7 @@ class _BookingsTabState extends State<BookingsTab> {
                 IconsaxPlusBold.add_circle,
                 color: AppColors.white,
               ),
-              label: const Text('إنشاء رحلة جديدة'),
+              label: Text(context.l10n.createNewTrip),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.transparent,
                 shadowColor: AppColors.transparent,
@@ -562,7 +565,7 @@ class _BookingsTabState extends State<BookingsTab> {
             ),
             const SizedBox(height: 24),
             Text(
-              'حدث خطأ',
+              context.l10n.errorOccurred,
               style: GoogleFonts.tajawal(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -580,7 +583,7 @@ class _BookingsTabState extends State<BookingsTab> {
             ),
             const SizedBox(height: 32),
             Semantics(
-              label: 'إعادة المحاولة',
+              label: context.l10n.tryAgain,
               button: true,
               child: ElevatedButton(
                 onPressed: () {
@@ -594,7 +597,7 @@ class _BookingsTabState extends State<BookingsTab> {
                   ),
                 ),
                 child: Text(
-                  'إعادة المحاولة',
+                  context.l10n.tryAgain,
                   style: GoogleFonts.tajawal(fontWeight: FontWeight.w600),
                 ),
               ),

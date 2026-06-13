@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../../core/constants/route_names.dart';
 import '../../../core/theme/colors.dart';
+import '../../l10n/l10n_extensions.dart';
 import '../../../models/user_model.dart';
 import '../../../widgets/common/logout_confirmation_dialog.dart';
 import 'widgets/drawer_menu_item.dart';
@@ -106,7 +107,7 @@ class HomeDrawer extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    user?.name ?? 'المستخدم',
+                    user?.name ?? context.l10n.userFallback,
                     style: GoogleFonts.tajawal(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -169,7 +170,9 @@ class HomeDrawer extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            user!.isDriver ? 'سائق' : 'راكب',
+                            user!.isDriver
+                                ? context.l10n.driver
+                                : context.l10n.passenger,
                             style: GoogleFonts.tajawal(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -190,7 +193,7 @@ class HomeDrawer extends StatelessWidget {
                 children: [
                   DrawerMenuItem(
                     icon: IconsaxPlusLinear.home,
-                    title: 'الرئيسية',
+                    title: context.l10n.home,
                     onTap: () {
                       Navigator.pop(context);
                       onTabSelect?.call(0);
@@ -198,7 +201,7 @@ class HomeDrawer extends StatelessWidget {
                   ),
                   DrawerMenuItem(
                     icon: IconsaxPlusLinear.search_normal,
-                    title: 'تصفح الرحلات',
+                    title: context.l10n.browseTrips,
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.pushNamed(context, RouteNames.tripsList);
@@ -207,7 +210,7 @@ class HomeDrawer extends StatelessWidget {
                   if (user?.canCreateTrips == true) ...[
                     DrawerMenuItem(
                       icon: IconsaxPlusLinear.add_circle,
-                      title: 'إنشاء رحلة',
+                      title: context.l10n.createTripTitle,
                       onTap: () {
                         Navigator.pop(context);
                         Navigator.pushNamed(context, RouteNames.createTrip);
@@ -215,7 +218,7 @@ class HomeDrawer extends StatelessWidget {
                     ),
                     DrawerMenuItem(
                       icon: IconsaxPlusLinear.car,
-                      title: 'رحلاتي',
+                      title: context.l10n.myTripsTitle,
                       onTap: () {
                         Navigator.pop(context);
                         final ridesTabIndex = user?.isDriver == true ? 1 : 2;
@@ -224,7 +227,7 @@ class HomeDrawer extends StatelessWidget {
                     ),
                     DrawerMenuItem(
                       icon: IconsaxPlusLinear.wallet,
-                      title: 'محفظتي',
+                      title: context.l10n.myWallet,
                       onTap: () {
                         Navigator.pop(context);
                         Navigator.pushNamed(context, RouteNames.driverWallet);
@@ -233,7 +236,7 @@ class HomeDrawer extends StatelessWidget {
                   ] else ...[
                     DrawerMenuItem(
                       icon: IconsaxPlusLinear.wallet,
-                      title: 'محفظتي',
+                      title: context.l10n.myWallet,
                       onTap: () {
                         Navigator.pop(context);
                         Navigator.pushNamed(
@@ -245,7 +248,7 @@ class HomeDrawer extends StatelessWidget {
                   ],
                   DrawerMenuItem(
                     icon: IconsaxPlusLinear.receipt_2,
-                    title: 'الرسوم المستحقة',
+                    title: context.l10n.pendingChargesTitle,
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.pushNamed(context, RouteNames.pendingCharges);
@@ -253,7 +256,7 @@ class HomeDrawer extends StatelessWidget {
                   ),
                   DrawerMenuItem(
                     icon: IconsaxPlusLinear.profile,
-                    title: 'الملف الشخصي',
+                    title: context.l10n.profileTitle,
                     onTap: () {
                       Navigator.pop(context);
                       final profileIndex = user?.isDriver == true ? 2 : 3;
@@ -262,7 +265,7 @@ class HomeDrawer extends StatelessWidget {
                   ),
                   DrawerMenuItem(
                     icon: IconsaxPlusLinear.setting_2,
-                    title: 'الإعدادات',
+                    title: context.l10n.settings,
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.pushNamed(context, RouteNames.settings);
@@ -276,7 +279,7 @@ class HomeDrawer extends StatelessWidget {
                   ),
                   DrawerMenuItem(
                     icon: IconsaxPlusLinear.logout,
-                    title: 'تسجيل الخروج',
+                    title: context.l10n.signOut,
                     iconColor: T.error(context),
                     textColor: T.error(context),
                     onTap: () {

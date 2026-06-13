@@ -6,6 +6,7 @@ import '../../core/constants/app_constants.dart';
 import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class PhoneAuthScreen extends StatefulWidget {
   /// When true, user is already logged in and we are linking/confirming phone (OTP will call linkPhone).
@@ -92,7 +93,9 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.isLinkPhone ? 'تأكيد رقم الهاتف' : 'تسجيل الدخول'),
+        title: Text(
+          widget.isLinkPhone ? context.l10n.linkPhoneTitle : context.l10n.signIn,
+        ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -119,8 +122,8 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                   const SizedBox(height: 32),
                   Text(
                     widget.isLinkPhone
-                        ? 'أدخل رقم هاتفك للتأكيد'
-                        : 'أدخل رقم هاتفك',
+                        ? context.l10n.enterPhoneToConfirm
+                        : context.l10n.enterYourPhone,
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -130,10 +133,10 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                   const SizedBox(height: 8),
                   Text(
                     widget.isLinkPhone
-                        ? 'سنرسل رمز تحقق لتأكيد رقمك. يجب التأكيد لاستخدام التطبيق.'
+                        ? context.l10n.linkPhoneSubtitle
                         : (AppConstants.skipOTP
-                              ? 'وضع التطوير: سيتم الدخول مباشرة'
-                              : 'سنرسل لك رمز التحقق عبر SMS'),
+                              ? context.l10n.devModeDirectLogin
+                              : context.l10n.otpWillBeSentViaSms),
                     style: TextStyle(
                       fontSize: 16,
                       color: T.onSurfaceVariant(context),
@@ -142,26 +145,26 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                   ),
                   const SizedBox(height: 32),
                   Semantics(
-                    label: 'رقم الهاتف',
+                    label: context.l10n.phoneNumber,
                     textField: true,
                     child: TextFormField(
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(
-                        labelText: 'رقم الهاتف',
+                      decoration: InputDecoration(
+                        labelText: context.l10n.phoneNumber,
                         hintText: '+201234567890',
-                        prefixIcon: Icon(Icons.phone),
+                        prefixIcon: const Icon(Icons.phone),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'يرجى إدخال رقم الهاتف';
+                          return context.l10n.phoneNumberRequired;
                         }
                         final phone = value.trim();
                         final formattedPhone = phone.startsWith('+')
                             ? phone
                             : '${AppConstants.defaultCountryCode}$phone';
                         if (formattedPhone.length < 10) {
-                          return 'رقم الهاتف غير صحيح';
+                          return context.l10n.invalidPhoneNumber;
                         }
                         return null;
                       },
@@ -171,8 +174,10 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                   Semantics(
                     button: true,
                     label: _isLoading
-                        ? 'جاري التحميل'
-                        : (AppConstants.skipOTP ? 'دخول' : 'إرسال رمز التحقق'),
+                        ? context.l10n.loading
+                        : (AppConstants.skipOTP
+                              ? context.l10n.enterAction
+                              : context.l10n.sendOTP),
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _sendOTP,
                       style: ElevatedButton.styleFrom(
@@ -191,8 +196,8 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                             )
                           : Text(
                               AppConstants.skipOTP
-                                  ? 'دخول'
-                                  : 'إرسال رمز التحقق',
+                                  ? context.l10n.enterAction
+                                  : context.l10n.sendOTP,
                             ),
                     ),
                   ),

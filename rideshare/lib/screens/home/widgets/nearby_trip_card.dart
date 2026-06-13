@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/colors.dart';
+import '../../../l10n/l10n_extensions.dart';
 import '../../../models/trip_model.dart';
 
 class NearbyTripCard extends StatelessWidget {
@@ -147,7 +148,7 @@ class NearbyTripCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '${distance.toStringAsFixed(1)} كم',
+                            context.l10n.distanceKm(distance.toStringAsFixed(1)),
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,

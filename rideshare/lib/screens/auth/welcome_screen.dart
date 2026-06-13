@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/theme/colors.dart';
+import '../../l10n/l10n_extensions.dart';
 import '../../widgets/common/form_components.dart';
 
 class WelcomeScreen extends StatefulWidget {
@@ -122,7 +123,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         ),
                         const SizedBox(height: 40),
                         Text(
-                          'مرحباً بك في VisionWay',
+                          context.l10n.welcomeTitle,
                           style: TextStyle(
                             fontSize: 30,
                             fontWeight: FontWeight.bold,
@@ -133,7 +134,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'رحلتك تبدأ من هنا. اختر وجهتك وانطلق معنا بكل أمان وراحة.',
+                          context.l10n.welcomeSubtitle,
                           style: TextStyle(
                             fontSize: 16,
                             color: T.textSecondary(context),
@@ -156,7 +157,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         children: [
                           PrimaryGradientButton(
                             onPressed: () => Navigator.pushNamed(context, RouteNames.signIn),
-                            text: 'تسجيل الدخول',
+                            text: context.l10n.signIn,
                             trailingIcon: IconsaxPlusLinear.arrow_left_2,
                           ),
                           const SizedBox(height: 16),
@@ -171,9 +172,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                   borderRadius: BorderRadius.circular(18),
                                 ),
                               ),
-                              child: const Text(
-                                'إنشاء حساب جديد',
-                                style: TextStyle(
+                              child: Text(
+                                context.l10n.createNewAccount,
+                                style: const TextStyle(
                                   fontSize: 17,
                                   fontWeight: FontWeight.bold,
                                 ),

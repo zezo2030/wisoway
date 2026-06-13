@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/colors.dart';
+import '../../../l10n/l10n_extensions.dart';
 import '../../../models/booking_model.dart';
 import '../../../models/trip_model.dart';
 import '../../../utils/booking_seat_formatter.dart';
@@ -80,7 +81,7 @@ class BookingCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'رحلة منتهية',
+                          context.l10n.completedTrip,
                           style: GoogleFonts.tajawal(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -150,7 +151,7 @@ class BookingCard extends StatelessWidget {
                             ),
                           ] else
                             Text(
-                              'رحلة غير متاحة',
+                              context.l10n.tripUnavailable,
                               style: GoogleFonts.tajawal(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -175,10 +176,10 @@ class BookingCard extends StatelessWidget {
                       ),
                       child: Text(
                         booking.isPending
-                            ? 'قيد الانتظار'
+                            ? context.l10n.bookingStatusPending
                             : booking.isConfirmed
-                            ? 'مؤكد'
-                            : 'ملغي',
+                            ? context.l10n.bookingStatusConfirmed
+                            : context.l10n.bookingStatusCancelled,
                         style: TextStyle(
                           color: booking.isPending
                               ? AppColors.warningDark
@@ -200,7 +201,7 @@ class BookingCard extends StatelessWidget {
                     Expanded(
                       child: _BookingInfoItem(
                         icon: IconsaxPlusBold.calendar,
-                        label: 'التاريخ',
+                        label: context.l10n.dateLabel,
                         value: trip != null
                             ? dateFormat.format(trip!.departureTime)
                             : '-',
@@ -210,7 +211,7 @@ class BookingCard extends StatelessWidget {
                     Expanded(
                       child: _BookingInfoItem(
                         icon: IconsaxPlusBold.clock,
-                        label: 'الوقت',
+                        label: context.l10n.timeLabel,
                         value: trip != null
                             ? timeFormat.format(trip!.departureTime)
                             : '-',
@@ -220,7 +221,7 @@ class BookingCard extends StatelessWidget {
                     Expanded(
                       child: _BookingInfoItem(
                         icon: IconsaxPlusBold.profile_2user,
-                        label: 'المقعد',
+                        label: context.l10n.seatLabel,
                         value: seatSummary.isNotEmpty ? seatSummary : '-',
                         mutedStyle: isPastTrip,
                       ),
@@ -235,7 +236,7 @@ class BookingCard extends StatelessWidget {
                     child: OutlinedButton.icon(
                       onPressed: onCancel,
                       icon: const Icon(IconsaxPlusBold.close_circle, size: 16),
-                      label: const Text('إلغاء الحجز'),
+                      label: Text(context.l10n.cancelBooking),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.error,
                         side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
@@ -254,7 +255,7 @@ class BookingCard extends StatelessWidget {
                       Expanded(
                         child: _SettlementActionButton(
                           icon: IconsaxPlusBold.message,
-                          label: 'دردشة',
+                          label: context.l10n.chat,
                           color: T.primary(context),
                           onTap: onChat,
                         ),
@@ -263,7 +264,7 @@ class BookingCard extends StatelessWidget {
                       Expanded(
                         child: _SettlementActionButton(
                           icon: IconsaxPlusBold.call,
-                          label: 'اتصال',
+                          label: context.l10n.call,
                           color: AppColors.success,
                           onTap: onCall,
                         ),

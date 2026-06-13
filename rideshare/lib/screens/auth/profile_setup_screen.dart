@@ -4,10 +4,10 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../core/constants/app_constants.dart';
-import '../../core/constants/app_strings.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/theme/colors.dart';
 import '../../widgets/common/form_components.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({super.key});
@@ -90,11 +90,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   Future<void> _onSavePressed() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedGender == null) {
-      _showSnackBar(AppStrings.genderRequired, AppColors.warning);
+      _showSnackBar(context.l10n.genderRequired, AppColors.warning);
       return;
     }
     if (_selectedRole == null) {
-      _showSnackBar(AppStrings.userTypeRequired, AppColors.warning);
+      _showSnackBar(context.l10n.roleRequired, AppColors.warning);
       return;
     }
 
@@ -216,13 +216,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
-            AppStrings.profileSetupTitle,
-            style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+          Text(
+            context.l10n.profileSetup,
+            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
-            AppStrings.profileSetupSubtitle,
+            context.l10n.profileSetupSubtitle,
             style: TextStyle(color: T.onSurfaceVariant(context), fontSize: 15),
             textAlign: TextAlign.center,
           ),
@@ -244,34 +244,35 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           children: [
             ModernInputField(
               controller: _nameController,
-              label: AppStrings.fullName,
-              hint: AppStrings.fullNameHint,
+              label: context.l10n.fullName,
+              hint: context.l10n.fullNameHint,
               icon: IconsaxPlusLinear.user,
               readOnly: isNameFixed,
               enabled: !isNameFixed,
-              validator: (v) =>
-                  (v == null || v.isEmpty) ? AppStrings.nameRequired : null,
+              validator: (v) => (v == null || v.isEmpty)
+                  ? context.l10n.fullNameRequired
+                  : null,
             ),
             const SizedBox(height: 20),
             ModernInputField(
               controller: _emailController,
-              label: AppStrings.email,
-              hint: AppStrings.emailHint,
+              label: context.l10n.emailOptional,
+              hint: context.l10n.emailHint,
               icon: IconsaxPlusLinear.sms,
               keyboardType: TextInputType.emailAddress,
               readOnly: isEmailFixed,
               enabled: !isEmailFixed,
               validator: (v) => (v == null || !v.contains('@'))
-                  ? AppStrings.emailInvalid
+                  ? context.l10n.invalidEmail
                   : null,
             ),
             const SizedBox(height: 28),
-            const SectionTitle(title: AppStrings.gender, isRequired: true),
+            SectionTitle(title: context.l10n.gender, isRequired: true),
             const SizedBox(height: 12),
             _buildGenderCards(),
             const SizedBox(height: 28),
             if (_selectedRole == null) ...[
-              const SectionTitle(title: AppStrings.userType, isRequired: true),
+              SectionTitle(title: context.l10n.role, isRequired: true),
               const SizedBox(height: 12),
               _buildRoleCards(),
             ] else ...[
@@ -289,7 +290,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      'لقد اخترت دور: ${_selectedRole == AppConstants.roleDriver ? AppStrings.tripOwner : AppStrings.passenger}',
+                      context.l10n.selectedRoleLabel(
+                        _selectedRole == AppConstants.roleDriver
+                            ? context.l10n.driver
+                            : context.l10n.passenger,
+                      ),
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: T.primary(context),
@@ -311,7 +316,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
         Expanded(
           child: ModernSelectionCard(
             icon: IconsaxPlusLinear.man,
-            title: AppStrings.male,
+            title: context.l10n.male,
             isSelected: _selectedGender == AppConstants.genderMale,
             onTap: () =>
                 setState(() => _selectedGender = AppConstants.genderMale),
@@ -322,7 +327,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
         Expanded(
           child: ModernSelectionCard(
             icon: IconsaxPlusLinear.woman,
-            title: AppStrings.female,
+            title: context.l10n.female,
             isSelected: _selectedGender == AppConstants.genderFemale,
             onTap: () =>
                 setState(() => _selectedGender = AppConstants.genderFemale),
@@ -338,8 +343,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
       children: [
         ModernSelectionCard(
           icon: IconsaxPlusLinear.user,
-          title: AppStrings.passenger,
-          subtitle: AppStrings.passengerDescription,
+          title: context.l10n.passenger,
+          subtitle: context.l10n.passengerDescription,
           isSelected: _selectedRole == AppConstants.rolePassenger,
           onTap: () =>
               setState(() => _selectedRole = AppConstants.rolePassenger),
@@ -349,17 +354,17 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
         const SizedBox(height: 12),
         ModernSelectionCard(
           icon: IconsaxPlusLinear.car,
-          title: AppStrings.tripOwner,
-          subtitle: AppStrings.tripOwnerDescription,
+          title: context.l10n.driver,
+          subtitle: context.l10n.tripOwnerDescription,
           isSelected: _selectedRole == AppConstants.roleDriver,
           onTap: () => setState(() => _selectedRole = AppConstants.roleDriver),
           color: T.primary(context),
           isVertical: false,
         ),
         if (_selectedRole == AppConstants.roleDriver)
-          const Padding(
-            padding: EdgeInsets.only(top: 16),
-            child: InfoCard(message: AppStrings.tripOwnerNote),
+          Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: InfoCard(message: context.l10n.tripOwnerNote),
           ),
       ],
     );
@@ -371,7 +376,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
         final bool isLoading = authProvider.isLoading;
         return PrimaryGradientButton(
           onPressed: isLoading ? null : _onSavePressed,
-          text: AppStrings.saveAndComplete,
+          text: context.l10n.saveAndComplete,
           isLoading: isLoading,
           trailingIcon: IconsaxPlusLinear.arrow_left_2,
         );

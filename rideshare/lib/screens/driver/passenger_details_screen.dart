@@ -6,6 +6,7 @@ import '../../core/theme/text_styles.dart';
 import '../../core/widgets/phone_text.dart';
 import '../../models/booking_model.dart';
 import '../../core/constants/route_names.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class PassengerDetailsScreen extends StatefulWidget {
   final BookingModel booking;
@@ -50,7 +51,7 @@ class _PassengerDetailsScreenState extends State<PassengerDetailsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'تفاصيل الراكب',
+          context.l10n.passengerDetailsTitle,
           style: AppTextStyles.titleMedium.copyWith(
             fontWeight: FontWeight.bold,
           ),
@@ -111,7 +112,11 @@ class _PassengerDetailsScreenState extends State<PassengerDetailsScreen> {
                       ),
                     ),
                     child: Text(
-                      'مقعد ${_booking.seatSummary.isNotEmpty ? _booking.seatSummary : '-'}',
+                      context.l10n.seatLabelWithValue(
+                        _booking.seatSummary.isNotEmpty
+                            ? _booking.seatSummary
+                            : '-',
+                      ),
                       style: AppTextStyles.labelLarge.copyWith(
                         color: AppColors.success,
                       ),
@@ -124,7 +129,7 @@ class _PassengerDetailsScreenState extends State<PassengerDetailsScreen> {
             if (hasData) ...[
               _InfoCard(
                 icon: IconsaxPlusLinear.call,
-                label: 'رقم الهاتف',
+                label: context.l10n.phoneNumberLabel,
                 value: user.phoneNumber,
                 isPhone: true,
                 onTap: user.phoneNumber.isNotEmpty
@@ -134,7 +139,7 @@ class _PassengerDetailsScreenState extends State<PassengerDetailsScreen> {
               const SizedBox(height: 12),
               _InfoCard(
                 icon: IconsaxPlusLinear.sms,
-                label: 'البريد الإلكتروني',
+                label: context.l10n.emailLabel,
                 value: user.email,
                 onTap: user.email.isNotEmpty
                     ? () => _launchEmail(user.email)
@@ -169,7 +174,7 @@ class _ChatButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: 'محادثة خاصة مع $passengerName',
+      label: context.l10n.privateChatWithSemantic(passengerName),
       child: InkWell(
         onTap: () => Navigator.pushNamed(
           context,
@@ -210,14 +215,14 @@ class _ChatButton extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'محادثة خاصة',
+                      context.l10n.privateChat,
                       style: AppTextStyles.titleSmall.copyWith(
                         fontWeight: FontWeight.bold,
                         color: T.onSurface(context),
                       ),
                     ),
                     Text(
-                      'مراسلة $passengerName',
+                      context.l10n.messagePerson(passengerName),
                       style: AppTextStyles.bodySmall.copyWith(
                         color: T.textSecondary(context),
                       ),

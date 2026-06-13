@@ -7,6 +7,7 @@ import '../providers/auth_provider.dart';
 import '../models/notification_model.dart';
 import '../core/constants/app_spacing.dart';
 import '../core/theme/colors.dart';
+import '../l10n/l10n_extensions.dart';
 
 class NotificationCard extends StatelessWidget {
   final NotificationModel notification;
@@ -56,7 +57,7 @@ class NotificationCard extends StatelessWidget {
       onDismissed: (direction) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('تم حذف الإشعار'),
+            content: Text(context.l10n.notificationDeleted),
             duration: const Duration(seconds: 2),
             backgroundColor: T.error(context),
           ),

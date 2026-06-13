@@ -4,6 +4,7 @@ import '../../providers/auth_provider.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/theme/colors.dart';
 import '../../core/widgets/phone_text.dart';
+import '../../l10n/l10n_extensions.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 class DriverPendingApprovalScreen extends StatefulWidget {
@@ -51,7 +52,7 @@ class _DriverPendingApprovalScreenState
                 const SizedBox(height: 32),
 
                 Text(
-                  'حسابك قيد المراجعة',
+                  context.l10n.driverPendingApprovalTitle,
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -61,7 +62,7 @@ class _DriverPendingApprovalScreenState
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'نحن نقوم بمراجعة حسابك. سيتم إشعارك عند الموافقة.',
+                  context.l10n.driverPendingApprovalBody,
                   style: TextStyle(
                     fontSize: 16,
                     color: T.onSurfaceVariant(context),
@@ -87,7 +88,7 @@ class _DriverPendingApprovalScreenState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'ملفك الشخصي',
+                        context.l10n.yourProfile,
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -95,23 +96,28 @@ class _DriverPendingApprovalScreenState
                         ),
                       ),
                       const SizedBox(height: 16),
-                      _buildProfileItem('الاسم', user.name),
-                      const SizedBox(height: 12),
-                      _buildProfileItem('البريد الإلكتروني', user.email),
+                      _buildProfileItem(context.l10n.name, user.name),
                       const SizedBox(height: 12),
                       _buildProfileItem(
-                        'رقم الهاتف',
+                        context.l10n.emailOptional,
+                        user.email,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildProfileItem(
+                        context.l10n.phoneNumber,
                         user.phoneNumber.isNotEmpty
                             ? user.phoneNumber
-                            : 'غير محدد',
+                            : context.l10n.notSpecified,
                         isPhone: user.phoneNumber.isNotEmpty,
                       ),
                       const SizedBox(height: 12),
-                      _buildProfileItem('الجنس', user.gender),
+                      _buildProfileItem(context.l10n.gender, user.gender),
                       const SizedBox(height: 12),
                       _buildProfileItem(
-                        'الدور',
-                        user.role == 'driver' ? 'سائق' : 'راكب',
+                        context.l10n.role,
+                        user.role == 'driver'
+                            ? context.l10n.driver
+                            : context.l10n.passenger,
                       ),
                     ],
                   ),
@@ -119,7 +125,7 @@ class _DriverPendingApprovalScreenState
                 const SizedBox(height: 40),
 
                 Semantics(
-                  label: 'عرض الملف الشخصي',
+                  label: context.l10n.viewProfile,
                   button: true,
                   child: SizedBox(
                     width: double.infinity,
@@ -135,9 +141,9 @@ class _DriverPendingApprovalScreenState
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text(
-                        'عرض الملف الشخصي',
-                        style: TextStyle(
+                      child: Text(
+                        context.l10n.viewProfile,
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -147,7 +153,7 @@ class _DriverPendingApprovalScreenState
                 ),
                 const SizedBox(height: 16),
                 Semantics(
-                  label: 'تسجيل خروج',
+                  label: context.l10n.signOut,
                   button: true,
                   child: OutlinedButton(
                     onPressed: () async {
@@ -174,9 +180,9 @@ class _DriverPendingApprovalScreenState
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text(
-                      'تسجيل خروج',
-                      style: TextStyle(fontSize: 16),
+                    child: Text(
+                      context.l10n.signOut,
+                      style: const TextStyle(fontSize: 16),
                     ),
                   ),
                 ),

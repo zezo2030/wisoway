@@ -4,12 +4,11 @@
 // revoke any of them via DELETE /auth/devices/:deviceId.
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_endpoints.dart';
-import '../../../core/services/localization_service.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/ui/error_surface.dart';
+import '../../l10n/l10n_extensions.dart';
 
 /// A single trusted-device record from GET /auth/devices.
 class _DeviceRecord {
@@ -80,26 +79,20 @@ class _AccountSecurityDevicesScreenState
   }
 
   Future<void> _revokeDevice(_DeviceRecord device) async {
-    final isArabic =
-        context.read<LocalizationService>().isArabic;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(isArabic ? 'إلغاء الجهاز' : 'Revoke Device'),
-        content: Text(
-          isArabic
-              ? 'هل أنت متأكد من إلغاء هذا الجهاز؟ ستحتاج إلى تسجيل الدخول مرة أخرى على هذا الجهاز.'
-              : 'Are you sure you want to revoke this device? It will need to re-authenticate.',
-        ),
+        title: Text(ctx.l10n.revokeDeviceTitle),
+        content: Text(ctx.l10n.revokeDeviceMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(isArabic ? 'إلغاء' : 'Cancel'),
+            child: Text(ctx.l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: Text(isArabic ? 'إلغاء الثقة' : 'Revoke'),
+            child: Text(ctx.l10n.devicesRevokeButton),
           ),
         ],
       ),
@@ -112,9 +105,7 @@ class _AccountSecurityDevicesScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              isArabic ? 'تم إلغاء الجهاز بنجاح' : 'Device revoked',
-            ),
+            content: Text(context.l10n.deviceRevokedSuccess),
             backgroundColor: AppColors.success,
           ),
         );
@@ -140,24 +131,22 @@ class _AccountSecurityDevicesScreenState
 
   @override
   Widget build(BuildContext context) {
-    final isArabic = context.watch<LocalizationService>().isArabic;
-
     return Scaffold(
       appBar: AppBar(
-        title: Text(isArabic ? 'الأجهزة الموثوقة' : 'Trusted Devices'),
+        title: Text(context.l10n.devicesScreenTitle),
         actions: [
           IconButton(
-            tooltip: isArabic ? 'تحديث' : 'Refresh',
+            tooltip: context.l10n.refresh,
             icon: const Icon(Icons.refresh_rounded),
             onPressed: _loadDevices,
           ),
         ],
       ),
-      body: _buildBody(isArabic),
+      body: _buildBody(context),
     );
   }
 
-  Widget _buildBody(bool isArabic) {
+  Widget _buildBody(BuildContext context) {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -177,7 +166,7 @@ class _AccountSecurityDevicesScreenState
               FilledButton.icon(
                 onPressed: _loadDevices,
                 icon: const Icon(Icons.refresh_rounded),
-                label: Text(isArabic ? 'إعادة المحاولة' : 'Retry'),
+                label: Text(context.l10n.retry),
               ),
             ],
           ),
@@ -188,7 +177,7 @@ class _AccountSecurityDevicesScreenState
     if (_devices.isEmpty) {
       return Center(
         child: Text(
-          isArabic ? 'لا توجد أجهزة مسجلة' : 'No devices registered',
+          context.l10n.noDevicesRegistered,
           style: TextStyle(color: T.onSurfaceVariant(context)),
         ),
       );
@@ -214,13 +203,15 @@ class _AccountSecurityDevicesScreenState
             title: Text(
               device.label ??
                   (device.isCurrent
-                      ? (isArabic ? 'هذا الجهاز' : 'This device')
+                      ? context.l10n.devicesCurrentDevice
                       : device.platform.toUpperCase()),
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
             subtitle: device.lastSeenAt != null
                 ? Text(
-                    '${isArabic ? 'آخر نشاط' : 'Last seen'}: ${_formatDate(device.lastSeenAt!)}',
+                    context.l10n.deviceLastSeen(
+                      _formatDate(device.lastSeenAt!),
+                    ),
                     style: TextStyle(
                         fontSize: 12,
                         color: T.onSurfaceVariant(context)),
@@ -229,7 +220,7 @@ class _AccountSecurityDevicesScreenState
             trailing: device.isCurrent
                 ? Chip(
                     label: Text(
-                      isArabic ? 'الحالي' : 'Current',
+                      context.l10n.deviceCurrentBadge,
                       style: const TextStyle(fontSize: 11),
                     ),
                     backgroundColor:
@@ -237,7 +228,7 @@ class _AccountSecurityDevicesScreenState
                     side: BorderSide.none,
                   )
                 : IconButton(
-                    tooltip: isArabic ? 'إلغاء الثقة' : 'Revoke',
+                    tooltip: context.l10n.devicesRevokeButton,
                     icon: const Icon(Icons.delete_outline_rounded),
                     color: AppColors.error,
                     onPressed: () => _revokeDevice(device),

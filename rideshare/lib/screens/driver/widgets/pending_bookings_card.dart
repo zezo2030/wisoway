@@ -4,6 +4,7 @@ import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../models/booking_model.dart';
 import '../../../widgets/common/section_card.dart';
+import '../../../l10n/l10n_extensions.dart';
 
 class PendingBookingsCard extends StatelessWidget {
   final List<BookingModel> bookings;
@@ -20,12 +21,12 @@ class PendingBookingsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SectionCard(
-      title: 'حجوزات قيد التأكيد (${bookings.length})',
+      title: context.l10n.pendingBookingsWithCount(bookings.length),
       icon: IconsaxPlusBold.clock,
       iconColor: AppColors.warning,
       children: [
         Text(
-          'تأكيد الحجز يفتح بيانات الراكب (رحلة مجانية أو خصم من المحفظة مرة واحدة للرحلة)',
+          context.l10n.pendingBookingHint,
           style: AppTextStyles.bodySmall.copyWith(color: AppColors.slate400),
         ),
         const SizedBox(height: 16),
@@ -57,7 +58,7 @@ class _PendingBookingItem extends StatelessWidget {
     final seatText = booking.seatSummary.isNotEmpty ? booking.seatSummary : '-';
     final titleText = booking.userPopulated?.name?.isNotEmpty == true
         ? booking.userPopulated!.name
-        : 'مقعد $seatText';
+        : context.l10n.seatLabelWithValue(seatText);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -100,7 +101,7 @@ class _PendingBookingItem extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'المقاعد: $seatText',
+                      context.l10n.seatsWithValue(seatText),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.bodySmall.copyWith(
@@ -120,7 +121,7 @@ class _PendingBookingItem extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  'قيد التأكيد',
+                  context.l10n.pendingConfirmation,
                   style: AppTextStyles.labelSmall.copyWith(
                     color: AppColors.warningDark,
                     fontWeight: FontWeight.bold,
@@ -131,7 +132,7 @@ class _PendingBookingItem extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'بانتظار التأكيد',
+            context.l10n.awaitingConfirmation,
             style: AppTextStyles.bodySmall.copyWith(color: AppColors.slate500),
           ),
           const SizedBox(height: 12),
@@ -156,7 +157,9 @@ class _PendingBookingItem extends StatelessWidget {
                   )
                 : const Icon(IconsaxPlusBold.tick_circle, size: 16),
             label: Text(
-              isConfirming ? 'جاري التأكيد...' : 'تأكيد الحجز',
+              isConfirming
+                  ? context.l10n.confirmingBooking
+                  : context.l10n.confirmBooking,
               style: AppTextStyles.labelLarge.copyWith(fontSize: 13),
             ),
           ),

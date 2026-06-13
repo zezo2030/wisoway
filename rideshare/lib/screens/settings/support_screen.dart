@@ -7,6 +7,7 @@ import '../../../core/api/api_client.dart';
 import '../../../core/constants/support_constants.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/phone_text.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class SupportScreen extends StatefulWidget {
   const SupportScreen({super.key});
@@ -46,12 +47,12 @@ class _SupportScreenState extends State<SupportScreen> {
     final phone = _whatsAppNumber;
     if (phone.isEmpty) {
       if (context.mounted) {
-        _showMessage(context, 'رقم الدعم غير متاح حاليًا');
+        _showMessage(context, context.l10n.supportNumberUnavailable);
       }
       return;
     }
 
-    final prefillText = 'مرحباً، أحتاج مساعدة في تطبيق VisionWay.';
+    final prefillText = context.l10n.supportWhatsAppPrefill;
 
     // Try the wa.me HTTPS link first (works whether or not WhatsApp is
     // installed — falls back to the browser). If that fails, try the
@@ -79,7 +80,7 @@ class _SupportScreenState extends State<SupportScreen> {
     }
 
     if (context.mounted) {
-      _showMessage(context, 'تعذر فتح WhatsApp');
+      _showMessage(context, context.l10n.cannotOpenWhatsApp);
     }
   }
 
@@ -96,7 +97,7 @@ class _SupportScreenState extends State<SupportScreen> {
     }
 
     if (context.mounted) {
-      _showMessage(context, 'تعذر فتح تطبيق البريد الإلكتروني');
+      _showMessage(context, context.l10n.cannotOpenEmailApp);
     }
   }
 
@@ -105,7 +106,7 @@ class _SupportScreenState extends State<SupportScreen> {
       const ClipboardData(text: SupportConstants.supportEmail),
     );
     if (context.mounted) {
-      _showMessage(context, 'تم نسخ بريد الدعم');
+      _showMessage(context, context.l10n.supportEmailCopied);
     }
   }
 
@@ -137,26 +138,24 @@ class _SupportScreenState extends State<SupportScreen> {
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
             children: [
               _SupportAppBar(
-                title: 'المساعدة والدعم',
+                title: context.l10n.supportScreenTitle,
                 onBack: () => Navigator.pop(context),
               ),
               const SizedBox(height: 20),
               _SupportHero(
                 icon: IconsaxPlusBold.message_question,
-                title: 'نحن هنا لمساعدتك',
-                subtitle:
-                    'إذا واجهتك مشكلة في الحجز أو الحساب أو المدفوعات، يمكنك التواصل مباشرة مع فريق VisionWay.',
+                title: context.l10n.supportHeroTitle,
+                subtitle: context.l10n.supportHeroSubtitle,
               ),
               const SizedBox(height: 20),
               _ContactCard(
                 icon: IconsaxPlusBold.sms,
                 accentColor: T.primary(context),
-                title: 'راسلنا عبر البريد الإلكتروني',
+                title: context.l10n.supportContactEmailTitle,
                 value: SupportConstants.supportEmail,
-                description:
-                    'أرسل استفسارك وسنراجع الرسالة في أقرب وقت ممكن.',
-                primaryActionLabel: 'إرسال بريد',
-                secondaryActionLabel: 'نسخ البريد',
+                description: context.l10n.supportContactEmailDescription,
+                primaryActionLabel: context.l10n.supportSendEmail,
+                secondaryActionLabel: context.l10n.supportCopyEmail,
                 onPrimaryAction: () => _launchEmail(context),
                 onSecondaryAction: () => _copyEmail(context),
               ),
@@ -164,29 +163,28 @@ class _SupportScreenState extends State<SupportScreen> {
               _ContactCard(
                 icon: IconsaxPlusBold.message,
                 accentColor: const Color(0xFF25D366),
-                title: 'راسلنا عبر WhatsApp',
+                title: context.l10n.supportContactWhatsAppTitle,
                 value: SupportConstants.supportPhoneDisplay,
                 isPhone: true,
-                description:
-                    'تواصل مباشرة مع فريق الدعم عبر WhatsApp للحصول على مساعدة فورية.',
-                primaryActionLabel: 'فتح WhatsApp',
+                description: context.l10n.supportContactWhatsAppDescription,
+                primaryActionLabel: context.l10n.supportWhatsAppButton,
                 onPrimaryAction: () => _launchWhatsApp(context),
               ),
               const SizedBox(height: 20),
               _InfoPanel(
-                title: 'كيف نساعدك؟',
-                items: const [
-                  'مشكلة في تسجيل الدخول أو تحديث بيانات الحساب',
-                  'استفسارات الحجز والرحلات والمدفوعات',
-                  'مراجعة المشاكل الفنية أو الاقتراحات',
+                title: context.l10n.supportHowWeHelpTitle,
+                items: [
+                  context.l10n.supportHelpItemLogin,
+                  context.l10n.supportHelpItemBookings,
+                  context.l10n.supportHelpItemTechnical,
                 ],
               ),
               const SizedBox(height: 16),
               _InfoPanel(
-                title: 'نصيحة سريعة',
-                items: const [
-                  'اذكر رقم الهاتف أو البريد المسجل داخل التطبيق لتسريع المراجعة.',
-                  'أضف وصفًا مختصرًا للمشكلة والخطوات التي حدثت قبلها.',
+                title: context.l10n.supportQuickTipTitle,
+                items: [
+                  context.l10n.supportTipIncludeContact,
+                  context.l10n.supportTipDescribeProblem,
                 ],
               ),
             ],

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../../core/constants/route_names.dart';
 import '../../../core/theme/colors.dart';
+import '../../../l10n/l10n_extensions.dart';
 import '../../../models/location_model.dart';
 import '../../../models/trip_model.dart';
 import '../../../models/user_model.dart';
@@ -95,20 +96,20 @@ class _DriverHomeContentState extends State<DriverHomeContent> {
         children: [
           Builder(
             builder: (context) => Semantics(
-              label: 'فتح القائمة',
+              label: context.l10n.openMenu,
               button: true,
               child: IconButton(
                 icon: const Icon(IconsaxPlusLinear.menu_1, size: 28),
                 onPressed: widget.onOpenDrawer,
                 color: T.onSurface(context),
-                tooltip: 'القائمة الجانبية',
+                tooltip: context.l10n.sideMenu,
               ),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'إلى أين ستنطلق رحلتك؟',
+              context.l10n.whereWillYourTripStart,
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -198,7 +199,7 @@ class _DriverHomeContentState extends State<DriverHomeContent> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'أنشئ رحلة جديدة',
+                        context.l10n.createNewTrip,
                         style: TextStyle(
                           color: T.onPrimary(context),
                           fontSize: 17,
@@ -207,7 +208,7 @@ class _DriverHomeContentState extends State<DriverHomeContent> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'ابدأ رحلتك واستقبل الحجوزات من الركاب',
+                        context.l10n.createTripCtaSubtitle,
                         style: TextStyle(
                           color: T.onPrimary(context).withValues(alpha: 0.85),
                           fontSize: 12,
@@ -264,7 +265,7 @@ class _DriverHomeContentState extends State<DriverHomeContent> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'موقعك الحالي',
+                  context.l10n.currentLocation,
                   style: TextStyle(
                     fontSize: 12,
                     color: T.onSurfaceVariant(context),
@@ -272,7 +273,8 @@ class _DriverHomeContentState extends State<DriverHomeContent> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  widget.userLocation?.name ?? 'جاري تحديد الموقع...',
+                  widget.userLocation?.name ??
+                      context.l10n.determiningLocation,
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -301,7 +303,7 @@ class _DriverHomeContentState extends State<DriverHomeContent> {
                     size: 20,
                   ),
                   onPressed: widget.onRefreshLocation,
-                  tooltip: 'تحديد الموقع تلقائياً',
+                  tooltip: context.l10n.detectLocationAutomatically,
                 ),
                 IconButton(
                   icon: Icon(
@@ -310,7 +312,7 @@ class _DriverHomeContentState extends State<DriverHomeContent> {
                     size: 20,
                   ),
                   onPressed: widget.onChangeLocation,
-                  tooltip: 'اختيار الموقع يدوياً',
+                  tooltip: context.l10n.chooseLocationManually,
                 ),
               ],
             ),
@@ -329,7 +331,7 @@ class _DriverHomeContentState extends State<DriverHomeContent> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'رحلاتي القائمة',
+                context.l10n.myActiveTrips,
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -367,7 +369,7 @@ class _DriverHomeContentState extends State<DriverHomeContent> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'خطأ في تحميل الرحلات',
+                          context.l10n.errorLoadingTrips,
                           style: TextStyle(
                             color: T.onSurfaceVariant(context),
                           ),
@@ -398,8 +400,8 @@ class _DriverHomeContentState extends State<DriverHomeContent> {
               if (upcoming.isEmpty) {
                 return EmptyState(
                   icon: IconsaxPlusBold.calendar_remove,
-                  title: 'لا توجد رحلات قائمة',
-                  subtitle: 'ابدأ بإنشاء رحلة لتظهر هنا.',
+                  title: context.l10n.noActiveTripsTitle,
+                  subtitle: context.l10n.noActiveTripsSubtitle,
                   showCircleBackground: false,
                   iconSize: 48,
                   action: ElevatedButton(
@@ -408,7 +410,7 @@ class _DriverHomeContentState extends State<DriverHomeContent> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: T.primary(context),
                     ),
-                    child: const Text('أنشئ رحلة'),
+                    child: Text(context.l10n.createTripTitle),
                   ),
                 );
               }

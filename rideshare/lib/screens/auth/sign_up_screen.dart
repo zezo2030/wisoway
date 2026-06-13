@@ -8,6 +8,7 @@ import '../../core/constants/countries.dart';
 import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
+import '../../l10n/l10n_extensions.dart';
 import '../../widgets/common/form_components.dart';
 import '../../widgets/country_code_picker.dart';
 
@@ -69,11 +70,11 @@ class _SignUpScreenState extends State<SignUpScreen>
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedGender == null) {
-      _showSnackBar('يرجى اختيار الجنس', AppColors.error);
+      _showSnackBar(context.l10n.selectGenderError, AppColors.error);
       return;
     }
     if (_passwordController.text != _confirmPasswordController.text) {
-      _showSnackBar('كلمتا السر غير متطابقتين', AppColors.error);
+      _showSnackBar(context.l10n.passwordsDoNotMatch, AppColors.error);
       return;
     }
 
@@ -128,8 +129,8 @@ class _SignUpScreenState extends State<SignUpScreen>
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final String roleTitle = (args?['accountType'] == AppConstants.roleDriver)
-        ? 'سائق'
-        : 'راكب';
+        ? context.l10n.accountTypeDriver
+        : context.l10n.accountTypePassenger;
 
     return Scaffold(
       backgroundColor: T.surface(context),
@@ -220,7 +221,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                         ),
                         const SizedBox(height: 32),
                         Text(
-                          'إنشاء حساب جديد',
+                          context.l10n.createNewAccount,
                           style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
@@ -231,7 +232,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'سجل الآن كـ $roleTitle لبدء رحلتك معنا.',
+                          context.l10n.signUpAs(roleTitle),
                           style: TextStyle(
                             fontSize: 15,
                             color: T.textSecondary(context),
@@ -244,11 +245,11 @@ class _SignUpScreenState extends State<SignUpScreen>
                         // Form Fields
                         ModernInputField(
                           controller: _nameController,
-                          label: 'الاسم الكامل',
-                          hint: 'أدخل اسمك بالكامل',
+                          label: context.l10n.fullName,
+                          hint: context.l10n.fullNameHint,
                           icon: IconsaxPlusLinear.user,
                           validator: (v) => (v == null || v.trim().length < 3)
-                              ? 'يرجى إدخال اسم صحيح'
+                              ? context.l10n.validNameRequired
                               : null,
                         ),
                         const SizedBox(height: 20),
@@ -320,12 +321,12 @@ class _SignUpScreenState extends State<SignUpScreen>
                                   ),
                                   validator: (v) {
                                     if (v == null || v.isEmpty) {
-                                      return 'يرجى إدخال رقم الهاتف';
+                                      return context.l10n.phoneNumberRequired;
                                     }
                                     if (!RegExp(r'^\d{7,15}$').hasMatch(
                                       v.replaceAll(RegExp(r'\s+'), ''),
                                     )) {
-                                      return 'رقم هاتف غير صحيح';
+                                      return context.l10n.invalidPhoneNumber;
                                     }
                                     return null;
                                   },
@@ -337,10 +338,11 @@ class _SignUpScreenState extends State<SignUpScreen>
                         const SizedBox(height: 32),
                         ModernInputField(
                           controller: _passwordController,
-                          label: 'كلمة السر',
-                          hint: '8 أحرف على الأقل وتحتوي حرفاً ورقماً',
+                          label: context.l10n.password,
+                          hint: context.l10n.passwordHint,
                           icon: IconsaxPlusLinear.password_check,
                           obscureText: _obscurePassword,
+                          textDirection: TextDirection.ltr,
                           suffixIcon: IconButton(
                             onPressed: () => setState(
                               () => _obscurePassword = !_obscurePassword,
@@ -353,12 +355,12 @@ class _SignUpScreenState extends State<SignUpScreen>
                           ),
                           validator: (v) {
                             if (v == null || v.isEmpty) {
-                              return 'يرجى إدخال كلمة السر';
+                              return context.l10n.passwordRequired;
                             }
                             if (!RegExp(
                               r'^(?=.*[A-Za-z])(?=.*\d).{8,}$',
                             ).hasMatch(v)) {
-                              return 'يجب أن تحتوي كلمة السر على 8 أحرف مع حرف ورقم';
+                              return context.l10n.passwordPolicyError;
                             }
                             return null;
                           },
@@ -366,10 +368,11 @@ class _SignUpScreenState extends State<SignUpScreen>
                         const SizedBox(height: 20),
                         ModernInputField(
                           controller: _confirmPasswordController,
-                          label: 'تأكيد كلمة السر',
-                          hint: 'أعد إدخال كلمة السر',
+                          label: context.l10n.confirmPassword,
+                          hint: context.l10n.confirmPasswordHint,
                           icon: IconsaxPlusLinear.password_check,
                           obscureText: _obscureConfirmPassword,
+                          textDirection: TextDirection.ltr,
                           suffixIcon: IconButton(
                             onPressed: () => setState(
                               () => _obscureConfirmPassword =
@@ -383,24 +386,24 @@ class _SignUpScreenState extends State<SignUpScreen>
                           ),
                           validator: (v) {
                             if (v == null || v.isEmpty) {
-                              return 'يرجى تأكيد كلمة السر';
+                              return context.l10n.confirmPasswordRequired;
                             }
                             if (v != _passwordController.text) {
-                              return 'كلمتا السر غير متطابقتين';
+                              return context.l10n.passwordsDoNotMatch;
                             }
                             return null;
                           },
                         ),
                         const SizedBox(height: 32),
 
-                        const SectionTitle(title: 'الجنس', isRequired: true),
+                        SectionTitle(title: context.l10n.gender, isRequired: true),
                         const SizedBox(height: 16),
                         Row(
                           children: [
                             Expanded(
                               child: ModernSelectionCard(
                                 icon: IconsaxPlusLinear.man,
-                                title: 'ذكر',
+                                title: context.l10n.male,
                                 isSelected:
                                     _selectedGender == AppConstants.genderMale,
                                 onTap: () => setState(
@@ -414,7 +417,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                             Expanded(
                               child: ModernSelectionCard(
                                 icon: IconsaxPlusLinear.woman,
-                                title: 'أنثى',
+                                title: context.l10n.female,
                                 isSelected:
                                     _selectedGender ==
                                     AppConstants.genderFemale,
@@ -432,8 +435,8 @@ class _SignUpScreenState extends State<SignUpScreen>
                         PrimaryGradientButton(
                           onPressed: _isLoading ? null : _signUp,
                           text: AppConstants.skipOTP
-                              ? 'إنشاء حساب (تطوير)'
-                              : 'إرسال رمز التحقق وإنشاء الحساب',
+                              ? context.l10n.createAccountDev
+                              : context.l10n.sendOtpAndCreateAccount,
                           isLoading: _isLoading,
                         ),
                         const SizedBox(height: 32),
@@ -442,7 +445,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              'لديك حساب بالفعل؟ ',
+                              context.l10n.alreadyHaveAccount,
                               style: TextStyle(
                                 color: T.textSecondary(context),
                                 fontSize: 15,
@@ -459,7 +462,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                                 ),
                               ),
                               child: Text(
-                                'تسجيل الدخول',
+                                context.l10n.signIn,
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: T.primary(context),

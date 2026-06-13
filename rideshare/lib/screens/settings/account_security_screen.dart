@@ -2,27 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/services/localization_service.dart';
 import '../../../core/constants/route_names.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/phone_text.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../widgets/settings/settings_section.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class AccountSecurityScreen extends StatelessWidget {
   const AccountSecurityScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final localizationService = context.watch<LocalizationService>();
     final authProvider = context.watch<AuthProvider>();
     final user = authProvider.userModel;
-    final isArabic = localizationService.isArabic;
 
     if (user == null) {
       return Scaffold(
         appBar: AppBar(
-          title: Text(isArabic ? 'الحساب والأمان' : 'Account & Security'),
+          title: Text(context.l10n.accountSecurity),
         ),
         body: const Center(child: CircularProgressIndicator()),
       );
@@ -30,22 +28,22 @@ class AccountSecurityScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isArabic ? 'الحساب والأمان' : 'Account & Security'),
+        title: Text(context.l10n.accountSecurity),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           SettingsSection(
-            title: isArabic ? 'معلومات الحساب' : 'Account Details',
+            title: context.l10n.accountDetails,
             children: [
               _InfoRow(
                 icon: IconsaxPlusBroken.direct_right,
-                label: isArabic ? 'البريد الإلكتروني' : 'Email',
+                label: context.l10n.emailLabel,
                 value: user.email,
               ),
               _InfoRow(
                 icon: IconsaxPlusBroken.call,
-                label: isArabic ? 'رقم الهاتف' : 'Phone',
+                label: context.l10n.phoneLabel,
                 value: user.phoneNumber,
                 isPhone: true,
                 trailing: user.isPhoneVerified
@@ -54,12 +52,12 @@ class AccountSecurityScreen extends StatelessWidget {
                         onPressed: () {
                           Navigator.pushNamed(context, RouteNames.phoneAuth);
                         },
-                        child: Text(isArabic ? 'ربط' : 'Link'),
+                        child: Text(context.l10n.linkPhone),
                       ),
               ),
               _InfoRow(
                 icon: IconsaxPlusBroken.user_tag,
-                label: isArabic ? 'نوع الحساب' : 'Account Type',
+                label: context.l10n.accountType,
                 value: '',
                 trailing: Container(
                   padding: const EdgeInsets.symmetric(
@@ -74,8 +72,8 @@ class AccountSecurityScreen extends StatelessWidget {
                   ),
                   child: Text(
                     user.isDriver
-                        ? (isArabic ? 'سائق' : 'Driver')
-                        : (isArabic ? 'راكب' : 'Passenger'),
+                        ? context.l10n.roleDriver
+                        : context.l10n.rolePassenger,
                     style: TextStyle(
                       color: user.isDriver
                           ? T.primary(context)
@@ -89,26 +87,26 @@ class AccountSecurityScreen extends StatelessWidget {
             ],
           ),
           SettingsSection(
-            title: isArabic ? 'حالة التوثيق' : 'Verification Status',
+            title: context.l10n.verificationStatus,
             children: [
               _VerificationRow(
-                label: isArabic ? 'البريد الإلكتروني' : 'Email',
+                label: context.l10n.emailLabel,
                 isVerified: user.isEmailVerified,
               ),
               _VerificationRow(
-                label: isArabic ? 'رقم الهاتف' : 'Phone',
+                label: context.l10n.phoneLabel,
                 isVerified: user.isPhoneVerified,
               ),
               if (user.isDriver)
                 _VerificationRow(
-                  label: isArabic ? 'موافقة السائق' : 'Driver Approval',
+                  label: context.l10n.driverApproval,
                   isVerified: user.isDriverApproved,
                   pending: !user.isDriverApproved,
                 ),
             ],
           ),
           SettingsSection(
-            title: isArabic ? 'الأجهزة الموثوقة' : 'Trusted Devices',
+            title: context.l10n.devicesScreenTitle,
             children: [
               ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 4),
@@ -116,11 +114,9 @@ class AccountSecurityScreen extends StatelessWidget {
                   IconsaxPlusBroken.mobile,
                   color: T.primary(context),
                 ),
-                title: Text(isArabic ? 'إدارة الأجهزة' : 'Manage Devices'),
+                title: Text(context.l10n.manageDevices),
                 subtitle: Text(
-                  isArabic
-                      ? 'عرض وإلغاء الأجهزة المرتبطة بحسابك'
-                      : 'View and revoke devices linked to your account',
+                  context.l10n.manageDevicesSubtitle,
                   style: TextStyle(
                     fontSize: 12,
                     color: T.onSurfaceVariant(context),
@@ -204,24 +200,21 @@ class _VerificationRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final localizationService = context.watch<LocalizationService>();
-    final isArabic = localizationService.isArabic;
-
     Color badgeColor;
     String badgeText;
     String icon;
 
     if (pending) {
       badgeColor = AppColors.warning;
-      badgeText = isArabic ? 'قيد المراجعة' : 'Pending';
+      badgeText = context.l10n.pending;
       icon = '⏳';
     } else if (isVerified) {
       badgeColor = AppColors.success;
-      badgeText = isArabic ? 'موثق' : 'Verified';
+      badgeText = context.l10n.verified;
       icon = '✅';
     } else {
       badgeColor = AppColors.error;
-      badgeText = isArabic ? 'غير موثق' : 'Not Verified';
+      badgeText = context.l10n.notVerified;
       icon = '❌';
     }
 

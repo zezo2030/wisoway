@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../core/constants/route_names.dart';
-import '../../core/constants/app_strings.dart';
 import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
 import '../../core/constants/countries.dart';
 import '../../widgets/country_code_picker.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -152,7 +152,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                         ),
                         const SizedBox(height: 32),
                         Text(
-                          AppStrings.forgotPassword,
+                          context.l10n.forgotPasswordTitle,
                           style: TextStyle(
                             fontSize: 32,
                             fontWeight: FontWeight.w800,
@@ -162,7 +162,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          AppStrings.forgotPasswordDesc,
+                          context.l10n.forgotPasswordSubtitle,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 16,
@@ -203,7 +203,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                                         keyboardType: TextInputType.phone,
                                         textDirection: TextDirection.ltr,
                                         decoration: InputDecoration(
-                                          labelText: AppStrings.phoneNumber,
+                                          labelText: context.l10n.phoneNumber,
                                           hintText: '123456789',
                                           prefixIcon: Icon(
                                             Icons.phone,
@@ -216,7 +216,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                                         validator: (value) {
                                           if (value == null ||
                                               value.trim().isEmpty) {
-                                            return AppStrings.phoneRequired;
+                                            return context
+                                                .l10n
+                                                .phoneNumberRequired;
                                           }
                                           if (!RegExp(r'^\d{7,15}$').hasMatch(
                                             value.trim().replaceAll(
@@ -224,7 +226,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                                               '',
                                             ),
                                           )) {
-                                            return 'يرجى إدخال رقم هاتف صحيح';
+                                            return context
+                                                .l10n
+                                                .invalidPhoneNumber;
                                           }
                                           return null;
                                         },
@@ -262,7 +266,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                                           ),
                                         )
                                       : Text(
-                                          AppStrings.sendCode,
+                                          context.l10n.sendResetCode,
                                           style: const TextStyle(
                                             fontSize: 18,
                                             fontWeight: FontWeight.w600,
@@ -275,7 +279,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                               TextButton(
                                 onPressed: () => Navigator.of(context).pop(),
                                 child: Text(
-                                  'العودة إلى تسجيل الدخول',
+                                  context.l10n.backToSignIn,
                                   style: TextStyle(
                                     color: T.primary(context),
                                     fontSize: 16,

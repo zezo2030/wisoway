@@ -8,6 +8,7 @@ import '../../core/api/websocket_service.dart';
 import '../../core/services/route_service.dart';
 import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class TripRouteMapScreen extends StatefulWidget {
   final TripModel trip;
@@ -58,7 +59,7 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
         position: _fromLatLng,
         icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
         infoWindow: InfoWindow(
-          title: 'نقطة الانطلاق',
+          title: context.l10n.departurePointTitle,
           snippet: widget.trip.from.name,
         ),
       ),
@@ -66,7 +67,10 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
         markerId: const MarkerId('destination'),
         position: _toLatLng,
         icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-        infoWindow: InfoWindow(title: 'الوجهة', snippet: widget.trip.to.name),
+        infoWindow: InfoWindow(
+          title: context.l10n.destinationTitle,
+          snippet: widget.trip.to.name,
+        ),
       ),
     };
   }
@@ -104,7 +108,7 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
       icon:
           _driverIcon ??
           BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-      infoWindow: const InfoWindow(title: 'موقع السائق'),
+      infoWindow: InfoWindow(title: context.l10n.driverLocationTitle),
       anchor: const Offset(0.5, 0.5),
     );
 
@@ -216,13 +220,13 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
                   _CircleButton(
                     icon: Icons.arrow_back,
                     onTap: () => Navigator.pop(context),
-                    semanticLabel: 'رجوع',
+                    semanticLabel: context.l10n.back,
                   ),
                   const Spacer(),
                   _CircleButton(
                     icon: Icons.fullscreen,
                     onTap: _fitBounds,
-                    semanticLabel: 'عرض المسار بالكامل',
+                    semanticLabel: context.l10n.viewFullRoute,
                   ),
                 ],
               ),
@@ -233,15 +237,15 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
             Center(
               child: Card(
                 child: Padding(
-                  padding: EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(20),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 12),
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 12),
                       Semantics(
-                        label: 'جاري تحميل المسار',
-                        child: Text('جاري تحميل المسار...'),
+                        label: context.l10n.loadingRouteLabel,
+                        child: Text(context.l10n.loadingRoute),
                       ),
                     ],
                   ),
@@ -258,7 +262,9 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
               padding: const EdgeInsets.only(bottom: 200),
               child: Semantics(
                 button: true,
-                label: _isFollowingDriver ? 'إيقاف تتبع السائق' : 'تتبع السائق',
+                label: _isFollowingDriver
+                    ? context.l10n.stopFollowingDriver
+                    : context.l10n.followDriver,
                 child: FloatingActionButton.small(
                   heroTag: 'follow_driver',
                   backgroundColor: _isFollowingDriver
@@ -424,9 +430,9 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Text(
-                        'التتبع المباشر مفعل',
-                        style: TextStyle(
+                      Text(
+                        context.l10n.liveTrackingEnabled,
+                        style: const TextStyle(
                           color: AppColors.successDark,
                           fontWeight: FontWeight.w600,
                           fontSize: 13,

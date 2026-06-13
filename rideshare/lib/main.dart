@@ -6,6 +6,7 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'l10n/generated/app_localizations.dart';
 import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/services/localization_service.dart';
@@ -130,8 +131,9 @@ class MyApp extends StatelessWidget {
                   darkTheme: AppTheme.darkTheme,
                   themeMode: themeService.themeMode,
                   locale: localizationService.locale,
-                  supportedLocales: const [Locale('ar', ''), Locale('en', '')],
+                  supportedLocales: AppLocalizations.supportedLocales,
                   localizationsDelegates: const [
+                    AppLocalizations.delegate,
                     GlobalMaterialLocalizations.delegate,
                     GlobalWidgetsLocalizations.delegate,
                     GlobalCupertinoLocalizations.delegate,
