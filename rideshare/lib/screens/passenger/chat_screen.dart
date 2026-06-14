@@ -6,10 +6,14 @@ import '../../models/chat_model.dart';
 import '../../models/trip_model.dart';
 import '../../widgets/chat_bubble_widget.dart';
 import '../../core/theme/colors.dart';
+import '../../core/ui/error_surface.dart';
+import '../../core/api/api_client.dart';
 import '../../widgets/common/empty_state.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class ChatScreen extends StatefulWidget {
   final String tripId;
+  final String? chatRoomId;
   final TripModel? trip;
   final String driverId;
   final String driverName;
@@ -17,6 +21,7 @@ class ChatScreen extends StatefulWidget {
   const ChatScreen({
     super.key,
     required this.tripId,
+    this.chatRoomId,
     this.trip,
     required this.driverId,
     required this.driverName,
@@ -35,7 +40,10 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isLoading = true;
   bool _isSending = false;
   bool _chatEnabled = false;
-  String? _errorMessage;
+  // 0 = none, 1 = must sign in, 2 = chat not enabled, 3 = load error
+  int _errorCode = 0;
+  String? _loadErrorDetail;
+  bool _readOnly = false;
 
   @override
   void initState() {
@@ -51,7 +59,18 @@ class _ChatScreenState extends State<ChatScreen> {
       if (currentUser == null) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'يجب تسجيل الدخول أولاً';
+          _errorCode = 1;
+        });
+        return;
+      }
+
+      if (widget.chatRoomId != null && widget.chatRoomId!.isNotEmpty) {
+        final chat = await _chatService.getRoomById(widget.chatRoomId!);
+        setState(() {
+          _chatId = chat.id;
+          _chatEnabled = true;
+          _readOnly = chat.isClosedForSending;
+          _isLoading = false;
         });
         return;
       }
@@ -62,8 +81,7 @@ class _ChatScreenState extends State<ChatScreen> {
         setState(() {
           _isLoading = false;
           _chatEnabled = false;
-          _errorMessage =
-              'لم يتم تفعيل التواصل بعد. يجب على السائق دفع رسوم التواصل أولاً.';
+          _errorCode = 2;
         });
         return;
       }
@@ -73,18 +91,26 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() {
         _chatId = chat.id;
         _chatEnabled = true;
+        _readOnly = chat.isClosedForSending;
         _isLoading = false;
       });
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'خطأ في تحميل المحادثة: ${e.toString()}';
+        _errorCode = 3;
+        _loadErrorDetail = e.toString();
       });
     }
   }
 
   Future<void> _sendMessage() async {
     if (_messageController.text.trim().isEmpty || _chatId == null) return;
+    if (_readOnly) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.chatClosedForSending)),
+      );
+      return;
+    }
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final currentUser = authProvider.userModel;
@@ -110,12 +136,7 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في إرسال الرسالة: ${e.toString()}'),
-            backgroundColor: T.error(context),
-          ),
-        );
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     } finally {
       if (mounted) {
@@ -138,14 +159,23 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(title: Text('محادثة - ${widget.driverName}')),
+        appBar: AppBar(
+          title: Text(context.l10n.chatTitleWithDriver(widget.driverName)),
+        ),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
-    if (_errorMessage != null && !_chatEnabled) {
+    if (_errorCode != 0 && !_chatEnabled) {
+      final errorText = _errorCode == 1
+          ? context.l10n.errorMustSignInFirst
+          : _errorCode == 2
+              ? context.l10n.chatNotEnabledYet
+              : context.l10n.chatLoadError(_loadErrorDetail ?? '');
       return Scaffold(
-        appBar: AppBar(title: Text('محادثة - ${widget.driverName}')),
+        appBar: AppBar(
+          title: Text(context.l10n.chatTitleWithDriver(widget.driverName)),
+        ),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24.0),
@@ -159,7 +189,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  _errorMessage!,
+                  errorText,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
@@ -172,10 +202,14 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (_chatId == null || currentUser == null) {
       return Scaffold(
-        appBar: AppBar(title: Text('محادثة - ${widget.driverName}')),
-        body: const Center(child: Text('خطأ في تحميل المحادثة')),
+        appBar: AppBar(
+          title: Text(context.l10n.chatTitleWithDriver(widget.driverName)),
+        ),
+        body: Center(child: Text(context.l10n.chatLoadErrorShort)),
       );
     }
+
+    final readOnly = _readOnly;
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -183,7 +217,7 @@ class _ChatScreenState extends State<ChatScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('محادثة - ${widget.driverName}'),
+            Text(context.l10n.chatTitleWithDriver(widget.driverName)),
             if (widget.trip != null)
               Text(
                 '${widget.trip!.from.name} → ${widget.trip!.to.name}',
@@ -205,16 +239,20 @@ class _ChatScreenState extends State<ChatScreen> {
                 }
 
                 if (snapshot.hasError) {
-                  return Center(child: Text('خطأ: ${snapshot.error}'));
+                  return Center(
+                    child: Text(
+                      context.l10n.errorWithMessage('${snapshot.error}'),
+                    ),
+                  );
                 }
 
                 final messages = snapshot.data ?? [];
 
                 if (messages.isEmpty) {
-                  return const EmptyState(
+                  return EmptyState(
                     icon: Icons.chat_bubble_outline,
-                    title: 'لا توجد رسائل بعد',
-                    subtitle: 'ابدأ المحادثة الآن',
+                    title: context.l10n.chatNoMessagesYet,
+                    subtitle: context.l10n.chatStartConversationNow,
                     showCircleBackground: false,
                     iconSize: 64,
                   );
@@ -242,6 +280,19 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
           ),
+          if (readOnly)
+            Container(
+              width: double.infinity,
+              color: T.surfaceVariant(context),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Text(
+                context.l10n.chatClosedForSending,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: T.onSurfaceVariant(context),
+                    ),
+              ),
+            ),
           Container(
             decoration: BoxDecoration(
               color: T.surface(context),
@@ -261,11 +312,14 @@ class _ChatScreenState extends State<ChatScreen> {
                     Expanded(
                       child: Semantics(
                         textField: true,
-                        label: 'اكتب رسالة',
+                        label: context.l10n.chatTypeMessageLabel,
                         child: TextField(
                           controller: _messageController,
+                          enabled: !readOnly,
                           decoration: InputDecoration(
-                            hintText: 'اكتب رسالة...',
+                            hintText: readOnly
+                                ? context.l10n.chatClosedForSending
+                                : context.l10n.chatTypeMessageHint,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(24),
                             ),
@@ -276,13 +330,17 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                           maxLines: null,
                           textInputAction: TextInputAction.send,
-                          onSubmitted: (_) => _sendMessage(),
+                          onSubmitted: (_) {
+                            if (!readOnly) _sendMessage();
+                          },
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      onPressed: _isSending ? null : _sendMessage,
+                      onPressed: _isSending || readOnly
+                          ? null
+                          : _sendMessage,
                       icon: _isSending
                           ? const SizedBox(
                               width: 20,
@@ -291,7 +349,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             )
                           : const Icon(Icons.send),
                       color: T.primary(context),
-                      tooltip: 'إرسال الرسالة',
+                      tooltip: context.l10n.chatSendMessageTooltip,
                     ),
                   ],
                 ),

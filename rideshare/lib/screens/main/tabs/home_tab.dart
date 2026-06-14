@@ -5,6 +5,8 @@ import '../../../providers/auth_provider.dart';
 import '../../../core/constants/route_names.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/theme/colors.dart';
+import '../../../core/widgets/phone_text.dart';
+import '../../../l10n/l10n_extensions.dart';
 import '../../../widgets/notification_icon_button.dart';
 
 class HomeTab extends StatelessWidget {
@@ -41,7 +43,7 @@ class HomeTab extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'مرحباً',
+                            context.l10n.homeGreeting,
                             style: TextStyle(
                               fontSize: 16,
                               color: T.onSurfaceVariant(context),
@@ -49,7 +51,7 @@ class HomeTab extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            user?.name ?? 'المستخدم',
+                            user?.name ?? context.l10n.defaultUserName,
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
@@ -76,9 +78,9 @@ class HomeTab extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'ابدأ رحلتك',
-                            style: TextStyle(
+                          Text(
+                            context.l10n.homeStartTripTitle,
+                            style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
                               color: AppColors.white,
@@ -86,7 +88,7 @@ class HomeTab extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'أنشئ رحلة جديدة واكسب المال',
+                            context.l10n.homeStartTripSubtitle,
                             style: TextStyle(
                               fontSize: 14,
                               color: AppColors.white.withValues(alpha: 0.9),
@@ -97,7 +99,7 @@ class HomeTab extends StatelessWidget {
                             width: double.infinity,
                             child: Semantics(
                               button: true,
-                              label: 'إنشاء رحلة جديدة',
+                              label: context.l10n.homeCreateTripButton,
                               child: ElevatedButton.icon(
                                 onPressed: () {
                                   Navigator.pushNamed(
@@ -109,9 +111,9 @@ class HomeTab extends StatelessWidget {
                                   IconsaxPlusBold.add_circle,
                                   color: AppColors.white,
                                 ),
-                                label: const Text(
-                                  'إنشاء رحلة جديدة',
-                                  style: TextStyle(
+                                label: Text(
+                                  context.l10n.homeCreateTripButton,
+                                  style: const TextStyle(
                                     color: AppColors.white,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -171,7 +173,7 @@ class HomeTab extends StatelessWidget {
                               ),
                               const SizedBox(width: 12),
                               Text(
-                                'معلومات المستخدم',
+                                context.l10n.userInfoTitle,
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -184,29 +186,34 @@ class HomeTab extends StatelessWidget {
                           _buildInfoRow(
                             context: context,
                             icon: IconsaxPlusLinear.profile,
-                            label: 'الاسم',
+                            label: context.l10n.name,
                             value: user.name,
                           ),
                           const Divider(height: 24),
                           _buildInfoRow(
                             context: context,
                             icon: IconsaxPlusLinear.call,
-                            label: 'رقم الهاتف',
+                            label: context.l10n.phoneNumber,
                             value: user.phoneNumber,
+                            isPhone: true,
                           ),
                           const Divider(height: 24),
                           _buildInfoRow(
                             context: context,
                             icon: IconsaxPlusLinear.profile_2user,
-                            label: 'الجنس',
-                            value: user.isMale ? 'ذكر' : 'أنثى',
+                            label: context.l10n.gender,
+                            value: user.isMale
+                                ? context.l10n.male
+                                : context.l10n.female,
                           ),
                           const Divider(height: 24),
                           _buildInfoRow(
                             context: context,
                             icon: IconsaxPlusLinear.award,
-                            label: 'الدور',
-                            value: user.isDriver ? 'سائق' : 'راكب',
+                            label: context.l10n.roleLabel,
+                            value: user.isDriver
+                                ? context.l10n.driver
+                                : context.l10n.passenger,
                           ),
                         ],
                       ),
@@ -216,7 +223,7 @@ class HomeTab extends StatelessWidget {
 
                   if (user != null && user.canCreateTrips) ...[
                     Text(
-                      'إحصائيات',
+                      context.l10n.statisticsTitle,
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -230,7 +237,7 @@ class HomeTab extends StatelessWidget {
                           child: _buildStatCard(
                             context: context,
                             icon: IconsaxPlusBold.car,
-                            title: 'الرحلات',
+                            title: context.l10n.tripsStatLabel,
                             value: '0',
                             color: T.primary(context),
                           ),
@@ -240,7 +247,7 @@ class HomeTab extends StatelessWidget {
                           child: _buildStatCard(
                             context: context,
                             icon: IconsaxPlusBold.people,
-                            title: 'الركاب',
+                            title: context.l10n.passengersStatLabel,
                             value: '0',
                             color: T.secondary(context),
                           ),
@@ -262,7 +269,13 @@ class HomeTab extends StatelessWidget {
     required IconData icon,
     required String label,
     required String value,
+    bool isPhone = false,
   }) {
+    final valueStyle = TextStyle(
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+      color: T.onSurface(context),
+    );
     return Row(
       children: [
         Icon(icon, size: 20, color: T.onSurfaceVariant(context)),
@@ -273,14 +286,10 @@ class HomeTab extends StatelessWidget {
             style: TextStyle(fontSize: 14, color: T.onSurfaceVariant(context)),
           ),
         ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: T.onSurface(context),
-          ),
-        ),
+        if (isPhone)
+          PhoneText(value, style: valueStyle)
+        else
+          Text(value, style: valueStyle),
       ],
     );
   }

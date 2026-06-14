@@ -11,6 +11,7 @@ import UserDetailPage from "@/pages/users/user-detail"
 import PaymentsListPage from "@/pages/payments/payments-list"
 import PendingQueuePage from "@/pages/payments/pending-queue"
 import WalletsListPage from "@/pages/wallets/wallets-list"
+import WalletDetailPage from "@/pages/wallets/wallet-detail"
 import VehiclesListPage from "@/pages/vehicles/vehicles-list"
 import TripsListPage from "@/pages/trips/trips-list"
 import TripDetailPage from "@/pages/trips/trip-detail"
@@ -20,6 +21,13 @@ import BookingsListPage from "@/pages/bookings/bookings-list"
 import RatingsListPage from "@/pages/ratings/ratings-list"
 import NotificationsPage from "@/pages/notifications/notifications"
 import ChatRoomsPage from "@/pages/chat/chat-rooms"
+import TripChatLivePage from "@/pages/chat/trip-chat-live"
+import AccountFlagsPage from "@/pages/account-flags/account-flags"
+import PendingChargesPage from "@/pages/pending-charges/PendingChargesPage"
+import ComplaintsPage from "@/pages/complaints/complaints"
+import RefundsPage from "@/pages/refunds/refunds"
+import FinesPage from "@/pages/fines/fines-list"
+import NoShowReportsPage from "@/pages/no-show-reports/no-show-reports-list"
 
 // Placeholder pages (will be implemented in later phases)
 
@@ -84,6 +92,10 @@ export function AppRoutes() {
           element: <WalletsListPage />,
         },
         {
+          path: "wallets/:id",
+          element: <WalletDetailPage />,
+        },
+        {
           path: "vehicles",
           element: <VehiclesListPage />,
         },
@@ -94,6 +106,10 @@ export function AppRoutes() {
         {
           path: "trips/:id",
           element: <TripDetailPage />,
+        },
+        {
+          path: "trips/:id/chat",
+          element: <TripChatLivePage />,
         },
         {
           path: "bookings",
@@ -118,6 +134,30 @@ export function AppRoutes() {
         {
           path: "settings/pricing",
           element: <PricingSettingsPage />,
+        },
+        {
+          path: "account-flags",
+          element: <AccountFlagsPage />,
+        },
+        {
+          path: "pending-charges",
+          element: <PendingChargesPage />,
+        },
+        {
+          path: "complaints",
+          element: <ComplaintsPage />,
+        },
+        {
+          path: "refunds",
+          element: <RefundsPage />,
+        },
+        {
+          path: "fines",
+          element: <FinesPage />,
+        },
+        {
+          path: "no-show-reports",
+          element: <NoShowReportsPage />,
         },
       ],
     },

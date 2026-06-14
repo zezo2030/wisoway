@@ -6,10 +6,13 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import {
+  BookingEntity,
+  BookingStatus,
   PayoutRequestEntity,
   TripEntity,
+  UserEntity,
   WalletAccountEntity,
   WalletAccountType,
   WalletEntryDirection,
@@ -21,6 +24,19 @@ import {
 import { CreateTopupDto } from './dto/create-topup.dto';
 import { CreatePayoutRequestDto } from './dto/create-payout-request.dto';
 import { DriverTripChargeDto } from './dto/driver-trip-charge.dto';
+
+/** Primary ledger row for a (user, bucket): highest positive balance, else JOD, else first. */
+export function pickPrimaryWalletLedgerAccount(
+  accounts: WalletAccountEntity[],
+): WalletAccountEntity | null {
+  if (accounts.length === 0) return null;
+  const positive = accounts.filter((a) => Number(a.balance) > 0);
+  return (
+    [...positive].sort((a, b) => Number(b.balance) - Number(a.balance))[0] ??
+    accounts.find((a) => a.currency === 'JOD') ??
+    accounts[0]
+  );
+}
 
 @Injectable()
 export class WalletService {
@@ -34,12 +50,14 @@ export class WalletService {
     private readonly payoutRepo: Repository<PayoutRequestEntity>,
     @InjectRepository(TripEntity)
     private readonly tripRepo: Repository<TripEntity>,
+    @InjectRepository(UserEntity)
+    private readonly userRepo: Repository<UserEntity>,
   ) {}
 
   private async getOrCreateAccount(
     userId: string,
     accountType: WalletAccountType,
-    currency = 'EGP',
+    currency = 'JOD',
   ) {
     let account = await this.walletAccountRepo.findOne({
       where: { userId, accountType, currency },
@@ -57,12 +75,53 @@ export class WalletService {
     return account;
   }
 
+  /**
+   * Keeps legacy `users.walletBalance` / `walletCurrency` aligned with the ledger row
+   * the app treats as “primary” for that bucket (matches GET /wallet/me summary).
+   */
+  async syncUserLegacyWalletMirror(
+    userId: string,
+    accountType: WalletAccountType,
+    manager: EntityManager,
+  ): Promise<void> {
+    const accounts = await manager.find(WalletAccountEntity, {
+      where: { userId, accountType },
+    });
+    const primary = pickPrimaryWalletLedgerAccount(accounts);
+    if (!primary) return;
+    await manager.update(UserEntity, { id: userId }, {
+      walletBalance: Number(primary.balance),
+      walletCurrency: primary.currency,
+    });
+  }
+
+  /**
+   * Wallet balances are per (user, role bucket, currency). Default currency is JOD (Jordan).
+   * When multiple accounts exist, we pick the best row to display (see below).
+   */
   async getWalletSummary(userId: string, role: string) {
     const accountType =
       role === WalletAccountType.DRIVER
         ? WalletAccountType.DRIVER
         : WalletAccountType.RIDER;
-    const account = await this.getOrCreateAccount(userId, accountType);
+
+    const accounts = await this.walletAccountRepo.find({
+      where: { userId, accountType },
+      order: { updatedAt: 'DESC' },
+    });
+
+    if (accounts.length === 0) {
+      const account = await this.getOrCreateAccount(userId, accountType);
+      return {
+        accountId: account.id,
+        accountType: account.accountType,
+        currency: account.currency,
+        balance: Number(account.balance),
+        isActive: account.isActive,
+      };
+    }
+
+    const account = pickPrimaryWalletLedgerAccount(accounts)!;
 
     return {
       accountId: account.id,
@@ -86,7 +145,7 @@ export class WalletService {
     note?: string | null;
   }): Promise<WalletTransactionEntity> {
     const { userId, accountType, amount, idempotencyKey } = params;
-    const currency = params.currency || 'EGP';
+    const currency = params.currency || 'JOD';
     if (!Number.isFinite(amount) || amount <= 0) {
       throw new BadRequestException('Invalid top-up amount');
     }
@@ -98,7 +157,11 @@ export class WalletService {
       return dup;
     }
 
-    const account = await this.getOrCreateAccount(userId, accountType, currency);
+    const account = await this.getOrCreateAccount(
+      userId,
+      accountType,
+      currency,
+    );
 
     return this.dataSource.transaction(async (manager) => {
       const locked = await manager.findOne(WalletAccountEntity, {
@@ -125,7 +188,9 @@ export class WalletService {
           note: params.note ?? null,
         },
       });
-      return manager.save(tx);
+      const savedTx = await manager.save(tx);
+      await this.syncUserLegacyWalletMirror(userId, accountType, manager);
+      return savedTx;
     });
   }
 
@@ -147,21 +212,96 @@ export class WalletService {
     });
   }
 
+  async adjustBalanceByAdmin(params: {
+    accountId: string;
+    amount: number;
+    note?: string | null;
+    currency?: string;
+    adminId: string;
+  }): Promise<WalletTransactionEntity> {
+    const { accountId, amount, adminId } = params;
+    if (!Number.isFinite(amount) || amount === 0) {
+      throw new BadRequestException('Adjustment amount must be non-zero');
+    }
+
+    const account = await this.walletAccountRepo.findOne({
+      where: { id: accountId },
+    });
+    if (!account) {
+      throw new NotFoundException('Wallet account not found');
+    }
+
+    if (params.currency && params.currency !== account.currency) {
+      throw new BadRequestException('Currency does not match wallet currency');
+    }
+
+    return this.dataSource.transaction(async (manager) => {
+      const locked = await manager.findOne(WalletAccountEntity, {
+        where: { id: account.id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!locked) {
+        throw new NotFoundException('Wallet account not found');
+      }
+
+      const current = Number(locked.balance);
+      const nextBalance = current + amount;
+      if (nextBalance < 0) {
+        throw new BadRequestException(
+          'Adjustment would make wallet balance negative',
+        );
+      }
+
+      locked.balance = nextBalance.toFixed(2);
+      await manager.save(locked);
+
+      const tx = manager.create(WalletTransactionEntity, {
+        accountId: locked.id,
+        type: WalletTransactionType.ADJUSTMENT,
+        direction:
+          amount > 0 ? WalletEntryDirection.CREDIT : WalletEntryDirection.DEBIT,
+        status: WalletTransactionStatus.POSTED,
+        amount: Math.abs(amount).toFixed(2),
+        currency: locked.currency,
+        metadata: {
+          note: params.note ?? null,
+          adminId,
+          balanceBefore: current.toFixed(2),
+          balanceAfter: nextBalance.toFixed(2),
+        },
+      });
+      return manager.save(tx);
+    });
+  }
+
   async chargeDriverForTrip(driverId: string, dto: DriverTripChargeDto) {
     const trip = await this.tripRepo.findOne({
       where: { id: dto.tripId, driverId },
-      select: ['id', 'driverId'],
     });
     if (!trip) {
       throw new NotFoundException('Trip not found for this driver');
+    }
+    if (trip.driverWalletChargeApplied) {
+      const existingTripCharge = await this.walletTxRepo.findOne({
+        where: {
+          referenceType: 'trip',
+          referenceId: dto.tripId,
+          type: WalletTransactionType.TRIP_DEBIT,
+        },
+        order: { createdAt: 'DESC' },
+      });
+      if (existingTripCharge) return existingTripCharge;
+      throw new BadRequestException('Trip fee has already been paid');
     }
 
     const account = await this.getOrCreateAccount(
       driverId,
       WalletAccountType.DRIVER,
-      'EGP',
+      trip.currency || 'JOD',
     );
-    const fee = 10;
+    const seatPrice = Number(trip.price ?? 0);
+    const totalSeats = Number(trip.totalSeats ?? 0);
+    const fee = Math.round(seatPrice * totalSeats * 0.1 * 100) / 100;
 
     const existing = dto.idempotencyKey
       ? await this.walletTxRepo.findOne({
@@ -173,12 +313,66 @@ export class WalletService {
     }
 
     return this.dataSource.transaction(async (manager) => {
+      const driver = await manager.findOne(UserEntity, {
+        where: { id: driverId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!driver) {
+        throw new NotFoundException('User not found');
+      }
+
       const locked = await manager.findOne(WalletAccountEntity, {
         where: { id: account.id },
         lock: { mode: 'pessimistic_write' },
       });
       if (!locked) {
         throw new NotFoundException('Wallet account not found');
+      }
+
+      if (!driver.hasUsedLifetimeFreeTrip) {
+        driver.hasUsedLifetimeFreeTrip = true;
+        await manager.save(driver);
+
+        const freeTripTx = manager.create(WalletTransactionEntity, {
+          accountId: locked.id,
+          type: WalletTransactionType.TRIP_DEBIT,
+          direction: WalletEntryDirection.DEBIT,
+          status: WalletTransactionStatus.POSTED,
+          amount: '0.00',
+          currency: locked.currency,
+          referenceType: 'trip',
+          referenceId: dto.tripId,
+          idempotencyKey: dto.idempotencyKey ?? null,
+          metadata: {
+            seatPrice,
+            totalSeats,
+            percent: 10,
+            formula: 'seatPrice * totalSeats * 10%',
+            freeTripApplied: true,
+            discountPercent: 100,
+          },
+        });
+        const savedFreeTripTx = await manager.save(freeTripTx);
+
+        await manager.update(
+          TripEntity,
+          { id: dto.tripId },
+          {
+            driverWalletChargeApplied: true,
+            driverWalletChargeAt: new Date(),
+            communicationFeeStatus: 'paid',
+          },
+        );
+        await manager.update(
+          BookingEntity,
+          {
+            tripId: dto.tripId,
+            status: In([BookingStatus.PENDING, BookingStatus.CONFIRMED]),
+          },
+          { hasDriverPaidToContact: true },
+        );
+
+        return savedFreeTripTx;
       }
 
       const current = Number(locked.balance);
@@ -200,8 +394,34 @@ export class WalletService {
         referenceType: 'trip',
         referenceId: dto.tripId,
         idempotencyKey: dto.idempotencyKey ?? null,
+        metadata: {
+          seatPrice,
+          totalSeats,
+          percent: 10,
+          formula: 'seatPrice * totalSeats * 10%',
+        },
       });
-      return manager.save(tx);
+      const savedTx = await manager.save(tx);
+
+      await manager.update(
+        TripEntity,
+        { id: dto.tripId },
+        {
+          driverWalletChargeApplied: true,
+          driverWalletChargeAt: new Date(),
+          communicationFeeStatus: 'paid',
+        },
+      );
+      await manager.update(
+        BookingEntity,
+        {
+          tripId: dto.tripId,
+          status: In([BookingStatus.PENDING, BookingStatus.CONFIRMED]),
+        },
+        { hasDriverPaidToContact: true },
+      );
+
+      return savedTx;
     });
   }
 
@@ -259,7 +479,7 @@ export class WalletService {
     const account = await this.getOrCreateAccount(
       driverId,
       WalletAccountType.DRIVER,
-      dto.currency || 'EGP',
+      dto.currency || 'JOD',
     );
     if (Number(account.balance) < dto.amount) {
       throw new BadRequestException('Insufficient wallet balance for payout');
@@ -282,9 +502,16 @@ export class WalletService {
       role === WalletAccountType.DRIVER
         ? WalletAccountType.DRIVER
         : WalletAccountType.RIDER;
-    const account = await this.getOrCreateAccount(userId, accountType);
+    const walletAccounts = await this.walletAccountRepo.find({
+      where: { userId, accountType },
+    });
+    if (walletAccounts.length === 0) {
+      await this.getOrCreateAccount(userId, accountType);
+      return [];
+    }
+    const accountIds = walletAccounts.map((a) => a.id);
     const transactions = await this.walletTxRepo.find({
-      where: { accountId: account.id },
+      where: { accountId: In(accountIds) },
       order: { createdAt: 'DESC' },
       take: Math.min(Math.max(limit, 1), 200),
     });

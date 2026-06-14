@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/utils/phone_masker.dart';
 import '../models/chat_model.dart';
 import '../core/theme/colors.dart';
+import '../l10n/l10n_extensions.dart';
 
 class ChatBubbleWidget extends StatelessWidget {
   final MessageModel message;
@@ -20,9 +21,9 @@ class ChatBubbleWidget extends StatelessWidget {
     final maskedText = PhoneMasker.maskPhoneNumbers(message.text);
 
     final senderInfo = isFromCurrentUser
-        ? 'رسالتك'
-        : 'رسالة من ${message.senderName}';
-    final timeInfo = _formatTime(message.createdAt);
+        ? context.l10n.chatYourMessage
+        : context.l10n.chatMessageFrom(message.senderName);
+    final timeInfo = _formatTime(context, message.createdAt);
 
     return Semantics(
       label: '$senderInfo: $maskedText، $timeInfo',
@@ -81,7 +82,7 @@ class ChatBubbleWidget extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                _formatTime(message.createdAt),
+                _formatTime(context, message.createdAt),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: isFromCurrentUser
                       ? T.onPrimary(context).withValues(alpha: 0.7)
@@ -96,16 +97,18 @@ class ChatBubbleWidget extends StatelessWidget {
     );
   }
 
-  String _formatTime(DateTime timestamp) {
+  String _formatTime(BuildContext context, DateTime timestamp) {
     final now = DateTime.now();
     final difference = now.difference(timestamp);
 
     if (difference.inDays == 0) {
       return '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
     } else if (difference.inDays == 1) {
-      return 'أمس ${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
+      return context.l10n.chatYesterdayAt(
+        '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}',
+      );
     } else if (difference.inDays < 7) {
-      return '${difference.inDays} أيام';
+      return context.l10n.chatDaysAgo(difference.inDays);
     } else {
       return '${timestamp.day}/${timestamp.month}/${timestamp.year}';
     }

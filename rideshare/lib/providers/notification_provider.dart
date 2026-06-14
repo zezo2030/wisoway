@@ -4,6 +4,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import '../core/api/websocket_service.dart';
 import '../core/services/auth_service.dart';
 import '../core/services/notification_service.dart';
+import '../core/services/notification_navigation_service.dart';
+import '../core/services/push_notification_service.dart';
 import '../models/notification_model.dart';
 
 class NotificationProvider with ChangeNotifier {
@@ -45,30 +47,47 @@ class NotificationProvider with ChangeNotifier {
       // Get FCM token
       _fcmToken = await FirebaseMessaging.instance.getToken();
       if (_fcmToken != null) {
+        await PushNotificationService.registerDevice(
+          token: _fcmToken!,
+          platform: defaultTargetPlatform == TargetPlatform.iOS
+              ? 'ios'
+              : 'android',
+        );
         await _authService.updateFcmToken(_fcmToken!);
       }
 
       // Listen to token updates
       FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
         _fcmToken = newToken;
+        await PushNotificationService.registerDevice(
+          token: newToken,
+          platform: defaultTargetPlatform == TargetPlatform.iOS
+              ? 'ios'
+              : 'android',
+        );
         await _authService.updateFcmToken(newToken);
         notifyListeners();
       });
 
       // Listen to foreground messages
-      FirebaseMessaging.onMessage.listen((message) {
-        fetchNotifications(); // Refresh list on new message
+      FirebaseMessaging.onMessage.listen((message) async {
+        await PushNotificationService.showForegroundNotification(message);
+        await fetchNotifications();
       });
 
       // Check if app was opened from terminated state
       final initialMessage = await FirebaseMessaging.instance
           .getInitialMessage();
       if (initialMessage != null) {
-        fetchNotifications();
+        NotificationNavigationService.handleNotificationNavigation(
+          initialMessage,
+        );
+        await fetchNotifications();
       }
 
-      FirebaseMessaging.onMessageOpenedApp.listen((_) {
-        fetchNotifications();
+      FirebaseMessaging.onMessageOpenedApp.listen((message) async {
+        NotificationNavigationService.handleNotificationNavigation(message);
+        await fetchNotifications();
       });
 
       await _socketService.connect();

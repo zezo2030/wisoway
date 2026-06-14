@@ -8,9 +8,11 @@ import '../../models/location_model.dart';
 import '../../core/theme/colors.dart';
 import '../../core/services/location_service.dart';
 import '../../core/utils/responsive_layout.dart';
+import '../../l10n/l10n_extensions.dart';
 import '../../widgets/location_picker_widget.dart';
 import 'home_drawer.dart';
 import 'tabs/home_tab_content.dart';
+import 'tabs/driver_home_content.dart';
 import 'tabs/search_tab.dart';
 import 'tabs/bookings_tab.dart';
 import 'tabs/profile_tab.dart';
@@ -45,6 +47,16 @@ class _HomeScreenState extends State<HomeScreen> {
     await notificationProvider.initialize();
   }
 
+  Future<void> _refreshHomeData() async {
+    await Future.wait([
+      _loadUserLocation(),
+      Provider.of<NotificationProvider>(
+        context,
+        listen: false,
+      ).fetchNotifications(),
+    ]);
+  }
+
   Future<void> _loadUserLocation() async {
     if (!mounted) return;
     setState(() => _isLoadingLocation = true);
@@ -63,21 +75,19 @@ class _HomeScreenState extends State<HomeScreen> {
       final errorStr = e.toString();
       if (errorStr.contains('LOCATION_SERVICE_DISABLED')) {
         _showLocationRequirementDialog(
-          title: 'خدمات الموقع معطلة',
-          message:
-              'يرجى تفعيل خدمات الموقع (GPS) لتتمكن من استخدام التطبيق ومشاركة موقعك.',
+          title: context.l10n.locationServicesDisabledTitle,
+          message: context.l10n.locationServicesDisabledMessage,
           onAction: () async {
             await _locationService.openLocationSettings();
             _loadUserLocation();
           },
-          actionLabel: 'تفعيل',
+          actionLabel: context.l10n.enable,
         );
       } else if (errorStr.contains('LOCATION_PERMISSION_DENIED') ||
           errorStr.contains('LOCATION_PERMISSION_PERMANENTLY_DENIED')) {
         _showLocationRequirementDialog(
-          title: 'تصريح الموقع مطلوب',
-          message:
-              'يحتاج التطبيق إلى تصريح الوصول للموقع لتتمكن من مشاركة رحلاتك.',
+          title: context.l10n.locationPermissionRequiredTitle,
+          message: context.l10n.locationPermissionRequiredMessage,
           onAction: () async {
             if (errorStr.contains('PERMANENTLY_DENIED')) {
               await _locationService.openAppSettings();
@@ -85,16 +95,16 @@ class _HomeScreenState extends State<HomeScreen> {
               _loadUserLocation();
             }
           },
-          actionLabel: 'منح التصريح',
+          actionLabel: context.l10n.grantPermission,
         );
       }
 
       setState(() {
         _userLocation = LocationModel(
-          name: 'القاهرة',
-          latitude: 30.0444,
-          longitude: 31.2357,
-          address: 'القاهرة، مصر',
+          name: context.l10n.defaultCityName,
+          latitude: 31.9539,
+          longitude: 35.9106,
+          address: context.l10n.defaultCityAddress,
         );
       });
     }
@@ -119,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
-              'لاحقاً',
+              context.l10n.later,
               style: GoogleFonts.tajawal(color: T.onSurfaceVariant(context)),
             ),
           ),
@@ -146,7 +156,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => LocationPickerWidget(
-          title: 'اختر موقعك',
+          title: context.l10n.chooseYourLocation,
           initialLocation: _userLocation,
           onLocationSelected: (location) {},
         ),
@@ -158,6 +168,22 @@ class _HomeScreenState extends State<HomeScreen> {
         _userLocation = location;
       });
     }
+  }
+
+  int _tabCountForRole(bool isDriver) => isDriver ? 3 : 4;
+
+  /// Keeps index in range when role/tab layout changes (e.g. passenger → driver).
+  int _safeTabIndex(bool isDriver) {
+    final n = _tabCountForRole(isDriver);
+    if (_currentIndex < 0 || _currentIndex >= n) return 0;
+    return _currentIndex;
+  }
+
+  void _syncTabIndexIfNeeded(int safeIndex) {
+    if (safeIndex == _currentIndex) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _currentIndex = safeIndex);
+    });
   }
 
   @override
@@ -173,25 +199,44 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildScaffoldWithNavigationRail(BuildContext context, user) {
-    final pages = [
-      HomeTabContent(
-        user: user,
-        userLocation: _userLocation,
-        isLoadingLocation: _isLoadingLocation,
-        onOpenDrawer: () {},
-        onRefreshLocation: _loadUserLocation,
-        onChangeLocation: _changeLocation,
-      ),
-      const SearchTab(),
-      BookingsTab(user: user),
-      ProfileTab(user: user),
-    ];
+    final bool isDriver = user?.isDriver == true;
+    final int safeIndex = _safeTabIndex(isDriver);
+    _syncTabIndexIfNeeded(safeIndex);
+
+    final pages = isDriver
+        ? [
+            DriverHomeContent(
+              user: user,
+              userLocation: _userLocation,
+              isLoadingLocation: _isLoadingLocation,
+              onOpenDrawer: () {},
+              onRefreshLocation: _loadUserLocation,
+              onChangeLocation: _changeLocation,
+              onRefreshData: _refreshHomeData,
+            ),
+            BookingsTab(user: user),
+            ProfileTab(user: user),
+          ]
+        : [
+            HomeTabContent(
+              user: user,
+              userLocation: _userLocation,
+              isLoadingLocation: _isLoadingLocation,
+              onOpenDrawer: () {},
+              onRefreshLocation: _loadUserLocation,
+              onChangeLocation: _changeLocation,
+              onRefreshData: _refreshHomeData,
+            ),
+            const SearchTab(),
+            BookingsTab(user: user),
+            ProfileTab(user: user),
+          ];
 
     return Scaffold(
       body: Row(
         children: [
           NavigationRail(
-            selectedIndex: _currentIndex,
+            selectedIndex: safeIndex,
             onDestinationSelected: (index) {
               setState(() {
                 _currentIndex = index;
@@ -233,42 +278,41 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             destinations: [
-              const NavigationRailDestination(
-                icon: Icon(IconsaxPlusLinear.home),
-                selectedIcon: Icon(IconsaxPlusBold.home),
-                label: Text('الرئيسية'),
+              NavigationRailDestination(
+                icon: const Icon(IconsaxPlusLinear.home),
+                selectedIcon: const Icon(IconsaxPlusBold.home),
+                label: Text(context.l10n.home),
               ),
-              const NavigationRailDestination(
-                icon: Icon(IconsaxPlusLinear.search_normal),
-                selectedIcon: Icon(IconsaxPlusBold.search_normal),
-                label: Text('بحث'),
-              ),
+              if (!isDriver)
+                NavigationRailDestination(
+                  icon: const Icon(IconsaxPlusLinear.search_normal),
+                  selectedIcon: const Icon(IconsaxPlusBold.search_normal),
+                  label: Text(context.l10n.searchTab),
+                ),
               NavigationRailDestination(
                 icon: Icon(
-                  user?.canCreateTrips == true
+                  isDriver
                       ? IconsaxPlusLinear.car
                       : IconsaxPlusLinear.bookmark,
                 ),
                 selectedIcon: Icon(
-                  user?.canCreateTrips == true
-                      ? IconsaxPlusBold.car
-                      : IconsaxPlusBold.bookmark,
+                  isDriver ? IconsaxPlusBold.car : IconsaxPlusBold.bookmark,
                   color: T.primary(context),
                 ),
                 label: Text(
-                  user?.canCreateTrips == true ? 'رحلاتي' : 'حجوزاتي',
+                  isDriver ? context.l10n.myTripsTitle : context.l10n.myBookings,
                 ),
               ),
-              const NavigationRailDestination(
-                icon: Icon(IconsaxPlusLinear.profile),
-                selectedIcon: Icon(IconsaxPlusBold.profile),
-                label: Text('البروفايل'),
+              NavigationRailDestination(
+                icon: const Icon(IconsaxPlusLinear.profile),
+                selectedIcon: const Icon(IconsaxPlusBold.profile),
+                label: Text(context.l10n.profileTabLabel),
               ),
             ],
           ),
           const VerticalDivider(thickness: 1, width: 1),
           Expanded(
-            child: IndexedStack(index: _currentIndex, children: pages),
+            child: IndexedStack(index: safeIndex, children: pages),
           ),
         ],
       ),
@@ -276,27 +320,47 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildScaffoldWithBottomNav(BuildContext context, user) {
+    final bool isDriver = user?.isDriver == true;
+    final int safeIndex = _safeTabIndex(isDriver);
+    _syncTabIndexIfNeeded(safeIndex);
+
     return Scaffold(
       body: Builder(
         builder: (scaffoldBodyContext) {
-          final pages = [
-            HomeTabContent(
-              user: user,
-              userLocation: _userLocation,
-              isLoadingLocation: _isLoadingLocation,
-              onOpenDrawer: () =>
-                  Scaffold.of(scaffoldBodyContext).openDrawer(),
-              onRefreshLocation: _loadUserLocation,
-              onChangeLocation: _changeLocation,
-            ),
-            const SearchTab(),
-            BookingsTab(user: user),
-            ProfileTab(user: user),
-          ];
-          return IndexedStack(index: _currentIndex, children: pages);
+          final pages = isDriver
+              ? [
+                  DriverHomeContent(
+                    user: user,
+                    userLocation: _userLocation,
+                    isLoadingLocation: _isLoadingLocation,
+                    onOpenDrawer: () =>
+                        Scaffold.of(scaffoldBodyContext).openDrawer(),
+                    onRefreshLocation: _loadUserLocation,
+                    onChangeLocation: _changeLocation,
+                    onRefreshData: _refreshHomeData,
+                  ),
+                  BookingsTab(user: user),
+                  ProfileTab(user: user),
+                ]
+              : [
+                  HomeTabContent(
+                    user: user,
+                    userLocation: _userLocation,
+                    isLoadingLocation: _isLoadingLocation,
+                    onOpenDrawer: () =>
+                        Scaffold.of(scaffoldBodyContext).openDrawer(),
+                    onRefreshLocation: _loadUserLocation,
+                    onChangeLocation: _changeLocation,
+                    onRefreshData: _refreshHomeData,
+                  ),
+                  const SearchTab(),
+                  BookingsTab(user: user),
+                  ProfileTab(user: user),
+                ];
+          return IndexedStack(index: safeIndex, children: pages);
         },
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(user),
+      bottomNavigationBar: _buildBottomNavigationBar(user, isDriver, safeIndex),
       drawer: HomeDrawer(
         user: user,
         onTabSelect: (index) {
@@ -306,9 +370,40 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBottomNavigationBar(user) {
+  Widget _buildBottomNavigationBar(user, bool isDriver, int currentIndex) {
+    final items = <BottomNavigationBarItem>[
+      BottomNavigationBarItem(
+        icon: const Icon(IconsaxPlusLinear.home),
+        activeIcon: Icon(IconsaxPlusBold.home, color: T.primary(context)),
+        label: context.l10n.home,
+      ),
+      if (!isDriver)
+        BottomNavigationBarItem(
+          icon: const Icon(IconsaxPlusLinear.search_normal),
+          activeIcon: Icon(
+            IconsaxPlusBold.search_normal,
+            color: T.primary(context),
+          ),
+          label: context.l10n.searchTab,
+        ),
+      BottomNavigationBarItem(
+        icon: isDriver
+            ? const Icon(IconsaxPlusLinear.car)
+            : const Icon(IconsaxPlusLinear.bookmark),
+        activeIcon: isDriver
+            ? Icon(IconsaxPlusBold.car, color: T.primary(context))
+            : Icon(IconsaxPlusBold.bookmark, color: T.primary(context)),
+        label: isDriver ? context.l10n.myTripsTitle : context.l10n.myBookings,
+      ),
+      BottomNavigationBarItem(
+        icon: const Icon(IconsaxPlusLinear.profile),
+        activeIcon: Icon(IconsaxPlusBold.profile, color: T.primary(context)),
+        label: context.l10n.profileTitle,
+      ),
+    ];
+
     return BottomNavigationBar(
-      currentIndex: _currentIndex,
+      currentIndex: currentIndex,
       onTap: (index) {
         setState(() {
           _currentIndex = index;
@@ -325,35 +420,7 @@ class _HomeScreenState extends State<HomeScreen> {
         fontWeight: FontWeight.normal,
         fontSize: 12,
       ),
-      items: [
-        BottomNavigationBarItem(
-          icon: const Icon(IconsaxPlusLinear.home),
-          activeIcon: Icon(IconsaxPlusBold.home, color: T.primary(context)),
-          label: 'الرئيسية',
-        ),
-        BottomNavigationBarItem(
-          icon: const Icon(IconsaxPlusLinear.search_normal),
-          activeIcon: Icon(
-            IconsaxPlusBold.search_normal,
-            color: T.primary(context),
-          ),
-          label: 'بحث',
-        ),
-        BottomNavigationBarItem(
-          icon: user?.canCreateTrips == true
-              ? const Icon(IconsaxPlusLinear.car)
-              : const Icon(IconsaxPlusLinear.bookmark),
-          activeIcon: user?.canCreateTrips == true
-              ? Icon(IconsaxPlusBold.car, color: T.primary(context))
-              : Icon(IconsaxPlusBold.bookmark, color: T.primary(context)),
-          label: user?.canCreateTrips == true ? 'رحلاتي' : 'حجوزاتي',
-        ),
-        BottomNavigationBarItem(
-          icon: const Icon(IconsaxPlusLinear.profile),
-          activeIcon: Icon(IconsaxPlusBold.profile, color: T.primary(context)),
-          label: 'الملف الشخصي',
-        ),
-      ],
+      items: items,
     );
   }
 }

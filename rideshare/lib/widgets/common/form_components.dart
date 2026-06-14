@@ -14,6 +14,7 @@ class ModernInputField extends StatelessWidget {
   final bool readOnly;
   final bool enabled;
   final VoidCallback? onTap;
+  final TextDirection? textDirection;
 
   const ModernInputField({
     super.key,
@@ -28,6 +29,7 @@ class ModernInputField extends StatelessWidget {
     this.readOnly = false,
     this.enabled = true,
     this.onTap,
+    this.textDirection,
   });
 
   @override
@@ -35,60 +37,49 @@ class ModernInputField extends StatelessWidget {
     return Semantics(
       label: label,
       textField: true,
-      child: Container(
-        decoration: BoxDecoration(
-          color: T.surface(context),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
+      child: TextFormField(
+        controller: controller,
+        keyboardType: keyboardType,
+        obscureText: obscureText,
+        enabled: enabled,
+        readOnly: readOnly,
+        onTap: onTap,
+        textDirection: textDirection,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: enabled ? T.onSurface(context) : T.onSurfaceVariant(context),
         ),
-        child: TextFormField(
-          controller: controller,
-          keyboardType: keyboardType,
-          obscureText: obscureText,
-          enabled: enabled,
-          readOnly: readOnly,
-          onTap: onTap,
-          style: TextStyle(
-            fontSize: 16,
-            color: enabled ? T.onSurface(context) : T.onSurfaceVariant(context),
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          hintStyle: TextStyle(
+            color: T.onSurfaceVariant(context).withValues(alpha: 0.4),
+            fontSize: 14,
           ),
-          decoration: InputDecoration(
-            labelText: label,
-            hintText: hint,
-            hintStyle: TextStyle(
-              color: T.onSurfaceVariant(context).withValues(alpha: 0.5),
-              fontSize: 14,
-            ),
-            labelStyle: TextStyle(
-              color: T.onSurfaceVariant(context),
-              fontSize: 14,
-            ),
-            prefixIcon: _buildPrefixIcon(context),
-            suffixIcon: suffixIcon,
-            filled: true,
-            fillColor: T.surface(context),
-            border: _buildInputBorder(
-              T.outline(context).withValues(alpha: 0.5),
-            ),
-            enabledBorder: _buildInputBorder(
-              T.outline(context).withValues(alpha: 0.5),
-            ),
-            focusedBorder: _buildInputBorder(T.primary(context), width: 2),
-            errorBorder: _buildInputBorder(T.error(context)),
-            focusedErrorBorder: _buildInputBorder(T.error(context), width: 2),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 18,
-            ),
+          labelStyle: TextStyle(
+            color: T.onSurfaceVariant(context),
+            fontSize: 14,
           ),
-          validator: validator,
+          prefixIcon: _buildPrefixIcon(context),
+          suffixIcon: suffixIcon,
+          filled: true,
+          fillColor: enabled ? T.surface(context) : T.outline(context).withValues(alpha: 0.1),
+          border: _buildInputBorder(
+            T.outline(context).withValues(alpha: 0.5),
+          ),
+          enabledBorder: _buildInputBorder(
+            T.outline(context).withValues(alpha: 0.5),
+          ),
+          focusedBorder: _buildInputBorder(T.primary(context), width: 1.5),
+          errorBorder: _buildInputBorder(T.error(context)),
+          focusedErrorBorder: _buildInputBorder(T.error(context), width: 1.5),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 18,
+          ),
         ),
+        validator: validator,
       ),
     );
   }
@@ -316,22 +307,14 @@ class PrimaryGradientButton extends StatelessWidget {
     final shadowColor = buttonColor.withValues(alpha: 0.35);
 
     return Container(
-      height: 56,
+      height: 58,
       decoration: BoxDecoration(
-        color: color != null ? buttonColor : null,
-        gradient: color == null
-            ? LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [T.primary(context), AppColors.teal700],
-              )
-            : null,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: shadowColor,
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            color: shadowColor.withValues(alpha: 0.25),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -342,13 +325,31 @@ class PrimaryGradientButton extends StatelessWidget {
         child: ElevatedButton(
           onPressed: isLoading ? null : onPressed,
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.transparent,
+            backgroundColor: buttonColor,
+            foregroundColor: AppColors.white,
             shadowColor: AppColors.transparent,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            padding: EdgeInsets.zero,
+            elevation: 0,
+          ),
+          child: Ink(
+            decoration: color == null
+                ? BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [T.primary(context), AppColors.teal700],
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                  )
+                : null,
+            child: Container(
+              alignment: Alignment.center,
+              child: isLoading ? _buildLoadingIndicator() : _buildButtonContent(),
             ),
           ),
-          child: isLoading ? _buildLoadingIndicator() : _buildButtonContent(),
         ),
       ),
     );

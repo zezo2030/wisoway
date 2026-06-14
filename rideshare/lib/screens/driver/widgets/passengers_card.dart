@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
+import '../../../core/widgets/phone_text.dart';
 import '../../../models/booking_model.dart';
 import '../../../widgets/common/section_card.dart';
+import '../../../l10n/l10n_extensions.dart';
 
 class PassengersCard extends StatelessWidget {
   final List<BookingModel> bookings;
@@ -14,7 +16,7 @@ class PassengersCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SectionCard(
-      title: 'الركاب (${bookings.length})',
+      title: context.l10n.passengersWithCount(bookings.length),
       icon: IconsaxPlusBold.profile_2user,
       iconColor: AppColors.teal600,
       children: bookings
@@ -68,8 +70,9 @@ class _PassengerItem extends StatelessWidget {
                 children: [
                   Text(
                     booking.hasDriverPaidToContact
-                        ? (booking.userPopulated?.name ?? 'راكب')
-                        : 'راكب مجهول',
+                        ? (booking.userPopulated?.name ??
+                              context.l10n.passengerLabel)
+                        : context.l10n.anonymousPassenger,
                     style: AppTextStyles.titleSmall.copyWith(
                       fontWeight: FontWeight.bold,
                       color: booking.hasDriverPaidToContact
@@ -87,7 +90,7 @@ class _PassengerItem extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'مقعد ${booking.seatNumber}',
+                        context.l10n.seatNumberLabel(booking.seatNumber ?? ''),
                         style: AppTextStyles.bodySmall.copyWith(
                           color: AppColors.slate400,
                         ),
@@ -102,7 +105,7 @@ class _PassengerItem extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Expanded(
-                          child: Text(
+                          child: PhoneText(
                             booking.userPopulated?.phoneNumber ?? '',
                             style: AppTextStyles.bodySmall.copyWith(
                               color: AppColors.slate400,
@@ -126,7 +129,7 @@ class _PassengerItem extends StatelessWidget {
                 ),
               ),
               child: Text(
-                'مؤكد',
+                context.l10n.confirmedLabel,
                 style: AppTextStyles.labelSmall.copyWith(
                   fontWeight: FontWeight.bold,
                   color: AppColors.success,

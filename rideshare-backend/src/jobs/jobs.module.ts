@@ -1,20 +1,15 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bull';
-import { TripExpirationJob } from './trip-expiration.job';
-import { NotificationCleanupJob } from './notification-cleanup.job';
-import { Trip, TripSchema } from '../modules/trips/schemas/trip.schema';
-import {
-  Notification,
-  NotificationSchema,
-} from '../modules/notifications/schemas/notification.schema';
-import { MongooseModule } from '@nestjs/mongoose';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { TripEntity } from '../database/entities/trip.entity';
+import { BookingEntity } from '../database/entities/booking.entity';
+import { TripRecurrenceRuleEntity } from '../database/entities/trip-recurrence-rule.entity';
+import { PreTripConfirmProcessor } from './processors/pre-trip-confirm.processor';
+import { RecurrenceSpawnProcessor } from './processors/recurrence-spawn.processor';
+import { NotificationsModule } from '../modules/notifications/notifications.module';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([
-      { name: Trip.name, schema: TripSchema },
-      { name: Notification.name, schema: NotificationSchema },
-    ]),
     BullModule.forRoot({
       redis: {
         host: process.env.REDIS_HOST || 'localhost',
@@ -24,9 +19,23 @@ import { MongooseModule } from '@nestjs/mongoose';
     BullModule.registerQueue(
       { name: 'trip-expiration' },
       { name: 'notification-cleanup' },
+      { name: 'new-trip-fanout' },
+      { name: 'bookings-timeout' },
+      { name: 'no-show-detector' },
+      { name: 'pre-trip-confirm' },
+      { name: 'recurrence-spawn' },
+      { name: 'pending-charge-collect' },
+      { name: 'trip-auto-start' },
+      { name: 'trip-auto-complete' },
     ),
+    TypeOrmModule.forFeature([
+      TripEntity,
+      BookingEntity,
+      TripRecurrenceRuleEntity,
+    ]),
+    NotificationsModule,
   ],
-  providers: [TripExpirationJob, NotificationCleanupJob],
-  exports: [TripExpirationJob, NotificationCleanupJob],
+  providers: [PreTripConfirmProcessor, RecurrenceSpawnProcessor],
+  exports: [BullModule],
 })
 export class JobsModule {}

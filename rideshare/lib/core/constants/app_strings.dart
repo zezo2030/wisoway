@@ -63,6 +63,33 @@ class AppStrings {
   static const String emailTab = 'بريد إلكتروني';
   static const String phoneTab = 'رقم هاتف';
 
+  // Password Reset
+  static const String forgotPassword = 'نسيت كلمة المرور';
+  static const String forgotPasswordDesc = 'أدخل رقم هاتفك لإرسال رمز التحقق';
+  static const String sendCode = 'إرسال الرمز';
+  static const String enterVerificationCode = 'أدخل رمز التحقق';
+  static const String setNewPassword = 'تعيين كلمة مرور جديدة';
+  static const String confirmNewPassword = 'تأكيد كلمة المرور الجديدة';
+  static const String passwordResetSuccess = 'تم إعادة تعيين كلمة المرور بنجاح';
+  static const String resendCode = 'إعادة إرسال الرمز';
+  static const String codeExpired = 'انتهت صلاحية الرمز';
+  static const String tooManyAttempts = 'محاولات كثيرة جداً';
+  static const String invalidCode = 'رمز غير صحيح';
+  static const String passwordTooWeak = 'كلمة المرور ضعيفة جداً';
+  static const String passwordsDontMatch = 'كلمات المرور غير متطابقة';
+
+  // Change Password
+  static const String changePassword = 'تغيير كلمة المرور';
+  static const String currentPassword = 'كلمة المرور الحالية';
+  static const String newPassword = 'كلمة المرور الجديدة';
+  static const String confirmPassword = 'تأكيد كلمة المرور';
+  static const String passwordChangedSuccess = 'تم تغيير كلمة المرور بنجاح';
+  static const String currentPasswordIncorrect = 'كلمة المرور الحالية غير صحيحة';
+  static const String samePasswordError = 'كلمة المرور الجديدة يجب أن تكون مختلفة';
+
+  // Social Login Error
+  static const String socialLoginNotAvailable = 'غير متاح لحسابات تسجيل الدخول الاجتماعي';
+
   // Errors
   static const String signInError = 'خطأ في تسجيل الدخول';
   static const String passwordRequired = 'يرجى إدخال كلمة المرور';

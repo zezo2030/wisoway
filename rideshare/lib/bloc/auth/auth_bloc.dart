@@ -1,7 +1,11 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/services/push_notification_service.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/api/api_client.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
@@ -19,6 +23,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthSaveUserProfile>(_onSaveUserProfile);
     on<AuthSaveDriverProfile>(_onSaveDriverProfile);
     on<AuthSignOut>(_onSignOut);
+    on<AuthForgotPassword>(_onForgotPassword);
+    on<AuthVerifyResetOTP>(_onVerifyResetOTP);
+    on<AuthResetPassword>(_onResetPassword);
+    on<AuthChangePassword>(_onChangePassword);
     on<AuthClearError>(_onClearError);
 
     add(const AuthInitialized());
@@ -49,7 +57,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final userModel = await _authService.getProfile();
       emit(AuthAuthenticated(userModel: userModel));
     } catch (e) {
-      emit(AuthError(e.toString()));
+      final failure = ApiClient.mapError(e);
+      emit(AuthError(failure.messageKey, failure: failure));
     }
   }
 
@@ -61,7 +70,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         AuthOTPSent(verificationId: 'api-otp', phoneNumber: event.phoneNumber),
       );
     } catch (e) {
-      emit(AuthError(e.toString()));
+      final failure = ApiClient.mapError(e);
+      emit(AuthError(failure.messageKey, failure: failure));
     }
   }
 
@@ -71,18 +81,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(const AuthLoading());
     try {
-      final user = await _authService.verifyOTP(
-        event
-            .verificationId, // Assuming verificationId translates to phone or is ignored
+      final result = await _authService.verifyOTP(
+        event.verificationId,
         event.smsCode,
       );
-      if (user != null) {
-        emit(AuthAuthenticated(userModel: user));
+      if (result.user != null) {
+        emit(AuthAuthenticated(userModel: result.user!));
+
+        await _registerDeviceToken();
       } else {
         emit(const AuthError('فشل في التحقق من الرمز'));
       }
     } catch (e) {
-      emit(AuthError(e.toString()));
+      final failure = ApiClient.mapError(e);
+      emit(AuthError(failure.messageKey, failure: failure));
     }
   }
 
@@ -90,42 +102,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthSignUpWithEmail event,
     Emitter<AuthState> emit,
   ) async {
-    emit(const AuthLoading());
-    final phoneNumber = event.phoneNumber?.trim();
-    if (phoneNumber == null || phoneNumber.isEmpty) {
-      emit(const AuthError('رقم الهاتف مطلوب'));
-      return;
-    }
-    try {
-      final response = await _authService.signUp(
-        email: event.email,
-        password: event.password,
-        name: event.name?.trim() ?? event.email.split('@')[0],
-        phoneNumber: phoneNumber,
-        role: event.role ?? AppConstants.rolePassenger,
-      );
-      // signUp returns { phoneNumber, expiresAt } — next step is OTP verification
-      final sentPhone = response['phoneNumber'] as String? ?? phoneNumber;
-      emit(AuthOTPSent(verificationId: 'api-otp', phoneNumber: sentPhone));
-    } catch (e) {
-      emit(AuthError(e.toString()));
-    }
+    emit(
+      const AuthError(
+        'تم إلغاء التسجيل بالبريد الإلكتروني. استخدم رقم الهاتف ورمز التحقق OTP.',
+      ),
+    );
   }
 
   Future<void> _onSignInWithEmail(
     AuthSignInWithEmail event,
     Emitter<AuthState> emit,
   ) async {
-    emit(const AuthLoading());
-    try {
-      final user = await _authService.signIn(
-        email: event.email,
-        password: event.password,
-      );
-      emit(AuthAuthenticated(userModel: user));
-    } catch (e) {
-      emit(AuthError(e.toString()));
-    }
+    emit(
+      const AuthError(
+        'تم إلغاء تسجيل الدخول بالبريد الإلكتروني. استخدم رقم الهاتف ورمز التحقق OTP.',
+      ),
+    );
   }
 
   Future<void> _onLinkPhoneNumber(
@@ -134,15 +126,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(const AuthLoading());
     try {
-      // Assuming phone number is derived from the event somehow if needed
       await _authService.linkPhone(
-        event.verificationId, // phone number
+        event.verificationId,
         event.smsCode,
       );
       final user = await _authService.getProfile();
       emit(AuthAuthenticated(userModel: user));
     } catch (e) {
-      emit(AuthError(e.toString()));
+      final failure = ApiClient.mapError(e);
+      emit(AuthError(failure.messageKey, failure: failure));
     }
   }
 
@@ -152,12 +144,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(const AuthLoading());
     try {
-      // Typically done via an updateProfile endpoint if implemented
-      // For now just update role
       await _authService.updateRole(event.role);
       add(AuthUserChanged(userId: ''));
     } catch (e) {
-      emit(AuthError(e.toString()));
+      final failure = ApiClient.mapError(e);
+      emit(AuthError(failure.messageKey, failure: failure));
     }
   }
 
@@ -167,22 +158,124 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(const AuthLoading());
     try {
-      // Requires VehicleService to create vehicle info
-      // Skipping full implementation here, as UI will use VehicleProvider
       await _authService.updateRole(AppConstants.roleDriver);
       add(AuthUserChanged(userId: ''));
     } catch (e) {
-      emit(AuthError(e.toString()));
+      final failure = ApiClient.mapError(e);
+      emit(AuthError(failure.messageKey, failure: failure));
     }
   }
 
   Future<void> _onSignOut(AuthSignOut event, Emitter<AuthState> emit) async {
     emit(const AuthLoading());
     try {
+      await _deregisterDeviceToken();
       await _authService.logout();
       emit(const AuthUnauthenticated());
     } catch (e) {
-      emit(AuthError(e.toString()));
+      final failure = ApiClient.mapError(e);
+      emit(AuthError(failure.messageKey, failure: failure));
+    }
+  }
+
+  Future<void> _registerDeviceToken() async {
+    try {
+      await PushNotificationService.initialize();
+      final token = await PushNotificationService.getToken();
+      if (token != null) {
+        final platform = defaultTargetPlatform == TargetPlatform.iOS
+            ? 'ios'
+            : 'android';
+        await PushNotificationService.registerDevice(
+          token: token,
+          platform: platform,
+        );
+
+        PushNotificationService.onTokenRefresh((newToken) async {
+          await PushNotificationService.registerDevice(
+            token: newToken,
+            platform: platform,
+          );
+        });
+      }
+    } catch (e) {
+      // Silently fail - token registration should not block auth
+    }
+  }
+
+  Future<void> _deregisterDeviceToken() async {
+    try {
+      final token = await PushNotificationService.getToken();
+      if (token != null) {
+        await PushNotificationService.deregisterDevice(token);
+      }
+    } catch (e) {
+      // Silently fail - token deregistration should not block logout
+    }
+  }
+
+  Future<void> _onForgotPassword(
+    AuthForgotPassword event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoading());
+    try {
+      await _authService.forgotPassword(event.phoneNumber);
+      emit(AuthPasswordResetSent(phoneNumber: event.phoneNumber));
+    } catch (e) {
+      final failure = ApiClient.mapError(e);
+      emit(AuthError(failure.messageKey, failure: failure));
+    }
+  }
+
+  Future<void> _onVerifyResetOTP(
+    AuthVerifyResetOTP event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoading());
+    try {
+      final resetToken = await _authService.verifyResetOtp(
+        event.phoneNumber,
+        event.code,
+      );
+      emit(AuthPasswordResetOTPVerified(resetToken: resetToken));
+    } catch (e) {
+      final failure = ApiClient.mapError(e);
+      emit(AuthError(failure.messageKey, failure: failure));
+    }
+  }
+
+  Future<void> _onResetPassword(
+    AuthResetPassword event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoading());
+    try {
+      await _authService.resetPassword(
+        event.resetToken,
+        event.newPassword,
+      );
+      emit(const AuthPasswordResetSuccess());
+    } catch (e) {
+      final failure = ApiClient.mapError(e);
+      emit(AuthError(failure.messageKey, failure: failure));
+    }
+  }
+
+  Future<void> _onChangePassword(
+    AuthChangePassword event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoading());
+    try {
+      await _authService.changePassword(
+        event.currentPassword,
+        event.newPassword,
+      );
+      emit(const AuthPasswordChangedSuccess());
+    } catch (e) {
+      final failure = ApiClient.mapError(e);
+      emit(AuthError(failure.messageKey, failure: failure));
     }
   }
 

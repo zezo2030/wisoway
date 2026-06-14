@@ -35,6 +35,16 @@ export class TrackingService {
       recordedAt: new Date(),
     });
     const saved = await this.locationRepo.save(entity);
+
+    await this.tripRepo.update(
+      { id: dto.tripId },
+      {
+        lastDriverLocationLat: dto.latitude,
+        lastDriverLocationLng: dto.longitude,
+        lastDriverLocationAt: new Date(),
+      },
+    );
+
     return {
       id: saved.id,
       tripId: saved.tripId,

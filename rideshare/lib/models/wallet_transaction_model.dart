@@ -37,7 +37,7 @@ class WalletTransactionModel {
       amount: (json['amount'] is num)
           ? (json['amount'] as num).toDouble()
           : double.tryParse('${json['amount']}') ?? 0,
-      currency: json['currency'] as String? ?? 'EGP',
+      currency: json['currency'] as String? ?? 'JOD',
       referenceType: json['referenceType'] as String?,
       referenceId: json['referenceId'] as String?,
       createdAt: parsedAt,

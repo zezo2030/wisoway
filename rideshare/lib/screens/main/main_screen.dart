@@ -6,8 +6,9 @@ import '../../core/constants/route_names.dart';
 import '../../core/utils/responsive_layout.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../l10n/l10n_extensions.dart';
 import 'tabs/home_tab.dart';
-import 'tabs/my_trips_tab.dart';
+import '../driver/my_trips_screen.dart';
 import 'tabs/profile_tab.dart';
 
 class MainScreen extends StatefulWidget {
@@ -22,7 +23,7 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _tabs = [
     const HomeTab(),
-    const MyTripsTab(),
+    const MyTripsScreen(),
     const ProfileTab(),
   ];
 
@@ -84,21 +85,21 @@ class _MainScreenState extends State<MainScreen> {
                 ],
               ),
             ),
-            destinations: const [
+            destinations: [
               NavigationRailDestination(
-                icon: Icon(IconsaxPlusLinear.home),
-                selectedIcon: Icon(IconsaxPlusBold.home),
-                label: Text('الرئيسية'),
+                icon: const Icon(IconsaxPlusLinear.home),
+                selectedIcon: const Icon(IconsaxPlusBold.home),
+                label: Text(context.l10n.home),
               ),
               NavigationRailDestination(
-                icon: Icon(IconsaxPlusLinear.car),
-                selectedIcon: Icon(IconsaxPlusBold.car),
-                label: Text('رحلاتي'),
+                icon: const Icon(IconsaxPlusLinear.car),
+                selectedIcon: const Icon(IconsaxPlusBold.car),
+                label: Text(context.l10n.myTripsTitle),
               ),
               NavigationRailDestination(
-                icon: Icon(IconsaxPlusLinear.profile),
-                selectedIcon: Icon(IconsaxPlusBold.profile),
-                label: Text('البروفايل'),
+                icon: const Icon(IconsaxPlusLinear.profile),
+                selectedIcon: const Icon(IconsaxPlusBold.profile),
+                label: Text(context.l10n.profileTab),
               ),
             ],
           ),
@@ -130,7 +131,7 @@ class _MainScreenState extends State<MainScreen> {
       ),
       child: Row(
         children: [
-          _getAppBarTitle(),
+          _getAppBarTitle(context),
           const Spacer(),
           if (user != null)
             Consumer<NotificationProvider>(
@@ -140,7 +141,7 @@ class _MainScreenState extends State<MainScreen> {
                   children: [
                     Semantics(
                       button: true,
-                      label: 'الإشعارات',
+                      label: context.l10n.notifications,
                       child: IconButton(
                         icon: const Icon(IconsaxPlusLinear.notification),
                         onPressed: () {
@@ -149,7 +150,7 @@ class _MainScreenState extends State<MainScreen> {
                             RouteNames.notifications,
                           );
                         },
-                        tooltip: 'الإشعارات',
+                        tooltip: context.l10n.notifications,
                       ),
                     ),
                     if (unreadCount > 0)
@@ -168,8 +169,8 @@ class _MainScreenState extends State<MainScreen> {
                           ),
                           child: Text(
                             unreadCount > 99 ? '99+' : '$unreadCount',
-                            style: const TextStyle(
-                              color: AppColors.white,
+                            style: TextStyle(
+                              color: T.onError(context),
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
@@ -189,7 +190,7 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildScaffoldWithBottomNav(BuildContext context, user) {
     return Scaffold(
       appBar: AppBar(
-        title: _getAppBarTitle(),
+        title: _getAppBarTitle(context),
         elevation: 0,
         backgroundColor: T.surface(context),
         foregroundColor: T.onSurface(context),
@@ -202,7 +203,7 @@ class _MainScreenState extends State<MainScreen> {
                   children: [
                     Semantics(
                       button: true,
-                      label: 'الإشعارات',
+                      label: context.l10n.notifications,
                       child: IconButton(
                         icon: const Icon(IconsaxPlusLinear.notification),
                         onPressed: () {
@@ -211,7 +212,7 @@ class _MainScreenState extends State<MainScreen> {
                             RouteNames.notifications,
                           );
                         },
-                        tooltip: 'الإشعارات',
+                        tooltip: context.l10n.notifications,
                       ),
                     ),
                     if (unreadCount > 0)
@@ -230,8 +231,8 @@ class _MainScreenState extends State<MainScreen> {
                           ),
                           child: Text(
                             unreadCount > 99 ? '99+' : '$unreadCount',
-                            style: const TextStyle(
-                              color: AppColors.white,
+                            style: TextStyle(
+                              color: T.onError(context),
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
@@ -275,21 +276,21 @@ class _MainScreenState extends State<MainScreen> {
             fontWeight: FontWeight.normal,
             fontSize: 12,
           ),
-          items: const [
+          items: [
             BottomNavigationBarItem(
-              icon: Icon(IconsaxPlusLinear.home),
-              activeIcon: Icon(IconsaxPlusBold.home),
-              label: 'الرئيسية',
+              icon: const Icon(IconsaxPlusLinear.home),
+              activeIcon: const Icon(IconsaxPlusBold.home),
+              label: context.l10n.home,
             ),
             BottomNavigationBarItem(
-              icon: Icon(IconsaxPlusLinear.car),
-              activeIcon: Icon(IconsaxPlusBold.car),
-              label: 'رحلاتي',
+              icon: const Icon(IconsaxPlusLinear.car),
+              activeIcon: const Icon(IconsaxPlusBold.car),
+              label: context.l10n.myTripsTitle,
             ),
             BottomNavigationBarItem(
-              icon: Icon(IconsaxPlusLinear.profile),
-              activeIcon: Icon(IconsaxPlusBold.profile),
-              label: 'البروفايل',
+              icon: const Icon(IconsaxPlusLinear.profile),
+              activeIcon: const Icon(IconsaxPlusBold.profile),
+              label: context.l10n.profileTab,
             ),
           ],
         ),
@@ -297,16 +298,16 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  Widget _getAppBarTitle() {
+  Widget _getAppBarTitle(BuildContext context) {
     switch (_currentIndex) {
       case 0:
-        return const Text('الرئيسية');
+        return Text(context.l10n.home);
       case 1:
-        return const Text('رحلاتي');
+        return Text(context.l10n.myTripsTitle);
       case 2:
-        return const Text('البروفايل');
+        return Text(context.l10n.profileTab);
       default:
-        return const Text('RideShare');
+        return const Text('VisionWay');
     }
   }
 }

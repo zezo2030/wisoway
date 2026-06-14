@@ -1,6 +1,5 @@
 import '../../models/trip_model.dart';
 import '../../models/location_model.dart';
-import '../../models/seat_layout_config.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
 
@@ -38,30 +37,38 @@ class TripService {
     return [];
   }
 
-  // Create a new trip
+  // Create a new trip — seat layout/total seats are derived from the
+  // driver's vehicle on the server, so we don't send them here.
   Future<String> createTrip({
     required LocationModel from,
     required LocationModel to,
     required DateTime departureTime,
     required double price,
     required String currency,
-    required SeatLayoutConfig seatLayout,
     String? carImageUrl,
+    List<LocationModel>? stops,
+    String? notes,
+    Map<String, dynamic>? recurrence,
   }) async {
     try {
-      final response = await _api.post(
-        ApiEndpoints.trips,
-        data: {
-          'from': from.toMap(),
-          'to': to.toMap(),
-          'departureTime': departureTime.toIso8601String(),
-          'price': price,
-          'currency': currency,
-          'totalSeats': seatLayout.totalSeats,
-          'seatLayout': seatLayout.toMap(),
-          'carImageUrl': carImageUrl,
-        },
-      );
+      final body = <String, dynamic>{
+        'from': from.toMap(),
+        'to': to.toMap(),
+        'departureTime': departureTime.toIso8601String(),
+        'price': price,
+        'currency': currency,
+        'carImageUrl': carImageUrl,
+        if (stops != null && stops.isNotEmpty)
+          'stops': stops
+              .asMap()
+              .entries
+              .map((e) => e.value.toStopMap(order: e.key + 1))
+              .toList(),
+        if (notes != null && notes.isNotEmpty) 'notes': notes,
+        if (recurrence != null) 'recurrence': recurrence,
+      };
+
+      final response = await _api.post(ApiEndpoints.trips, data: body);
 
       final data = response['data'] ?? response;
       return data['_id'] ?? data['id'];
@@ -173,7 +180,10 @@ class TripService {
     DateTime? minDepartureTime,
   }) async {
     try {
-      final Map<String, dynamic> query = {'status': 'active'};
+      // No explicit status filter — backend defaults to PUBLISHED, which is
+      // what active passenger-facing trips use. Passing 'active' here would
+      // miss every newly-created trip (stored as 'published').
+      final Map<String, dynamic> query = <String, dynamic>{};
 
       if (from != null) {
         query['fromLatitude'] = from.latitude;
@@ -255,9 +265,11 @@ class TripService {
     await _api.delete(ApiEndpoints.cancelTrip(tripId));
   }
 
-  // Complete trip
-  Future<void> completeTrip(String tripId) async {
-    await _api.patch(ApiEndpoints.completeTrip(tripId));
+  /// Driver presses "تم الوصول للوجهة" — marks the trip as completed.
+  /// The trip auto-transitions to IN_PROGRESS at departureTime server-side, so
+  /// there is no longer a manual "Start Trip" action.
+  Future<void> markTripArrived(String tripId) async {
+    await _api.post(ApiEndpoints.arriveTrip(tripId));
   }
 
   /// Driver: lock seat (external booking) or unlock back to available.

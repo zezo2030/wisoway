@@ -3,6 +3,7 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../models/trip_model.dart';
+import '../../../l10n/l10n_extensions.dart';
 
 class StatisticsRow extends StatelessWidget {
   final TripModel trip;
@@ -23,9 +24,9 @@ class StatisticsRow extends StatelessWidget {
         Expanded(
           child: _StatCard(
             icon: IconsaxPlusBold.profile_2user,
-            label: 'المقاعد المحجوزة',
+            label: context.l10n.bookedSeats,
             value: '$bookedSeats',
-            subtitle: 'من ${trip.totalSeats}',
+            subtitle: context.l10n.ofTotalSeats(trip.totalSeats),
             color: AppColors.teal600,
           ),
         ),
@@ -33,7 +34,7 @@ class StatisticsRow extends StatelessWidget {
         Expanded(
           child: _StatCard(
             icon: IconsaxPlusBold.dollar_circle,
-            label: 'الإيرادات',
+            label: context.l10n.revenue,
             value: totalRevenue.toStringAsFixed(0),
             subtitle: trip.currency,
             color: AppColors.success,

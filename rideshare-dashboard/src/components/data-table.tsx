@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/pagination"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
+import { useLanguage } from "@/providers/language-provider"
 
 
 interface Column<T> {
@@ -49,7 +50,7 @@ function getRowId<T>(row: T): string {
   return r._id ?? r.id ?? ""
 }
 
-export function DataTable<T extends Record<string, unknown>>({
+export function DataTable<T>({
   columns,
   data,
   page,
@@ -58,10 +59,12 @@ export function DataTable<T extends Record<string, unknown>>({
   onPageChange,
   pageSize = 20,
   loading = false,
-  emptyMessage = "No data available",
+  emptyMessage,
   onRowClick,
   className,
 }: DataTableProps<T>) {
+  const { t, dir } = useLanguage()
+  const resolvedEmptyMessage = emptyMessage ?? t("noData")
   // Generate page numbers for pagination
   const getPageNumbers = () => {
     const pages: (number | string)[] = []
@@ -116,7 +119,7 @@ export function DataTable<T extends Record<string, unknown>>({
                   colSpan={columns.length}
                   className="h-24 text-center text-muted-foreground"
                 >
-                  {emptyMessage}
+                  {resolvedEmptyMessage}
                 </TableCell>
               </TableRow>
             ) : (
@@ -147,45 +150,80 @@ export function DataTable<T extends Record<string, unknown>>({
       {totalPages > 0 && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2">
           <div className="text-sm text-muted-foreground font-medium flex items-center gap-1.5 bg-muted/40 px-3 py-1.5 rounded-full border border-border/40 shadow-sm">
-            Showing <span className="font-bold text-foreground">{(page - 1) * pageSize + 1}</span> to{" "}
-            <span className="font-bold text-foreground">{Math.min(page * pageSize, total)}</span> of{" "}
-            <span className="font-bold text-foreground">{total}</span> results
+            {t("paginationShowing")}{" "}
+            <span className="font-bold text-foreground">{(page - 1) * pageSize + 1}</span>
+            {" "}{t("paginationTo")}{" "}
+            <span className="font-bold text-foreground">{Math.min(page * pageSize, total)}</span>
+            {" "}{t("paginationOf")}{" "}
+            <span className="font-bold text-foreground">{total}</span>
+            {" "}{t("paginationResults")}
           </div>
 
           <Pagination>
             <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  onClick={() => onPageChange(Math.max(1, page - 1))}
-                  className={cn(
-                    page === 1 && "pointer-events-none opacity-50"
-                  )}
-                />
-              </PaginationItem>
+              {dir === "rtl" ? (
+                <>
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+                      className={cn(page === totalPages && "pointer-events-none opacity-50")}
+                    />
+                  </PaginationItem>
 
-              {pageNumbers.map((pageNum, idx) => (
-                <PaginationItem key={idx}>
-                  {pageNum === '...' ? (
-                    <PaginationEllipsis />
-                  ) : (
-                    <PaginationLink
-                      onClick={() => onPageChange(pageNum as number)}
-                      isActive={page === pageNum}
-                    >
-                      {pageNum}
-                    </PaginationLink>
-                  )}
-                </PaginationItem>
-              ))}
+                  {pageNumbers.map((pageNum, idx) => (
+                    <PaginationItem key={idx}>
+                      {pageNum === '...' ? (
+                        <PaginationEllipsis />
+                      ) : (
+                        <PaginationLink
+                          onClick={() => onPageChange(pageNum as number)}
+                          isActive={page === pageNum}
+                        >
+                          {pageNum}
+                        </PaginationLink>
+                      )}
+                    </PaginationItem>
+                  ))}
 
-              <PaginationItem>
-                <PaginationNext
-                  onClick={() => onPageChange(Math.min(totalPages, page + 1))}
-                  className={cn(
-                    page === totalPages && "pointer-events-none opacity-50"
-                  )}
-                />
-              </PaginationItem>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => onPageChange(Math.max(1, page - 1))}
+                      className={cn(page === 1 && "pointer-events-none opacity-50")}
+                    />
+                  </PaginationItem>
+                </>
+              ) : (
+                <>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => onPageChange(Math.max(1, page - 1))}
+                      className={cn(page === 1 && "pointer-events-none opacity-50")}
+                    />
+                  </PaginationItem>
+
+                  {pageNumbers.map((pageNum, idx) => (
+                    <PaginationItem key={idx}>
+                      {pageNum === '...' ? (
+                        <PaginationEllipsis />
+                      ) : (
+                        <PaginationLink
+                          onClick={() => onPageChange(pageNum as number)}
+                          isActive={page === pageNum}
+                        >
+                          {pageNum}
+                        </PaginationLink>
+                      )}
+                    </PaginationItem>
+                  ))}
+
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+                      className={cn(page === totalPages && "pointer-events-none opacity-50")}
+                    />
+                  </PaginationItem>
+                </>
+              )}
             </PaginationContent>
           </Pagination>
         </div>

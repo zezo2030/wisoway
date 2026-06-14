@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import {
+  BookingEntity,
   PayoutRequestEntity,
   TripEntity,
+  UserEntity,
   WalletAccountEntity,
   WalletTransactionEntity,
 } from '../../database/entities';
@@ -16,6 +18,8 @@ import { WalletService } from './wallet.service';
       WalletTransactionEntity,
       PayoutRequestEntity,
       TripEntity,
+      BookingEntity,
+      UserEntity,
     ]),
   ],
   controllers: [WalletController],

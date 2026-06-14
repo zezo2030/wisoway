@@ -5,7 +5,7 @@ import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { getReport } from "@/api/admin"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Table,
@@ -32,8 +32,10 @@ import {
 import { CalendarIcon, TrendingUp, Users, Car, DollarSign, AlertCircle, BarChart3, Activity } from "lucide-react"
 import { format, subDays, isAfter } from "date-fns"
 import { toast } from "sonner"
+import { useLanguage } from "@/providers/language-provider"
 
 export default function ReportsPage() {
+  const { t } = useLanguage()
   const [reportType, setReportType] = useState<"revenue" | "users" | "trips">("revenue")
   const [startDate, setStartDate] = useState<Date>(subDays(new Date(), DEFAULT_REPORT_DAYS))
   const [endDate, setEndDate] = useState<Date>(new Date())
@@ -43,7 +45,7 @@ export default function ReportsPage() {
   // Validate dates
   const validateDates = () => {
     if (isAfter(startDate, endDate)) {
-      toast.error("Start date must be before end date")
+      toast.error(t("startDateBeforeEnd"))
       return false
     }
     return true
@@ -76,7 +78,7 @@ export default function ReportsPage() {
     switch (reportType) {
       case "revenue":
         return {
-          title: "Total Revenue Generated",
+          title: t("totalRevenueGenerated"),
           icon: DollarSign,
           value: report?.summary.total ?? 0,
           prefix: "",
@@ -86,7 +88,7 @@ export default function ReportsPage() {
         }
       case "users":
         return {
-          title: "Total New Users",
+          title: t("totalNewUsers"),
           icon: Users,
           value: report?.summary.count ?? 0,
           prefix: "",
@@ -96,7 +98,7 @@ export default function ReportsPage() {
         }
       case "trips":
         return {
-          title: "Total Trips Count",
+          title: t("totalTripsCount"),
           icon: Car,
           value: report?.summary.count ?? 0,
           prefix: "",
@@ -113,10 +115,10 @@ export default function ReportsPage() {
   if (error) {
     return (
       <div className="space-y-4 animate-in fade-in duration-500">
-        <h1 className="text-4xl font-extrabold tracking-tight">Reports</h1>
+        <h1 className="text-4xl font-extrabold tracking-tight">{t("reportsTitle")}</h1>
         <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-6 text-destructive flex items-center shadow-sm">
           <AlertCircle className="w-6 h-6 mr-3" />
-          <span className="font-semibold text-lg">Failed to load reports. Please try again.</span>
+          <span className="font-semibold text-lg">{t("failedToLoadReports")}</span>
         </div>
       </div>
     )
@@ -131,9 +133,9 @@ export default function ReportsPage() {
             <BarChart3 className="w-8 h-8 text-primary" />
           </div>
           <div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-foreground/90 leading-tight">Analytics & Reports</h1>
+            <h1 className="text-4xl font-extrabold tracking-tight text-foreground/90 leading-tight">{t("analyticsReports")}</h1>
             <p className="text-muted-foreground mt-1 text-lg font-medium">
-              Analyze metrics, transaction volume, and user growth.
+              {t("reportsSubtitle")}
             </p>
           </div>
         </div>
@@ -146,13 +148,13 @@ export default function ReportsPage() {
             <Tabs value={reportType} onValueChange={(value) => setReportType(value as typeof reportType)} className="w-full xl:w-auto">
               <TabsList className="bg-background/80 p-1.5 rounded-2xl border border-border/40 shadow-sm w-full sm:w-auto h-auto min-w-min flex overflow-x-auto overflow-y-hidden justify-start">
                 <TabsTrigger value="revenue" className="rounded-xl px-4 py-2 font-bold text-sm transition-all data-[state=active]:bg-emerald-500 data-[state=active]:text-white flex-shrink-0">
-                  <DollarSign className="mr-2 h-4 w-4" /> Revenue
+                  <DollarSign className="mr-2 h-4 w-4" /> {t("revenueReport")}
                 </TabsTrigger>
                 <TabsTrigger value="users" className="rounded-xl px-4 py-2 font-bold text-sm transition-all data-[state=active]:bg-blue-500 data-[state=active]:text-white flex-shrink-0">
-                  <Users className="mr-2 h-4 w-4" /> Users
+                  <Users className="mr-2 h-4 w-4" /> {t("usersTitle")}
                 </TabsTrigger>
                 <TabsTrigger value="trips" className="rounded-xl px-4 py-2 font-bold text-sm transition-all data-[state=active]:bg-indigo-500 data-[state=active]:text-white flex-shrink-0">
-                  <Car className="mr-2 h-4 w-4" /> Trips
+                  <Car className="mr-2 h-4 w-4" /> {t("tripsTitle")}
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -160,7 +162,7 @@ export default function ReportsPage() {
             {/* Date Range Picker */}
             <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
               <div className="flex items-center gap-2 w-full sm:w-auto">
-                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground hidden sm:block">From:</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground hidden sm:block">{t("from")}:</span>
                 <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
                   <PopoverTrigger asChild>
                     <Button
@@ -193,7 +195,7 @@ export default function ReportsPage() {
               </div>
 
               <div className="flex items-center gap-2 w-full sm:w-auto">
-                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground hidden sm:block">To:</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground hidden sm:block">{t("to")}:</span>
                 <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
                   <PopoverTrigger asChild>
                     <Button
@@ -273,6 +275,7 @@ function ReportContent({
   chartData,
   reportType,
 }: ReportContentProps) {
+  const { t } = useLanguage()
 
   // Dynamic color configuration
   const getColorScheme = () => {
@@ -297,11 +300,11 @@ function ReportContent({
                 <p className="text-sm font-bold uppercase tracking-wider text-muted-foreground/80 mb-1">{summaryConfig.title}</p>
                 <div className={cn("text-4xl font-black", scheme.text)}>
                   {summaryConfig.currency
-                    ? formatCurrency(summaryConfig.value, "EGP")
+                    ? formatCurrency(summaryConfig.value, "JOD")
                     : formatNumber(summaryConfig.value)}
                 </div>
                 <p className="text-xs font-medium text-foreground/50 mt-2">
-                  <span className="font-semibold">{format(startDate, "MMM d, yyyy")}</span> to <span className="font-semibold">{format(endDate, "MMM d, yyyy")}</span>
+                  <span className="font-semibold">{format(startDate, "MMM d, yyyy")}</span> {t("to")} <span className="font-semibold">{format(endDate, "MMM d, yyyy")}</span>
                 </p>
               </div>
               <div className={cn("p-4 rounded-2xl bg-background/50 backdrop-blur-sm shadow-sm border border-white/20", scheme.text)}>
@@ -313,19 +316,19 @@ function ReportContent({
           <Card className="border-border/50 shadow-sm bg-muted/20 relative overflow-hidden group">
             <CardContent className="p-6 flex items-center justify-between">
               <div>
-                <p className="text-sm font-bold uppercase tracking-wider text-muted-foreground/80 mb-1">Daily Average</p>
+                <p className="text-sm font-bold uppercase tracking-wider text-muted-foreground/80 mb-1">{t("dailyAverage")}</p>
                 <div className="text-3xl font-bold text-foreground">
                   {summaryConfig.currency
                     ? formatCurrency(
                       summaryConfig.value / (report.breakdown.length || 1),
-                      "EGP"
+                      "JOD"
                     )
                     : formatNumber(
                       Math.round(summaryConfig.value / (report.breakdown.length || 1))
                     )}
                 </div>
                 <p className="text-xs font-medium text-muted-foreground mt-2">
-                  Per day over <span className="font-semibold text-foreground/80">{report.breakdown.length} days</span>
+                  {t("perDayOver")} <span className="font-semibold text-foreground/80">{report.breakdown.length} {t("days")}</span>
                 </p>
               </div>
               <div className="p-4 rounded-2xl bg-background shadow-sm border border-border/40 text-muted-foreground group-hover:scale-105 transition-transform duration-300">
@@ -341,7 +344,7 @@ function ReportContent({
         <CardHeader className="border-b border-border/40 pb-4 bg-muted/10">
           <div className="flex items-center gap-2">
             <Activity className={cn("w-5 h-5", scheme.text)} />
-            <CardTitle className="text-lg font-bold">Trend Analysis</CardTitle>
+            <CardTitle className="text-lg font-bold">{t("trendAnalysis")}</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="p-6 pt-8">
@@ -349,7 +352,7 @@ function ReportContent({
             <div className="h-[350px] animate-pulse rounded-2xl bg-muted/50 w-full flex items-center justify-center">
               <div className="flex flex-col items-center gap-3">
                 <Activity className="w-8 h-8 text-muted-foreground/30 animate-bounce" />
-                <span className="text-sm font-semibold text-muted-foreground/50">Analyzing data...</span>
+                <span className="text-sm font-semibold text-muted-foreground/50">{t("analyzingData")}</span>
               </div>
             </div>
           ) : chartData && chartData.length > 0 ? (
@@ -396,7 +399,7 @@ function ReportContent({
                     formatter={(value) => {
                       const numValue = typeof value === 'number' ? value : 0
                       return [summaryConfig.currency
-                        ? formatCurrency(numValue, "EGP")
+                        ? formatCurrency(numValue, "JOD")
                         : formatNumber(numValue), ""]
                     }}
                     labelFormatter={(label) => `${label}`}
@@ -418,8 +421,8 @@ function ReportContent({
               <div className="bg-muted p-4 rounded-full mb-4">
                 <AlertCircle className="w-8 h-8 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-bold">No data found</h3>
-              <p className="text-muted-foreground text-sm max-w-[250px] mt-1 font-medium">There is no recorded activity for the selected date range.</p>
+              <h3 className="text-lg font-bold">{t("noDataFound")}</h3>
+              <p className="text-muted-foreground text-sm max-w-[250px] mt-1 font-medium">{t("noActivityInRange")}</p>
             </div>
           )}
         </CardContent>
@@ -429,16 +432,16 @@ function ReportContent({
       {report && report.breakdown.length > 0 && (
         <Card className="border-border/50 shadow-sm bg-card overflow-hidden">
           <CardHeader className="border-b border-border/40 pb-4 bg-muted/10">
-            <CardTitle className="text-lg font-bold">Detailed Breakdown</CardTitle>
+            <CardTitle className="text-lg font-bold">{t("detailedBreakdown")}</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader className="bg-muted/30">
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="font-bold">Date</TableHead>
+                    <TableHead className="font-bold">{t("date")}</TableHead>
                     <TableHead className="text-right font-bold w-[250px]">
-                      {reportType === "revenue" ? "Amount Generated" : "Count"}
+                      {reportType === "revenue" ? t("amountGenerated") : t("count")}
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -458,7 +461,7 @@ function ReportContent({
                             value > 0 && scheme.text
                           )}>
                             {reportType === "revenue" && item.amount
-                              ? formatCurrency(item.amount, "EGP")
+                              ? formatCurrency(item.amount, "JOD")
                               : formatNumber(item.count)}
                           </span>
                         </TableCell>

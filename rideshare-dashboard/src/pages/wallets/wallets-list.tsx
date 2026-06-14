@@ -1,11 +1,9 @@
-// Wallets List Page: Wallet transactions (top-ups and trip charges)
+// Wallets List Page: Wallet accounts management (drivers and passengers)
 
 import { useSearchParams, useNavigate } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { getAllPayments } from "@/api/payments"
+import { getWallets } from "@/api/wallets"
 import { DataTable, type Column } from "@/components/data-table"
-import { StatusBadge } from "@/components/status-badge"
-import { ImagePreview } from "@/components/image-preview"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import {
   Select,
@@ -14,22 +12,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
-import { QUERY_KEYS, ROUTES } from "@/lib/constants"
-import { formatDate, formatCurrency, getTripLocationName, cn } from "@/lib/utils"
-import { PaymentType } from "@/types/enums"
-import type { Payment, UserSummary, TripSummary } from "@/types/models"
+import { Input } from "@/components/ui/input"
+import { QUERY_KEYS } from "@/lib/constants"
+import { formatDate, formatCurrency, cn } from "@/lib/utils"
+import { WalletAccountType } from "@/types/enums"
+import type { WalletAccount, UserSummary } from "@/types/models"
 import { useLanguage } from "@/providers/language-provider"
-import { Wallet, AlertCircle, ArrowLeftRight, Clock } from "lucide-react"
+import { Wallet, AlertCircle, Search } from "lucide-react"
 
 function isPopulatedUser(userId: string | UserSummary): userId is UserSummary {
   return typeof userId === "object" && userId !== null && "name" in userId
-}
-
-function isPopulatedTrip(
-  tripId: string | TripSummary | undefined
-): tripId is TripSummary {
-  return typeof tripId === "object" && tripId !== null && "from" in tripId
 }
 
 export default function WalletsListPage() {
@@ -38,21 +30,20 @@ export default function WalletsListPage() {
   const navigate = useNavigate()
   const page = parseInt(searchParams.get("page") || "1", 10)
   const limit = 20
-  const typeFilter = searchParams.get("type") || "all"
+  const accountTypeFilter = searchParams.get("accountType") || "all"
+  const searchFilter = searchParams.get("search") || ""
 
   const { data, isLoading, error } = useQuery({
     queryKey: [
-      QUERY_KEYS.PAYMENTS.ALL,
-      "wallets",
-      { page, limit, type: typeFilter },
+      QUERY_KEYS.WALLETS.ALL,
+      { page, limit, accountType: accountTypeFilter, search: searchFilter },
     ],
     queryFn: () =>
-      getAllPayments({
+      getWallets({
         page,
         limit,
-        walletOnly: typeFilter === "all",
-        paymentType:
-          typeFilter !== "all" ? (typeFilter as PaymentType) : undefined,
+        accountType: accountTypeFilter !== "all" ? (accountTypeFilter as WalletAccountType) : undefined,
+        search: searchFilter || undefined,
       }),
   })
 
@@ -75,114 +66,110 @@ export default function WalletsListPage() {
     updateSearchParams({ page: String(newPage) })
   }
 
-  const columns: Column<Payment>[] = [
+  const handleSearchChange = (value: string) => {
+    updateSearchParams({ search: value || null })
+  }
+
+  const columns: Column<WalletAccount>[] = [
     {
       key: "user",
-      header: t("passenger"),
-      cell: (payment) => (
+      header: t("walletOwner"),
+      cell: (wallet) => (
         <div className="flex items-center gap-3 py-1">
-          {isPopulatedUser(payment.userId) ? (
+          {isPopulatedUser(wallet.userId) ? (
             <>
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm shadow-sm border border-primary/20 flex-shrink-0">
-                {payment.userId.name.charAt(0).toUpperCase()}
+                {wallet.userId.name.charAt(0).toUpperCase()}
               </div>
               <div>
                 <div className="font-semibold text-foreground">
-                  {payment.userId.name}
+                  {wallet.userId.name}
                 </div>
                 <div className="text-xs font-medium text-muted-foreground">
-                  {payment.userId.email}
+                  {wallet.userId.email}
                 </div>
               </div>
             </>
           ) : (
             <span className="text-muted-foreground font-mono text-xs">
-              ID: {payment.userId}
+              ID: {wallet.userId}
             </span>
           )}
         </div>
       ),
     },
     {
-      key: "trip",
-      header: t("nav_trips"),
-      cell: (payment) => (
-        <div>
-          {isPopulatedTrip(payment.tripId) ? (
-            <>
-              <div className="font-medium flex items-center gap-1">
-                {getTripLocationName(payment.tripId as unknown as Record<string, unknown>, "from")}
-                <ArrowLeftRight className="w-3 h-3 text-muted-foreground" />
-                {getTripLocationName(payment.tripId as unknown as Record<string, unknown>, "to")}
-              </div>
-              <div className="text-xs font-medium text-muted-foreground mt-0.5">
-                {formatDate(payment.tripId.departureTime)}
-              </div>
-            </>
-          ) : payment.tripId ? (
-            <span className="text-muted-foreground font-mono text-xs">
-              ID: {payment.tripId}
-            </span>
-          ) : (
-            <span className="text-muted-foreground italic">N/A</span>
+      key: "accountType",
+      header: t("walletAccountType"),
+      cell: (wallet) => (
+        <span
+          className={cn(
+            "text-xs font-semibold px-2.5 py-1 rounded-full border",
+            wallet.accountType === WalletAccountType.DRIVER
+              ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800"
+              : wallet.accountType === WalletAccountType.RIDER
+                ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-800"
+                : "bg-muted text-muted-foreground border-border/40"
           )}
-        </div>
-      ),
-    },
-    {
-      key: "amount",
-      header: t("amount"),
-      cell: (payment) => (
-        <div className="font-black text-emerald-600 dark:text-emerald-400">
-          {formatCurrency(payment.amount, payment.currency)}
-        </div>
-      ),
-    },
-    {
-      key: "type",
-      header: t("paymentType"),
-      cell: (payment) => (
-        <span className="text-xs font-semibold px-2 py-1 rounded-full bg-muted text-muted-foreground border border-border/40 object-cover">
-          {payment.paymentType === PaymentType.WALLET_TOPUP ? t("walletTopup") : t("walletTripCharge")}
+        >
+          {wallet.accountType === WalletAccountType.DRIVER
+            ? t("nav_drivers")
+            : wallet.accountType === WalletAccountType.RIDER
+              ? t("nav_passengers")
+              : "System"}
         </span>
       ),
     },
     {
-      key: "status",
+      key: "balance",
+      header: t("balance"),
+      cell: (wallet) => {
+        const amount = Number(wallet.balance)
+        return (
+          <div
+            className={cn(
+              "font-black text-base",
+              amount > 0
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-muted-foreground"
+            )}
+          >
+            {formatCurrency(amount, wallet.currency)}
+          </div>
+        )
+      },
+    },
+    {
+      key: "currency",
+      header: t("currency"),
+      cell: (wallet) => (
+        <span className="text-sm font-medium text-muted-foreground">
+          {wallet.currency}
+        </span>
+      ),
+    },
+    {
+      key: "isActive",
       header: t("status"),
-      cell: (payment) => (
-        <StatusBadge status={payment.status} type="payment" className="shadow-sm" />
-      ),
-    },
-    {
-      key: "proof",
-      header: t("proof"),
-      cell: (payment) => (
-        <ImagePreview
-          imageUrl={payment.proofImageUrl}
-          alt={t("proof")}
-          thumbnailClassName="h-10 w-10 sm:h-12 sm:w-12 rounded-lg shadow-sm border border-border/50 object-cover"
-        />
-      ),
-    },
-    {
-      key: "adminNote",
-      header: t("adminNote"),
-      cell: (payment) => (
-        <div
-          className="max-w-[150px] truncate text-xs font-medium text-muted-foreground bg-muted/40 px-2 py-1 rounded-md border border-border/30"
-          title={payment.adminNote || ""}
+      cell: (wallet) => (
+        <span
+          className={cn(
+            "text-xs font-semibold px-2.5 py-1 rounded-full border",
+            wallet.isActive
+              ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800"
+              : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800"
+          )}
         >
-          {payment.adminNote || "-"}
-        </div>
+          {wallet.isActive ? t("active") : t("inactive")}
+        </span>
       ),
     },
     {
-      key: "date",
-      header: t("date"),
-      cell: (payment) => (
+      key: "updatedAt",
+      header: t("lastUpdated"),
+      cell: (wallet) => (
         <div className="text-sm font-medium text-muted-foreground">
-          {formatDate(payment.createdAt)}
+          {formatDate(wallet.updatedAt)}
         </div>
       ),
     },
@@ -195,7 +182,7 @@ export default function WalletsListPage() {
         <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-6 text-destructive flex items-center shadow-sm">
           <AlertCircle className={cn("w-6 h-6", language === "ar" ? "ml-3" : "mr-3")} />
           <span className="font-semibold text-lg">
-            {t("noWalletTransactionsFound")}
+            {t("noWalletsFound")}
           </span>
         </div>
       </div>
@@ -223,33 +210,37 @@ export default function WalletsListPage() {
       <Card className="border-border/50 shadow-lg bg-card/60 backdrop-blur-xl dark:shadow-none dark:border-white/10 overflow-hidden">
         <CardHeader className="bg-muted/30 border-b border-border/40 pb-5 pt-6 px-6">
           <div className="flex flex-col lg:flex-row gap-5 lg:items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="outline"
-                className="rounded-xl border-border/50 shadow-sm font-semibold"
-                onClick={() => navigate(ROUTES.PAYMENTS_PENDING)}
-              >
-                <Clock className={cn("w-4 h-4", language === "ar" ? "ml-2" : "mr-2")} />
-                {t("pendingTopups")}
-              </Button>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative">
+                <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground", language === "ar" ? "right-3" : "left-3")} />
+                <Input
+                  placeholder={t("searchPlaceholder")}
+                  value={searchFilter}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className={cn(
+                    "w-[260px] bg-background/80 border-border/50 rounded-full font-medium shadow-sm",
+                    language === "ar" ? "pr-9 pl-4" : "pl-9 pr-4"
+                  )}
+                />
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <Select
-                value={typeFilter}
+                value={accountTypeFilter}
                 onValueChange={(value) =>
-                  updateSearchParams({ type: value === "all" ? null : value })
+                  updateSearchParams({ accountType: value === "all" ? null : value })
                 }
               >
                 <SelectTrigger className="w-[180px] bg-background/80 border-border/50 rounded-full font-medium shadow-sm px-4">
-                  <SelectValue placeholder={t("transactionType")} />
+                  <SelectValue placeholder={t("walletAccountType")} />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl shadow-lg border-border/50">
-                  <SelectItem value="all">{t("allWalletTransactions")}</SelectItem>
-                  <SelectItem value={PaymentType.WALLET_TOPUP}>
-                    {t("walletTopup")}
+                  <SelectItem value="all">{t("allAccountTypes")}</SelectItem>
+                  <SelectItem value={WalletAccountType.DRIVER}>
+                    {t("nav_drivers")}
                   </SelectItem>
-                  <SelectItem value={PaymentType.WALLET_TRIP_CHARGE}>
-                    {t("walletTripCharge")}
+                  <SelectItem value={WalletAccountType.RIDER}>
+                    {t("nav_passengers")}
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -267,7 +258,8 @@ export default function WalletsListPage() {
               onPageChange={handlePageChange}
               pageSize={limit}
               loading={isLoading}
-              emptyMessage={t("noWalletTransactionsFound")}
+              emptyMessage={t("noWalletsFound")}
+              onRowClick={(wallet) => navigate(`/wallets/${wallet.id}`)}
             />
           </div>
         </CardContent>

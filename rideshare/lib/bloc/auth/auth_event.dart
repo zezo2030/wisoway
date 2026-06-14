@@ -157,6 +157,58 @@ class AuthSignOut extends AuthEvent {
   const AuthSignOut();
 }
 
+// Forgot Password - Request OTP
+class AuthForgotPassword extends AuthEvent {
+  final String phoneNumber;
+
+  const AuthForgotPassword({required this.phoneNumber});
+
+  @override
+  List<Object?> get props => [phoneNumber];
+}
+
+// Verify Reset OTP
+class AuthVerifyResetOTP extends AuthEvent {
+  final String phoneNumber;
+  final String code;
+
+  const AuthVerifyResetOTP({
+    required this.phoneNumber,
+    required this.code,
+  });
+
+  @override
+  List<Object?> get props => [phoneNumber, code];
+}
+
+// Reset Password (set new password after OTP verified)
+class AuthResetPassword extends AuthEvent {
+  final String resetToken;
+  final String newPassword;
+
+  const AuthResetPassword({
+    required this.resetToken,
+    required this.newPassword,
+  });
+
+  @override
+  List<Object?> get props => [resetToken, newPassword];
+}
+
+// Change Password (authenticated user)
+class AuthChangePassword extends AuthEvent {
+  final String currentPassword;
+  final String newPassword;
+
+  const AuthChangePassword({
+    required this.currentPassword,
+    required this.newPassword,
+  });
+
+  @override
+  List<Object?> get props => [currentPassword, newPassword];
+}
+
 // Clear Error
 class AuthClearError extends AuthEvent {
   const AuthClearError();

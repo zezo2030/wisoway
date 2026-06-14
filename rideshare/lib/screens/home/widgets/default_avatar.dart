@@ -9,6 +9,10 @@ class DefaultAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Icon(IconsaxPlusBold.profile, color: AppColors.white, size: size);
+    return Icon(
+      IconsaxPlusBold.profile,
+      color: T.onPrimary(context),
+      size: size,
+    );
   }
 }

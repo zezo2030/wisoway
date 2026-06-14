@@ -3,14 +3,22 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/colors.dart';
+import '../../../l10n/l10n_extensions.dart';
 import '../../../models/booking_model.dart';
 import '../../../models/trip_model.dart';
+import '../../../utils/booking_seat_formatter.dart';
 
 class BookingCard extends StatelessWidget {
   final BookingModel booking;
   final TripModel? trip;
   final bool isPastTrip;
   final VoidCallback? onTap;
+  /// Called when the user taps the Chat button (only shown once settled).
+  final VoidCallback? onChat;
+  /// Called when the user taps the Call button (only shown once settled).
+  final VoidCallback? onCall;
+  /// Called when the user taps the Cancel booking button.
+  final VoidCallback? onCancel;
 
   const BookingCard({
     super.key,
@@ -18,6 +26,9 @@ class BookingCard extends StatelessWidget {
     this.trip,
     this.isPastTrip = false,
     this.onTap,
+    this.onChat,
+    this.onCall,
+    this.onCancel,
   });
 
   @override
@@ -30,6 +41,7 @@ class BookingCard extends StatelessWidget {
     final muted = isPastTrip
         ? T.onSurfaceVariant(context)
         : T.onSurface(context);
+    final seatSummary = BookingSeatFormatter.summary(booking, trip);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -69,7 +81,7 @@ class BookingCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'رحلة منتهية',
+                          context.l10n.completedTrip,
                           style: GoogleFonts.tajawal(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -139,7 +151,7 @@ class BookingCard extends StatelessWidget {
                             ),
                           ] else
                             Text(
-                              'رحلة غير متاحة',
+                              context.l10n.tripUnavailable,
                               style: GoogleFonts.tajawal(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -164,10 +176,10 @@ class BookingCard extends StatelessWidget {
                       ),
                       child: Text(
                         booking.isPending
-                            ? 'قيد الانتظار'
+                            ? context.l10n.bookingStatusPending
                             : booking.isConfirmed
-                            ? 'مؤكد'
-                            : 'ملغي',
+                            ? context.l10n.bookingStatusConfirmed
+                            : context.l10n.bookingStatusCancelled,
                         style: TextStyle(
                           color: booking.isPending
                               ? AppColors.warningDark
@@ -189,7 +201,7 @@ class BookingCard extends StatelessWidget {
                     Expanded(
                       child: _BookingInfoItem(
                         icon: IconsaxPlusBold.calendar,
-                        label: 'التاريخ',
+                        label: context.l10n.dateLabel,
                         value: trip != null
                             ? dateFormat.format(trip!.departureTime)
                             : '-',
@@ -199,7 +211,7 @@ class BookingCard extends StatelessWidget {
                     Expanded(
                       child: _BookingInfoItem(
                         icon: IconsaxPlusBold.clock,
-                        label: 'الوقت',
+                        label: context.l10n.timeLabel,
                         value: trip != null
                             ? timeFormat.format(trip!.departureTime)
                             : '-',
@@ -209,13 +221,57 @@ class BookingCard extends StatelessWidget {
                     Expanded(
                       child: _BookingInfoItem(
                         icon: IconsaxPlusBold.profile_2user,
-                        label: 'المقعد',
-                        value: booking.seatNumber,
+                        label: context.l10n.seatLabel,
+                        value: seatSummary.isNotEmpty ? seatSummary : '-',
                         mutedStyle: isPastTrip,
                       ),
                     ),
                   ],
                 ),
+                // Cancel booking action — visible for cancellable bookings.
+                if (booking.canBeCancelled && !isPastTrip && onCancel != null) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: onCancel,
+                      icon: const Icon(IconsaxPlusBold.close_circle, size: 16),
+                      label: Text(context.l10n.cancelBooking),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.error,
+                        side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                if (booking.hasDriverPaidToContact && !isPastTrip) ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _SettlementActionButton(
+                          icon: IconsaxPlusBold.message,
+                          label: context.l10n.chat,
+                          color: T.primary(context),
+                          onTap: onChat,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _SettlementActionButton(
+                          icon: IconsaxPlusBold.call,
+                          label: context.l10n.call,
+                          color: AppColors.success,
+                          onTap: onCall,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -270,6 +326,55 @@ class _BookingInfoItem extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
         ),
       ],
+    );
+  }
+}
+
+/// Compact action button shown in the settlement action row of [BookingCard].
+class _SettlementActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback? onTap;
+
+  const _SettlementActionButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: label,
+      child: Material(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 18, color: color),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: GoogleFonts.tajawal(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

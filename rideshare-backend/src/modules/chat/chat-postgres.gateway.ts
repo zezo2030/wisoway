@@ -14,6 +14,9 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ChatPostgresService } from './chat-postgres.service';
 import { WsRateLimitGuard } from '../../common/guards/ws-rate-limit.guard';
 
+/** Custom WS close code: booking is not settled. */
+const WS_CODE_BOOKING_NOT_SETTLED = 4403;
+
 @WebSocketGateway({
   cors: { origin: '*' },
   namespace: '/chat',
@@ -62,8 +65,31 @@ export class ChatPostgresGateway
     @CurrentUser('id') userId: string,
   ) {
     const { chatRoomId } = data;
-    const userRooms = this.userRooms.get(userId);
 
+    try {
+      // Validate settlement gate before joining.
+      // getRoomById internally calls getOrCreateRoom which runs the settlement check.
+      await this.chatService.getRoomById(chatRoomId, userId);
+    } catch (err) {
+      const isSettlementError =
+        typeof err?.response === 'object' &&
+        err?.response?.code === 'BOOKING_NOT_SETTLED';
+
+      if (isSettlementError) {
+        client.emit('error', {
+          code: WS_CODE_BOOKING_NOT_SETTLED,
+          message:
+            'Chat is only available after the driver marks the booking as paid',
+        });
+        client.disconnect(true);
+        return;
+      }
+      // For other errors emit a generic error and do not disconnect.
+      client.emit('error', { message: err?.message ?? 'Unknown error' });
+      return;
+    }
+
+    const userRooms = this.userRooms.get(userId);
     if (userRooms) {
       userRooms.add(chatRoomId);
     }
@@ -161,14 +187,17 @@ export class ChatPostgresGateway
     return { event: 'stoppedTyping' };
   }
 
-  async emitNewMessage(chatRoomId: string, message: {
-    id: string;
-    chatRoomId: string;
-    senderId: string;
-    senderName: string | null;
-    text: string;
-    createdAt: Date;
-  }) {
+  async emitNewMessage(
+    chatRoomId: string,
+    message: {
+      id: string;
+      chatRoomId: string;
+      senderId: string;
+      senderName: string | null;
+      text: string;
+      createdAt: Date;
+    },
+  ) {
     this.server.to(`room:${chatRoomId}`).emit('newMessage', {
       _id: message.id,
       id: message.id,

@@ -28,7 +28,7 @@ export class PayoutRequestEntity {
   @Column({ type: 'numeric', precision: 14, scale: 2 })
   amount: string;
 
-  @Column({ type: 'varchar', length: 5, default: 'EGP' })
+  @Column({ type: 'varchar', length: 5, default: 'JOD' })
   currency: string;
 
   @Column({ type: 'enum', enum: PayoutStatus, default: PayoutStatus.PENDING })

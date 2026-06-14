@@ -41,7 +41,7 @@ class SeatValidation {
     int seatNumber,
     String userGender,
   ) {
-    final seatLayout = trip.seatLayout;
+    final seatLayout = SeatLayoutHelpers.effectiveSeatLayoutConfigForTrip(trip);
     final coords =
         SeatLayoutHelpers.displayIndexToBackendCoords(seatNumber, seatLayout);
     if (coords == null) return false;

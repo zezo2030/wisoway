@@ -44,6 +44,15 @@ class TripModel {
   // Distance (km, from PostGIS)
   final double? distanceKm;
 
+  // Stops (up to 5 intermediate waypoints)
+  final List<LocationModel> stops;
+
+  // Driver notes visible to passengers
+  final String? notes;
+
+  // Recurrence rule that spawned this trip (if any)
+  final String? recurrenceRuleId;
+
   // Metadata
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -67,6 +76,9 @@ class TripModel {
     this.isVisible = true,
     this.communicationFeeStatus = 'not_paid',
     this.distanceKm,
+    this.stops = const [],
+    this.notes,
+    this.recurrenceRuleId,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -147,7 +159,7 @@ class TripModel {
           ? DateTime.parse(json['departureTime'])
           : DateTime.now(),
       price: _parseDouble(json['price']),
-      currency: json['currency'] ?? 'EGP',
+      currency: json['currency'] ?? 'JOD',
       totalSeats: _parseInt(json['totalSeats']),
       availableSeats: _parseInt(json['availableSeats']),
       seatLayout: seatLayout,
@@ -161,6 +173,13 @@ class TripModel {
       distanceKm: json['distanceKm'] != null
           ? _parseDouble(json['distanceKm'])
           : null,
+      stops: (json['stops'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map((s) => LocationModel.fromStopMap(s))
+              .toList() ??
+          [],
+      notes: json['notes'] as String?,
+      recurrenceRuleId: json['recurrenceRuleId']?.toString(),
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
@@ -189,6 +208,12 @@ class TripModel {
       'isVisible': isVisible,
       'communicationFeeStatus': communicationFeeStatus,
       if (distanceKm != null) 'distanceKm': distanceKm,
+      if (stops.isNotEmpty)
+        'stops': stops.asMap().entries
+            .map((e) => e.value.toStopMap(order: e.key + 1))
+            .toList(),
+      if (notes != null) 'notes': notes,
+      if (recurrenceRuleId != null) 'recurrenceRuleId': recurrenceRuleId,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
@@ -214,6 +239,9 @@ class TripModel {
     bool? isVisible,
     String? communicationFeeStatus,
     double? distanceKm,
+    List<LocationModel>? stops,
+    String? notes,
+    String? recurrenceRuleId,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -236,13 +264,18 @@ class TripModel {
       communicationFeeStatus:
           communicationFeeStatus ?? this.communicationFeeStatus,
       distanceKm: distanceKm ?? this.distanceKm,
+      stops: stops ?? this.stops,
+      notes: notes ?? this.notes,
+      recurrenceRuleId: recurrenceRuleId ?? this.recurrenceRuleId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
   // Helper getters
-  bool get isActive => status == 'active';
+  // Backend uses 'published' as the canonical "active" state; 'active' is
+  // kept as a deprecated alias for older rows.
+  bool get isActive => status == 'active' || status == 'published';
   bool get isHidden => status == 'hidden';
   bool get isCancelled => status == 'cancelled';
   bool get isCompleted => status == 'completed';
@@ -253,6 +286,50 @@ class TripModel {
 
   bool get isPast => departureTime.isBefore(DateTime.now());
   bool get isUpcoming => departureTime.isAfter(DateTime.now());
+
+  /// Same window as backend `POST /trips/:id/start`.
+  static const int driverStartTripEarlyMinutes = 15;
+  static const int driverStartTripLateMinutes = 30;
+
+  DateTime get driverStartWindowOpens => departureTime.subtract(
+        const Duration(minutes: driverStartTripEarlyMinutes),
+      );
+
+  DateTime get driverStartWindowCloses => departureTime.add(
+        const Duration(minutes: driverStartTripLateMinutes),
+      );
+
+  bool get _canDriverAttemptStartStatus =>
+      status == 'published' ||
+      status == 'fully_booked' ||
+      status == 'active';
+
+  bool get isDriverStartWindowActive {
+    if (!_canDriverAttemptStartStatus) return false;
+    final n = DateTime.now();
+    return !n.isBefore(driverStartWindowOpens) &&
+        !n.isAfter(driverStartWindowCloses);
+  }
+
+  /// True when the server-side start window has closed and the trip was never started.
+  bool get isDriverStartDeadlinePassed {
+    if (status == 'in_progress' ||
+        status == 'completed' ||
+        status == 'cancelled') {
+      return false;
+    }
+    if (!(status == 'published' ||
+        status == 'fully_booked' ||
+        status == 'active' ||
+        status == 'hidden')) {
+      return false;
+    }
+    return DateTime.now().isAfter(driverStartWindowCloses);
+  }
+
+  /// Red banner on driver-facing cards: only after the real deadline, not at raw departure instant.
+  bool get driverShowsStartDeadlinePassedBanner =>
+      isDriverStartDeadlinePassed;
 
   bool get isLocked => (isActive && isPast) || isExpired;
 
@@ -271,7 +348,14 @@ class TripModel {
   String get statusDisplayText {
     switch (status) {
       case 'active':
+      case 'published':
         return 'نشطة';
+      case 'fully_booked':
+        return 'مكتملة الحجز';
+      case 'in_progress':
+        return 'قيد التنفيذ';
+      case 'draft':
+        return 'مسودة';
       case 'hidden':
         return 'مخفية';
       case 'completed':

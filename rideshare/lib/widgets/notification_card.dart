@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import '../providers/auth_provider.dart';
 import '../models/notification_model.dart';
 import '../core/constants/app_spacing.dart';
 import '../core/theme/colors.dart';
+import '../l10n/l10n_extensions.dart';
 
 class NotificationCard extends StatelessWidget {
   final NotificationModel notification;
@@ -20,9 +23,14 @@ class NotificationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDriver = context.select<AuthProvider, bool>(
+      (provider) => provider.userModel?.isDriver ?? false,
+    );
     final isUnread = !notification.isRead;
     final color = _getNotificationColor(context, notification.type);
     final icon = _getNotificationIcon(notification.type);
+    final displayTitle = notification.titleForRole(isDriver: isDriver);
+    final displayBody = notification.bodyForRole(isDriver: isDriver);
 
     return Dismissible(
       key: Key(notification.id),
@@ -49,7 +57,7 @@ class NotificationCard extends StatelessWidget {
       onDismissed: (direction) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('تم حذف الإشعار'),
+            content: Text(context.l10n.notificationDeleted),
             duration: const Duration(seconds: 2),
             backgroundColor: T.error(context),
           ),
@@ -57,7 +65,7 @@ class NotificationCard extends StatelessWidget {
       },
       child: Semantics(
         button: onTap != null,
-        label: '${notification.title}. ${notification.body}',
+        label: '$displayTitle. $displayBody',
         child: Card(
           margin: const EdgeInsets.only(bottom: 12),
           elevation: 0,
@@ -97,7 +105,7 @@ class NotificationCard extends StatelessWidget {
                           children: [
                             Expanded(
                               child: Text(
-                                notification.title,
+                                displayTitle,
                                 style: GoogleFonts.tajawal(
                                   fontSize: 16,
                                   fontWeight: isUnread
@@ -123,7 +131,7 @@ class NotificationCard extends StatelessWidget {
                         ),
                         AppSpacing.verticalGapSm,
                         Text(
-                          notification.body,
+                          displayBody,
                           style: GoogleFonts.tajawal(
                             fontSize: 14,
                             fontWeight: FontWeight.normal,

@@ -3,6 +3,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../models/location_model.dart';
 import '../core/services/location_service.dart';
 import '../core/theme/colors.dart';
+import '../l10n/l10n_extensions.dart';
 
 class LocationPickerWidget extends StatefulWidget {
   final String title;
@@ -47,10 +48,14 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
           widget.initialLocation!.latitude,
           widget.initialLocation!.longitude,
         );
+        final localizedAddress = await _locationService
+            .getAddressFromCoordinates(
+              latitude: widget.initialLocation!.latitude,
+              longitude: widget.initialLocation!.longitude,
+            );
         _selectedLocation = initialPosition;
-        _selectedAddress =
-            widget.initialLocation!.address ?? widget.initialLocation!.name;
-        _searchController.text = widget.initialLocation!.name;
+        _selectedAddress = localizedAddress;
+        _searchController.text = localizedAddress;
       } else {
         // Get current location
         final currentLocation = await _locationService.getCurrentLocation();
@@ -74,34 +79,34 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
       }
     } catch (e) {
       print('❌ Error initializing location: $e');
-      // Default to Cairo, Egypt
-      final defaultPosition = const LatLng(30.0444, 31.2357);
+      // Default: Amman, Jordan
+      final defaultPosition = const LatLng(31.9539, 35.9106);
       setState(() {
         _selectedLocation = defaultPosition;
-        _selectedAddress = 'القاهرة، مصر';
+        _selectedAddress = context.l10n.locationDefaultAmman;
         _isLoading = false;
       });
 
       // Show user-friendly error message
       if (mounted) {
-        String message = 'تعذر الحصول على الموقع الحالي.';
-        String actionLabel = 'إغلاق';
+        String message = context.l10n.locationCurrentUnavailable;
+        String actionLabel = context.l10n.close;
         VoidCallback? onAction;
 
         final errorStr = e.toString();
         if (errorStr.contains('LOCATION_SERVICE_DISABLED')) {
-          message = 'خدمات الموقع معطلة. يرجى تفعيل GPS.';
-          actionLabel = 'تفعيل';
+          message = context.l10n.locationServicesDisabledEnableGps;
+          actionLabel = context.l10n.locationEnable;
           onAction = () => _locationService.openLocationSettings();
         } else if (errorStr.contains('LOCATION_PERMISSION_DENIED')) {
-          message = 'تصريح الموقع مطلوب.';
-          actionLabel = 'منح التصريح';
+          message = context.l10n.locationPermissionRequired;
+          actionLabel = context.l10n.locationGrantPermission;
           onAction = () => _initializeLocation();
         } else if (errorStr.contains(
           'LOCATION_PERMISSION_PERMANENTLY_DENIED',
         )) {
-          message = 'تم رفض تصريح الموقع بشكل دائم. افتح الإعدادات لمنحه.';
-          actionLabel = 'الإعدادات';
+          message = context.l10n.locationPermissionPermanentlyDenied;
+          actionLabel = context.l10n.locationSettings;
           onAction = () => _locationService.openAppSettings();
         }
 
@@ -112,7 +117,7 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
             action: onAction != null
                 ? SnackBarAction(
                     label: actionLabel,
-                    textColor: AppColors.white,
+                    textColor: T.onPrimary(context),
                     onPressed: onAction,
                   )
                 : null,
@@ -155,7 +160,7 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
     } catch (e) {
       print('❌ Error getting address: $e');
       setState(() {
-        _selectedAddress = 'موقع غير معروف';
+        _selectedAddress = context.l10n.locationUnknown;
         _isGettingAddress = false;
       });
     }
@@ -164,7 +169,7 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
   void _confirmSelection() {
     if (_selectedLocation != null) {
       final location = LocationModel(
-        name: _selectedAddress ?? 'موقع غير معروف',
+        name: _selectedAddress ?? context.l10n.locationUnknown,
         latitude: _selectedLocation!.latitude,
         longitude: _selectedLocation!.longitude,
         address: _selectedAddress,
@@ -194,33 +199,33 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
       if (!mounted) return;
       setState(() => _isLoading = false);
 
-      String message = 'خطأ في الحصول على الموقع.';
-      String actionLabel = 'إغلاق';
+      String message = context.l10n.locationGetError;
+      String actionLabel = context.l10n.close;
       VoidCallback? onAction;
 
       final errorStr = e.toString();
       if (errorStr.contains('LOCATION_SERVICE_DISABLED')) {
-        message = 'خدمات الموقع معطلة.';
-        actionLabel = 'تفعيل';
+        message = context.l10n.locationServicesDisabled;
+        actionLabel = context.l10n.locationEnable;
         onAction = () => _locationService.openLocationSettings();
       } else if (errorStr.contains('LOCATION_PERMISSION_DENIED')) {
-        message = 'تصريح الموقع مطلوب.';
-        actionLabel = 'منح';
+        message = context.l10n.locationPermissionRequired;
+        actionLabel = context.l10n.locationGrant;
         onAction = () => _useCurrentLocation();
       } else if (errorStr.contains('LOCATION_PERMISSION_PERMANENTLY_DENIED')) {
-        message = 'تم رفض التصريح بشكل دائم.';
-        actionLabel = 'الإعدادات';
+        message = context.l10n.locationPermissionDeniedPermanently;
+        actionLabel = context.l10n.locationSettings;
         onAction = () => _locationService.openAppSettings();
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: Colors.red,
+          backgroundColor: T.error(context),
           action: onAction != null
               ? SnackBarAction(
                   label: actionLabel,
-                  textColor: Colors.white,
+                  textColor: T.onError(context),
                   onPressed: onAction,
                 )
               : null,
@@ -249,11 +254,9 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
       } else {
         setState(() => _isSearching = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'لم يتم العثور على نتائج. جرّب اسم مكان أو عنوان أوضح.',
-            ),
-            backgroundColor: Colors.orange,
+          SnackBar(
+            content: Text(context.l10n.locationSearchNoResults),
+            backgroundColor: AppColors.warning,
           ),
         );
       }
@@ -262,8 +265,8 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
         setState(() => _isSearching = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في البحث: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            content: Text(context.l10n.locationSearchError(e.toString())),
+            backgroundColor: T.error(context),
           ),
         );
       }
@@ -279,7 +282,7 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
           IconButton(
             icon: const Icon(Icons.my_location),
             onPressed: _useCurrentLocation,
-            tooltip: 'استخدام الموقع الحالي',
+            tooltip: context.l10n.locationUseCurrent,
           ),
         ],
       ),
@@ -294,13 +297,13 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                 children: [
                   Expanded(
                     child: Semantics(
-                      label: 'البحث عن مكان أو عنوان',
+                      label: context.l10n.locationSearchSemantic,
                       textField: true,
                       child: TextField(
                         controller: _searchController,
                         focusNode: _searchFocusNode,
                         decoration: InputDecoration(
-                          hintText: 'ابحث عن مكان أو عنوان...',
+                          hintText: context.l10n.locationSearchHint,
                           prefixIcon: const Icon(Icons.search),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -311,7 +314,7 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                             vertical: 12,
                           ),
                         ),
-                        textDirection: TextDirection.ltr,
+                        textDirection: TextDirection.rtl,
                         onSubmitted: (_) => _searchByAddress(),
                       ),
                     ),
@@ -326,20 +329,20 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.search),
-                    tooltip: 'بحث على الخريطة',
+                    tooltip: context.l10n.locationSearchOnMap,
                   ),
                 ],
               ),
             ),
           Expanded(
             child: _isLoading
-                ? const Center(
+                ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text('جاري تحميل الخريطة...'),
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 16),
+                        Text(context.l10n.locationLoadingMap),
                       ],
                     ),
                   )
@@ -351,11 +354,11 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                         const Icon(
                           Icons.error_outline,
                           size: 64,
-                          color: Colors.red,
+                          color: AppColors.error,
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'خطأ في تحميل الخريطة',
+                          context.l10n.locationMapLoadError,
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                         const SizedBox(height: 8),
@@ -377,7 +380,7 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                             _initializeLocation();
                           },
                           icon: const Icon(Icons.refresh),
-                          label: const Text('إعادة المحاولة'),
+                          label: Text(context.l10n.retry),
                         ),
                       ],
                     ),
@@ -389,7 +392,7 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                         initialCameraPosition: CameraPosition(
                           target:
                               _selectedLocation ??
-                              const LatLng(30.0444, 31.2357),
+                              const LatLng(31.9539, 35.9106),
                           zoom: 15,
                         ),
                         onTap: _onMapTap,
@@ -422,10 +425,10 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                         child: Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: AppColors.white,
+                            color: T.surface(context),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.black.withValues(alpha: 0.1),
+                                color: T.shadow(context).withValues(alpha: 0.1),
                                 blurRadius: 10,
                                 offset: const Offset(0, -5),
                               ),
@@ -439,10 +442,12 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                                 const LinearProgressIndicator()
                               else
                                 Text(
-                                  _selectedAddress ?? 'اختر موقعاً على الخريطة',
-                                  style: const TextStyle(
+                                  _selectedAddress ??
+                                      context.l10n.locationPickOnMap,
+                                  style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
+                                    color: T.onSurface(context),
                                   ),
                                 ),
                               const SizedBox(height: 16),
@@ -450,7 +455,7 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                                 onPressed: _selectedLocation != null
                                     ? _confirmSelection
                                     : null,
-                                child: const Text('تأكيد الموقع'),
+                                child: Text(context.l10n.locationConfirm),
                               ),
                             ],
                           ),

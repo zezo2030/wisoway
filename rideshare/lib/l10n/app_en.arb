@@ -1,6 +1,6 @@
 {
   "@@locale": "en",
-  "appName": "RideShare",
+  "appName": "VisionWay",
   "phoneAuth": "Sign In",
   "@phoneAuth": {
     "description": "Phone authentication screen title"
@@ -137,7 +137,2315 @@
   "profileSaved": "Profile saved successfully",
   "@profileSaved": {
     "description": "Success message for profile saved"
-  }
+  },
+  "settings": "Settings",
+  "@settings": {
+    "description": "Settings screen title"
+  },
+  "appearance": "Appearance",
+  "@appearance": {
+    "description": "Appearance section in settings"
+  },
+  "darkMode": "Dark Mode",
+  "@darkMode": {
+    "description": "Dark mode toggle option"
+  },
+  "darkModeSubtitle": "Enable dark theme for the app",
+  "@darkModeSubtitle": {
+    "description": "Dark mode option description"
+  },
+  "themeMode": "App Theme",
+  "@themeMode": {
+    "description": "App theme selection option"
+  },
+  "themeSystem": "System Default",
+  "@themeSystem": {
+    "description": "Theme option - follow system"
+  },
+  "themeLight": "Light",
+  "@themeLight": {
+    "description": "Theme option - light"
+  },
+  "themeDark": "Dark",
+  "@themeDark": {
+    "description": "Theme option - dark"
+  },
+  "selectTheme": "Select Theme",
+  "@selectTheme": {
+    "description": "Theme selection sheet title"
+  },
+  "language": "Language",
+  "@language": {
+    "description": "Language section in settings"
+  },
+  "languageArabic": "العربية",
+  "@languageArabic": {
+    "description": "Arabic language"
+  },
+  "languageEnglish": "English",
+  "@languageEnglish": {
+    "description": "English language"
+  },
+  "selectLanguage": "Select Language",
+  "@selectLanguage": {
+    "description": "Language selection sheet title"
+  },
+  "currentLanguageAr": "العربية",
+  "@currentLanguageAr": {
+    "description": "Current language - Arabic"
+  },
+  "currentLanguageEn": "English",
+  "@currentLanguageEn": {
+    "description": "Current language - English"
+  },
+  "notifications": "Notifications",
+  "@notifications": {
+    "description": "Notifications section in settings"
+  },
+  "pushNotifications": "Push Notifications",
+  "@pushNotifications": {
+    "description": "Push notifications toggle option"
+  },
+  "notificationSound": "Sound",
+  "@notificationSound": {
+    "description": "Notification sound toggle option"
+  },
+  "notificationVibration": "Vibration",
+  "@notificationVibration": {
+    "description": "Notification vibration toggle option"
+  },
+  "notificationSettings": "Detailed Settings",
+  "@notificationSettings": {
+    "description": "Navigation to detailed notification settings"
+  },
+  "notificationSettingsTitle": "Notification Settings",
+  "@notificationSettingsTitle": {
+    "description": "Notification settings screen title"
+  },
+  "notificationCategories": "Notification Categories",
+  "@notificationCategories": {
+    "description": "Notification categories section title"
+  },
+  "notifTrips": "Trip Notifications",
+  "@notifTrips": {
+    "description": "Trip notifications category"
+  },
+  "notifPayments": "Payment Notifications",
+  "@notifPayments": {
+    "description": "Payment notifications category"
+  },
+  "notifMessages": "Message Notifications",
+  "@notifMessages": {
+    "description": "Message notifications category"
+  },
+  "notifSystem": "System Notifications",
+  "@notifSystem": {
+    "description": "System notifications category"
+  },
+  "notifCustomizeInfo": "You can customize which notifications you want to receive",
+  "@notifCustomizeInfo": {
+    "description": "Notification customization info text"
+  },
+  "accountSecurity": "Account & Security",
+  "@accountSecurity": {
+    "description": "Account & Security section"
+  },
+  "accountInfo": "Account Info",
+  "@accountInfo": {
+    "description": "Account info navigation tile"
+  },
+  "changePassword": "Change Password",
+  "@changePassword": {
+    "description": "Change password tile"
+  },
+  "comingSoon": "Coming Soon",
+  "@comingSoon": {
+    "description": "Coming soon badge"
+  },
+  "accountSecurityTitle": "Account & Security",
+  "@accountSecurityTitle": {
+    "description": "Account security screen title"
+  },
+  "accountDetails": "Account Details",
+  "@accountDetails": {
+    "description": "Account details section"
+  },
+  "emailLabel": "Email",
+  "@emailLabel": {
+    "description": "Email label"
+  },
+  "phoneLabel": "Phone Number",
+  "@phoneLabel": {
+    "description": "Phone number label"
+  },
+  "accountType": "Account Type",
+  "@accountType": {
+    "description": "Account type label"
+  },
+  "linkPhone": "Link",
+  "@linkPhone": {
+    "description": "Link phone button"
+  },
+  "verificationStatus": "Verification Status",
+  "@verificationStatus": {
+    "description": "Verification status section"
+  },
+  "emailVerified": "Email",
+  "@emailVerified": {
+    "description": "Email verification"
+  },
+  "phoneVerified": "Phone Number",
+  "@phoneVerified": {
+    "description": "Phone verification"
+  },
+  "driverApproval": "Driver Approval",
+  "@driverApproval": {
+    "description": "Driver account approval"
+  },
+  "verified": "Verified",
+  "@verified": {
+    "description": "Verification status - verified"
+  },
+  "notVerified": "Not Verified",
+  "@notVerified": {
+    "description": "Verification status - not verified"
+  },
+  "approved": "Approved",
+  "@approved": {
+    "description": "Driver approval status - approved"
+  },
+  "pending": "Pending",
+  "@pending": {
+    "description": "Driver approval status - pending"
+  },
+  "privacy": "Privacy",
+  "@privacy": {
+    "description": "Privacy section in settings"
+  },
+  "locationSharing": "Location Sharing",
+  "@locationSharing": {
+    "description": "Location sharing toggle"
+  },
+  "locationSharingSubtitle": "Share your live location",
+  "@locationSharingSubtitle": {
+    "description": "Location sharing description"
+  },
+  "onlineStatus": "Online Status",
+  "@onlineStatus": {
+    "description": "Online status toggle"
+  },
+  "onlineStatusSubtitle": "Show your online status",
+  "@onlineStatusSubtitle": {
+    "description": "Online status description"
+  },
+  "showRating": "Show Rating",
+  "@showRating": {
+    "description": "Show rating toggle"
+  },
+  "showRatingSubtitle": "Show your rating to others",
+  "@showRatingSubtitle": {
+    "description": "Show rating description"
+  },
+  "privacyTitle": "Privacy",
+  "@privacyTitle": {
+    "description": "Privacy screen title"
+  },
+  "privacySettings": "Privacy Settings",
+  "@privacySettings": {
+    "description": "Privacy settings section"
+  },
+  "privacyInfo": "These settings control what others can see about you",
+  "@privacyInfo": {
+    "description": "Privacy info text"
+  },
+  "paymentAndWallet": "Payment & Wallet",
+  "@paymentAndWallet": {
+    "description": "Payment & Wallet section in settings"
+  },
+  "wallet": "Wallet",
+  "@wallet": {
+    "description": "Wallet tile"
+  },
+  "paymentHistory": "Payment History",
+  "@paymentHistory": {
+    "description": "Payment history tile"
+  },
+  "supportAndHelp": "Support & Help",
+  "@supportAndHelp": {
+    "description": "Support & Help section in settings"
+  },
+  "contactUs": "Contact Us",
+  "@contactUs": {
+    "description": "Contact Us via WhatsApp tile"
+  },
+  "termsOfService": "Terms of Service",
+  "@termsOfService": {
+    "description": "Terms of Service tile"
+  },
+  "privacyPolicy": "Privacy Policy",
+  "@privacyPolicy": {
+    "description": "Privacy Policy tile"
+  },
+  "aboutApp": "About",
+  "@aboutApp": {
+    "description": "About section in settings"
+  },
+  "aboutAppTitle": "About",
+  "@aboutAppTitle": {
+    "description": "About screen title"
+  },
+  "rateApp": "Rate App",
+  "@rateApp": {
+    "description": "Rate App tile"
+  },
+  "shareApp": "Share App",
+  "@shareApp": {
+    "description": "Share App tile"
+  },
+  "licenses": "Licenses",
+  "@licenses": {
+    "description": "Licenses tile"
+  },
+  "appVersion": "Version {version}",
+  "@appVersion": {
+    "description": "App version number",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "appDescription": "Ride sharing platform",
+  "@appDescription": {
+    "description": "App description"
+  },
+  "madeWithLove": "Made with ❤️ in Jordan",
+  "@madeWithLove": {
+    "description": "Footer text"
+  },
+  "inAppBrowserTitle": "Browser",
+  "@inAppBrowserTitle": {
+    "description": "In-app browser screen title"
+  },
+  "deleteAccount": "Delete Account",
+  "@deleteAccount": {
+    "description": "Delete account tile"
+  },
+  "deleteAccountWarning": "Are you sure you want to delete your account? This action cannot be undone.",
+  "@deleteAccountWarning": {
+    "description": "Delete account warning message"
+  },
+  "deleteAccountConfirm": "Yes, Delete Account",
+  "@deleteAccountConfirm": {
+    "description": "Delete account confirm button"
+  },
+  "deleteAccountSecondWarning": "Final warning: All your data will be permanently deleted and cannot be recovered.",
+  "@deleteAccountSecondWarning": {
+    "description": "Second delete account warning message"
+  },
+  "deleteAccountSecondConfirm": "Delete Permanently",
+  "@deleteAccountSecondConfirm": {
+    "description": "Final delete account confirm button"
+  },
+  "contactSupportTitle": "Contact Support",
+  "@contactSupportTitle": {
+    "description": "Contact support dialog title"
+  },
+  "contactSupportMessage": "Account deletion is currently unavailable. Please contact support via WhatsApp or email.",
+  "@contactSupportMessage": {
+    "description": "Account deletion failure message"
+  },
+  "contactWhatsApp": "Contact via WhatsApp",
+  "@contactWhatsApp": {
+    "description": "Contact via WhatsApp button"
+  },
+  "contactEmail": "Contact via Email",
+  "@contactEmail": {
+    "description": "Contact via email button"
+  },
+  "close": "Close",
+  "@close": {
+    "description": "Close button"
+  },
+  "errorsNetworkOffline": "You're offline. Check your connection and try again.",
+  "@errorsNetworkOffline": {
+    "description": "Network offline error message"
+  },
+  "errorsNetworkTimeout": "Connection timed out. Please try again.",
+  "@errorsNetworkTimeout": {
+    "description": "Network timeout error message"
+  },
+  "errorsServerGeneric": "Something went wrong on our end. Please try again later.",
+  "@errorsServerGeneric": {
+    "description": "Generic server error message"
+  },
+  "errorsAuthSessionExpired": "Your session has expired. Please sign in again.",
+  "@errorsAuthSessionExpired": {
+    "description": "Session expired error message"
+  },
+  "errorsAuthInvalidCredentials": "Invalid email or password.",
+  "@errorsAuthInvalidCredentials": {
+    "description": "Invalid credentials error message"
+  },
+  "errorsPermissionDenied": "Permission denied. Check your app settings.",
+  "@errorsPermissionDenied": {
+    "description": "Permission denied error message"
+  },
+  "errorsValidationGeneric": "Invalid input. Please check your data and try again.",
+  "@errorsValidationGeneric": {
+    "description": "Generic validation error message"
+  },
+  "errorsUnknownGeneric": "An unexpected error occurred. Please try again.",
+  "@errorsUnknownGeneric": {
+    "description": "Generic unknown error message"
+  },
+  "errorsActionRetry": "Retry",
+  "@errorsActionRetry": {
+    "description": "Retry action button"
+  },
+  "errorsActionReauthenticate": "Sign in again",
+  "@errorsActionReauthenticate": {
+    "description": "Re-authenticate action button"
+  },
+  "errorsActionOpenSettings": "Open Settings",
+  "@errorsActionOpenSettings": {
+    "description": "Open settings action button"
+  },
+  "errorsRouteUnavailable": "We couldn't load the route. Showing pickup and drop-off points.",
+  "@errorsRouteUnavailable": {
+    "description": "Route unavailable error message"
+  },
+  "notificationsBookingCreatedTitle": "New Booking",
+  "@notificationsBookingCreatedTitle": {
+    "description": "Title for booking created notification"
+  },
+  "notificationsBookingCreatedBody": "A new seat was booked on your trip",
+  "@notificationsBookingCreatedBody": {
+    "description": "Body for booking created notification"
+  },
+  "notificationsBookingConfirmedTitle": "Booking Confirmed",
+  "@notificationsBookingConfirmedTitle": {
+    "description": "Title for booking confirmed notification"
+  },
+  "notificationsBookingConfirmedBody": "Your booking has been confirmed",
+  "@notificationsBookingConfirmedBody": {
+    "description": "Body for booking confirmed notification"
+  },
+  "notificationsBookingRejectedTitle": "Booking Rejected",
+  "@notificationsBookingRejectedTitle": {
+    "description": "Title for booking rejected notification"
+  },
+  "notificationsBookingRejectedBody": "Unfortunately, your booking was rejected",
+  "@notificationsBookingRejectedBody": {
+    "description": "Body for booking rejected notification"
+  },
+  "notificationsBookingCanceledTitle": "Booking Cancelled",
+  "@notificationsBookingCanceledTitle": {
+    "description": "Title for booking cancelled notification"
+  },
+  "notificationsBookingCanceledBody": "Your booking has been cancelled",
+  "@notificationsBookingCanceledBody": {
+    "description": "Body for booking cancelled notification"
+  },
+  "notificationsNewTripPostedTitle": "New Trip Posted",
+  "@notificationsNewTripPostedTitle": {
+    "description": "Title for new trip posted notification"
+  },
+  "notificationsNewTripPostedBody": "A new trip to {destination} is available",
+  "@notificationsNewTripPostedBody": {
+    "description": "Body for new trip posted notification",
+    "placeholders": {
+      "destination": {
+        "type": "String"
+      }
+    }
+  },
+  "accountBannedTitle": "Account Suspended",
+  "@accountBannedTitle": {
+    "description": "Ban screen title shown when user account is banned"
+  },
+  "accountBannedMessage": "Your account has been suspended. Reason: {reason}",
+  "@accountBannedMessage": {
+    "description": "Ban screen body message with reason",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "accountBannedContactSupport": "Contact Support",
+  "@accountBannedContactSupport": {
+    "description": "Button on ban screen that opens WhatsApp support"
+  },
+  "accountRestrictedBanner": "Your account is temporarily restricted. Some actions are unavailable pending review.",
+  "@accountRestrictedBanner": {
+    "description": "Banner shown when the account is in restricted state"
+  },
+  "maskedPhoneLabel": "Hidden number",
+  "@maskedPhoneLabel": {
+    "description": "Placeholder shown instead of the actual phone number before settlement"
+  },
+  "maskedPhoneHint": "Revealed after payment is confirmed",
+  "@maskedPhoneHint": {
+    "description": "Hint explaining why the phone number is masked"
+  },
+  "shareLinkTripEnded": "Trip ended",
+  "@shareLinkTripEnded": {
+    "description": "State label shown on the public share-link page when the trip has completed"
+  },
+  "shareLinkLiveTracking": "Live tracking",
+  "@shareLinkLiveTracking": {
+    "description": "Label shown on the public share-link page while the trip is in progress"
+  },
+  "shareLinkGenerate": "Share trip",
+  "@shareLinkGenerate": {
+    "description": "Button to generate a public share link for the trip"
+  },
+  "noShowNotificationTitle": "Driver did not arrive",
+  "@noShowNotificationTitle": {
+    "description": "Push notification title when the driver no-show threshold is reached"
+  },
+  "noShowNotificationBody": "The driver did not start the trip in time. The trip has been cancelled and a penalty has been applied.",
+  "@noShowNotificationBody": {
+    "description": "Push notification body for driver no-show cancellation"
+  },
+  "pendingChargeBanner": "You have an outstanding charge of {amount}. It will be collected on your next confirmed booking.",
+  "@pendingChargeBanner": {
+    "description": "Banner shown to a user who has an outstanding pending charge",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "pendingChargeTitle": "Pending Charges",
+  "@pendingChargeTitle": {
+    "description": "Title for the pending charges section"
+  },
+  "pendingChargeKindPassengerCancellation": "Late cancellation fee",
+  "@pendingChargeKindPassengerCancellation": {
+    "description": "Label for a pending charge of kind passenger_cancellation"
+  },
+  "pendingChargeKindDriverNoShow": "Driver no-show penalty",
+  "@pendingChargeKindDriverNoShow": {
+    "description": "Label for a pending charge of kind driver_no_show"
+  },
+  "pendingChargeKindPassengerNoShow": "Passenger no-show penalty",
+  "@pendingChargeKindPassengerNoShow": {
+    "description": "Label for a pending charge of kind passenger_no_show"
+  },
+  "devicesScreenTitle": "Connected Devices",
+  "@devicesScreenTitle": {
+    "description": "Title for the connected devices management screen"
+  },
+  "devicesRevokeButton": "Remove device",
+  "@devicesRevokeButton": {
+    "description": "Button to revoke a connected device session"
+  },
+  "devicesCurrentDevice": "This device",
+  "@devicesCurrentDevice": {
+    "description": "Label for the current device in the devices list"
+  },
+  "bookingTimeoutNotificationTitle": "Booking expired",
+  "@bookingTimeoutNotificationTitle": {
+    "description": "Push notification title when a pending booking expires after 3 hours"
+  },
+  "bookingTimeoutNotificationBody": "Your booking timed out and was not accepted by the driver. The seats are now available.",
+  "@bookingTimeoutNotificationBody": {
+    "description": "Push notification body for booking timeout cancellation"
+  },
+  "settlementMarkPaid": "Confirm payment",
+  "@settlementMarkPaid": {
+    "description": "Driver CTA button to mark a booking as paid/settled"
+  },
+  "settlementUnmarkPaid": "Undo payment confirmation",
+  "@settlementUnmarkPaid": {
+    "description": "Driver CTA to undo mark-paid within the grace window"
+  },
+  "settlementGraceCountdown": "Can undo within {seconds} seconds",
+  "@settlementGraceCountdown": {
+    "description": "Countdown text shown during the 5-minute grace window",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "chatDisabledUnsettled": "Chat available after payment is confirmed",
+  "@chatDisabledUnsettled": {
+    "description": "Tooltip shown when chat is disabled because the booking is unsettled"
+  },
+  "callDisabledUnsettled": "Calling available after payment is confirmed",
+  "@callDisabledUnsettled": {
+    "description": "Tooltip shown when call is disabled because the booking is unsettled"
+  },
+  "callMaskedNumber": "Calling via masked number",
+  "@callMaskedNumber": {
+    "description": "Label shown when the call is routed through a proxy number"
+  },
+  "hidePhoneNumberToggle": "Hide my phone number",
+  "@hidePhoneNumberToggle": {
+    "description": "Profile settings toggle to hide phone number from other parties"
+  },
+  "hidePhoneNumberSubtitle": "Calls will be routed through a proxy number",
+  "@hidePhoneNumberSubtitle": {
+    "description": "Description for the hide-phone-number toggle"
+  },
+  "complaintScreenTitle": "File a Complaint",
+  "@complaintScreenTitle": {
+    "description": "Title for the complaint filing screen"
+  },
+  "complaintCategoryLabel": "Complaint type",
+  "@complaintCategoryLabel": {
+    "description": "Label for the complaint category picker"
+  },
+  "complaintDescriptionLabel": "Describe the issue",
+  "@complaintDescriptionLabel": {
+    "description": "Label for the complaint description text field"
+  },
+  "complaintSubmitButton": "Submit complaint",
+  "@complaintSubmitButton": {
+    "description": "Submit button for the complaint form"
+  },
+  "complaintSubmittedSuccess": "Your complaint was submitted successfully. We will review it shortly.",
+  "@complaintSubmittedSuccess": {
+    "description": "Success message after complaint submission"
+  },
+  "complaintStatusResolved": "Resolved",
+  "@complaintStatusResolved": {
+    "description": "Complaint status label for resolved complaints"
+  },
+  "refundRequestTitle": "Request a Refund",
+  "@refundRequestTitle": {
+    "description": "Title for the refund request screen"
+  },
+  "refundRequestBody": "WhatsApp will open to connect you with our support team about your refund.",
+  "@refundRequestBody": {
+    "description": "Explainer text on the refund request screen"
+  },
+  "refundRequestButton": "Submit refund request",
+  "@refundRequestButton": {
+    "description": "Button to submit a refund request and open WhatsApp"
+  },
+  "supportScreenTitle": "Support & Help",
+  "@supportScreenTitle": {
+    "description": "Title for the support screen"
+  },
+  "supportWhatsAppButton": "Chat on WhatsApp",
+  "@supportWhatsAppButton": {
+    "description": "Button to open WhatsApp support chat"
+  },
+  "tripStopsLabel": "Stops",
+  "@tripStopsLabel": {
+    "description": "Label for the trip stops section"
+  },
+  "tripNotesLabel": "Trip notes",
+  "@tripNotesLabel": {
+    "description": "Label for the trip notes section"
+  },
+  "tripRecurrenceLabel": "Repeat trip",
+  "@tripRecurrenceLabel": {
+    "description": "Label for the trip recurrence settings"
+  },
+  "recurrenceFrequencyDaily": "Daily",
+  "@recurrenceFrequencyDaily": {
+    "description": "Recurrence frequency option: daily"
+  },
+  "recurrenceFrequencyWeekly": "Weekly",
+  "@recurrenceFrequencyWeekly": {
+    "description": "Recurrence frequency option: weekly"
+  },
+  "recurrenceUntilLabel": "Until date",
+  "@recurrenceUntilLabel": {
+    "description": "Label for the recurrence end date picker"
+  },
+  "companionPickerTitle": "Add companions",
+  "@companionPickerTitle": {
+    "description": "Title for the companion (multi-seat) picker screen"
+  },
+  "companionDisplayNameLabel": "Companion name",
+  "@companionDisplayNameLabel": {
+    "description": "Label for the companion display name field"
+  },
+  "autoPickSeatsButton": "Auto-pick seats",
+  "@autoPickSeatsButton": {
+    "description": "Button to trigger automatic seat selection"
+  },
+  "preTripPromptTitle": "Confirm presence",
+  "@preTripPromptTitle": {
+    "description": "Title for the pre-trip presence confirmation prompt"
+  },
+  "preTripPromptPassengerBody": "Is the driver at the pickup point?",
+  "@preTripPromptPassengerBody": {
+    "description": "Body of the pre-trip prompt shown to the passenger"
+  },
+  "preTripPromptDriverBody": "Is passenger {name} present?",
+  "@preTripPromptDriverBody": {
+    "description": "Body of the pre-trip prompt shown to the driver for each passenger",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "arrivedAtDestinationButton": "Arrived at destination",
+  "@arrivedAtDestinationButton": {
+    "description": "Driver button to mark trip as arrived (completes the trip)"
+  },
+  "markPassengerAbsent": "Mark as absent",
+  "@markPassengerAbsent": {
+    "description": "Driver action to mark a passenger as absent at trip completion"
+  },
+  "welcomeTitle": "Welcome to VisionWay",
+  "welcomeSubtitle": "Your journey starts here. Pick a destination and travel safely and comfortably.",
+  "signIn": "Sign in",
+  "createNewAccount": "Create a new account",
+  "signInSubtitle": "Welcome back! Sign in to continue.",
+  "password": "Password",
+  "passwordRequired": "Password is required",
+  "passwordTooShort": "Password is too short",
+  "forgotPassword": "Forgot password?",
+  "noAccountQuestion": "Don't have an account? ",
+  "phoneNumberFirst": "Please enter your phone number first",
+  "passwordResetLinkSent": "A password reset link has been sent",
+  "required": "Required",
+  "accountTypePassenger": "Passenger",
+  "accountTypeDriver": "Driver",
+  "accountTypeTitle": "Choose account type",
+  "accountTypeSubtitle": "Select how you want to use the app",
+  "accountTypePassengerDesc": "Easily book a ride",
+  "accountTypeDriverDesc": "List your trips for riders",
+  "continueLabel": "Continue",
+  "signUpTitle": "Create account",
+  "signUpSubtitle": "Sign up to get started",
+  "fullName": "Full name",
+  "fullNameRequired": "Name is required",
+  "emailOptional": "Email (optional)",
+  "invalidEmail": "Invalid email",
+  "confirmPassword": "Confirm password",
+  "passwordsDoNotMatch": "Passwords do not match",
+  "alreadyHaveAccount": "Already have an account? ",
+  "phoneAuthTitle": "Confirm phone number",
+  "phoneAuthSubtitle": "We'll send a verification code by SMS",
+  "linkPhoneTitle": "Link phone number",
+  "linkPhoneSubtitle": "Confirm your phone number to continue",
+  "otpScreenTitle": "Enter verification code",
+  "otpScreenSubtitle": "Enter the code sent to {phone}",
+  "@otpScreenSubtitle": {
+    "placeholders": {
+      "phone": {
+        "type": "String"
+      }
+    }
+  },
+  "verifyButton": "Verify",
+  "didntReceiveCode": "Didn't get the code? ",
+  "forgotPasswordTitle": "Forgot password",
+  "forgotPasswordSubtitle": "Enter your phone and we'll send a reset code",
+  "sendResetCode": "Send reset code",
+  "resetPasswordTitle": "Reset password",
+  "resetPasswordSubtitle": "Enter the code and your new password",
+  "newPassword": "New password",
+  "resetCode": "Reset code",
+  "resetCodeRequired": "Code is required",
+  "resetPasswordButton": "Reset",
+  "passwordResetSuccess": "Password changed successfully",
+  "driverSignUpTitle": "Driver sign-up",
+  "driverSignUpSubtitle": "Start by entering your basic details",
+  "driverCompleteProfileTitle": "Complete driver profile",
+  "driverCompleteProfileSubtitle": "We need a few more details to approve your account",
+  "vehicleMake": "Vehicle make",
+  "vehicleModel": "Vehicle model",
+  "vehicleYear": "Year",
+  "vehicleColor": "Color",
+  "vehiclePlate": "Plate number",
+  "vehicleSeats": "Number of seats",
+  "licenseNumber": "Driver's license number",
+  "vehicleMakeRequired": "Vehicle make is required",
+  "vehicleModelRequired": "Vehicle model is required",
+  "vehicleYearRequired": "Year is required",
+  "vehicleColorRequired": "Color is required",
+  "vehiclePlateRequired": "Plate number is required",
+  "vehicleSeatsRequired": "Number of seats is required",
+  "licenseNumberRequired": "License number is required",
+  "submitButton": "Submit",
+  "driverPendingApprovalTitle": "Your account is under review",
+  "driverPendingApprovalBody": "We'll review your details and notify you once approved. Meanwhile, you can use the app as a passenger.",
+  "driverPendingApprovalAction": "Continue as passenger",
+  "homeTitle": "Home",
+  "tripsTab": "Trips",
+  "bookingsTab": "My bookings",
+  "searchTab": "Search",
+  "profileTab": "Profile",
+  "myTripsTitle": "My trips",
+  "createTripTitle": "Create trip",
+  "editTripTitle": "Edit trip",
+  "fromLabel": "From",
+  "toLabel": "To",
+  "departureDate": "Departure date",
+  "departureTime": "Departure time",
+  "pricePerSeat": "Price per seat",
+  "availableSeats": "Available seats",
+  "notes": "Notes",
+  "createTripButton": "Create trip",
+  "saveChangesButton": "Save changes",
+  "cancelTripButton": "Cancel trip",
+  "startTripButton": "Start trip",
+  "completeTripButton": "Complete trip",
+  "tripCreated": "Trip created successfully",
+  "tripUpdated": "Trip updated",
+  "tripCanceled": "Trip canceled",
+  "tripStarted": "Trip started",
+  "tripCompleted": "Trip completed",
+  "noTripsYet": "No trips yet",
+  "noBookingsYet": "No bookings yet",
+  "searchTripsHint": "Search for a trip...",
+  "bookSeatButton": "Book a seat",
+  "selectSeats": "Select seats",
+  "selectedSeats": "Selected seats",
+  "totalPrice": "Total",
+  "confirmBooking": "Confirm booking",
+  "bookingConfirmed": "Booking confirmed",
+  "viewTripDetails": "Trip details",
+  "tripDetailsTitle": "Trip details",
+  "passengersLabel": "Passengers",
+  "driverLabel": "Driver",
+  "vehicleLabel": "Vehicle",
+  "departureLabel": "Departure",
+  "arrivalLabel": "Arrival",
+  "priceLabel": "Price",
+  "statusLabel": "Status",
+  "callDriver": "Call driver",
+  "chatWithDriver": "Chat with driver",
+  "rateDriver": "Rate driver",
+  "rateTrip": "Rate the trip",
+  "submitRating": "Submit rating",
+  "ratingSubmitted": "Rating submitted",
+  "shareRideButton": "Share ride",
+  "trackRideButton": "Track ride",
+  "startNow": "Start now",
+  "phoneNumberRequired2": "Enter phone number",
+  "verifyOtpTitle": "Verify phone number",
+  "otpSentTo": "We sent a verification code to",
+  "resendCodeIn": "Resend in {seconds}s",
+  "@resendCodeIn": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "resendCode": "Resend code",
+  "verifyAndContinue": "Verify & continue",
+  "changeNumber": "Change number",
+  "personalInfoTitle": "Personal details",
+  "vehicleInfoTitle": "Vehicle details",
+  "documentsTitle": "Documents",
+  "uploadIdFront": "ID photo - front",
+  "uploadIdBack": "ID photo - back",
+  "uploadLicense": "Driver's license photo",
+  "uploadVehicleRegistration": "Vehicle registration photo",
+  "uploadProfilePhoto": "Profile photo",
+  "uploadingFile": "Uploading...",
+  "tapToUpload": "Tap to upload",
+  "tapToChange": "Tap to change",
+  "complete": "Complete",
+  "next": "Next",
+  "back": "Back",
+  "skip": "Skip",
+  "yes": "Yes",
+  "no": "No",
+  "confirm": "Confirm",
+  "delete": "Delete",
+  "edit": "Edit",
+  "share": "Share",
+  "copy": "Copy",
+  "search": "Search",
+  "tryAgain": "Try again",
+  "logoutButton": "Sign out",
+  "logoutConfirmTitle": "Confirm sign out",
+  "logoutConfirmMessage": "Are you sure you want to sign out?",
+  "noNotifications": "No notifications",
+  "markAllAsRead": "Mark all as read",
+  "clearAll": "Clear all",
+  "signUpAs": "Sign up as a {role} to start your journey with us.",
+  "@signUpAs": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "fullNameHint": "Enter your full name",
+  "validNameRequired": "Please enter a valid name",
+  "passwordHint": "At least 8 characters with a letter and a number",
+  "passwordPolicyError": "Password must be 8+ chars with a letter and a number",
+  "confirmPasswordHint": "Re-enter your password",
+  "confirmPasswordRequired": "Please confirm your password",
+  "createAccountDev": "Create account (dev)",
+  "sendOtpAndCreateAccount": "Send OTP and create account",
+  "selectGenderError": "Please select gender",
+  "couldNotOpenWhatsApp": "Could not open WhatsApp",
+  "contactSupportViaWhatsApp": "Contact support via WhatsApp",
+  "pickImageFromGallery": "Pick an image from the gallery",
+  "captureImageFromCamera": "Capture an image from the camera",
+  "fromGallery": "From gallery",
+  "fromCamera": "From camera",
+  "driverProfileSubmittedFull": "Your details were uploaded successfully. Your request is under review by the administration; you will be approved soon and can create trips after approval.",
+  "driverProfileSubmitted": "Your details were uploaded successfully. Your request is under review by the administration.",
+  "driverProfileStep2": "Step 2 of 2: Additional information",
+  "profilePhotoRequired": "Profile photo *",
+  "vehicleType": "Vehicle type",
+  "vehicleTypeRequired": "Vehicle type *",
+  "vehicleTypeValidation": "Please select a vehicle type",
+  "vehiclePlateRequiredLabel": "Plate number *",
+  "vehicleModelRequiredLabel": "Car model *",
+  "vehicleSeatsRequiredLabel": "Number of seats *",
+  "vehicleSeatsInvalid": "The number of seats must be a whole number greater than 0",
+  "driverLicenseRequired": "Driver license *",
+  "vehicleLicenseRequired": "Vehicle license *",
+  "carPhotoRequired": "Car photo *",
+  "uploadFileLabel": "Upload {title}",
+  "@uploadFileLabel": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "firstName": "First name",
+  "firstNameHint": "Ahmed",
+  "lastName": "Last name",
+  "lastNameHint": "Ali",
+  "driverSignUpVerifyButton": "Verify phone number and create password",
+  "driverSignUpStep1": "Step 1 of 3: Basic information and verification",
+  "backToSignIn": "Back to sign in",
+  "otpResent": "Verification code resent",
+  "otpSentToPhone": "A 6-digit code has been sent to\n",
+  "otpDigitLabel": "Verification code digit {index}",
+  "@otpDigitLabel": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "enterPhoneToConfirm": "Enter your phone number to confirm",
+  "enterYourPhone": "Enter your phone number",
+  "devModeDirectLogin": "Development mode: you will be logged in directly",
+  "otpWillBeSentViaSms": "We will send you a verification code via SMS",
+  "enterAction": "Enter",
+  "emailHint": "example@email.com",
+  "selectedRoleLabel": "You selected the role: {role}",
+  "@selectedRoleLabel": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "passengerDescription": "Find trips and book your seat",
+  "tripOwnerDescription": "Create trips and offer your seats",
+  "tripOwnerNote": "You will need to complete your vehicle details and documents for your driver account to be approved.",
+  "saveAndComplete": "Save and complete",
+  "profileSetupSubtitle": "Complete your details to continue",
+  "otpTooManyAttempts": "Too many attempts. Please request a new code.",
+  "otpExpired": "Verification code has expired. Please request a new one.",
+  "requestNewCode": "Request New Code",
+  "newOtpSent": "A new verification code has been sent",
+  "waitBeforeResend": "Please wait {seconds} seconds before requesting a new code",
+  "@waitBeforeResend": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "otpSentToYourPhone": "A verification code has been sent to your phone number",
+  "newPasswordRequired": "Please enter a new password",
+  "yourProfile": "Your profile",
+  "notSpecified": "Not specified",
+  "viewProfile": "View profile",
+  "userFallback": "User",
+  "browseTrips": "Browse trips",
+  "myWallet": "My wallet",
+  "pendingChargesTitle": "Pending charges",
+  "profileTitle": "Profile",
+  "locationServicesDisabledTitle": "Location services disabled",
+  "locationServicesDisabledMessage": "Please enable location services (GPS) to use the app and share your location.",
+  "enable": "Enable",
+  "locationPermissionRequiredTitle": "Location permission required",
+  "locationPermissionRequiredMessage": "The app needs location access permission so you can share your trips.",
+  "grantPermission": "Grant permission",
+  "later": "Later",
+  "chooseYourLocation": "Choose your location",
+  "defaultCityName": "Amman",
+  "defaultCityAddress": "Amman, Jordan",
+  "myBookings": "My bookings",
+  "profileTabLabel": "Profile",
+  "createNewTrip": "Create new trip",
+  "mustSignIn": "You must sign in",
+  "noBookingsCurrently": "No bookings currently",
+  "upcoming": "Upcoming",
+  "past": "Past",
+  "cannotCancel": "Cannot cancel",
+  "cannotCancelWithin12Hours": "You cannot cancel the booking within 12 hours of the trip time.\n\nTrip time: {departure}",
+  "@cannotCancelWithin12Hours": {
+    "placeholders": {
+      "departure": {
+        "type": "String"
+      }
+    }
+  },
+  "unknown": "Unknown",
+  "confirmCancelBooking": "Confirm booking cancellation",
+  "cancellationFeeNotice": "A 5% cancellation fee of your booking value will be deducted and applied to your next trip.",
+  "confirmCancelBookingQuestion": "Are you sure you want to cancel the booking?",
+  "goBack": "Go back",
+  "cancelBooking": "Cancel booking",
+  "bookingCancelledSuccess": "Booking cancelled successfully",
+  "noTripsTitle": "No trips",
+  "noTripsSubtitle": "Start by creating a new trip and share\nyour journey with others",
+  "errorOccurred": "An error occurred",
+  "openMenu": "Open menu",
+  "sideMenu": "Side menu",
+  "whereWillYourTripStart": "Where will your trip start?",
+  "createTripCtaSubtitle": "Start your trip and receive bookings from passengers",
+  "currentLocation": "Your current location",
+  "determiningLocation": "Determining location...",
+  "detectLocationAutomatically": "Detect location automatically",
+  "chooseLocationManually": "Choose location manually",
+  "myActiveTrips": "My active trips",
+  "errorLoadingTrips": "Error loading trips",
+  "noActiveTripsTitle": "No active trips",
+  "noActiveTripsSubtitle": "Start by creating a trip to see it here.",
+  "whereDoYouWantToGo": "Where do you want to go?",
+  "haveAPlaceInMind": "Have a place in mind?",
+  "nearbyTrips": "Trips near you",
+  "viewAll": "View all",
+  "noNearbyTripsTitle": "No nearby trips",
+  "noNearbyTripsSubtitle": "Try changing your location or view all trips",
+  "viewAllTrips": "View all trips",
+  "showMoreTrips": "Show {count} more trips",
+  "@showMoreTrips": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dataUpdated": "Data updated",
+  "dataUpdateFailed": "Failed to update data: {error}",
+  "@dataUpdateFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "refreshData": "Refresh data",
+  "driverDataApproved": "Your data has been approved",
+  "driverAccountUnderReview": "Your driver account is under review",
+  "driverApprovedDescription": "You can create and manage trips from the \"My trips\" tab.",
+  "driverPendingDescription": "You cannot create trips until your data is approved by the administration. You can currently book as a passenger.",
+  "checkVerificationStatus": "Check verification status",
+  "editProfile": "Edit profile",
+  "helpAndSupport": "Help and support",
+  "searchForTrip": "Search for a trip",
+  "showAllAvailableTrips": "Show all available trips",
+  "showTrips": "Show trips",
+  "completedTrip": "Completed trip",
+  "tripUnavailable": "Trip unavailable",
+  "bookingStatusPending": "Pending",
+  "bookingStatusConfirmed": "Confirmed",
+  "bookingStatusCancelled": "Cancelled",
+  "dateLabel": "Date",
+  "timeLabel": "Time",
+  "seatLabel": "Seat",
+  "chat": "Chat",
+  "call": "Call",
+  "distanceKm": "{distance} km",
+  "@distanceKm": {
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "tripStatusActive": "Active",
+  "tripStatusFullyBooked": "Fully booked",
+  "tripStatusInProgress": "In progress",
+  "tripStatusHidden": "Hidden",
+  "seatsAvailable": "{count} available",
+  "@seatsAvailable": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "feePaid": "Paid",
+  "feeDue": "Due",
+  "tripStartDeadlinePassed": "Trip start time has passed (the driver did not start within the deadline)",
+  "homeGreeting": "Welcome",
+  "defaultUserName": "User",
+  "homeStartTripTitle": "Start your trip",
+  "homeStartTripSubtitle": "Create a new trip and earn money",
+  "homeCreateTripButton": "Create a new trip",
+  "userInfoTitle": "User information",
+  "roleLabel": "Role",
+  "statisticsTitle": "Statistics",
+  "tripsStatLabel": "Trips",
+  "passengersStatLabel": "Passengers",
+  "editProfilePhoto": "Edit profile photo",
+  "phoneNotVerified": "Phone number not verified",
+  "editProfileMenuItem": "Edit profile",
+  "logout": "Log out",
+  "locationUnavailable": "Could not get location.",
+  "locationServicesDisabled": "Location services are disabled.",
+  "enableAction": "Enable",
+  "locationPermissionRequired": "Location permission is required.",
+  "grantAction": "Grant",
+  "locationPermissionPermanentlyDenied": "Permission was permanently denied.",
+  "filterFromValue": "From: {value}",
+  "@filterFromValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "filterToValue": "To: {value}",
+  "@filterToValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "filterCityValue": "City: {value}",
+  "@filterCityValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "filterDateValue": "Date: {value}",
+  "@filterDateValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "filterSortNewest": "Sort: Newest",
+  "availableTripsTitle": "Available trips",
+  "signInToViewTrips": "You must sign in to view trips",
+  "changeLocation": "Change location",
+  "filterAndSort": "Filter and sort",
+  "currentLocationLabel": "Your current location:",
+  "detectingLocation": "Detecting location...",
+  "preferredTrips": "Preferred trips",
+  "allTrips": "All trips",
+  "errorWithDetail": "Error: {detail}",
+  "@errorWithDetail": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "enableLocationForTrips": "Enable location to view these trips",
+  "noTripsAvailable": "No trips available",
+  "chooseLocationThenRetry": "Choose your current location then try again",
+  "tryChangingFilterOrLocation": "Try changing the filter or location",
+  "refreshTripsList": "Refresh trips list",
+  "refresh": "Refresh",
+  "filterAndSortTrips": "Filter and sort trips",
+  "chooseDeparturePoint": "Choose departure point",
+  "chooseDestination": "Choose destination",
+  "cityLabel": "City",
+  "searchByCityName": "Search by city name",
+  "chooseDate": "Choose date",
+  "sortLabel": "Sort",
+  "sortNearest": "Nearest",
+  "sortNewest": "Newest",
+  "apply": "Apply",
+  "tripDetailsFromTo": "Trip details from {from} to {to}",
+  "@tripDetailsFromTo": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "liveDriverLocation": "Live driver location",
+  "tripNotFound": "Trip not found",
+  "tripRouteTitle": "Trip route",
+  "viewRouteOnMap": "View route on map",
+  "tripDistanceLabel": "Trip distance",
+  "distanceKmValue": "{value} km",
+  "@distanceKmValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "departureTimeLabel": "Departure time",
+  "seatsCountOfTotal": "{available} of {total}",
+  "@seatsCountOfTotal": {
+    "placeholders": {
+      "available": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "seatLayoutLabel": "Seat layout",
+  "preventGenderMixingLabel": "Prevent gender mixing",
+  "enabledValue": "Enabled",
+  "driverInfoTitle": "Driver information",
+  "carImageTitle": "Car image",
+  "noSeatsAvailable": "No seats available",
+  "chatLabel": "Chat",
+  "chatNotEnabledYet": "Communication is not enabled yet. The driver must pay the communication fee first.",
+  "rateLabel": "Rate",
+  "alreadyRatedTrip": "You have already rated this trip",
+  "thanksForRating": "Thank you for your rating!",
+  "canRateAfterTripEnds": "You can rate after the trip ends",
+  "seatNotSelectable": "This seat cannot be selected; it may be reserved or unsuitable according to the trip rules.",
+  "signInRequired": "You must sign in",
+  "tripInfoTitle": "Trip information",
+  "fromValue": "From: {value}",
+  "@fromValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "toValue": "To: {value}",
+  "@toValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "pricePerSeatValue": "Price: {price} {currency} per seat",
+  "@pricePerSeatValue": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      }
+    }
+  },
+  "selectOneOrMoreSeats": "You can select one or more seats depending on availability.",
+  "enterPassengerDataAfterSeats": "After selecting seats, you will enter each passenger's details before sending the booking request.",
+  "appShareWalletNotice": "The app share will be deducted from your wallet when you submit the booking. Make sure you have enough balance on the My Wallet page.",
+  "selectedSeatsValue": "Selected seats: {seats}",
+  "@selectedSeatsValue": {
+    "placeholders": {
+      "seats": {
+        "type": "String"
+      }
+    }
+  },
+  "continueToPassengerData": "Continue to passenger details",
+  "continueToPassengerDataTooltip": "Continue to enter passenger details and send the booking request",
+  "continueBookOneSeat": "Continue to book one seat",
+  "continueBookSeats": "Continue to book {count} seats",
+  "@continueBookSeats": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bookingRequestSentNotice": "The booking request will be sent to the driver after confirming passenger details. Wait for the driver's approval before the booking is confirmed.",
+  "departurePointTitle": "Departure point",
+  "arrivalPointTitle": "Arrival point",
+  "destinationTitle": "Destination",
+  "driverLocationTitle": "Driver location",
+  "viewFullRoute": "View full route",
+  "loadingRouteLabel": "Loading route",
+  "loadingRoute": "Loading route...",
+  "stopFollowingDriver": "Stop following driver",
+  "followDriver": "Follow driver",
+  "liveTrackingEnabled": "Live tracking enabled",
+  "bookingRequestSentWaitConfirm": "Booking request sent. Wait for the driver's confirmation.",
+  "autoPickTitle": "Auto pick",
+  "passengerDataTitle": "Passenger details",
+  "seatCountLabel": "Number of seats",
+  "mainBookerLabel": "Main booker",
+  "companionLabel": "Companion {index}",
+  "@companionLabel": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "sharePhoneWithDriver": "Share phone number with driver",
+  "sharePhoneWithDriverSubtitle": "Allow the driver to see your number for contact",
+  "sendBookingRequest": "Send booking request",
+  "seatWord": "seat",
+  "chatClosedForSending": "The trip has ended, and new messages cannot be sent.",
+  "errorMustSignInFirst": "You must sign in first",
+  "chatLoadError": "Error loading chat: {error}",
+  "@chatLoadError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "chatTitleWithDriver": "Chat - {driverName}",
+  "@chatTitleWithDriver": {
+    "placeholders": {
+      "driverName": {
+        "type": "String"
+      }
+    }
+  },
+  "chatLoadErrorShort": "Error loading chat",
+  "errorWithMessage": "Error: {error}",
+  "@errorWithMessage": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "chatNoMessagesYet": "No messages yet",
+  "chatStartConversationNow": "Start the conversation now",
+  "chatTypeMessageLabel": "Type a message",
+  "chatTypeMessageHint": "Type a message...",
+  "chatSendMessageTooltip": "Send message",
+  "complaintCategorySafety": "Safety",
+  "complaintCategoryPayment": "Payment",
+  "complaintCategoryVehicleCondition": "Vehicle condition",
+  "complaintCategoryDriverBehavior": "Driver behavior",
+  "complaintCategoryAppIssue": "App issue",
+  "complaintCategoryOther": "Other",
+  "complaintSubmittedSuccessMessage": "Your complaint has been submitted successfully. We will review it as soon as possible.",
+  "complaintHeroTitle": "Tell us what happened",
+  "complaintHeroSubtitle": "Your complaint helps us improve the service and ensure everyone's safety.",
+  "complaintTypeLabel": "Complaint type",
+  "complaintProblemDescriptionLabel": "Problem description",
+  "complaintDescriptionHint": "Describe the problem in enough detail to help us review it…",
+  "complaintDescriptionRequired": "Please write a description of the problem",
+  "complaintDescriptionTooShort": "Description is too short (at least 10 characters)",
+  "walletMyWallet": "My wallet",
+  "walletTopUpDescription": "Used to pay the booking cost when wallet payment is enabled. Top up in Jordanian Dinar (JOD) via CliQ or manual transfer with proof; the balance is added after confirmation or admin approval depending on the method.",
+  "walletTransactionHistory": "Transaction history",
+  "walletTopUp": "Top up",
+  "walletTopUpSemantics": "Top up wallet",
+  "walletNoTransactionsYet": "No transactions yet",
+  "walletPendingChargesTitle": "Outstanding charges",
+  "walletPendingChargesSubtitle": "View pending fines and charges and top up the wallet",
+  "walletBalanceLabel": "Wallet balance",
+  "walletAccountInactive": "Account is inactive — contact support",
+  "walletTxTopup": "Top up",
+  "walletTxTripPayment": "Trip payment",
+  "walletTxTripDebit": "Trip debit",
+  "walletTxRefund": "Refund",
+  "walletTxPayout": "Earnings payout",
+  "walletTxAdjustment": "Balance adjustment",
+  "walletTxHold": "Amount hold",
+  "walletTxReleaseHold": "Release hold",
+  "ratingPleaseSelectRating": "Please select a rating",
+  "ratingAlreadyRated": "You have already rated this trip",
+  "ratingSubmittedSuccess": "Rating submitted successfully",
+  "ratingTripTitle": "Rate trip",
+  "ratingHowWasExperience": "How was your experience with the driver?",
+  "ratingCommentLabel": "Comment field",
+  "ratingCommentHint": "Share your thoughts about the trip",
+  "ratingCommentOptional": "Comment (optional)",
+  "ratingCommentHintEllipsis": "Share your thoughts about the trip...",
+  "ratingSubmitButton": "Submit rating",
+  "ratingLabelVeryBad": "Very bad",
+  "ratingLabelBad": "Bad",
+  "ratingLabelAverage": "Average",
+  "ratingLabelGood": "Good",
+  "ratingLabelExcellent": "Excellent",
+  "refundSubmittedSuccess": "Your refund request has been recorded. You will be redirected to WhatsApp to complete the procedure.",
+  "refundRequestScreenTitle": "Refund request",
+  "refundHeroTitle": "Booking fee refund",
+  "refundTripRef": "Trip: {tripRef}",
+  "@refundTripRef": {
+    "placeholders": {
+      "tripRef": {
+        "type": "String"
+      }
+    }
+  },
+  "refundContactViaWhatsApp": "Our team will contact you via WhatsApp to complete the procedure.",
+  "refundReasonLabel": "Refund request reason",
+  "refundReasonHint": "Briefly explain why you are requesting a refund…",
+  "refundReasonRequired": "Please write the reason for the request",
+  "refundReasonTooShort": "The reason is too short (at least 10 characters)",
+  "refundWhatsAppNote": "After submitting, a WhatsApp chat with the support team will open to complete the refund procedure.",
+  "refundSubmitButton": "Submit request",
+  "chatClosedTripEnded": "The trip has ended, you can no longer send new messages.",
+  "mustSignInFirst": "You must sign in first",
+  "chatCreateFailed": "Could not create the chat",
+  "tripChatTitle": "Trip Chat",
+  "chatWithPerson": "Chat with {name}",
+  "@chatWithPerson": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "noMessagesYet": "No messages yet",
+  "startChatNow": "Start the chat now",
+  "typeMessage": "Type a message",
+  "typeMessageHint": "Type a message...",
+  "sendMessage": "Send message",
+  "send": "Send",
+  "selectOriginPoint": "Select origin point",
+  "selectDestination": "Select destination",
+  "completeLocationAndTimeData": "Please complete the location and time data",
+  "departureTimeMustBeFuture": "Departure time must be in the future",
+  "userNotSignedIn": "User is not signed in",
+  "tripCreatedSuccess": "Trip created successfully",
+  "tripCreateFailed": "Failed to create trip",
+  "weekdaySun": "Sun",
+  "weekdayMon": "Mon",
+  "weekdayTue": "Tue",
+  "weekdayWed": "Wed",
+  "weekdayThu": "Thu",
+  "weekdayFri": "Fri",
+  "weekdaySat": "Sat",
+  "driverAccountUnderReviewBody": "You cannot create trips until your details are approved by the administration. For now you can browse trips and book as a passenger.",
+  "backToHome": "Back to Home",
+  "createNewTripTitle": "Create New Trip",
+  "backLabel": "Back",
+  "shareYourNextTrip": "Share your next trip",
+  "createTripHeaderSubtitle": "Set your destination and departure time to start sharing your trip with passengers.",
+  "tripRoute": "Trip Route",
+  "whereAreYouNow": "Where are you now?",
+  "whereIsYourDestination": "Where is your destination?",
+  "departureAndPriceDetails": "Departure and price details",
+  "pricePerSeatHint": "Price per seat",
+  "enterPrice": "Enter the price",
+  "enterValidNumber": "Enter a valid number",
+  "seatsCount": "{count} seats",
+  "@seatsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "seatLayoutFromSettings": "The seat layout and gender-mixing prevention are taken from your vehicle settings and applied to all your trips.",
+  "noSeatLayoutSet": "You have not set a seat layout for your vehicle yet — a default layout will be used. Set it from vehicle settings for a more accurate experience.",
+  "editVehicleSettings": "Edit vehicle settings",
+  "confirmAndPublishTrip": "Confirm and publish trip",
+  "stopsLabel": "Stops",
+  "optionalLabel": "Optional",
+  "addStop": "Add stop",
+  "stopsHint": "Add up to 5 intermediate stops along the route.",
+  "deleteStopNumber": "Delete stop {number}",
+  "@deleteStopNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "selectStopNumber": "Select stop {number}",
+  "@selectStopNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "notesForPassengers": "Notes for passengers",
+  "tripNotesHint": "Example: stop at Petra Pharmacy, don't be more than 5 minutes late...",
+  "tripRecurrence": "Trip recurrence",
+  "enableTripRecurrenceSemantic": "Enable trip recurrence: {state}",
+  "@enableTripRecurrenceSemantic": {
+    "placeholders": {
+      "state": {
+        "type": "String"
+      }
+    }
+  },
+  "recurrenceStateEnabled": "enabled",
+  "recurrenceStateDisabled": "disabled",
+  "recurrenceDisabledHint": "Enable this option to schedule the trip automatically (daily or weekly).",
+  "recurrenceDaily": "Daily",
+  "recurrenceWeekly": "Weekly",
+  "recurrenceDaysLabel": "Recurrence days",
+  "weekdaySelectedSemantic": "{day} (selected)",
+  "@weekdaySelectedSemantic": {
+    "placeholders": {
+      "day": {
+        "type": "String"
+      }
+    }
+  },
+  "recurrenceUntilHint": "Recurrence end date (optional)",
+  "recurrenceUntilHelp": "Recurrence end date",
+  "uploadCarImageFailed": "Failed to upload car image",
+  "tripUpdatedSuccess": "Trip updated successfully",
+  "tripUpdateFailed": "Failed to update trip",
+  "editTripScreenTitle": "Edit Trip",
+  "editYourTrip": "Edit your trip",
+  "updateTripInfo": "Update the trip information",
+  "tripDetailsSection": "Trip details",
+  "originPointLabel": "Origin point",
+  "originExampleHint": "Example: Amman",
+  "destinationLabel": "Destination",
+  "destinationExampleHint": "Example: Alexandria",
+  "pickDateAndTime": "Pick date and time",
+  "priceExampleHint": "Example: 100",
+  "selectOriginValidator": "Please select an origin point",
+  "selectDestinationValidator": "Please select a destination",
+  "selectDepartureTimeValidator": "Please select a departure time",
+  "enterPriceValidator": "Please enter the price",
+  "priceMustBeValidPositive": "Price must be a valid number greater than 0",
+  "carImageSection": "Car image",
+  "optionalParen": "(optional)",
+  "uploadCarImage": "Upload car image",
+  "tapToUploadCarImage": "Tap to upload car image",
+  "saveChanges": "Save changes",
+  "selectFromMap": "Select from map",
+  "warningTitle": "Warning",
+  "pastDateWarningBody": "You are selecting a date in the past. Past trips will not appear in passenger search results. Do you want to continue?",
+  "bookedSeatsEditWarning": "This trip has {count} booked seats. Editing some information may affect existing bookings. Do you want to continue?",
+  "@bookedSeatsEditWarning": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "myTripsTitleLabel": "My Trips",
+  "driverAccountUnderReviewTrips": "Your driver account is under review. You cannot create or manage trips until it is approved.",
+  "mustBeApprovedDriver": "You must be an approved driver to view trips.",
+  "tabActive": "Active",
+  "tabHidden": "Hidden",
+  "tabCompleted": "Completed",
+  "retryLabel": "Retry",
+  "noActiveTrips": "No active trips",
+  "noHiddenTrips": "No hidden trips",
+  "noCompletedTrips": "No completed trips",
+  "createTripShort": "Create trip",
+  "newTrip": "New trip",
+  "createNewTripSemantic": "Create new trip",
+  "tripFeeInvoiceTitle": "Trip Fee Invoice",
+  "seatPrice": "Seat price",
+  "seatsCountLabel": "Number of seats",
+  "feePercentage": "Fee percentage",
+  "totalLabel": "Total",
+  "tripFeeDeductExplanation": "The fee will be deducted from your wallet and the passenger details of this trip will be unlocked. The number of seats or bookings is not changed.",
+  "payFees": "Pay fees",
+  "tripFeePaidSuccess": "Trip fee paid successfully",
+  "payingInProgress": "Paying...",
+  "unknownLocation": "Unknown location",
+  "tripFromToSemantic": "Trip from {from} to {to}",
+  "@tripFromToSemantic": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "statusActive": "Active",
+  "statusDraft": "Draft",
+  "statusFullyBooked": "Fully booked",
+  "statusInProgress": "In progress",
+  "statusHidden": "Hidden",
+  "statusCompleted": "Completed",
+  "statusCancelled": "Cancelled",
+  "statusUnknown": "Unknown",
+  "fromShort": "From",
+  "toShort": "To",
+  "perSeatSuffix": "/ seat",
+  "seatsWord": "seats",
+  "tripFeePaidLabel": "Trip fee paid",
+  "passengerDetailsTitle": "Passenger Details",
+  "seatLabelWithValue": "Seat {seat}",
+  "@seatLabelWithValue": {
+    "placeholders": {
+      "seat": {
+        "type": "String"
+      }
+    }
+  },
+  "phoneNumberLabel": "Phone number",
+  "privateChatWithSemantic": "Private chat with {name}",
+  "@privateChatWithSemantic": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "privateChat": "Private chat",
+  "messagePerson": "Message {name}",
+  "@messagePerson": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmFinePayment": "Confirm fine payment",
+  "amountDue": "Amount due: {amount} JOD",
+  "@amountDue": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "currentWalletBalance": "Current wallet balance: {amount} JOD",
+  "@currentWalletBalance": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "balanceAfterPayment": "Balance after payment: {amount} JOD",
+  "@balanceAfterPayment": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmAndPay": "Confirm & pay",
+  "finePaidSuccess": "Fine paid from your wallet successfully",
+  "finePartiallyPaid": "Some charges paid; insufficient balance for the rest",
+  "insufficientBalanceForFine": "Insufficient wallet balance to pay the charges",
+  "chargeKindDriverNoShow": "Driver No-Show",
+  "chargeKindPassengerNoShow": "Passenger No-Show",
+  "chargeKindLateCancellation": "Late Cancellation",
+  "chargeStatusPending": "Pending",
+  "chargeStatusCollected": "Collected",
+  "chargeStatusWaived": "Waived",
+  "noOutstandingCharges": "No outstanding charges",
+  "accountInGoodStanding": "Your account is in good standing.",
+  "cannotPublishUntilSettled": "You can't publish a new trip until settled",
+  "totalDue": "Total due: {amount} JOD",
+  "@totalDue": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "walletBalanceAmount": "Wallet balance: {amount} JOD",
+  "@walletBalanceAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "balanceEnoughForFine": "Your wallet balance is enough to pay this fine.",
+  "balanceNotEnoughForFine": "Your balance is not enough — top up your wallet to settle.",
+  "payFine": "Pay Fine",
+  "topUpWallet": "Top Up Wallet",
+  "amountAmount": "Amount: {amount} JOD",
+  "@amountAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "walletTitle": "Wallet",
+  "pleaseSignIn": "Please sign in",
+  "txTypeTopup": "Wallet top-up",
+  "txTypeTripPayment": "Trip payment",
+  "txTypeTripDebit": "Trip fee",
+  "txTypeRefund": "Refund",
+  "txTypePayout": "Payout",
+  "txTypeAdjustment": "Balance adjustment",
+  "txTypeHold": "Hold amount",
+  "txTypeReleaseHold": "Release hold",
+  "transactionsLog": "Transactions log",
+  "topUpShort": "Top up",
+  "noTransactionsYet": "No transactions yet",
+  "pendingChargesShortcutTitle": "Pending charges",
+  "pendingChargesShortcutSubtitle": "View pending fines and charges and top up your wallet",
+  "freeTripUsed": "The free trip has been used",
+  "freeTripAvailableDriver": "You have one free trip to unlock passenger details",
+  "vehicleSettingsTitle": "Vehicle Settings",
+  "seatLayoutSavedSuccess": "Vehicle seat layout saved",
+  "noVehicleRegistered": "No vehicle registered yet",
+  "noVehicleRegisteredBody": "You need to register your vehicle by completing the driver profile before customizing the seat layout.",
+  "vehicleDataSection": "Vehicle data",
+  "vehicleModelLabel": "Model",
+  "vehicleTypeLabel": "Type",
+  "vehiclePlateNumberLabel": "Plate number",
+  "registeredSeatsCount": "Registered seats count",
+  "seatLayoutSection": "Seat layout",
+  "seatLayoutUsedForAllTrips": "This layout is used for all trips you create with this vehicle.",
+  "gridSystem": "Grid system",
+  "customLayout": "Custom layout",
+  "rowsLabel": "Rows",
+  "perRowLabel": "Per row",
+  "setSeatsPerRow": "Set the number of seats in each row:",
+  "nextToDriver": "Next to driver",
+  "rowNumberLabel": "Row {number}",
+  "@rowNumberLabel": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "addNewRow": "Add new row",
+  "preventGenderMixing": "Prevent gender mixing",
+  "saveChangesVehicle": "Save changes",
+  "editingForActiveTripsOnly": "Editing is available for active trips only",
+  "bookedSeatsManagedByBookings": "Seats booked through the app are managed from booking requests",
+  "openSeatTitle": "Open seat",
+  "openSeatBody": "Unlock seat number {number} so it becomes available for booking in the app?",
+  "@openSeatBody": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "openSeat": "Open seat",
+  "seatOpenedSuccess": "Seat opened",
+  "lockSeatTitle": "Lock seat",
+  "lockSeatBody": "Lock seat number {number}? Passengers won't be able to book it in the app (e.g. if sold outside the app).",
+  "@lockSeatBody": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "lockSeat": "Lock",
+  "seatLockedSuccess": "Seat locked",
+  "enableLocationRequired": "Location enable required",
+  "enableLocationBody": "The trip cannot continue without location services enabled. Please enable GPS now.",
+  "openLocationSettings": "Open location settings",
+  "checkAgain": "Check again",
+  "tripManagementTitle": "Trip Management",
+  "freeTripDiscountLabel": "Free trip discount",
+  "freeTripDiscountValue": "-{amount} {currency} (100%)",
+  "@freeTripDiscountValue": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      }
+    }
+  },
+  "freeTripAvailableExplanation": "You have a free trip available. A 100% discount will be applied to make the total 0.",
+  "tripFeeFullExplanation": "The payment covers the full trip fee and does not change the number of seats or bookings.",
+  "hideTripTitle": "Hide Trip",
+  "hideTripConfirm": "Are you sure you want to hide this trip?",
+  "hideAction": "Hide",
+  "tripHiddenSuccess": "Trip hidden successfully",
+  "tripShownSuccess": "Trip shown successfully",
+  "deleteTripTitle": "Delete Trip",
+  "deleteTripConfirm": "Are you sure you want to delete this trip? This action cannot be undone.",
+  "deleteAction": "Delete",
+  "tripDeletedSuccess": "Trip deleted successfully",
+  "hideTripTooltip": "Hide trip",
+  "showTripTooltip": "Show trip",
+  "deleteTripTooltip": "Delete trip",
+  "walletBalanceWithAmount": "Wallet balance: {amount} {currency}",
+  "@walletBalanceWithAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      }
+    }
+  },
+  "freeTripAvailableShort": "Free trip available",
+  "balanceFromPlatformWallet": "Balance from the platform wallet (unified wallet)",
+  "tripFeeLabel": "Trip fee",
+  "tripFeeReady": "Trip fee invoice is ready",
+  "tripFeeBreakdownWithFreeTrip": "Fee: 5% × {seats} seats × {price} {currency}, free trip discount 100% = {amount} {currency}",
+  "@tripFeeBreakdownWithFreeTrip": {
+    "placeholders": {
+      "seats": {
+        "type": "int"
+      },
+      "price": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "tripFeeBreakdown": "5% × {seats} seats × {price} {currency} = {amount} {currency}",
+  "@tripFeeBreakdown": {
+    "placeholders": {
+      "seats": {
+        "type": "int"
+      },
+      "price": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "applyFreeTrip": "Apply free trip",
+  "pendingBookingsCard": "Pending bookings ({count})",
+  "@pendingBookingsCard": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "confirmBookingUnlocksDetails": "Confirming the booking unlocks passenger details (free trip or one-time wallet deduction per trip)",
+  "passengerFallback": "Passenger",
+  "seatLabelShort": "Seat {seat}",
+  "@seatLabelShort": {
+    "placeholders": {
+      "seat": {
+        "type": "String"
+      }
+    }
+  },
+  "chatAvailableAfterFee": "Chat and contact are available after paying the trip fee",
+  "awaitingConfirmation": "Awaiting confirmation",
+  "seatsWithValue": "Seats: {seat}",
+  "@seatsWithValue": {
+    "placeholders": {
+      "seat": {
+        "type": "String"
+      }
+    }
+  },
+  "pendingConfirmationBadge": "Pending confirmation",
+  "passengerDetailsButton": "Passenger details",
+  "confirmingInProgress": "Confirming...",
+  "rejectingInProgress": "Rejecting...",
+  "rejectAction": "Reject",
+  "bookingRejected": "Booking rejected",
+  "bookedSeatsLabel": "Booked seats",
+  "ofCount": "of {count}",
+  "@ofCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "revenueLabel": "Revenue",
+  "confirmArrivalTitle": "Confirm arrival",
+  "confirmArrivalBody": "Have you arrived at the destination? The trip will be ended and cannot be undone.",
+  "yesArrived": "Yes, I arrived",
+  "tripEndedSuccess": "Trip ended successfully.",
+  "autoStartHours": "The trip will start automatically at the departure time (in ~{hours} hours). No need to press a start button.",
+  "@autoStartHours": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "autoStartMinutes": "The trip will start automatically at the departure time (in ~{minutes} minutes). No need to press a start button.",
+  "@autoStartMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "tripWillConvertSoon": "The trip will be converted to \"In progress\" automatically in a moment.",
+  "startTripSection": "Start trip",
+  "endTripSection": "End trip",
+  "endTripHint": "Press \"Arrived at destination\" after dropping off passengers to end the trip.",
+  "endingInProgress": "Ending...",
+  "arrivedAtDestination": "Arrived at destination",
+  "tripStatusLabel": "Trip status",
+  "departureTimeDetailLabel": "Departure time",
+  "pricePerSeatLabel": "Price per seat",
+  "seatsDetailLabel": "Seats",
+  "seatsAvailableTotal": "{available} available / {total} total",
+  "@seatsAvailableTotal": {
+    "placeholders": {
+      "available": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "seatLayoutDetailLabel": "Seat layout",
+  "yesLabel": "Yes",
+  "noLabel": "No",
+  "seatLayoutCardTitle": "Seat layout",
+  "seatLayoutLongPressHint": "Long-press a green seat to lock it (external booking), or a locked seat to open it.",
+  "driverSeat": "Driver seat",
+  "legendAvailable": "Available",
+  "legendLocked": "Locked",
+  "legendBookedMale": "Booked - male",
+  "legendBookedFemale": "Booked - female",
+  "passengersCardTitle": "Passengers ({count})",
+  "@passengersCardTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "anonymousPassenger": "Anonymous passenger",
+  "confirmedBadge": "Confirmed",
+  "imageLoadFailed": "Failed to load image",
+  "quickActionsTitle": "Quick actions",
+  "shareAction": "Share",
+  "shareFeatureComingSoon": "Coming soon: share feature",
+  "editAction": "Edit",
+  "carImage": "Car Image",
+  "passengersWithCount": "Passengers ({count})",
+  "@passengersWithCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "passengerLabel": "Passenger",
+  "seatNumberLabel": "Seat {number}",
+  "@seatNumberLabel": {
+    "placeholders": {
+      "number": {
+        "type": "Object"
+      }
+    }
+  },
+  "confirmedLabel": "Confirmed",
+  "pendingBookingsWithCount": "Bookings Pending Confirmation ({count})",
+  "@pendingBookingsWithCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingBookingHint": "Confirming the booking unlocks the passenger's details (a free trip or a one-time wallet deduction for the trip)",
+  "pendingConfirmation": "Pending confirmation",
+  "confirmingBooking": "Confirming...",
+  "quickActions": "Quick Actions",
+  "bookedSeats": "Booked Seats",
+  "ofTotalSeats": "of {total}",
+  "@ofTotalSeats": {
+    "placeholders": {
+      "total": {
+        "type": "Object"
+      }
+    }
+  },
+  "revenue": "Revenue",
+  "tripDetails": "Trip Details",
+  "tripDistance": "Trip Distance",
+  "distanceInKm": "{distance} km",
+  "@distanceInKm": {
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "seatsLabel": "Seats",
+  "availableOfTotalSeats": "{available} available / {total} total",
+  "@availableOfTotalSeats": {
+    "placeholders": {
+      "available": {
+        "type": "Object"
+      },
+      "total": {
+        "type": "Object"
+      }
+    }
+  },
+  "seatLayout": "Seat Layout",
+  "tripInfo": "Trip Information",
+  "tripStatusCompleted": "Completed",
+  "tripStatusUnknown": "Unknown",
+  "tripStatusTitle": "Trip Status",
+  "freeTripAvailable": "Free trip available",
+  "markAllNotificationsRead": "Mark all notifications as read ({count} unread)",
+  "@markAllNotificationsRead": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "allNotificationsRead": "All notifications marked as read",
+  "markAllReadCount": "Mark all read ({count})",
+  "@markAllReadCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notificationsWillAppearHere": "Notifications will appear here when they arrive",
+  "manualPaymentTitle": "Manual Payment",
+  "completePayment": "Complete Payment",
+  "walletType": "Wallet Type",
+  "walletTypeOther": "Other",
+  "jordan": "Jordan",
+  "walletNumber": "Wallet Number",
+  "walletNumberHint": "e.g. 0791234567",
+  "walletNumberRequired": "Please enter the wallet number",
+  "walletNumberTooShort": "Wallet number must be at least 8 digits",
+  "paymentProofImage": "Payment Proof Image",
+  "requiredLabel": "(Required)",
+  "requiredWord": "Required",
+  "uploadPaymentProof": "Upload payment proof image",
+  "tapToUploadPaymentProof": "Tap to upload payment proof image",
+  "notesLabel": "Notes",
+  "additionalNotes": "Additional Notes",
+  "additionalNotesHint": "Any additional information...",
+  "submitPaymentRequest": "Submit Payment Request",
+  "paymentTabAll": "All",
+  "paymentStatusPending": "Pending",
+  "paymentStatusApproved": "Approved",
+  "paymentStatusRejected": "Rejected",
+  "paymentStatusRefunded": "Refunded",
+  "errorLoadingData": "An error occurred while loading data",
+  "noPayments": "No payments",
+  "paymentMethodWallet": "App Wallet",
+  "paymentMethodManual": "E-Wallet",
+  "paymentMethodCommunicationFee": "Communication Fee",
+  "amountLabel": "Amount",
+  "purposeLabel": "Purpose",
+  "communicationUnlockFee": "Communication unlock fee",
+  "paymentMethodLabel": "Payment Method",
+  "profileUpdatedSuccess": "Profile updated successfully",
+  "gallery": "Gallery",
+  "camera": "Camera",
+  "editProfileTitle": "Edit Profile",
+  "chooseProfilePhoto": "Choose profile photo",
+  "changeProfilePhoto": "Change profile photo",
+  "hidePhoneFromDriver": "Hide phone number from driver",
+  "loadingVersion": "Loading version...",
+  "versionLabel": "Version {version}",
+  "@versionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "aboutAppTagline": "A smart mobility platform connecting drivers and passengers with a clear, fast, and reliable Arabic experience.",
+  "whatMakesVisionWaySpecial": "What makes VisionWay special?",
+  "aboutFeatureArabicFirst": "Arabic-first interface with a clear and fast user experience.",
+  "aboutFeatureFlexibleManagement": "Flexible management of trips, bookings, and driver-passenger communication.",
+  "aboutFeatureTrustDesign": "A design focused on trust, simplicity, and easy access to important information.",
+  "revokeDeviceTitle": "Revoke Device",
+  "revokeDeviceMessage": "Are you sure you want to revoke this device? You will need to sign in again on this device.",
+  "deviceRevokedSuccess": "Device revoked successfully",
+  "retry": "Retry",
+  "noDevicesRegistered": "No devices registered",
+  "deviceLastSeen": "Last seen: {date}",
+  "@deviceLastSeen": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceCurrentBadge": "Current",
+  "roleDriver": "Driver",
+  "rolePassenger": "Passenger",
+  "manageDevices": "Manage Devices",
+  "manageDevicesSubtitle": "View and revoke devices linked to your account",
+  "enterNewPassword": "Please enter new password",
+  "passwordChangedTitle": "Password Changed",
+  "passwordChangedMessage": "Your password has been changed successfully. Please sign in again.",
+  "changePasswordSubtitle": "Enter your current password and new password",
+  "currentPassword": "Current Password",
+  "confirmNewPassword": "Confirm New Password",
+  "passwordStrengthStrong": "Strong",
+  "passwordStrengthMedium": "Medium",
+  "passwordStrengthWeak": "Weak",
+  "passwordPolicyHint": "Must be at least 8 characters with one letter and one number",
+  "deleteAccountSecondTitle": "Confirm Deletion",
+  "driverSection": "Driver",
+  "vehicleAndSeatLayout": "Vehicle & Seat Layout",
+  "supportNumberUnavailable": "The support number is currently unavailable",
+  "supportWhatsAppPrefill": "Hello, I need help with the VisionWay app.",
+  "cannotOpenWhatsApp": "Could not open WhatsApp",
+  "cannotOpenEmailApp": "Could not open the email app",
+  "supportEmailCopied": "Support email copied",
+  "supportHeroTitle": "We're here to help",
+  "supportHeroSubtitle": "If you face an issue with booking, your account, or payments, you can contact the VisionWay team directly.",
+  "supportContactEmailTitle": "Email us",
+  "supportContactEmailDescription": "Send your inquiry and we'll review your message as soon as possible.",
+  "supportSendEmail": "Send Email",
+  "supportCopyEmail": "Copy Email",
+  "supportContactWhatsAppTitle": "Message us on WhatsApp",
+  "supportContactWhatsAppDescription": "Contact the support team directly via WhatsApp for instant help.",
+  "supportHowWeHelpTitle": "How can we help?",
+  "supportHelpItemLogin": "Issues with signing in or updating account details",
+  "supportHelpItemBookings": "Inquiries about bookings, trips, and payments",
+  "supportHelpItemTechnical": "Reviewing technical issues or suggestions",
+  "supportQuickTipTitle": "Quick tip",
+  "supportTipIncludeContact": "Include the phone number or email registered in the app to speed up the review.",
+  "supportTipDescribeProblem": "Add a brief description of the problem and the steps that preceded it.",
+  "enterValidAmount": "Enter a valid amount",
+  "uploadTransferProofRequired": "Please upload the transfer proof image",
+  "enterCliqAliasValue": "Enter the CliQ alias value",
+  "topupRequestSent": "Top-up request sent. The balance will be added after the transfer is verified",
+  "verifyingPaymentStatus": "Verifying payment status...",
+  "verifyingPaymentStatusProgress": "Verifying payment status... ({attempt}/{total})",
+  "@verifyingPaymentStatusProgress": {
+    "placeholders": {
+      "attempt": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "walletToppedUpViaCliq": "Wallet topped up successfully via CliQ",
+  "cliqPaymentFailed": "CliQ payment failed",
+  "cliqPaymentFailedWithNote": "Payment failed: {note}",
+  "@cliqPaymentFailedWithNote": {
+    "placeholders": {
+      "note": {
+        "type": "String"
+      }
+    }
+  },
+  "connectionTemporarilyFailed": "Connection temporarily failed ({attempt}/{total}). Retrying...",
+  "@connectionTemporarilyFailed": {
+    "placeholders": {
+      "attempt": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "cannotVerifyPayment": "Could not verify payment: {detail}",
+  "@cannotVerifyPayment": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "verificationTimedOut": "Verification timed out. If the payment completed in CliQ, the balance will appear within minutes, or check your payment history.",
+  "walletTopupTitle": "Top Up Wallet",
+  "pleaseWaitDoNotClose": "Please wait and do not close the screen",
+  "topupMethodManual": "Manual Transfer",
+  "topupManualDescription": "Transfer the amount to the platform account, then enter the amount and upload a clear image of the transfer. No balance is added automatically before the request is reviewed.",
+  "topupCliqDescription": "Payment will be made directly via CliQ. Enter the amount and your CliQ account details, and the balance will be added automatically once the payment is confirmed.",
+  "amountWithCurrency": "Amount ({currency})",
+  "@amountWithCurrency": {
+    "placeholders": {
+      "currency": {
+        "type": "String"
+      }
+    }
+  },
+  "transactionReferenceOptional": "Transaction number / reference (optional)",
+  "ifAvailable": "If available",
+  "uploadTransferProof": "Upload transfer proof image",
+  "imageSelected": "Image selected",
+  "aliasType": "Alias Type",
+  "mobileNumber": "Mobile Number",
+  "aliasName": "Alias",
+  "aliasNameLabel": "Alias",
+  "mobileNumberHint": "e.g. 00962XXXXXXXXX",
+  "aliasNameHint": "e.g. yourname@cliq",
+  "enterMobileNumber": "Enter the mobile number",
+  "enterAliasName": "Enter the alias",
+  "submitTopupRequest": "Submit Top-Up Request",
+  "payViaCliq": "Pay via CliQ",
+  "chatYourMessage": "Your message",
+  "chatMessageFrom": "Message from {name}",
+  "@chatMessageFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chatYesterdayAt": "Yesterday {time}",
+  "@chatYesterdayAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "chatDaysAgo": "{count} days ago",
+  "@chatDaysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "countryCodePickerSemantic": "Select country code, current: {country}",
+  "@countryCodePickerSemantic": {
+    "placeholders": {
+      "country": {
+        "type": "String"
+      }
+    }
+  },
+  "selectCountry": "Select country",
+  "searchCountryHint": "Search by name or country code...",
+  "locationDefaultAmman": "Amman, Jordan",
+  "locationCurrentUnavailable": "Could not get the current location.",
+  "locationServicesDisabledEnableGps": "Location services are disabled. Please enable GPS.",
+  "locationEnable": "Enable",
+  "locationGrantPermission": "Grant permission",
+  "locationSettings": "Settings",
+  "locationUnknown": "Unknown location",
+  "locationGetError": "Error getting the location.",
+  "locationGrant": "Grant",
+  "locationPermissionDeniedPermanently": "Permission permanently denied.",
+  "locationSearchNoResults": "No results found. Try a clearer place name or address.",
+  "locationSearchError": "Search error: {error}",
+  "@locationSearchError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "locationUseCurrent": "Use current location",
+  "locationSearchSemantic": "Search for a place or address",
+  "locationSearchHint": "Search for a place or address...",
+  "locationSearchOnMap": "Search on map",
+  "locationLoadingMap": "Loading map...",
+  "locationMapLoadError": "Error loading the map",
+  "locationPickOnMap": "Pick a location on the map",
+  "locationConfirm": "Confirm location",
+  "notificationDeleted": "Notification deleted",
+  "notificationsWithUnread": "Notifications ({count} unread)",
+  "@notificationsWithUnread": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ratingStars": "{count} stars",
+  "@ratingStars": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ratingStarsSelected": "{count} stars (selected)",
+  "@ratingStarsSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "seatDriverSeat": "Driver seat",
+  "seatStatusAvailable": "Available",
+  "seatStatusBooked": "Booked",
+  "seatStatusLocked": "Locked",
+  "seatStatusUnavailable": "Unavailable",
+  "seatStatusInvalid": "Invalid",
+  "seatLabelSelected": "Seat {number} {status}, selected",
+  "@seatLabelSelected": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      },
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "seatLegendSelected": "Selected",
+  "seatLegendLockedExternal": "Locked (outside the app)",
+  "seatColorGuide": "Color guide: {label}",
+  "@seatColorGuide": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "walletBalanceWithValue": "Wallet balance: {balance} {currency}",
+  "@walletBalanceWithValue": {
+    "placeholders": {
+      "balance": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      }
+    }
+  },
+  "seatLabelNumbered": "Seat {number} {status}",
+  "@seatLabelNumbered": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      },
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "accountBannedNoReason": "Your account has been suspended. Contact support for details.",
+  "bannedWhatsAppPrefill": "Hello, my VisionWay account is suspended and I need help.",
+  "followUs": "Follow us",
+  "followOnFacebook": "Facebook",
+  "followOnLinkedIn": "LinkedIn",
+  "tripGroupChat": "Trip group chat",
+  "groupChatMembersCount": "{count} members",
+  "shareTripTrackingTitle": "Share trip tracking",
+  "shareTripTrackingMessage": "Share your live trip tracking with someone?",
+  "shareTripTrackingAction": "Share",
+  "shareTripTrackingLater": "Later",
+  "shareTripTrackingText": "Follow my live trip here: {url}",
+  "shareTripTrackingError": "Could not create the share link"
 }
-
-

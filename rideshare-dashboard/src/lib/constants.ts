@@ -12,6 +12,7 @@ export const ROUTES = {
   PAYMENTS: "/payments",
   PAYMENTS_PENDING: "/payments/pending",
   WALLETS: "/wallets",
+  WALLET_DETAIL: "/wallets/:id",
   VEHICLES: "/vehicles",
   TRIPS: "/trips",
   TRIP_DETAIL: "/trips/:id",
@@ -21,6 +22,12 @@ export const ROUTES = {
   CHAT: "/chat",
   REPORTS: "/reports",
   PRICING_SETTINGS: "/settings/pricing",
+  ACCOUNT_FLAGS: "/account-flags",
+  PENDING_CHARGES: "/pending-charges",
+  COMPLAINTS: "/complaints",
+  REFUNDS: "/refunds",
+  FINES: "/fines",
+  NO_SHOW_REPORTS: "/no-show-reports",
 } as const
 
 // Navigation Items (for sidebar)
@@ -37,6 +44,10 @@ export const NAV_ITEMS = [
   { path: ROUTES.CHAT, label: "Chat", icon: "MessageSquare" },
   { path: ROUTES.REPORTS, label: "Reports", icon: "BarChart3" },
   { path: ROUTES.PRICING_SETTINGS, label: "Pricing", icon: "Percent" },
+  { path: ROUTES.ACCOUNT_FLAGS, label: "Account Flags", icon: "ShieldAlert" },
+  { path: ROUTES.PENDING_CHARGES, label: "Pending Charges", icon: "ReceiptText" },
+  { path: ROUTES.COMPLAINTS, label: "Complaints", icon: "MessageSquareWarning" },
+  { path: ROUTES.REFUNDS, label: "Refunds", icon: "ReceiptRefund" },
 ] as const
 
 // Page Sizes for Pagination
@@ -63,6 +74,8 @@ export const BOOKING_STATUS_LABELS = {
   confirmed: "Confirmed",
   cancelled: "Cancelled",
   completed: "Completed",
+  rejected: "Rejected",
+  no_show: "No-Show",
 } as const
 
 export const PAYMENT_STATUS_LABELS = {
@@ -77,12 +90,15 @@ export const PAYMENT_METHOD_LABELS = {
   paymob: "Paymob",
   manual: "Manual",
   communication_fee: "Communication Fee",
+  cliq_a2a: "CliQ A2A",
 } as const
 
 export const PAYMENT_TYPE_LABELS = {
   trip: "Trip",
   trip_platform: "Trip (platform fee)",
   communication_fee: "Communication Fee",
+  wallet_topup: "Wallet Top-up",
+  wallet_trip_charge: "Wallet Trip Charge",
 } as const
 
 export const SEAT_STATUS_LABELS = {
@@ -128,6 +144,8 @@ export const STATUS_VARIANTS = {
   confirmed: "default",
   cancelled_booking: "destructive",
   completed_booking: "default",
+  rejected_booking: "destructive",
+  no_show_booking: "outline",
 
   // Vehicle status
   verified: "default",
@@ -148,6 +166,7 @@ export const QUERY_KEYS = {
     USERS: "users",
     USER: "user",
     USER_STATS: "user-stats",
+    USER_DEVICES: "user-devices",
     TRIPS: "trips",
     TRIP: "trip",
     VEHICLES: "vehicles",
@@ -162,9 +181,36 @@ export const QUERY_KEYS = {
     PENDING: "payments-pending",
     ALL: "payments-all",
   },
+  WALLETS: {
+    ALL: "wallets-all",
+    DETAIL: "wallet-detail",
+    TRANSACTIONS: "wallet-transactions",
+  },
   NOTIFICATIONS: {
     LIST: "notifications",
     UNREAD_COUNT: "notifications-unread-count",
+  },
+  ACCOUNT_FLAGS: {
+    LIST: "account-flags",
+  },
+  PENDING_CHARGES: {
+    LIST: "pending-charges",
+  },
+  COMPLAINTS: {
+    LIST: "complaints",
+  },
+  REFUNDS: {
+    LIST: "refunds",
+  },
+  FINES: {
+    LIST: "fines",
+  },
+  NO_SHOW_REPORTS: {
+    LIST: "no-show-reports",
+    DETAIL: "no-show-reports-detail",
+  },
+  SETTLEMENT: {
+    AUDITS: "settlement-audits",
   },
 } as const
 

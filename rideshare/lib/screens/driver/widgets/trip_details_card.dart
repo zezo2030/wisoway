@@ -4,7 +4,9 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../models/trip_model.dart';
+import '../../../utils/seat_layout_helpers.dart';
 import '../../../widgets/common/section_card.dart';
+import '../../../l10n/l10n_extensions.dart';
 
 class TripDetailsCard extends StatelessWidget {
   final TripModel trip;
@@ -21,22 +23,24 @@ class TripDetailsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SectionCard(
-      title: 'تفاصيل الرحلة',
+      title: context.l10n.tripDetails,
       icon: IconsaxPlusLinear.info_circle,
       iconColor: AppColors.teal600,
       children: [
         if (trip.distanceKm != null) ...[
           _DetailRow(
             icon: IconsaxPlusBold.routing_2,
-            label: 'مسافة الرحلة',
-            value: '${trip.distanceKm!.toStringAsFixed(1)} كم',
+            label: context.l10n.tripDistance,
+            value: context.l10n.distanceInKm(
+              trip.distanceKm!.toStringAsFixed(1),
+            ),
             color: AppColors.teal600,
           ),
           const Divider(height: 32),
         ],
         _DetailRow(
           icon: IconsaxPlusBold.clock,
-          label: 'وقت الانطلاق',
+          label: context.l10n.departureTimeLabel,
           value:
               '${dateFormat.format(trip.departureTime)} ${timeFormat.format(trip.departureTime)}',
           color: AppColors.warning,
@@ -44,33 +48,38 @@ class TripDetailsCard extends StatelessWidget {
         const Divider(height: 32),
         _DetailRow(
           icon: IconsaxPlusBold.dollar_circle,
-          label: 'السعر لكل مقعد',
+          label: context.l10n.pricePerSeat,
           value: '${trip.price} ${trip.currency}',
           color: AppColors.success,
         ),
         const Divider(height: 32),
         _DetailRow(
           icon: IconsaxPlusBold.profile_2user,
-          label: 'المقاعد',
-          value: '${trip.availableSeats} متاح / ${trip.totalSeats} إجمالي',
+          label: context.l10n.seatsLabel,
+          value: context.l10n.availableOfTotalSeats(
+            trip.availableSeats,
+            trip.totalSeats,
+          ),
           color: AppColors.teal600,
         ),
         const Divider(height: 32),
         _DetailRow(
           icon: IconsaxPlusLinear.grid_1,
-          label: 'تخطيط المقاعد',
-          value:
-              trip.seatLayout.seatsPerRowList != null &&
-                  trip.seatLayout.seatsPerRowList!.isNotEmpty
-              ? 'مخصص: ${trip.seatLayout.seatsPerRowList!.join('، ')}'
-              : '${trip.seatLayout.rows} صف × ${trip.seatLayout.seatsPerRow} مقعد',
+          label: context.l10n.seatLayout,
+          value: SeatLayoutHelpers.formatTripSeatLayoutPattern(
+            trip.seatLayout,
+            trip.seats,
+            trip.totalSeats,
+          ),
           color: AppColors.teal600,
         ),
         const Divider(height: 32),
         _DetailRow(
           icon: IconsaxPlusLinear.people,
-          label: 'منع الاختلاط',
-          value: trip.seatLayout.preventGenderMixing ? 'نعم' : 'لا',
+          label: context.l10n.preventGenderMixing,
+          value: trip.seatLayout.preventGenderMixing
+              ? context.l10n.yes
+              : context.l10n.no,
           color: trip.seatLayout.preventGenderMixing
               ? AppColors.error
               : AppColors.slate400,

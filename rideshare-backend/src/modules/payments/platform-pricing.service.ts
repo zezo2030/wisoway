@@ -44,18 +44,20 @@ export class PlatformPricingService {
   passengerSeatPricing(
     seatPrice: number,
     currency: string,
-    row: CommunicationFeeEntity | null,
+    _row: CommunicationFeeEntity | null,
   ): PassengerSeatPricing {
-    const pct = Number(row?.passengerPlatformPercent ?? 0);
-    const platformAmount = this.round2((seatPrice * pct) / 100);
-    const driverAmount = this.round2(seatPrice - platformAmount);
+    // Passengers no longer pay any platform fee. The full seat price is owed
+    // to the driver in cash on meet-up; the app is not in the rider's payment
+    // path at all. The communication-fee table still drives driverUnlockPricing
+    // separately (kept untouched).
+    const price = this.round2(seatPrice);
     return {
-      seatPrice: this.round2(seatPrice),
-      passengerPlatformPercent: pct,
-      platformAmount,
-      driverAmount,
+      seatPrice: price,
+      passengerPlatformPercent: 0,
+      platformAmount: 0,
+      driverAmount: price,
       currency,
-      requiresOnlinePayment: platformAmount > 0,
+      requiresOnlinePayment: false,
     };
   }
 
@@ -71,7 +73,7 @@ export class PlatformPricingService {
     const totalSeats = trip.totalSeats ?? 0;
     const pct = Number(row?.driverUnlockPercent ?? 0);
     const legacyFlat = Number(row?.feeAmount ?? 0);
-    const currency = row?.currency ?? trip.currency ?? 'EGP';
+    const currency = row?.currency ?? trip.currency ?? 'JOD';
     const feeAmount =
       pct > 0
         ? this.round2((seatPrice * totalSeats * pct) / 100)
@@ -88,7 +90,7 @@ export class PlatformPricingService {
 
   async pricingPreviewForTrip(
     trip: TripEntity,
-    countryCode: string = 'EG',
+    countryCode: string = 'JO',
   ): Promise<{
     tripId: string;
     passenger: PassengerSeatPricing;
@@ -97,7 +99,7 @@ export class PlatformPricingService {
     const row = await this.getActiveFeeRow(countryCode);
     const passenger = this.passengerSeatPricing(
       Number(trip.price ?? 0),
-      trip.currency ?? 'EGP',
+      trip.currency ?? 'JOD',
       row,
     );
     const driverUnlock = this.driverUnlockPricing(trip, row);

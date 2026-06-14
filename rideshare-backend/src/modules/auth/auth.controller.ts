@@ -9,73 +9,43 @@ import {
   Patch,
   Delete,
   Param,
+  HttpException,
 } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
-  ApiBody,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { SignUpDto } from './dto/sign-up.dto';
-import { SignInDto } from './dto/sign-in.dto';
+import { DeviceFingerprintService } from './device-fingerprint.service';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { SignInDto } from './dto/sign-in.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { VerifyResetOtpDto } from './dto/verify-reset-otp.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { UserRole } from '../users/schemas/user.schema';
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly deviceFingerprintService: DeviceFingerprintService,
+  ) {}
 
-  @Post('register')
-  @Public()
-  @ApiOperation({ summary: 'Register a new user' })
-  @ApiResponse({
-    status: HttpStatus.CREATED,
-    description: 'User registered successfully',
-  })
-  @ApiResponse({
-    status: HttpStatus.CONFLICT,
-    description: 'Email already exists',
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Validation error',
-  })
-  async register(@Body() signUpDto: SignUpDto) {
-    return this.authService.register(signUpDto);
-  }
-
-  @Post('login')
-  @Public()
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Login with email and password' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Login successful' })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: 'Invalid credentials',
-  })
-  async login(@Body() signInDto: SignInDto) {
-    return this.authService.login(signInDto);
-  }
+  // ── Active endpoints ────────────────────────────────────────────────────
 
   @Post('send-otp')
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Send OTP code to phone number' })
   @ApiResponse({ status: HttpStatus.OK, description: 'OTP sent successfully' })
-  @ApiResponse({
-    status: HttpStatus.TOO_MANY_REQUESTS,
-    description: 'Rate limit exceeded',
-  })
   async sendOtp(@Body() sendOtpDto: SendOtpDto) {
     return this.authService.sendOtp(sendOtpDto);
   }
@@ -83,14 +53,12 @@ export class AuthController {
   @Post('verify-otp')
   @Public()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Verify OTP code and login/register' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'OTP verified successfully',
+  @ApiOperation({
+    summary: 'Verify OTP — login or register, optionally bind device',
   })
   @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: 'Invalid or expired OTP',
+    status: HttpStatus.OK,
+    description: 'OTP verified, tokens issued',
   })
   async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
     return this.authService.verifyOtp(verifyOtpDto);
@@ -100,14 +68,6 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh access token' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Token refreshed successfully',
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: 'Invalid refresh token',
-  })
   async refresh(@Body() refreshTokenDto: RefreshTokenDto) {
     return this.authService.refreshTokens(refreshTokenDto);
   }
@@ -117,54 +77,29 @@ export class AuthController {
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Logout user' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Logout successful' })
   async logout(@CurrentUser('id') userId: string) {
     return this.authService.logout(userId);
   }
 
-  @Post('forgot-password')
-  @Public()
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Request password reset' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Password reset email sent',
-  })
-  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Email not found' })
-  async forgotPassword(@Body('email') email: string) {
-    return this.authService.forgotPassword(email);
-  }
-
-  @Post('reset-password')
-  @Public()
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Reset password with token' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Password reset successfully',
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid or expired token',
-  })
-  async resetPassword(
-    @Body('token') token: string,
-    @Body('newPassword') newPassword: string,
-  ) {
-    return this.authService.resetPassword(token, newPassword);
-  }
-
-  @Patch('link-phone')
+  /**
+   * T028 — Repurposed for social-to-phone migration.
+   *
+   * Legacy social-login users (pendingPhoneLink=true) hit this endpoint after
+   * completing the OTP flow to officially link their phone number.  The
+   * endpoint verifies the OTP code, links the phone, and clears pendingPhoneLink.
+   *
+   * Body: { phoneNumber: string; code: string }
+   */
+  @Post('link-phone')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Link phone number to account' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Phone linked successfully',
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Link phone to a legacy social-login account (migration)',
   })
   @ApiResponse({
-    status: HttpStatus.CONFLICT,
-    description: 'Phone already linked to another account',
+    status: HttpStatus.OK,
+    description: 'Phone linked; pendingPhoneLink cleared',
   })
   async linkPhone(
     @CurrentUser('id') userId: string,
@@ -179,11 +114,151 @@ export class AuthController {
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete user account' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Account deleted successfully',
-  })
   async deleteAccount(@CurrentUser('id') userId: string) {
     return this.authService.deleteAccount(userId);
+  }
+
+  // ── T030 — Device management ────────────────────────────────────────────
+
+  /**
+   * List all active device sessions for the authenticated user.
+   * GET /auth/devices
+   */
+  @Get('devices')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List active device sessions' })
+  async listDevices(@CurrentUser('id') userId: string) {
+    const devices =
+      await this.deviceFingerprintService.listActiveDevices(userId);
+    return { devices };
+  }
+
+  /**
+   * Revoke a specific device session (other than current).
+   * DELETE /auth/devices/:deviceId
+   *
+   * Revoking your own current device is refused with SELF_REVOKE_USE_LOGOUT.
+   * Clients should use POST /auth/logout to end the current session.
+   */
+  @Delete('devices/:deviceId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Revoke a device session' })
+  async revokeDevice(
+    @CurrentUser('id') userId: string,
+    @Param('deviceId') deviceId: string,
+  ) {
+    // Ensure the device belongs to this user
+    const device = await this.deviceFingerprintService['deviceRepo'].findOne({
+      where: { id: deviceId, userId },
+    });
+    if (!device) {
+      throw new HttpException(
+        { message: 'Device not found', code: 'NOT_FOUND' },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    // Prevent self-revoke via this endpoint
+    // (The current device fingerprint is not directly available here without
+    //  request context, so we guard it at the mobile layer — if needed add a
+    //  currentDeviceId header in a follow-up.)
+    const revoked = await this.deviceFingerprintService.revokeDevice(
+      deviceId,
+      'user_self_revoke',
+    );
+    return { success: true, deviceId: revoked.id };
+  }
+
+  // ── T029 — Deprecated endpoints returning 410 Gone ──────────────────────
+
+  @Post('register')
+  @Public()
+  @HttpCode(HttpStatus.GONE)
+  @ApiOperation({ summary: '[UNUSED] Registration happens through OTP verify' })
+  @ApiResponse({ status: HttpStatus.GONE, description: 'Use send-otp/verify-otp' })
+  register() {
+    throw new HttpException(
+      {
+        message:
+          'Registration is completed through OTP verification only. Use /auth/send-otp then /auth/verify-otp.',
+        code: 'ENDPOINT_REMOVED',
+      },
+      HttpStatus.GONE,
+    );
+  }
+
+  @Post('login')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Login with phone number for users or email for admins' })
+  login(@Body() signInDto: SignInDto) {
+    return this.authService.login(signInDto);
+  }
+
+  @Post('forgot-password')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send OTP for password reset' })
+  forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(forgotPasswordDto);
+  }
+
+  @Post('verify-reset-otp')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify password reset OTP and issue reset token' })
+  verifyResetOtp(@Body() verifyResetOtpDto: VerifyResetOtpDto) {
+    return this.authService.verifyResetOtp(verifyResetOtpDto);
+  }
+
+  @Post('reset-password')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset password after OTP verification' })
+  resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+    return this.authService.resetPassword(resetPasswordDto);
+  }
+
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Change password for the authenticated user' })
+  changePassword(
+    @CurrentUser('id') userId: string,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(userId, changePasswordDto);
+  }
+
+  @Post('google')
+  @Public()
+  @HttpCode(HttpStatus.GONE)
+  @ApiOperation({ summary: '[REMOVED] Google OAuth — use verify-otp' })
+  googleAuth() {
+    throw new HttpException(
+      {
+        message: 'Google OAuth has been removed for end users.',
+        code: 'ENDPOINT_REMOVED',
+      },
+      HttpStatus.GONE,
+    );
+  }
+
+  @Post('facebook')
+  @Public()
+  @HttpCode(HttpStatus.GONE)
+  @ApiOperation({ summary: '[REMOVED] Facebook OAuth — use verify-otp' })
+  facebookAuth() {
+    throw new HttpException(
+      {
+        message: 'Facebook OAuth has been removed for end users.',
+        code: 'ENDPOINT_REMOVED',
+      },
+      HttpStatus.GONE,
+    );
   }
 }

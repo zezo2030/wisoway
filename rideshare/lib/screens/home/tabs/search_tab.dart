@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../../core/constants/route_names.dart';
 import '../../../core/theme/colors.dart';
+import '../../../l10n/l10n_extensions.dart';
 import '../../../widgets/notification_icon_button.dart';
 
 class SearchTab extends StatelessWidget {
@@ -11,7 +12,7 @@ class SearchTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('بحث عن رحلة'),
+        title: Text(context.l10n.searchForTrip),
         automaticallyImplyLeading: false,
         actions: [
           Padding(
@@ -34,7 +35,7 @@ class SearchTab extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'ابحث عن رحلة',
+              context.l10n.searchForTrip,
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -43,7 +44,7 @@ class SearchTab extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'عرض جميع الرحلات المتاحة',
+              context.l10n.showAllAvailableTrips,
               style: TextStyle(
                 fontSize: 14,
                 color: T.onSurfaceVariant(context),
@@ -51,14 +52,14 @@ class SearchTab extends StatelessWidget {
             ),
             const SizedBox(height: 32),
             Semantics(
-              label: 'عرض الرحلات',
+              label: context.l10n.showTrips,
               button: true,
               child: ElevatedButton.icon(
                 onPressed: () {
                   Navigator.pushNamed(context, RouteNames.tripsList);
                 },
                 icon: const Icon(IconsaxPlusBold.search_normal),
-                label: const Text('عرض الرحلات'),
+                label: Text(context.l10n.showTrips),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: T.primary(context),
                   padding: const EdgeInsets.symmetric(

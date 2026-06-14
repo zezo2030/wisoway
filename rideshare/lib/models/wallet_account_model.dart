@@ -18,7 +18,7 @@ class WalletAccountModel {
     return WalletAccountModel(
       accountId: json['accountId'] as String?,
       accountType: json['accountType'] as String? ?? 'rider',
-      currency: json['currency'] as String? ?? 'EGP',
+      currency: json['currency'] as String? ?? 'JOD',
       balance: (json['balance'] is num)
           ? (json['balance'] as num).toDouble()
           : double.tryParse('${json['balance']}') ?? 0,

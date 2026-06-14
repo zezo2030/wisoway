@@ -11,6 +11,8 @@ import type {
   SeatStatus,
   Currency,
   Gender,
+  PendingChargeKind,
+  PendingChargeStatus,
 } from './enums'
 
 // Core Entities
@@ -38,7 +40,10 @@ export interface User {
 
 export interface Vehicle {
   _id: string
+  id?: string
   driverId: string | UserSummary
+  /** Present when admin vehicles API joins driver (Postgres). */
+  driver?: { id?: string; name?: string; email?: string | null; phoneNumber?: string | null }
   vehicleType: string
   model: string
   plateNumber: string
@@ -76,6 +81,8 @@ export interface Trip {
   _id: string
   id?: string
   driverId: string | UserSummary
+  /** Present on admin trip list when API joins the driver (Postgres). */
+  driver?: { id?: string; name?: string; email?: string | null; phoneNumber?: string | null }
   driverName?: string
   from?: Location | string
   to?: Location | string
@@ -93,18 +100,57 @@ export interface Trip {
   carImageUrl?: string
   isVisible: boolean
   distanceKm?: number
+  /** Intermediate stops along the route (up to 5). */
+  stops?: TripStop[]
+  /** Free-text driver notes visible to passengers. */
+  notes?: string
+  /** ID of the recurrence rule that generated this trip, if any. */
+  recurrenceRuleId?: string
   createdAt: string
   updatedAt: string
+}
+
+export interface TripStop {
+  name: string
+  lat: number
+  lng: number
+  address?: string
+  order: number
+  note?: string
+}
+
+export interface BookingSeat {
+  id: string
+  bookingId: string
+  seatNumber: string
+  displayName: string
+  gender: Gender
+  isMainBooker: boolean
+  markedAbsentAt?: string
+  createdAt: string
 }
 
 export interface Booking {
   _id: string
   userId: string | UserSummary
+  /** Optional raw join shape from some API builds. */
+  user?: { id?: string; name?: string; email?: string | null; phoneNumber?: string | null }
   tripId: string | TripSummary
-  seatNumber: string
+  /** Legacy v1 single-seat field — nullable in v2 bookings. */
+  seatNumber: string | null
+  /** v2 multi-seat rows. */
+  seats?: BookingSeat[]
+  seatCount?: number
+  totalAmount?: number
   status: BookingStatus
+  expiresAt?: string
+  rejectedAt?: string
+  rejectionReason?: string
   hasDriverPaidToContact: boolean
   sharePhoneWithDriver: boolean
+  /** Phase 7 settlement fields */
+  settledAt?: string | null
+  settlementGraceUntil?: string | null
   cancellationReason?: string
   cancelledAt?: string
   cancelledBy?: 'passenger' | 'driver' | 'system'
@@ -112,8 +158,34 @@ export interface Booking {
   updatedAt: string
 }
 
+/** Phase 7 — settlement audit entry */
+export interface SettlementAudit {
+  id: string
+  bookingId: string
+  action: 'mark_paid' | 'unmark_paid' | 'admin_revert'
+  actorId: string | UserSummary
+  reason?: string | null
+  createdAt: string
+}
+
+export interface PendingCharge {
+  id: string
+  userId: string | UserSummary
+  bookingId?: string | BookingSummary
+  kind: PendingChargeKind
+  status: PendingChargeStatus
+  amount: number
+  currency: string
+  collectedAt?: string
+  waivedAt?: string
+  waivedBy?: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface Payment {
   _id: string
+  id?: string
   userId: string | UserSummary
   tripId?: string | TripSummary
   bookingId?: string | BookingSummary
@@ -143,7 +215,8 @@ export interface Rating {
 
 export interface Notification {
   _id: string
-  userId: string
+  id?: string
+  userId: string | UserSummary
   type: string
   title: string
   body: string
@@ -154,7 +227,13 @@ export interface Notification {
 
 export interface ChatRoom {
   _id: string
+  /** PG entity uses `id` (UUID) instead of `_id` */
+  id?: string
   tripId: string | TripSummary
+  /** PG 1:1 rooms — UUID of the passenger in this driver-passenger chat */
+  passengerId?: string | null
+  /** Resolved passenger info from PG dashboard endpoint (1:1 rooms only) */
+  passenger?: { id: string; name: string; email: string | null } | null
   participants: Array<{
     userId: string | UserSummary
     joinedAt: string
@@ -185,6 +264,7 @@ export interface DashboardStats {
   completedTrips: number
   totalRevenue: number
   pendingPayments: number
+  pendingManualTopups: number
   pendingVehicleVerifications: number
 }
 
@@ -270,4 +350,81 @@ export interface LoginResponse {
 export interface RefreshResponse {
   accessToken: string
   refreshToken: string
+}
+
+// Wallet Types
+
+export interface WalletAccount {
+  id: string
+  userId: string | UserSummary
+  accountType: 'driver' | 'rider' | 'system'
+  currency: string
+  balance: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface WalletTransaction {
+  id: string
+  accountId: string
+  type: string
+  direction: 'debit' | 'credit'
+  status: string
+  amount: number
+  currency: string
+  referenceType: string | null
+  referenceId: string | null
+  metadata: Record<string, unknown> | null
+  createdAt: string
+}
+
+// Phase 3 — account safety flags
+export type AccountFlagSeverity = 'low' | 'medium' | 'high' | 'critical'
+export type AccountFlagDisposition = 'open' | 'resolved' | 'dismissed'
+
+export interface AccountFlag {
+  id: string
+  userId: string | UserSummary
+  reason: string           // e.g. 'multi_account_device' | 'mock_location_repeated'
+  severity: AccountFlagSeverity
+  disposition: AccountFlagDisposition
+  metadata?: Record<string, unknown>
+  resolvedBy?: string
+  resolvedAt?: string
+  createdAt: string
+  updatedAt: string
+}
+
+// Phase 8 — complaints & refunds
+
+export type ComplaintStatus = 'pending' | 'under_review' | 'resolved' | 'rejected'
+
+export interface Complaint {
+  id: string
+  reporterId: string | UserSummary
+  againstUserId?: string | UserSummary | null
+  tripId?: string | null
+  category: string          // SAFETY | PAYMENT | VEHICLE_CONDITION | DRIVER_BEHAVIOR | APP_ISSUE | OTHER
+  description: string
+  status: ComplaintStatus
+  adminNotes?: string | null
+  resolvedAt?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type RefundRequestStatus = 'pending' | 'approved' | 'rejected'
+
+export interface RefundRequest {
+  id: string
+  userId: string | UserSummary
+  bookingId: string | BookingSummary
+  reason: string
+  status: RefundRequestStatus
+  adminNotes?: string | null
+  whatsappContactedAt?: string | null
+  resolvedAt?: string | null
+  createdAt: string
+  updatedAt: string
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/theme/colors.dart';
+import '../l10n/l10n_extensions.dart';
 
 class RatingWidget extends StatefulWidget {
   final int initialRating;
@@ -56,8 +57,9 @@ class _RatingWidgetState extends State<RatingWidget> {
 
         return Semantics(
           button: !widget.readOnly,
-          label:
-              '$starIndex ${starIndex == 1 ? 'نجمة' : 'نجوم'}${isFilled ? ' (مختارة)' : ''}',
+          label: isFilled
+              ? context.l10n.ratingStarsSelected(starIndex)
+              : context.l10n.ratingStars(starIndex),
           child: GestureDetector(
             onTap: () => _onStarTap(starIndex),
             child: Padding(

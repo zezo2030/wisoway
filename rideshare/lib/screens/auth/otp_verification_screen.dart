@@ -7,7 +7,9 @@ import '../../providers/auth_provider.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/colors.dart';
-import '../../core/utils/auth_error_formatter.dart';
+import '../../core/ui/error_surface.dart';
+import '../../core/api/api_client.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
   final String phoneNumber;
@@ -125,10 +127,25 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         return;
       }
 
-      // Registration flow (passenger or driver)
+      // Registration flow (passenger or driver). Forward the profile fields
+      // collected on the previous screen so the backend can provision the
+      // account on first verify when no record exists yet.
+      final firstName = (args?['firstName'] as String?)?.trim();
+      final lastName = (args?['lastName'] as String?)?.trim();
+      final composedName =
+          (args?['name'] as String?)?.trim() ??
+          ([
+            firstName,
+            lastName,
+          ].where((p) => p != null && p.isNotEmpty).join(' ').trim());
+
       await authProvider.verifyOTP(
         phoneNumber: widget.phoneNumber,
         smsCode: otpCode,
+        name: composedName.isEmpty ? null : composedName,
+        gender: args?['gender'] as String?,
+        role: args?['role'] as String?,
+        password: args?['password'] as String?,
       );
 
       if (mounted) {
@@ -136,26 +153,37 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
           await _completeDriverProfileAfterOtp(authProvider, args);
           return;
         }
+        final afterVerifyRoute = args?['afterVerifyRoute'] as String?;
         if (isDriverRegistration) {
-          // Driver registration: Navigate to complete profile
           Navigator.pushReplacementNamed(
             context,
-            RouteNames.driverCompleteProfile,
+            afterVerifyRoute ?? RouteNames.driverCompleteProfile,
+            arguments: {
+              'firstName': args?['firstName'],
+              'lastName': args?['lastName'],
+              'email': args?['email'],
+              'gender': args?['gender'],
+            },
+          );
+        } else if (afterVerifyRoute != null) {
+          Navigator.pushReplacementNamed(
+            context,
+            afterVerifyRoute,
+            arguments: {
+              'name': args?['name'],
+              'email': args?['email'],
+              'gender': args?['gender'],
+              'role': args?['role'] ?? AppConstants.rolePassenger,
+              'phoneNumber': widget.phoneNumber,
+            },
           );
         } else {
-          // Passenger registration: Navigate to home
           Navigator.pushReplacementNamed(context, RouteNames.home);
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AuthErrorFormatter.format(e, action: AuthAction.otp)),
-            backgroundColor: T.error(context),
-          ),
-        );
-        // Clear OTP fields
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
         for (var controller in _controllers) {
           controller.clear();
         }
@@ -173,7 +201,12 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     Map<String, dynamic>? args,
   ) async {
     if (args == null) {
-      throw Exception('بيانات السائق غير مكتملة');
+      throw Exception('Driver data is incomplete');
+    }
+
+    final carImagePath = args['carImage'] as String?;
+    if (carImagePath == null || carImagePath.isEmpty) {
+      throw Exception('Car photo is missing');
     }
 
     await authProvider.saveDriverProfile(
@@ -187,6 +220,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
       seats: args['seats'] as int,
       driverLicenseImage: File(args['driverLicenseImage'] as String),
       vehicleLicenseImage: File(args['vehicleLicenseImage'] as String),
+      carImage: File(carImagePath),
       email: (args['email'] as String?)?.trim(),
       gender: args['gender'] as String?,
     );
@@ -194,8 +228,8 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('تم رفع بياناتك بنجاح. طلبك قيد المراجعة من الإدارة.'),
+      SnackBar(
+        content: Text(context.l10n.driverProfileSubmitted),
         backgroundColor: AppColors.success,
       ),
     );
@@ -222,8 +256,8 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
       if (mounted) {
         setState(() {});
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم إرسال رمز التحقق مرة أخرى'),
+          SnackBar(
+            content: Text(context.l10n.otpResent),
             backgroundColor: AppColors.success,
           ),
         );
@@ -236,12 +270,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AuthErrorFormatter.format(e, action: AuthAction.otp)),
-            backgroundColor: T.error(context),
-          ),
-        );
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     } finally {
       if (mounted) {
@@ -308,7 +337,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
               children: [
                 AppBar(
                   title: Text(
-                    'التحقق من الرمز',
+                    context.l10n.otpVerification,
                     style: TextStyle(
                       color: T.onSurface(context),
                       fontWeight: FontWeight.bold,
@@ -350,7 +379,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                         ),
                         const SizedBox(height: 40),
                         Text(
-                          'أدخل رمز التحقق',
+                          context.l10n.enterOTP,
                           style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.w800,
@@ -370,8 +399,8 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                               height: 1.5,
                             ),
                             children: [
-                              const TextSpan(
-                                text: 'تم إرسال الرمز المكون من 6 أرقام إلى\n',
+                              TextSpan(
+                                text: context.l10n.otpSentToPhone,
                               ),
                               TextSpan(
                                 text: _maskPhone(widget.phoneNumber),
@@ -386,6 +415,9 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                         ),
                         const SizedBox(height: 48),
                         Row(
+                          // Keep the OTP digits ordered left-to-right even in
+                          // RTL (Arabic) so the code reads in entry order.
+                          textDirection: TextDirection.ltr,
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: List.generate(
                             AppConstants.otpLength,
@@ -417,7 +449,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                               ),
                               child: Center(
                                 child: Semantics(
-                                  label: 'رمز التحقق ${index + 1}',
+                                  label: context.l10n.otpDigitLabel(index + 1),
                                   textField: true,
                                   child: TextField(
                                     controller: _controllers[index],
@@ -476,7 +508,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                           ),
                           child: Semantics(
                             button: true,
-                            label: 'تحقق من الرمز',
+                            label: context.l10n.verifyButton,
                             child: ElevatedButton(
                               onPressed: _isLoading
                                   ? null
@@ -503,9 +535,9 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                                             ),
                                       ),
                                     )
-                                  : const Text(
-                                      'تحقق من الرمز',
-                                      style: TextStyle(
+                                  : Text(
+                                      context.l10n.verifyButton,
+                                      style: const TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
                                         color: AppColors.white,
@@ -519,8 +551,8 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                         Semantics(
                           button: true,
                           label: _canResend
-                              ? 'إعادة إرسال الرمز'
-                              : 'إعادة إرسال الرمز خلال $_resendTimer ثانية',
+                              ? context.l10n.resendOTP
+                              : context.l10n.resendOTPIn(_resendTimer),
                           enabled: _canResend && !_isLoading,
                           child: GestureDetector(
                             onTap: _canResend && !_isLoading
@@ -540,8 +572,8 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                               ),
                               child: Text(
                                 _canResend
-                                    ? 'إعادة إرسال الرمز'
-                                    : 'إعادة إرسال الرمز خلال $_resendTimer ثانية',
+                                    ? context.l10n.resendOTP
+                                    : context.l10n.resendOTPIn(_resendTimer),
                                 style: TextStyle(
                                   color: _canResend
                                       ? T.primary(context)

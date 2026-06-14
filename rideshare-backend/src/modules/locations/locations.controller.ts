@@ -52,4 +52,22 @@ export class LocationsController {
       toLongitude,
     );
   }
+
+  @Get('route')
+  @ApiOperation({ summary: 'Get driving route between two points' })
+  @ApiResponse({ status: 200, description: 'Route loaded successfully' })
+  @ApiResponse({ status: 400, description: 'Failed to load route' })
+  async getRoute(
+    @Query('fromLatitude') fromLatitude: number,
+    @Query('fromLongitude') fromLongitude: number,
+    @Query('toLatitude') toLatitude: number,
+    @Query('toLongitude') toLongitude: number,
+  ) {
+    return this.locationsService.getRoute(
+      fromLatitude,
+      fromLongitude,
+      toLatitude,
+      toLongitude,
+    );
+  }
 }

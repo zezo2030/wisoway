@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import '../models/trip_model.dart';
 import '../models/seat_data.dart';
+import '../utils/seat_layout_helpers.dart';
 import '../utils/seat_validation.dart';
 import '../core/theme/colors.dart';
+import '../l10n/l10n_extensions.dart';
 
 class SeatLayoutWidget extends StatelessWidget {
   final TripModel trip;
   final int? selectedSeat;
+  final List<int> selectedSeats;
   final String? userGender;
   final Function(int)? onSeatTap;
 
@@ -14,14 +17,13 @@ class SeatLayoutWidget extends StatelessWidget {
     super.key,
     required this.trip,
     this.selectedSeat,
+    this.selectedSeats = const [],
     this.userGender,
     this.onSeatTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final seatLayout = trip.seatLayout;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -29,20 +31,20 @@ class SeatLayoutWidget extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.blue[100],
+            color: T.primary(context).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.drive_eta, size: 16, color: Colors.blue[800]),
+              Icon(Icons.drive_eta, size: 16, color: T.primary(context)),
               const SizedBox(width: 8),
               Text(
-                'مقعد السائق',
+                context.l10n.seatDriverSeat,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: Colors.blue[800],
+                  color: T.primary(context),
                 ),
               ),
             ],
@@ -53,8 +55,11 @@ class SeatLayoutWidget extends StatelessWidget {
         Builder(
           builder: (context) {
             final List<int> rowConfigs =
-                seatLayout.seatsPerRowList ??
-                List.generate(seatLayout.rows, (_) => seatLayout.seatsPerRow);
+                SeatLayoutHelpers.effectiveRowSeatCountsForTrip(
+              trip.seatLayout,
+              trip.seats,
+              trip.totalSeats,
+            );
 
             var currentSeatCount = 0;
 
@@ -79,7 +84,9 @@ class SeatLayoutWidget extends StatelessWidget {
                                   seatNumber <= trip.seats.length)
                               ? trip.seats[seatNumber - 1]
                               : null,
-                          isSelected: selectedSeat == seatNumber,
+                          isSelected:
+                              selectedSeat == seatNumber ||
+                              selectedSeats.contains(seatNumber),
                           status: userGender != null
                               ? SeatValidation.getSeatStatus(
                                   trip: trip,
@@ -129,48 +136,50 @@ class _SeatWidget extends StatelessWidget {
     IconData? icon;
 
     if (isSelected) {
-      backgroundColor = Colors.green;
-      textColor = Colors.white;
+      backgroundColor = T.success(context);
+      textColor = T.onPrimary(context);
       icon = Icons.check;
     } else {
       switch (status) {
         case SeatStatus.available:
-          backgroundColor = Colors.grey[200]!;
-          textColor = Colors.black87;
+          backgroundColor = T.surfaceVariant(context);
+          textColor = T.onSurface(context);
           break;
         case SeatStatus.booked:
-          backgroundColor = Colors.red[300]!;
-          textColor = Colors.white;
+          backgroundColor = T.error(context).withValues(alpha: 0.6);
+          textColor = T.onError(context);
           icon = Icons.person;
           break;
         case SeatStatus.locked:
-          backgroundColor = Colors.amber.shade200;
-          textColor = Colors.amber.shade900;
+          backgroundColor = T.secondary(context).withValues(alpha: 0.2);
+          textColor = T.secondary(context);
           icon = Icons.lock_outline;
           break;
         case SeatStatus.unavailable:
-          backgroundColor = Colors.orange[200]!;
-          textColor = Colors.orange[900]!;
+          backgroundColor = T.outlineVariant(context).withValues(alpha: 0.3);
+          textColor = T.textDisabled(context);
           icon = Icons.block;
           break;
         case SeatStatus.invalid:
-          backgroundColor = Colors.grey[100]!;
-          textColor = Colors.grey[400]!;
+          backgroundColor = T.surfaceVariant(context);
+          textColor = T.textDisabled(context);
           break;
       }
     }
 
     final seatStatusLabel = switch (status) {
-      SeatStatus.available => 'متاح',
-      SeatStatus.booked => 'محجوز',
-      SeatStatus.locked => 'مقفل',
-      SeatStatus.unavailable => 'غير متاح',
-      SeatStatus.invalid => 'غير صالح',
+      SeatStatus.available => context.l10n.seatStatusAvailable,
+      SeatStatus.booked => context.l10n.seatStatusBooked,
+      SeatStatus.locked => context.l10n.seatStatusLocked,
+      SeatStatus.unavailable => context.l10n.seatStatusUnavailable,
+      SeatStatus.invalid => context.l10n.seatStatusInvalid,
     };
 
     return Semantics(
       button: onTap != null && status == SeatStatus.available,
-      label: 'مقعد $seatNumber $seatStatusLabel${isSelected ? '، محدد' : ''}',
+      label: isSelected
+          ? context.l10n.seatLabelSelected(seatNumber, seatStatusLabel)
+          : context.l10n.seatLabelNumbered(seatNumber, seatStatusLabel),
       child: GestureDetector(
         onTap: onTap != null && status == SeatStatus.available ? onTap : null,
         child: Container(
@@ -180,8 +189,8 @@ class _SeatWidget extends StatelessWidget {
             color: backgroundColor,
             borderRadius: BorderRadius.circular(8),
             border: isSelected
-                ? Border.all(color: AppColors.success, width: 2)
-                : Border.all(color: AppColors.slate300, width: 1),
+                ? Border.all(color: T.success(context), width: 2)
+                : Border.all(color: T.outlineVariant(context), width: 1),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -212,7 +221,7 @@ class _SeatLegend extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.slate100,
+        color: T.surfaceVariant(context),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Wrap(
@@ -220,14 +229,26 @@ class _SeatLegend extends StatelessWidget {
         runSpacing: 8,
         alignment: WrapAlignment.center,
         children: [
-          _LegendItem(color: AppColors.slate200, label: 'متاح'),
-          _LegendItem(color: AppColors.success, label: 'محدد'),
-          _LegendItem(color: AppColors.errorLight, label: 'محجوز'),
           _LegendItem(
-            color: AppColors.warningLight,
-            label: 'مقفل (خارج التطبيق)',
+            color: T.surfaceVariant(context),
+            label: context.l10n.seatStatusAvailable,
           ),
-          _LegendItem(color: Colors.orange[200]!, label: 'غير متاح'),
+          _LegendItem(
+            color: T.success(context),
+            label: context.l10n.seatLegendSelected,
+          ),
+          _LegendItem(
+            color: T.error(context).withValues(alpha: 0.6),
+            label: context.l10n.seatStatusBooked,
+          ),
+          _LegendItem(
+            color: T.secondary(context).withValues(alpha: 0.2),
+            label: context.l10n.seatLegendLockedExternal,
+          ),
+          _LegendItem(
+            color: T.outlineVariant(context).withValues(alpha: 0.3),
+            label: context.l10n.seatStatusUnavailable,
+          ),
         ],
       ),
     );
@@ -243,7 +264,7 @@ class _LegendItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'دليل الألوان: $label',
+      label: context.l10n.seatColorGuide(label),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -253,13 +274,13 @@ class _LegendItem extends StatelessWidget {
             decoration: BoxDecoration(
               color: color,
               borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: AppColors.slate300),
+              border: Border.all(color: T.outlineVariant(context)),
             ),
           ),
           const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(fontSize: 12, color: AppColors.slate700),
+            style: TextStyle(fontSize: 12, color: T.textSecondary(context)),
           ),
         ],
       ),

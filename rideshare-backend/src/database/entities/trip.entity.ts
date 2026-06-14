@@ -5,11 +5,14 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { UserEntity } from './user.entity';
 import { TripStatus } from './shared.enums';
+import { TripShareLinkEntity } from './trip-share-link.entity';
+import { TripRecurrenceRuleEntity } from './trip-recurrence-rule.entity';
 
 type GeoPoint = {
   type: 'Point';
@@ -67,7 +70,7 @@ export class TripEntity {
   @Column({ type: 'numeric', precision: 10, scale: 2 })
   price: string;
 
-  @Column({ type: 'varchar', length: 5, default: 'EGP' })
+  @Column({ type: 'varchar', length: 5, default: 'JOD' })
   currency: string;
 
   @Column({ type: 'int', default: 4 })
@@ -82,8 +85,57 @@ export class TripEntity {
   @Column({ type: 'jsonb', default: [] })
   seats: any[];
 
-  @Column({ type: 'enum', enum: TripStatus, default: TripStatus.ACTIVE })
+  // ── Phase 5 additions (T097) ────────────────────────────────────────────────
+
+  /** Intermediate stops along the route (phase 6 / US4). */
+  @Column({ type: 'jsonb', default: [] })
+  stops: any[];
+
+  /** Free-text driver notes visible to passengers (phase 6 / US4). */
+  @Column({ type: 'text', nullable: true })
+  notes: string | null;
+
+  @Column({ type: 'enum', enum: TripStatus, default: TripStatus.PUBLISHED })
   status: TripStatus;
+
+  /** When the driver pressed "Start Trip". */
+  @Column({ type: 'timestamptz', nullable: true })
+  tripStartedAt: Date | null;
+
+  /** When the driver pressed "Complete Trip". */
+  @Column({ type: 'timestamptz', nullable: true })
+  tripCompletedAt: Date | null;
+
+  /** Set by NoShowDetectorProcessor when driver does not start the trip. */
+  @Column({ type: 'timestamptz', nullable: true })
+  noShowMarkedAt: Date | null;
+
+  /** Denormalized from the most recent successful POST /tracking/location. */
+  @Column({ type: 'float', nullable: true })
+  lastDriverLocationLat: number | null;
+
+  @Column({ type: 'float', nullable: true })
+  lastDriverLocationLng: number | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  lastDriverLocationAt: Date | null;
+
+  /** Pre-trip confirmation push sent timestamp (idempotency guard). */
+  @Column({ type: 'timestamptz', nullable: true })
+  preTripConfirmSentAt: Date | null;
+
+  /** FK to the recurrence rule that spawned this trip, null for one-off trips. */
+  @Column({ type: 'uuid', nullable: true })
+  recurrenceRuleId: string | null;
+
+  @ManyToOne(() => TripRecurrenceRuleEntity, { onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'recurrenceRuleId' })
+  recurrenceRule: TripRecurrenceRuleEntity | null;
+
+  @OneToMany(() => TripShareLinkEntity, (sl) => sl.trip)
+  shareLinks: TripShareLinkEntity[];
+
+  // ── Legacy columns (kept for backward compatibility) ─────────────────────
 
   @Column({ type: 'varchar', default: 'not_paid' })
   communicationFeeStatus: string;

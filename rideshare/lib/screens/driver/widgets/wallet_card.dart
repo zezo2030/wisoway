@@ -3,6 +3,7 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../models/wallet_model.dart';
+import '../../../l10n/l10n_extensions.dart';
 
 class WalletCard extends StatelessWidget {
   final WalletModel wallet;
@@ -42,7 +43,10 @@ class WalletCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'رصيد المحفظة: ${wallet.balance.toStringAsFixed(0)} ${wallet.currency}',
+                    context.l10n.walletBalanceWithValue(
+                      wallet.balance.toStringAsFixed(0),
+                      wallet.currency,
+                    ),
                     style: AppTextStyles.bodyLarge.copyWith(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
@@ -50,8 +54,8 @@ class WalletCard extends StatelessWidget {
                   ),
                   Text(
                     wallet.hasUsedLifetimeFreeTrip
-                        ? 'تم استخدام الرحلة المجانية'
-                        : 'رحلة مجانية متاحة',
+                        ? context.l10n.freeTripUsed
+                        : context.l10n.freeTripAvailable,
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.slate500,
                     ),

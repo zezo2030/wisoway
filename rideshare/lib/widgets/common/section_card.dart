@@ -6,7 +6,7 @@ import '../../core/theme/text_styles.dart';
 class SectionCard extends StatelessWidget {
   final String title;
   final IconData icon;
-  final Color iconColor;
+  final Color? iconColor;
   final String? subtitle;
   final List<Widget> children;
   final EdgeInsetsGeometry padding;
@@ -18,7 +18,7 @@ class SectionCard extends StatelessWidget {
     super.key,
     required this.title,
     required this.icon,
-    this.iconColor = AppColors.teal700,
+    this.iconColor,
     this.subtitle,
     required this.children,
     this.padding = const EdgeInsets.all(AppSpacing.xl),
@@ -29,6 +29,7 @@ class SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveIconColor = iconColor ?? T.primary(context);
     return Container(
       padding: padding,
       decoration: BoxDecoration(
@@ -45,10 +46,10 @@ class SectionCard extends StatelessWidget {
               Container(
                 padding: AppSpacing.paddingMd,
                 decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.1),
+                  color: effectiveIconColor.withValues(alpha: 0.1),
                   borderRadius: AppRadius.radiusMd,
                 ),
-                child: Icon(icon, color: iconColor, size: 24),
+                child: Icon(icon, color: effectiveIconColor, size: 24),
               ),
               AppSpacing.horizontalGapMd,
               Expanded(

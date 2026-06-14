@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/colors.dart';
+import '../../../l10n/l10n_extensions.dart';
 import '../../../models/trip_model.dart';
 
 class NearbyTripCard extends StatelessWidget {
@@ -23,15 +24,16 @@ class NearbyTripCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: T.surface(context),
+        color: AppColors.teal50,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppColors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: T.primary(context).withValues(alpha: 0.12),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
         ],
+        border: Border.all(color: AppColors.teal200, width: 1.4),
       ),
       child: Material(
         color: AppColors.transparent,
@@ -146,7 +148,7 @@ class NearbyTripCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '${distance.toStringAsFixed(1)} كم',
+                            context.l10n.distanceKm(distance.toStringAsFixed(1)),
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,

@@ -7,6 +7,10 @@ import '../../core/constants/route_names.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/theme/colors.dart';
+import '../../core/ui/error_surface.dart';
+import '../../core/api/api_client.dart';
+import '../../core/errors/failure.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class DriverCompleteProfileScreen extends StatefulWidget {
   const DriverCompleteProfileScreen({super.key});
@@ -29,6 +33,7 @@ class _DriverCompleteProfileScreenState
   File? _profileImage;
   File? _driverLicenseImage;
   File? _vehicleLicenseImage;
+  File? _carImage;
   String? _selectedVehicleType;
   bool _isLoading = false;
   bool _isLoadingUserData = true;
@@ -154,7 +159,7 @@ class _DriverCompleteProfileScreenState
               ),
               Semantics(
                 button: true,
-                label: 'اختيار صورة من المعرض',
+                label: context.l10n.pickImageFromGallery,
                 child: ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(8),
@@ -167,7 +172,7 @@ class _DriverCompleteProfileScreenState
                       color: T.secondary(context),
                     ),
                   ),
-                  title: const Text('من المعرض'),
+                  title: Text(context.l10n.fromGallery),
                   onTap: () {
                     Navigator.pop(context);
                     _pickImage(
@@ -179,7 +184,7 @@ class _DriverCompleteProfileScreenState
               ),
               Semantics(
                 button: true,
-                label: 'التقاط صورة من الكاميرا',
+                label: context.l10n.captureImageFromCamera,
                 child: ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(8),
@@ -189,7 +194,7 @@ class _DriverCompleteProfileScreenState
                     ),
                     child: Icon(Icons.camera_alt, color: T.secondary(context)),
                   ),
-                  title: const Text('من الكاميرا'),
+                  title: Text(context.l10n.fromCamera),
                   onTap: () {
                     Navigator.pop(context);
                     _pickImage(
@@ -212,40 +217,65 @@ class _DriverCompleteProfileScreenState
 
     // Validate images
     if (_profileImage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('يرجى رفع الصورة الشخصية'),
-          backgroundColor: AppColors.error,
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.validation,
+          messageKey: 'errorsValidationGeneric',
+          severity: FailureSeverity.warning,
+          developerDetail: 'Personal photo not uploaded',
         ),
       );
       return;
     }
 
     if (_driverLicenseImage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('يرجى رفع صورة رخصة القيادة'),
-          backgroundColor: AppColors.error,
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.validation,
+          messageKey: 'errorsValidationGeneric',
+          severity: FailureSeverity.warning,
+          developerDetail: 'Driver license photo not uploaded',
         ),
       );
       return;
     }
 
     if (_vehicleLicenseImage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('يرجى رفع صورة رخصة المركبة'),
-          backgroundColor: AppColors.error,
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.validation,
+          messageKey: 'errorsValidationGeneric',
+          severity: FailureSeverity.warning,
+          developerDetail: 'Vehicle license photo not uploaded',
+        ),
+      );
+      return;
+    }
+
+    if (_carImage == null) {
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.validation,
+          messageKey: 'errorsValidationGeneric',
+          severity: FailureSeverity.warning,
+          developerDetail: 'Car photo not uploaded',
         ),
       );
       return;
     }
 
     if (_selectedVehicleType == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('يرجى اختيار نوع المركبة'),
-          backgroundColor: AppColors.error,
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.validation,
+          messageKey: 'errorsValidationGeneric',
+          severity: FailureSeverity.warning,
+          developerDetail: 'Vehicle type not selected',
         ),
       );
       return;
@@ -260,7 +290,7 @@ class _DriverCompleteProfileScreenState
       // Check if user is authenticated
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       if (authProvider.userModel == null) {
-        throw Exception('المستخدم غير مسجل دخول');
+        throw Exception('User not signed in');
       }
 
       // Save driver profile with all information
@@ -275,18 +305,17 @@ class _DriverCompleteProfileScreenState
         seats: int.parse(_seatsController.text.trim()),
         driverLicenseImage: _driverLicenseImage!,
         vehicleLicenseImage: _vehicleLicenseImage!,
+        carImage: _carImage!,
         email: _email,
         gender: _gender, // Pass gender from step 1
       );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'تم رفع بياناتك بنجاح. طلبك قيد المراجعة من الإدارة؛ سيتم اعتمادك قريباً وستستطيع إنشاء رحلات بعد الاعتماد.',
-            ),
+          SnackBar(
+            content: Text(context.l10n.driverProfileSubmittedFull),
             backgroundColor: AppColors.success,
-            duration: Duration(seconds: 5),
+            duration: const Duration(seconds: 5),
           ),
         );
 
@@ -296,12 +325,7 @@ class _DriverCompleteProfileScreenState
     } catch (e) {
       print('❌ Error completing driver profile: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في إكمال الملف الشخصي: ${e.toString()}'),
-            backgroundColor: T.error(context),
-          ),
-        );
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     } finally {
       if (mounted) {
@@ -376,9 +400,9 @@ class _DriverCompleteProfileScreenState
                           ),
                         ),
                         const SizedBox(height: 20),
-                        const Text(
-                          'إكمال الملف الشخصي',
-                          style: TextStyle(
+                        Text(
+                          context.l10n.driverCompleteProfileTitle,
+                          style: const TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
                             color: AppColors.white,
@@ -395,9 +419,9 @@ class _DriverCompleteProfileScreenState
                             color: AppColors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: const Text(
-                            'الخطوة 2 من 2: المعلومات الإضافية',
-                            style: TextStyle(
+                          child: Text(
+                            context.l10n.driverProfileStep2,
+                            style: const TextStyle(
                               fontSize: 14,
                               color: AppColors.white,
                               fontWeight: FontWeight.w500,
@@ -487,10 +511,10 @@ class _DriverCompleteProfileScreenState
                                         ],
                                       ),
                                       child: Tooltip(
-                                        message: 'رفع الصورة الشخصية',
+                                        message: context.l10n.uploadProfilePhoto,
                                         child: Semantics(
                                           button: true,
-                                          label: 'رفع الصورة الشخصية',
+                                          label: context.l10n.uploadProfilePhoto,
                                           child: IconButton(
                                             icon: const Icon(
                                               Icons.camera_alt,
@@ -514,7 +538,7 @@ class _DriverCompleteProfileScreenState
                             const SizedBox(height: 12),
                             Center(
                               child: Text(
-                                'الصورة الشخصية *',
+                                context.l10n.profilePhotoRequired,
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: T.onSurfaceVariant(context),
@@ -526,7 +550,7 @@ class _DriverCompleteProfileScreenState
                             const SizedBox(height: 8),
                             // Vehicle Type
                             Semantics(
-                              label: 'نوع المركبة',
+                              label: context.l10n.vehicleType,
                               textField: true,
                               child: DropdownButtonFormField<String>(
                                 initialValue: _selectedVehicleType,
@@ -535,7 +559,7 @@ class _DriverCompleteProfileScreenState
                                   color: T.onSurface(context),
                                 ),
                                 decoration: InputDecoration(
-                                  labelText: 'نوع المركبة *',
+                                  labelText: context.l10n.vehicleTypeRequired,
                                   prefixIcon: Container(
                                     margin: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
@@ -583,7 +607,7 @@ class _DriverCompleteProfileScreenState
                                 },
                                 validator: (value) {
                                   if (value == null) {
-                                    return 'يرجى اختيار نوع المركبة';
+                                    return context.l10n.vehicleTypeValidation;
                                   }
                                   return null;
                                 },
@@ -592,13 +616,13 @@ class _DriverCompleteProfileScreenState
                             const SizedBox(height: 20),
                             // Plate Number
                             Semantics(
-                              label: 'رقم اللوحة',
+                              label: context.l10n.vehiclePlate,
                               textField: true,
                               child: TextFormField(
                                 controller: _plateNumberController,
                                 style: const TextStyle(fontSize: 16),
                                 decoration: InputDecoration(
-                                  labelText: 'رقم اللوحة *',
+                                  labelText: context.l10n.vehiclePlateRequiredLabel,
                                   prefixIcon: Container(
                                     margin: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
@@ -634,7 +658,7 @@ class _DriverCompleteProfileScreenState
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'يرجى إدخال رقم اللوحة';
+                                    return context.l10n.vehiclePlateRequired;
                                   }
                                   return null;
                                 },
@@ -643,13 +667,13 @@ class _DriverCompleteProfileScreenState
                             const SizedBox(height: 20),
                             // Model
                             Semantics(
-                              label: 'موديل السيارة',
+                              label: context.l10n.vehicleModel,
                               textField: true,
                               child: TextFormField(
                                 controller: _modelController,
                                 style: const TextStyle(fontSize: 16),
                                 decoration: InputDecoration(
-                                  labelText: 'موديل السيارة *',
+                                  labelText: context.l10n.vehicleModelRequiredLabel,
                                   prefixIcon: Container(
                                     margin: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
@@ -685,7 +709,7 @@ class _DriverCompleteProfileScreenState
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'يرجى إدخال موديل السيارة';
+                                    return context.l10n.vehicleModelRequired;
                                   }
                                   return null;
                                 },
@@ -694,14 +718,14 @@ class _DriverCompleteProfileScreenState
                             const SizedBox(height: 20),
                             // Seats
                             Semantics(
-                              label: 'عدد المقاعد',
+                              label: context.l10n.vehicleSeats,
                               textField: true,
                               child: TextFormField(
                                 controller: _seatsController,
                                 keyboardType: TextInputType.number,
                                 style: const TextStyle(fontSize: 16),
                                 decoration: InputDecoration(
-                                  labelText: 'عدد المقاعد *',
+                                  labelText: context.l10n.vehicleSeatsRequiredLabel,
                                   prefixIcon: Container(
                                     margin: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
@@ -737,11 +761,11 @@ class _DriverCompleteProfileScreenState
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'يرجى إدخال عدد المقاعد';
+                                    return context.l10n.vehicleSeatsRequired;
                                   }
                                   final seats = int.tryParse(value);
                                   if (seats == null || seats < 1) {
-                                    return 'عدد المقاعد يجب أن يكون رقم صحيح أكبر من 0';
+                                    return context.l10n.vehicleSeatsInvalid;
                                   }
                                   return null;
                                 },
@@ -750,7 +774,7 @@ class _DriverCompleteProfileScreenState
                             const SizedBox(height: 24),
                             // Driver License Image
                             _buildImagePicker(
-                              title: 'رخصة القيادة *',
+                              title: context.l10n.driverLicenseRequired,
                               image: _driverLicenseImage,
                               onImagePicked: (image) {
                                 setState(() => _driverLicenseImage = image);
@@ -759,10 +783,19 @@ class _DriverCompleteProfileScreenState
                             const SizedBox(height: 20),
                             // Vehicle License Image
                             _buildImagePicker(
-                              title: 'رخصة المركبة *',
+                              title: context.l10n.vehicleLicenseRequired,
                               image: _vehicleLicenseImage,
                               onImagePicked: (image) {
                                 setState(() => _vehicleLicenseImage = image);
+                              },
+                            ),
+                            const SizedBox(height: 20),
+                            // Car Photo (mandatory — shown on every trip)
+                            _buildImagePicker(
+                              title: context.l10n.carPhotoRequired,
+                              image: _carImage,
+                              onImagePicked: (image) {
+                                setState(() => _carImage = image);
                               },
                             ),
                             const SizedBox(height: 32),
@@ -788,7 +821,7 @@ class _DriverCompleteProfileScreenState
                               ),
                               child: Semantics(
                                 button: true,
-                                label: 'إنشاء الحساب',
+                                label: context.l10n.createNewAccount,
                                 child: ElevatedButton(
                                   onPressed: _isLoading
                                       ? null
@@ -812,9 +845,9 @@ class _DriverCompleteProfileScreenState
                                                 ),
                                           ),
                                         )
-                                      : const Text(
-                                          'إنشاء الحساب',
-                                          style: TextStyle(
+                                      : Text(
+                                          context.l10n.createNewAccount,
+                                          style: const TextStyle(
                                             fontSize: 18,
                                             fontWeight: FontWeight.bold,
                                             color: AppColors.white,
@@ -857,7 +890,7 @@ class _DriverCompleteProfileScreenState
         const SizedBox(height: 12),
         Semantics(
           button: true,
-          label: 'رفع $title',
+          label: context.l10n.uploadFileLabel(title),
           child: GestureDetector(
             onTap: () => _showImageSourceDialog(onImagePicked),
             child: Container(
@@ -934,7 +967,7 @@ class _DriverCompleteProfileScreenState
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'اضغط لرفع الصورة',
+                            context.l10n.tapToUpload,
                             style: TextStyle(
                               color: T.onSurfaceVariant(context),
                               fontSize: 14,

@@ -15,8 +15,10 @@ import { QUERY_KEYS, DASHBOARD_REFRESH_INTERVAL, BOOKING_STATUS_LABELS } from "@
 import { formatDate } from "@/lib/utils"
 import { formatSeatDisplay } from "@/lib/seat-format"
 import type { Booking, UserSummary, TripSummary } from "@/types/models"
-import { BookOpen, XCircle, AlertCircle } from "lucide-react"
+import { BookOpen, XCircle, AlertCircle, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
+import { useLanguage } from "@/providers/language-provider"
+import { SettlementDialog } from "./settlement-dialog"
 
 function isPopulatedUser(val: string | UserSummary): val is UserSummary {
     return typeof val === "object" && val !== null && "name" in val
@@ -26,9 +28,32 @@ function isPopulatedTrip(val: string | TripSummary): val is TripSummary {
     return typeof val === "object" && val !== null && "from" in val
 }
 
+function getBookingPassengerDisplay(booking: Booking): { name: string; email: string } | null {
+    if (isPopulatedUser(booking.userId)) {
+        return {
+            name: booking.userId.name,
+            email: booking.userId.email ?? "",
+        }
+    }
+    const u = booking.user
+    if (u?.name?.trim()) {
+        return { name: u.name.trim(), email: u.email ?? "" }
+    }
+    return null
+}
+
 export default function BookingsListPage() {
     const [searchParams, setSearchParams] = useSearchParams()
     const queryClient = useQueryClient()
+    const { t } = useLanguage()
+    const bookingStatusLabels: Record<string, string> = {
+        pending: t("pending"),
+        confirmed: t("confirmed"),
+        cancelled: t("cancelled"),
+        completed: t("completed"),
+        rejected: t("rejected"),
+        no_show: t("no_show"),
+    }
     const page = parseInt(searchParams.get("page") || "1", 10)
     const status = searchParams.get("status") || undefined
     const limit = 20
@@ -39,6 +64,14 @@ export default function BookingsListPage() {
     }>({
         open: false,
         booking: null,
+    })
+
+    const [settlementDialog, setSettlementDialog] = useState<{
+        open: boolean
+        bookingId: string | null
+    }>({
+        open: false,
+        bookingId: null,
     })
 
     const { data, isLoading, error } = useQuery({
@@ -52,11 +85,11 @@ export default function BookingsListPage() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.BOOKINGS] })
             queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.DASHBOARD_STATS] })
-            toast.success("Booking cancelled successfully")
+            toast.success(t("bookingCancelledSuccess"))
             setConfirmDialog({ open: false, booking: null })
         },
         onError: () => {
-            toast.error("Failed to cancel booking")
+            toast.error(t("bookingCancelFailed"))
         },
     })
 
@@ -80,53 +113,102 @@ export default function BookingsListPage() {
     const columns: Column<Booking>[] = [
         {
             key: "user",
-            header: "Passenger",
-            cell: (booking) => (
+            header: t("passenger"),
+            cell: (booking) => {
+                const passenger = getBookingPassengerDisplay(booking)
+                return (
                 <div className="flex items-center gap-3 py-1">
-                    {isPopulatedUser(booking.userId) ? (
+                    {passenger ? (
                         <>
                             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm shadow-sm border border-primary/20 flex-shrink-0">
-                                {booking.userId.name.charAt(0).toUpperCase()}
+                                {passenger.name.charAt(0).toUpperCase()}
                             </div>
                             <div>
-                                <div className="font-semibold text-foreground">{booking.userId.name}</div>
-                                <div className="text-xs font-medium text-muted-foreground">{booking.userId.email}</div>
+                                <div className="font-semibold text-foreground">{passenger.name}</div>
+                                <div className="text-xs font-medium text-muted-foreground">{passenger.email}</div>
                             </div>
                         </>
                     ) : (
-                        <span className="text-muted-foreground font-mono text-xs">ID: {booking.userId}</span>
+                        <span className="text-muted-foreground font-mono text-xs">ID: {isPopulatedUser(booking.userId) ? booking.userId.name : booking.userId}</span>
                     )}
                 </div>
-            ),
+                )
+            },
         },
         {
             key: "trip",
-            header: "Trip",
-            cell: (booking) => (
+            header: t("trip"),
+            cell: (booking) => {
+                const fromName = isPopulatedTrip(booking.tripId)
+                    ? (typeof booking.tripId.from === "object" && booking.tripId.from && "name" in booking.tripId.from ? booking.tripId.from.name : String(booking.tripId.from ?? ""))
+                    : ""
+                const toName = isPopulatedTrip(booking.tripId)
+                    ? (typeof booking.tripId.to === "object" && booking.tripId.to && "name" in booking.tripId.to ? booking.tripId.to.name : String(booking.tripId.to ?? ""))
+                    : ""
+                return (
                 <div className="flex flex-col gap-0.5">
                     {isPopulatedTrip(booking.tripId) ? (
                         <>
-                            <div className="font-semibold text-foreground text-sm">{booking.tripId.from?.name} → {booking.tripId.to?.name}</div>
+                            <div className="font-semibold text-foreground text-sm">{fromName} → {toName}</div>
                             <div className="text-xs font-medium text-muted-foreground">{formatDate(booking.tripId.departureTime)}</div>
                         </>
                     ) : (
                         <span className="text-muted-foreground font-mono text-xs">ID: {booking.tripId}</span>
                     )}
                 </div>
-            ),
+                )
+            },
         },
         {
             key: "seat",
-            header: "Seat",
+            header: t("seatsColumn"),
             cell: (booking) => {
                 const layout = isPopulatedTrip(booking.tripId)
                     ? booking.tripId.seatLayout
                     : undefined
-                const label = formatSeatDisplay(booking.seatNumber, layout)
+
+                // v2 multi-seat: render each seat as a badge
+                if (booking.seats && booking.seats.length > 0) {
+                    return (
+                        <div className="flex flex-wrap gap-1">
+                            {booking.seats.map((s) => {
+                                const label = formatSeatDisplay(s.seatNumber, layout)
+                                const isAbsent = !!s.markedAbsentAt
+                                return (
+                                    <div
+                                        key={s.id}
+                                        className={[
+                                            "flex items-center gap-1 font-mono text-xs px-2 py-0.5 rounded border",
+                                            isAbsent
+                                                ? "bg-destructive/10 border-destructive/40 text-destructive line-through"
+                                                : "bg-muted/60 border-border/40 text-foreground",
+                                        ].join(" ")}
+                                        title={`${s.displayName} (${s.gender})${isAbsent ? " — absent" : ""}${s.isMainBooker ? " ★" : ""}`}
+                                    >
+                                        #{label}
+                                        <span
+                                            className={[
+                                                "text-[10px] px-1 rounded",
+                                                s.gender === "female"
+                                                    ? "bg-pink-100 text-pink-700"
+                                                    : "bg-blue-100 text-blue-700",
+                                            ].join(" ")}
+                                        >
+                                            {s.gender === "female" ? "F" : "M"}
+                                        </span>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )
+                }
+
+                // v1 legacy: single seat
+                const label = formatSeatDisplay(booking.seatNumber ?? "", layout)
                 return (
                     <div
                         className="font-mono font-bold tracking-wider text-sm bg-muted/60 px-2.5 py-1 rounded w-fit border border-border/40 text-foreground"
-                        title={layout ? `Server seat id: ${booking.seatNumber}` : booking.seatNumber}
+                        title={layout ? `Server seat id: ${booking.seatNumber}` : (booking.seatNumber ?? "")}
                     >
                         #{label}
                     </div>
@@ -135,10 +217,17 @@ export default function BookingsListPage() {
         },
         {
             key: "status",
-            header: "Status",
+            header: t("status"),
             cell: (booking) => (
                 <StatusBadge
-                    status={booking.status === "pending" ? "pending_booking" : booking.status === "confirmed" ? "confirmed" : booking.status === "cancelled" ? "cancelled_booking" : "completed_booking"}
+                    status={
+                        booking.status === "pending" ? "pending_booking"
+                        : booking.status === "confirmed" ? "confirmed"
+                        : booking.status === "cancelled" ? "cancelled_booking"
+                        : booking.status === "rejected" ? "rejected"
+                        : booking.status === "no_show" ? "no_show"
+                        : "completed_booking"
+                    }
                     type="booking"
                     className="shadow-sm"
                 />
@@ -146,15 +235,15 @@ export default function BookingsListPage() {
         },
         {
             key: "created",
-            header: "Created",
+            header: t("createdAt"),
             cell: (booking) => <div className="text-sm font-medium text-muted-foreground whitespace-nowrap">{formatDate(booking.createdAt)}</div>,
         },
         {
             key: "actions",
-            header: "Actions",
-            className: "w-[120px]",
+            header: t("actions"),
+            className: "w-[180px]",
             cell: (booking) => (
-                <div onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     {(booking.status === "pending" || booking.status === "confirmed") && (
                         <Button
                             size="sm"
@@ -164,7 +253,20 @@ export default function BookingsListPage() {
                             disabled={cancelMutation.isPending}
                         >
                             <XCircle className="mr-1.5 h-3.5 w-3.5" />
-                            Cancel
+                            {t("cancel")}
+                        </Button>
+                    )}
+                    {booking.settledAt && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="font-semibold text-xs shadow-sm border-primary/40 text-primary hover:bg-primary/10"
+                            onClick={() =>
+                                setSettlementDialog({ open: true, bookingId: booking._id })
+                            }
+                        >
+                            <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+                            {t("settlement")}
                         </Button>
                     )}
                 </div>
@@ -175,10 +277,10 @@ export default function BookingsListPage() {
     if (error) {
         return (
             <div className="space-y-4 animate-in fade-in duration-500">
-                <h1 className="text-4xl font-extrabold tracking-tight">Bookings</h1>
+                <h1 className="text-4xl font-extrabold tracking-tight">{t("bookingsTitle")}</h1>
                 <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-6 text-destructive flex items-center shadow-sm">
                     <AlertCircle className="w-6 h-6 mr-3" />
-                    <span className="font-semibold text-lg">Failed to load bookings. Please try again.</span>
+                    <span className="font-semibold text-lg">{t("failedToLoadBookings")}</span>
                 </div>
             </div>
         )
@@ -192,9 +294,9 @@ export default function BookingsListPage() {
                         <BookOpen className="w-8 h-8 text-primary" />
                     </div>
                     <div>
-                        <h1 className="text-4xl font-extrabold tracking-tight text-foreground/90 leading-tight">Bookings</h1>
+                        <h1 className="text-4xl font-extrabold tracking-tight text-foreground/90 leading-tight">{t("bookingsTitle")}</h1>
                         <p className="text-muted-foreground mt-1 text-lg font-medium">
-                            Manage and monitor all ride bookings across the platform.
+                            {t("bookingsSubtitle")}
                         </p>
                     </div>
                 </div>
@@ -205,22 +307,22 @@ export default function BookingsListPage() {
                     <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
                         <h2 className="text-xl font-bold flex items-center">
                             <BookOpen className="w-5 h-5 mr-3 text-primary" />
-                            All Bookings
+                            {t("allBookings")}
                         </h2>
                         <div className="flex items-center gap-3">
                             <Select value={status || "all"} onValueChange={handleStatusFilter}>
                                 <SelectTrigger className="w-[160px]">
-                                    <SelectValue placeholder="Filter by status" />
+                                    <SelectValue placeholder={t("filterByStatus")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Statuses</SelectItem>
+                                    <SelectItem value="all">{t("allStatuses")}</SelectItem>
                                     {Object.entries(BOOKING_STATUS_LABELS).map(([key, label]) => (
-                                        <SelectItem key={key} value={key}>{label}</SelectItem>
+                                        <SelectItem key={key} value={key}>{bookingStatusLabels[key] ?? label}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                             <div className="text-sm font-semibold bg-background/80 px-3 py-1.5 rounded-full border border-border/50 shadow-sm">
-                                <span className="text-muted-foreground">Total:</span> <span className="text-foreground ml-1">{data?.meta?.total || 0}</span>
+                                <span className="text-muted-foreground">{t("total")}:</span> <span className="text-foreground ml-1">{data?.meta?.total || 0}</span>
                             </div>
                         </div>
                     </div>
@@ -237,7 +339,7 @@ export default function BookingsListPage() {
                             onPageChange={handlePageChange}
                             pageSize={limit}
                             loading={isLoading}
-                            emptyMessage="No bookings found."
+                            emptyMessage={t("noBookingsFound")}
                         />
                     </div>
                 </CardContent>
@@ -246,8 +348,8 @@ export default function BookingsListPage() {
             <ConfirmDialog
                 open={confirmDialog.open}
                 onOpenChange={(open) => setConfirmDialog((prev) => ({ ...prev, open }))}
-                title="Cancel Booking"
-                description="Are you sure you want to cancel this booking? The passenger will be notified."
+                title={t("cancelBookingTitle")}
+                description={t("cancelBookingDesc")}
                 variant="destructive"
                 onConfirm={() => {
                     if (confirmDialog.booking) {
@@ -256,6 +358,16 @@ export default function BookingsListPage() {
                 }}
                 loading={cancelMutation.isPending}
             />
+
+            {settlementDialog.bookingId && (
+                <SettlementDialog
+                    bookingId={settlementDialog.bookingId}
+                    open={settlementDialog.open}
+                    onOpenChange={(open) =>
+                        setSettlementDialog((prev) => ({ ...prev, open }))
+                    }
+                />
+            )}
         </div>
     )
 }

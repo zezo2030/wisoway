@@ -1,14 +1,20 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../constants/route_names.dart';
 
 /// Service to handle navigation when user taps on notifications
 class NotificationNavigationService {
-  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
 
   /// Handle navigation based on notification data
   static void handleNotificationNavigation(RemoteMessage message) {
-    final data = message.data;
+    handleNotificationData(Map<String, dynamic>.from(message.data));
+  }
+
+  static void handleNotificationData(Map<String, dynamic> data) {
     final type = data['type'] as String?;
 
     if (type == null) {
@@ -31,11 +37,20 @@ class NotificationNavigationService {
 
       case 'trip_reminder':
       case 'driver_arrived':
+      case 'trip_cancelled':
         _handleTripNotification(data);
+        break;
+
+      case 'trip_started':
+        _handleTripStartedNotification(data);
         break;
 
       case 'communication_activated':
         _handleCommunicationNotification(data);
+        break;
+
+      case 'chat_message':
+        _handleChatMessageNotification(data);
         break;
 
       default:
@@ -51,10 +66,7 @@ class NotificationNavigationService {
     if (tripId != null) {
       // Navigate to trip details or trip management based on user role
       // For now, navigate to trip details
-      _navigateToRoute(
-        RouteNames.tripDetails,
-        arguments: tripId,
-      );
+      _navigateToRoute(RouteNames.tripDetails, arguments: tripId);
     } else {
       _navigateToRoute(RouteNames.notifications);
     }
@@ -78,9 +90,21 @@ class NotificationNavigationService {
 
     if (tripId != null) {
       // Navigate to trip details
+      _navigateToRoute(RouteNames.tripDetails, arguments: tripId);
+    } else {
+      _navigateToRoute(RouteNames.notifications);
+    }
+  }
+
+  /// Handle trip-started notification — opens trip details and prompts the user
+  /// to share live trip tracking with someone.
+  static void _handleTripStartedNotification(Map<String, dynamic> data) {
+    final tripId = data['tripId'] as String?;
+
+    if (tripId != null) {
       _navigateToRoute(
         RouteNames.tripDetails,
-        arguments: tripId,
+        arguments: {'tripId': tripId, 'showTrackingShare': true},
       );
     } else {
       _navigateToRoute(RouteNames.notifications);
@@ -93,12 +117,49 @@ class NotificationNavigationService {
 
     if (tripId != null) {
       // Navigate to trip details or chat (when implemented)
-      _navigateToRoute(
-        RouteNames.tripDetails,
-        arguments: tripId,
-      );
+      _navigateToRoute(RouteNames.tripDetails, arguments: tripId);
     } else {
       _navigateToRoute(RouteNames.notifications);
+    }
+  }
+
+  /// Handle incoming chat message notification — opens the correct chat screen
+  /// based on the sender's role (driver → passenger chat; passenger → driver chat).
+  static void _handleChatMessageNotification(Map<String, dynamic> data) {
+    final tripId = data['tripId'] as String?;
+    final senderId = data['senderId'] as String?;
+    final senderName = data['senderName'] as String?;
+    final chatRoomId = data['chatRoomId'] as String?;
+    // senderRole: 'driver' | 'passenger' (set by backend)
+    final senderRole = data['senderRole'] as String?;
+
+    if (tripId == null) {
+      _navigateToRoute(RouteNames.notifications);
+      return;
+    }
+
+    if (senderRole == 'driver') {
+      // Recipient is a passenger → open passenger chat screen
+      _navigateToRoute(
+        RouteNames.chat,
+        arguments: {
+          'tripId': tripId,
+          'chatRoomId': chatRoomId,
+          'driverId': senderId ?? '',
+          'driverName': senderName ?? 'السائق',
+        },
+      );
+    } else {
+      // Recipient is a driver → open driver chat screen
+      _navigateToRoute(
+        RouteNames.driverChat,
+        arguments: {
+          'tripId': tripId,
+          'chatRoomId': chatRoomId,
+          'passengerId': senderId,
+          'passengerName': senderName ?? 'الراكب',
+        },
+      );
     }
   }
 
@@ -111,10 +172,7 @@ class NotificationNavigationService {
     }
 
     // Use pushNamed for navigation
-    navigator.pushNamed(
-      routeName,
-      arguments: arguments,
-    ).catchError((error) {
+    navigator.pushNamed(routeName, arguments: arguments).catchError((error) {
       debugPrint('Navigation error: $error');
       // Fallback: navigate to notifications screen
       navigator.pushNamed(RouteNames.notifications);
@@ -130,8 +188,16 @@ class NotificationNavigationService {
     }
 
     try {
-      // Parse payload if it's JSON
-      // For now, just navigate to notifications screen
+      final decoded = jsonDecode(payload);
+      if (decoded is Map<String, dynamic>) {
+        handleNotificationData(decoded);
+        return;
+      }
+      if (decoded is Map) {
+        handleNotificationData(Map<String, dynamic>.from(decoded));
+        return;
+      }
+
       _navigateToRoute(RouteNames.notifications);
     } catch (e) {
       debugPrint('Error parsing notification payload: $e');
@@ -139,4 +205,3 @@ class NotificationNavigationService {
     }
   }
 }
-

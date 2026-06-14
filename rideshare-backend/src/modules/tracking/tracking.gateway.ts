@@ -7,7 +7,7 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
-import { UseGuards } from '@nestjs/common';
+import { UseGuards, UseInterceptors } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { WsAuthGuard } from '../../common/guards/ws-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -15,6 +15,7 @@ import { TrackingService } from './tracking.service';
 import { SubscribeTripTrackingDto } from './dto/subscribe-trip-tracking.dto';
 import { UpdateDriverLocationDto } from './dto/update-driver-location.dto';
 import { WsRateLimitGuard } from '../../common/guards/ws-rate-limit.guard';
+import { LocationGuardInterceptor } from '../../common/interceptors/location-guard.interceptor';
 
 @WebSocketGateway({
   cors: { origin: '*' },
@@ -70,7 +71,12 @@ export class TrackingGateway
     };
   }
 
+  /**
+   * T032 — LocationGuardInterceptor is applied here.
+   * Payloads with isMockLocation=true are rejected before this handler runs.
+   */
   @SubscribeMessage('driver:location:update')
+  @UseInterceptors(LocationGuardInterceptor)
   async updateLocation(
     @MessageBody() dto: UpdateDriverLocationDto,
     @CurrentUser('id') driverId: string,

@@ -1,8 +1,8 @@
 // API Types: Rideshare Admin Dashboard
 // Source: api-contracts.md
 
-import type { PaginatedResult, User, Trip, Payment, Vehicle, Notification, DashboardStats, ReportResponse, UserStats, AuthUser, Booking, Rating, ChatRoom, ChatMessage } from './models';
-import type { UserRole, PaymentStatus, PaymentMethod, PaymentType, TripStatus, BookingStatus } from './enums';
+import type { PaginatedResult, User, Trip, Payment, Vehicle, Notification, DashboardStats, ReportResponse, UserStats, AuthUser, Booking, Rating, ChatRoom, ChatMessage, WalletAccount, WalletTransaction } from './models';
+import type { UserRole, PaymentStatus, PaymentMethod, PaymentType, TripStatus, BookingStatus, WalletAccountType } from './enums';
 
 // Generic API Response Wrapper
 
@@ -50,6 +50,8 @@ export interface GetUsersParams extends PaginationParams {
   role?: UserRole;
   search?: string;
   isActive?: boolean;
+  registeredWithinDays?: number;
+  isConfirmed?: boolean;
 }
 
 export interface ChangeUserRoleRequest {
@@ -103,6 +105,7 @@ export interface GetBookingsParams extends PaginationParams {
   status?: BookingStatus;
   userId?: string;
   tripId?: string;
+  driverId?: string;
 }
 
 // Rating API Types
@@ -115,7 +118,9 @@ export interface GetRatingsParams extends PaginationParams {
 
 // Chat API Types
 
-export interface GetChatRoomsParams extends PaginationParams { }
+export interface GetChatRoomsParams extends PaginationParams {
+  tripId?: string;
+}
 
 export interface GetChatMessagesParams extends PaginationParams { }
 
@@ -173,3 +178,23 @@ export type BroadcastResponse = ApiResponse<{ sent: number }>;
 export type LoginApiResponse = ApiResponse<LoginResponseData>;
 export type RefreshApiResponse = ApiResponse<RefreshResponseData>;
 export type LogoutApiResponse = ApiResponse<LogoutResponse>;
+
+// Wallet API Types
+
+export interface GetWalletsParams extends PaginationParams {
+  accountType?: WalletAccountType;
+  search?: string;
+  minBalance?: number;
+  maxBalance?: number;
+  isActive?: boolean;
+}
+
+export interface AdjustWalletBalanceRequest {
+  amount: number;
+  currency?: string;
+  note?: string;
+}
+
+export type WalletsResponse = ApiResponse<PaginatedResult<WalletAccount>>;
+export type WalletResponse = ApiResponse<WalletAccount>;
+export type WalletTransactionsResponse = ApiResponse<PaginatedResult<WalletTransaction>>;

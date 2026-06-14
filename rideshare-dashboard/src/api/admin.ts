@@ -16,6 +16,13 @@ import type {
   Notification,
   ChatRoom,
   ChatMessage,
+  AccountFlag,
+  PendingCharge,
+  SettlementAudit,
+  Complaint,
+  ComplaintStatus,
+  RefundRequest,
+  RefundRequestStatus,
 } from "@/types/models"
 import type {
   ApiResponse,
@@ -331,12 +338,114 @@ export async function getChatRooms(params: GetChatRoomsParams): Promise<Paginate
   return response.data.data
 }
 
+function getObjectId(value: unknown): string | null {
+  if (typeof value === "string" && value.length > 0) return value
+  if (!value || typeof value !== "object") return null
+
+  const obj = value as Record<string, unknown>
+  if (typeof obj.id === "string" && obj.id.length > 0) return obj.id
+  if (typeof obj._id === "string" && obj._id.length > 0) return obj._id
+  return null
+}
+
+function getRoomTripId(room: unknown): string | null {
+  if (!room || typeof room !== "object") return null
+  const obj = room as Record<string, unknown>
+
+  const directTripId = getObjectId(obj.tripId)
+  if (directTripId) return directTripId
+
+  const relationTripId = getObjectId(obj.trip)
+  if (relationTripId) return relationTripId
+
+  return null
+}
+
 /**
- * Get messages for a chat room
+ * Get chat room for a specific trip.
+ * Admin endpoint does not support tripId filtering, so scan paginated rooms and match client-side.
+ */
+export async function getChatRoomByTripId(tripId: string): Promise<ChatRoom | null> {
+  const normalizedTripId = tripId.trim()
+  if (!normalizedTripId) return null
+
+  const limit = 100
+  const maxPages = 25
+  let page = 1
+  let totalPages = 1
+
+  while (page <= totalPages && page <= maxPages) {
+    const roomsPage = await getChatRooms({ page, limit })
+    const rooms = roomsPage.data ?? []
+
+    const matched = rooms.find((room) => getRoomTripId(room) === normalizedTripId)
+    if (matched) {
+      return matched
+    }
+
+    totalPages = Math.max(roomsPage.meta?.totalPages ?? 1, 1)
+    page += 1
+  }
+
+  return null
+}
+
+/**
+ * Get messages for a chat room (legacy Mongo endpoint)
  */
 export async function getChatMessages(roomId: string, params: GetChatMessagesParams): Promise<PaginatedResult<ChatMessage>> {
   const response = await apiClient.get<ApiResponse<PaginatedResult<ChatMessage>>>(`/admin/chat/rooms/${roomId}/messages`, {
     params,
+  })
+  return response.data.data
+}
+
+/**
+ * Get all chat rooms for a specific trip (PG admin endpoint with tripId filter)
+ */
+export async function getChatRoomsForTrip(tripId: string): Promise<PaginatedResult<ChatRoom>> {
+  const response = await apiClient.get<ApiResponse<PaginatedResult<ChatRoom>>>("/admin/chat/rooms", {
+    params: { tripId, limit: 50, page: 1 },
+  })
+  return response.data.data
+}
+
+/**
+ * Get messages for a chat room via PG admin endpoint
+ */
+export async function getDashboardChatMessages(roomId: string, params: GetChatMessagesParams): Promise<PaginatedResult<ChatMessage>> {
+  const response = await apiClient.get<ApiResponse<PaginatedResult<ChatMessage>>>(`/admin/chat/rooms/${roomId}/messages`, {
+    params,
+  })
+  return response.data.data
+}
+
+export interface TripTrackingPoint {
+  id: string
+  tripId: string
+  driverId: string
+  latitude: number
+  longitude: number
+  speedKph: number | null
+  heading: number | null
+  accuracyMeters: number | null
+  recordedAt: string
+}
+
+/**
+ * Get latest live location for a trip
+ */
+export async function getTripTrackingLatest(tripId: string): Promise<TripTrackingPoint | null> {
+  const response = await apiClient.get<ApiResponse<TripTrackingPoint | null>>(`/tracking/${tripId}/latest`)
+  return response.data.data
+}
+
+/**
+ * Get location history for a trip
+ */
+export async function getTripTrackingHistory(tripId: string, limit = 200): Promise<TripTrackingPoint[]> {
+  const response = await apiClient.get<ApiResponse<TripTrackingPoint[]>>(`/tracking/${tripId}/history`, {
+    params: { limit },
   })
   return response.data.data
 }
@@ -373,5 +482,319 @@ export async function patchPlatformPricingSettings(
   const response = await apiClient.patch<ApiResponse<PlatformPricingSettings>>("/admin/pricing-settings", body, {
     params: { countryCode },
   })
+  return response.data.data
+}
+
+// ─── Account Flags (Phase 3) ─────────────────────────────────────────────────
+
+export interface GetAccountFlagsParams {
+  page?: number
+  limit?: number
+  disposition?: 'open' | 'resolved' | 'dismissed'
+  severity?: string
+  userId?: string
+}
+
+export async function getAccountFlags(
+  params: GetAccountFlagsParams = {},
+): Promise<PaginatedResult<AccountFlag>> {
+  const response = await apiClient.get<ApiResponse<PaginatedResult<AccountFlag>>>(
+    "/admin/account-flags",
+    { params },
+  )
+  return response.data.data
+}
+
+export async function resolveAccountFlag(flagId: string): Promise<AccountFlag> {
+  const response = await apiClient.patch<ApiResponse<AccountFlag>>(
+    `/admin/account-flags/${flagId}/resolve`,
+  )
+  return response.data.data
+}
+
+export async function dismissAccountFlag(flagId: string): Promise<AccountFlag> {
+  const response = await apiClient.patch<ApiResponse<AccountFlag>>(
+    `/admin/account-flags/${flagId}/dismiss`,
+  )
+  return response.data.data
+}
+
+// ─── Pending Charges (Phase 4) ────────────────────────────────────────────────
+
+export interface GetPendingChargesParams {
+  page?: number
+  limit?: number
+  status?: 'pending' | 'collected' | 'waived' | 'failed'
+  userId?: string
+}
+
+export async function getPendingCharges(
+  params: GetPendingChargesParams = {},
+): Promise<PaginatedResult<PendingCharge>> {
+  const response = await apiClient.get<ApiResponse<PaginatedResult<PendingCharge>>>(
+    "/admin/pending-charges",
+    { params },
+  )
+  return response.data.data
+}
+
+export async function waivePendingCharge(chargeId: string): Promise<PendingCharge> {
+  const response = await apiClient.patch<ApiResponse<PendingCharge>>(
+    `/admin/pending-charges/${chargeId}/waive`,
+  )
+  return response.data.data
+}
+
+// ─── Fines (driver penalties) ────────────────────────────────────────────────
+
+export interface Fine {
+  id: string
+  userId: string
+  kind: string
+  amount: string
+  status: "pending" | "applied" | "waived"
+  reason: string | null
+  tripId: string | null
+  bookingId: string | null
+  createdByAdminId: string | null
+  waivedByAdminId: string | null
+  waivedAt: string | null
+  createdAt: string
+  driver: { id: string; name: string | null; phone: string | null }
+}
+
+export interface GetFinesParams {
+  status?: "pending" | "applied" | "waived"
+  driverId?: string
+  from?: string
+  to?: string
+  page?: number
+  limit?: number
+}
+
+export interface CreateFinePayload {
+  driverId: string
+  amount: number
+  reason: string
+  tripId?: string
+  bookingId?: string
+}
+
+export async function getFines(
+  params: GetFinesParams = {},
+): Promise<PaginatedResult<Fine>> {
+  const response = await apiClient.get<ApiResponse<PaginatedResult<Fine>>>(
+    "/admin/fines",
+    { params },
+  )
+  return response.data.data
+}
+
+export async function createFine(payload: CreateFinePayload): Promise<Fine> {
+  const response = await apiClient.post<ApiResponse<Fine>>(
+    "/admin/fines",
+    payload,
+  )
+  return response.data.data
+}
+
+export async function waiveFine(fineId: string): Promise<Fine> {
+  const response = await apiClient.patch<ApiResponse<Fine>>(
+    `/admin/fines/${fineId}/waive`,
+  )
+  return response.data.data
+}
+
+// ─── No-Show Reports ─────────────────────────────────────────────────────────
+
+export interface NoShowReport {
+  tripId: string
+  driverId: string
+  driverName: string | null
+  driverPhone: string | null
+  fromName: string
+  toName: string
+  departureTime: string
+  tripStatus: string
+  confirmedPassengers: number
+  reportedAbsenceCount: number
+  confirmedPresenceCount: number
+  majorityReached: boolean
+  earliestReportAt: string | null
+  latestReportAt: string | null
+  reporterBookingIds: string[]
+  fineIssued: boolean
+  fineId: string | null
+}
+
+export interface GetNoShowReportsParams {
+  page?: number
+  limit?: number
+  majorityOnly?: boolean
+  unfinedOnly?: boolean
+}
+
+export interface NoShowReportDetail {
+  summary: NoShowReport
+  bookings: Array<{
+    bookingId: string
+    passengerId: string
+    passengerName: string | null
+    passengerPhone: string | null
+    status: string
+    reportedAbsentAt: string | null
+    confirmedPresenceAt: string | null
+  }>
+}
+
+export async function getNoShowReports(
+  params: GetNoShowReportsParams = {},
+): Promise<PaginatedResult<NoShowReport>> {
+  const response = await apiClient.get<
+    ApiResponse<PaginatedResult<NoShowReport>>
+  >("/admin/no-show-reports", {
+    params: {
+      page: params.page,
+      limit: params.limit,
+      majorityOnly: params.majorityOnly ? "true" : undefined,
+      unfinedOnly: params.unfinedOnly ? "true" : undefined,
+    },
+  })
+  return response.data.data
+}
+
+export async function getNoShowReportDetail(
+  tripId: string,
+): Promise<NoShowReportDetail> {
+  const response = await apiClient.get<ApiResponse<NoShowReportDetail>>(
+    `/admin/no-show-reports/${tripId}`,
+  )
+  return response.data.data
+}
+
+// ─── Settlement (Phase 7) ─────────────────────────────────────────────────────
+
+/**
+ * Admin revert of a booking settlement.
+ * POST /admin/bookings/:bookingId/admin-revert-settlement
+ */
+export async function adminRevertSettlement(
+  bookingId: string,
+  reason?: string,
+): Promise<Booking> {
+  const response = await apiClient.post<ApiResponse<Booking>>(
+    `/admin/bookings/${bookingId}/admin-revert-settlement`,
+    { reason },
+  )
+  return response.data.data
+}
+
+/**
+ * Get settlement audit trail for a booking.
+ * GET /admin/bookings/:bookingId/settlement-audits
+ */
+export async function getSettlementAudits(bookingId: string): Promise<SettlementAudit[]> {
+  const response = await apiClient.get<ApiResponse<SettlementAudit[]>>(
+    `/admin/bookings/${bookingId}/settlement-audits`,
+  )
+  return response.data.data
+}
+
+// ─── Ban (Phase 8) ────────────────────────────────────────────────────────────
+
+export async function banUser(userId: string, banReason?: string): Promise<User> {
+  const response = await apiClient.post<ApiResponse<User>>(
+    `/admin/users/${userId}/ban`,
+    { banReason },
+  )
+  return response.data.data
+}
+
+export async function unbanUser(userId: string): Promise<User> {
+  const response = await apiClient.post<ApiResponse<User>>(
+    `/admin/users/${userId}/unban`,
+    {},
+  )
+  return response.data.data
+}
+
+// ─── User Devices (Phase 8) ───────────────────────────────────────────────────
+
+export interface UserDevice {
+  id: string
+  userId: string
+  deviceId: string
+  platform: string
+  deviceName?: string
+  status: 'active' | 'revoked'
+  revokedAt?: string
+  revokeReason?: string
+  lastSeenAt?: string
+  createdAt: string
+}
+
+export async function getUserDevices(userId: string): Promise<UserDevice[]> {
+  const response = await apiClient.get<ApiResponse<UserDevice[]>>(
+    `/admin/users/${userId}/devices`,
+  )
+  return response.data.data
+}
+
+// ─── Complaints (Phase 8) ─────────────────────────────────────────────────────
+
+export interface GetComplaintsParams {
+  page?: number
+  limit?: number
+  status?: ComplaintStatus
+  cursor?: string
+}
+
+export async function getComplaints(
+  params: GetComplaintsParams = {},
+): Promise<PaginatedResult<Complaint>> {
+  const response = await apiClient.get<ApiResponse<PaginatedResult<Complaint>>>(
+    "/admin/complaints",
+    { params },
+  )
+  return response.data.data
+}
+
+export async function updateComplaint(
+  id: string,
+  payload: { status: ComplaintStatus; adminNotes?: string },
+): Promise<Complaint> {
+  const response = await apiClient.patch<ApiResponse<Complaint>>(
+    `/admin/complaints/${id}`,
+    payload,
+  )
+  return response.data.data
+}
+
+// ─── Refund Requests (Phase 8) ────────────────────────────────────────────────
+
+export interface GetRefundRequestsParams {
+  page?: number
+  limit?: number
+  status?: RefundRequestStatus
+}
+
+export async function getRefundRequests(
+  params: GetRefundRequestsParams = {},
+): Promise<PaginatedResult<RefundRequest>> {
+  const response = await apiClient.get<ApiResponse<PaginatedResult<RefundRequest>>>(
+    "/admin/refund-requests",
+    { params },
+  )
+  return response.data.data
+}
+
+export async function updateRefundRequest(
+  id: string,
+  payload: { status: RefundRequestStatus; adminNotes?: string },
+): Promise<RefundRequest> {
+  const response = await apiClient.patch<ApiResponse<RefundRequest>>(
+    `/admin/refund-requests/${id}`,
+    payload,
+  )
   return response.data.data
 }

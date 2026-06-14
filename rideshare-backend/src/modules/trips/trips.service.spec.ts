@@ -117,8 +117,6 @@ describe('TripsService', () => {
         departureTime: mockTrip.departureTime.toISOString(),
         price: mockTrip.price,
         currency: 'EGP',
-        totalSeats: 4,
-        seatLayout: mockTrip.seatLayout,
         carImageUrl: null,
       };
 
@@ -144,8 +142,6 @@ describe('TripsService', () => {
         departureTime: new Date(Date.now() - 1000).toISOString(),
         price: mockTrip.price,
         currency: 'EGP',
-        totalSeats: 4,
-        seatLayout: mockTrip.seatLayout,
         carImageUrl: null,
       };
 

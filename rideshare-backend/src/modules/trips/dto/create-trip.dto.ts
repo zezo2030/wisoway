@@ -4,7 +4,6 @@ import {
   IsInt,
   IsOptional,
   IsUrl,
-  IsBoolean,
   IsIn,
   IsDateString,
   MaxLength,
@@ -13,6 +12,8 @@ import {
   ValidateNested,
   IsArray,
   ArrayMaxSize,
+  IsEnum,
+  ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -39,31 +40,53 @@ export class LocationDto {
   address?: string;
 }
 
-export class SeatLayoutDto {
+export class StopDto {
+  @IsString()
+  @MaxLength(160)
+  name: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  address?: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  lat: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  lng: number;
+
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(10)
-  rows: number;
-
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(10)
-  seatsPerRow: number;
+  @Max(5)
+  order: number;
 
   @IsOptional()
-  @IsBoolean()
-  preventGenderMixing?: boolean;
+  @IsString()
+  @MaxLength(500)
+  note?: string;
+}
 
-  /** Variable seats per row (mobile app custom layout); when set, used to build the seat grid. */
-  @IsOptional()
+export class RecurrenceDto {
+  @IsEnum(['daily', 'weekly'])
+  frequency: 'daily' | 'weekly';
+
+  @ValidateIf((o) => o.frequency === 'weekly')
   @IsArray()
-  @ArrayMaxSize(10)
-  @IsInt({ each: true })
-  @Min(1, { each: true })
-  @Max(10, { each: true })
-  seatsPerRowList?: number[];
+  @ArrayMaxSize(7)
+  @IsString({ each: true })
+  weekdays?: string[];
+
+  @IsOptional()
+  @IsDateString()
+  until?: string;
 }
 
 export class CreateTripDto {
@@ -87,17 +110,24 @@ export class CreateTripDto {
   @IsIn(['EGP', 'JOD', 'SAR', 'AED', 'QAR'])
   currency?: string;
 
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(50)
-  totalSeats: number;
-
-  @ValidateNested()
-  @Type(() => SeatLayoutDto)
-  seatLayout: SeatLayoutDto;
-
   @IsOptional()
   @IsUrl()
   carImageUrl?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(5)
+  @ValidateNested({ each: true })
+  @Type(() => StopDto)
+  stops?: StopDto[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  notes?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => RecurrenceDto)
+  recurrence?: RecurrenceDto;
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/theme/colors.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class AccountTypeSelectionScreen extends StatefulWidget {
   const AccountTypeSelectionScreen({super.key});
@@ -46,148 +47,154 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: T.surface(context),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: T.onSurface(context)),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      extendBodyBehindAppBar: true,
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
           child: LayoutBuilder(
             builder: (context, constraints) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: Column(
-                  children: [
-                    // Header Section - Fixed height
-                    SizedBox(
-                      height: constraints.maxHeight * 0.25,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: T.primary(context).withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.account_circle,
-                              size: 60,
-                              color: T.primary(context),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'اختر نوع الحساب',
-                            style: TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold,
-                              color: T.onSurface(context),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'ما نوع الحساب الذي تريد إنشاءه؟',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: T.onSurfaceVariant(context),
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Cards Section - Flexible to fill remaining space
-                    Expanded(
-                      child: SlideTransition(
-                        position: _slideAnimation,
-                        child: LayoutBuilder(
-                          builder: (context, cardConstraints) {
-                            // Calculate equal height for both cards
-                            final cardHeight =
-                                (cardConstraints.maxHeight - 16) / 2;
+              final viewportHeight = constraints.maxHeight;
+              final cardHeight = (viewportHeight * 0.28).clamp(210.0, 280.0);
 
-                            return Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                // Passenger Account Card
-                                SizedBox(
-                                  height: cardHeight,
-                                  child: _buildAccountTypeCard(
-                                    context: context,
-                                    icon: Icons.person,
-                                    title: 'راكب',
-                                    description: 'احجز رحلاتك بسهولة',
-                                    color: T.primary(context),
-                                    onTap: () {
-                                      Navigator.pushReplacementNamed(
-                                        context,
-                                        RouteNames.signUp,
-                                        arguments: {'accountType': 'passenger'},
-                                      );
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                // Driver Account Card
-                                SizedBox(
-                                  height: cardHeight,
-                                  child: _buildAccountTypeCard(
-                                    context: context,
-                                    icon: Icons.drive_eta,
-                                    title: 'سائق',
-                                    description: 'أنشئ رحلاتك واكسب المال',
-                                    color: T.secondary(context),
-                                    onTap: () {
-                                      Navigator.pushReplacementNamed(
-                                        context,
-                                        RouteNames.driverSignUp,
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    // Footer Section - Fixed height
-                    SizedBox(
-                      height: constraints.maxHeight * 0.1,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'لديك حساب بالفعل؟ ',
-                            style: TextStyle(
-                              color: T.onSurfaceVariant(context),
-                              fontSize: 13,
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pushReplacementNamed(
-                                context,
-                                RouteNames.signIn,
-                              );
-                            },
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: viewportHeight),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Header section.
+                        const SizedBox(height: 12),
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: T
+                                    .primary(context)
+                                    .withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
                               ),
-                            ),
-                            child: Text(
-                              'تسجيل الدخول',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
+                              child: Icon(
+                                Icons.account_circle,
+                                size: 60,
                                 color: T.primary(context),
                               ),
                             ),
+                            const SizedBox(height: 16),
+                            Text(
+                              context.l10n.accountTypeTitle,
+                              style: TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                                color: T.onSurface(context),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              context.l10n.accountTypeSubtitle,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: T.onSurfaceVariant(context),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        // Cards section.
+                        SlideTransition(
+                          position: _slideAnimation,
+                          child: Column(
+                            children: [
+                              SizedBox(
+                                height: cardHeight,
+                                child: _buildAccountTypeCard(
+                                  context: context,
+                                  icon: Icons.person,
+                                  title: context.l10n.accountTypePassenger,
+                                  description: context.l10n.accountTypePassengerDesc,
+                                  color: T.primary(context),
+                                  onTap: () {
+                                    Navigator.pushReplacementNamed(
+                                      context,
+                                      RouteNames.signUp,
+                                      arguments: {'accountType': 'passenger'},
+                                    );
+                                  },
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                height: cardHeight,
+                                child: _buildAccountTypeCard(
+                                  context: context,
+                                  icon: Icons.drive_eta,
+                                  title: context.l10n.accountTypeDriver,
+                                  description: context.l10n.accountTypeDriverDesc,
+                                  color: T.secondary(context),
+                                  onTap: () {
+                                    Navigator.pushReplacementNamed(
+                                      context,
+                                      RouteNames.driverSignUp,
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                        // Footer section.
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                context.l10n.alreadyHaveAccount,
+                                style: TextStyle(
+                                  color: T.onSurfaceVariant(context),
+                                  fontSize: 13,
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pushReplacementNamed(
+                                    context,
+                                    RouteNames.signIn,
+                                  );
+                                },
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                ),
+                                child: Text(
+                                  context.l10n.signIn,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: T.primary(context),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               );
             },
@@ -228,81 +235,107 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
           child: InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20.0,
-                vertical: 16.0,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.max,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [color, color.withValues(alpha: 0.8)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: color.withValues(alpha: 0.3),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Icon(icon, size: 36, color: AppColors.white),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isCompact = constraints.maxHeight < 220;
+
+                final verticalPadding = isCompact ? 8.0 : 16.0;
+                final iconPadding = isCompact ? 10.0 : 14.0;
+                final iconSize = isCompact ? 28.0 : 36.0;
+                final titleSize = isCompact ? 19.0 : 22.0;
+                final descriptionSize = isCompact ? 11.0 : 13.0;
+                final chipFontSize = isCompact ? 11.0 : 12.0;
+                final chipIconSize = isCompact ? 14.0 : 16.0;
+
+                return Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 20.0,
+                    vertical: verticalPadding,
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: T.onSurface(context),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    description,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: T.onSurfaceVariant(context),
-                      height: 1.4,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'ابدأ الآن',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: color,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.max,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(iconPadding),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [color, color.withValues(alpha: 0.8)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: color.withValues(alpha: 0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 6),
-                        Icon(Icons.arrow_forward, size: 16, color: color),
-                      ],
-                    ),
+                        child: Icon(
+                          icon,
+                          size: iconSize,
+                          color: AppColors.white,
+                        ),
+                      ),
+                      SizedBox(height: isCompact ? 6 : 16),
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: titleSize,
+                          fontWeight: FontWeight.bold,
+                          color: T.onSurface(context),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: isCompact ? 2 : 6),
+                      Text(
+                        description,
+                        style: TextStyle(
+                          fontSize: descriptionSize,
+                          color: T.onSurfaceVariant(context),
+                          height: isCompact ? 1.2 : 1.35,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: isCompact ? 6 : 12),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isCompact ? 14 : 16,
+                          vertical: isCompact ? 5 : 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              context.l10n.startNow,
+                              style: TextStyle(
+                                fontSize: chipFontSize,
+                                fontWeight: FontWeight.w600,
+                                color: color,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Icon(
+                              Icons.arrow_forward,
+                              size: chipIconSize,
+                              color: color,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                );
+              },
             ),
           ),
         ),

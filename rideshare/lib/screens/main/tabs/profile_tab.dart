@@ -7,6 +7,7 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/theme/colors.dart';
 import '../../../widgets/notification_icon_button.dart';
 import '../../../widgets/common/logout_confirmation_dialog.dart';
+import '../../../l10n/l10n_extensions.dart';
 import '../../home/widgets/profile_menu_item.dart';
 
 class ProfileTab extends StatelessWidget {
@@ -57,10 +58,10 @@ class ProfileTab extends StatelessWidget {
                               ),
                               color: T.primary(context),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               IconsaxPlusBold.profile,
                               size: 60,
-                              color: AppColors.white,
+                              color: T.onPrimary(context),
                             ),
                           ),
                           Positioned(
@@ -69,12 +70,12 @@ class ProfileTab extends StatelessWidget {
                             child: Container(
                               padding: AppSpacing.paddingSm,
                               decoration: BoxDecoration(
-                                color: AppColors.white,
+                                color: T.surface(context),
                                 shape: BoxShape.circle,
                                 boxShadow: AppShadows.sm,
                               ),
                               child: Semantics(
-                                label: 'تعديل الصورة الشخصية',
+                                label: context.l10n.editProfilePhoto,
                                 button: true,
                                 child: Icon(
                                   IconsaxPlusBold.camera,
@@ -88,7 +89,7 @@ class ProfileTab extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        user?.name ?? 'المستخدم',
+                        user?.name ?? context.l10n.defaultUserName,
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -117,7 +118,9 @@ class ProfileTab extends StatelessWidget {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            user.isDriver ? 'سائق' : 'راكب',
+                            user.isDriver
+                                ? context.l10n.driver
+                                : context.l10n.passenger,
                             style: TextStyle(
                               color: user.isDriver
                                   ? T.secondary(context)
@@ -158,8 +161,8 @@ class ProfileTab extends StatelessWidget {
                                   const SizedBox(width: 10),
                                   Text(
                                     user.isPhoneVerified
-                                        ? 'رقم الهاتف مؤكد'
-                                        : 'رقم الهاتف غير مؤكد',
+                                        ? context.l10n.phoneVerified
+                                        : context.l10n.phoneNotVerified,
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w500,
@@ -181,7 +184,7 @@ class ProfileTab extends StatelessWidget {
                                       authProvider.loadUserProfile();
                                     });
                                   },
-                                  child: const Text('تأكيد'),
+                                  child: Text(context.l10n.confirm),
                                 ),
                             ],
                           ),
@@ -197,7 +200,7 @@ class ProfileTab extends StatelessWidget {
                     children: [
                       ProfileMenuItem(
                         icon: IconsaxPlusLinear.edit,
-                        title: 'تعديل الملف الشخصي',
+                        title: context.l10n.editProfileMenuItem,
                         onTap: () {
                           Navigator.pushNamed(
                             context,
@@ -210,20 +213,26 @@ class ProfileTab extends StatelessWidget {
                       const SizedBox(height: 12),
                       ProfileMenuItem(
                         icon: IconsaxPlusLinear.setting_2,
-                        title: 'الإعدادات',
-                        onTap: () {},
+                        title: context.l10n.settings,
+                        onTap: () {
+                          Navigator.pushNamed(context, RouteNames.settings);
+                        },
                       ),
                       const SizedBox(height: 12),
                       ProfileMenuItem(
                         icon: IconsaxPlusLinear.message_question,
-                        title: 'المساعدة والدعم',
-                        onTap: () {},
+                        title: context.l10n.helpAndSupport,
+                        onTap: () {
+                          Navigator.pushNamed(context, RouteNames.support);
+                        },
                       ),
                       const SizedBox(height: 12),
                       ProfileMenuItem(
                         icon: IconsaxPlusLinear.info_circle,
-                        title: 'حول التطبيق',
-                        onTap: () {},
+                        title: context.l10n.aboutApp,
+                        onTap: () {
+                          Navigator.pushNamed(context, RouteNames.about);
+                        },
                       ),
                       const SizedBox(height: 24),
 
@@ -238,7 +247,7 @@ class ProfileTab extends StatelessWidget {
                         ),
                         child: ProfileMenuItem(
                           icon: IconsaxPlusLinear.logout,
-                          title: 'تسجيل الخروج',
+                          title: context.l10n.logout,
                           iconColor: T.error(context),
                           textColor: T.error(context),
                           onTap: () => handleLogout(context),

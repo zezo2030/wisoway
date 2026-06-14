@@ -2,23 +2,33 @@ import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
-  ConflictException,
   NotFoundException,
+  ConflictException,
+  Logger,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
+import * as bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { MoreThan, Repository } from 'typeorm';
 import { UsersService } from '../users/users.service';
 import { UserEntity } from '../../database/entities/user.entity';
+import { UserDeviceStatus } from '../../database/entities/user-device.entity';
+import { PasswordResetSessionEntity } from '../../database/entities/password-reset-session.entity';
 import { PgUserRole } from '../../database/entities/shared.enums';
-import { PendingRegistrationGender } from '../../database/entities/pending-registration.entity';
-import { SignUpDto } from './dto/sign-up.dto';
-import { SignInDto } from './dto/sign-in.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { SignInDto } from './dto/sign-in.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { VerifyResetOtpDto } from './dto/verify-reset-otp.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { Twilio } from 'twilio';
+import { DeviceFingerprintService } from './device-fingerprint.service';
+import { AccountRiskService } from './account-risk.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export interface AuthResponse {
   user: {
@@ -38,12 +48,12 @@ export interface AuthResponse {
   };
   accessToken: string;
   refreshToken: string;
-}
-
-export interface RegisterResponse {
-  message: string;
-  phoneNumber: string;
-  expiresAt: Date;
+  /** 'active' | 'restricted' | 'banned' — overall account health. */
+  accountState: 'active' | 'restricted' | 'banned';
+  /** 'active' | 'revoked' | null — state of the device session just registered. */
+  deviceState: 'active' | 'revoked' | null;
+  /** True for legacy social-login accounts that still need phone linking. */
+  pendingPhoneLinkRequired: boolean;
 }
 
 type OtpProvider = 'twilio' | 'local';
@@ -54,10 +64,18 @@ export class AuthService {
   private twilioVerifyServiceSid: string | undefined;
   private otpProvider: OtpProvider;
 
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private usersService: UsersService,
-    private jwtService: JwtService,
     private configService: ConfigService,
+    private deviceFingerprintService: DeviceFingerprintService,
+    private accountRiskService: AccountRiskService,
+    private notificationsService: NotificationsService,
+    @InjectRepository(UserEntity)
+    private userRepo: Repository<UserEntity>,
+    @InjectRepository(PasswordResetSessionEntity)
+    private passwordResetSessionRepo: Repository<PasswordResetSessionEntity>,
   ) {
     const accountSid = this.configService.get<string>('TWILIO_ACCOUNT_SID');
     const authToken = this.configService.get<string>('TWILIO_AUTH_TOKEN');
@@ -84,110 +102,6 @@ export class AuthService {
     } else if (accountSid && authToken && accountSid.startsWith('AC')) {
       this.twilioClient = new Twilio(accountSid, authToken);
     }
-  }
-
-  async register(signUpDto: SignUpDto): Promise<RegisterResponse> {
-    const { email, password, name, gender, phoneNumber, role } = signUpDto;
-
-    // Validate email not in User table
-    const existingUser = await this.usersService.findByEmail(email);
-    if (existingUser) {
-      throw new ConflictException('البريد الإلكتروني مسجّل بالفعل');
-    }
-
-    // Validate phoneNumber not in User table
-    const existingUserByPhone =
-      await this.usersService.findByPhone(phoneNumber);
-    if (existingUserByPhone) {
-      throw new ConflictException('رقم الهاتف مسجّل بالفعل');
-    }
-
-    // Validate email not in PendingRegistration with different phone
-    const existingPendingByEmail =
-      await this.usersService.findPendingByEmail(email);
-    if (
-      existingPendingByEmail &&
-      existingPendingByEmail.phoneNumber !== phoneNumber
-    ) {
-      throw new ConflictException('البريد الإلكتروني مسجّل بالفعل');
-    }
-
-    // Create pending registration (upsert by phone)
-    const pendingReg = await this.usersService.createPendingRegistration({
-      phoneNumber,
-      email,
-      passwordHash: password, // Will be hashed in createPendingRegistration
-      name,
-      gender: gender as unknown as PendingRegistrationGender,
-      role: role as unknown as PgUserRole,
-    });
-
-    // Send OTP
-    await this.sendOtp({ phoneNumber });
-
-    return {
-      message: 'OTP sent successfully. Please verify your phone number.',
-      phoneNumber,
-      expiresAt: pendingReg.expiresAt,
-    };
-  }
-
-  async login(signInDto: SignInDto): Promise<AuthResponse> {
-    const normalizedEmail = signInDto.email.trim().toLowerCase();
-    const password = signInDto.password;
-
-    // Find user
-    const user = await this.usersService.findByEmailWithPassword(normalizedEmail);
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    // Check if user has password (social login users might not)
-    if (!user.passwordHash) {
-      throw new UnauthorizedException(
-        'Please login using your social provider',
-      );
-    }
-
-    // Verify password. Support legacy plaintext passwords and migrate them
-    // to bcrypt after first successful login.
-    let isPasswordValid = false;
-    const isBcryptHash =
-      user.passwordHash.startsWith('$2b$') ||
-      user.passwordHash.startsWith('$2a$') ||
-      user.passwordHash.startsWith('$2y$');
-
-    if (isBcryptHash) {
-      isPasswordValid = await bcrypt.compare(password, user.passwordHash);
-    } else {
-      isPasswordValid = password === user.passwordHash;
-      if (isPasswordValid) {
-        await this.usersService.updatePasswordHash(user.id, password);
-      }
-    }
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    // Check if user is active
-    if (!user.isActive) {
-      throw new UnauthorizedException('Account is inactive');
-    }
-
-    // Require phone verification for email signups before allowing login
-    if (user.provider === 'email' && !user.isPhoneVerified) {
-      throw new UnauthorizedException(
-        'PHONE_VERIFICATION_REQUIRED: Please verify your phone number to activate your account.',
-      );
-    }
-
-    // Generate tokens
-    const tokens = await this.generateTokens(user);
-
-    return {
-      user: this.sanitizeUser(user),
-      ...tokens,
-    };
   }
 
   async sendOtp(
@@ -230,51 +144,174 @@ export class AuthService {
   }
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto): Promise<AuthResponse> {
-    const { phoneNumber, code } = verifyOtpDto;
+    const { phoneNumber, code, device, name, gender, role, password } =
+      verifyOtpDto;
 
     await this.verifyPhoneOtp(phoneNumber, code);
 
-    // Check if there's a pending registration for this phone
-    const pendingReg = await this.usersService.findPendingByPhone(phoneNumber);
-
     let user: UserEntity;
 
-    if (pendingReg) {
-      // Create user from pending registration
+    const found = await this.usersService.findByPhone(phoneNumber);
+    if (found) {
+      user = found;
+      if (!user.passwordHash && password) {
+        await this.userRepo.update(user.id, {
+          passwordHash: await bcrypt.hash(password, 12),
+          passwordChangedAt: new Date(),
+          isPhoneVerified: true,
+        });
+        user = await this.usersService.findById(user.id);
+      } else if (user.passwordHash) {
+        throw new ConflictException(
+          'Phone number is already registered. Please sign in with your password.',
+        );
+      } else if (!password) {
+        throw new BadRequestException(
+          'Password is required to finish account setup for this phone number.',
+        );
+      }
+
+      if (!user.isPhoneVerified) {
+        await this.usersService.linkPhone(user.id, phoneNumber);
+        user = await this.usersService.findById(user.id);
+      }
+    } else {
+      if (!password) {
+        throw new BadRequestException(
+          'Password is required when creating a new account.',
+        );
+      }
+
+      const resolvedRole =
+        role === 'driver' ? PgUserRole.DRIVER : PgUserRole.PASSENGER;
       user = await this.usersService.create({
         phoneNumber,
-        email: pendingReg.email,
-        passwordHash: pendingReg.passwordHash,
-        name: pendingReg.name,
-        gender: pendingReg.gender as string,
-        role: pendingReg.role as unknown as PgUserRole,
-        provider: 'email',
+        name: name && name.trim().length > 0 ? name.trim() : phoneNumber,
+        gender: gender ?? null,
+        passwordHash: password,
+        role: resolvedRole,
+        provider: 'phone',
         isPhoneVerified: true,
         isActive: true,
       });
 
-      // Delete the pending registration
-      await this.usersService.deletePendingByPhone(phoneNumber);
-    } else {
-      // No pending registration, check for existing user (linkPhone fallback)
-      const found = await this.usersService.findByPhone(phoneNumber);
-      if (!found) {
-        throw new NotFoundException('لا يوجد تسجيل معلّق لهذا الرقم');
-      }
-      user = found;
+      this.notifyAdminsOfNewUser(user).catch((err) => {
+        this.logger.error(
+          `Failed to notify admins of new user ${user.id}: ${(err as Error).message}`,
+        );
+      });
+    }
 
-      // Update existing user's phone verification status
-      if (!user.isPhoneVerified) {
-        await this.usersService.linkPhone(user.id, phoneNumber);
+    // ── Device binding (optional) ──────────────────────────────────────────
+    let deviceState: 'active' | 'revoked' | null = null;
+    let fingerprintHash: string | null = null;
+    let activeDeviceId: string | null = null;
+
+    if (device) {
+      fingerprintHash = this.deviceFingerprintService.hash(
+        device.platform,
+        device.deviceId,
+        device.installSalt,
+      );
+
+      // Check whether this fingerprint is explicitly revoked for this user
+      const revokedDevice = await this.deviceFingerprintService[
+        'deviceRepo'
+      ].findOne({
+        where: {
+          userId: user.id,
+          fingerprintHash,
+          status: UserDeviceStatus.REVOKED,
+        },
+      });
+
+      if (revokedDevice) {
+        deviceState = 'revoked';
+        throw new UnauthorizedException(
+          'This device has been revoked. Please use another trusted device.',
+        );
+      } else {
+        // Register / refresh the device session
+        const registeredDevice = await this.deviceFingerprintService.registerDevice({
+          userId: user.id,
+          platform: device.platform,
+          deviceId: device.deviceId,
+          installSalt: device.installSalt,
+          fcmToken: device.fcmToken,
+          locale: device.locale,
+          label: device.label,
+        });
+        deviceState = 'active';
+        activeDeviceId = registeredDevice.id;
       }
+
+      // Run multi-account risk check after device row exists
+      await this.accountRiskService.checkMultiAccountThreshold(
+        user.id,
+        fingerprintHash,
+      );
+
+      // Reload user in case restricted flag was just set by risk service
+      const refreshed = await this.usersService.findById(user.id);
+      if (refreshed) user = refreshed;
+    }
+
+    // ── Build accountState ─────────────────────────────────────────────────
+    let accountState: 'active' | 'restricted' | 'banned';
+    if (user.bannedAt) {
+      accountState = 'banned';
+    } else if (user.restricted) {
+      accountState = 'restricted';
+    } else {
+      accountState = 'active';
     }
 
     // Generate tokens
-    const tokens = await this.generateTokens(user);
+    const tokens = await this.generateTokens(user, activeDeviceId);
 
     return {
       user: this.sanitizeUser(user),
       ...tokens,
+      accountState,
+      deviceState,
+      pendingPhoneLinkRequired: user.pendingPhoneLink ?? false,
+    };
+  }
+
+  async login(signInDto: SignInDto): Promise<AuthResponse> {
+    const { email, phoneNumber, password } = signInDto;
+    const user = email
+      ? await this.findAdminByEmailWithPassword(email)
+      : await this.findUserByPhoneWithPassword(phoneNumber!);
+
+    if (!user || !user.passwordHash) {
+      throw new UnauthorizedException(
+        email ? 'Invalid admin email or password' : 'Invalid phone number or password',
+      );
+    }
+
+    const passwordMatches = await bcrypt.compare(password, user.passwordHash);
+    if (!passwordMatches) {
+      throw new UnauthorizedException(
+        email ? 'Invalid admin email or password' : 'Invalid phone number or password',
+      );
+    }
+
+    if (!email && !user.isPhoneVerified) {
+      throw new UnauthorizedException(
+        'Phone number must be verified before signing in.',
+      );
+    }
+
+    const accountState = this.resolveAccountState(user);
+    const tokens = await this.generateTokens(user, null);
+
+    return {
+      user: this.sanitizeUser(user),
+      ...tokens,
+      accountState,
+      deviceState: null,
+      pendingPhoneLinkRequired: user.pendingPhoneLink ?? false,
     };
   }
 
@@ -312,7 +349,17 @@ export class AuthService {
       }
 
       // Generate new tokens
-      return this.generateTokens(user);
+      if (payload?.did) {
+        const activeDevice = await this.deviceFingerprintService.findActiveDeviceById(
+          user.id,
+          payload.did,
+        );
+        if (!activeDevice) {
+          throw new UnauthorizedException('Device session is no longer active');
+        }
+      }
+
+      return this.generateTokens(user, payload?.did ?? null);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error('Refresh token error:', msg);
@@ -324,28 +371,6 @@ export class AuthService {
     // Clear refresh token
     await this.usersService.updateRefreshToken(userId, '');
     return { message: 'Logged out successfully' };
-  }
-
-  async forgotPassword(email: string): Promise<{ message: string }> {
-    const user = await this.usersService.findByEmail(email);
-    if (!user) {
-      // Don't reveal if email exists
-      return { message: 'Password reset email sent' };
-    }
-
-    // Generate reset token (in a real app, send email with reset link)
-    // For now, we'll just return a message
-    // TODO: Implement email service for password reset
-    return { message: 'Password reset email sent' };
-  }
-
-  async resetPassword(
-    token: string,
-    newPassword: string,
-  ): Promise<{ message: string }> {
-    // Verify reset token and update password
-    // TODO: Implement password reset with token verification
-    return { message: 'Password reset successfully' };
   }
 
   async linkPhone(
@@ -375,13 +400,147 @@ export class AuthService {
     return { message: 'Account deleted successfully' };
   }
 
+  async forgotPassword(
+    forgotPasswordDto: ForgotPasswordDto,
+  ): Promise<{ message: string; expiresIn: number }> {
+    const { phoneNumber } = forgotPasswordDto;
+    const user = await this.usersService.findByPhone(phoneNumber);
+
+    if (!user) {
+      throw new NotFoundException('No account found for this phone number');
+    }
+
+    const otpResponse = await this.sendOtp({ phoneNumber });
+
+    await this.passwordResetSessionRepo.delete({ phoneNumber });
+    await this.passwordResetSessionRepo.save(
+      this.passwordResetSessionRepo.create({
+        phoneNumber,
+        otpCode: randomUUID(),
+        isVerified: false,
+        attemptCount: 0,
+        isLocked: false,
+        expiresAt: new Date(Date.now() + otpResponse.expiresIn * 1000),
+      }),
+    );
+
+    return otpResponse;
+  }
+
+  async verifyResetOtp(
+    verifyResetOtpDto: VerifyResetOtpDto,
+  ): Promise<{ resetToken: string }> {
+    const { phoneNumber, code } = verifyResetOtpDto;
+    const session = await this.passwordResetSessionRepo.findOne({
+      where: {
+        phoneNumber,
+        expiresAt: MoreThan(new Date()),
+      },
+      order: { createdAt: 'DESC' },
+    });
+
+    if (!session || session.isLocked) {
+      throw new UnauthorizedException(
+        'Password reset session is invalid or has expired',
+      );
+    }
+
+    try {
+      await this.verifyPhoneOtp(phoneNumber, code);
+    } catch (error) {
+      const attemptCount = session.attemptCount + 1;
+      const isLocked = attemptCount >= 5;
+      await this.passwordResetSessionRepo.update(session.id, {
+        attemptCount,
+        isLocked,
+      });
+
+      if (isLocked) {
+        throw new UnauthorizedException(
+          'Too many attempts. Please request a new reset code.',
+        );
+      }
+
+      throw error;
+    }
+
+    await this.passwordResetSessionRepo.update(session.id, {
+      isVerified: true,
+      attemptCount: session.attemptCount + 1,
+    });
+
+    return { resetToken: session.id };
+  }
+
+  async resetPassword(
+    resetPasswordDto: ResetPasswordDto,
+  ): Promise<{ message: string }> {
+    const { resetToken, newPassword } = resetPasswordDto;
+    const session = await this.passwordResetSessionRepo.findOne({
+      where: {
+        id: resetToken,
+        isVerified: true,
+        isLocked: false,
+        expiresAt: MoreThan(new Date()),
+      },
+    });
+
+    if (!session) {
+      throw new UnauthorizedException('Reset token is invalid or has expired');
+    }
+
+    const user = await this.usersService.findByPhone(session.phoneNumber);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    await this.userRepo.update(user.id, {
+      passwordHash: await bcrypt.hash(newPassword, 12),
+      passwordChangedAt: new Date(),
+      refreshToken: null,
+    });
+    await this.passwordResetSessionRepo.delete({ phoneNumber: session.phoneNumber });
+
+    return { message: 'Password reset successfully' };
+  }
+
+  async changePassword(
+    userId: string,
+    changePasswordDto: ChangePasswordDto,
+  ): Promise<{ message: string }> {
+    const { currentPassword, newPassword } = changePasswordDto;
+    const user = await this.findUserByIdWithPassword(userId);
+
+    if (!user.passwordHash) {
+      throw new BadRequestException('No password is set for this account');
+    }
+
+    const passwordMatches = await bcrypt.compare(
+      currentPassword,
+      user.passwordHash,
+    );
+    if (!passwordMatches) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    await this.userRepo.update(user.id, {
+      passwordHash: await bcrypt.hash(newPassword, 12),
+      passwordChangedAt: new Date(),
+      refreshToken: null,
+    });
+
+    return { message: 'Password changed successfully' };
+  }
+
   private async generateTokens(
     user: UserEntity,
+    deviceId: string | null = null,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const payload = {
       sub: user.id,
       email: user.email,
       role: user.role,
+      did: deviceId,
     };
 
     const accessSecret = this.configService.get<string>('JWT_ACCESS_SECRET');
@@ -428,6 +587,55 @@ export class AuthService {
     };
   }
 
+  private resolveAccountState(
+    user: UserEntity,
+  ): 'active' | 'restricted' | 'banned' {
+    if (user.bannedAt) {
+      return 'banned';
+    }
+    if (user.restricted) {
+      return 'restricted';
+    }
+    return 'active';
+  }
+
+  private async findUserByPhoneWithPassword(
+    phoneNumber: string,
+  ): Promise<(UserEntity & { passwordHash: string | null }) | null> {
+    return this.userRepo
+      .createQueryBuilder('user')
+      .addSelect('user.passwordHash')
+      .where('user.phoneNumber = :phoneNumber', { phoneNumber })
+      .getOne() as Promise<(UserEntity & { passwordHash: string | null }) | null>;
+  }
+
+  private async findAdminByEmailWithPassword(
+    email: string,
+  ): Promise<(UserEntity & { passwordHash: string | null }) | null> {
+    return this.userRepo
+      .createQueryBuilder('user')
+      .addSelect('user.passwordHash')
+      .where('LOWER(user.email) = LOWER(:email)', { email: email.trim() })
+      .andWhere('user.role = :role', { role: PgUserRole.ADMIN })
+      .getOne() as Promise<(UserEntity & { passwordHash: string | null }) | null>;
+  }
+
+  private async findUserByIdWithPassword(
+    id: string,
+  ): Promise<UserEntity & { passwordHash: string | null }> {
+    const user = (await this.userRepo
+      .createQueryBuilder('user')
+      .addSelect('user.passwordHash')
+      .where('user.id = :id', { id })
+      .getOne()) as (UserEntity & { passwordHash: string | null }) | null;
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return user;
+  }
+
   private async verifyPhoneOtp(
     phoneNumber: string,
     code: string,
@@ -465,5 +673,44 @@ export class AuthService {
       console.error('Failed to verify OTP via Twilio Verify:', error);
       throw new UnauthorizedException('Invalid or expired OTP code');
     }
+  }
+
+  private async notifyAdminsOfNewUser(newUser: UserEntity): Promise<void> {
+    const admins = await this.userRepo.find({
+      where: { role: PgUserRole.ADMIN, isActive: true },
+      select: ['id'],
+    });
+    if (admins.length === 0) return;
+
+    const displayName =
+      newUser.name && newUser.name.trim().length > 0
+        ? newUser.name.trim()
+        : (newUser.phoneNumber ?? newUser.email ?? 'New user');
+    const title = 'New user registered';
+    const body = `${displayName} just signed up as a ${newUser.role}.`;
+    const data = {
+      newUserId: newUser.id,
+      role: newUser.role,
+      phoneNumber: newUser.phoneNumber,
+      email: newUser.email,
+    };
+
+    await Promise.all(
+      admins.map((admin) =>
+        this.notificationsService
+          .create({
+            userId: admin.id,
+            type: 'new_user_registered',
+            title,
+            body,
+            data,
+          })
+          .catch((err) => {
+            this.logger.error(
+              `Failed to deliver new-user notification to admin ${admin.id}: ${(err as Error).message}`,
+            );
+          }),
+      ),
+    );
   }
 }

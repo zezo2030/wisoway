@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Patch,
   Delete,
   Query,
@@ -16,6 +17,7 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { AdminDashboardService } from './admin-dashboard.service';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { PgUserRole } from '../../database/entities/shared.enums';
 import { AdminUsersQueryDto } from './dto/admin-users-query.dto';
@@ -27,9 +29,13 @@ import { AdminRatingsQueryDto } from './dto/admin-ratings-query.dto';
 import { AdminNotificationsQueryDto } from './dto/admin-notifications-query.dto';
 import { AdminChatQueryDto } from './dto/admin-chat-query.dto';
 import { AdminReportsQueryDto } from './dto/admin-reports-query.dto';
+import { AdminWalletsQueryDto } from './dto/admin-wallets-query.dto';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { AdminAdjustWalletDto } from './dto/admin-adjust-wallet.dto';
 import {
   ApproveDriverDto,
   VerifyVehicleDto,
+  BroadcastNotificationDto,
 } from './dto/admin-query.dto';
 import { AdminPatchPricingSettingsDto } from './dto/admin-pricing-settings.dto';
 
@@ -99,6 +105,8 @@ export class AdminDashboardController {
   @ApiQuery({ name: 'role', required: false, enum: PgUserRole })
   @ApiQuery({ name: 'search', required: false, type: String })
   @ApiQuery({ name: 'isActive', required: false, type: Boolean })
+  @ApiQuery({ name: 'registeredWithinDays', required: false, type: Number })
+  @ApiQuery({ name: 'isConfirmed', required: false, type: Boolean })
   @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
   async getUsers(@Query() query: AdminUsersQueryDto) {
     return this.adminDashboardService.getUsers({
@@ -107,6 +115,8 @@ export class AdminDashboardController {
       role: query.role,
       search: query.search,
       isActive: query.isActive,
+      registeredWithinDays: query.registeredWithinDays,
+      isConfirmed: query.isConfirmed,
     });
   }
 
@@ -141,7 +151,10 @@ export class AdminDashboardController {
   @Patch('vehicles/:id/verify')
   @ApiOperation({ summary: 'Verify or reject vehicle' })
   @ApiParam({ name: 'id', description: 'Vehicle ID' })
-  @ApiResponse({ status: 200, description: 'Vehicle verification status updated' })
+  @ApiResponse({
+    status: 200,
+    description: 'Vehicle verification status updated',
+  })
   @ApiResponse({ status: 404, description: 'Vehicle not found' })
   async verifyVehicle(
     @Param('id') vehicleId: string,
@@ -165,12 +178,18 @@ export class AdminDashboardController {
   @ApiQuery({
     name: 'method',
     required: false,
-    enum: ['wallet', 'paymob', 'manual', 'communication_fee'],
+    enum: ['wallet', 'paymob', 'manual', 'communication_fee', 'cliq_a2a'],
   })
   @ApiQuery({
     name: 'paymentType',
     required: false,
-    enum: ['trip', 'communication_fee', 'wallet_topup', 'wallet_trip_charge'],
+    enum: [
+      'trip',
+      'trip_platform',
+      'communication_fee',
+      'wallet_topup',
+      'wallet_trip_charge',
+    ],
   })
   @ApiQuery({ name: 'walletOnly', required: false, type: Boolean })
   @ApiResponse({ status: 200, description: 'Payments retrieved successfully' })
@@ -182,6 +201,88 @@ export class AdminDashboardController {
       method: query.method,
       paymentType: query.paymentType,
       walletOnly: query.walletOnly,
+    });
+  }
+
+  @Get('wallets')
+  @ApiOperation({ summary: 'List all wallet accounts with user info' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({
+    name: 'accountType',
+    required: false,
+    enum: ['driver', 'rider', 'system'],
+  })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'minBalance', required: false, type: Number })
+  @ApiQuery({ name: 'maxBalance', required: false, type: Number })
+  @ApiQuery({ name: 'isActive', required: false, type: Boolean })
+  @ApiResponse({
+    status: 200,
+    description: 'Wallet accounts retrieved successfully',
+  })
+  async getWallets(@Query() query: AdminWalletsQueryDto) {
+    return this.adminDashboardService.getWallets({
+      page: query.page,
+      limit: query.limit,
+      accountType: query.accountType,
+      search: query.search,
+      minBalance: query.minBalance,
+      maxBalance: query.maxBalance,
+      isActive: query.isActive,
+    });
+  }
+
+  @Get('wallets/:id')
+  @ApiOperation({ summary: 'Get wallet account with user details' })
+  @ApiParam({ name: 'id', description: 'Wallet Account ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Wallet account retrieved successfully',
+  })
+  @ApiResponse({ status: 404, description: 'Wallet account not found' })
+  async getWalletById(@Param('id') walletId: string) {
+    return this.adminDashboardService.getWalletById(walletId);
+  }
+
+  @Patch('wallets/:id/adjust')
+  @ApiOperation({ summary: 'Adjust wallet balance manually (admin)' })
+  @ApiParam({ name: 'id', description: 'Wallet Account ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Wallet balance adjusted successfully',
+  })
+  @ApiResponse({ status: 404, description: 'Wallet account not found' })
+  async adjustWalletBalance(
+    @Param('id') walletId: string,
+    @CurrentUser('id') adminId: string,
+    @Body() dto: AdminAdjustWalletDto,
+  ) {
+    return this.adminDashboardService.adjustWalletBalance(walletId, {
+      amount: dto.amount,
+      note: dto.note,
+      currency: dto.currency,
+      adminId,
+    });
+  }
+
+  @Get('wallets/:id/transactions')
+  @ApiOperation({ summary: 'Get transactions for a wallet account' })
+  @ApiParam({ name: 'id', description: 'Wallet Account ID' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiResponse({
+    status: 200,
+    description: 'Transactions retrieved successfully',
+  })
+  @ApiResponse({ status: 404, description: 'Wallet account not found' })
+  async getWalletTransactions(
+    @Param('id') walletId: string,
+    @Query() query: PaginationDto,
+  ) {
+    return this.adminDashboardService.getWalletTransactions(walletId, {
+      page: query.page,
+      limit: query.limit,
     });
   }
 
@@ -225,6 +326,7 @@ export class AdminDashboardController {
   })
   @ApiQuery({ name: 'userId', required: false, type: String })
   @ApiQuery({ name: 'tripId', required: false, type: String })
+  @ApiQuery({ name: 'driverId', required: false, type: String })
   @ApiResponse({ status: 200, description: 'Bookings retrieved successfully' })
   async getBookings(@Query() query: AdminBookingsQueryDto) {
     return this.adminDashboardService.getBookings({
@@ -233,6 +335,7 @@ export class AdminDashboardController {
       status: query.status,
       userId: query.userId,
       tripId: query.tripId,
+      driverId: query.driverId,
     });
   }
 
@@ -271,16 +374,43 @@ export class AdminDashboardController {
     });
   }
 
+  @Post('notifications/broadcast')
+  @ApiOperation({ summary: 'Broadcast notification to users' })
+  @ApiResponse({
+    status: 200,
+    description: 'Notification broadcast sent successfully',
+  })
+  async broadcastNotification(@Body() dto: BroadcastNotificationDto) {
+    return this.adminDashboardService.broadcastNotification(dto);
+  }
+
   @Get('chat/rooms')
   @ApiOperation({ summary: 'Get paginated chat rooms' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'tripId', required: false, type: String })
   @ApiResponse({
     status: 200,
     description: 'Chat rooms retrieved successfully',
   })
   async getChatRooms(@Query() query: AdminChatQueryDto) {
     return this.adminDashboardService.getChatRooms({
+      page: query.page,
+      limit: query.limit,
+      tripId: query.tripId,
+    });
+  }
+
+  @Get('chat/rooms/:id/messages')
+  @ApiOperation({ summary: 'Get messages for a chat room' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Messages retrieved successfully' })
+  async getChatRoomMessages(
+    @Param('id') id: string,
+    @Query() query: AdminChatQueryDto,
+  ) {
+    return this.adminDashboardService.getChatRoomMessages(id, {
       page: query.page,
       limit: query.limit,
     });
@@ -309,10 +439,10 @@ export class AdminDashboardController {
     summary:
       'Get pricing row: passenger % (platform share per seat) and driver % (unlock fee on capacity), plus legacy flat fee',
   })
-  @ApiQuery({ name: 'countryCode', required: false, example: 'EG' })
+  @ApiQuery({ name: 'countryCode', required: false, example: 'JO' })
   async getPricingSettings(@Query('countryCode') countryCode?: string) {
     return this.adminDashboardService.getPlatformPricingSettings(
-      countryCode || 'EG',
+      countryCode || 'JO',
     );
   }
 
@@ -321,13 +451,13 @@ export class AdminDashboardController {
     summary:
       'Update passenger and driver pricing for a country (passenger 0 = no in-app wallet platform fee on bookings)',
   })
-  @ApiQuery({ name: 'countryCode', required: false, example: 'EG' })
+  @ApiQuery({ name: 'countryCode', required: false, example: 'JO' })
   async patchPricingSettings(
     @Query('countryCode') countryCode: string | undefined,
     @Body() dto: AdminPatchPricingSettingsDto,
   ) {
     return this.adminDashboardService.patchPlatformPricingSettings(
-      countryCode || 'EG',
+      countryCode || 'JO',
       dto,
     );
   }
@@ -351,6 +481,7 @@ export class AdminDashboardController {
             completedTrips: { type: 'number' },
             totalRevenue: { type: 'number' },
             pendingPayments: { type: 'number' },
+            pendingManualTopups: { type: 'number' },
             pendingVehicleVerifications: { type: 'number' },
           },
         },

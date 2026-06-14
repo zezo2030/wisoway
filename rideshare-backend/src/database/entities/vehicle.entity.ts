@@ -35,11 +35,24 @@ export class VehicleEntity {
   @Column({ type: 'int' })
   seats: number;
 
+  @Column({ type: 'jsonb', nullable: true })
+  seatLayout: {
+    rows: number;
+    seatsPerRow: number;
+    seatsPerRowList?: number[];
+    preventGenderMixing?: boolean;
+  } | null;
+
   @Column({ type: 'text', nullable: true })
   licenseImageUrl: string | null;
 
   @Column({ type: 'text', nullable: true })
   vehicleLicenseImageUrl: string | null;
+
+  /** A photo of the car itself. Captured once at vehicle registration and
+   * shown on every trip detail screen. */
+  @Column({ type: 'text', nullable: true })
+  carImageUrl: string | null;
 
   @Column({ type: 'boolean', default: false })
   isVerified: boolean;

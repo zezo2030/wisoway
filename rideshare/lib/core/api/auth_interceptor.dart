@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import '../storage/token_storage.dart';
+import '../constants/route_names.dart';
+import '../services/notification_navigation_service.dart';
 import 'api_endpoints.dart';
 
 class AuthInterceptor extends Interceptor {
@@ -15,6 +17,9 @@ class AuthInterceptor extends Interceptor {
       ApiEndpoints.register,
       ApiEndpoints.sendOtp,
       ApiEndpoints.verifyOtp,
+      ApiEndpoints.forgotPassword,
+      ApiEndpoints.verifyResetOtp,
+      ApiEndpoints.resetPassword,
       ApiEndpoints.refresh,
     ];
 
@@ -30,6 +35,30 @@ class AuthInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
+    // ── 403 ACCOUNT_BANNED: clear session and redirect to ban screen ────────
+    if (err.response?.statusCode == 403) {
+      final data = err.response?.data;
+      final code = data is Map ? data['code'] as String? : null;
+      if (code == 'ACCOUNT_BANNED') {
+        await _tokenStorage.clearAll();
+        final navigator =
+            NotificationNavigationService.navigatorKey.currentState;
+        if (navigator != null) {
+          navigator.pushNamedAndRemoveUntil(
+            RouteNames.banned,
+            (route) => false,
+            arguments: {
+              'banReason': data['banReason'] as String?,
+              'supportWhatsApp': data['supportWhatsApp'] as String?,
+            },
+          );
+        }
+        // Swallow the error — navigation already handled
+        return;
+      }
+    }
+
+    // ── 401: attempt token refresh ────────────────────────────────────────
     if (err.response?.statusCode == 401 &&
         !err.requestOptions.path.contains(ApiEndpoints.refresh)) {
       try {

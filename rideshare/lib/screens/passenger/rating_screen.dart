@@ -5,6 +5,10 @@ import '../../core/services/rating_service.dart';
 import '../../models/trip_model.dart';
 import '../../widgets/rating_widget.dart';
 import '../../core/theme/colors.dart';
+import '../../core/ui/error_surface.dart';
+import '../../core/api/api_client.dart';
+import '../../core/errors/failure.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class RatingScreen extends StatefulWidget {
   final String tripId;
@@ -40,8 +44,8 @@ class _RatingScreenState extends State<RatingScreen> {
   Future<void> _submitRating() async {
     if (_selectedRating == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('يرجى اختيار تقييم'),
+        SnackBar(
+          content: Text(context.l10n.ratingPleaseSelectRating),
           backgroundColor: AppColors.warning,
         ),
       );
@@ -52,10 +56,14 @@ class _RatingScreenState extends State<RatingScreen> {
     final currentUser = authProvider.userModel;
 
     if (currentUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('يجب تسجيل الدخول'),
-          backgroundColor: T.error(context),
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.auth,
+          messageKey: 'errorsAuthSessionExpired',
+          severity: FailureSeverity.error,
+          nextAction: FailureAction.reauthenticate,
+          developerDetail: 'User not authenticated',
         ),
       );
       return;
@@ -66,8 +74,8 @@ class _RatingScreenState extends State<RatingScreen> {
     if (hasRated) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('لقد قمت بتقييم هذه الرحلة بالفعل'),
+          SnackBar(
+            content: Text(context.l10n.ratingAlreadyRated),
             backgroundColor: AppColors.warning,
           ),
         );
@@ -90,8 +98,8 @@ class _RatingScreenState extends State<RatingScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم إرسال التقييم بنجاح'),
+          SnackBar(
+            content: Text(context.l10n.ratingSubmittedSuccess),
             backgroundColor: AppColors.success,
           ),
         );
@@ -99,12 +107,7 @@ class _RatingScreenState extends State<RatingScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في إرسال التقييم: ${e.toString()}'),
-            backgroundColor: T.error(context),
-          ),
-        );
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     } finally {
       if (mounted) {
@@ -116,7 +119,7 @@ class _RatingScreenState extends State<RatingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('تقييم الرحلة')),
+      appBar: AppBar(title: Text(context.l10n.ratingTripTitle)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
@@ -171,7 +174,7 @@ class _RatingScreenState extends State<RatingScreen> {
             ),
             const SizedBox(height: 48),
             Text(
-              'كيف كانت تجربتك مع السائق؟',
+              context.l10n.ratingHowWasExperience,
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
@@ -190,7 +193,7 @@ class _RatingScreenState extends State<RatingScreen> {
             const SizedBox(height: 16),
             if (_selectedRating > 0)
               Text(
-                _getRatingLabel(_selectedRating),
+                _getRatingLabel(context, _selectedRating),
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: T.primary(context),
                   fontWeight: FontWeight.bold,
@@ -198,14 +201,14 @@ class _RatingScreenState extends State<RatingScreen> {
               ),
             const SizedBox(height: 48),
             Semantics(
-              label: 'حقل تعليق',
+              label: context.l10n.ratingCommentLabel,
               textField: true,
-              hint: 'شاركنا رأيك في الرحلة',
+              hint: context.l10n.ratingCommentHint,
               child: TextField(
                 controller: _commentController,
                 decoration: InputDecoration(
-                  labelText: 'تعليق (اختياري)',
-                  hintText: 'شاركنا رأيك في الرحلة...',
+                  labelText: context.l10n.ratingCommentOptional,
+                  hintText: context.l10n.ratingCommentHintEllipsis,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -220,7 +223,7 @@ class _RatingScreenState extends State<RatingScreen> {
               width: double.infinity,
               child: Semantics(
                 button: true,
-                label: 'إرسال التقييم',
+                label: context.l10n.ratingSubmitButton,
                 child: ElevatedButton(
                   onPressed: _isSubmitting ? null : _submitRating,
                   style: ElevatedButton.styleFrom(
@@ -240,9 +243,9 @@ class _RatingScreenState extends State<RatingScreen> {
                             ),
                           ),
                         )
-                      : const Text(
-                          'إرسال التقييم',
-                          style: TextStyle(fontSize: 16),
+                      : Text(
+                          context.l10n.ratingSubmitButton,
+                          style: const TextStyle(fontSize: 16),
                         ),
                 ),
               ),
@@ -253,18 +256,18 @@ class _RatingScreenState extends State<RatingScreen> {
     );
   }
 
-  String _getRatingLabel(int rating) {
+  String _getRatingLabel(BuildContext context, int rating) {
     switch (rating) {
       case 1:
-        return 'سيء جداً';
+        return context.l10n.ratingLabelVeryBad;
       case 2:
-        return 'سيء';
+        return context.l10n.ratingLabelBad;
       case 3:
-        return 'متوسط';
+        return context.l10n.ratingLabelAverage;
       case 4:
-        return 'جيد';
+        return context.l10n.ratingLabelGood;
       case 5:
-        return 'ممتاز';
+        return context.l10n.ratingLabelExcellent;
       default:
         return '';
     }

@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/services/trip_service.dart';
 import '../../core/services/location_service.dart';
+import '../../core/api/api_client.dart';
 import 'trip_event.dart';
 import 'trip_state.dart';
 
@@ -30,12 +31,12 @@ class TripBloc extends Bloc<TripEvent, TripState> {
         departureTime: event.departureTime,
         price: event.price,
         currency: event.currency,
-        seatLayout: event.seatLayout,
         carImageUrl: null,
       );
       emit(TripCreated(tripId));
     } catch (e) {
-      emit(TripError(e.toString()));
+      final failure = ApiClient.mapError(e);
+      emit(TripError(failure.messageKey, failure: failure));
     }
   }
 
@@ -49,7 +50,8 @@ class TripBloc extends Bloc<TripEvent, TripState> {
         emit(const TripError('الرحلة غير موجودة'));
       }
     } catch (e) {
-      emit(TripError(e.toString()));
+      final failure = ApiClient.mapError(e);
+      emit(TripError(failure.messageKey, failure: failure));
     }
   }
 
@@ -62,7 +64,8 @@ class TripBloc extends Bloc<TripEvent, TripState> {
       final trips = await _tripService.getDriverTrips(status: null);
       emit(TripDriverTripsLoaded(trips));
     } catch (e) {
-      emit(TripError(e.toString()));
+      final failure = ApiClient.mapError(e);
+      emit(TripError(failure.messageKey, failure: failure));
     }
   }
 
@@ -72,7 +75,8 @@ class TripBloc extends Bloc<TripEvent, TripState> {
       await _tripService.hideTrip(event.tripId);
       emit(const TripHidden());
     } catch (e) {
-      emit(TripError(e.toString()));
+      final failure = ApiClient.mapError(e);
+      emit(TripError(failure.messageKey, failure: failure));
     }
   }
 
@@ -82,7 +86,8 @@ class TripBloc extends Bloc<TripEvent, TripState> {
       await _tripService.showTrip(event.tripId);
       emit(const TripShown());
     } catch (e) {
-      emit(TripError(e.toString()));
+      final failure = ApiClient.mapError(e);
+      emit(TripError(failure.messageKey, failure: failure));
     }
   }
 
@@ -92,7 +97,8 @@ class TripBloc extends Bloc<TripEvent, TripState> {
       await _tripService.cancelTrip(event.tripId);
       emit(const TripDeleted());
     } catch (e) {
-      emit(TripError(e.toString()));
+      final failure = ApiClient.mapError(e);
+      emit(TripError(failure.messageKey, failure: failure));
     }
   }
 
@@ -105,7 +111,8 @@ class TripBloc extends Bloc<TripEvent, TripState> {
       final location = await _locationService.getCurrentLocation();
       emit(TripLocationLoaded(location));
     } catch (e) {
-      emit(TripError(e.toString()));
+      final failure = ApiClient.mapError(e);
+      emit(TripError(failure.messageKey, failure: failure));
     }
   }
 
@@ -120,7 +127,8 @@ class TripBloc extends Bloc<TripEvent, TripState> {
       );
       emit(TripAddressLoaded(address));
     } catch (e) {
-      emit(TripError(e.toString()));
+      final failure = ApiClient.mapError(e);
+      emit(TripError(failure.messageKey, failure: failure));
     }
   }
 
@@ -139,7 +147,8 @@ class TripBloc extends Bloc<TripEvent, TripState> {
         emit(const TripError('فشل في الحصول على إحداثيات الموقع'));
       }
     } catch (e) {
-      emit(TripError(e.toString()));
+      final failure = ApiClient.mapError(e);
+      emit(TripError(failure.messageKey, failure: failure));
     }
   }
 

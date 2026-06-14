@@ -45,7 +45,7 @@ export class PaymentEntity {
   @Column({ type: 'decimal', precision: 12, scale: 2 })
   amount: number;
 
-  @Column({ type: 'varchar', length: 5, default: 'EGP' })
+  @Column({ type: 'varchar', length: 5, default: 'JOD' })
   currency: string;
 
   @Column({ type: 'varchar' })

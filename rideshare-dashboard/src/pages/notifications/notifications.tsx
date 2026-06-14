@@ -20,6 +20,7 @@ import type { Notification, UserSummary } from "@/types/models"
 import type { UserRole } from "@/types/enums"
 import { Bell, Send, AlertCircle, Megaphone } from "lucide-react"
 import { toast } from "sonner"
+import { useLanguage } from "@/providers/language-provider"
 
 function isPopulatedUser(val: unknown): val is UserSummary {
     return typeof val === "object" && val !== null && "name" in (val as any)
@@ -28,6 +29,7 @@ function isPopulatedUser(val: unknown): val is UserSummary {
 export default function NotificationsPage() {
     const [searchParams, setSearchParams] = useSearchParams()
     const queryClient = useQueryClient()
+    const { t } = useLanguage()
     const page = parseInt(searchParams.get("page") || "1", 10)
     const limit = 20
 
@@ -52,14 +54,14 @@ export default function NotificationsPage() {
             }),
         onSuccess: (result) => {
             queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.NOTIFICATIONS] })
-            toast.success(`Notification sent to ${result.sent} users`)
+            toast.success(t("notificationSentSuccess").replace("{count}", String(result.sent)))
             setBroadcastOpen(false)
             setTitle("")
             setBody("")
             setTargetRole("all")
         },
         onError: () => {
-            toast.error("Failed to send notification")
+            toast.error(t("notificationSendFailed"))
         },
     })
 
@@ -91,7 +93,7 @@ export default function NotificationsPage() {
     const columns: Column<Notification>[] = [
         {
             key: "user",
-            header: "Recipient",
+            header: t("recipient"),
             cell: (notification) => {
                 const user = (notification as any).userId
                 return (
@@ -107,7 +109,7 @@ export default function NotificationsPage() {
                                 </div>
                             </>
                         ) : (
-                            <span className="text-muted-foreground font-mono text-xs">ID: {notification.userId}</span>
+                            <span className="text-muted-foreground font-mono text-xs">ID: {typeof notification.userId === "string" ? notification.userId : (notification.userId as UserSummary)?.name ?? ""}</span>
                         )}
                     </div>
                 )
@@ -115,35 +117,35 @@ export default function NotificationsPage() {
         },
         {
             key: "type",
-            header: "Type",
+            header: t("type"),
             cell: (notification) => notificationTypeBadge(notification.type),
         },
         {
             key: "title",
-            header: "Title",
+            header: t("title"),
             cell: (notification) => <div className="font-semibold text-foreground text-sm">{notification.title}</div>,
         },
         {
             key: "body",
-            header: "Message",
+            header: t("messageColumn"),
             cell: (notification) => (
                 <div className="max-w-[300px] truncate text-sm text-muted-foreground">
-                    {notification.body || <span className="italic text-muted-foreground/50">No message</span>}
+                    {notification.body || <span className="italic text-muted-foreground/50">{t("noMessage")}</span>}
                 </div>
             ),
         },
         {
             key: "read",
-            header: "Read",
+            header: t("read"),
             cell: (notification) => (
                 <Badge variant={notification.isRead ? "default" : "secondary"} className="shadow-sm">
-                    {notification.isRead ? "Read" : "Unread"}
+                    {notification.isRead ? t("read") : t("unread")}
                 </Badge>
             ),
         },
         {
             key: "created",
-            header: "Sent",
+            header: t("sentColumn"),
             cell: (notification) => <div className="text-sm font-medium text-muted-foreground whitespace-nowrap">{formatDate(notification.createdAt)}</div>,
         },
     ]
@@ -151,10 +153,10 @@ export default function NotificationsPage() {
     if (error) {
         return (
             <div className="space-y-4 animate-in fade-in duration-500">
-                <h1 className="text-4xl font-extrabold tracking-tight">Notifications</h1>
+                <h1 className="text-4xl font-extrabold tracking-tight">{t("notificationsTitle")}</h1>
                 <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-6 text-destructive flex items-center shadow-sm">
                     <AlertCircle className="w-6 h-6 mr-3" />
-                    <span className="font-semibold text-lg">Failed to load notifications. Please try again.</span>
+                    <span className="font-semibold text-lg">{t("failedToLoadNotifications")}</span>
                 </div>
             </div>
         )
@@ -168,9 +170,9 @@ export default function NotificationsPage() {
                         <Bell className="w-8 h-8 text-violet-500" />
                     </div>
                     <div>
-                        <h1 className="text-4xl font-extrabold tracking-tight text-foreground/90 leading-tight">Notifications</h1>
+                        <h1 className="text-4xl font-extrabold tracking-tight text-foreground/90 leading-tight">{t("notificationsTitle")}</h1>
                         <p className="text-muted-foreground mt-1 text-lg font-medium">
-                            View notification history and broadcast announcements to users.
+                            {t("notificationsSubtitle")}
                         </p>
                     </div>
                 </div>
@@ -179,44 +181,44 @@ export default function NotificationsPage() {
                     <DialogTrigger asChild>
                         <Button className="bg-violet-600 hover:bg-violet-700 text-white font-semibold shadow-md shadow-violet-600/20">
                             <Megaphone className="mr-2 h-4 w-4" />
-                            Broadcast Notification
+                            {t("broadcastNotification")}
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[500px]">
                         <DialogHeader>
-                            <DialogTitle className="text-xl font-bold">Send Broadcast Notification</DialogTitle>
+                            <DialogTitle className="text-xl font-bold">{t("sendBroadcastNotification")}</DialogTitle>
                             <DialogDescription>
-                                Send a push notification to all users or a specific role group.
+                                {t("broadcastDesc")}
                             </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
                             <div className="space-y-2">
-                                <Label htmlFor="title" className="font-semibold">Title</Label>
+                                <Label htmlFor="title" className="font-semibold">{t("title")}</Label>
                                 <Input
                                     id="title"
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
-                                    placeholder="Notification title..."
+                                    placeholder={t("notificationTitlePlaceholder")}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="body" className="font-semibold">Message</Label>
+                                <Label htmlFor="body" className="font-semibold">{t("messageColumn")}</Label>
                                 <Textarea
                                     id="body"
                                     value={body}
                                     onChange={(e) => setBody(e.target.value)}
-                                    placeholder="Notification message..."
+                                    placeholder={t("notificationMessagePlaceholder")}
                                     rows={4}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="target" className="font-semibold">Target Audience</Label>
+                                <Label htmlFor="target" className="font-semibold">{t("targetAudience")}</Label>
                                 <Select value={targetRole} onValueChange={setTargetRole}>
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Select target" />
+                                        <SelectValue placeholder={t("selectTarget")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">All Users</SelectItem>
+                                        <SelectItem value="all">{t("allUsers")}</SelectItem>
                                         {Object.entries(USER_ROLE_LABELS).map(([key, label]) => (
                                             <SelectItem key={key} value={key}>{label}s</SelectItem>
                                         ))}
@@ -226,7 +228,7 @@ export default function NotificationsPage() {
                         </div>
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setBroadcastOpen(false)}>
-                                Cancel
+                                {t("cancel")}
                             </Button>
                             <Button
                                 onClick={() => broadcastMutation.mutate()}
@@ -234,7 +236,7 @@ export default function NotificationsPage() {
                                 className="bg-violet-600 hover:bg-violet-700 text-white"
                             >
                                 <Send className="mr-2 h-4 w-4" />
-                                {broadcastMutation.isPending ? "Sending..." : "Send Notification"}
+                                {broadcastMutation.isPending ? t("sending") : t("sendNotification")}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -246,10 +248,10 @@ export default function NotificationsPage() {
                     <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
                         <h2 className="text-xl font-bold flex items-center">
                             <Bell className="w-5 h-5 mr-3 text-violet-500" />
-                            Notification History
+                            {t("notificationHistory")}
                         </h2>
                         <div className="text-sm font-semibold bg-background/80 px-3 py-1.5 rounded-full border border-border/50 shadow-sm">
-                            <span className="text-muted-foreground">Total:</span> <span className="text-foreground ml-1">{data?.meta?.total || 0}</span>
+                            <span className="text-muted-foreground">{t("total")}:</span> <span className="text-foreground ml-1">{data?.meta?.total || 0}</span>
                         </div>
                     </div>
                 </CardHeader>
@@ -265,7 +267,7 @@ export default function NotificationsPage() {
                             onPageChange={handlePageChange}
                             pageSize={limit}
                             loading={isLoading}
-                            emptyMessage="No notifications found."
+                            emptyMessage={t("noNotificationsFound")}
                         />
                     </div>
                 </CardContent>

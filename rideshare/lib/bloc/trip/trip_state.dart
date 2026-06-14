@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import '../../models/trip_model.dart';
 import '../../models/location_model.dart';
+import '../../core/errors/failure.dart';
 
 abstract class TripState extends Equatable {
   const TripState();
@@ -107,10 +108,11 @@ class TripAddressLoaded extends TripState {
 // Error State
 class TripError extends TripState {
   final String message;
+  final Failure? failure;
 
-  const TripError(this.message);
+  const TripError(this.message, {this.failure});
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [message, failure];
 }
 

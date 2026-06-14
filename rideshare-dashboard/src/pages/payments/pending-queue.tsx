@@ -23,6 +23,7 @@ import { formatDate, formatCurrency, getPaymentTypeLabel, cn, getTripLocationNam
 import type { Payment, UserSummary, TripSummary } from "@/types/models"
 import { CheckCircle, XCircle, AlertCircle, ArrowLeftRight, Clock, Info, User } from "lucide-react"
 import { toast } from "sonner"
+import { useLanguage } from "@/providers/language-provider"
 
 // Type guard for populated fields
 function isPopulatedUser(userId: string | UserSummary): userId is UserSummary {
@@ -36,6 +37,7 @@ function isPopulatedTrip(tripId: string | TripSummary | undefined): tripId is Tr
 export default function PendingQueuePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
+  const { t } = useLanguage()
   const page = parseInt(searchParams.get("page") || "1", 10)
   const limit = 20
 
@@ -65,6 +67,7 @@ export default function PendingQueuePage() {
       approvePayment(paymentId, adminNote),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYMENTS.PENDING] })
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYMENTS.ALL] })
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.DASHBOARD_STATS] })
       toast.success("Payment approved successfully")
       setActionDialog({ open: false, payment: null, action: null, adminNote: "" })
@@ -84,6 +87,7 @@ export default function PendingQueuePage() {
       rejectPayment(paymentId, adminNote),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYMENTS.PENDING] })
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYMENTS.ALL] })
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.DASHBOARD_STATS] })
       toast.success("Payment rejected successfully")
       setActionDialog({ open: false, payment: null, action: null, adminNote: "" })
@@ -116,11 +120,16 @@ export default function PendingQueuePage() {
     if (!actionDialog.payment || !actionDialog.action) return
 
     const { payment, action, adminNote } = actionDialog
+    const paymentId = payment.id || payment._id
+    if (!paymentId) {
+      toast.error("Payment identifier is missing")
+      return
+    }
 
     if (action === "approve") {
-      approveMutation.mutate({ paymentId: payment._id, adminNote: adminNote || undefined })
+      approveMutation.mutate({ paymentId, adminNote: adminNote || undefined })
     } else {
-      rejectMutation.mutate({ paymentId: payment._id, adminNote: adminNote || undefined })
+      rejectMutation.mutate({ paymentId, adminNote: adminNote || undefined })
     }
   }
 
@@ -309,7 +318,7 @@ export default function PendingQueuePage() {
               onPageChange={handlePageChange}
               pageSize={limit}
               loading={isLoading}
-              emptyMessage="No pending payments require approval right now. Awesome!"
+              emptyMessage={t("noPendingPaymentsFound")}
             />
           </div>
         </CardContent>

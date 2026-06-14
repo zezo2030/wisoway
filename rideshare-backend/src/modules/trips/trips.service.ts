@@ -7,6 +7,8 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { InjectQueue } from '@nestjs/bull';
+import type { Queue } from 'bull';
 import { TripEntity } from '../../database/entities/trip.entity';
 import { TripStatus } from '../../database/entities/shared.enums';
 import { CreateTripDto } from './dto/create-trip.dto';
@@ -20,6 +22,15 @@ import { VehiclesService } from '../vehicles/vehicles.service';
 import { UsersService } from '../users/users.service';
 import { PlatformPricingService } from '../payments/platform-pricing.service';
 import { TripsGateway } from './trips.gateway';
+import { ErrorCodes } from '../../common/errors/error-codes';
+import { RecurrenceService } from '../recurrence/recurrence.service';
+import { RecurrenceFrequency } from '../../database/entities/trip-recurrence-rule.entity';
+import { PendingChargesService } from '../pending-charges/pending-charges.service';
+import {
+  computeTripAutoStartDelayMs,
+  TRIP_AUTO_START_JOB_ID_PREFIX,
+  TRIP_AUTO_COMPLETE_JOB_ID_PREFIX,
+} from './trip-auto-start.util';
 
 function getFromLatLng(trip: TripEntity): { lat: number; lng: number } {
   const c = trip.fromPoint?.coordinates;
@@ -43,9 +54,16 @@ export class TripsService {
     private usersService: UsersService,
     private platformPricing: PlatformPricingService,
     private tripsGateway: TripsGateway,
+    @InjectQueue('no-show-detector') private noShowQueue: Queue,
+    @InjectQueue('trip-auto-start')
+    private tripAutoStartQueue: Queue,
+    @InjectQueue('trip-auto-complete')
+    private tripAutoCompleteQueue: Queue,
+    private recurrenceService: RecurrenceService,
+    private pendingChargesService: PendingChargesService,
   ) {}
 
-  async getPricingPreview(tripId: string, countryCode: string = 'EG') {
+  async getPricingPreview(tripId: string, countryCode: string = 'JO') {
     const trip = await this.findById(tripId);
     return this.platformPricing.pricingPreviewForTrip(trip, countryCode);
   }
@@ -74,12 +92,33 @@ export class TripsService {
       );
     }
 
+    // T033 — Mandatory driver profile photo guard
+    if (!driver.photoUrl) {
+      throw new ForbiddenException({
+        message: 'يجب إضافة صورة شخصية قبل نشر رحلة.',
+        code: ErrorCodes.PROFILE_PHOTO_REQUIRED,
+      });
+    }
+
+    const outstanding =
+      await this.pendingChargesService.getOutstandingSummary(driverId);
+    if (outstanding.count > 0) {
+      throw new ForbiddenException({
+        code: ErrorCodes.OUTSTANDING_CHARGES,
+        message: `لا يمكنك نشر رحلة جديدة قبل تسوية الرسوم المستحقة (${outstanding.count}) بإجمالي ${outstanding.totalAmount.toFixed(2)}.`,
+        count: outstanding.count,
+        totalAmount: outstanding.totalAmount,
+      });
+    }
+
     const departureTime = new Date(createTripDto.departureTime);
     if (departureTime <= new Date()) {
       throw new BadRequestException('Departure time must be in the future');
     }
 
-    const seats = this.generateSeatsFromLayout(createTripDto.seatLayout);
+    const seatLayout = this.resolveVehicleSeatLayout(vehicle);
+    const seats = this.generateSeatsFromLayout(seatLayout);
+    const totalSeats = seats.length;
 
     const trip = this.tripRepo.create({
       driverId,
@@ -104,21 +143,83 @@ export class TripsService {
       },
       departureTime,
       price: String(createTripDto.price),
-      currency: createTripDto.currency ?? 'EGP',
-      totalSeats: createTripDto.totalSeats,
-      availableSeats: createTripDto.totalSeats,
-      seatLayout: createTripDto.seatLayout,
+      currency: createTripDto.currency ?? 'JOD',
+      totalSeats,
+      availableSeats: totalSeats,
+      seatLayout,
       seats,
-      status: TripStatus.ACTIVE,
+      stops: createTripDto.stops ?? [],
+      notes: createTripDto.notes ?? null,
+      status: TripStatus.PUBLISHED,
       isVisible: true,
       communicationFeeStatus: 'not_paid',
-      carImageUrl: createTripDto.carImageUrl ?? null,
+      // Car photo always comes from the driver's vehicle profile — drivers
+      // don't upload it per trip. Fall back to the DTO only if a vehicle row
+      // doesn't have one yet (legacy data).
+      carImageUrl: vehicle.carImageUrl ?? createTripDto.carImageUrl ?? null,
     });
 
-    return this.tripRepo.save(trip);
+    const savedTrip = await this.tripRepo.save(trip);
+
+    if (createTripDto.recurrence) {
+      const rec = createTripDto.recurrence;
+      const localTime = departureTime.toTimeString().slice(0, 8);
+      const templateJson = {
+        fromName: createTripDto.from.name,
+        fromAddress: createTripDto.from.address ?? null,
+        fromPoint: {
+          lat: createTripDto.from.latitude,
+          lng: createTripDto.from.longitude,
+        },
+        toName: createTripDto.to.name,
+        toAddress: createTripDto.to.address ?? null,
+        toPoint: {
+          lat: createTripDto.to.latitude,
+          lng: createTripDto.to.longitude,
+        },
+        price: String(createTripDto.price),
+        currency: createTripDto.currency ?? 'JOD',
+        totalSeats,
+        seatLayout,
+        stops: createTripDto.stops ?? [],
+        notes: createTripDto.notes ?? null,
+        carImageUrl: vehicle.carImageUrl ?? createTripDto.carImageUrl ?? null,
+      };
+
+      const rule = await this.recurrenceService.createRule(
+        driverId,
+        templateJson,
+        rec.frequency === 'daily'
+          ? RecurrenceFrequency.DAILY
+          : RecurrenceFrequency.WEEKLY,
+        rec.weekdays,
+        localTime,
+        'Asia/Amman',
+        rec.until ?? null,
+      );
+
+      savedTrip.recurrenceRuleId = rule.id;
+      await this.tripRepo.save(savedTrip);
+    }
+
+    // T037: Enqueue city fan-out for the new trip
+    this.notificationsService.enqueueCityFanout(savedTrip.id).catch((err) => {
+      this.logger.warn(
+        `Failed to enqueue city fan-out for trip ${savedTrip.id}: ${err.message}`,
+      );
+    });
+
+    void this.scheduleTripAutoStart(
+      savedTrip.id,
+      new Date(savedTrip.departureTime),
+    );
+
+    return savedTrip;
   }
 
-  async findById(tripId: string): Promise<TripEntity & { distanceKm?: number }> {
+  async findById(
+    tripId: string,
+  ): Promise<TripEntity & { distanceKm?: number }> {
     const result = await this.tripRepo
       .createQueryBuilder('trip')
       .where('trip.id = :id', { id: tripId })
@@ -136,8 +237,7 @@ export class TripsService {
     const distanceKm = result.raw[0]?.distance_km;
     return {
       ...trip,
-      distanceKm:
-        distanceKm != null ? Number(distanceKm) : undefined,
+      distanceKm: distanceKm != null ? Number(distanceKm) : undefined,
     };
   }
 
@@ -202,7 +302,7 @@ export class TripsService {
     if (trip.driverId !== driverId) {
       throw new ForbiddenException('You are not the owner of this trip');
     }
-    if (trip.status !== TripStatus.ACTIVE) {
+    if (trip.status !== TripStatus.PUBLISHED) {
       throw new BadRequestException('Trip is not active');
     }
 
@@ -212,7 +312,7 @@ export class TripsService {
       throw new BadRequestException('Invalid seat number');
     }
 
-    const current = seats[seatIndex] as any;
+    const current = seats[seatIndex];
 
     if (locked) {
       if (current.status !== 'available') {
@@ -265,7 +365,7 @@ export class TripsService {
     const qb = this.tripRepo
       .createQueryBuilder('trip')
       .where('trip.status = :status', {
-        status: filters.status || TripStatus.ACTIVE,
+        status: filters.status || TripStatus.PUBLISHED,
       })
       .andWhere('trip.isVisible = :isVisible', { isVisible: true });
 
@@ -386,10 +486,18 @@ export class TripsService {
     const hasBookings = (trip.seats || []).some(
       (seat: any) => seat.status === 'booked',
     );
-    if (hasBookings && (updateTripDto.totalSeats || updateTripDto.seatLayout)) {
-      throw new BadRequestException(
-        'Cannot change seat layout when bookings exist',
-      );
+
+    if (
+      updateTripDto.departureTime != null &&
+      hasBookings &&
+      (new Date(updateTripDto.departureTime).getTime() - Date.now()) /
+        (1000 * 60 * 60) <=
+        24
+    ) {
+      throw new ForbiddenException({
+        message: 'Cannot change departure time within 24h when bookings exist',
+        code: ErrorCodes.CANCELLATION_WINDOW_CLOSED,
+      });
     }
 
     if (updateTripDto.from) {
@@ -418,18 +526,17 @@ export class TripsService {
       trip.departureTime = new Date(updateTripDto.departureTime);
     if (updateTripDto.price != null) trip.price = String(updateTripDto.price);
     if (updateTripDto.currency != null) trip.currency = updateTripDto.currency;
-    if (updateTripDto.totalSeats != null) {
-      trip.totalSeats = updateTripDto.totalSeats;
-      trip.availableSeats = updateTripDto.totalSeats;
-    }
-    if (updateTripDto.seatLayout != null) {
-      trip.seatLayout = updateTripDto.seatLayout;
-      trip.seats = this.generateSeatsFromLayout(updateTripDto.seatLayout);
-    }
     if (updateTripDto.carImageUrl !== undefined)
       trip.carImageUrl = updateTripDto.carImageUrl ?? null;
+    if (updateTripDto.notes !== undefined) trip.notes = updateTripDto.notes;
+    if (updateTripDto.stops !== undefined) trip.stops = updateTripDto.stops;
 
-    return this.tripRepo.save(trip);
+    const saved = await this.tripRepo.save(trip);
+    await this.rescheduleTripAutoStart(
+      saved.id,
+      new Date(saved.departureTime),
+    );
+    return saved;
   }
 
   async hide(tripId: string, driverId: string): Promise<TripEntity> {
@@ -447,7 +554,7 @@ export class TripsService {
     if (trip.driverId !== driverId) {
       throw new ForbiddenException('You are not the owner of this trip');
     }
-    trip.status = TripStatus.ACTIVE;
+    trip.status = TripStatus.PUBLISHED;
     trip.isVisible = true;
     return this.tripRepo.save(trip);
   }
@@ -463,6 +570,8 @@ export class TripsService {
     trip.status = TripStatus.COMPLETED;
     const savedTrip = await this.tripRepo.save(trip);
 
+    await this.removeTripLifecycleJobs(tripId);
+
     await this.bookingsService.markAsCompleted(tripId);
     const bookings = await this.bookingsService.findByTripInternal(tripId);
     for (const booking of bookings) {
@@ -474,6 +583,29 @@ export class TripsService {
         data: { tripId },
       });
     }
+
+    // T080: Enqueue no-show detection after the grace window
+    const graceSeconds = process.env.NO_SHOW_GRACE_OVERRIDE_SECONDS
+      ? Number(process.env.NO_SHOW_GRACE_OVERRIDE_SECONDS)
+      : 30 * 60; // 30 minutes default
+    this.noShowQueue
+      .add(
+        'detect-no-shows',
+        { tripId },
+        {
+          delay: graceSeconds * 1000,
+          attempts: 2,
+          backoff: { type: 'exponential', delay: 10000 },
+          jobId: `no-show-${tripId}`,
+          removeOnComplete: true,
+        },
+      )
+      .catch((err) =>
+        this.logger.warn(
+          `Failed to enqueue no-show detector for trip ${tripId}: ${(err as Error).message}`,
+        ),
+      );
+
     this.logger.log(`Trip ${tripId} completed`);
     return savedTrip;
   }
@@ -486,8 +618,30 @@ export class TripsService {
     if (trip.status === TripStatus.COMPLETED) {
       throw new BadRequestException('Cannot cancel a completed trip');
     }
+
+    const hoursUntilDeparture =
+      (new Date(trip.departureTime).getTime() - Date.now()) / (1000 * 60 * 60);
+    if (hoursUntilDeparture <= 24) {
+      const windowSeconds = Math.max(
+        0,
+        Math.floor(
+          (new Date(trip.departureTime).getTime() -
+            24 * 60 * 60 * 1000 -
+            Date.now()) /
+            1000,
+        ),
+      );
+      throw new ForbiddenException({
+        message: 'Cannot cancel within 24 hours of departure',
+        code: ErrorCodes.CANCELLATION_WINDOW_CLOSED,
+        windowSeconds,
+      });
+    }
+
     trip.status = TripStatus.CANCELLED;
     const savedTrip = await this.tripRepo.save(trip);
+
+    await this.removeTripLifecycleJobs(tripId);
 
     await this.bookingsService.cancelAllForTrip(
       tripId,
@@ -530,7 +684,7 @@ export class TripsService {
 
     const candidates = await this.tripRepo.find({
       where: {
-        status: TripStatus.ACTIVE,
+        status: TripStatus.PUBLISHED,
         isVisible: true,
       },
       order: { departureTime: 'ASC' },
@@ -578,7 +732,7 @@ export class TripsService {
 
     const candidates = await this.tripRepo.find({
       where: {
-        status: TripStatus.ACTIVE,
+        status: TripStatus.PUBLISHED,
         isVisible: true,
       },
       order: { departureTime: 'ASC' },
@@ -710,6 +864,29 @@ export class TripsService {
     return matched.length > 0 ? matched : knownRoutes;
   }
 
+  private resolveVehicleSeatLayout(vehicle: {
+    seats: number;
+    seatLayout: {
+      rows: number;
+      seatsPerRow: number;
+      seatsPerRowList?: number[];
+      preventGenderMixing?: boolean;
+    } | null;
+  }): {
+    rows: number;
+    seatsPerRow: number;
+    seatsPerRowList?: number[];
+    preventGenderMixing?: boolean;
+  } {
+    if (vehicle.seatLayout) {
+      return vehicle.seatLayout;
+    }
+    const total = Math.max(1, Math.min(50, vehicle.seats));
+    const seatsPerRow = Math.max(1, Math.ceil(total / 2));
+    const rows = Math.max(1, Math.ceil(total / seatsPerRow));
+    return { rows, seatsPerRow, preventGenderMixing: false };
+  }
+
   private generateSeatsFromLayout(layout: {
     rows: number;
     seatsPerRow: number;
@@ -751,5 +928,61 @@ export class TripsService {
       }
     }
     return seats;
+  }
+
+  /** Schedule auto-transition PUBLISHED/FULLY_BOOKED → IN_PROGRESS at departureTime. */
+  private async scheduleTripAutoStart(
+    tripId: string,
+    departureTime: Date,
+  ): Promise<void> {
+    const delay = computeTripAutoStartDelayMs(departureTime);
+    try {
+      await this.tripAutoStartQueue.add(
+        'enforce',
+        { tripId },
+        {
+          delay,
+          jobId: `${TRIP_AUTO_START_JOB_ID_PREFIX}${tripId}`,
+          removeOnComplete: true,
+          attempts: 2,
+          backoff: { type: 'exponential', delay: 15000 },
+        },
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Failed to schedule trip auto-start for trip ${tripId}: ${(err as Error).message}`,
+      );
+    }
+  }
+
+  async removeTripLifecycleJobs(tripId: string): Promise<void> {
+    try {
+      const startJob = await this.tripAutoStartQueue.getJob(
+        `${TRIP_AUTO_START_JOB_ID_PREFIX}${tripId}`,
+      );
+      await startJob?.remove();
+    } catch (err) {
+      this.logger.warn(
+        `remove trip-auto-start job ${tripId}: ${(err as Error).message}`,
+      );
+    }
+    try {
+      const completeJob = await this.tripAutoCompleteQueue.getJob(
+        `${TRIP_AUTO_COMPLETE_JOB_ID_PREFIX}${tripId}`,
+      );
+      await completeJob?.remove();
+    } catch (err) {
+      this.logger.warn(
+        `remove trip-auto-complete job ${tripId}: ${(err as Error).message}`,
+      );
+    }
+  }
+
+  private async rescheduleTripAutoStart(
+    tripId: string,
+    departureTime: Date,
+  ): Promise<void> {
+    await this.removeTripLifecycleJobs(tripId);
+    await this.scheduleTripAutoStart(tripId, departureTime);
   }
 }

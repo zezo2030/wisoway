@@ -1,0 +1,5 @@
+# انسخ هذا الملف إلى key.properties واملأ القيم (لا ترفع key.properties إلى Git).
+storePassword=YOUR_STORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=upload
+storeFile=upload-keystore.jks

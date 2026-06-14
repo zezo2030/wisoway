@@ -6,6 +6,7 @@ import '../../core/constants/route_names.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/text_styles.dart';
+import '../../l10n/l10n_extensions.dart';
 
 Future<bool?> showLogoutConfirmationDialog(BuildContext context) {
   return showDialog<bool>(
@@ -13,18 +14,18 @@ Future<bool?> showLogoutConfirmationDialog(BuildContext context) {
     builder: (context) => AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusXl),
       title: Text(
-        'تسجيل الخروج',
+        context.l10n.logoutConfirmTitle,
         style: AppTextStyles.titleMediumWithContext(context),
       ),
       content: Text(
-        'هل أنت متأكد من تسجيل الخروج؟',
+        context.l10n.logoutConfirmMessage,
         style: AppTextStyles.bodyMediumWithContext(context),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
           child: Text(
-            'إلغاء',
+            context.l10n.cancel,
             style: AppTextStyles.bodyMediumWithContext(context),
           ),
         ),
@@ -32,7 +33,7 @@ Future<bool?> showLogoutConfirmationDialog(BuildContext context) {
           onPressed: () => Navigator.pop(context, true),
           style: TextButton.styleFrom(foregroundColor: T.error(context)),
           child: Text(
-            'تسجيل الخروج',
+            context.l10n.logoutButton,
             style: AppTextStyles.labelLargeWithContext(context),
           ),
         ),

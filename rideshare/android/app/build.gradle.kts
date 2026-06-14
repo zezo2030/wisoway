@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // START: FlutterFire Configuration
@@ -8,8 +10,16 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    val rawText = keystorePropertiesFile.readText(Charsets.UTF_8)
+    val text = rawText.removePrefix("\uFEFF").trimStart()
+    text.reader().use { keystoreProperties.load(it) }
+}
+
 android {
-    namespace = "com.example.rideshare"
+    namespace = "com.abdelaziz.visionway"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -25,7 +35,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.rideshare"
+        applicationId = "com.abdelaziz.visionway"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -34,11 +44,34 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (keystorePropertiesFile.exists()) {
+            val keyAlias = keystoreProperties.getProperty("keyAlias")
+                ?: error("key.properties: missing keyAlias")
+            val keyPassword = keystoreProperties.getProperty("keyPassword")
+                ?: error("key.properties: missing keyPassword")
+            val storePassword = keystoreProperties.getProperty("storePassword")
+                ?: error("key.properties: missing storePassword")
+            val storeFileProp = keystoreProperties.getProperty("storeFile")
+                ?: error("key.properties: missing storeFile")
+            create("release") {
+                this.keyAlias = keyAlias
+                this.keyPassword = keyPassword
+                this.storePassword = storePassword
+                storeFile = rootProject.file(storeFileProp)
+                storeType = "pkcs12"
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig =
+                if (keystorePropertiesFile.exists()) {
+                    signingConfigs.getByName("release")
+                } else {
+                    signingConfigs.getByName("debug")
+                }
         }
     }
 }

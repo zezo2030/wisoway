@@ -64,7 +64,7 @@ export default function LoginPage() {
           className="rounded-full bg-white/10 hover:bg-white/20 text-white dark:bg-slate-900/50 dark:hover:bg-slate-800/80 dark:text-slate-300 border border-white/10 dark:border-slate-800 backdrop-blur-md px-4 h-10 font-bold transition-all"
         >
           <Languages className={cn("h-4 w-4", language === "ar" ? "ml-2" : "mr-2")} />
-          {language === "en" ? "العربية" : "English"}
+          {t("languageToggleLabel")}
         </Button>
       </div>
 

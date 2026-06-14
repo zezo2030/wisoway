@@ -6,10 +6,14 @@ import '../../models/chat_model.dart';
 import '../../models/trip_model.dart';
 import '../../widgets/chat_bubble_widget.dart';
 import '../../core/theme/colors.dart';
+import '../../core/ui/error_surface.dart';
+import '../../core/api/api_client.dart';
 import '../../widgets/common/empty_state.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class DriverChatScreen extends StatefulWidget {
   final String tripId;
+  final String? chatRoomId;
   final TripModel? trip;
   final String? passengerId;
   final String? passengerName;
@@ -17,6 +21,7 @@ class DriverChatScreen extends StatefulWidget {
   const DriverChatScreen({
     super.key,
     required this.tripId,
+    this.chatRoomId,
     this.trip,
     this.passengerId,
     this.passengerName,
@@ -35,6 +40,7 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
   bool _isLoading = true;
   bool _isSending = false;
   String? _errorMessage;
+  bool _isReadOnly = false;
 
   @override
   void initState() {
@@ -50,13 +56,15 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
       if (currentUser == null) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'يجب تسجيل الدخول أولاً';
+          _errorMessage = context.l10n.mustSignInFirst;
         });
         return;
       }
 
       ChatModel chat;
-      if (widget.passengerId != null) {
+      if (widget.chatRoomId != null && widget.chatRoomId!.isNotEmpty) {
+        chat = await _chatService.getRoomById(widget.chatRoomId!);
+      } else if (widget.passengerId != null) {
         chat = await _chatService.getOrCreateRoomForDriverPassenger(
           widget.tripId,
           widget.passengerId!,
@@ -66,18 +74,25 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
       }
       setState(() {
         _chatId = chat.id;
+        _isReadOnly = chat.isClosedForSending;
         _isLoading = false;
       });
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'خطأ في تحميل المحادثة: ${e.toString()}';
+        _errorMessage = context.l10n.chatLoadError(e.toString());
       });
     }
   }
 
   Future<void> _sendMessage() async {
     if (_messageController.text.trim().isEmpty) return;
+    if (_isReadOnly) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.chatClosedTripEnded)),
+      );
+      return;
+    }
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final currentUser = authProvider.userModel;
@@ -91,7 +106,9 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
 
       if (chatId.isEmpty) {
         ChatModel chat;
-        if (widget.passengerId != null) {
+        if (widget.chatRoomId != null && widget.chatRoomId!.isNotEmpty) {
+          chat = await _chatService.getRoomById(widget.chatRoomId!);
+        } else if (widget.passengerId != null) {
           chat = await _chatService.getOrCreateRoomForDriverPassenger(
             widget.tripId,
             widget.passengerId!,
@@ -100,7 +117,16 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
           chat = await _chatService.getOrCreateRoomForTrip(widget.tripId);
         }
         chatId = chat.id;
-        setState(() => _chatId = chatId);
+        setState(() {
+          _chatId = chatId;
+          _isReadOnly = chat.isClosedForSending;
+        });
+        if (_isReadOnly) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(context.l10n.chatClosedTripEnded)),
+          );
+          return;
+        }
       }
 
       if (chatId.isEmpty) {
@@ -123,12 +149,7 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في إرسال الرسالة: ${e.toString()}'),
-            backgroundColor: T.error(context),
-          ),
-        );
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     } finally {
       if (mounted) {
@@ -151,14 +172,14 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
 
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('محادثة الرحلة')),
+        appBar: AppBar(title: Text(context.l10n.tripChatTitle)),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     if (_errorMessage != null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('محادثة الرحلة')),
+        appBar: AppBar(title: Text(context.l10n.tripChatTitle)),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24.0),
@@ -181,12 +202,14 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
 
     if (currentUser == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('محادثة الرحلة')),
-        body: const Center(child: Text('يجب تسجيل الدخول')),
+        appBar: AppBar(title: Text(context.l10n.tripChatTitle)),
+        body: Center(child: Text(context.l10n.mustSignIn)),
       );
     }
 
     final chatId = _chatId ?? '';
+    final readOnlyReason =
+        _isReadOnly ? context.l10n.chatClosedTripEnded : null;
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -196,8 +219,8 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
           children: [
             Text(
               widget.passengerName != null
-                  ? 'محادثة مع ${widget.passengerName}'
-                  : 'محادثة الرحلة',
+                  ? context.l10n.chatWithPerson(widget.passengerName!)
+                  : context.l10n.tripChatTitle,
             ),
             if (widget.trip != null && widget.passengerName == null)
               Text(
@@ -213,10 +236,10 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
         children: [
           Expanded(
             child: chatId.isEmpty
-                ? const EmptyState(
+                ? EmptyState(
                     icon: Icons.chat_bubble_outline,
-                    title: 'لا توجد رسائل بعد',
-                    subtitle: 'ابدأ المحادثة الآن',
+                    title: context.l10n.noMessagesYet,
+                    subtitle: context.l10n.startChatNow,
                     showCircleBackground: false,
                     iconSize: 64,
                   )
@@ -228,16 +251,22 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
                       }
 
                       if (snapshot.hasError) {
-                        return Center(child: Text('خطأ: ${snapshot.error}'));
+                        return Center(
+                          child: Text(
+                            context.l10n.errorWithDetail(
+                              '${snapshot.error}',
+                            ),
+                          ),
+                        );
                       }
 
                       final messages = snapshot.data ?? [];
 
                       if (messages.isEmpty) {
-                        return const EmptyState(
+                        return EmptyState(
                           icon: Icons.chat_bubble_outline,
-                          title: 'لا توجد رسائل بعد',
-                          subtitle: 'ابدأ المحادثة الآن',
+                          title: context.l10n.noMessagesYet,
+                          subtitle: context.l10n.startChatNow,
                           showCircleBackground: false,
                           iconSize: 64,
                         );
@@ -265,6 +294,19 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
                     },
                   ),
           ),
+          if (readOnlyReason != null)
+            Container(
+              width: double.infinity,
+              color: T.surfaceVariant(context),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Text(
+                readOnlyReason,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: T.onSurfaceVariant(context),
+                    ),
+              ),
+            ),
           Container(
             decoration: BoxDecoration(
               color: T.surface(context),
@@ -284,11 +326,13 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
                     Expanded(
                       child: Semantics(
                         textField: true,
-                        label: 'اكتب رسالة',
+                        label: context.l10n.typeMessage,
                         child: TextField(
                           controller: _messageController,
+                          enabled: readOnlyReason == null,
                           decoration: InputDecoration(
-                            hintText: 'اكتب رسالة...',
+                            hintText:
+                                readOnlyReason ?? context.l10n.typeMessageHint,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(24),
                             ),
@@ -299,17 +343,21 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
                           ),
                           maxLines: null,
                           textInputAction: TextInputAction.send,
-                          onSubmitted: (_) => _sendMessage(),
+                          onSubmitted: (_) {
+                            if (readOnlyReason == null) _sendMessage();
+                          },
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Semantics(
                       button: true,
-                      label: 'إرسال الرسالة',
+                      label: context.l10n.sendMessage,
                       child: IconButton(
-                        onPressed: _isSending ? null : _sendMessage,
-                        tooltip: 'إرسال',
+                        onPressed: _isSending || readOnlyReason != null
+                            ? null
+                            : _sendMessage,
+                        tooltip: context.l10n.send,
                         icon: _isSending
                             ? const SizedBox(
                                 width: 20,

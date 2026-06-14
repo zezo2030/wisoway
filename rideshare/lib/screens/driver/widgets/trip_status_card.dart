@@ -3,6 +3,7 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../models/trip_model.dart';
+import '../../../l10n/l10n_extensions.dart';
 
 class TripStatusCard extends StatelessWidget {
   final TripModel trip;
@@ -18,22 +19,22 @@ class TripStatusCard extends StatelessWidget {
     switch (trip.status) {
       case 'active':
         statusColor = AppColors.success;
-        statusText = 'نشطة';
+        statusText = context.l10n.tripStatusActive;
         statusIcon = IconsaxPlusBold.tick_circle;
         break;
       case 'hidden':
         statusColor = AppColors.warning;
-        statusText = 'مخفية';
+        statusText = context.l10n.tripStatusHidden;
         statusIcon = IconsaxPlusLinear.eye_slash;
         break;
       case 'completed':
         statusColor = AppColors.teal600;
-        statusText = 'مكتملة';
+        statusText = context.l10n.tripStatusCompleted;
         statusIcon = IconsaxPlusBold.tick_circle;
         break;
       default:
         statusColor = AppColors.slate400;
-        statusText = 'غير معروف';
+        statusText = context.l10n.tripStatusUnknown;
         statusIcon = IconsaxPlusLinear.info_circle;
     }
 
@@ -66,7 +67,7 @@ class TripStatusCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'حالة الرحلة',
+                  context.l10n.tripStatusTitle,
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: AppColors.slate400,
                   ),

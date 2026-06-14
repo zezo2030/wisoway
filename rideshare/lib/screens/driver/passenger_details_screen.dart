@@ -3,13 +3,28 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/text_styles.dart';
+import '../../core/widgets/phone_text.dart';
 import '../../models/booking_model.dart';
 import '../../core/constants/route_names.dart';
+import '../../l10n/l10n_extensions.dart';
 
-class PassengerDetailsScreen extends StatelessWidget {
+class PassengerDetailsScreen extends StatefulWidget {
   final BookingModel booking;
 
   const PassengerDetailsScreen({super.key, required this.booking});
+
+  @override
+  State<PassengerDetailsScreen> createState() => _PassengerDetailsScreenState();
+}
+
+class _PassengerDetailsScreenState extends State<PassengerDetailsScreen> {
+  late BookingModel _booking;
+
+  @override
+  void initState() {
+    super.initState();
+    _booking = widget.booking;
+  }
 
   Future<void> _launchCall(String phone) async {
     final uri = Uri.parse('tel:$phone');
@@ -28,13 +43,15 @@ class PassengerDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = booking.userPopulated;
-    final hasData = booking.hasDriverPaidToContact && user != null;
+    final user = _booking.userPopulated;
+    // Communication-fee reveal: once the driver pays the trip unlock fee,
+    // passenger details and chat are available even while the booking is pending.
+    final hasData = _booking.hasDriverPaidToContact && user != null;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'تفاصيل الراكب',
+          context.l10n.passengerDetailsTitle,
           style: AppTextStyles.titleMedium.copyWith(
             fontWeight: FontWeight.bold,
           ),
@@ -49,9 +66,9 @@ class PassengerDetailsScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppColors.slate50,
+                color: T.surface(context),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.slate200),
+                border: Border.all(color: T.outline(context)),
               ),
               child: Column(
                 children: [
@@ -59,26 +76,26 @@ class PassengerDetailsScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: (user?.gender == 'male'
-                          ? AppColors.info.withValues(alpha: 0.1)
-                          : Colors.pink.shade100),
+                          ? T.info(context).withValues(alpha: 0.1)
+                          : T.accentPink(context).withValues(alpha: 0.1)),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       IconsaxPlusBold.profile,
                       size: 48,
                       color: user?.gender == 'male'
-                          ? AppColors.infoDark
-                          : Colors.pink.shade700,
+                          ? T.info(context)
+                          : T.accentPink(context),
                     ),
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    hasData ? user.name : 'راكب مجهول',
+                    hasData ? user.name : '***',
                     style: AppTextStyles.titleMedium.copyWith(
                       fontSize: 20,
                       color: hasData
                           ? T.onSurface(context).withValues(alpha: 0.87)
-                          : AppColors.slate600,
+                          : T.textSecondary(context),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -95,7 +112,11 @@ class PassengerDetailsScreen extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      'مقعد ${booking.seatNumber}',
+                      context.l10n.seatLabelWithValue(
+                        _booking.seatSummary.isNotEmpty
+                            ? _booking.seatSummary
+                            : '-',
+                      ),
                       style: AppTextStyles.labelLarge.copyWith(
                         color: AppColors.success,
                       ),
@@ -108,8 +129,9 @@ class PassengerDetailsScreen extends StatelessWidget {
             if (hasData) ...[
               _InfoCard(
                 icon: IconsaxPlusLinear.call,
-                label: 'رقم الهاتف',
+                label: context.l10n.phoneNumberLabel,
                 value: user.phoneNumber,
+                isPhone: true,
                 onTap: user.phoneNumber.isNotEmpty
                     ? () => _launchCall(user.phoneNumber)
                     : null,
@@ -117,7 +139,7 @@ class PassengerDetailsScreen extends StatelessWidget {
               const SizedBox(height: 12),
               _InfoCard(
                 icon: IconsaxPlusLinear.sms,
-                label: 'البريد الإلكتروني',
+                label: context.l10n.emailLabel,
                 value: user.email,
                 onTap: user.email.isNotEmpty
                     ? () => _launchEmail(user.email)
@@ -125,39 +147,11 @@ class PassengerDetailsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               _ChatButton(
-                tripId: booking.tripId,
-                passengerId: booking.userId,
+                tripId: _booking.tripId,
+                passengerId: _booking.userId,
                 passengerName: user.name,
               ),
-            ] else
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppColors.warning.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppColors.warning.withValues(alpha: 0.25),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      IconsaxPlusLinear.info_circle,
-                      color: AppColors.warning,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'بيانات الراكب تظهر بعد تأكيد الحجز (رحلة مجانية أو خصم من المحفظة)',
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color: AppColors.warningDark,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            ],
           ],
         ),
       ),
@@ -180,7 +174,7 @@ class _ChatButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: 'محادثة خاصة مع $passengerName',
+      label: context.l10n.privateChatWithSemantic(passengerName),
       child: InkWell(
         onTap: () => Navigator.pushNamed(
           context,
@@ -195,21 +189,23 @@ class _ChatButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.teal50,
+            color: T.primaryContainer(context),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.teal200),
+            border: Border.all(
+              color: T.primary(context).withValues(alpha: 0.3),
+            ),
           ),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.teal100,
+                  color: T.primary(context).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   IconsaxPlusLinear.message,
-                  color: AppColors.teal700,
+                  color: T.primary(context),
                   size: 24,
                 ),
               ),
@@ -219,16 +215,16 @@ class _ChatButton extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'محادثة خاصة',
+                      context.l10n.privateChat,
                       style: AppTextStyles.titleSmall.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: T.primary(context),
+                        color: T.onSurface(context),
                       ),
                     ),
                     Text(
-                      'مراسلة $passengerName',
+                      context.l10n.messagePerson(passengerName),
                       style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.teal700,
+                        color: T.textSecondary(context),
                       ),
                     ),
                   ],
@@ -236,7 +232,7 @@ class _ChatButton extends StatelessWidget {
               ),
               Icon(
                 IconsaxPlusLinear.arrow_left_2,
-                color: AppColors.teal700,
+                color: T.primary(context),
                 size: 20,
               ),
             ],
@@ -252,12 +248,14 @@ class _InfoCard extends StatelessWidget {
   final String label;
   final String value;
   final VoidCallback? onTap;
+  final bool isPhone;
 
   const _InfoCard({
     required this.icon,
     required this.label,
     required this.value,
     this.onTap,
+    this.isPhone = false,
   });
 
   @override
@@ -275,10 +273,10 @@ class _InfoCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: T.surface(context),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.slate200),
+            border: Border.all(color: T.outline(context)),
             boxShadow: [
               BoxShadow(
-                color: AppColors.black.withValues(alpha: 0.03),
+                color: T.shadow(context).withValues(alpha: 0.05),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -289,10 +287,10 @@ class _InfoCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.teal50,
+                  color: T.primary(context).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: AppColors.teal700, size: 22),
+                child: Icon(icon, color: T.primary(context), size: 22),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -302,26 +300,35 @@ class _InfoCard extends StatelessWidget {
                     Text(
                       label,
                       style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.slate600,
+                        color: T.textSecondary(context),
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      value.isNotEmpty ? value : '-',
-                      style: AppTextStyles.titleSmall.copyWith(
-                        color: value.isNotEmpty
-                            ? T.onSurface(context).withValues(alpha: 0.87)
-                            : T.outlineVariant(context),
+                    if (isPhone && value.isNotEmpty)
+                      PhoneText(
+                        value,
+                        style: AppTextStyles.titleSmall.copyWith(
+                          color: T.onSurface(context).withValues(alpha: 0.87),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      )
+                    else
+                      Text(
+                        value.isNotEmpty ? value : '-',
+                        style: AppTextStyles.titleSmall.copyWith(
+                          color: value.isNotEmpty
+                              ? T.onSurface(context).withValues(alpha: 0.87)
+                              : T.outlineVariant(context),
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
                   ],
                 ),
               ),
               if (isTappable)
                 Icon(
                   IconsaxPlusLinear.arrow_left_2,
-                  color: AppColors.teal700,
+                  color: T.primary(context),
                   size: 20,
                 ),
             ],

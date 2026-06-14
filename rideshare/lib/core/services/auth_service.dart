@@ -4,6 +4,23 @@ import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
 import '../storage/token_storage.dart';
 import '../constants/app_constants.dart';
+import 'device_fingerprint_service.dart';
+
+/// Result returned by [AuthService.verifyOTP].
+/// Carries the authenticated user plus backend safety signals.
+class VerifyOtpResult {
+  final UserModel? user;
+  final String accountState; // 'active' | 'restricted' | 'banned'
+  final String deviceState; // 'trusted' | 'new' | 'revoked'
+  final bool pendingPhoneLinkRequired;
+
+  const VerifyOtpResult({
+    required this.user,
+    this.accountState = 'active',
+    this.deviceState = 'new',
+    this.pendingPhoneLinkRequired = false,
+  });
+}
 
 class AuthService {
   final ApiClient _api = ApiClient();
@@ -30,44 +47,14 @@ class AuthService {
     return null;
   }
 
-  // ===== Sign Up =====
-  Future<Map<String, dynamic>> signUp({
-    required String email,
-    required String password,
-    required String name,
-    required String phoneNumber,
-    String role = 'passenger',
-    String? gender,
-  }) async {
-    final response = await _api.post(
-      ApiEndpoints.register,
-      data: {
-        'email': email,
-        'password': password,
-        'name': name,
-        'gender': gender ?? AppConstants.genderMale,
-        'phoneNumber': phoneNumber,
-        'role': role,
-      },
-    );
-
-    final data = response['data'] ?? response;
-    // Don't save tokens - account doesn't exist yet
-    // Return phoneNumber and expiresAt for OTP verification
-    return {
-      'phoneNumber': data['phoneNumber'],
-      'expiresAt': data['expiresAt'],
-    };
-  }
-
-  // ===== Sign In (Email/Password) =====
+  // ===== Sign In (Phone/Password) =====
   Future<UserModel> signIn({
-    required String email,
+    required String phoneNumber,
     required String password,
   }) async {
     final response = await _api.post(
       ApiEndpoints.login,
-      data: {'email': email, 'password': password},
+      data: {'phoneNumber': phoneNumber, 'password': password},
     );
 
     final data = response['data'] ?? response;
@@ -95,14 +82,40 @@ class AuthService {
     }
   }
 
-  Future<UserModel?> verifyOTP(String phoneNumber, String code) async {
+  Future<VerifyOtpResult> verifyOTP(
+    String phoneNumber,
+    String code, {
+    DevicePayload? device,
+    String? name,
+    String? gender,
+    String? role,
+    String? password,
+  }) async {
     try {
-      final response = await _api.post(
-        ApiEndpoints.verifyOtp,
-        data: {'phoneNumber': phoneNumber, 'code': code.trim()},
-      );
+      final body = <String, dynamic>{
+        'phoneNumber': phoneNumber,
+        'code': code.trim(),
+      };
+      if (device != null) {
+        body['device'] = device.toJson();
+      }
+      // First-time sign-up bootstrap fields. Backend ignores them when an
+      // account already exists for the phone.
+      if (name != null && name.trim().isNotEmpty) body['name'] = name.trim();
+      if (gender != null && gender.isNotEmpty) body['gender'] = gender;
+      if (role != null && role.isNotEmpty) body['role'] = role;
+      if (password != null && password.isNotEmpty) {
+        body['password'] = password;
+      }
+
+      final response = await _api.post(ApiEndpoints.verifyOtp, data: body);
 
       final data = response['data'] ?? response;
+
+      final accountState = (data['accountState'] as String?) ?? 'active';
+      final deviceState = (data['deviceState'] as String?) ?? 'new';
+      final pendingPhoneLinkRequired =
+          (data['pendingPhoneLinkRequired'] as bool?) ?? false;
 
       // Verification might just return success status without tokens if it's for
       // an existing logged-in user confirming their phone number
@@ -115,11 +128,21 @@ class AuthService {
           data['user']['_id'] ?? data['user']['id'],
         );
         _currentUser = UserModel.fromJson(data['user']);
-        return _currentUser;
+        return VerifyOtpResult(
+          user: _currentUser,
+          accountState: accountState,
+          deviceState: deviceState,
+          pendingPhoneLinkRequired: pendingPhoneLinkRequired,
+        );
       } else {
-        // Just linking the phone
+        // Just linking the phone — no new tokens; refresh profile
         _currentUser = await getProfile();
-        return _currentUser;
+        return VerifyOtpResult(
+          user: _currentUser,
+          accountState: accountState,
+          deviceState: deviceState,
+          pendingPhoneLinkRequired: pendingPhoneLinkRequired,
+        );
       }
     } catch (e) {
       throw Exception('كود التحقق غير صحيح أو منتهي الصلاحية');
@@ -144,6 +167,7 @@ class AuthService {
     String? email,
     String? gender,
     String? profileImageUrl,
+    bool? hidePhoneNumber,
   }) async {
     final Map<String, dynamic> data = {};
     if (name != null) {
@@ -154,6 +178,9 @@ class AuthService {
     }
     if (profileImageUrl != null) {
       data['photoUrl'] = profileImageUrl; // backend expects 'photoUrl'
+    }
+    if (hidePhoneNumber != null) {
+      data['hidePhoneNumber'] = hidePhoneNumber;
     }
     // Note: email update is not supported in UpdateUserDto (read-only after registration)
 
@@ -183,10 +210,38 @@ class AuthService {
   }
 
   // ===== Password Reset =====
-  Future<void> resetPassword(String email) async {
-    // Depending on backend implementation, might require a different endpoint
-    // Placeholder based on usual NestJS Auth
-    throw Exception('Not implemented in API client yet');
+  Future<void> forgotPassword(String phoneNumber) async {
+    await _api.post(
+      ApiEndpoints.forgotPassword,
+      data: {'phoneNumber': phoneNumber},
+    );
+  }
+
+  Future<String> verifyResetOtp(String phoneNumber, String code) async {
+    final response = await _api.post(
+      ApiEndpoints.verifyResetOtp,
+      data: {'phoneNumber': phoneNumber, 'code': code.trim()},
+    );
+
+    final data = response['data'] ?? response;
+    return data['resetToken'];
+  }
+
+  Future<void> resetPassword(String resetToken, String newPassword) async {
+    await _api.post(
+      ApiEndpoints.resetPassword,
+      data: {'resetToken': resetToken, 'newPassword': newPassword},
+    );
+  }
+
+  Future<void> changePassword(
+    String currentPassword,
+    String newPassword,
+  ) async {
+    await _api.post(
+      ApiEndpoints.changePassword,
+      data: {'currentPassword': currentPassword, 'newPassword': newPassword},
+    );
   }
 
   // ===== Admin & Driver actions =====

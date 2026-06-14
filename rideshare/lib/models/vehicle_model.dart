@@ -1,3 +1,5 @@
+import 'seat_layout_config.dart';
+
 class VehicleModel {
   final String id;
   final String driverId; // User ID of the driver
@@ -5,8 +7,10 @@ class VehicleModel {
   final String plateNumber;
   final String model;
   final int seats;
+  final SeatLayoutConfig? seatLayout;
   final String? licenseImageUrl; // Driver's license image
   final String? vehicleLicenseImageUrl; // Vehicle license image
+  final String? carImageUrl; // Photo of the car itself
   final bool isVerified;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -18,15 +22,22 @@ class VehicleModel {
     required this.plateNumber,
     required this.model,
     required this.seats,
+    this.seatLayout,
     this.licenseImageUrl,
     this.vehicleLicenseImageUrl,
+    this.carImageUrl,
     this.isVerified = false,
     required this.createdAt,
     required this.updatedAt,
   });
 
-  // Convert from JSON (REST API)
   factory VehicleModel.fromJson(Map<String, dynamic> json) {
+    SeatLayoutConfig? layout;
+    final raw = json['seatLayout'];
+    if (raw is Map) {
+      layout = SeatLayoutConfig.fromMap(Map<String, dynamic>.from(raw));
+    }
+
     return VehicleModel(
       id: json['_id'] ?? json['id'] ?? '',
       driverId: json['driverId'] ?? '',
@@ -34,8 +45,10 @@ class VehicleModel {
       plateNumber: json['plateNumber'] ?? '',
       model: json['model'] ?? '',
       seats: json['seats'] ?? 4,
+      seatLayout: layout,
       licenseImageUrl: json['licenseImageUrl'],
       vehicleLicenseImageUrl: json['vehicleLicenseImageUrl'],
+      carImageUrl: json['carImageUrl'],
       isVerified: json['isVerified'] ?? false,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
@@ -46,7 +59,6 @@ class VehicleModel {
     );
   }
 
-  // Convert to JSON
   Map<String, dynamic> toJson() {
     return {
       if (id.isNotEmpty) '_id': id,
@@ -55,18 +67,18 @@ class VehicleModel {
       'plateNumber': plateNumber,
       'model': model,
       'seats': seats,
+      'seatLayout': seatLayout?.toMap(),
       'licenseImageUrl': licenseImageUrl,
       'vehicleLicenseImageUrl': vehicleLicenseImageUrl,
+      'carImageUrl': carImageUrl,
       'isVerified': isVerified,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
   }
 
-  // Convert to Map (for local use)
   Map<String, dynamic> toMap() => toJson();
 
-  // Create a copy with updated fields
   VehicleModel copyWith({
     String? id,
     String? driverId,
@@ -74,8 +86,10 @@ class VehicleModel {
     String? plateNumber,
     String? model,
     int? seats,
+    SeatLayoutConfig? seatLayout,
     String? licenseImageUrl,
     String? vehicleLicenseImageUrl,
+    String? carImageUrl,
     bool? isVerified,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -87,9 +101,11 @@ class VehicleModel {
       plateNumber: plateNumber ?? this.plateNumber,
       model: model ?? this.model,
       seats: seats ?? this.seats,
+      seatLayout: seatLayout ?? this.seatLayout,
       licenseImageUrl: licenseImageUrl ?? this.licenseImageUrl,
       vehicleLicenseImageUrl:
           vehicleLicenseImageUrl ?? this.vehicleLicenseImageUrl,
+      carImageUrl: carImageUrl ?? this.carImageUrl,
       isVerified: isVerified ?? this.isVerified,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

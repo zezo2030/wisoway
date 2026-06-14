@@ -8,6 +8,10 @@ import '../../core/theme/colors.dart';
 import '../../core/theme/text_styles.dart';
 import '../../models/payment_model.dart';
 import '../../../widgets/common/section_card.dart';
+import '../../core/ui/error_surface.dart';
+import '../../core/api/api_client.dart';
+import '../../core/errors/failure.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class ManualPaymentScreen extends StatefulWidget {
   final String paymentId;
@@ -36,13 +40,11 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
   bool _isLoading = false;
   PaymentModel? _payment;
 
-  final List<Map<String, String>> _walletTypes = [
-    {'value': 'zain', 'label': 'Zain Cash', 'country': 'الأردن'},
-    {'value': 'orange', 'label': 'Orange Money', 'country': 'الأردن'},
-    {'value': 'cliq', 'label': 'Cliq', 'country': 'الأردن'},
-    {'value': 'vodafone', 'label': 'Vodafone Cash', 'country': 'مصر'},
-    {'value': 'etisalat', 'label': 'Etisalat Cash', 'country': 'مصر'},
-    {'value': 'other', 'label': 'أخرى', 'country': ''},
+  static const List<Map<String, String>> _walletTypes = [
+    {'value': 'zain', 'label': 'Zain Cash'},
+    {'value': 'orange', 'label': 'Orange Money'},
+    {'value': 'cliq', 'label': 'Cliq'},
+    {'value': 'other', 'label': ''},
   ];
 
   @override
@@ -64,12 +66,7 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
         setState(() => _payment = null);
       }
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في تحميل بيانات الدفع: ${e.toString()}'),
-            backgroundColor: T.error(context),
-          ),
-        );
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     }
   }
@@ -96,20 +93,26 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_selectedWalletType == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('يرجى اختيار نوع المحفظة'),
-          backgroundColor: T.error(context),
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.validation,
+          messageKey: 'errorsValidationGeneric',
+          severity: FailureSeverity.warning,
+          developerDetail: 'Wallet type not selected',
         ),
       );
       return;
     }
 
     if (_proofImage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('يرجى رفع صورة إثبات الدفع'),
-          backgroundColor: T.error(context),
+      ErrorSurface.showFailure(
+        context,
+        const Failure(
+          category: FailureCategory.validation,
+          messageKey: 'errorsValidationGeneric',
+          severity: FailureSeverity.warning,
+          developerDetail: 'Payment proof not uploaded',
         ),
       );
       return;
@@ -141,12 +144,7 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ: ${e.toString()}'),
-            backgroundColor: T.error(context),
-          ),
-        );
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     } finally {
       if (mounted) {
@@ -164,7 +162,7 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
         backgroundColor: T.surface(context),
         foregroundColor: T.onSurface(context),
         title: Text(
-          'الدفع اليدوي',
+          context.l10n.manualPaymentTitle,
           style: AppTextStyles.titleMedium.copyWith(fontSize: 20),
         ),
         centerTitle: true,
@@ -210,7 +208,7 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'إتمام الدفع',
+                        context.l10n.completePayment,
                         style: AppTextStyles.titleLarge.copyWith(
                           color: AppColors.white,
                         ),
@@ -231,7 +229,7 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
                 const SizedBox(height: 24),
 
                 SectionCard(
-                  title: 'نوع المحفظة',
+                  title: context.l10n.walletType,
                   icon: IconsaxPlusBold.wallet,
                   iconColor: T.primary(context),
                   children: [
@@ -239,8 +237,12 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
                     ..._walletTypes.map(
                       (wallet) => _buildWalletTypeOption(
                         value: wallet['value']!,
-                        label: wallet['label']!,
-                        country: wallet['country']!,
+                        label: wallet['value'] == 'other'
+                            ? context.l10n.walletTypeOther
+                            : wallet['label']!,
+                        country: wallet['value'] == 'other'
+                            ? ''
+                            : context.l10n.jordan,
                       ),
                     ),
                   ],
@@ -248,7 +250,7 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
                 const SizedBox(height: 20),
 
                 SectionCard(
-                  title: 'رقم المحفظة',
+                  title: context.l10n.walletNumber,
                   icon: IconsaxPlusBold.call,
                   iconColor: T.primary(context),
                   children: [
@@ -257,8 +259,8 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
                       controller: _walletNumberController,
                       keyboardType: TextInputType.phone,
                       decoration: InputDecoration(
-                        labelText: 'رقم المحفظة',
-                        hintText: 'مثال: 0791234567',
+                        labelText: context.l10n.walletNumber,
+                        hintText: context.l10n.walletNumberHint,
                         prefixIcon: const Icon(IconsaxPlusLinear.call),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -266,10 +268,10 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'يرجى إدخال رقم المحفظة';
+                          return context.l10n.walletNumberRequired;
                         }
                         if (value.length < 8) {
-                          return 'رقم المحفظة يجب أن يكون 8 أرقام على الأقل';
+                          return context.l10n.walletNumberTooShort;
                         }
                         return null;
                       },
@@ -279,15 +281,15 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
                 const SizedBox(height: 20),
 
                 SectionCard(
-                  title: 'صورة إثبات الدفع',
+                  title: context.l10n.paymentProofImage,
                   icon: IconsaxPlusBold.image,
                   iconColor: T.primary(context),
-                  subtitle: '(مطلوب)',
+                  subtitle: context.l10n.requiredLabel,
                   children: [
                     const SizedBox(height: 8),
                     Semantics(
                       button: true,
-                      label: 'رفع صورة إثبات الدفع',
+                      label: context.l10n.uploadPaymentProof,
                       child: GestureDetector(
                         onTap: _pickProofImage,
                         child: Container(
@@ -350,14 +352,14 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
                                     ),
                                     const SizedBox(height: 16),
                                     Text(
-                                      'اضغط لرفع صورة إثبات الدفع',
+                                      context.l10n.tapToUploadPaymentProof,
                                       style: AppTextStyles.labelLarge.copyWith(
                                         color: T.onSurfaceVariant(context),
                                       ),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'مطلوب',
+                                      context.l10n.requiredWord,
                                       style: AppTextStyles.bodySmall.copyWith(
                                         color: T.onSurfaceVariant(context),
                                       ),
@@ -372,18 +374,18 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
                 const SizedBox(height: 20),
 
                 SectionCard(
-                  title: 'ملاحظات',
+                  title: context.l10n.notesLabel,
                   icon: IconsaxPlusBold.note,
                   iconColor: AppColors.warning,
-                  subtitle: '(اختياري)',
+                  subtitle: context.l10n.optionalLabel,
                   children: [
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _notesController,
                       maxLines: 3,
                       decoration: InputDecoration(
-                        labelText: 'ملاحظات إضافية',
-                        hintText: 'أي معلومات إضافية...',
+                        labelText: context.l10n.additionalNotes,
+                        hintText: context.l10n.additionalNotesHint,
                         prefixIcon: const Icon(IconsaxPlusLinear.note),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -395,7 +397,7 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
                 const SizedBox(height: 32),
 
                 Semantics(
-                  label: 'إرسال طلب الدفع',
+                  label: context.l10n.submitPaymentRequest,
                   button: true,
                   child: Container(
                     decoration: BoxDecoration(
@@ -439,7 +441,7 @@ class _ManualPaymentScreenState extends State<ManualPaymentScreen> {
                                 ),
                                 const SizedBox(width: 12),
                                 Text(
-                                  'إرسال طلب الدفع',
+                                  context.l10n.submitPaymentRequest,
                                   style: AppTextStyles.titleMedium.copyWith(
                                     fontWeight: FontWeight.bold,
                                   ),

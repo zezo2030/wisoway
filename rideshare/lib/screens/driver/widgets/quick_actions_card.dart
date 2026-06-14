@@ -4,6 +4,7 @@ import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../models/trip_model.dart';
 import '../../../widgets/common/section_card.dart';
+import '../../../l10n/l10n_extensions.dart';
 
 class QuickActionsCard extends StatelessWidget {
   final TripModel trip;
@@ -20,7 +21,7 @@ class QuickActionsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SectionCard(
-      title: 'إجراءات سريعة',
+      title: context.l10n.quickActions,
       icon: IconsaxPlusLinear.setting_2,
       iconColor: AppColors.teal600,
       children: [
@@ -29,7 +30,7 @@ class QuickActionsCard extends StatelessWidget {
             Expanded(
               child: _ActionButton(
                 icon: IconsaxPlusLinear.share,
-                label: 'مشاركة',
+                label: context.l10n.share,
                 color: AppColors.teal600,
                 onTap: onShare ?? () {},
               ),
@@ -38,7 +39,7 @@ class QuickActionsCard extends StatelessWidget {
             Expanded(
               child: _ActionButton(
                 icon: IconsaxPlusLinear.edit,
-                label: 'تعديل',
+                label: context.l10n.edit,
                 color: AppColors.warning,
                 onTap: onEdit ?? () {},
               ),

@@ -1,25 +1,81 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/route_names.dart';
 import '../../../core/theme/colors.dart';
+import '../../../l10n/l10n_extensions.dart';
 import '../../../models/user_model.dart';
+import '../../../providers/auth_provider.dart';
 import '../../../widgets/notification_icon_button.dart';
 import '../../../widgets/common/logout_confirmation_dialog.dart';
 import '../widgets/profile_menu_item.dart';
 
-class ProfileTab extends StatelessWidget {
+class ProfileTab extends StatefulWidget {
   final UserModel? user;
 
   const ProfileTab({super.key, this.user});
 
   @override
+  State<ProfileTab> createState() => _ProfileTabState();
+}
+
+class _ProfileTabState extends State<ProfileTab> {
+  bool _refreshing = false;
+
+  UserModel? get user => widget.user;
+
+  Future<void> _onRefresh() async {
+    if (_refreshing) return;
+    setState(() => _refreshing = true);
+    try {
+      await context.read<AuthProvider>().loadUserProfile();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.dataUpdated),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.dataUpdateFailed(e.toString())),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _refreshing = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('الملف الشخصي'),
+        title: Text(context.l10n.profileTitle),
         automaticallyImplyLeading: false,
         actions: [
+          IconButton(
+            tooltip: context.l10n.refreshData,
+            onPressed: _refreshing ? null : _onRefresh,
+            icon: _refreshing
+                ? SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.4,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        T.onSurface(context),
+                      ),
+                    ),
+                  )
+                : Icon(
+                    IconsaxPlusLinear.refresh,
+                    color: T.onSurface(context),
+                  ),
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: NotificationIconButton(
@@ -59,7 +115,7 @@ class ProfileTab extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                user?.name ?? 'المستخدم',
+                user?.name ?? context.l10n.userFallback,
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -88,7 +144,9 @@ class ProfileTab extends StatelessWidget {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    user!.isDriver ? 'سائق' : 'راكب',
+                    user!.isDriver
+                        ? context.l10n.driver
+                        : context.l10n.passenger,
                     style: TextStyle(
                       color: user!.isDriver
                           ? T.secondary(context)
@@ -132,8 +190,8 @@ class ProfileTab extends StatelessWidget {
                           const SizedBox(width: 10),
                           Text(
                             user!.isDriverApproved
-                                ? 'تمت الموافقة على بياناتك'
-                                : 'حسابك كسائق قيد المراجعة',
+                                ? context.l10n.driverDataApproved
+                                : context.l10n.driverAccountUnderReview,
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -147,8 +205,8 @@ class ProfileTab extends StatelessWidget {
                       const SizedBox(height: 8),
                       Text(
                         user!.isDriverApproved
-                            ? 'يمكنك إنشاء رحلات وإدارتها من تبويب "رحلاتي".'
-                            : 'لا يمكنك إنشاء رحلات حتى تتم الموافقة على بياناتك من الإدارة. يمكنك حالياً الحجز كراكب.',
+                            ? context.l10n.driverApprovedDescription
+                            : context.l10n.driverPendingDescription,
                         style: TextStyle(
                           fontSize: 13,
                           color: T.onSurfaceVariant(context),
@@ -169,7 +227,7 @@ class ProfileTab extends StatelessWidget {
                               IconsaxPlusLinear.info_circle,
                               size: 18,
                             ),
-                            label: const Text('معرفة حالة التوثيق'),
+                            label: Text(context.l10n.checkVerificationStatus),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.warningDark,
                               side: BorderSide(color: AppColors.warningLight),
@@ -184,26 +242,34 @@ class ProfileTab extends StatelessWidget {
               const SizedBox(height: 32),
               ProfileMenuItem(
                 icon: IconsaxPlusLinear.edit,
-                title: 'تعديل الملف الشخصي',
-                onTap: () {},
+                title: context.l10n.editProfile,
+                onTap: () {
+                  Navigator.pushNamed(context, RouteNames.editProfile);
+                },
               ),
               const SizedBox(height: 12),
               ProfileMenuItem(
                 icon: IconsaxPlusLinear.setting_2,
-                title: 'الإعدادات',
-                onTap: () {},
+                title: context.l10n.settings,
+                onTap: () {
+                  Navigator.pushNamed(context, RouteNames.settings);
+                },
               ),
               const SizedBox(height: 12),
               ProfileMenuItem(
                 icon: IconsaxPlusLinear.message_question,
-                title: 'المساعدة والدعم',
-                onTap: () {},
+                title: context.l10n.helpAndSupport,
+                onTap: () {
+                  Navigator.pushNamed(context, RouteNames.support);
+                },
               ),
               const SizedBox(height: 12),
               ProfileMenuItem(
                 icon: IconsaxPlusLinear.info_circle,
-                title: 'حول التطبيق',
-                onTap: () {},
+                title: context.l10n.aboutApp,
+                onTap: () {
+                  Navigator.pushNamed(context, RouteNames.about);
+                },
               ),
               const SizedBox(height: 24),
               Container(
@@ -217,7 +283,7 @@ class ProfileTab extends StatelessWidget {
                 ),
                 child: ProfileMenuItem(
                   icon: IconsaxPlusLinear.logout,
-                  title: 'تسجيل الخروج',
+                  title: context.l10n.signOut,
                   iconColor: T.error(context),
                   textColor: T.error(context),
                   onTap: () => handleLogout(context),

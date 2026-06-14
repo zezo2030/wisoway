@@ -130,6 +130,12 @@ export class AdminService implements OnModuleInit {
       status: 'pending',
     });
 
+    const pendingManualTopups = await this.paymentModel.countDocuments({
+      status: 'pending',
+      method: 'manual',
+      paymentType: 'wallet_topup',
+    });
+
     // Get pending vehicle verifications
     const pendingVehicleVerifications = await this.vehicleModel.countDocuments({
       isVerified: false,
@@ -146,6 +152,7 @@ export class AdminService implements OnModuleInit {
       completedTrips: tripCountMap['completed'] || 0,
       totalRevenue,
       pendingPayments,
+      pendingManualTopups,
       pendingVehicleVerifications,
     };
   }
@@ -524,6 +531,12 @@ export class AdminService implements OnModuleInit {
     if (user.role !== UserRole.DRIVER) {
       throw new BadRequestException('User is not a driver');
     }
+
+      if (approved && !user.photoUrl) {
+        throw new BadRequestException(
+          'Driver profile photo is required before approval',
+        );
+      }
 
     // Update driver approval status
     user.isDriverApproved = approved;

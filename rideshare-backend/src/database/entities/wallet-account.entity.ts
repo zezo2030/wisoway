@@ -35,7 +35,7 @@ export class WalletAccountEntity {
   @Column({ type: 'enum', enum: WalletAccountType })
   accountType: WalletAccountType;
 
-  @Column({ type: 'varchar', length: 5, default: 'EGP' })
+  @Column({ type: 'varchar', length: 5, default: 'JOD' })
   currency: string;
 
   @Column({ type: 'numeric', precision: 14, scale: 2, default: '0' })

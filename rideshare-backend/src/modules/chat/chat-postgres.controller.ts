@@ -47,7 +47,8 @@ export class ChatPostgresController {
 
   @Get('rooms/trip/:tripId/passenger/:passengerId')
   @ApiOperation({
-    summary: 'Get or create 1:1 chat room between driver and passenger (Driver only)',
+    summary:
+      'Get or create 1:1 chat room between driver and passenger (Driver only)',
   })
   @ApiParam({ name: 'tripId', description: 'Trip ID' })
   @ApiParam({ name: 'passengerId', description: 'Passenger user ID' })
@@ -68,9 +69,25 @@ export class ChatPostgresController {
     );
   }
 
+  @Get('rooms/trip/:tripId/group')
+  @ApiOperation({
+    summary:
+      'Get or create the trip-wide group chat room (driver + all passengers)',
+  })
+  @ApiParam({ name: 'tripId', description: 'Trip ID' })
+  @ApiResponse({ status: 200, description: 'Returns the trip group chat room' })
+  @ApiResponse({ status: 403, description: 'Not a participant or fee not paid' })
+  async getGroupRoom(
+    @Param('tripId') tripId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.chatService.getOrCreateGroupRoom(tripId, userId);
+  }
+
   @Get('rooms/:idOrTripId')
   @ApiOperation({
-    summary: 'Get chat room by room ID or trip ID (for passenger: 1:1 with driver)',
+    summary:
+      'Get chat room by room ID or trip ID (for passenger: 1:1 with driver)',
   })
   @ApiParam({
     name: 'idOrTripId',
@@ -120,10 +137,6 @@ export class ChatPostgresController {
     @Body() sendMessageDto: SendMessageDto,
     @CurrentUser('id') userId: string,
   ) {
-    return this.chatService.sendMessage(
-      roomId,
-      userId,
-      sendMessageDto.text,
-    );
+    return this.chatService.sendMessage(roomId, userId, sendMessageDto.text);
   }
 }

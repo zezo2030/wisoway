@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wisoway — Live Trip Tracking</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
+    .header { background: #1a73e8; color: white; padding: 16px 20px; text-align: center; }
+    .header h1 { font-size: 18px; font-weight: 600; }
+    .header .subtitle { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+    #map { width: 100%; height: 60vh; }
+    .info-panel { padding: 16px 20px; background: white; border-top: 1px solid #e0e0e0; }
+    .route-info { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .route-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .route-dot.from { background: #1a73e8; }
+    .route-dot.to { background: #34a853; }
+    .route-line { width: 2px; height: 20px; background: #dadce0; margin-left: 4px; }
+    .route-text { font-size: 14px; color: #333; }
+    .status-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+    .status-published { background: #e8f0fe; color: #1a73e8; }
+    .status-in_progress { background: #e6f4ea; color: #1e8e3e; }
+    .status-completed { background: #f1f3f4; color: #5f6368; }
+    .status-cancelled { background: #fce8e6; color: #d93025; }
+    .departure-time { font-size: 13px; color: #5f6368; margin-top: 8px; }
+    .error-state { text-align: center; padding: 40px 20px; color: #5f6368; }
+    .error-state h2 { font-size: 18px; margin-bottom: 8px; }
+    .last-updated { font-size: 11px; color: #9aa0a6; margin-top: 8px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Wisoway Trip Tracker</h1>
+    <div class="subtitle" id="status-text">Loading...</div>
+  </div>
+  <div id="map"></div>
+  <div class="info-panel" id="info-panel">
+    <div class="route-info">
+      <div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+          <div class="route-dot from"></div>
+          <span class="route-text" id="from-name">—</span>
+        </div>
+        <div class="route-line" style="margin-left:4px;"></div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:8px;">
+          <div class="route-dot to"></div>
+          <span class="route-text" id="to-name">—</span>
+        </div>
+      </div>
+    </div>
+    <div>
+      <span class="status-badge" id="status-badge">—</span>
+    </div>
+    <div class="departure-time" id="departure-time"></div>
+    <div class="last-updated" id="last-updated"></div>
+  </div>
+  <div class="error-state" id="error-state" style="display:none;">
+    <h2>Trip Not Found</h2>
+    <p>This share link may have expired or is invalid.</p>
+  </div>
+
+  <script>
+    (function() {
+      var path = window.location.pathname;
+      var token = path.replace('/share/', '').replace('/share', '');
+      if (!token) {
+        document.getElementById('error-state').style.display = 'block';
+        document.getElementById('info-panel').style.display = 'none';
+        document.getElementById('map').style.display = 'none';
+        return;
+      }
+
+      var map = L.map('map').setView([31.95, 35.92], 7);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      var driverMarker = null;
+      var pollInterval = null;
+
+      function fetchTripData() {
+        var apiUrl = window.location.origin + '/api/v1/share/' + encodeURIComponent(token);
+        fetch(apiUrl)
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            if (data.statusCode === 404 || data.statusCode === 410) {
+              document.getElementById('error-state').style.display = 'block';
+              document.getElementById('error-state').querySelector('h2').textContent =
+                data.statusCode === 410 ? 'Link Expired' : 'Trip Not Found';
+              document.getElementById('info-panel').style.display = 'none';
+              document.getElementById('map').style.display = 'none';
+              if (pollInterval) clearInterval(pollInterval);
+              return;
+            }
+
+            document.getElementById('from-name').textContent = data.fromName || '—';
+            document.getElementById('to-name').textContent = data.toName || '—';
+
+            var status = data.tripStatus || 'published';
+            var badge = document.getElementById('status-badge');
+            badge.textContent = status.replace(/_/g, ' ');
+            badge.className = 'status-badge status-' + status;
+
+            document.getElementById('status-text').textContent =
+              status === 'in_progress' ? 'Trip in progress — tracking driver live'
+              : status === 'completed' ? 'Trip completed'
+              : status === 'cancelled' ? 'Trip cancelled'
+              : 'Trip scheduled';
+
+            if (data.departureTime) {
+              var d = new Date(data.departureTime);
+              document.getElementById('departure-time').textContent =
+                'Departure: ' + d.toLocaleString();
+            }
+
+            if (data.driverLocation) {
+              var lat = data.driverLocation.lat;
+              var lng = data.driverLocation.lng;
+              if (driverMarker) {
+                driverMarker.setLatLng([lat, lng]);
+              } else {
+                driverMarker = L.marker([lat, lng]).addTo(map);
+                driverMarker.bindPopup('Driver location');
+              }
+              map.setView([lat, lng], 14);
+
+              if (data.driverLocation.capturedAt) {
+                var ct = new Date(data.driverLocation.capturedAt);
+                document.getElementById('last-updated').textContent =
+                  'Location updated: ' + ct.toLocaleTimeString();
+              }
+            }
+
+            if (status !== 'in_progress' && pollInterval) {
+              clearInterval(pollInterval);
+              pollInterval = null;
+            }
+          })
+          .catch(function(err) {
+            console.error('Failed to fetch trip data:', err);
+          });
+      }
+
+      fetchTripData();
+      pollInterval = setInterval(fetchTripData, 5000);
+    })();
+  </script>
+</body>
+</html>

@@ -25,9 +25,28 @@ export const BookingStatus = {
   CONFIRMED: 'confirmed',
   CANCELLED: 'cancelled',
   COMPLETED: 'completed',
+  REJECTED: 'rejected',
+  NO_SHOW: 'no_show',
 } as const
 
 export type BookingStatus = typeof BookingStatus[keyof typeof BookingStatus]
+
+export const PendingChargeKind = {
+  LATE_CANCELLATION: 'late_cancellation',
+  PASSENGER_NO_SHOW: 'passenger_no_show',
+  DRIVER_NO_SHOW: 'driver_no_show',
+} as const
+
+export type PendingChargeKind = typeof PendingChargeKind[keyof typeof PendingChargeKind]
+
+export const PendingChargeStatus = {
+  PENDING: 'pending',
+  COLLECTED: 'collected',
+  WAIVED: 'waived',
+  FAILED: 'failed',
+} as const
+
+export type PendingChargeStatus = typeof PendingChargeStatus[keyof typeof PendingChargeStatus]
 
 export const PaymentStatus = {
   PENDING: 'pending',
@@ -50,6 +69,7 @@ export type PaymentMethod = typeof PaymentMethod[keyof typeof PaymentMethod]
 
 export const PaymentType = {
   TRIP: 'trip',
+  TRIP_PLATFORM: 'trip_platform',
   COMMUNICATION_FEE: 'communication_fee',
   WALLET_TOPUP: 'wallet_topup',
   WALLET_TRIP_CHARGE: 'wallet_trip_charge',
@@ -89,3 +109,31 @@ export const ReportType = {
 } as const
 
 export type ReportType = typeof ReportType[keyof typeof ReportType]
+
+export const WalletAccountType = {
+  DRIVER: 'driver',
+  RIDER: 'rider',
+  SYSTEM: 'system',
+} as const
+
+export type WalletAccountType = typeof WalletAccountType[keyof typeof WalletAccountType]
+
+export const WalletEntryDirection = {
+  DEBIT: 'debit',
+  CREDIT: 'credit',
+} as const
+
+export type WalletEntryDirection = typeof WalletEntryDirection[keyof typeof WalletEntryDirection]
+
+export const WalletTransactionType = {
+  TOPUP: 'topup',
+  TRIP_DEBIT: 'trip_debit',
+  TRIP_PAYMENT: 'trip_payment',
+  REFUND: 'refund',
+  PAYOUT: 'payout',
+  ADJUSTMENT: 'adjustment',
+  HOLD: 'hold',
+  RELEASE_HOLD: 'release_hold',
+} as const
+
+export type WalletTransactionType = typeof WalletTransactionType[keyof typeof WalletTransactionType]

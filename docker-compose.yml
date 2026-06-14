@@ -1,0 +1,139 @@
+# Wisoway / Rideshare - Unified Production Stack
+#
+# Services: postgres (PostGIS) + redis + backend (NestJS) + dashboard (Vite SPA) + nginx (reverse proxy)
+#
+# Usage:
+#   cp .env.example .env        # then fill in real secrets
+#   docker compose build
+#   docker compose up -d
+#
+# Edge entry: http://<host>/        -> dashboard
+#             http://<host>/api/    -> backend
+#             http://<host>/socket.io/ -> backend WS
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: rideshare-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-rideshare}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - rideshare-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-rideshare}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # Only bind to localhost on the host - remove "127.0.0.1:" to expose externally
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+
+  redis:
+    image: redis:7-alpine
+    container_name: rideshare-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - rideshare-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+
+  backend:
+    build:
+      context: ./rideshare-backend
+      dockerfile: Dockerfile
+      target: production
+    image: rideshare-backend:latest
+    container_name: rideshare-backend
+    restart: unless-stopped
+    env_file:
+      - ./rideshare-backend/.env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-rideshare}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - backend_uploads:/app/uploads
+    networks:
+      - rideshare-net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  dashboard:
+    build:
+      context: ./rideshare-dashboard
+      dockerfile: Dockerfile
+      args:
+        # Dashboard talks to the API through the edge nginx, so relative paths
+        # avoid hard-coding a hostname into the bundle.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+        VITE_WS_URL: ${VITE_WS_URL:-/}
+    image: rideshare-dashboard:latest
+    container_name: rideshare-dashboard
+    restart: unless-stopped
+    networks:
+      - rideshare-net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: rideshare-nginx
+    restart: unless-stopped
+    ports:
+      - "${EDGE_HTTP_PORT:-80}:80"
+      - "${EDGE_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - backend
+      - dashboard
+    networks:
+      - rideshare-net
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  rideshare-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  backend_uploads:
+  nginx_logs:

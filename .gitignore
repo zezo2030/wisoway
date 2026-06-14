@@ -134,6 +134,9 @@ Thumbs.db
 *.backup
 *~
 
+# Firebase Admin SDK (local only; copy from Firebase Console)
+rideshare-backend/config/firebase-adminsdk.json
+
 # Secret keys and certificates
 *.pem
 *.key

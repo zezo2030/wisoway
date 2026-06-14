@@ -4,6 +4,7 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../models/trip_model.dart';
+import '../../../l10n/l10n_extensions.dart';
 
 class TripHeaderCard extends StatelessWidget {
   final TripModel trip;
@@ -60,7 +61,7 @@ class TripHeaderCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'معلومات الرحلة',
+                        context.l10n.tripInfo,
                         style: AppTextStyles.titleMedium.copyWith(
                           fontSize: 20,
                           color: AppColors.white,
@@ -80,12 +81,14 @@ class TripHeaderCard extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             _buildLocationRow(
+              context: context,
               fromName: trip.from.name,
               fromAddress: trip.from.address,
               isStart: true,
             ),
             const SizedBox(height: 12),
             _buildLocationRow(
+              context: context,
               fromName: trip.to.name,
               fromAddress: trip.to.address,
               isStart: false,
@@ -97,6 +100,7 @@ class TripHeaderCard extends StatelessWidget {
   }
 
   Widget _buildLocationRow({
+    required BuildContext context,
     required String fromName,
     String? fromAddress,
     required bool isStart,
@@ -123,7 +127,7 @@ class TripHeaderCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isStart ? 'من' : 'إلى',
+                  isStart ? context.l10n.fromLabel : context.l10n.toLabel,
                   style: AppTextStyles.bodySmall.copyWith(
                     color: AppColors.white.withValues(alpha: 0.7),
                   ),

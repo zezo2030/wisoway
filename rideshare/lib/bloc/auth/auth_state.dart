@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../../models/user_model.dart';
+import '../../core/errors/failure.dart';
 
 abstract class AuthState extends Equatable {
   const AuthState();
@@ -55,11 +56,12 @@ class AuthUnauthenticated extends AuthState {
 // Error State
 class AuthError extends AuthState {
   final String message;
+  final Failure? failure;
 
-  const AuthError(this.message);
+  const AuthError(this.message, {this.failure});
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [message, failure];
 }
 
 // OTP Sent State
@@ -81,4 +83,34 @@ class AuthProfileSaved extends AuthState {
 
   @override
   List<Object?> get props => [userModel];
+}
+
+// Password Reset OTP Sent State
+class AuthPasswordResetSent extends AuthState {
+  final String phoneNumber;
+
+  const AuthPasswordResetSent({required this.phoneNumber});
+
+  @override
+  List<Object?> get props => [phoneNumber];
+}
+
+// Password Reset OTP Verified State (has resetToken for setting new password)
+class AuthPasswordResetOTPVerified extends AuthState {
+  final String resetToken;
+
+  const AuthPasswordResetOTPVerified({required this.resetToken});
+
+  @override
+  List<Object?> get props => [resetToken];
+}
+
+// Password Reset Success State
+class AuthPasswordResetSuccess extends AuthState {
+  const AuthPasswordResetSuccess();
+}
+
+// Password Changed Success State
+class AuthPasswordChangedSuccess extends AuthState {
+  const AuthPasswordChangedSuccess();
 }

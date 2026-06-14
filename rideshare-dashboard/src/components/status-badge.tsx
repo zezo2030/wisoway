@@ -27,6 +27,11 @@ const statusColorMap: Record<StatusType, Record<string, StatusVariant>> = {
     approved: "default",
     rejected: "destructive",
     refunded: "outline",
+    wallet: "secondary",
+    manual: "outline",
+    paymob: "secondary",
+    communication_fee: "secondary",
+    cliq_a2a: "default",
   },
   trip: {
     active: "default",
@@ -40,6 +45,8 @@ const statusColorMap: Record<StatusType, Record<string, StatusVariant>> = {
     confirmed: "default",
     cancelled: "destructive",
     completed: "default",
+    rejected: "destructive",
+    no_show: "outline",
   },
   vehicle: {
     verified: "default",
@@ -60,6 +67,11 @@ const statusLabelMap: Record<string, string> = {
   approved: "Approved",
   rejected: "Rejected",
   refunded: "Refunded",
+  wallet: "Wallet",
+  manual: "Manual",
+  paymob: "Paymob",
+  communication_fee: "Communication Fee",
+  cliq_a2a: "CliQ A2A",
   // Trip statuses
   hidden: "Hidden",
   completed: "Completed",
@@ -67,6 +79,7 @@ const statusLabelMap: Record<string, string> = {
   expired: "Expired",
   // Booking statuses
   confirmed: "Confirmed",
+  no_show: "No-Show",
   // Vehicle statuses
   verified: "Verified",
   unverified: "Unverified",

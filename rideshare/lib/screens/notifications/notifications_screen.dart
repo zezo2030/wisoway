@@ -6,9 +6,12 @@ import '../../providers/auth_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../models/notification_model.dart';
 import '../../core/theme/colors.dart';
+import '../../core/ui/error_surface.dart';
+import '../../core/api/api_client.dart';
 import '../../core/constants/route_names.dart';
 import '../../widgets/common/empty_state.dart';
 import '../../widgets/notification_card.dart';
+import '../../l10n/l10n_extensions.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -76,6 +79,43 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           );
         }
         break;
+
+      case NotificationType.chatMessage:
+        if (tripId != null) {
+          final senderId = data?['senderId'] as String?;
+          final senderName = data?['senderName'] as String?;
+          final senderRole = data?['senderRole'] as String?;
+          final chatRoomId = data?['chatRoomId'] as String?;
+
+          if (senderRole == 'driver') {
+            Navigator.pushNamed(
+              context,
+              RouteNames.chat,
+              arguments: {
+                'tripId': tripId,
+                'chatRoomId': chatRoomId,
+                'driverId': senderId ?? '',
+                'driverName': senderName ?? 'السائق',
+              },
+            );
+          } else {
+            Navigator.pushNamed(
+              context,
+              RouteNames.driverChat,
+              arguments: {
+                'tripId': tripId,
+                'chatRoomId': chatRoomId,
+                'passengerId': senderId,
+                'passengerName': senderName ?? 'الراكب',
+              },
+            );
+          }
+        }
+        break;
+      case NotificationType.walletCredited:
+        // Navigate to the relevant wallet screen
+        Navigator.pushNamed(context, RouteNames.passengerWallet);
+        break;
     }
   }
 
@@ -87,12 +127,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       ).deleteNotification(notification.id);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في حذف الإشعار: $e'),
-            backgroundColor: T.error(context),
-          ),
-        );
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     }
   }
@@ -104,15 +139,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     if (userId == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('الإشعارات')),
-        body: const Center(child: Text('يجب تسجيل الدخول')),
+        appBar: AppBar(title: Text(context.l10n.notifications)),
+        body: Center(child: Text(context.l10n.mustSignIn)),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'الإشعارات',
+          context.l10n.notifications,
           style: GoogleFonts.tajawal(fontWeight: FontWeight.bold),
         ),
         actions: [
@@ -127,21 +162,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
               return Semantics(
                 button: true,
-                label: 'قراءة جميع الإشعارات ($unreadCount غير مقروء)',
+                label: context.l10n.markAllNotificationsRead(unreadCount),
                 child: TextButton.icon(
                   onPressed: () async {
                     await provider.markAllAsRead();
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('تم قراءة جميع الإشعارات'),
-                          duration: Duration(seconds: 2),
+                        SnackBar(
+                          content: Text(context.l10n.allNotificationsRead),
+                          duration: const Duration(seconds: 2),
                         ),
                       );
                     }
                   },
                   icon: const Icon(IconsaxPlusBold.tick_circle, size: 18),
-                  label: Text('قراءة الكل ($unreadCount)'),
+                  label: Text(context.l10n.markAllReadCount(unreadCount)),
                   style: TextButton.styleFrom(
                     foregroundColor: T.primary(context),
                   ),
@@ -156,7 +191,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           final notifications = provider.notifications;
 
           if (notifications.isEmpty) {
-            return _buildEmptyState();
+            return _buildEmptyState(context);
           }
 
           return RefreshIndicator(
@@ -169,7 +204,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 final notification = notifications[index];
                 return Semantics(
                   button: true,
-                  label: notification.title,
+                  label: notification.displayTitle,
                   child: NotificationCard(
                     notification: notification,
                     onTap: () => _handleNotificationTap(notification),
@@ -184,11 +219,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
-    return const EmptyState(
+  Widget _buildEmptyState(BuildContext context) {
+    return EmptyState(
       icon: IconsaxPlusBold.notification,
-      title: 'لا توجد إشعارات',
-      subtitle: 'ستظهر الإشعارات هنا عند وصولها',
+      title: context.l10n.noNotifications,
+      subtitle: context.l10n.notificationsWillAppearHere,
     );
   }
 }

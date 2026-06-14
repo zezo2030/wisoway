@@ -27,7 +27,8 @@ export class CreateBookingDto {
   seatNumber: string;
 
   @ApiPropertyOptional({
-    description: 'Whether the passenger wants to share their phone number with the driver immediately',
+    description:
+      'Whether the passenger wants to share their phone number with the driver immediately',
     example: true,
   })
   @IsBoolean()
