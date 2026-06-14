@@ -2436,5 +2436,30 @@
     }
   },
   "accountBannedNoReason": "تم تعليق حسابك. تواصل مع الدعم لمزيد من التفاصيل.",
-  "bannedWhatsAppPrefill": "مرحباً، حسابي على تطبيق VisionWay موقوف وأحتاج مساعدة."
+  "bannedWhatsAppPrefill": "مرحباً، حسابي على تطبيق VisionWay موقوف وأحتاج مساعدة.",
+  "followUs": "تابعنا",
+  "followOnFacebook": "فيسبوك",
+  "followOnLinkedIn": "لينكدإن",
+  "tripGroupChat": "محادثة جماعية للرحلة",
+  "groupChatMembersCount": "{count} مشارك",
+  "@groupChatMembersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "shareTripTrackingTitle": "مشاركة تتبع الرحلة",
+  "shareTripTrackingMessage": "هل تريد مشاركة تتبع رحلتك المباشر مع أحد؟",
+  "shareTripTrackingAction": "مشاركة",
+  "shareTripTrackingLater": "لاحقاً",
+  "shareTripTrackingText": "تابع رحلتي المباشرة عبر هذا الرابط: {url}",
+  "@shareTripTrackingText": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "shareTripTrackingError": "تعذّر إنشاء رابط المشاركة"
 }

@@ -55,6 +55,7 @@ import 'screens/payment/payment_history_screen.dart';
 import 'screens/notifications/notifications_screen.dart';
 import 'screens/passenger/chat_screen.dart';
 import 'screens/driver/chat_screen.dart' as driver_chat;
+import 'screens/chat/group_chat_screen.dart';
 import 'screens/passenger/rating_screen.dart';
 import 'screens/profile/edit_profile_screen.dart';
 import 'screens/settings/settings_screen.dart';
@@ -249,10 +250,14 @@ class MyApp extends StatelessWidget {
                       final booking = args is Map<String, dynamic>
                           ? args['booking'] as BookingModel?
                           : null;
+                      final showTrackingShare = args is Map<String, dynamic>
+                          ? args['showTrackingShare'] == true
+                          : false;
                       return MaterialPageRoute(
                         builder: (context) => TripDetailsScreen(
                           tripId: tripId,
                           initialBooking: booking,
+                          showTrackingShare: showTrackingShare,
                         ),
                       );
                     }
@@ -299,6 +304,16 @@ class MyApp extends StatelessWidget {
                           trip: args['trip'],
                           passengerId: args['passengerId'],
                           passengerName: args['passengerName'],
+                        ),
+                      );
+                    }
+                    if (settings.name == RouteNames.groupChat) {
+                      final args = settings.arguments as Map<String, dynamic>;
+                      return MaterialPageRoute(
+                        builder: (context) => GroupChatScreen(
+                          tripId: args['tripId'],
+                          chatRoomId: args['chatRoomId'],
+                          trip: args['trip'],
                         ),
                       );
                     }

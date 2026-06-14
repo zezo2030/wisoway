@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/trip_provider.dart';
 import '../../models/booking_model.dart';
@@ -19,16 +20,22 @@ import '../../core/api/api_client.dart';
 import '../../utils/booking_seat_formatter.dart';
 import '../../utils/seat_layout_helpers.dart';
 import '../../widgets/seat_layout_widget.dart';
+import '../../widgets/trip/share_tracking_sheet.dart';
 import '../../l10n/l10n_extensions.dart';
 
 class TripDetailsScreen extends StatefulWidget {
   final String tripId;
   final BookingModel? initialBooking;
 
+  /// When true (e.g. opened from a "trip started" notification), prompts the
+  /// user to share live trip tracking as soon as the screen loads.
+  final bool showTrackingShare;
+
   const TripDetailsScreen({
     super.key,
     required this.tripId,
     this.initialBooking,
+    this.showTrackingShare = false,
   });
 
   @override
@@ -86,12 +93,30 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         _isLoading = false;
         _buildMarkers();
       });
+      _maybePromptTrackingShare();
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
         ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     }
+  }
+
+  /// Shows the "share live tracking" prompt once when the trip is in progress,
+  /// or whenever the screen was opened from a trip-started notification.
+  Future<void> _maybePromptTrackingShare() async {
+    final trip = _trip;
+    if (trip == null) return;
+    final forced = widget.showTrackingShare;
+    if (!forced && trip.status != 'in_progress') return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'tracking_share_prompted_${trip.id}';
+    if (!forced && prefs.getBool(key) == true) return;
+    await prefs.setBool(key, true);
+
+    if (!mounted) return;
+    await ShareTrackingSheet.show(context, trip.id);
   }
 
   bool _isActiveTripBooking(BookingModel? booking) {
@@ -702,6 +727,31 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       ),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pushNamed(
+                        context,
+                        RouteNames.groupChat,
+                        arguments: {'tripId': trip.id, 'trip': trip},
+                      );
+                    },
+                    icon: Icon(Icons.groups_outlined, color: T.primary(context)),
+                    label: Text(
+                      context.l10n.tripGroupChat,
+                      style: TextStyle(color: T.primary(context)),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      side: BorderSide(color: T.primary(context)),
+                    ),
+                  ),
                 ),
               ),
             ],

@@ -3765,4 +3765,42 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get bannedWhatsAppPrefill =>
       'مرحباً، حسابي على تطبيق VisionWay موقوف وأحتاج مساعدة.';
+
+  @override
+  String get followUs => 'تابعنا';
+
+  @override
+  String get followOnFacebook => 'فيسبوك';
+
+  @override
+  String get followOnLinkedIn => 'لينكدإن';
+
+  @override
+  String get tripGroupChat => 'محادثة جماعية للرحلة';
+
+  @override
+  String groupChatMembersCount(int count) {
+    return '$count مشارك';
+  }
+
+  @override
+  String get shareTripTrackingTitle => 'مشاركة تتبع الرحلة';
+
+  @override
+  String get shareTripTrackingMessage =>
+      'هل تريد مشاركة تتبع رحلتك المباشر مع أحد؟';
+
+  @override
+  String get shareTripTrackingAction => 'مشاركة';
+
+  @override
+  String get shareTripTrackingLater => 'لاحقاً';
+
+  @override
+  String shareTripTrackingText(String url) {
+    return 'تابع رحلتي المباشرة عبر هذا الرابط: $url';
+  }
+
+  @override
+  String get shareTripTrackingError => 'تعذّر إنشاء رابط المشاركة';
 }

@@ -44,6 +44,7 @@ class RouteNames {
   // Chat Routes
   static const String chat = '/chat';
   static const String driverChat = '/driver-chat';
+  static const String groupChat = '/group-chat';
 
   // Rating Routes
   static const String rating = '/rating';

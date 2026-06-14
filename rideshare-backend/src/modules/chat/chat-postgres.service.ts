@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import { ChatRoomEntity } from '../../database/entities/chat-room.entity';
 import { MessageEntity } from '../../database/entities/message.entity';
 import { TripEntity } from '../../database/entities/trip.entity';
@@ -125,6 +125,98 @@ export class ChatPostgresService {
       `1:1 Chat room created: ${room.id} for trip ${tripId}, passenger ${userId}`,
     );
     return room;
+  }
+
+  /**
+   * Get or create the trip-wide GROUP room (driver + all settled passengers).
+   * Distinct from the 1:1 rooms above — the group room is the single
+   * ChatRoomEntity for a trip with `passengerId = null`. Membership is
+   * reconciled lazily on each access so newly-booked/just-settled passengers
+   * (and the requester) are added without a separate background job.
+   */
+  async getOrCreateGroupRoom(
+    tripId: string,
+    userId: string,
+  ): Promise<ChatRoomEntity> {
+    const trip = await this.tripRepo.findOne({ where: { id: tripId } });
+    if (!trip) throw new NotFoundException('Trip not found');
+
+    const isDriver = trip.driverId === userId;
+
+    // Passengers must have a pending/confirmed booking that is settled
+    // (driver paid the per-passenger fee, or the trip-level wallet charge
+    // applied). The driver always has access.
+    if (!isDriver) {
+      const booking = await this.bookingRepo.findOne({
+        where: { tripId, userId, status: In(['pending', 'confirmed']) },
+      });
+      if (!booking) {
+        throw new ForbiddenException(
+          'You must have a pending or confirmed booking to access this chat',
+        );
+      }
+      if (!booking.hasDriverPaidToContact && !trip.driverWalletChargeApplied) {
+        throw new ForbiddenException({
+          statusCode: 403,
+          code: 'COMMUNICATION_FEE_REQUIRED',
+          message:
+            'Chat is available after the driver pays the communication fee',
+        });
+      }
+    }
+
+    const eligibleIds = await this.computeGroupParticipantIds(trip);
+
+    let room = await this.chatRoomRepo.findOne({
+      where: { tripId, passengerId: IsNull() },
+      relations: ['trip'],
+    });
+
+    if (!room) {
+      const now = new Date();
+      room = this.chatRoomRepo.create({
+        tripId,
+        passengerId: null,
+        participants: eligibleIds.map((id) => ({ userId: id, joinedAt: now })),
+      });
+      room = await this.chatRoomRepo.save(room);
+      this.logger.log(
+        `Group chat room created: ${room.id} for trip ${tripId} (${eligibleIds.length} members)`,
+      );
+      return room;
+    }
+
+    // Lazily reconcile membership: add any now-eligible member that is missing.
+    const participants = (room.participants ?? []) as {
+      userId: string;
+      joinedAt: Date;
+    }[];
+    const existingIds = new Set(participants.map((p) => p.userId));
+    let changed = false;
+    for (const id of eligibleIds) {
+      if (!existingIds.has(id)) {
+        participants.push({ userId: id, joinedAt: new Date() });
+        changed = true;
+      }
+    }
+    if (changed) {
+      room.participants = participants;
+      room = await this.chatRoomRepo.save(room);
+    }
+    return room;
+  }
+
+  /** Driver + every passenger whose booking is settled, for the group room. */
+  private async computeGroupParticipantIds(
+    trip: TripEntity,
+  ): Promise<string[]> {
+    const bookings = await this.bookingRepo.find({
+      where: { tripId: trip.id, status: In(['pending', 'confirmed']) },
+    });
+    const passengerIds = bookings
+      .filter((b) => b.hasDriverPaidToContact || trip.driverWalletChargeApplied)
+      .map((b) => b.userId);
+    return [trip.driverId, ...new Set(passengerIds)];
   }
 
   private async validateTripParticipation(

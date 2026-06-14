@@ -69,6 +69,21 @@ export class ChatPostgresController {
     );
   }
 
+  @Get('rooms/trip/:tripId/group')
+  @ApiOperation({
+    summary:
+      'Get or create the trip-wide group chat room (driver + all passengers)',
+  })
+  @ApiParam({ name: 'tripId', description: 'Trip ID' })
+  @ApiResponse({ status: 200, description: 'Returns the trip group chat room' })
+  @ApiResponse({ status: 403, description: 'Not a participant or fee not paid' })
+  async getGroupRoom(
+    @Param('tripId') tripId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.chatService.getOrCreateGroupRoom(tripId, userId);
+  }
+
   @Get('rooms/:idOrTripId')
   @ApiOperation({
     summary:

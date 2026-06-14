@@ -22,6 +22,7 @@ import {
   computeTripAutoCompleteDelayMs,
   TRIP_AUTO_COMPLETE_JOB_ID_PREFIX,
 } from '../../trips/trip-auto-start.util';
+import { NotificationsService } from '../../notifications/notifications.service';
 
 const TERMINAL_TRIP_STATUSES: TripStatus[] = [
   TripStatus.COMPLETED,
@@ -38,6 +39,7 @@ export class TripAutoStartProcessor {
     private bookingRepo: Repository<BookingEntity>,
     @InjectQueue('trip-auto-complete')
     private readonly autoCompleteQueue: Queue,
+    private notificationsService: NotificationsService,
   ) {}
 
   @Process('enforce')
@@ -84,6 +86,28 @@ export class TripAutoStartProcessor {
     this.logger.log(
       `trip-auto-start: trip ${tripId} auto-started at ${now.toISOString()}`,
     );
+
+    // Notify the driver and every confirmed passenger that the trip started,
+    // prompting them to share live trip tracking with someone.
+    const recipientIds = [
+      trip.driverId,
+      ...bookings.map((b) => b.userId),
+    ];
+    for (const recipientId of recipientIds) {
+      this.notificationsService
+        .create({
+          userId: recipientId,
+          type: 'trip_started',
+          title: 'بدأت الرحلة',
+          body: `بدأت رحلتك إلى ${trip.toName}. يمكنك مشاركة تتبع الرحلة المباشر مع أحد.`,
+          data: { tripId },
+        })
+        .catch((err: Error) =>
+          this.logger.warn(
+            `trip-started notify ${recipientId}: ${err.message}`,
+          ),
+        );
+    }
 
     await this.scheduleAutoCompleteFallback(trip);
   }

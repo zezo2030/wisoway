@@ -638,6 +638,17 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
               iconColor: T.onSurface(context).withValues(alpha: 0.87),
             ),
           ),
+          IconButton(
+            icon: const Icon(Icons.forum_outlined),
+            tooltip: context.l10n.tripGroupChat,
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                RouteNames.groupChat,
+                arguments: {'tripId': widget.tripId, 'trip': _trip},
+              );
+            },
+          ),
           if (_trip!.isActive)
             IconButton(
               icon: const Icon(IconsaxPlusLinear.eye_slash),

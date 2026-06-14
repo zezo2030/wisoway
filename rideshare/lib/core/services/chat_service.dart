@@ -71,6 +71,20 @@ class ChatService {
     }
   }
 
+  /// غرفة المحادثة الجماعية للرحلة (السائق + جميع الركاب معاً).
+  Future<ChatModel> getOrCreateGroupRoomForTrip(String tripId) async {
+    try {
+      final response = await _api.get(
+        ApiEndpoints.chatRoomByTripGroup(tripId),
+      );
+      final data = response['data'] ?? response;
+      return ChatModel.fromJson(data);
+    } catch (e) {
+      print('❌ Error getting group chat room: $e');
+      rethrow;
+    }
+  }
+
   // Get messages for a specific room
   Future<List<MessageModel>> getMessages(String roomId) async {
     try {

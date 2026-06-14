@@ -97,6 +97,8 @@ class ApiEndpoints {
   static String chatRoomByTrip(String tripId) => '/chat/rooms/$tripId';
   static String chatRoomByTripAndPassenger(String tripId, String passengerId) =>
       '/chat/rooms/trip/$tripId/passenger/$passengerId';
+  static String chatRoomByTripGroup(String tripId) =>
+      '/chat/rooms/trip/$tripId/group';
   static String chatMessages(String roomId) => '/chat/rooms/$roomId/messages';
   static String sendMessage(String roomId) => '/chat/rooms/$roomId/messages';
 

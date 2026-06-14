@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/route_names.dart';
+import '../../../core/constants/social_constants.dart';
 import '../../../core/constants/support_constants.dart';
 import '../../../core/services/theme_service.dart';
 import '../../../core/services/localization_service.dart';
@@ -207,6 +208,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await authProvider.signOut();
     } catch (_) {
       _showContactSupportDialog(context);
+    }
+  }
+
+  Future<void> _openExternalUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.errorWithMessage(url))),
+      );
     }
   }
 
@@ -445,6 +457,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         );
                       },
+                    ),
+                  ],
+                ),
+                SettingsSection(
+                  title: context.l10n.followUs,
+                  children: [
+                    SettingsTile(
+                      icon: Icons.facebook,
+                      iconColor: const Color(0xFF1877F2),
+                      title: context.l10n.followOnFacebook,
+                      trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
+                      onTap: () => _openExternalUrl(SocialConstants.facebookUrl),
+                    ),
+                    SettingsTile(
+                      icon: Icons.business_center,
+                      iconColor: const Color(0xFF0A66C2),
+                      title: context.l10n.followOnLinkedIn,
+                      trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
+                      onTap: () => _openExternalUrl(SocialConstants.linkedInUrl),
                     ),
                   ],
                 ),

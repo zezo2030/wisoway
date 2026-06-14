@@ -7019,6 +7019,72 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'مرحباً، حسابي على تطبيق VisionWay موقوف وأحتاج مساعدة.'**
   String get bannedWhatsAppPrefill;
+
+  /// No description provided for @followUs.
+  ///
+  /// In ar, this message translates to:
+  /// **'تابعنا'**
+  String get followUs;
+
+  /// No description provided for @followOnFacebook.
+  ///
+  /// In ar, this message translates to:
+  /// **'فيسبوك'**
+  String get followOnFacebook;
+
+  /// No description provided for @followOnLinkedIn.
+  ///
+  /// In ar, this message translates to:
+  /// **'لينكدإن'**
+  String get followOnLinkedIn;
+
+  /// No description provided for @tripGroupChat.
+  ///
+  /// In ar, this message translates to:
+  /// **'محادثة جماعية للرحلة'**
+  String get tripGroupChat;
+
+  /// No description provided for @groupChatMembersCount.
+  ///
+  /// In ar, this message translates to:
+  /// **'{count} مشارك'**
+  String groupChatMembersCount(int count);
+
+  /// No description provided for @shareTripTrackingTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'مشاركة تتبع الرحلة'**
+  String get shareTripTrackingTitle;
+
+  /// No description provided for @shareTripTrackingMessage.
+  ///
+  /// In ar, this message translates to:
+  /// **'هل تريد مشاركة تتبع رحلتك المباشر مع أحد؟'**
+  String get shareTripTrackingMessage;
+
+  /// No description provided for @shareTripTrackingAction.
+  ///
+  /// In ar, this message translates to:
+  /// **'مشاركة'**
+  String get shareTripTrackingAction;
+
+  /// No description provided for @shareTripTrackingLater.
+  ///
+  /// In ar, this message translates to:
+  /// **'لاحقاً'**
+  String get shareTripTrackingLater;
+
+  /// No description provided for @shareTripTrackingText.
+  ///
+  /// In ar, this message translates to:
+  /// **'تابع رحلتي المباشرة عبر هذا الرابط: {url}'**
+  String shareTripTrackingText(String url);
+
+  /// No description provided for @shareTripTrackingError.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذّر إنشاء رابط المشاركة'**
+  String get shareTripTrackingError;
 }
 
 class _AppLocalizationsDelegate

@@ -3812,4 +3812,42 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get bannedWhatsAppPrefill =>
       'Hello, my VisionWay account is suspended and I need help.';
+
+  @override
+  String get followUs => 'Follow us';
+
+  @override
+  String get followOnFacebook => 'Facebook';
+
+  @override
+  String get followOnLinkedIn => 'LinkedIn';
+
+  @override
+  String get tripGroupChat => 'Trip group chat';
+
+  @override
+  String groupChatMembersCount(int count) {
+    return '$count members';
+  }
+
+  @override
+  String get shareTripTrackingTitle => 'Share trip tracking';
+
+  @override
+  String get shareTripTrackingMessage =>
+      'Share your live trip tracking with someone?';
+
+  @override
+  String get shareTripTrackingAction => 'Share';
+
+  @override
+  String get shareTripTrackingLater => 'Later';
+
+  @override
+  String shareTripTrackingText(String url) {
+    return 'Follow my live trip here: $url';
+  }
+
+  @override
+  String get shareTripTrackingError => 'Could not create the share link';
 }

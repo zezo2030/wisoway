@@ -2436,5 +2436,16 @@
     }
   },
   "accountBannedNoReason": "Your account has been suspended. Contact support for details.",
-  "bannedWhatsAppPrefill": "Hello, my VisionWay account is suspended and I need help."
+  "bannedWhatsAppPrefill": "Hello, my VisionWay account is suspended and I need help.",
+  "followUs": "Follow us",
+  "followOnFacebook": "Facebook",
+  "followOnLinkedIn": "LinkedIn",
+  "tripGroupChat": "Trip group chat",
+  "groupChatMembersCount": "{count} members",
+  "shareTripTrackingTitle": "Share trip tracking",
+  "shareTripTrackingMessage": "Share your live trip tracking with someone?",
+  "shareTripTrackingAction": "Share",
+  "shareTripTrackingLater": "Later",
+  "shareTripTrackingText": "Follow my live trip here: {url}",
+  "shareTripTrackingError": "Could not create the share link"
 }

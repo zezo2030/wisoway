@@ -7,6 +7,7 @@ class NotificationType {
   static const String paymentRejected = 'payment_rejected';
   static const String tripReminder = 'trip_reminder';
   static const String driverArrived = 'driver_arrived';
+  static const String tripStarted = 'trip_started';
   static const String tripCancelled = 'trip_cancelled';
   static const String communicationActivated = 'communication_activated';
   static const String chatMessage = 'chat_message';
@@ -150,6 +151,8 @@ class NotificationModel {
         return isDriver == true ? 'تذكير برحلتك كسائق' : 'تذكير بالرحلة';
       case NotificationType.driverArrived:
         return 'وصل السائق';
+      case NotificationType.tripStarted:
+        return 'بدأت الرحلة';
       case NotificationType.tripCancelled:
         return isDriver == true ? 'تم إلغاء رحلتك' : 'تم إلغاء الرحلة';
       case NotificationType.communicationActivated:
@@ -223,6 +226,8 @@ class NotificationModel {
         return driverName != null
             ? 'السائق $driverName وصل إلى نقطة الانطلاق.'
             : 'وصل السائق إلى نقطة الانطلاق.';
+      case NotificationType.tripStarted:
+        return 'بدأت رحلتك. يمكنك مشاركة تتبع الرحلة المباشر مع أحد.';
       case NotificationType.tripCancelled:
         return isDriver == true
             ? 'تم إلغاء رحلتك. يرجى مراجعة تفاصيل الرحلة.'
