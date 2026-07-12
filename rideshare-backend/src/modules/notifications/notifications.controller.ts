@@ -26,7 +26,6 @@ import { Request } from 'express';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { PaginationDto } from '../../common/dto/pagination.dto';
 import { NotificationQueryDto } from './dto/create-notification.dto';
 import { RegisterDeviceDto } from './dto/register-device.dto';
 
@@ -41,12 +40,11 @@ export class NotificationsController {
   @ApiOperation({ summary: 'Get user notifications' })
   async findAll(
     @CurrentUser('id') userId: string,
-    @Query() paginationDto: PaginationDto,
     @Query() queryDto: NotificationQueryDto,
   ) {
     return this.notificationsService.findByUser(userId, {
-      page: paginationDto.page || 1,
-      limit: paginationDto.limit || 10,
+      page: queryDto.page || 1,
+      limit: queryDto.limit || 10,
       isRead: queryDto.isRead,
     });
   }

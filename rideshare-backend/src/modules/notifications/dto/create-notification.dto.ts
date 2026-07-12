@@ -7,6 +7,8 @@ import {
   IsObject,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
+import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 export class CreateNotificationDto {
   @ApiProperty({ description: 'User ID to send notification to' })
@@ -37,9 +39,14 @@ export class CreateNotificationDto {
   data?: Record<string, any>;
 }
 
-export class NotificationQueryDto {
+export class NotificationQueryDto extends PaginationDto {
   @ApiPropertyOptional({ description: 'Filter by read status' })
-  @IsBoolean()
   @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
+  @IsBoolean()
   isRead?: boolean;
 }

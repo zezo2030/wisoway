@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -11,6 +11,7 @@ import { AlertCircle, Loader2, Car, Map, ShieldCheck, Mail, Lock, ArrowRight, La
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useLanguage } from "@/providers/language-provider"
 import { cn } from "@/lib/utils"
+import { ROUTES } from "@/lib/constants"
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -221,6 +222,15 @@ export default function LoginPage() {
               )}
             </Button>
           </form>
+
+          <p className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400">
+            <Link
+              to={ROUTES.PRIVACY}
+              className="font-semibold text-primary underline-offset-4 hover:underline"
+            >
+              {t("privacyLoginFooter")}
+            </Link>
+          </p>
 
         </div>
       </div>

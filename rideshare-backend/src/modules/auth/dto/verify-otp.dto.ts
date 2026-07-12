@@ -65,7 +65,7 @@ export class VerifyOtpDto {
   @IsString()
   @IsNotEmpty({ message: 'OTP code is required' })
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
-  @Matches(/^\d{4,6}$/, { message: 'OTP code must be 4 to 6 digits' })
+  @Matches(/^\d{6}$/, { message: 'OTP code must be exactly 6 digits' })
   code: string;
 
   /** Optional device binding payload.  When omitted no device row is created. */
