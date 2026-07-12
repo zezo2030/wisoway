@@ -24,6 +24,7 @@ import {
   Zap,
   Gavel,
   AlertTriangle,
+  FileText,
 } from "lucide-react"
 import { useState } from "react"
 import { ROUTES } from "@/lib/constants"
@@ -60,12 +61,16 @@ const NAV_GROUPS: { labelKey: TranslationKey; items: { path: string; labelKey: T
       { path: ROUTES.PRICING_SETTINGS, labelKey: "nav_pricing", icon: "Percent" },
     ],
   },
+  {
+    labelKey: "navGroupLegal",
+    items: [{ path: ROUTES.PRIVACY, labelKey: "nav_privacyPolicy", icon: "FileText" }],
+  },
 ]
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard, Users, CreditCard, Wallet, Car, MapPin, BarChart3,
   BookOpen, Star, Bell, MessageSquare, Percent, ShieldAlert, Gavel,
-  AlertTriangle,
+  AlertTriangle, FileText,
 }
 
 interface SidebarProps {

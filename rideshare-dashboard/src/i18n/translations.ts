@@ -667,7 +667,19 @@ export const translations = {
     navGroupMain: "Overview",
     navGroupManagement: "Management",
     navGroupInsights: "Analytics",
+    navGroupLegal: "Legal",
+    nav_privacyPolicy: "Privacy policy",
     collapse: "Collapse",
+
+    // Public privacy page (/privacy — use this URL on Google Play)
+    privacyPageTitle: "Privacy policy",
+    privacyPageSubtitle: "How we handle personal data for VisionWay ridesharing services.",
+    privacyLastUpdated: "Last updated",
+    privacyCopyLink: "Copy link",
+    privacyLinkCopied: "Public link copied to clipboard.",
+    privacyCopyFailed: "Could not copy link.",
+    privacyBackToLogin: "Back to sign in",
+    privacyLoginFooter: "Privacy policy",
 
     // Pagination
     paginationShowing: "Showing",
@@ -1356,7 +1368,19 @@ export const translations = {
     navGroupMain: "الرئيسية",
     navGroupManagement: "الإدارة",
     navGroupInsights: "التحليلات",
+    navGroupLegal: "قانوني",
+    nav_privacyPolicy: "سياسة الخصوصية",
     collapse: "طي",
+
+    // صفحة الخصوصية العامة (/privacy — للرابط في Google Play)
+    privacyPageTitle: "سياسة الخصوصية",
+    privacyPageSubtitle: "كيف نتعامل مع البيانات الشخصية في خدمات VisionWay لمشاركة الرحلات.",
+    privacyLastUpdated: "آخر تحديث",
+    privacyCopyLink: "نسخ الرابط",
+    privacyLinkCopied: "تم نسخ الرابط العام إلى الحافظة.",
+    privacyCopyFailed: "تعذر نسخ الرابط.",
+    privacyBackToLogin: "العودة لتسجيل الدخول",
+    privacyLoginFooter: "سياسة الخصوصية",
 
     // Pagination
     paginationShowing: "عرض",
