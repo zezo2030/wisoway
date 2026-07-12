@@ -6,11 +6,12 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Not, Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 import { TripEntity } from '../../database/entities/trip.entity';
-import { TripStatus } from '../../database/entities/shared.enums';
+import { DriverAvailabilityEntity } from '../../database/entities/driver-availability.entity';
+import { TripStatus, TripType } from '../../database/entities/shared.enums';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { SearchTripsDto } from './dto/search-trips.dto';
@@ -26,11 +27,20 @@ import { ErrorCodes } from '../../common/errors/error-codes';
 import { RecurrenceService } from '../recurrence/recurrence.service';
 import { RecurrenceFrequency } from '../../database/entities/trip-recurrence-rule.entity';
 import { PendingChargesService } from '../pending-charges/pending-charges.service';
+import { LocationsService } from '../locations/locations.service';
+import {
+  currencyForCountry,
+  DEFAULT_CURRENCY,
+} from '../../common/currency/country-currency';
 import {
   computeTripAutoStartDelayMs,
   TRIP_AUTO_START_JOB_ID_PREFIX,
   TRIP_AUTO_COMPLETE_JOB_ID_PREFIX,
 } from './trip-auto-start.util';
+import {
+  resolveVehicleTypeTemplate,
+  type SeatLayout,
+} from '../vehicles/vehicle-types';
 
 function getFromLatLng(trip: TripEntity): { lat: number; lng: number } {
   const c = trip.fromPoint?.coordinates;
@@ -48,6 +58,8 @@ export class TripsService {
 
   constructor(
     @InjectRepository(TripEntity) private tripRepo: Repository<TripEntity>,
+    @InjectRepository(DriverAvailabilityEntity)
+    private driverAvailabilityRepo: Repository<DriverAvailabilityEntity>,
     private notificationsService: NotificationsService,
     private bookingsService: BookingsService,
     private vehiclesService: VehiclesService,
@@ -61,7 +73,36 @@ export class TripsService {
     private tripAutoCompleteQueue: Queue,
     private recurrenceService: RecurrenceService,
     private pendingChargesService: PendingChargesService,
+    private locationsService: LocationsService,
   ) {}
+
+  /**
+   * Resolve the currency for a trip from its departure point's country, so
+   * fares are shown in the local currency of where the ride starts. Falls back
+   * to a client-supplied currency, then the platform default, if the country
+   * can't be determined (e.g. geocoding is unavailable).
+   */
+  private async resolveTripCurrency(
+    from: { latitude: number; longitude: number },
+    fallbackCurrency?: string,
+  ): Promise<string> {
+    try {
+      const { countryCode } = await this.locationsService.reverseGeocode(
+        from.latitude,
+        from.longitude,
+      );
+      if (countryCode) {
+        return currencyForCountry(countryCode);
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Could not resolve trip currency from departure point: ${
+          error instanceof Error ? error.message : 'unknown error'
+        }`,
+      );
+    }
+    return fallbackCurrency ?? DEFAULT_CURRENCY;
+  }
 
   async getPricingPreview(tripId: string, countryCode: string = 'JO') {
     const trip = await this.findById(tripId);
@@ -120,6 +161,12 @@ export class TripsService {
     const seats = this.generateSeatsFromLayout(seatLayout);
     const totalSeats = seats.length;
 
+    // Currency follows the country of the trip's departure point.
+    const currency = await this.resolveTripCurrency(
+      createTripDto.from,
+      createTripDto.currency,
+    );
+
     const trip = this.tripRepo.create({
       driverId,
       driverName,
@@ -143,7 +190,7 @@ export class TripsService {
       },
       departureTime,
       price: String(createTripDto.price),
-      currency: createTripDto.currency ?? 'JOD',
+      currency,
       totalSeats,
       availableSeats: totalSeats,
       seatLayout,
@@ -178,7 +225,7 @@ export class TripsService {
           lng: createTripDto.to.longitude,
         },
         price: String(createTripDto.price),
-        currency: createTripDto.currency ?? 'JOD',
+        currency,
         totalSeats,
         seatLayout,
         stops: createTripDto.stops ?? [],
@@ -532,10 +579,7 @@ export class TripsService {
     if (updateTripDto.stops !== undefined) trip.stops = updateTripDto.stops;
 
     const saved = await this.tripRepo.save(trip);
-    await this.rescheduleTripAutoStart(
-      saved.id,
-      new Date(saved.departureTime),
-    );
+    await this.rescheduleTripAutoStart(saved.id, new Date(saved.departureTime));
     return saved;
   }
 
@@ -569,6 +613,15 @@ export class TripsService {
     }
     trip.status = TripStatus.COMPLETED;
     const savedTrip = await this.tripRepo.save(trip);
+
+    // Instant trips: release the driver's availability lock so they can take
+    // new on-demand requests once this ride is done.
+    if (savedTrip.tripType === TripType.INSTANT) {
+      await this.driverAvailabilityRepo.update(
+        { driverId, currentRequestId: Not(IsNull()) },
+        { currentRequestId: null },
+      );
+    }
 
     await this.removeTripLifecycleJobs(tripId);
 
@@ -866,25 +919,22 @@ export class TripsService {
 
   private resolveVehicleSeatLayout(vehicle: {
     seats: number;
+    vehicleType?: string;
     seatLayout: {
       rows: number;
       seatsPerRow: number;
       seatsPerRowList?: number[];
       preventGenderMixing?: boolean;
     } | null;
-  }): {
-    rows: number;
-    seatsPerRow: number;
-    seatsPerRowList?: number[];
-    preventGenderMixing?: boolean;
-  } {
+  }): SeatLayout {
     if (vehicle.seatLayout) {
       return vehicle.seatLayout;
     }
-    const total = Math.max(1, Math.min(50, vehicle.seats));
-    const seatsPerRow = Math.max(1, Math.ceil(total / 2));
-    const rows = Math.max(1, Math.ceil(total / seatsPerRow));
-    return { rows, seatsPerRow, preventGenderMixing: false };
+    const template = resolveVehicleTypeTemplate(
+      vehicle.vehicleType,
+      this.logger,
+    );
+    return template.layout;
   }
 
   private generateSeatsFromLayout(layout: {

@@ -7,6 +7,7 @@ import '../../models/location_model.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/services/location_service.dart';
 import '../../core/services/trip_service.dart';
+import '../../widgets/location_autocomplete_field.dart';
 import '../../widgets/location_picker_widget.dart';
 import '../../widgets/notification_icon_button.dart';
 import '../../core/theme/colors.dart';
@@ -598,11 +599,17 @@ class _FilterSheetState extends State<_FilterSheet> {
   late String _tmpCity = widget.initialCity;
   late DateTime? _tmpDate = widget.initialDate;
   late String _tmpSort = widget.initialSort;
+  late final TextEditingController _fromController =
+      TextEditingController(text: widget.initialFrom?.name ?? '');
+  late final TextEditingController _toController =
+      TextEditingController(text: widget.initialTo?.name ?? '');
   late final TextEditingController _cityController =
       TextEditingController(text: widget.initialCity);
 
   @override
   void dispose() {
+    _fromController.dispose();
+    _toController.dispose();
     _cityController.dispose();
     super.dispose();
   }
@@ -646,60 +653,16 @@ class _FilterSheetState extends State<_FilterSheet> {
               ),
             ),
             const SizedBox(height: 6),
-            InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: () async {
-                final loc = await Navigator.push<LocationModel>(
-                  ctx,
-                  MaterialPageRoute(
-                    builder: (_) => LocationPickerWidget(
-                      title: ctx.l10n.chooseDeparturePoint,
-                      initialLocation: _tmpFrom,
-                      onLocationSelected: (_) {},
-                    ),
-                  ),
-                );
-                if (loc != null) setState(() => _tmpFrom = loc);
+            LocationAutocompleteField(
+              controller: _fromController,
+              hint: ctx.l10n.chooseDeparturePoint,
+              mapPickerTitle: ctx.l10n.chooseDeparturePoint,
+              icon: Icons.trip_origin,
+              iconColor: AppColors.success,
+              initialLocation: _tmpFrom,
+              onLocationSelected: (location) {
+                setState(() => _tmpFrom = location);
               },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[300]!),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.trip_origin,
-                      size: 18,
-                      color: AppColors.success,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        _tmpFrom?.name ?? ctx.l10n.chooseDeparturePoint,
-                        style: TextStyle(
-                          color: _tmpFrom != null
-                              ? T.onSurface(ctx)
-                              : Colors.grey,
-                        ),
-                      ),
-                    ),
-                    if (_tmpFrom != null)
-                      GestureDetector(
-                        onTap: () => setState(() => _tmpFrom = null),
-                        child: const Icon(
-                          Icons.close,
-                          size: 16,
-                          color: Colors.grey,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
             ),
             const SizedBox(height: 12),
             // To location
@@ -711,56 +674,16 @@ class _FilterSheetState extends State<_FilterSheet> {
               ),
             ),
             const SizedBox(height: 6),
-            InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: () async {
-                final loc = await Navigator.push<LocationModel>(
-                  ctx,
-                  MaterialPageRoute(
-                    builder: (_) => LocationPickerWidget(
-                      title: ctx.l10n.chooseDestination,
-                      initialLocation: _tmpTo,
-                      onLocationSelected: (_) {},
-                    ),
-                  ),
-                );
-                if (loc != null) setState(() => _tmpTo = loc);
+            LocationAutocompleteField(
+              controller: _toController,
+              hint: ctx.l10n.chooseDestination,
+              mapPickerTitle: ctx.l10n.chooseDestination,
+              icon: Icons.location_on,
+              iconColor: T.error(ctx),
+              initialLocation: _tmpTo,
+              onLocationSelected: (location) {
+                setState(() => _tmpTo = location);
               },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[300]!),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.location_on, size: 18, color: T.error(ctx)),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        _tmpTo?.name ?? ctx.l10n.chooseDestination,
-                        style: TextStyle(
-                          color: _tmpTo != null
-                              ? T.onSurface(ctx)
-                              : Colors.grey,
-                        ),
-                      ),
-                    ),
-                    if (_tmpTo != null)
-                      GestureDetector(
-                        onTap: () => setState(() => _tmpTo = null),
-                        child: const Icon(
-                          Icons.close,
-                          size: 16,
-                          color: Colors.grey,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
             ),
             const SizedBox(height: 12),
             // City filter

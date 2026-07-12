@@ -76,7 +76,10 @@ export class ChatPostgresController {
   })
   @ApiParam({ name: 'tripId', description: 'Trip ID' })
   @ApiResponse({ status: 200, description: 'Returns the trip group chat room' })
-  @ApiResponse({ status: 403, description: 'Not a participant or fee not paid' })
+  @ApiResponse({
+    status: 403,
+    description: 'Not a participant or fee not paid',
+  })
   async getGroupRoom(
     @Param('tripId') tripId: string,
     @CurrentUser('id') userId: string,

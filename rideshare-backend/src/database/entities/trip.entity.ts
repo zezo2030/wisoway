@@ -10,7 +10,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { UserEntity } from './user.entity';
-import { TripStatus } from './shared.enums';
+import { TripStatus, TripType } from './shared.enums';
 import { TripShareLinkEntity } from './trip-share-link.entity';
 import { TripRecurrenceRuleEntity } from './trip-recurrence-rule.entity';
 
@@ -97,6 +97,13 @@ export class TripEntity {
 
   @Column({ type: 'enum', enum: TripStatus, default: TripStatus.PUBLISHED })
   status: TripStatus;
+
+  /**
+   * Scheduled (driver-published carpool) vs instant (on-demand). Instant trips
+   * are created on instant-ride acceptance and are excluded from public search.
+   */
+  @Column({ type: 'varchar', length: 16, default: TripType.SCHEDULED })
+  tripType: TripType;
 
   /** When the driver pressed "Start Trip". */
   @Column({ type: 'timestamptz', nullable: true })

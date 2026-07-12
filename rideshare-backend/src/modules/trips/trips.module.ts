@@ -4,6 +4,7 @@ import { BullModule } from '@nestjs/bull';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TripEntity } from '../../database/entities/trip.entity';
+import { DriverAvailabilityEntity } from '../../database/entities/driver-availability.entity';
 import { TripsService } from './trips.service';
 import { TripsController } from './trips.controller';
 import { TripsGateway } from './trips.gateway';
@@ -17,10 +18,11 @@ import { WsRateLimitGuard } from '../../common/guards/ws-rate-limit.guard';
 import { TripTimeModule } from '../trip-time/trip-time.module';
 import { RecurrenceModule } from '../recurrence/recurrence.module';
 import { PendingChargesModule } from '../pending-charges/pending-charges.module';
+import { LocationsModule } from '../locations/locations.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([TripEntity]),
+    TypeOrmModule.forFeature([TripEntity, DriverAvailabilityEntity]),
     BullModule.registerQueue(
       { name: 'no-show-detector' },
       { name: 'trip-auto-start' },
@@ -44,6 +46,7 @@ import { PendingChargesModule } from '../pending-charges/pending-charges.module'
     VehiclesModule,
     UsersModule,
     PendingChargesModule,
+    LocationsModule,
   ],
   controllers: [TripsController],
   providers: [TripsService, TripsGateway, WsAuthGuard, WsRateLimitGuard],

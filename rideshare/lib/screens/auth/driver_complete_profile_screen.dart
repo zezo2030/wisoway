@@ -6,6 +6,8 @@ import '../../providers/auth_provider.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/services/storage_service.dart';
+import '../../core/services/vehicle_service.dart';
+import '../../models/vehicle_type_template.dart';
 import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
@@ -29,6 +31,20 @@ class _DriverCompleteProfileScreenState
   final _seatsController = TextEditingController();
 
   final StorageService _storageService = StorageService();
+  final VehicleService _vehicleService = VehicleService();
+
+  // Seat layout is derived from the vehicle type. Templates come from the
+  // backend catalog (with a local fallback if the network is unavailable) so
+  // selecting a car type fills the seat count automatically.
+  Map<String, VehicleTypeTemplate> _templatesByType = {};
+  static const Map<String, int> _fallbackSeatsByType = {
+    'sedan': 3,
+    'suv': 5,
+    'van': 7,
+    'truck': 2,
+    'bus': 20,
+    'motorcycle': 1,
+  };
 
   File? _profileImage;
   File? _driverLicenseImage;
@@ -61,6 +77,30 @@ class _DriverCompleteProfileScreenState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadUserData();
     });
+    _loadVehicleTemplates();
+  }
+
+  Future<void> _loadVehicleTemplates() async {
+    try {
+      final templates = await _vehicleService.getVehicleTypes();
+      if (!mounted) return;
+      setState(() {
+        _templatesByType = {for (final t in templates) t.type: t};
+        // Refresh the auto-filled seat count if a type is already chosen.
+        final seats = _seatsForType(_selectedVehicleType);
+        if (seats != null) _seatsController.text = seats.toString();
+      });
+    } catch (_) {
+      // Network unavailable on first run — the local fallback seat counts
+      // below keep the auto-fill working.
+    }
+  }
+
+  /// Default seat count for a vehicle type, from the backend catalog when
+  /// available, otherwise the local fallback. Returns null for unknown types.
+  int? _seatsForType(String? type) {
+    if (type == null) return null;
+    return _templatesByType[type]?.seats ?? _fallbackSeatsByType[type];
   }
 
   Future<void> _loadUserData() async {
@@ -78,9 +118,24 @@ class _DriverCompleteProfileScreenState
       return;
     }
 
-    // If no arguments, load from AuthProvider (REST API)
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    // Brand-new driver registration (no account yet): basic info comes from the
+    // pending registration saved at the OTP step, which survives app restarts.
+    final pending = authProvider.pendingDriverRegistration;
+    if (!authProvider.isAuthenticated && pending != null) {
+      setState(() {
+        _firstName = pending.firstName.isNotEmpty ? pending.firstName : null;
+        _lastName = pending.lastName.isNotEmpty ? pending.lastName : null;
+        _email = (pending.email?.isNotEmpty ?? false) ? pending.email : null;
+        _gender = (pending.gender?.isNotEmpty ?? false) ? pending.gender : null;
+        _isLoadingUserData = false;
+      });
+      return;
+    }
+
+    // Existing user upgrading to driver: load from AuthProvider (REST API).
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
       if (authProvider.userModel == null) {
         await authProvider.loadUserProfile();
       }
@@ -287,17 +342,43 @@ class _DriverCompleteProfileScreenState
     setState(() => _isLoading = true);
 
     try {
-      // Check if user is authenticated
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      if (authProvider.userModel == null) {
-        throw Exception('User not signed in');
+
+      if (authProvider.isAuthenticated) {
+        // Existing user upgrading to driver — the account already exists.
+        await authProvider.saveDriverProfile(
+          firstName: _firstName ?? '',
+          lastName: _lastName ?? '',
+          phoneNumber: authProvider.userModel?.phoneNumber ?? '',
+          profileImage: _profileImage!,
+          vehicleType: _selectedVehicleType!,
+          plateNumber: _plateNumberController.text.trim(),
+          model: _modelController.text.trim(),
+          seats: int.parse(_seatsController.text.trim()),
+          driverLicenseImage: _driverLicenseImage!,
+          vehicleLicenseImage: _vehicleLicenseImage!,
+          carImage: _carImage!,
+          email: _email,
+          gender: _gender, // Pass gender from step 1
+        );
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(context.l10n.driverProfileSubmittedFull),
+              backgroundColor: AppColors.success,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+          // AuthWrapper will now show home since the profile is complete.
+          Navigator.pushReplacementNamed(context, RouteNames.home);
+        }
+        return;
       }
 
-      // Save driver profile with all information
-      await authProvider.saveDriverProfile(
-        firstName: _firstName ?? '',
-        lastName: _lastName ?? '',
-        phoneNumber: authProvider.userModel?.phoneNumber ?? '',
+      // Brand-new driver: this is the final step — the account and vehicle are
+      // created atomically here. If anything failed earlier, no account exists.
+      await authProvider.registerDriver(
         profileImage: _profileImage!,
         vehicleType: _selectedVehicleType!,
         plateNumber: _plateNumberController.text.trim(),
@@ -306,21 +387,21 @@ class _DriverCompleteProfileScreenState
         driverLicenseImage: _driverLicenseImage!,
         vehicleLicenseImage: _vehicleLicenseImage!,
         carImage: _carImage!,
-        email: _email,
-        gender: _gender, // Pass gender from step 1
       );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(context.l10n.driverProfileSubmittedFull),
+            content: Text(context.l10n.driverProfileSubmitted),
             backgroundColor: AppColors.success,
             duration: const Duration(seconds: 5),
           ),
         );
-
-        // Navigate to home - AuthWrapper will now show home since profile is complete
-        Navigator.pushReplacementNamed(context, RouteNames.home);
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          RouteNames.driverPendingApproval,
+          (route) => false,
+        );
       }
     } catch (e) {
       print('❌ Error completing driver profile: $e');
@@ -603,7 +684,15 @@ class _DriverCompleteProfileScreenState
                                   );
                                 }).toList(),
                                 onChanged: (value) {
-                                  setState(() => _selectedVehicleType = value);
+                                  setState(() {
+                                    _selectedVehicleType = value;
+                                    // Seat count (and the seat layout stored on
+                                    // the backend) follow the chosen type.
+                                    final seats = _seatsForType(value);
+                                    if (seats != null) {
+                                      _seatsController.text = seats.toString();
+                                    }
+                                  });
                                 },
                                 validator: (value) {
                                   if (value == null) {
@@ -723,6 +812,9 @@ class _DriverCompleteProfileScreenState
                               child: TextFormField(
                                 controller: _seatsController,
                                 keyboardType: TextInputType.number,
+                                // Seats are set automatically from the selected
+                                // vehicle type, so this field is read-only.
+                                readOnly: true,
                                 style: const TextStyle(fontSize: 16),
                                 decoration: InputDecoration(
                                   labelText: context.l10n.vehicleSeatsRequiredLabel,

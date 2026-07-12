@@ -89,10 +89,7 @@ export class TripAutoStartProcessor {
 
     // Notify the driver and every confirmed passenger that the trip started,
     // prompting them to share live trip tracking with someone.
-    const recipientIds = [
-      trip.driverId,
-      ...bookings.map((b) => b.userId),
-    ];
+    const recipientIds = [trip.driverId, ...bookings.map((b) => b.userId)];
     for (const recipientId of recipientIds) {
       this.notificationsService
         .create({
@@ -113,9 +110,7 @@ export class TripAutoStartProcessor {
   }
 
   private async scheduleAutoCompleteFallback(trip: TripEntity): Promise<void> {
-    const delay = computeTripAutoCompleteDelayMs(
-      new Date(trip.departureTime),
-    );
+    const delay = computeTripAutoCompleteDelayMs(new Date(trip.departureTime));
     try {
       await this.autoCompleteQueue.add(
         'enforce',

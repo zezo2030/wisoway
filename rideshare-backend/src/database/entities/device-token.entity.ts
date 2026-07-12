@@ -30,6 +30,9 @@ export class DeviceTokenEntity {
   @Column({ type: 'varchar', length: 20, default: 'android' })
   platform: string;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  userAgent: string | null;
+
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 

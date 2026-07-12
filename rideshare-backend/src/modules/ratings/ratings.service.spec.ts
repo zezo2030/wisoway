@@ -199,9 +199,7 @@ describe('RatingsService', () => {
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
-        getRawOne: jest
-          .fn()
-          .mockResolvedValue({ cnt: '3', sum: '14' }),
+        getRawOne: jest.fn().mockResolvedValue({ cnt: '3', sum: '14' }),
       } as any);
       userRepo.update.mockResolvedValue({} as any);
 
@@ -219,7 +217,10 @@ describe('RatingsService', () => {
 
   describe('findByUser', () => {
     it('should return paginated user ratings', async () => {
-      ratingRepo.findAndCount.mockResolvedValue([[mockRating as RatingEntity], 1]);
+      ratingRepo.findAndCount.mockResolvedValue([
+        [mockRating as RatingEntity],
+        1,
+      ]);
 
       const result = await service.findByUser(uid.driver, {
         page: 1,
@@ -233,7 +234,10 @@ describe('RatingsService', () => {
 
   describe('findByTrip', () => {
     it('should return paginated trip ratings', async () => {
-      ratingRepo.findAndCount.mockResolvedValue([[mockRating as RatingEntity], 1]);
+      ratingRepo.findAndCount.mockResolvedValue([
+        [mockRating as RatingEntity],
+        1,
+      ]);
 
       const result = await service.findByTrip(uid.trip, {
         page: 1,
@@ -247,7 +251,10 @@ describe('RatingsService', () => {
 
   describe('findByRater', () => {
     it('should return paginated ratings by rater', async () => {
-      ratingRepo.findAndCount.mockResolvedValue([[mockRating as RatingEntity], 1]);
+      ratingRepo.findAndCount.mockResolvedValue([
+        [mockRating as RatingEntity],
+        1,
+      ]);
 
       const result = await service.findByRater(uid.passenger, {
         page: 1,

@@ -14,12 +14,23 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { MoreThan, Repository } from 'typeorm';
 import { UsersService } from '../users/users.service';
 import { UserEntity } from '../../database/entities/user.entity';
+import { VehicleEntity } from '../../database/entities/vehicle.entity';
 import { UserDeviceStatus } from '../../database/entities/user-device.entity';
 import { PasswordResetSessionEntity } from '../../database/entities/password-reset-session.entity';
 import { PgUserRole } from '../../database/entities/shared.enums';
 import { SendOtpDto } from './dto/send-otp.dto';
-import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { VerifyOtpDto, VerifyOtpDeviceDto } from './dto/verify-otp.dto';
+import {
+  DriverVerifyPhoneDto,
+  RegisterDriverDto,
+  DRIVER_REGISTRATION_TOKEN_PURPOSE,
+  DRIVER_REGISTRATION_TOKEN_TTL_SECONDS,
+} from './dto/register-driver.dto';
 import { SignInDto } from './dto/sign-in.dto';
+import {
+  countSeatsInLayout,
+  resolveVehicleTypeTemplate,
+} from '../vehicles/vehicle-types';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { VerifyResetOtpDto } from './dto/verify-reset-otp.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -29,6 +40,7 @@ import { Twilio } from 'twilio';
 import { DeviceFingerprintService } from './device-fingerprint.service';
 import { AccountRiskService } from './account-risk.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AdminAlertsService } from '../admin/admin-alerts.service';
 
 export interface AuthResponse {
   user: {
@@ -72,6 +84,7 @@ export class AuthService {
     private deviceFingerprintService: DeviceFingerprintService,
     private accountRiskService: AccountRiskService,
     private notificationsService: NotificationsService,
+    private adminAlertsService: AdminAlertsService,
     @InjectRepository(UserEntity)
     private userRepo: Repository<UserEntity>,
     @InjectRepository(PasswordResetSessionEntity)
@@ -200,61 +213,18 @@ export class AuthService {
           `Failed to notify admins of new user ${user.id}: ${(err as Error).message}`,
         );
       });
+      this.adminAlertsService.notifyDriverRegistration(user).catch((err) => {
+        this.logger.error(
+          `Failed to dispatch driver-registration alert ${user.id}: ${(err as Error).message}`,
+        );
+      });
     }
 
     // ── Device binding (optional) ──────────────────────────────────────────
-    let deviceState: 'active' | 'revoked' | null = null;
-    let fingerprintHash: string | null = null;
-    let activeDeviceId: string | null = null;
-
-    if (device) {
-      fingerprintHash = this.deviceFingerprintService.hash(
-        device.platform,
-        device.deviceId,
-        device.installSalt,
-      );
-
-      // Check whether this fingerprint is explicitly revoked for this user
-      const revokedDevice = await this.deviceFingerprintService[
-        'deviceRepo'
-      ].findOne({
-        where: {
-          userId: user.id,
-          fingerprintHash,
-          status: UserDeviceStatus.REVOKED,
-        },
-      });
-
-      if (revokedDevice) {
-        deviceState = 'revoked';
-        throw new UnauthorizedException(
-          'This device has been revoked. Please use another trusted device.',
-        );
-      } else {
-        // Register / refresh the device session
-        const registeredDevice = await this.deviceFingerprintService.registerDevice({
-          userId: user.id,
-          platform: device.platform,
-          deviceId: device.deviceId,
-          installSalt: device.installSalt,
-          fcmToken: device.fcmToken,
-          locale: device.locale,
-          label: device.label,
-        });
-        deviceState = 'active';
-        activeDeviceId = registeredDevice.id;
-      }
-
-      // Run multi-account risk check after device row exists
-      await this.accountRiskService.checkMultiAccountThreshold(
-        user.id,
-        fingerprintHash,
-      );
-
-      // Reload user in case restricted flag was just set by risk service
-      const refreshed = await this.usersService.findById(user.id);
-      if (refreshed) user = refreshed;
-    }
+    const binding = await this.bindDeviceForUser(user, device);
+    user = binding.user;
+    const deviceState = binding.deviceState;
+    const activeDeviceId = binding.activeDeviceId;
 
     // ── Build accountState ─────────────────────────────────────────────────
     let accountState: 'active' | 'restricted' | 'banned';
@@ -278,6 +248,129 @@ export class AuthService {
     };
   }
 
+  /**
+   * Step 1 of deferred driver registration. Verifies the OTP to prove phone
+   * ownership but does NOT create an account. Returns a short-lived token that
+   * authorizes the final register call and the registration image uploads.
+   */
+  async driverVerifyPhone(
+    dto: DriverVerifyPhoneDto,
+  ): Promise<{ registrationToken: string; expiresIn: number }> {
+    const { phoneNumber, code } = dto;
+
+    await this.verifyPhoneOtp(phoneNumber, code);
+
+    const existing = await this.usersService.findByPhone(phoneNumber);
+    if (existing) {
+      throw new ConflictException(
+        'Phone number is already registered. Please sign in instead.',
+      );
+    }
+
+    return {
+      registrationToken: this.signRegistrationToken(phoneNumber),
+      expiresIn: DRIVER_REGISTRATION_TOKEN_TTL_SECONDS,
+    };
+  }
+
+  /**
+   * Final step of deferred driver registration. Creates the driver account and
+   * the vehicle in a single transaction so the account only ever exists once
+   * the whole onboarding completes — an interrupted flow leaves nothing behind.
+   */
+  async registerDriver(dto: RegisterDriverDto): Promise<AuthResponse> {
+    const phoneNumber = this.verifyRegistrationToken(dto.registrationToken);
+
+    if (await this.usersService.findByPhone(phoneNumber)) {
+      throw new ConflictException(
+        'Phone number is already registered. Please sign in instead.',
+      );
+    }
+
+    // Resolve the seat layout from the chosen vehicle type so the seat count is
+    // always consistent with the catalog (mirrors VehiclesService.create).
+    const seatLayout = resolveVehicleTypeTemplate(
+      dto.vehicleType,
+      this.logger,
+    ).layout;
+    const seats = dto.seats ?? countSeatsInLayout(seatLayout);
+    const passwordHash = await bcrypt.hash(dto.password, 12);
+
+    let user: UserEntity;
+    try {
+      user = await this.userRepo.manager.transaction(async (em) => {
+        const userRepo = em.getRepository(UserEntity);
+        const vehicleRepo = em.getRepository(VehicleEntity);
+
+        const createdUser = userRepo.create({
+          phoneNumber,
+          name:
+            dto.name && dto.name.trim().length > 0
+              ? dto.name.trim()
+              : phoneNumber,
+          gender: dto.gender ?? null,
+          photoUrl: dto.photoUrl ?? null,
+          passwordHash,
+          passwordChangedAt: new Date(),
+          role: PgUserRole.DRIVER,
+          provider: 'phone',
+          isPhoneVerified: true,
+          isActive: true,
+        });
+        const savedUser = await userRepo.save(createdUser);
+
+        const vehicle = vehicleRepo.create({
+          driverId: savedUser.id,
+          vehicleType: dto.vehicleType,
+          plateNumber: dto.plateNumber,
+          model: dto.model,
+          seats,
+          seatLayout,
+          licenseImageUrl: dto.licenseImageUrl ?? null,
+          vehicleLicenseImageUrl: dto.vehicleLicenseImageUrl ?? null,
+          carImageUrl: dto.carImageUrl,
+        });
+        await vehicleRepo.save(vehicle);
+
+        return savedUser;
+      });
+    } catch (err) {
+      if (err instanceof ConflictException) throw err;
+      // Unique-violation safety net for a race between the check and the insert.
+      if ((err as { code?: string })?.code === '23505') {
+        throw new ConflictException(
+          'Phone number is already registered. Please sign in instead.',
+        );
+      }
+      throw err;
+    }
+
+    this.notifyAdminsOfNewUser(user).catch((err) => {
+      this.logger.error(
+        `Failed to notify admins of new user ${user.id}: ${(err as Error).message}`,
+      );
+    });
+    this.adminAlertsService.notifyDriverRegistration(user).catch((err) => {
+      this.logger.error(
+        `Failed to dispatch driver-registration alert ${user.id}: ${(err as Error).message}`,
+      );
+    });
+
+    const binding = await this.bindDeviceForUser(user, dto.device);
+    user = binding.user;
+
+    const accountState = this.resolveAccountState(user);
+    const tokens = await this.generateTokens(user, binding.activeDeviceId);
+
+    return {
+      user: this.sanitizeUser(user),
+      ...tokens,
+      accountState,
+      deviceState: binding.deviceState,
+      pendingPhoneLinkRequired: user.pendingPhoneLink ?? false,
+    };
+  }
+
   async login(signInDto: SignInDto): Promise<AuthResponse> {
     const { email, phoneNumber, password } = signInDto;
     const user = email
@@ -286,14 +379,18 @@ export class AuthService {
 
     if (!user || !user.passwordHash) {
       throw new UnauthorizedException(
-        email ? 'Invalid admin email or password' : 'Invalid phone number or password',
+        email
+          ? 'Invalid admin email or password'
+          : 'Invalid phone number or password',
       );
     }
 
     const passwordMatches = await bcrypt.compare(password, user.passwordHash);
     if (!passwordMatches) {
       throw new UnauthorizedException(
-        email ? 'Invalid admin email or password' : 'Invalid phone number or password',
+        email
+          ? 'Invalid admin email or password'
+          : 'Invalid phone number or password',
       );
     }
 
@@ -350,10 +447,11 @@ export class AuthService {
 
       // Generate new tokens
       if (payload?.did) {
-        const activeDevice = await this.deviceFingerprintService.findActiveDeviceById(
-          user.id,
-          payload.did,
-        );
+        const activeDevice =
+          await this.deviceFingerprintService.findActiveDeviceById(
+            user.id,
+            payload.did,
+          );
         if (!activeDevice) {
           throw new UnauthorizedException('Device session is no longer active');
         }
@@ -499,7 +597,9 @@ export class AuthService {
       passwordChangedAt: new Date(),
       refreshToken: null,
     });
-    await this.passwordResetSessionRepo.delete({ phoneNumber: session.phoneNumber });
+    await this.passwordResetSessionRepo.delete({
+      phoneNumber: session.phoneNumber,
+    });
 
     return { message: 'Password reset successfully' };
   }
@@ -530,6 +630,114 @@ export class AuthService {
     });
 
     return { message: 'Password changed successfully' };
+  }
+
+  private signRegistrationToken(phoneNumber: string): string {
+    const secret = this.configService.get<string>('JWT_ACCESS_SECRET');
+    if (!secret) {
+      throw new Error('JWT secrets are not configured');
+    }
+    return jwt.sign(
+      { phone: phoneNumber, purpose: DRIVER_REGISTRATION_TOKEN_PURPOSE },
+      secret,
+      { expiresIn: DRIVER_REGISTRATION_TOKEN_TTL_SECONDS },
+    );
+  }
+
+  /** Verifies a driver-registration token and returns its phone number. */
+  verifyRegistrationToken(token: string): string {
+    const secret = this.configService.get<string>('JWT_ACCESS_SECRET');
+    if (!secret) {
+      throw new Error('JWT secrets are not configured');
+    }
+
+    let decoded: jwt.JwtPayload | string;
+    try {
+      decoded = jwt.verify(token, secret);
+    } catch {
+      throw new UnauthorizedException(
+        'Registration session expired. Please verify your phone again.',
+      );
+    }
+
+    if (
+      typeof decoded !== 'object' ||
+      decoded.purpose !== DRIVER_REGISTRATION_TOKEN_PURPOSE ||
+      typeof decoded.phone !== 'string'
+    ) {
+      throw new UnauthorizedException('Invalid registration token.');
+    }
+
+    return decoded.phone;
+  }
+
+  /**
+   * Registers/refreshes the device session for a user and runs the multi-account
+   * risk check. Shared by verify-otp and driver registration so both issue the
+   * same device-bound tokens. Returns the (possibly risk-updated) user.
+   */
+  private async bindDeviceForUser(
+    user: UserEntity,
+    device?: VerifyOtpDeviceDto,
+  ): Promise<{
+    user: UserEntity;
+    deviceState: 'active' | 'revoked' | null;
+    activeDeviceId: string | null;
+  }> {
+    if (!device) {
+      return { user, deviceState: null, activeDeviceId: null };
+    }
+
+    const fingerprintHash = this.deviceFingerprintService.hash(
+      device.platform,
+      device.deviceId,
+      device.installSalt,
+    );
+
+    // Check whether this fingerprint is explicitly revoked for this user
+    const revokedDevice = await this.deviceFingerprintService[
+      'deviceRepo'
+    ].findOne({
+      where: {
+        userId: user.id,
+        fingerprintHash,
+        status: UserDeviceStatus.REVOKED,
+      },
+    });
+
+    if (revokedDevice) {
+      throw new UnauthorizedException(
+        'This device has been revoked. Please use another trusted device.',
+      );
+    }
+
+    // Register / refresh the device session
+    const registeredDevice = await this.deviceFingerprintService.registerDevice(
+      {
+        userId: user.id,
+        platform: device.platform,
+        deviceId: device.deviceId,
+        installSalt: device.installSalt,
+        fcmToken: device.fcmToken,
+        locale: device.locale,
+        label: device.label,
+      },
+    );
+
+    // Run multi-account risk check after device row exists
+    await this.accountRiskService.checkMultiAccountThreshold(
+      user.id,
+      fingerprintHash,
+    );
+
+    // Reload user in case restricted flag was just set by risk service
+    const refreshed = await this.usersService.findById(user.id);
+
+    return {
+      user: refreshed ?? user,
+      deviceState: 'active',
+      activeDeviceId: registeredDevice.id,
+    };
   }
 
   private async generateTokens(
@@ -606,7 +814,9 @@ export class AuthService {
       .createQueryBuilder('user')
       .addSelect('user.passwordHash')
       .where('user.phoneNumber = :phoneNumber', { phoneNumber })
-      .getOne() as Promise<(UserEntity & { passwordHash: string | null }) | null>;
+      .getOne() as Promise<
+      (UserEntity & { passwordHash: string | null }) | null
+    >;
   }
 
   private async findAdminByEmailWithPassword(
@@ -617,7 +827,9 @@ export class AuthService {
       .addSelect('user.passwordHash')
       .where('LOWER(user.email) = LOWER(:email)', { email: email.trim() })
       .andWhere('user.role = :role', { role: PgUserRole.ADMIN })
-      .getOne() as Promise<(UserEntity & { passwordHash: string | null }) | null>;
+      .getOne() as Promise<
+      (UserEntity & { passwordHash: string | null }) | null
+    >;
   }
 
   private async findUserByIdWithPassword(

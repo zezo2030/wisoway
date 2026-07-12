@@ -2461,5 +2461,40 @@
       }
     }
   },
-  "shareTripTrackingError": "تعذّر إنشاء رابط المشاركة"
+  "shareTripTrackingError": "تعذّر إنشاء رابط المشاركة",
+  "locationAutocompleteSuggestions": "اقتراحات الأماكن",
+  "locationAutocompleteNoResults": "لا توجد أماكن مطابقة. حدد الموقع على الخريطة بدلا من ذلك.",
+  "instantRidesTitle": "الرحلات المباشرة",
+  "instantOnlineReady": "متصل — جاهز لاستقبال الطلبات",
+  "instantOffline": "غير متصل",
+  "instantOfferTitle": "طلب رحلة مباشرة",
+  "instantRideAcceptedToast": "تم قبول الرحلة. توجّه إلى نقطة الانطلاق.",
+  "instantOfferCountdown": "تنتهي خلال {seconds} ثانية",
+  "@instantOfferCountdown": {
+    "placeholders": { "seconds": { "type": "int" } }
+  },
+  "instantDecline": "رفض",
+  "instantAccept": "قبول",
+  "instantRequestNow": "اطلب الآن",
+  "instantRequestNowTitle": "اطلب رحلة الآن",
+  "instantRequestNowSubtitle": "سائق قريب يصل إليك مباشرة",
+  "instantSelectFromTo": "اختر نقطة الانطلاق والوصول.",
+  "instantFromHint": "مكان الانطلاق",
+  "instantFromPickerTitle": "اختر نقطة الانطلاق",
+  "instantToHint": "مكان الوصول",
+  "instantToPickerTitle": "اختر نقطة الوصول",
+  "instantDriverFound": "تم العثور على سائق!",
+  "instantDriverOnTheWay": "السائق في طريقه إلى نقطة الانطلاق.",
+  "instantTrackTrip": "تتبّع الرحلة",
+  "instantDone": "تم",
+  "instantRequestCancelled": "أُلغي الطلب",
+  "instantNoDrivers": "لا يوجد سائق متاح",
+  "instantNoDriversSubtitle": "لم نتمكن من إيجاد سائق قريب الآن. يمكنك المحاولة مرة أخرى.",
+  "instantTryAgain": "حاول مرة أخرى",
+  "instantSearching": "نبحث عن أقرب سائق...",
+  "instantFareEstimate": "الأجرة التقديرية: {fare} {currency}",
+  "@instantFareEstimate": {
+    "placeholders": { "fare": { "type": "String" }, "currency": { "type": "String" } }
+  },
+  "instantCancelRequest": "إلغاء الطلب"
 }

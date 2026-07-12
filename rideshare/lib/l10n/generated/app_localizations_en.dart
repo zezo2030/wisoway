@@ -3850,4 +3850,100 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get shareTripTrackingError => 'Could not create the share link';
+
+  @override
+  String get locationAutocompleteSuggestions => 'Place suggestions';
+
+  @override
+  String get locationAutocompleteNoResults =>
+      'No matching places. Pick the location on the map instead.';
+
+  @override
+  String get instantRidesTitle => 'Instant rides';
+
+  @override
+  String get instantOnlineReady => 'Online — ready for requests';
+
+  @override
+  String get instantOffline => 'Offline';
+
+  @override
+  String get instantOfferTitle => 'Instant ride request';
+
+  @override
+  String get instantRideAcceptedToast =>
+      'Ride accepted. Head to the pickup point.';
+
+  @override
+  String instantOfferCountdown(int seconds) {
+    return 'Expires in ${seconds}s';
+  }
+
+  @override
+  String get instantDecline => 'Decline';
+
+  @override
+  String get instantAccept => 'Accept';
+
+  @override
+  String get instantRequestNow => 'Request now';
+
+  @override
+  String get instantRequestNowTitle => 'Request a ride now';
+
+  @override
+  String get instantRequestNowSubtitle =>
+      'A nearby driver comes straight to you';
+
+  @override
+  String get instantSelectFromTo => 'Choose pickup and destination.';
+
+  @override
+  String get instantFromHint => 'Pickup location';
+
+  @override
+  String get instantFromPickerTitle => 'Choose pickup point';
+
+  @override
+  String get instantToHint => 'Destination';
+
+  @override
+  String get instantToPickerTitle => 'Choose destination';
+
+  @override
+  String get instantDriverFound => 'Driver found!';
+
+  @override
+  String get instantDriverOnTheWay =>
+      'The driver is on the way to the pickup point.';
+
+  @override
+  String get instantTrackTrip => 'Track ride';
+
+  @override
+  String get instantDone => 'Done';
+
+  @override
+  String get instantRequestCancelled => 'Request cancelled';
+
+  @override
+  String get instantNoDrivers => 'No driver available';
+
+  @override
+  String get instantNoDriversSubtitle =>
+      'We couldn\'t find a nearby driver right now. Please try again.';
+
+  @override
+  String get instantTryAgain => 'Try again';
+
+  @override
+  String get instantSearching => 'Finding the nearest driver...';
+
+  @override
+  String instantFareEstimate(String fare, String currency) {
+    return 'Estimated fare: $fare $currency';
+  }
+
+  @override
+  String get instantCancelRequest => 'Cancel request';
 }

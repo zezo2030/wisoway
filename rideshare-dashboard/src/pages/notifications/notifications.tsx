@@ -4,7 +4,13 @@
 import { useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { getAdminNotifications, broadcastNotification } from "@/api/admin"
+import {
+    getAdminNotifications,
+    broadcastNotification,
+    getAlertPreferences,
+    updateAlertPreference,
+    type AdminAlertType,
+} from "@/api/admin"
 import { DataTable, type Column } from "@/components/data-table"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -18,7 +24,7 @@ import { QUERY_KEYS, DASHBOARD_REFRESH_INTERVAL, USER_ROLE_LABELS } from "@/lib/
 import { formatDate } from "@/lib/utils"
 import type { Notification, UserSummary } from "@/types/models"
 import type { UserRole } from "@/types/enums"
-import { Bell, Send, AlertCircle, Megaphone } from "lucide-react"
+import { Bell, Send, AlertCircle, Megaphone, BellRing } from "lucide-react"
 import { toast } from "sonner"
 import { useLanguage } from "@/providers/language-provider"
 
@@ -45,6 +51,11 @@ export default function NotificationsPage() {
         refetchInterval: DASHBOARD_REFRESH_INTERVAL,
     })
 
+    const { data: alertPreferences = [] } = useQuery({
+        queryKey: [QUERY_KEYS.ADMIN.NOTIFICATIONS, "alert-preferences"],
+        queryFn: getAlertPreferences,
+    })
+
     const broadcastMutation = useMutation({
         mutationFn: () =>
             broadcastNotification({
@@ -64,6 +75,40 @@ export default function NotificationsPage() {
             toast.error(t("notificationSendFailed"))
         },
     })
+
+    const preferenceMutation = useMutation({
+        mutationFn: ({ alertType, enabled }: { alertType: AdminAlertType; enabled: boolean }) =>
+            updateAlertPreference(alertType, enabled),
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: [QUERY_KEYS.ADMIN.NOTIFICATIONS, "alert-preferences"],
+            })
+            toast.success(t("alertPreferenceSaved"))
+        },
+        onError: () => {
+            toast.error(t("alertPreferenceSaveFailed"))
+        },
+    })
+
+    const preferenceEnabled = (alertType: AdminAlertType) =>
+        alertPreferences.find((preference) => preference.alertType === alertType)?.enabled ?? true
+
+    const alertPreferenceItems: Array<{
+        alertType: AdminAlertType
+        title: string
+        description: string
+    }> = [
+        {
+            alertType: "driver_registration",
+            title: t("driverRegistrationAlerts"),
+            description: t("driverRegistrationAlertsDesc"),
+        },
+        {
+            alertType: "fee_payment",
+            title: t("feePaymentAlerts"),
+            description: t("feePaymentAlertsDesc"),
+        },
+    ]
 
     const handlePageChange = (newPage: number) => {
         const newParams = new URLSearchParams(searchParams)
@@ -242,6 +287,48 @@ export default function NotificationsPage() {
                     </DialogContent>
                 </Dialog>
             </div>
+
+            <Card className="border-border/50 shadow-lg bg-card/60 backdrop-blur-xl dark:shadow-none dark:border-white/10">
+                <CardHeader className="bg-muted/30 border-b border-border/40 pb-5 pt-6 px-6">
+                    <h2 className="text-xl font-bold flex items-center">
+                        <BellRing className="w-5 h-5 mr-3 text-violet-500" />
+                        {t("adminAlertPreferences")}
+                    </h2>
+                </CardHeader>
+                <CardContent className="p-6">
+                    <div className="grid gap-4 md:grid-cols-2">
+                        {alertPreferenceItems.map((item) => {
+                            const enabled = preferenceEnabled(item.alertType)
+                            return (
+                                <label
+                                    key={item.alertType}
+                                    className="flex min-h-28 items-start gap-4 rounded-lg border border-border/60 bg-background/70 p-4 shadow-sm"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        className="mt-1 h-5 w-5 accent-violet-600"
+                                        checked={enabled}
+                                        disabled={preferenceMutation.isPending}
+                                        onChange={(event) =>
+                                            preferenceMutation.mutate({
+                                                alertType: item.alertType,
+                                                enabled: event.target.checked,
+                                            })
+                                        }
+                                    />
+                                    <span className="space-y-1">
+                                        <span className="block text-sm font-bold text-foreground">{item.title}</span>
+                                        <span className="block text-sm text-muted-foreground">{item.description}</span>
+                                        <Badge variant={enabled ? "default" : "secondary"} className="mt-2">
+                                            {enabled ? t("enabled") : t("disabled")}
+                                        </Badge>
+                                    </span>
+                                </label>
+                            )
+                        })}
+                    </div>
+                </CardContent>
+            </Card>
 
             <Card className="border-border/50 shadow-lg bg-card/60 backdrop-blur-xl dark:shadow-none dark:border-white/10 overflow-hidden">
                 <CardHeader className="bg-muted/30 border-b border-border/40 pb-5 pt-6 px-6">

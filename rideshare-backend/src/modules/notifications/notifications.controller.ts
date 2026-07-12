@@ -26,9 +26,9 @@ import { Request } from 'express';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { PaginationDto } from '../../common/dto/pagination.dto';
 import { NotificationQueryDto } from './dto/create-notification.dto';
 import { RegisterDeviceDto } from './dto/register-device.dto';
+import { WebTokenDto } from './dto/web-token.dto';
 
 @ApiTags('Notifications')
 @ApiBearerAuth()
@@ -41,12 +41,11 @@ export class NotificationsController {
   @ApiOperation({ summary: 'Get user notifications' })
   async findAll(
     @CurrentUser('id') userId: string,
-    @Query() paginationDto: PaginationDto,
     @Query() queryDto: NotificationQueryDto,
   ) {
     return this.notificationsService.findByUser(userId, {
-      page: paginationDto.page || 1,
-      limit: paginationDto.limit || 10,
+      page: queryDto.page || 1,
+      limit: queryDto.limit || 10,
       isRead: queryDto.isRead,
     });
   }
@@ -108,5 +107,27 @@ export class NotificationsController {
     @Param('token') token: string,
   ) {
     await this.notificationsService.deregisterDevice(userId, token);
+  }
+
+  @Post('web-token')
+  @Throttle({ default: { ttl: 60000, limit: 30 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Register or refresh a dashboard FCM web token' })
+  async registerWebToken(
+    @CurrentUser('id') userId: string,
+    @Body() dto: WebTokenDto,
+  ) {
+    return this.notificationsService.registerWebToken(userId, dto);
+  }
+
+  @Delete('web-token')
+  @Throttle({ default: { ttl: 60000, limit: 30 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Deregister a dashboard FCM web token' })
+  async deregisterWebToken(
+    @CurrentUser('id') userId: string,
+    @Body() dto: WebTokenDto,
+  ) {
+    return this.notificationsService.deregisterWebToken(userId, dto.token);
   }
 }

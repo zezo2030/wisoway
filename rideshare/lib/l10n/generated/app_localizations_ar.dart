@@ -3803,4 +3803,98 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get shareTripTrackingError => 'تعذّر إنشاء رابط المشاركة';
+
+  @override
+  String get locationAutocompleteSuggestions => 'اقتراحات الأماكن';
+
+  @override
+  String get locationAutocompleteNoResults =>
+      'لا توجد أماكن مطابقة. حدد الموقع على الخريطة بدلا من ذلك.';
+
+  @override
+  String get instantRidesTitle => 'الرحلات المباشرة';
+
+  @override
+  String get instantOnlineReady => 'متصل — جاهز لاستقبال الطلبات';
+
+  @override
+  String get instantOffline => 'غير متصل';
+
+  @override
+  String get instantOfferTitle => 'طلب رحلة مباشرة';
+
+  @override
+  String get instantRideAcceptedToast =>
+      'تم قبول الرحلة. توجّه إلى نقطة الانطلاق.';
+
+  @override
+  String instantOfferCountdown(int seconds) {
+    return 'تنتهي خلال $seconds ثانية';
+  }
+
+  @override
+  String get instantDecline => 'رفض';
+
+  @override
+  String get instantAccept => 'قبول';
+
+  @override
+  String get instantRequestNow => 'اطلب الآن';
+
+  @override
+  String get instantRequestNowTitle => 'اطلب رحلة الآن';
+
+  @override
+  String get instantRequestNowSubtitle => 'سائق قريب يصل إليك مباشرة';
+
+  @override
+  String get instantSelectFromTo => 'اختر نقطة الانطلاق والوصول.';
+
+  @override
+  String get instantFromHint => 'مكان الانطلاق';
+
+  @override
+  String get instantFromPickerTitle => 'اختر نقطة الانطلاق';
+
+  @override
+  String get instantToHint => 'مكان الوصول';
+
+  @override
+  String get instantToPickerTitle => 'اختر نقطة الوصول';
+
+  @override
+  String get instantDriverFound => 'تم العثور على سائق!';
+
+  @override
+  String get instantDriverOnTheWay => 'السائق في طريقه إلى نقطة الانطلاق.';
+
+  @override
+  String get instantTrackTrip => 'تتبّع الرحلة';
+
+  @override
+  String get instantDone => 'تم';
+
+  @override
+  String get instantRequestCancelled => 'أُلغي الطلب';
+
+  @override
+  String get instantNoDrivers => 'لا يوجد سائق متاح';
+
+  @override
+  String get instantNoDriversSubtitle =>
+      'لم نتمكن من إيجاد سائق قريب الآن. يمكنك المحاولة مرة أخرى.';
+
+  @override
+  String get instantTryAgain => 'حاول مرة أخرى';
+
+  @override
+  String get instantSearching => 'نبحث عن أقرب سائق...';
+
+  @override
+  String instantFareEstimate(String fare, String currency) {
+    return 'الأجرة التقديرية: $fare $currency';
+  }
+
+  @override
+  String get instantCancelRequest => 'إلغاء الطلب';
 }

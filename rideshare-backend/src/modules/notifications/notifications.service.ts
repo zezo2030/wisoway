@@ -222,26 +222,31 @@ export class NotificationsService {
       body?: string;
       type: string;
       data?: Record<string, unknown>;
+      targetPlatforms?: string[];
     },
-  ): Promise<void> {
+  ): Promise<{ successCount: number; failureCount: number }> {
     this.ensureFirebase();
     if (!this.firebaseReady) {
-      return;
+      return { successCount: 0, failureCount: 0 };
     }
 
     try {
+      const targetPlatforms = payload.targetPlatforms;
       const tokens = await this.deviceTokenRepo.find({
         where: { userId, isActive: true },
       });
+      const targetTokens = targetPlatforms?.length
+        ? tokens.filter((token) => targetPlatforms.includes(token.platform))
+        : tokens;
 
-      if (tokens.length === 0) {
+      if (targetTokens.length === 0) {
         this.logger.debug(
           `User ${userId} has no active device tokens, skipping push`,
         );
-        return;
+        return { successCount: 0, failureCount: 0 };
       }
 
-      const tokenStrings = tokens.map((t) => t.token);
+      const tokenStrings = targetTokens.map((t) => t.token);
       const data = this.buildFcmData(userId, payload);
 
       const collapseKey = this.resolveCollapseKey(payload);
@@ -256,40 +261,66 @@ export class NotificationsService {
         apnsHeaders['apns-collapse-id'] = collapseKey;
       }
 
+      const webpush: admin.messaging.WebpushConfig | undefined =
+        targetPlatforms?.includes('web')
+          ? {
+              fcmOptions:
+                typeof payload.data?.link === 'string'
+                  ? { link: payload.data.link }
+                  : undefined,
+              notification: {
+                title: payload.title,
+                body: payload.body,
+              },
+            }
+          : undefined;
+
       if (tokenStrings.length === 1) {
         await admin.messaging().send({
           token: tokenStrings[0],
           notification: { title: payload.title, body: payload.body },
           data,
+          ...(webpush ? { webpush } : {}),
           android: {
             priority: 'high',
             ...(collapseKey ? { collapseKey } : {}),
             notification: androidNotification,
           },
           apns: {
-            ...(Object.keys(apnsHeaders).length ? { headers: apnsHeaders } : {}),
+            ...(Object.keys(apnsHeaders).length
+              ? { headers: apnsHeaders }
+              : {}),
             payload: { aps: { sound: 'default' } },
           },
         });
+        return { successCount: 1, failureCount: 0 };
       } else {
-        await admin.messaging().sendEachForMulticast({
+        const response = await admin.messaging().sendEachForMulticast({
           tokens: tokenStrings,
           notification: { title: payload.title, body: payload.body },
           data,
+          ...(webpush ? { webpush } : {}),
           android: {
             priority: 'high',
             ...(collapseKey ? { collapseKey } : {}),
             notification: androidNotification,
           },
           apns: {
-            ...(Object.keys(apnsHeaders).length ? { headers: apnsHeaders } : {}),
+            ...(Object.keys(apnsHeaders).length
+              ? { headers: apnsHeaders }
+              : {}),
             payload: { aps: { sound: 'default' } },
           },
         });
+        return {
+          successCount: response.successCount,
+          failureCount: response.failureCount,
+        };
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Failed to send push notification: ${message}`);
+      return { successCount: 0, failureCount: 1 };
     }
   }
 
@@ -355,6 +386,47 @@ export class NotificationsService {
       lastSeenAt: now,
       isNew,
     };
+  }
+
+  async registerWebToken(
+    userId: string,
+    dto: { token: string; userAgent?: string },
+  ): Promise<{ ok: true }> {
+    const now = new Date();
+    let existing = await this.deviceTokenRepo.findOne({
+      where: { token: dto.token },
+    });
+
+    if (existing) {
+      existing.userId = userId;
+      existing.platform = 'web';
+      existing.userAgent = dto.userAgent ?? existing.userAgent ?? null;
+      existing.isActive = true;
+      existing.lastSeenAt = now;
+    } else {
+      existing = this.deviceTokenRepo.create({
+        userId,
+        token: dto.token,
+        platform: 'web',
+        userAgent: dto.userAgent ?? null,
+        isActive: true,
+        lastSeenAt: now,
+      });
+    }
+
+    await this.deviceTokenRepo.save(existing);
+    return { ok: true };
+  }
+
+  async deregisterWebToken(
+    userId: string,
+    token: string,
+  ): Promise<{ ok: true }> {
+    await this.deviceTokenRepo.update(
+      { userId, token, platform: 'web' },
+      { isActive: false },
+    );
+    return { ok: true };
   }
 
   async deregisterDevice(userId: string, token: string): Promise<void> {

@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddPassengerReportedDriverAbsentToBookings1745931000000
-  implements MigrationInterface
-{
+export class AddPassengerReportedDriverAbsentToBookings1745931000000 implements MigrationInterface {
   name = 'AddPassengerReportedDriverAbsentToBookings1745931000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

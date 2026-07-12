@@ -347,8 +347,35 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || !mounted) return;
+
+    final authProvider = context.read<AuthProvider>();
+    if (authProvider.isAuthenticated) {
+      authProvider.loadUserProfile(silent: true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -361,8 +388,13 @@ class AuthWrapper extends StatelessWidget {
           );
         }
 
-        // Not authenticated - show welcome screen
+        // Not authenticated - show welcome screen, unless a driver registration
+        // was interrupted after OTP. In that case resume the complete-profile
+        // step (no account exists yet; it's created when this step finishes).
         if (!authProvider.isAuthenticated) {
+          if (authProvider.pendingDriverRegistration != null) {
+            return const DriverCompleteProfileScreen();
+          }
           return const WelcomeScreen();
         }
 

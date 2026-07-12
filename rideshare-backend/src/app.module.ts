@@ -19,6 +19,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { RestrictedAccountInterceptor } from './common/interceptors/restricted.interceptor';
+import { UploadUrlInterceptor } from './common/interceptors/upload-url.interceptor';
 import { ValidationPipe } from './common/pipes/validation.pipe';
 import { HealthModule } from './modules/health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -47,6 +48,7 @@ import { CallsModule } from './modules/calls/calls.module';
 import { ComplaintsModule } from './modules/complaints/complaints.module';
 import { RefundsModule } from './modules/refunds/refunds.module';
 import { SupportModule } from './modules/support/support.module';
+import { InstantRidesModule } from './modules/instant-rides/instant-rides.module';
 
 @Module({
   imports: [
@@ -99,6 +101,7 @@ import { SupportModule } from './modules/support/support.module';
     ComplaintsModule,
     RefundsModule,
     SupportModule,
+    InstantRidesModule,
   ],
   controllers: [AppController],
   providers: [
@@ -128,6 +131,12 @@ import { SupportModule } from './modules/support/support.module';
     {
       provide: APP_INTERCEPTOR,
       useClass: TransformInterceptor,
+    },
+    {
+      // Normalises stored /uploads URLs to the client's actual host so images
+      // stay reachable across port/host/device changes.
+      provide: APP_INTERCEPTOR,
+      useClass: UploadUrlInterceptor,
     },
     {
       provide: APP_INTERCEPTOR,

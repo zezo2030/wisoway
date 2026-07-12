@@ -89,10 +89,14 @@ export class WalletService {
     });
     const primary = pickPrimaryWalletLedgerAccount(accounts);
     if (!primary) return;
-    await manager.update(UserEntity, { id: userId }, {
-      walletBalance: Number(primary.balance),
-      walletCurrency: primary.currency,
-    });
+    await manager.update(
+      UserEntity,
+      { id: userId },
+      {
+        walletBalance: Number(primary.balance),
+        walletCurrency: primary.currency,
+      },
+    );
   }
 
   /**

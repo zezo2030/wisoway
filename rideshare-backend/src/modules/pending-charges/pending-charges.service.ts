@@ -28,9 +28,14 @@ import {
   WalletTransactionType,
 } from '../../database/entities';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
-import { pickPrimaryWalletLedgerAccount, WalletService } from '../wallet/wallet.service';
+import {
+  pickPrimaryWalletLedgerAccount,
+  WalletService,
+} from '../wallet/wallet.service';
 
-function walletAccountTypeForCharge(kind: PendingChargeKind): WalletAccountType {
+function walletAccountTypeForCharge(
+  kind: PendingChargeKind,
+): WalletAccountType {
   return kind === PendingChargeKind.DRIVER_NO_SHOW
     ? WalletAccountType.DRIVER
     : WalletAccountType.RIDER;
@@ -86,7 +91,12 @@ export class PendingChargesService {
 
     // Attempt immediate collection
     try {
-      const result = await this.deductFromWallet(userId, amount, saved.id, kind);
+      const result = await this.deductFromWallet(
+        userId,
+        amount,
+        saved.id,
+        kind,
+      );
       if (result) {
         saved.status = PendingChargeStatus.APPLIED;
         saved.walletTransactionId = result.id;

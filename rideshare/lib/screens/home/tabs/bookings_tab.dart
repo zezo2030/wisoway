@@ -28,8 +28,9 @@ class BookingsTab extends StatefulWidget {
 
 class _BookingsTabState extends State<BookingsTab> {
   bool _didFetchDriverTrips = false;
-  int _passengerBookingsRefreshKey = 0;
   late final DateTime _bookingsMinDepartureTime;
+  final BookingService _bookingService = BookingService();
+  late Future<List<BookingModel>> _bookingsFuture;
 
   @override
   void initState() {
@@ -37,6 +38,13 @@ class _BookingsTabState extends State<BookingsTab> {
     _bookingsMinDepartureTime = DateTime.now().subtract(
       const Duration(days: 1),
     );
+    _bookingsFuture = _bookingService.getUserBookings();
+  }
+
+  void _refreshBookings() {
+    setState(() {
+      _bookingsFuture = _bookingService.getUserBookings();
+    });
   }
 
   @override
@@ -189,62 +197,60 @@ class _BookingsTabState extends State<BookingsTab> {
         automaticallyImplyLeading: false,
         elevation: 0,
       ),
-      body: StreamBuilder<List<TripModel>>(
-        stream: Provider.of<TripProvider>(
-          context,
-          listen: false,
-        ).getActiveTripsStream(minDepartureTime: _bookingsMinDepartureTime),
-        builder: (context, tripsSnapshot) {
-          final bookingService = BookingService();
-          return FutureBuilder<List<BookingModel>>(
-            key: ValueKey(_passengerBookingsRefreshKey),
-            future: bookingService.getUserBookings(),
-            builder: (context, bookingsSnapshot) {
-              if (bookingsSnapshot.connectionState == ConnectionState.waiting) {
-                return Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      T.primary(context),
+      body: FutureBuilder<List<BookingModel>>(
+        future: _bookingsFuture,
+        builder: (context, bookingsSnapshot) {
+          if (bookingsSnapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  T.primary(context),
+                ),
+              ),
+            );
+          }
+
+          if (bookingsSnapshot.hasError) {
+            return _buildErrorState(
+              context,
+              bookingsSnapshot.error.toString(),
+            );
+          }
+
+          final bookings = bookingsSnapshot.data ?? [];
+
+          if (bookings.isEmpty) {
+            return EmptyState(
+              icon: IconsaxPlusBold.bookmark,
+              title: context.l10n.myBookings,
+              subtitle: context.l10n.noBookingsCurrently,
+              action: Semantics(
+                label: context.l10n.browseTrips,
+                button: true,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pushNamed(context, RouteNames.tripsList);
+                  },
+                  icon: const Icon(IconsaxPlusBold.search_normal),
+                  label: Text(context.l10n.browseTrips),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: T.primary(context),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
                     ),
                   ),
-                );
-              }
+                ),
+              ),
+            );
+          }
 
-              if (bookingsSnapshot.hasError) {
-                return _buildErrorState(
-                  context,
-                  bookingsSnapshot.error.toString(),
-                );
-              }
-
-              final bookings = bookingsSnapshot.data ?? [];
-
-              if (bookings.isEmpty) {
-                return EmptyState(
-                  icon: IconsaxPlusBold.bookmark,
-                  title: context.l10n.myBookings,
-                  subtitle: context.l10n.noBookingsCurrently,
-                  action: Semantics(
-                    label: context.l10n.browseTrips,
-                    button: true,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.pushNamed(context, RouteNames.tripsList);
-                      },
-                      icon: const Icon(IconsaxPlusBold.search_normal),
-                      label: Text(context.l10n.browseTrips),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: T.primary(context),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }
-
+          return StreamBuilder<List<TripModel>>(
+            stream: Provider.of<TripProvider>(
+              context,
+              listen: false,
+            ).getActiveTripsStream(minDepartureTime: _bookingsMinDepartureTime),
+            builder: (context, tripsSnapshot) {
               final tripsMap = <String, TripModel>{};
               for (final booking in bookings) {
                 final trip = booking.tripPopulated;
@@ -263,7 +269,7 @@ class _BookingsTabState extends State<BookingsTab> {
 
               return RefreshIndicator(
                 onRefresh: () async {
-                  setState(() => _passengerBookingsRefreshKey++);
+                  _refreshBookings();
                 },
                 color: T.primary(context),
                 child: ListView(
@@ -466,8 +472,7 @@ class _BookingsTabState extends State<BookingsTab> {
     if (confirmed != true || !mounted) return;
 
     try {
-      final bookingService = BookingService();
-      await bookingService.cancelBooking(booking.id);
+      await _bookingService.cancelBooking(booking.id);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -476,7 +481,7 @@ class _BookingsTabState extends State<BookingsTab> {
           backgroundColor: AppColors.success,
         ),
       );
-      setState(() => _passengerBookingsRefreshKey++);
+      _refreshBookings();
     } catch (e) {
       if (!mounted) return;
       ErrorSurface.showFailure(context, ApiClient.mapError(e));

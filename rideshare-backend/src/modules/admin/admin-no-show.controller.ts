@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Get,
-  Param,
-  ParseUUIDPipe,
-  Query,
-} from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -47,13 +41,17 @@ export class AdminNoShowController {
 
   @Get()
   @ApiOperation({
-    summary: 'List trips where one or more passengers reported the driver as absent',
+    summary:
+      'List trips where one or more passengers reported the driver as absent',
   })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'majorityOnly', required: false })
   @ApiQuery({ name: 'unfinedOnly', required: false })
-  @ApiResponse({ status: 200, description: 'Aggregated no-show reports per trip' })
+  @ApiResponse({
+    status: 200,
+    description: 'Aggregated no-show reports per trip',
+  })
   list(@Query() query: ListNoShowReportsQueryDto) {
     return this.service.list({
       page: query.page,
@@ -64,7 +62,9 @@ export class AdminNoShowController {
   }
 
   @Get(':tripId')
-  @ApiOperation({ summary: 'Per-booking detail for a single trip no-show report' })
+  @ApiOperation({
+    summary: 'Per-booking detail for a single trip no-show report',
+  })
   detail(@Param('tripId', ParseUUIDPipe) tripId: string) {
     return this.service.detail(tripId);
   }

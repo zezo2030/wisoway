@@ -147,10 +147,7 @@ export class AdminFinesService {
     };
   }
 
-  async waive(
-    fineId: string,
-    adminId: string,
-  ): Promise<PendingChargeEntity> {
+  async waive(fineId: string, adminId: string): Promise<PendingChargeEntity> {
     const charge = await this.chargeRepo.findOne({ where: { id: fineId } });
     if (!charge) throw new NotFoundException('Fine not found');
     if (charge.kind !== PendingChargeKind.DRIVER_NO_SHOW) {

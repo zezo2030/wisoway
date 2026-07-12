@@ -1,13 +1,14 @@
 /// عنوان الباكند:
-/// - محاكي أندرويد: 10.0.2.2
-/// - محاكي iOS: 127.0.0.1 أو localhost
-/// - جهاز حقيقي: IP الكمبيوتر على الشبكة (مثل 192.168.1.5)
-/// للتخصيص: flutter run --dart-define=BASE_URL=http://IP:3003/api/v1S
+/// - Docker (nginx): http://<IP>/api/v1  (منفذ 80)
+/// - تطوير محلي (nest start:dev): http://<IP>:3000/api/v1
+/// - محاكي أندرويد + Docker: http://10.0.2.2/api/v1
+/// - محاكي أندرويد + nest محلي: http://10.0.2.2:3000/api/v1
+/// للتخصيص: flutter run --dart-define=BASE_URL=http://IP/api/v1
 class ApiEndpoints {
   static const String baseUrl = String.fromEnvironment(
     'BASE_URL',
-    defaultValue: 'https://vision-way.tech/api/v1',
-    // defaultValue: 'http://192.168.1.5:3003/api/v1',
+    // defaultValue: 'https://vision-way.tech/api/v1',
+    defaultValue: 'http://192.168.1.2/api/v1',
   );
 
   // Auth
@@ -15,6 +16,10 @@ class ApiEndpoints {
   static const String login = '/auth/login';
   static const String sendOtp = '/auth/send-otp';
   static const String verifyOtp = '/auth/verify-otp';
+  // Deferred driver registration: verify phone first (no account), then create
+  // the account + vehicle atomically in the final step.
+  static const String driverVerifyPhone = '/auth/driver/verify-phone';
+  static const String driverRegister = '/auth/driver/register';
   static const String linkPhone = '/auth/link-phone';
   static const String refresh = '/auth/refresh';
   static const String logout = '/auth/logout';
@@ -110,6 +115,7 @@ class ApiEndpoints {
 
   // Vehicles
   static const String vehicles = '/vehicles';
+  static const String vehicleTypes = '/vehicles/types';
   static const String myVehicle = '/vehicles/my';
   static String vehicleById(String id) => '/vehicles/$id';
 
@@ -129,9 +135,28 @@ class ApiEndpoints {
 
   // Locations
   static const String locationsRoute = '/locations/route';
+  static const String locationsAutocomplete = '/locations/autocomplete';
+  static String locationsPlace(String placeId) =>
+      '/locations/place/${Uri.encodeComponent(placeId)}';
+
+  // Instant (on-demand) rides
+  static const String instantAvailability = '/instant-rides/availability';
+  static const String instantHeartbeat =
+      '/instant-rides/availability/heartbeat';
+  static const String instantAvailabilityMe = '/instant-rides/availability/me';
+  static const String instantRequests = '/instant-rides/requests';
+  static String instantRequestById(String id) => '/instant-rides/requests/$id';
+  static const String instantPendingOffer = '/instant-rides/offers/pending';
+  static String instantOfferAccept(String id) =>
+      '/instant-rides/offers/$id/accept';
+  static String instantOfferDecline(String id) =>
+      '/instant-rides/offers/$id/decline';
 
   // Uploads
   static const String uploads = '/uploads';
+  // Pre-account image upload during driver registration (authorized by the
+  // short-lived registration token instead of a session access token).
+  static const String uploadsRegistration = '/uploads/registration';
 
   // Devices (Phase 3 — account security)
   static const String devices = '/auth/devices';

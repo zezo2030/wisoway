@@ -7085,6 +7085,180 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'تعذّر إنشاء رابط المشاركة'**
   String get shareTripTrackingError;
+
+  /// No description provided for @locationAutocompleteSuggestions.
+  ///
+  /// In ar, this message translates to:
+  /// **'اقتراحات الأماكن'**
+  String get locationAutocompleteSuggestions;
+
+  /// No description provided for @locationAutocompleteNoResults.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا توجد أماكن مطابقة. حدد الموقع على الخريطة بدلا من ذلك.'**
+  String get locationAutocompleteNoResults;
+
+  /// No description provided for @instantRidesTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'الرحلات المباشرة'**
+  String get instantRidesTitle;
+
+  /// No description provided for @instantOnlineReady.
+  ///
+  /// In ar, this message translates to:
+  /// **'متصل — جاهز لاستقبال الطلبات'**
+  String get instantOnlineReady;
+
+  /// No description provided for @instantOffline.
+  ///
+  /// In ar, this message translates to:
+  /// **'غير متصل'**
+  String get instantOffline;
+
+  /// No description provided for @instantOfferTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'طلب رحلة مباشرة'**
+  String get instantOfferTitle;
+
+  /// No description provided for @instantRideAcceptedToast.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم قبول الرحلة. توجّه إلى نقطة الانطلاق.'**
+  String get instantRideAcceptedToast;
+
+  /// No description provided for @instantOfferCountdown.
+  ///
+  /// In ar, this message translates to:
+  /// **'تنتهي خلال {seconds} ثانية'**
+  String instantOfferCountdown(int seconds);
+
+  /// No description provided for @instantDecline.
+  ///
+  /// In ar, this message translates to:
+  /// **'رفض'**
+  String get instantDecline;
+
+  /// No description provided for @instantAccept.
+  ///
+  /// In ar, this message translates to:
+  /// **'قبول'**
+  String get instantAccept;
+
+  /// No description provided for @instantRequestNow.
+  ///
+  /// In ar, this message translates to:
+  /// **'اطلب الآن'**
+  String get instantRequestNow;
+
+  /// No description provided for @instantRequestNowTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'اطلب رحلة الآن'**
+  String get instantRequestNowTitle;
+
+  /// No description provided for @instantRequestNowSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'سائق قريب يصل إليك مباشرة'**
+  String get instantRequestNowSubtitle;
+
+  /// No description provided for @instantSelectFromTo.
+  ///
+  /// In ar, this message translates to:
+  /// **'اختر نقطة الانطلاق والوصول.'**
+  String get instantSelectFromTo;
+
+  /// No description provided for @instantFromHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'مكان الانطلاق'**
+  String get instantFromHint;
+
+  /// No description provided for @instantFromPickerTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'اختر نقطة الانطلاق'**
+  String get instantFromPickerTitle;
+
+  /// No description provided for @instantToHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'مكان الوصول'**
+  String get instantToHint;
+
+  /// No description provided for @instantToPickerTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'اختر نقطة الوصول'**
+  String get instantToPickerTitle;
+
+  /// No description provided for @instantDriverFound.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم العثور على سائق!'**
+  String get instantDriverFound;
+
+  /// No description provided for @instantDriverOnTheWay.
+  ///
+  /// In ar, this message translates to:
+  /// **'السائق في طريقه إلى نقطة الانطلاق.'**
+  String get instantDriverOnTheWay;
+
+  /// No description provided for @instantTrackTrip.
+  ///
+  /// In ar, this message translates to:
+  /// **'تتبّع الرحلة'**
+  String get instantTrackTrip;
+
+  /// No description provided for @instantDone.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم'**
+  String get instantDone;
+
+  /// No description provided for @instantRequestCancelled.
+  ///
+  /// In ar, this message translates to:
+  /// **'أُلغي الطلب'**
+  String get instantRequestCancelled;
+
+  /// No description provided for @instantNoDrivers.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا يوجد سائق متاح'**
+  String get instantNoDrivers;
+
+  /// No description provided for @instantNoDriversSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم نتمكن من إيجاد سائق قريب الآن. يمكنك المحاولة مرة أخرى.'**
+  String get instantNoDriversSubtitle;
+
+  /// No description provided for @instantTryAgain.
+  ///
+  /// In ar, this message translates to:
+  /// **'حاول مرة أخرى'**
+  String get instantTryAgain;
+
+  /// No description provided for @instantSearching.
+  ///
+  /// In ar, this message translates to:
+  /// **'نبحث عن أقرب سائق...'**
+  String get instantSearching;
+
+  /// No description provided for @instantFareEstimate.
+  ///
+  /// In ar, this message translates to:
+  /// **'الأجرة التقديرية: {fare} {currency}'**
+  String instantFareEstimate(String fare, String currency);
+
+  /// No description provided for @instantCancelRequest.
+  ///
+  /// In ar, this message translates to:
+  /// **'إلغاء الطلب'**
+  String get instantCancelRequest;
 }
 
 class _AppLocalizationsDelegate

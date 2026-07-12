@@ -41,6 +41,11 @@ COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nestjs:nodejs /app/package*.json ./
 
+# Create the uploads directory owned by the runtime user. This ownership is
+# inherited by the backend_uploads named volume on first initialization, so the
+# non-root nestjs process can write driver-registration / profile images, etc.
+RUN mkdir -p /app/uploads && chown -R nestjs:nodejs /app/uploads
+
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3000

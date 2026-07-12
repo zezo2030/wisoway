@@ -7,7 +7,10 @@ import '../../providers/trip_provider.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/services/vehicle_service.dart';
 import '../../models/location_model.dart';
+import '../../models/seat_layout_config.dart';
+import '../../models/vehicle_type_template.dart';
 import '../../models/vehicle_model.dart';
+import '../../widgets/location_autocomplete_field.dart';
 import '../../widgets/location_picker_widget.dart';
 import '../../core/theme/text_styles.dart';
 import '../../core/theme/colors.dart';
@@ -16,7 +19,9 @@ import '../../core/api/api_client.dart';
 import '../../l10n/l10n_extensions.dart';
 
 class CreateTripScreen extends StatefulWidget {
-  const CreateTripScreen({super.key});
+  final VehicleService? vehicleService;
+
+  const CreateTripScreen({super.key, this.vehicleService});
 
   @override
   State<CreateTripScreen> createState() => _CreateTripScreenState();
@@ -33,8 +38,10 @@ class _CreateTripScreenState extends State<CreateTripScreen>
   LocationModel? _toLocation;
   DateTime? _departureTime;
   VehicleModel? _vehicle;
+  List<VehicleTypeTemplate> _vehicleTypes = const [];
   bool _isLoadingVehicle = true;
   bool _isLoading = false;
+  bool _isCheckingDriverApproval = true;
 
   // Stops (up to 5 intermediate waypoints)
   final List<LocationModel> _stops = [];
@@ -94,20 +101,59 @@ class _CreateTripScreenState extends State<CreateTripScreen>
       curve: Curves.easeOut,
     );
     _fadeController.forward();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshDriverApprovalGate();
+    });
     _loadVehicleInfo();
+  }
+
+  Future<void> _refreshDriverApprovalGate() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.userModel == null) {
+      if (mounted) setState(() => _isCheckingDriverApproval = false);
+      return;
+    }
+
+    setState(() => _isCheckingDriverApproval = true);
+    await authProvider.loadUserProfile(silent: true);
+    if (mounted) setState(() => _isCheckingDriverApproval = false);
+  }
+
+  Future<bool> _ensureCanCreateTrip() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    setState(() => _isCheckingDriverApproval = true);
+    await authProvider.loadUserProfile(silent: true);
+    if (!mounted) return false;
+    setState(() => _isCheckingDriverApproval = false);
+
+    final user = authProvider.userModel;
+    return user != null && user.canCreateTrips;
   }
 
   Future<void> _loadVehicleInfo() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final user = authProvider.userModel;
     if (user != null) {
-      final vehicleService = VehicleService();
-      final vehicleInfo = await vehicleService.getMyVehicle();
-      if (mounted) {
-        setState(() {
-          _vehicle = vehicleInfo;
-          _isLoadingVehicle = false;
-        });
+      try {
+        final service = widget.vehicleService ?? VehicleService();
+        final vehicleInfo = await service.getMyVehicle();
+        var vehicleTypes = <VehicleTypeTemplate>[];
+        try {
+          vehicleTypes = await service.getVehicleTypes();
+        } catch (_) {
+          vehicleTypes = await service.getCachedVehicleTypes();
+        }
+        if (mounted) {
+          setState(() {
+            _vehicle = vehicleInfo;
+            _vehicleTypes = vehicleTypes;
+            _isLoadingVehicle = false;
+          });
+        }
+      } catch (_) {
+        if (mounted) {
+          setState(() => _isLoadingVehicle = false);
+        }
       }
     } else if (mounted) {
       setState(() => _isLoadingVehicle = false);
@@ -217,6 +263,8 @@ class _CreateTripScreenState extends State<CreateTripScreen>
   }
 
   Future<void> _createTrip() async {
+    if (!await _ensureCanCreateTrip()) return;
+
     if (!_formKey.currentState!.validate()) return;
     if (_fromLocation == null ||
         _toLocation == null ||
@@ -325,6 +373,27 @@ class _CreateTripScreenState extends State<CreateTripScreen>
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final user = authProvider.userModel;
+
+    if (_isCheckingDriverApproval || authProvider.isRefreshingProfile) {
+      return Scaffold(
+        backgroundColor: T.background(context),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: T.primary(context)),
+              const SizedBox(height: 16),
+              Text(
+                context.l10n.loading,
+                style: AppTextStyles.bodyLarge.copyWith(
+                  color: T.onSurfaceVariant(context),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     if (user != null && !user.canCreateTrips) {
       return Scaffold(
@@ -562,20 +631,28 @@ class _CreateTripScreenState extends State<CreateTripScreen>
               ),
               Column(
                 children: [
-                  _buildInteractiveField(
+                  LocationAutocompleteField(
                     controller: _fromController,
                     hint: context.l10n.departurePointTitle,
+                    mapPickerTitle: context.l10n.selectOriginPoint,
                     icon: Icons.trip_origin,
                     iconColor: T.success(context),
-                    onTap: _selectFromLocation,
+                    initialLocation: _fromLocation,
+                    onLocationSelected: (location) {
+                      setState(() => _fromLocation = location);
+                    },
                   ),
                   const SizedBox(height: 16),
-                  _buildInteractiveField(
+                  LocationAutocompleteField(
                     controller: _toController,
                     hint: context.l10n.arrivalPointTitle,
+                    mapPickerTitle: context.l10n.selectDestination,
                     icon: Icons.location_on,
                     iconColor: T.error(context),
-                    onTap: _selectToLocation,
+                    initialLocation: _toLocation,
+                    onLocationSelected: (location) {
+                      setState(() => _toLocation = location);
+                    },
                   ),
                 ],
               ),
@@ -669,7 +746,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
 
   Widget _buildVehicleSeatingSummaryCard() {
     final vehicle = _vehicle;
-    final layout = vehicle?.seatLayout;
+    final layout = vehicle?.seatLayout ?? _templateLayoutFor(vehicle?.vehicleType);
     final totalSeats = layout != null
         ? (layout.seatsPerRowList != null && layout.seatsPerRowList!.isNotEmpty
               ? layout.seatsPerRowList!.fold<int>(0, (s, v) => s + v)
@@ -750,6 +827,14 @@ class _CreateTripScreenState extends State<CreateTripScreen>
         ],
       ),
     );
+  }
+
+  SeatLayoutConfig? _templateLayoutFor(String? vehicleType) {
+    if (vehicleType == null || vehicleType.isEmpty) return null;
+    for (final template in _vehicleTypes) {
+      if (template.type == vehicleType) return template.layout;
+    }
+    return null;
   }
 
   Widget _buildModeToggle({

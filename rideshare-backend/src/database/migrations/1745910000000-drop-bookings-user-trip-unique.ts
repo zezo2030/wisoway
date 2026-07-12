@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class DropBookingsUserTripUnique1745910000000
-  implements MigrationInterface
-{
+export class DropBookingsUserTripUnique1745910000000 implements MigrationInterface {
   name = 'DropBookingsUserTripUnique1745910000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

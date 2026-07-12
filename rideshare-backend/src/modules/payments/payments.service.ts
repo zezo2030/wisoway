@@ -628,8 +628,9 @@ export class PaymentsService {
           const code = String(result.StatusCode ?? '');
           const userMessage = resolveCliqError(code, result.StatusDescription);
           saved.status = 'rejected';
-          saved.adminNote =
-            `[${code}] ${result.StatusDescription ?? ''}`.trim().slice(0, 500);
+          saved.adminNote = `[${code}] ${result.StatusDescription ?? ''}`
+            .trim()
+            .slice(0, 500);
           await this.paymentRepo.save(saved);
           throw new BadRequestException(userMessage);
         }

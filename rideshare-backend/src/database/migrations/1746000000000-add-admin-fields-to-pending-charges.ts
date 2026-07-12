@@ -5,9 +5,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  *  - reason: free-text justification entered by the admin
  *  - createdByAdminId: admin user that issued the fine (null for legacy rows)
  */
-export class AddAdminFieldsToPendingCharges1746000000000
-  implements MigrationInterface
-{
+export class AddAdminFieldsToPendingCharges1746000000000 implements MigrationInterface {
   name = 'AddAdminFieldsToPendingCharges1746000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

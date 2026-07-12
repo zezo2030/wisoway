@@ -127,9 +127,37 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         return;
       }
 
-      // Registration flow (passenger or driver). Forward the profile fields
-      // collected on the previous screen so the backend can provision the
-      // account on first verify when no record exists yet.
+      // Driver registration: verify the phone WITHOUT creating an account. The
+      // account is created only at the final "complete profile" step, so an
+      // interrupted flow never leaves a half-created driver behind.
+      if (isDriverRegistration && !isDriverCompleteProfile) {
+        await authProvider.verifyDriverPhone(
+          phoneNumber: widget.phoneNumber,
+          code: otpCode,
+          firstName: (args?['firstName'] as String?)?.trim() ?? '',
+          lastName: (args?['lastName'] as String?)?.trim() ?? '',
+          password: (args?['password'] as String?) ?? '',
+          email: (args?['email'] as String?)?.trim(),
+          gender: args?['gender'] as String?,
+        );
+        if (mounted) {
+          Navigator.pushReplacementNamed(
+            context,
+            RouteNames.driverCompleteProfile,
+            arguments: {
+              'firstName': args?['firstName'],
+              'lastName': args?['lastName'],
+              'email': args?['email'],
+              'gender': args?['gender'],
+            },
+          );
+        }
+        return;
+      }
+
+      // Registration flow (passenger). Forward the profile fields collected on
+      // the previous screen so the backend can provision the account on first
+      // verify when no record exists yet.
       final firstName = (args?['firstName'] as String?)?.trim();
       final lastName = (args?['lastName'] as String?)?.trim();
       final composedName =
@@ -154,18 +182,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
           return;
         }
         final afterVerifyRoute = args?['afterVerifyRoute'] as String?;
-        if (isDriverRegistration) {
-          Navigator.pushReplacementNamed(
-            context,
-            afterVerifyRoute ?? RouteNames.driverCompleteProfile,
-            arguments: {
-              'firstName': args?['firstName'],
-              'lastName': args?['lastName'],
-              'email': args?['email'],
-              'gender': args?['gender'],
-            },
-          );
-        } else if (afterVerifyRoute != null) {
+        if (afterVerifyRoute != null) {
           Navigator.pushReplacementNamed(
             context,
             afterVerifyRoute,

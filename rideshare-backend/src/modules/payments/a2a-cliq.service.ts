@@ -242,8 +242,7 @@ export class A2aCliqService {
       // المستدعي لازم يستخدم awaitFinalStatus لتحديد الحالة الفعلية عبر PaymentInquiry.
       const isTimeout =
         (error as { code?: string })?.code === 'ECONNABORTED' ||
-        (error instanceof Error &&
-          /timeout/i.test(error.message ?? ''));
+        (error instanceof Error && /timeout/i.test(error.message ?? ''));
       if (isTimeout) {
         this.logger.warn(
           `A2A CliQ Purchase timed out for ${messageTrxId}; status must be resolved via PaymentInquiry`,
@@ -289,7 +288,9 @@ export class A2aCliqService {
   async awaitFinalStatus(
     messageTrxId: string,
     options: { maxWaitMs?: number; intervalMs?: number } = {},
-  ): Promise<A2aCliqInquiryResponse & { isTerminal: boolean; isSuccess: boolean }> {
+  ): Promise<
+    A2aCliqInquiryResponse & { isTerminal: boolean; isSuccess: boolean }
+  > {
     const maxWait = options.maxWaitMs ?? 120_000;
     const interval = options.intervalMs ?? 3_000;
 
@@ -320,7 +321,8 @@ export class A2aCliqService {
       MessageTrxID: messageTrxId,
       StatusCode: lastResult?.StatusCode ?? 'PENDING',
       StatusDescription:
-        lastResult?.StatusDescription ?? 'Final status not reached within timeout',
+        lastResult?.StatusDescription ??
+        'Final status not reached within timeout',
       StatusDescription_ar: lastResult?.StatusDescription_ar,
       MSGID: lastResult?.MSGID,
       isTerminal: false,
@@ -341,7 +343,9 @@ export class A2aCliqService {
     purchaseTimeoutMs?: number;
     inquiryMaxWaitMs?: number;
     inquiryIntervalMs?: number;
-  }): Promise<A2aCliqInquiryResponse & { isTerminal: boolean; isSuccess: boolean }> {
+  }): Promise<
+    A2aCliqInquiryResponse & { isTerminal: boolean; isSuccess: boolean }
+  > {
     const {
       purchaseTimeoutMs,
       inquiryMaxWaitMs,

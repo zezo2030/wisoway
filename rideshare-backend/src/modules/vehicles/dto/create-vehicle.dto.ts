@@ -51,10 +51,13 @@ export class CreateVehicleDto {
   @MaxLength(100)
   model: string;
 
+  // Optional: when omitted the seat count is derived automatically from the
+  // selected vehicle type's seat layout (see VehiclesService.create).
+  @IsOptional()
   @IsInt()
   @Min(1)
   @Max(50)
-  seats: number;
+  seats?: number;
 
   @IsOptional()
   @ValidateNested()

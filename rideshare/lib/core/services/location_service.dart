@@ -5,11 +5,49 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../api/api_client.dart';
+import '../api/api_endpoints.dart';
 import '../../models/location_model.dart';
+
+class PlaceSuggestion {
+  final String placeId;
+  final String primaryText;
+  final String secondaryText;
+  final String description;
+
+  const PlaceSuggestion({
+    required this.placeId,
+    required this.primaryText,
+    required this.secondaryText,
+    required this.description,
+  });
+
+  factory PlaceSuggestion.fromMap(Map<String, dynamic> map) {
+    return PlaceSuggestion(
+      placeId: map['placeId']?.toString() ?? '',
+      primaryText: map['primaryText']?.toString() ?? '',
+      secondaryText: map['secondaryText']?.toString() ?? '',
+      description: map['description']?.toString() ?? '',
+    );
+  }
+}
+
+class LocationAutocompleteResult {
+  final String sessionToken;
+  final List<PlaceSuggestion> suggestions;
+
+  const LocationAutocompleteResult({
+    required this.sessionToken,
+    required this.suggestions,
+  });
+}
 
 class LocationService {
   static const String _keyLocationSharing = 'privacy_location_sharing';
   static const String _arabicLocaleIdentifier = 'ar';
+  final ApiClient _apiClient;
+
+  LocationService({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient();
 
   static final RegExp _plusCodeRegex = RegExp(
     r'^[23456789CFGHJMPQRVWX]{2,}\+[23456789CFGHJMPQRVWX]{2,}$',
@@ -144,6 +182,60 @@ class LocationService {
       latitude: position.latitude,
       longitude: position.longitude,
       address: address,
+    );
+  }
+
+  Future<LocationAutocompleteResult> autocomplete({
+    required String query,
+    String? lang,
+    String? sessionToken,
+    double? latitude,
+    double? longitude,
+  }) async {
+    final response = await _apiClient.get(
+      ApiEndpoints.locationsAutocomplete,
+      queryParameters: {
+        'q': query,
+        'lang': lang ?? _languageCode,
+        if (sessionToken != null && sessionToken.isNotEmpty)
+          'sessionToken': sessionToken,
+        if (latitude != null) 'lat': latitude,
+        if (longitude != null) 'lng': longitude,
+      },
+    );
+
+    final data = _unwrapResponse(response);
+    final suggestions = (data['suggestions'] as List<dynamic>? ?? [])
+        .whereType<Map>()
+        .map((item) => PlaceSuggestion.fromMap(Map<String, dynamic>.from(item)))
+        .where((suggestion) => suggestion.placeId.isNotEmpty)
+        .toList();
+
+    return LocationAutocompleteResult(
+      sessionToken: data['sessionToken']?.toString() ?? sessionToken ?? '',
+      suggestions: suggestions,
+    );
+  }
+
+  Future<LocationModel> placeDetail({
+    required String placeId,
+    String? sessionToken,
+  }) async {
+    final response = await _apiClient.get(
+      ApiEndpoints.locationsPlace(placeId),
+      queryParameters: {
+        if (sessionToken != null && sessionToken.isNotEmpty)
+          'sessionToken': sessionToken,
+      },
+    );
+
+    final data = _unwrapResponse(response);
+    final label = data['label']?.toString() ?? '';
+    return LocationModel(
+      name: label,
+      latitude: (data['lat'] as num).toDouble(),
+      longitude: (data['lng'] as num).toDouble(),
+      address: label,
     );
   }
 
@@ -293,6 +385,23 @@ class LocationService {
     final languageCode = PlatformDispatcher.instance.locale.languageCode
         .toLowerCase();
     return languageCode.startsWith('ar');
+  }
+
+  String get _languageCode => _isArabicLocale ? 'ar' : 'en';
+
+  Map<String, dynamic> _unwrapResponse(dynamic response) {
+    if (response is Map<String, dynamic>) {
+      final data = response['data'];
+      if (data is Map<String, dynamic>) return data;
+      return response;
+    }
+    if (response is Map) {
+      final map = Map<String, dynamic>.from(response);
+      final data = map['data'];
+      if (data is Map) return Map<String, dynamic>.from(data);
+      return map;
+    }
+    return <String, dynamic>{};
   }
 
   String get _unknownLocationLabel {

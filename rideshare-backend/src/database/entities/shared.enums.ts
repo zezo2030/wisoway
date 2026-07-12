@@ -21,6 +21,13 @@ export enum TripStatus {
   CANCELLED = 'cancelled',
 }
 
+export enum TripType {
+  /** Driver-published carpool trip that passengers search and book. */
+  SCHEDULED = 'scheduled',
+  /** On-demand ride created when a driver accepts an instant request. */
+  INSTANT = 'instant',
+}
+
 export enum WalletAccountType {
   DRIVER = 'driver',
   RIDER = 'rider',
@@ -60,4 +67,9 @@ export enum PayoutStatus {
 export enum NotificationChannel {
   IN_APP = 'in_app',
   PUSH = 'push',
+}
+
+export enum AdminAlertType {
+  DRIVER_REGISTRATION = 'driver_registration',
+  FEE_PAYMENT = 'fee_payment',
 }
