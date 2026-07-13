@@ -122,9 +122,12 @@ class _SignInScreenState extends State<SignInScreen>
 
       await authProvider.forgotPassword(formattedPhone);
       if (mounted) {
-        ErrorSurface.showSuccess(
+        // OTP sent — open the reset flow (OTP entry → new password),
+        // carrying the phone number so the code can be verified.
+        Navigator.pushNamed(
           context,
-          context.l10n.passwordResetLinkSent,
+          RouteNames.resetPassword,
+          arguments: {'phoneNumber': formattedPhone},
         );
       }
     } catch (e) {
