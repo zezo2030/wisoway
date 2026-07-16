@@ -815,7 +815,7 @@ abstract class AppLocalizations {
   /// رسالة بيانات الدخول غير الصحيحة
   ///
   /// In ar, this message translates to:
-  /// **'البريد الإلكتروني أو كلمة المرور غير صحيحة.'**
+  /// **'رقم الهاتف أو كلمة المرور غير صحيحة.'**
   String get errorsAuthInvalidCredentials;
 
   /// رسالة رفض الإذن

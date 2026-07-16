@@ -7,8 +7,8 @@
 class ApiEndpoints {
   static const String baseUrl = String.fromEnvironment(
     'BASE_URL',
-    // defaultValue: 'https://vision-way.tech/api/v1',
-    defaultValue: 'http://192.168.1.2/api/v1',
+    defaultValue: 'https://vision-way.tech/api/v1',
+    // defaultValue: 'http://192.168.1.2/api/v1',
   );
 
   // Auth

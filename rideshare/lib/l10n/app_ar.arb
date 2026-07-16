@@ -483,7 +483,7 @@
   "@errorsAuthSessionExpired": {
     "description": "رسالة انتهاء صلاحية الجلسة"
   },
-  "errorsAuthInvalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+  "errorsAuthInvalidCredentials": "رقم الهاتف أو كلمة المرور غير صحيحة.",
   "@errorsAuthInvalidCredentials": {
     "description": "رسالة بيانات الدخول غير الصحيحة"
   },

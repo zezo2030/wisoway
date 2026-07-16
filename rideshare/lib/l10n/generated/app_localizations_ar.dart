@@ -376,7 +376,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get errorsAuthInvalidCredentials =>
-      'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
+      'رقم الهاتف أو كلمة المرور غير صحيحة.';
 
   @override
   String get errorsPermissionDenied => 'تم رفض الإذن. تحقق من إعدادات التطبيق.';

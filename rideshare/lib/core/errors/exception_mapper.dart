@@ -111,6 +111,20 @@ class ExceptionMapper {
     final data = error.response?.data;
 
     if (statusCode == 401) {
+      // A 401 on a request that carried no Authorization header (login and
+      // other public endpoints) means the submitted credentials were wrong —
+      // NOT an expired session. Showing "session expired / log in again" or
+      // triggering reauth there is misleading, so map it to invalid creds.
+      final isAuthenticatedRequest = error.requestOptions.headers.keys
+          .any((key) => key.toLowerCase() == 'authorization');
+      if (!isAuthenticatedRequest) {
+        return Failure(
+          category: FailureCategory.auth,
+          messageKey: 'errorsAuthInvalidCredentials',
+          severity: FailureSeverity.warning,
+          developerDetail: detail,
+        );
+      }
       return Failure(
         category: FailureCategory.auth,
         messageKey: 'errorsAuthSessionExpired',
