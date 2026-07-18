@@ -262,9 +262,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
               keyboardType: TextInputType.emailAddress,
               readOnly: isEmailFixed,
               enabled: !isEmailFixed,
-              validator: (v) => (v == null || !v.contains('@'))
-                  ? context.l10n.invalidEmail
-                  : null,
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return null;
+                return v.contains('@') ? null : context.l10n.invalidEmail;
+              },
             ),
             const SizedBox(height: 28),
             SectionTitle(title: context.l10n.gender, isRequired: true),

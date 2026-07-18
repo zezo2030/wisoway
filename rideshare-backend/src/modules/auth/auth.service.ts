@@ -164,7 +164,7 @@ export class AuthService {
 
     let user: UserEntity;
 
-    const found = await this.usersService.findByPhone(phoneNumber);
+    const found = await this.findUserByPhoneWithPassword(phoneNumber);
     if (found) {
       user = found;
       if (!user.passwordHash && password) {

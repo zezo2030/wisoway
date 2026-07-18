@@ -28,7 +28,7 @@ export class UserEntity {
   @Column({ type: 'varchar', length: 120 })
   name: string;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: 'varchar', nullable: true, select: false })
   passwordHash: string | null;
 
   @Column({ type: 'enum', enum: PgUserRole, default: PgUserRole.PASSENGER })
