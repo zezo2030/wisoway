@@ -2484,5 +2484,11 @@
   "instantProposeFare": "Offer a higher fare",
   "instantSendOffer": "Send offer",
   "instantCounterSentToast": "Your offer was sent to the passenger. Waiting for approval...",
-  "instantCounterMaxHint": "Max: {fare} {currency}"
+  "instantCounterMaxHint": "Max: {fare} {currency}",
+  "instantNudgeTitle": "No nearby driver yet",
+  "instantNudgeSubtitle": "Try raising your fare to attract a driver faster",
+  "instantRaiseTo": "Raise to {fare} {currency}",
+  "instantKeepFare": "Keep {fare} {currency}",
+  "instantArrivingIn": "Arriving in ~{minutes} min",
+  "instantAgreedFare": "Agreed fare: {fare} {currency}"
 }

@@ -59,6 +59,10 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
   bool _quoteLoading = false;
   int _quoteSeq = 0;
   bool _counterBusy = false;
+  bool _nudgeBusy = false;
+
+  /// Suggested fare the user chose to keep ignoring ("Keep Y").
+  String? _dismissedNudgeFare;
 
   @override
   void initState() {
@@ -377,6 +381,28 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
       if (mounted) setState(() => _request = updated);
     } catch (_) {
       // keep last known state
+    }
+  }
+
+  /// "Raise to X" — bump the asking fare so more drivers qualify.
+  Future<void> _raiseFare(String suggestedFare) async {
+    final request = _request;
+    final amount = double.tryParse(suggestedFare);
+    if (request == null || amount == null || _nudgeBusy) return;
+    setState(() => _nudgeBusy = true);
+    try {
+      final updated = await _service.updateFare(request.id, amount);
+      if (!mounted) return;
+      setState(() {
+        _request = updated;
+        _dismissedNudgeFare = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ErrorSurface.showFailure(context, ApiClient.mapError(e));
+      await _refreshRequest(request.id);
+    } finally {
+      if (mounted) setState(() => _nudgeBusy = false);
     }
   }
 
@@ -799,29 +825,34 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
 
     Widget content;
     if (request.isMatched) {
-      final tripId = request.tripId;
-      final hasTrip = tripId != null && tripId.isNotEmpty;
-      content = _statusView(
-        context,
-        icon: Icons.check_circle,
-        color: AppColors.success,
-        title: context.l10n.instantDriverFound,
-        subtitle: context.l10n.instantDriverOnTheWay,
-        primaryLabel: hasTrip
-            ? context.l10n.instantTrackTrip
-            : context.l10n.instantDone,
-        onPrimary: () {
-          if (hasTrip) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (_) => TripDetailsScreen(tripId: tripId),
-              ),
-            );
-          } else {
-            Navigator.of(context).pop();
-          }
-        },
-      );
+      final match = request.match;
+      if (match != null) {
+        content = _buildMatchedView(context, request, match);
+      } else {
+        final tripId = request.tripId;
+        final hasTrip = tripId != null && tripId.isNotEmpty;
+        content = _statusView(
+          context,
+          icon: Icons.check_circle,
+          color: AppColors.success,
+          title: context.l10n.instantDriverFound,
+          subtitle: context.l10n.instantDriverOnTheWay,
+          primaryLabel: hasTrip
+              ? context.l10n.instantTrackTrip
+              : context.l10n.instantDone,
+          onPrimary: () {
+            if (hasTrip) {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (_) => TripDetailsScreen(tripId: tripId),
+                ),
+              );
+            } else {
+              Navigator.of(context).pop();
+            }
+          },
+        );
+      }
     } else if (request.isFailed) {
       final isCancelled = request.status == 'cancelled';
       content = _statusView(
@@ -891,16 +922,102 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
               style: TextStyle(color: T.onSurfaceVariant(context)),
             ),
           ],
+          if (request.nudge != null &&
+              request.nudge!.suggestedFare != _dismissedNudgeFare) ...[
+            const SizedBox(height: 12),
+            _buildNudgeCard(context, request.nudge!),
+          ],
         ],
         const SizedBox(height: 16),
         TextButton(
-          onPressed: _counterBusy ? null : _cancel,
+          onPressed: _counterBusy || _nudgeBusy ? null : _cancel,
           child: Text(
             context.l10n.instantCancelRequest,
             style: TextStyle(color: AppColors.error),
           ),
         ),
       ],
+    );
+  }
+
+  /// inDrive-style nudge: "Try raising your fare — [Raise to X] [Keep Y]".
+  Widget _buildNudgeCard(BuildContext context, InstantNudge nudge) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: T.surfaceVariant(context),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Text(
+            context.l10n.instantNudgeTitle,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: T.onSurface(context),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            context.l10n.instantNudgeSubtitle,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: T.onSurfaceVariant(context),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 46,
+            child: ElevatedButton(
+              onPressed: _nudgeBusy
+                  ? null
+                  : () => _raiseFare(nudge.suggestedFare),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: T.primary(context),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: _nudgeBusy
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppColors.white,
+                        ),
+                      ),
+                    )
+                  : Text(
+                      context.l10n.instantRaiseTo(
+                        nudge.suggestedFare,
+                        nudge.currency,
+                      ),
+                      style: const TextStyle(
+                        color: AppColors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextButton(
+            onPressed: _nudgeBusy
+                ? null
+                : () => setState(
+                      () => _dismissedNudgeFare = nudge.suggestedFare,
+                    ),
+            child: Text(
+              context.l10n.instantKeepFare(nudge.currentFare, nudge.currency),
+              style: TextStyle(color: T.onSurfaceVariant(context)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1098,6 +1215,156 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  /// inDrive-style matched sheet: "Driver is arriving in ~N min" + driver
+  /// card (rating, vehicle, plate) + agreed fare + track-ride CTA.
+  Widget _buildMatchedView(
+    BuildContext context,
+    InstantRequest request,
+    InstantMatch match,
+  ) {
+    final tripId = match.tripId ?? request.tripId;
+    final hasTrip = tripId != null && tripId.isNotEmpty;
+    final etaMinutes = match.pickupEtaMinutes;
+    final vehicleLine = [
+      if (match.vehicleModel != null && match.vehicleModel!.isNotEmpty)
+        match.vehicleModel!,
+      if (match.plateNumber != null && match.plateNumber!.isNotEmpty)
+        match.plateNumber!,
+    ].join(' • ');
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 8),
+        Text(
+          etaMinutes != null
+              ? context.l10n.instantArrivingIn(etaMinutes)
+              : context.l10n.instantDriverFound,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: T.onSurface(context),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          context.l10n.instantDriverOnTheWay,
+          textAlign: TextAlign.center,
+          style: TextStyle(color: T.onSurfaceVariant(context)),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: T.surfaceVariant(context),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: T.primary(context).withValues(alpha: 0.12),
+                child: Icon(Icons.person, color: T.primary(context), size: 28),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      match.driverName ?? '—',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: T.onSurface(context),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        if (match.driverRating != null) ...[
+                          const Icon(
+                            Icons.star,
+                            size: 15,
+                            color: AppColors.warning,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            match.driverRating!.toStringAsFixed(1) +
+                                (match.driverTotalRatings != null
+                                    ? ' (${match.driverTotalRatings})'
+                                    : ''),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: T.onSurfaceVariant(context),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (vehicleLine.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        vehicleLine,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: T.onSurfaceVariant(context),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (match.acceptedFare != null)
+                Text(
+                  '${match.acceptedFare} ${match.currency}',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: T.primary(context),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 50,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              if (hasTrip) {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (_) => TripDetailsScreen(tripId: tripId),
+                  ),
+                );
+              } else {
+                Navigator.of(context).pop();
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: T.primary(context),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            icon: const Icon(Icons.near_me, color: AppColors.white),
+            label: Text(
+              hasTrip ? context.l10n.instantTrackTrip : context.l10n.instantDone,
+              style: const TextStyle(
+                color: AppColors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

@@ -95,6 +95,75 @@ class InstantCounterOffer {
   }
 }
 
+/// Server-owned "raise your fare" nudge shown while searching.
+class InstantNudge {
+  final String suggestedFare;
+  final String maxFare;
+  final String currentFare;
+  final String currency;
+
+  const InstantNudge({
+    required this.suggestedFare,
+    required this.maxFare,
+    required this.currentFare,
+    required this.currency,
+  });
+
+  factory InstantNudge.fromJson(Map<String, dynamic> json) {
+    return InstantNudge(
+      suggestedFare: json['suggestedFare']?.toString() ?? '',
+      maxFare: json['maxFare']?.toString() ?? '',
+      currentFare: json['currentFare']?.toString() ?? '',
+      currency: (json['currency'] ?? 'JOD').toString(),
+    );
+  }
+}
+
+/// Matched driver/vehicle details + pickup ETA (inDrive matched state).
+class InstantMatch {
+  final String? tripId;
+  final String? acceptedFare;
+  final String currency;
+  final int? pickupEtaSeconds;
+  final String? driverName;
+  final double? driverRating;
+  final int? driverTotalRatings;
+  final String? vehicleModel;
+  final String? plateNumber;
+  final String? carImageUrl;
+
+  const InstantMatch({
+    required this.currency,
+    this.tripId,
+    this.acceptedFare,
+    this.pickupEtaSeconds,
+    this.driverName,
+    this.driverRating,
+    this.driverTotalRatings,
+    this.vehicleModel,
+    this.plateNumber,
+    this.carImageUrl,
+  });
+
+  int? get pickupEtaMinutes =>
+      pickupEtaSeconds != null ? (pickupEtaSeconds! / 60).ceil() : null;
+
+  factory InstantMatch.fromJson(Map<String, dynamic> json) {
+    return InstantMatch(
+      tripId: json['tripId']?.toString(),
+      acceptedFare: json['acceptedFare']?.toString(),
+      currency: (json['currency'] ?? 'JOD').toString(),
+      pickupEtaSeconds: (json['pickupEtaSeconds'] as num?)?.toInt(),
+      driverName: json['driverName']?.toString(),
+      driverRating: (json['driverRating'] as num?)?.toDouble(),
+      driverTotalRatings: (json['driverTotalRatings'] as num?)?.toInt(),
+      vehicleModel: json['vehicleModel']?.toString(),
+      plateNumber: json['plateNumber']?.toString(),
+      carImageUrl: json['carImageUrl']?.toString(),
+    );
+  }
+}
+
 /// A passenger's instant ride request, as seen by the passenger.
 class InstantRequest {
   final String id;
@@ -111,6 +180,8 @@ class InstantRequest {
   final String? tripId;
   final DateTime? expiresAt;
   final InstantCounterOffer? counterOffer;
+  final InstantNudge? nudge;
+  final InstantMatch? match;
 
   const InstantRequest({
     required this.id,
@@ -127,6 +198,8 @@ class InstantRequest {
     this.tripId,
     this.expiresAt,
     this.counterOffer,
+    this.nudge,
+    this.match,
   });
 
   bool get isSearching => status == 'searching' || status == 'offered';
@@ -156,6 +229,16 @@ class InstantRequest {
       counterOffer: json['counterOffer'] is Map
           ? InstantCounterOffer.fromJson(
               Map<String, dynamic>.from(json['counterOffer'] as Map),
+            )
+          : null,
+      nudge: json['nudge'] is Map
+          ? InstantNudge.fromJson(
+              Map<String, dynamic>.from(json['nudge'] as Map),
+            )
+          : null,
+      match: json['match'] is Map
+          ? InstantMatch.fromJson(
+              Map<String, dynamic>.from(json['match'] as Map),
             )
           : null,
     );

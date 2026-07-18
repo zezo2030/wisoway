@@ -7,6 +7,7 @@ import '../../../core/theme/colors.dart';
 import '../../../core/ui/error_surface.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/instant_ride_models.dart';
+import '../../passenger/trip_details_screen.dart';
 
 /// Driver-facing instant-ride control: a go-online toggle that, while online,
 /// streams the driver's location (heartbeat) and polls for incoming ride
@@ -286,16 +287,28 @@ class _InstantOfferDialogState extends State<_InstantOfferDialog> {
     if (_busy) return;
     setState(() => _busy = true);
     try {
-      await widget.service.acceptOffer(widget.offer.id);
+      final request = await widget.service.acceptOffer(widget.offer.id);
       _ticker?.cancel();
       if (!mounted) return;
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
+      final navigator = Navigator.of(context);
+      final messenger = ScaffoldMessenger.of(context);
+      final toast = context.l10n.instantRideAcceptedToast;
+      navigator.pop();
+      messenger.showSnackBar(
         SnackBar(
-          content: Text(context.l10n.instantRideAcceptedToast),
+          content: Text(toast),
           backgroundColor: AppColors.success,
         ),
       );
+      // Take the driver straight to the live trip (pickup point + passenger).
+      final tripId = request.tripId;
+      if (tripId != null && tripId.isNotEmpty) {
+        navigator.push(
+          MaterialPageRoute(
+            builder: (_) => TripDetailsScreen(tripId: tripId),
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);

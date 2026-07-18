@@ -7307,6 +7307,42 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'الحد الأقصى: {fare} {currency}'**
   String instantCounterMaxHint(String fare, String currency);
+
+  /// No description provided for @instantNudgeTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا يوجد سائق قريب حتى الآن'**
+  String get instantNudgeTitle;
+
+  /// No description provided for @instantNudgeSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'جرّب رفع سعرك لجذب سائق أسرع'**
+  String get instantNudgeSubtitle;
+
+  /// No description provided for @instantRaiseTo.
+  ///
+  /// In ar, this message translates to:
+  /// **'ارفع إلى {fare} {currency}'**
+  String instantRaiseTo(String fare, String currency);
+
+  /// No description provided for @instantKeepFare.
+  ///
+  /// In ar, this message translates to:
+  /// **'استمر بـ {fare} {currency}'**
+  String instantKeepFare(String fare, String currency);
+
+  /// No description provided for @instantArrivingIn.
+  ///
+  /// In ar, this message translates to:
+  /// **'يصل خلال ~{minutes} دقيقة'**
+  String instantArrivingIn(int minutes);
+
+  /// No description provided for @instantAgreedFare.
+  ///
+  /// In ar, this message translates to:
+  /// **'الأجرة المتفق عليها: {fare} {currency}'**
+  String instantAgreedFare(String fare, String currency);
 }
 
 class _AppLocalizationsDelegate

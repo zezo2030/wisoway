@@ -118,6 +118,15 @@ class InstantRideService {
     return InstantRequest.fromJson(_unwrap(response));
   }
 
+  /// Raise the asking fare while searching (re-invites decliners).
+  Future<InstantRequest> updateFare(String id, double passengerFare) async {
+    final response = await _api.patch(
+      ApiEndpoints.instantRequestFare(id),
+      data: {'passengerFare': passengerFare},
+    );
+    return InstantRequest.fromJson(_unwrap(response));
+  }
+
   Future<InstantRequest> cancelRequest(String id) async {
     final response = await _api.delete(ApiEndpoints.instantRequestById(id));
     return InstantRequest.fromJson(_unwrap(response));

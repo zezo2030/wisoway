@@ -3927,4 +3927,30 @@ class AppLocalizationsAr extends AppLocalizations {
   String instantCounterMaxHint(String fare, String currency) {
     return 'الحد الأقصى: $fare $currency';
   }
+
+  @override
+  String get instantNudgeTitle => 'لا يوجد سائق قريب حتى الآن';
+
+  @override
+  String get instantNudgeSubtitle => 'جرّب رفع سعرك لجذب سائق أسرع';
+
+  @override
+  String instantRaiseTo(String fare, String currency) {
+    return 'ارفع إلى $fare $currency';
+  }
+
+  @override
+  String instantKeepFare(String fare, String currency) {
+    return 'استمر بـ $fare $currency';
+  }
+
+  @override
+  String instantArrivingIn(int minutes) {
+    return 'يصل خلال ~$minutes دقيقة';
+  }
+
+  @override
+  String instantAgreedFare(String fare, String currency) {
+    return 'الأجرة المتفق عليها: $fare $currency';
+  }
 }

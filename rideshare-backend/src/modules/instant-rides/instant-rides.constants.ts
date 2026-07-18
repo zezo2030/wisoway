@@ -14,7 +14,16 @@ export const MAX_RADIUS_KM = 10;
 /** How long a single driver has to respond to an offer. */
 export const OFFER_TTL_SECONDS = 12;
 /** Overall window before a request gives up searching. */
-export const REQUEST_TTL_SECONDS = 90;
+export const REQUEST_TTL_SECONDS = 180;
+/**
+ * When a full radius sweep finds no lockable driver, retry a new dispatch
+ * wave after this interval (the request keeps searching until its TTL).
+ */
+export const DISPATCH_RETRY_SECONDS = 10;
+/** Suggested raise in the "no drivers — raise your fare" nudge (+15%). */
+export const NUDGE_FARE_BUMP_FACTOR = 1.15;
+/** Average urban approach speed used for pickup-ETA estimates. */
+export const PICKUP_ETA_SPEED_KMH = 25;
 
 // ── Fare estimate ───────────────────────────────────────────────────────────
 export const FARE_BASE = 1.0;
@@ -37,8 +46,12 @@ export const INSTANT_OFFER_TIMEOUT_QUEUE = 'instant-offer-timeout';
 export const INSTANT_REQUEST_EXPIRY_QUEUE = 'instant-request-expiry';
 export const EXPIRE_OFFER_JOB = 'expire-offer';
 export const EXPIRE_REQUEST_JOB = 'expire-request';
+/** Delayed re-dispatch wave (runs on the request-expiry queue). */
+export const DISPATCH_WAVE_JOB = 'dispatch-wave';
 
 export const offerTimeoutJobId = (offerId: string) =>
   `instant-offer:${offerId}`;
 export const requestExpiryJobId = (requestId: string) =>
   `instant-request:${requestId}`;
+export const dispatchWaveJobId = (requestId: string) =>
+  `instant-wave:${requestId}`;

@@ -36,9 +36,11 @@ import {
   QuoteInstantRequestDto,
 } from './dto/create-instant-request.dto';
 import { OfferResponseType, RespondOfferDto } from './dto/respond-offer.dto';
+import { UpdateFareDto } from './dto/update-fare.dto';
 import {
   COUNTER_FARE_MAX_FACTOR,
   COUNTER_TTL_SECONDS,
+  dispatchWaveJobId,
   EXPIRE_OFFER_JOB,
   EXPIRE_REQUEST_JOB,
   FARE_BASE,
@@ -48,9 +50,11 @@ import {
   INITIAL_RADIUS_KM,
   INSTANT_OFFER_TIMEOUT_QUEUE,
   INSTANT_REQUEST_EXPIRY_QUEUE,
+  NUDGE_FARE_BUMP_FACTOR,
   offerTimeoutJobId,
   PASSENGER_FARE_MAX_FACTOR,
   PASSENGER_FARE_MIN_FACTOR,
+  PICKUP_ETA_SPEED_KMH,
   REQUEST_TTL_SECONDS,
   requestExpiryJobId,
 } from './instant-rides.constants';
@@ -204,6 +208,59 @@ export class InstantRidesService {
     return this.toRequestView(request);
   }
 
+  /**
+   * Passenger raises their fare while searching (inDrive "Raise to X").
+   * Bumps `fareRevision` so drivers who declined earlier get re-invited.
+   */
+  async updateFare(requestId: string, passengerId: string, dto: UpdateFareDto) {
+    const request = await this.requestRepo.findOne({
+      where: { id: requestId },
+    });
+    if (!request) {
+      throw new NotFoundException('الطلب غير موجود.');
+    }
+    if (request.passengerId !== passengerId) {
+      throw new ForbiddenException('غير مصرح.');
+    }
+    if (request.status !== InstantRequestStatus.SEARCHING) {
+      throw new ConflictException('لا يمكن تعديل السعر في حالة الطلب الحالية.');
+    }
+
+    const current = Number(request.passengerFare ?? request.fareEstimate ?? 0);
+    const recommended = Number(request.recommendedFare ?? current);
+    const maxFare =
+      Math.round(recommended * PASSENGER_FARE_MAX_FACTOR * 100) / 100;
+    const amount = Math.round(dto.passengerFare * 100) / 100;
+    if (amount <= current || amount > maxFare) {
+      throw new BadRequestException(
+        `السعر الجديد يجب أن يكون أعلى من ${current.toFixed(2)} وبحد أقصى ${maxFare.toFixed(2)} ${request.currency}.`,
+      );
+    }
+
+    const claim = await this.requestRepo.update(
+      { id: requestId, status: InstantRequestStatus.SEARCHING },
+      {
+        passengerFare: amount.toFixed(2),
+        fareEstimate: amount.toFixed(2),
+        fareRevision: request.fareRevision + 1,
+        nudgedAt: null,
+      },
+    );
+    if (claim.affected !== 1) {
+      throw new ConflictException('لا يمكن تعديل السعر في حالة الطلب الحالية.');
+    }
+
+    void this.dispatchService
+      .dispatchNext(requestId)
+      .catch((err: Error) =>
+        this.logger.warn(
+          `dispatchNext after fare raise failed: ${err.message}`,
+        ),
+      );
+
+    return this.getRequest(requestId, passengerId);
+  }
+
   async cancelRequest(requestId: string, passengerId: string) {
     const request = await this.requestRepo.findOne({
       where: { id: requestId },
@@ -251,6 +308,10 @@ export class InstantRidesService {
     await this.removeJob(
       this.requestExpiryQueue,
       requestExpiryJobId(request.id),
+    );
+    await this.removeJob(
+      this.requestExpiryQueue,
+      dispatchWaveJobId(request.id),
     );
 
     return this.getRequest(request.id, passengerId);
@@ -540,6 +601,10 @@ export class InstantRidesService {
     const vehicle = offer.vehicleId
       ? await this.vehiclesService.findById(offer.vehicleId).catch(() => null)
       : await this.vehiclesService.findByDriver(offer.driverId);
+    const pickupEtaSeconds = await this.estimatePickupEta(
+      offer.driverId,
+      request,
+    );
 
     let tripId = '';
     await this.requestRepo.manager.transaction(async (m) => {
@@ -559,6 +624,7 @@ export class InstantRidesService {
           status: InstantRequestStatus.ACCEPTED,
           matchedDriverId: offer.driverId,
           acceptedFare,
+          pickupEtaSeconds,
         },
       );
       if (reqClaim.affected !== 1) {
@@ -622,8 +688,30 @@ export class InstantRidesService {
       this.requestExpiryQueue,
       requestExpiryJobId(request.id),
     );
+    await this.removeJob(
+      this.requestExpiryQueue,
+      dispatchWaveJobId(request.id),
+    );
 
     return { tripId, driverName: driver?.name ?? '' };
+  }
+
+  /** Rough driver→pickup travel time from the driver's last known position. */
+  private async estimatePickupEta(
+    driverId: string,
+    request: InstantRideRequestEntity,
+  ): Promise<number | null> {
+    const availability = await this.availabilityRepo.findOne({
+      where: { driverId },
+    });
+    const coords = availability?.point?.coordinates;
+    if (!coords) return null;
+    const [fromLng, fromLat] = request.fromPoint.coordinates;
+    const distanceKm = haversineKm(
+      { latitude: coords[1], longitude: coords[0] },
+      { latitude: fromLat, longitude: fromLng },
+    );
+    return Math.max(60, Math.round((distanceKm / PICKUP_ETA_SPEED_KMH) * 3600));
   }
 
   async declineOffer(offerId: string, driverId: string) {
@@ -747,6 +835,63 @@ export class InstantRidesService {
       tripId: request.tripId,
       expiresAt: request.expiresAt,
       counterOffer: await this.getActiveCounterOffer(request),
+      nudge: this.getNudge(request),
+      match: await this.getMatchView(request),
+    };
+  }
+
+  /**
+   * Server-owned "raise your fare" nudge: present while searching after a
+   * full radius sweep found no drivers and there is still room to raise.
+   */
+  private getNudge(request: InstantRideRequestEntity) {
+    if (
+      request.status !== InstantRequestStatus.SEARCHING ||
+      !request.nudgedAt
+    ) {
+      return null;
+    }
+    const current = Number(request.passengerFare ?? request.fareEstimate ?? 0);
+    const recommended = Number(request.recommendedFare ?? current);
+    const maxFare =
+      Math.round(recommended * PASSENGER_FARE_MAX_FACTOR * 100) / 100;
+    const suggested =
+      Math.round(Math.min(maxFare, current * NUDGE_FARE_BUMP_FACTOR) * 100) /
+      100;
+    if (suggested <= current) return null;
+    return {
+      suggestedFare: suggested.toFixed(2),
+      maxFare: maxFare.toFixed(2),
+      currentFare: current.toFixed(2),
+      currency: request.currency,
+    };
+  }
+
+  /** Matched driver/vehicle card data + pickup ETA (inDrive matched state). */
+  private async getMatchView(request: InstantRideRequestEntity) {
+    if (
+      request.status !== InstantRequestStatus.ACCEPTED ||
+      !request.matchedDriverId
+    ) {
+      return null;
+    }
+    const driver = await this.usersService
+      .findById(request.matchedDriverId)
+      .catch(() => null);
+    const vehicle = await this.vehiclesService
+      .findByDriver(request.matchedDriverId)
+      .catch(() => null);
+    return {
+      tripId: request.tripId,
+      acceptedFare: request.acceptedFare,
+      currency: request.currency,
+      pickupEtaSeconds: request.pickupEtaSeconds,
+      driverName: driver?.name ?? null,
+      driverRating: driver?.rating ?? null,
+      driverTotalRatings: driver?.totalRatings ?? null,
+      vehicleModel: vehicle?.model ?? null,
+      plateNumber: vehicle?.plateNumber ?? null,
+      carImageUrl: vehicle?.carImageUrl ?? null,
     };
   }
 

@@ -11,7 +11,9 @@ import {
   InstantRideRequestEntity,
 } from '../../../database/entities';
 import { NotificationsService } from '../../notifications/notifications.service';
+import { InstantDispatchService } from '../instant-dispatch.service';
 import {
+  DISPATCH_WAVE_JOB,
   EXPIRE_REQUEST_JOB,
   INSTANT_REQUEST_EXPIRY_QUEUE,
 } from '../instant-rides.constants';
@@ -33,7 +35,14 @@ export class InstantRequestExpiryProcessor {
     @InjectRepository(DriverAvailabilityEntity)
     private readonly availabilityRepo: Repository<DriverAvailabilityEntity>,
     private readonly notifications: NotificationsService,
+    private readonly dispatch: InstantDispatchService,
   ) {}
+
+  /** Delayed re-dispatch wave while the request is still searching. */
+  @Process(DISPATCH_WAVE_JOB)
+  async handleWave(job: Job<{ requestId: string }>): Promise<void> {
+    await this.dispatch.dispatchNext(job.data.requestId);
+  }
 
   @Process(EXPIRE_REQUEST_JOB)
   async handle(job: Job<{ requestId: string }>): Promise<void> {
@@ -50,7 +59,10 @@ export class InstantRequestExpiryProcessor {
     }
 
     const offer = await this.offerRepo.findOne({
-      where: { requestId, status: InstantOfferStatus.OFFERED },
+      where: {
+        requestId,
+        status: In([InstantOfferStatus.OFFERED, InstantOfferStatus.COUNTERED]),
+      },
     });
     if (offer) {
       await this.offerRepo.update(

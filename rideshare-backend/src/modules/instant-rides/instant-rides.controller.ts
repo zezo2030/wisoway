@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -25,6 +26,7 @@ import {
   QuoteInstantRequestDto,
 } from './dto/create-instant-request.dto';
 import { RespondOfferDto } from './dto/respond-offer.dto';
+import { UpdateFareDto } from './dto/update-fare.dto';
 
 @ApiTags('instant-rides')
 @Controller('instant-rides')
@@ -95,6 +97,18 @@ export class InstantRidesController {
   @ApiResponse({ status: 200, description: 'Request status returned' })
   getRequest(@Param('id') id: string, @CurrentUser('id') passengerId: string) {
     return this.instantRides.getRequest(id, passengerId);
+  }
+
+  @Patch('requests/:id/fare')
+  @ApiOperation({ summary: 'Passenger raises their fare while searching' })
+  @ApiResponse({ status: 200, description: 'Fare updated, dispatch restarted' })
+  @ApiResponse({ status: 409, description: 'Request is not searching' })
+  updateFare(
+    @Param('id') id: string,
+    @CurrentUser('id') passengerId: string,
+    @Body() dto: UpdateFareDto,
+  ) {
+    return this.instantRides.updateFare(id, passengerId, dto);
   }
 
   @Delete('requests/:id')

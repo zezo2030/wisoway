@@ -91,6 +91,18 @@ export class InstantRideRequestEntity {
   @Column({ type: 'numeric', precision: 10, scale: 2, nullable: true })
   acceptedFare: string | null;
 
+  /** Bumped on every fare raise; re-qualifies drivers who declined earlier. */
+  @Column({ type: 'int', default: 1 })
+  fareRevision: number;
+
+  /** Set once a full radius sweep found no drivers → "raise your fare" nudge. */
+  @Column({ type: 'timestamptz', nullable: true })
+  nudgedAt: Date | null;
+
+  /** Estimated driver→pickup travel time, computed at match. */
+  @Column({ type: 'int', nullable: true })
+  pickupEtaSeconds: number | null;
+
   @Column({ type: 'varchar', length: 5, default: 'JOD' })
   currency: string;
 

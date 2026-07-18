@@ -16,8 +16,12 @@ import {
   NearbyDriver,
 } from './driver-availability.service';
 import {
+  DISPATCH_RETRY_SECONDS,
+  DISPATCH_WAVE_JOB,
+  dispatchWaveJobId,
   EXPIRE_OFFER_JOB,
   INSTANT_OFFER_TIMEOUT_QUEUE,
+  INSTANT_REQUEST_EXPIRY_QUEUE,
   MAX_RADIUS_KM,
   OFFER_TTL_SECONDS,
   RADIUS_STEP_KM,
@@ -25,9 +29,10 @@ import {
 } from './instant-rides.constants';
 
 /**
- * Sequential dispatch: pick the nearest available driver, offer the ride, and
- * on decline/timeout move on to the next — expanding the search radius until a
- * driver is found or the request gives up. See specs/010-instant-rides/design.md §6.
+ * Sequential dispatch, inDrive style: start at a small radius and expand,
+ * offering to the nearest available driver. When a full sweep up to the max
+ * radius finds nobody, the request keeps searching — retry waves fire every
+ * few seconds until the TTL — and the passenger is nudged to raise the fare.
  */
 @Injectable()
 export class InstantDispatchService {
@@ -44,6 +49,8 @@ export class InstantDispatchService {
     private readonly notifications: NotificationsService,
     @InjectQueue(INSTANT_OFFER_TIMEOUT_QUEUE)
     private readonly offerTimeoutQueue: Queue,
+    @InjectQueue(INSTANT_REQUEST_EXPIRY_QUEUE)
+    private readonly requestExpiryQueue: Queue,
   ) {}
 
   /** Offer the request to the next-nearest available driver, if any. */
@@ -62,9 +69,26 @@ export class InstantDispatchService {
     const [fromLng, fromLat] = request.fromPoint.coordinates;
     const priorOffers = await this.offerRepo.find({
       where: { requestId },
-      select: ['driverId'],
+      select: ['driverId', 'status', 'fareRevision'],
     });
-    const excludeDriverIds = [...new Set(priorOffers.map((o) => o.driverId))];
+    // Skip drivers with an offer in flight — but drivers who declined/timed
+    // out at an older fare revision become eligible again after a raise.
+    const activeStatuses: string[] = [
+      InstantOfferStatus.OFFERED,
+      InstantOfferStatus.COUNTERED,
+      InstantOfferStatus.ACCEPTED,
+    ];
+    const excludeDriverIds = [
+      ...new Set(
+        priorOffers
+          .filter(
+            (o) =>
+              activeStatuses.includes(o.status) ||
+              o.fareRevision >= request.fareRevision,
+          )
+          .map((o) => o.driverId),
+      ),
+    ];
 
     // Expand the radius until a lockable driver is found or the max is reached.
     let radiusKm = request.radiusKm;
@@ -87,12 +111,68 @@ export class InstantDispatchService {
       }
 
       if (radiusKm >= MAX_RADIUS_KM) {
-        await this.finalizeNoDrivers(request.id);
+        await this.handleEmptySweep(request);
         return;
       }
       radiusKm = Math.min(radiusKm + RADIUS_STEP_KM, MAX_RADIUS_KM);
       await this.requestRepo.update({ id: requestId }, { radiusKm });
     }
+  }
+
+  /**
+   * Nobody reachable up to the max radius: keep the request alive, nudge the
+   * passenger to raise the fare (once), and schedule the next retry wave.
+   */
+  private async handleEmptySweep(
+    request: InstantRideRequestEntity,
+  ): Promise<void> {
+    if (!request.nudgedAt) {
+      const marked = await this.requestRepo.update(
+        {
+          id: request.id,
+          status: InstantRequestStatus.SEARCHING,
+          nudgedAt: IsNull(),
+        },
+        { nudgedAt: new Date() },
+      );
+      if (marked.affected === 1) {
+        await this.notifications
+          .sendPush(request.passengerId, {
+            title: 'لا يوجد سائق قريب حتى الآن',
+            body: 'جرّب رفع سعرك لجذب سائق أسرع.',
+            type: 'instant_raise_fare_nudge',
+            data: { requestId: request.id },
+          })
+          .catch(() => undefined);
+      }
+    }
+    await this.scheduleWave(request.id);
+  }
+
+  /** Queue the next dispatch wave (idempotent per request). */
+  async scheduleWave(requestId: string): Promise<void> {
+    try {
+      const existing = await this.requestExpiryQueue.getJob(
+        dispatchWaveJobId(requestId),
+      );
+      if (existing) await existing.remove();
+    } catch {
+      // best-effort cleanup
+    }
+    await this.requestExpiryQueue
+      .add(
+        DISPATCH_WAVE_JOB,
+        { requestId },
+        {
+          delay: DISPATCH_RETRY_SECONDS * 1000,
+          jobId: dispatchWaveJobId(requestId),
+          removeOnComplete: true,
+          removeOnFail: true,
+        },
+      )
+      .catch((err: Error) =>
+        this.logger.warn(`Failed to enqueue dispatch wave: ${err.message}`),
+      );
   }
 
   /** Atomically claim a driver for a request (soft lock). */
@@ -118,6 +198,7 @@ export class InstantDispatchService {
         driverId: candidate.driverId,
         vehicleId: candidate.vehicleId,
         status: InstantOfferStatus.OFFERED,
+        fareRevision: request.fareRevision,
         offeredAt: now,
         expiresAt: new Date(now.getTime() + OFFER_TTL_SECONDS * 1000),
       }),

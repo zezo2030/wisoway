@@ -147,6 +147,8 @@ class ApiEndpoints {
   static const String instantQuotes = '/instant-rides/quotes';
   static const String instantRequests = '/instant-rides/requests';
   static String instantRequestById(String id) => '/instant-rides/requests/$id';
+  static String instantRequestFare(String id) =>
+      '/instant-rides/requests/$id/fare';
   static const String instantPendingOffer = '/instant-rides/offers/pending';
   static String instantOfferAccept(String id) =>
       '/instant-rides/offers/$id/accept';

@@ -54,6 +54,10 @@ export class InstantRideOfferEntity {
   @Column({ type: 'numeric', precision: 10, scale: 2, nullable: true })
   proposedFare: string | null;
 
+  /** The request's fare revision this offer was made at. */
+  @Column({ type: 'int', default: 1 })
+  fareRevision: number;
+
   @Column({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
   offeredAt: Date;
 

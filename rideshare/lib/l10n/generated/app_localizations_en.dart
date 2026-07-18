@@ -3978,4 +3978,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String instantCounterMaxHint(String fare, String currency) {
     return 'Max: $fare $currency';
   }
+
+  @override
+  String get instantNudgeTitle => 'No nearby driver yet';
+
+  @override
+  String get instantNudgeSubtitle =>
+      'Try raising your fare to attract a driver faster';
+
+  @override
+  String instantRaiseTo(String fare, String currency) {
+    return 'Raise to $fare $currency';
+  }
+
+  @override
+  String instantKeepFare(String fare, String currency) {
+    return 'Keep $fare $currency';
+  }
+
+  @override
+  String instantArrivingIn(int minutes) {
+    return 'Arriving in ~$minutes min';
+  }
+
+  @override
+  String instantAgreedFare(String fare, String currency) {
+    return 'Agreed fare: $fare $currency';
+  }
 }

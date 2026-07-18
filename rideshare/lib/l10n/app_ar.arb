@@ -2513,5 +2513,23 @@
   "instantCounterMaxHint": "الحد الأقصى: {fare} {currency}",
   "@instantCounterMaxHint": {
     "placeholders": { "fare": { "type": "String" }, "currency": { "type": "String" } }
+  },
+  "instantNudgeTitle": "لا يوجد سائق قريب حتى الآن",
+  "instantNudgeSubtitle": "جرّب رفع سعرك لجذب سائق أسرع",
+  "instantRaiseTo": "ارفع إلى {fare} {currency}",
+  "@instantRaiseTo": {
+    "placeholders": { "fare": { "type": "String" }, "currency": { "type": "String" } }
+  },
+  "instantKeepFare": "استمر بـ {fare} {currency}",
+  "@instantKeepFare": {
+    "placeholders": { "fare": { "type": "String" }, "currency": { "type": "String" } }
+  },
+  "instantArrivingIn": "يصل خلال ~{minutes} دقيقة",
+  "@instantArrivingIn": {
+    "placeholders": { "minutes": { "type": "int" } }
+  },
+  "instantAgreedFare": "الأجرة المتفق عليها: {fare} {currency}",
+  "@instantAgreedFare": {
+    "placeholders": { "fare": { "type": "String" }, "currency": { "type": "String" } }
   }
 }
