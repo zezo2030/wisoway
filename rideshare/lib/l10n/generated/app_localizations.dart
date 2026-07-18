@@ -7259,6 +7259,54 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'إلغاء الطلب'**
   String get instantCancelRequest;
+
+  /// No description provided for @instantYourFareLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'سعرك'**
+  String get instantYourFareLabel;
+
+  /// No description provided for @instantRecommendedFare.
+  ///
+  /// In ar, this message translates to:
+  /// **'السعر المقترح: {fare} {currency}'**
+  String instantRecommendedFare(String fare, String currency);
+
+  /// No description provided for @instantYourFareValue.
+  ///
+  /// In ar, this message translates to:
+  /// **'سعرك: {fare} {currency}'**
+  String instantYourFareValue(String fare, String currency);
+
+  /// No description provided for @instantDriverOfferTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'عرض من السائق'**
+  String get instantDriverOfferTitle;
+
+  /// No description provided for @instantProposeFare.
+  ///
+  /// In ar, this message translates to:
+  /// **'اقترح سعرًا أعلى'**
+  String get instantProposeFare;
+
+  /// No description provided for @instantSendOffer.
+  ///
+  /// In ar, this message translates to:
+  /// **'إرسال العرض'**
+  String get instantSendOffer;
+
+  /// No description provided for @instantCounterSentToast.
+  ///
+  /// In ar, this message translates to:
+  /// **'أُرسل عرضك للراكب. بانتظار موافقته...'**
+  String get instantCounterSentToast;
+
+  /// No description provided for @instantCounterMaxHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'الحد الأقصى: {fare} {currency}'**
+  String instantCounterMaxHint(String fare, String currency);
 }
 
 class _AppLocalizationsDelegate

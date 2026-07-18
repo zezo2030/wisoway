@@ -19,7 +19,9 @@ describe('InstantRidesService', () => {
     requestRepo = {
       findOne: jest.fn(),
       create: jest.fn().mockImplementation((v: any) => v),
-      save: jest.fn().mockImplementation(async (v: any) => ({ ...v, id: 'r1' })),
+      save: jest
+        .fn()
+        .mockImplementation(async (v: any) => ({ ...v, id: 'r1' })),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
       manager: { transaction: jest.fn() },
     };

@@ -39,12 +39,17 @@ export class InstantOfferTimeoutProcessor {
   async handle(job: Job<{ offerId: string }>): Promise<void> {
     const { offerId } = job.data;
     const offer = await this.offerRepo.findOne({ where: { id: offerId } });
-    if (!offer || offer.status !== InstantOfferStatus.OFFERED) {
+    // Covers both an unanswered offer and a counter-offer the passenger ignored.
+    if (
+      !offer ||
+      (offer.status !== InstantOfferStatus.OFFERED &&
+        offer.status !== InstantOfferStatus.COUNTERED)
+    ) {
       return;
     }
 
     await this.offerRepo.update(
-      { id: offerId, status: InstantOfferStatus.OFFERED },
+      { id: offerId, status: offer.status },
       { status: InstantOfferStatus.TIMED_OUT, respondedAt: new Date() },
     );
     await this.availabilityRepo.update(

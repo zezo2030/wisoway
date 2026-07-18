@@ -3947,4 +3947,35 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get instantCancelRequest => 'Cancel request';
+
+  @override
+  String get instantYourFareLabel => 'Your fare';
+
+  @override
+  String instantRecommendedFare(String fare, String currency) {
+    return 'Recommended fare: $fare $currency';
+  }
+
+  @override
+  String instantYourFareValue(String fare, String currency) {
+    return 'Your fare: $fare $currency';
+  }
+
+  @override
+  String get instantDriverOfferTitle => 'Driver\'s offer';
+
+  @override
+  String get instantProposeFare => 'Offer a higher fare';
+
+  @override
+  String get instantSendOffer => 'Send offer';
+
+  @override
+  String get instantCounterSentToast =>
+      'Your offer was sent to the passenger. Waiting for approval...';
+
+  @override
+  String instantCounterMaxHint(String fare, String currency) {
+    return 'Max: $fare $currency';
+  }
 }

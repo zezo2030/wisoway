@@ -2496,5 +2496,22 @@
   "@instantFareEstimate": {
     "placeholders": { "fare": { "type": "String" }, "currency": { "type": "String" } }
   },
-  "instantCancelRequest": "إلغاء الطلب"
+  "instantCancelRequest": "إلغاء الطلب",
+  "instantYourFareLabel": "سعرك",
+  "instantRecommendedFare": "السعر المقترح: {fare} {currency}",
+  "@instantRecommendedFare": {
+    "placeholders": { "fare": { "type": "String" }, "currency": { "type": "String" } }
+  },
+  "instantYourFareValue": "سعرك: {fare} {currency}",
+  "@instantYourFareValue": {
+    "placeholders": { "fare": { "type": "String" }, "currency": { "type": "String" } }
+  },
+  "instantDriverOfferTitle": "عرض من السائق",
+  "instantProposeFare": "اقترح سعرًا أعلى",
+  "instantSendOffer": "إرسال العرض",
+  "instantCounterSentToast": "أُرسل عرضك للراكب. بانتظار موافقته...",
+  "instantCounterMaxHint": "الحد الأقصى: {fare} {currency}",
+  "@instantCounterMaxHint": {
+    "placeholders": { "fare": { "type": "String" }, "currency": { "type": "String" } }
+  }
 }

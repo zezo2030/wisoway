@@ -54,28 +54,61 @@ class InstantRideService {
 
   // ── Passenger requests ──────────────────────────────────────────────────────
 
+  Map<String, dynamic> _pointJson(LocationModel p) => {
+        'name': p.name,
+        'latitude': p.latitude,
+        'longitude': p.longitude,
+        if (p.address != null) 'address': p.address,
+      };
+
+  /// Distance-based recommended fare + allowed bounds for this route.
+  Future<InstantQuote> getQuote({
+    required LocationModel from,
+    required LocationModel to,
+  }) async {
+    final response = await _api.post(
+      ApiEndpoints.instantQuotes,
+      data: {'from': _pointJson(from), 'to': _pointJson(to)},
+    );
+    return InstantQuote.fromJson(_unwrap(response));
+  }
+
   Future<InstantRequest> createRequest({
     required LocationModel from,
     required LocationModel to,
     int seatCount = 1,
+    double? passengerFare,
   }) async {
     final response = await _api.post(
       ApiEndpoints.instantRequests,
       data: {
-        'from': {
-          'name': from.name,
-          'latitude': from.latitude,
-          'longitude': from.longitude,
-          if (from.address != null) 'address': from.address,
-        },
-        'to': {
-          'name': to.name,
-          'latitude': to.latitude,
-          'longitude': to.longitude,
-          if (to.address != null) 'address': to.address,
-        },
+        'from': _pointJson(from),
+        'to': _pointJson(to),
         'seatCount': seatCount,
+        if (passengerFare != null) 'passengerFare': passengerFare,
       },
+    );
+    return InstantRequest.fromJson(_unwrap(response));
+  }
+
+  // ── Passenger: counter-offer decisions ─────────────────────────────────────
+
+  Future<InstantRequest> acceptCounterOffer(
+    String requestId,
+    String offerId,
+  ) async {
+    final response = await _api.post(
+      ApiEndpoints.instantCounterAccept(requestId, offerId),
+    );
+    return InstantRequest.fromJson(_unwrap(response));
+  }
+
+  Future<InstantRequest> declineCounterOffer(
+    String requestId,
+    String offerId,
+  ) async {
+    final response = await _api.post(
+      ApiEndpoints.instantCounterDecline(requestId, offerId),
     );
     return InstantRequest.fromJson(_unwrap(response));
   }
@@ -107,5 +140,13 @@ class InstantRideService {
 
   Future<void> declineOffer(String offerId) async {
     await _api.post(ApiEndpoints.instantOfferDecline(offerId));
+  }
+
+  /// Driver proposes a higher fare instead of accepting the passenger's.
+  Future<void> counterOffer(String offerId, double amount) async {
+    await _api.post(
+      ApiEndpoints.instantOfferRespond(offerId),
+      data: {'responseType': 'counter', 'amount': amount},
+    );
   }
 }

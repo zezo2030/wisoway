@@ -14,6 +14,10 @@ export const InstantOfferStatus = {
   OFFERED: 'offered',
   ACCEPTED: 'accepted',
   DECLINED: 'declined',
+  /** The driver countered with a higher fare, awaiting the passenger. */
+  COUNTERED: 'countered',
+  /** The passenger declined the driver's counter-offer. */
+  REJECTED: 'rejected',
   /** The driver didn't respond within the offer window. */
   TIMED_OUT: 'timed_out',
   /** The request was cancelled/expired before the driver responded. */
@@ -45,6 +49,10 @@ export class InstantRideOfferEntity {
 
   @Column({ type: 'varchar', length: 16, default: InstantOfferStatus.OFFERED })
   status: InstantOfferStatus;
+
+  /** Driver's counter-offer fare; null while the offer is at the passenger's fare. */
+  @Column({ type: 'numeric', precision: 10, scale: 2, nullable: true })
+  proposedFare: string | null;
 
   @Column({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
   offeredAt: Date;

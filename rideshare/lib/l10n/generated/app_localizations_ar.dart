@@ -3897,4 +3897,34 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get instantCancelRequest => 'إلغاء الطلب';
+
+  @override
+  String get instantYourFareLabel => 'سعرك';
+
+  @override
+  String instantRecommendedFare(String fare, String currency) {
+    return 'السعر المقترح: $fare $currency';
+  }
+
+  @override
+  String instantYourFareValue(String fare, String currency) {
+    return 'سعرك: $fare $currency';
+  }
+
+  @override
+  String get instantDriverOfferTitle => 'عرض من السائق';
+
+  @override
+  String get instantProposeFare => 'اقترح سعرًا أعلى';
+
+  @override
+  String get instantSendOffer => 'إرسال العرض';
+
+  @override
+  String get instantCounterSentToast => 'أُرسل عرضك للراكب. بانتظار موافقته...';
+
+  @override
+  String instantCounterMaxHint(String fare, String currency) {
+    return 'الحد الأقصى: $fare $currency';
+  }
 }

@@ -20,7 +20,11 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { DriverAvailabilityService } from './driver-availability.service';
 import { InstantRidesService } from './instant-rides.service';
 import { HeartbeatDto, SetAvailabilityDto } from './dto/set-availability.dto';
-import { CreateInstantRequestDto } from './dto/create-instant-request.dto';
+import {
+  CreateInstantRequestDto,
+  QuoteInstantRequestDto,
+} from './dto/create-instant-request.dto';
+import { RespondOfferDto } from './dto/respond-offer.dto';
 
 @ApiTags('instant-rides')
 @Controller('instant-rides')
@@ -62,6 +66,18 @@ export class InstantRidesController {
   }
 
   // ── Passenger: request an instant ride ──────────────────────────────────────
+
+  @Post('quotes')
+  @ApiOperation({
+    summary: 'Distance-based fare recommendation before requesting',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Recommended fare + bounds returned',
+  })
+  getQuote(@Body() dto: QuoteInstantRequestDto) {
+    return this.instantRides.getQuote(dto);
+  }
 
   @Post('requests')
   @ApiOperation({ summary: 'Passenger requests an instant (on-demand) ride' })
@@ -116,5 +132,53 @@ export class InstantRidesController {
   @ApiResponse({ status: 201, description: 'Offer declined' })
   declineOffer(@Param('id') id: string, @CurrentUser('id') driverId: string) {
     return this.instantRides.declineOffer(id, driverId);
+  }
+
+  @Post('offers/:id/respond')
+  @Roles('driver')
+  @ApiOperation({
+    summary: 'Driver accepts, counters with a higher fare, or declines',
+  })
+  @ApiResponse({ status: 201, description: 'Response recorded' })
+  @ApiResponse({ status: 409, description: 'Offer no longer available' })
+  respondOffer(
+    @Param('id') id: string,
+    @CurrentUser('id') driverId: string,
+    @Body() dto: RespondOfferDto,
+  ) {
+    return this.instantRides.respondOffer(id, driverId, dto);
+  }
+
+  // ── Passenger: respond to a driver counter-offer ────────────────────────────
+
+  @Post('requests/:rid/offers/:oid/accept')
+  @ApiOperation({ summary: "Passenger accepts a driver's counter-offer" })
+  @ApiResponse({ status: 201, description: 'Matched — trip created' })
+  @ApiResponse({ status: 409, description: 'Offer no longer available' })
+  acceptCounterOffer(
+    @Param('rid') requestId: string,
+    @Param('oid') offerId: string,
+    @CurrentUser('id') passengerId: string,
+  ) {
+    return this.instantRides.acceptCounterOffer(
+      requestId,
+      offerId,
+      passengerId,
+    );
+  }
+
+  @Post('requests/:rid/offers/:oid/decline')
+  @ApiOperation({ summary: "Passenger declines a driver's counter-offer" })
+  @ApiResponse({ status: 201, description: 'Counter-offer declined' })
+  declineCounterOffer(
+    @Param('rid') requestId: string,
+    @Param('oid') offerId: string,
+    @CurrentUser('id') passengerId: string,
+  ) {
+    return this.instantRides.declineCounterOffer(
+      requestId,
+      offerId,
+      passengerId,
+    );
   }
 }

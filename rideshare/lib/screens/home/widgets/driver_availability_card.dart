@@ -235,6 +235,28 @@ class _InstantOfferDialogState extends State<_InstantOfferDialog> {
   Timer? _ticker;
   bool _busy = false;
 
+  /// Counter-offer state: the driver proposes a fare above the passenger's.
+  bool _countering = false;
+  double? _counterAmount;
+
+  double? get _passengerFare {
+    final req = widget.offer.request;
+    return double.tryParse(req?.passengerFare ?? req?.fareEstimate ?? '');
+  }
+
+  /// Server rule: counter must stay within +50% of the passenger's fare.
+  double get _counterMax {
+    final fare = _passengerFare ?? 0;
+    return (fare * 1.5 * 100).floorToDouble() / 100;
+  }
+
+  double get _counterStep {
+    final fare = _passengerFare ?? 0;
+    if (fare >= 100) return 5;
+    if (fare >= 20) return 1;
+    return 0.25;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -295,10 +317,44 @@ class _InstantOfferDialogState extends State<_InstantOfferDialog> {
     if (mounted) Navigator.of(context).pop();
   }
 
+  void _bumpCounter(double direction) {
+    final fare = _passengerFare;
+    if (fare == null) return;
+    final min = fare + _counterStep;
+    final current = _counterAmount ?? min;
+    final next = (current + direction * _counterStep).clamp(min, _counterMax);
+    setState(() => _counterAmount = (next * 100).roundToDouble() / 100);
+  }
+
+  Future<void> _sendCounter() async {
+    final amount = _counterAmount;
+    if (_busy || amount == null) return;
+    setState(() => _busy = true);
+    try {
+      await widget.service.counterOffer(widget.offer.id, amount);
+      _ticker?.cancel();
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.instantCounterSentToast),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ErrorSurface.showFailure(context, ApiClient.mapError(e));
+      // Offer likely taken/expired — close so polling can resume.
+      Navigator.of(context).maybePop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final req = widget.offer.request;
-    final fare = req?.fareEstimate;
+    final fare = req?.passengerFare ?? req?.fareEstimate;
+    final currency = req?.currency ?? '';
     return AlertDialog(
       title: Text(context.l10n.instantOfferTitle),
       content: Column(
@@ -309,14 +365,38 @@ class _InstantOfferDialogState extends State<_InstantOfferDialog> {
           const SizedBox(height: 8),
           _line(context, Icons.location_on, req?.toName ?? '—'),
           if (fare != null) ...[
-            const SizedBox(height: 8),
-            _line(
-              context,
-              Icons.payments_outlined,
-              '$fare ${req?.currency ?? ''}',
+            const SizedBox(height: 12),
+            Center(
+              child: Text(
+                '$fare $currency',
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: T.primary(context),
+                ),
+              ),
             ),
+            const SizedBox(height: 8),
+            if (_countering)
+              _buildCounterSection(context, currency)
+            else
+              Center(
+                child: TextButton.icon(
+                  onPressed: _busy || _passengerFare == null
+                      ? null
+                      : () => setState(() {
+                            _countering = true;
+                            _counterAmount ??=
+                                ((_passengerFare! + _counterStep) * 100)
+                                        .roundToDouble() /
+                                    100;
+                          }),
+                  icon: const Icon(Icons.trending_up, size: 18),
+                  label: Text(context.l10n.instantProposeFare),
+                ),
+              ),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           LinearProgressIndicator(
             value: _totalSeconds == 0 ? 0 : _secondsLeft / _totalSeconds,
             backgroundColor: T.outline(context).withValues(alpha: 0.3),
@@ -336,19 +416,95 @@ class _InstantOfferDialogState extends State<_InstantOfferDialog> {
           onPressed: _busy ? null : _decline,
           child: Text(context.l10n.instantDecline),
         ),
-        ElevatedButton(
-          onPressed: _busy ? null : _accept,
-          style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
-          child: _busy
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
+        if (_countering)
+          ElevatedButton(
+            onPressed: _busy ? null : _sendCounter,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: T.primary(context),
+            ),
+            child: _busy
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppColors.white,
+                      ),
+                    ),
+                  )
+                : Text(
+                    context.l10n.instantSendOffer,
+                    style: const TextStyle(color: AppColors.white),
                   ),
-                )
-              : Text(context.l10n.instantAccept),
+          )
+        else
+          ElevatedButton(
+            onPressed: _busy ? null : _accept,
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
+            child: _busy
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
+                    ),
+                  )
+                : Text(context.l10n.instantAccept),
+          ),
+      ],
+    );
+  }
+
+  /// Inline − / + stepper for the driver's higher-fare proposal.
+  Widget _buildCounterSection(BuildContext context, String currency) {
+    final fare = _passengerFare ?? 0;
+    final amount = _counterAmount ?? fare + _counterStep;
+    final canDecrease = amount - _counterStep >= fare + _counterStep - 0.001;
+    final canIncrease = amount + _counterStep <= _counterMax + 0.001;
+
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: T.surfaceVariant(context),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                onPressed: canDecrease && !_busy
+                    ? () => _bumpCounter(-1)
+                    : null,
+                icon: const Icon(Icons.remove),
+              ),
+              Text(
+                '${amount.toStringAsFixed(2)} $currency',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: T.onSurface(context),
+                ),
+              ),
+              IconButton(
+                onPressed: canIncrease && !_busy
+                    ? () => _bumpCounter(1)
+                    : null,
+                icon: const Icon(Icons.add),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          context.l10n.instantCounterMaxHint(
+            _counterMax.toStringAsFixed(2),
+            currency,
+          ),
+          style: TextStyle(fontSize: 11, color: T.onSurfaceVariant(context)),
         ),
       ],
     );

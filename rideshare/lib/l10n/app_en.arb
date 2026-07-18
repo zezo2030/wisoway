@@ -2476,5 +2476,13 @@
   "instantTryAgain": "Try again",
   "instantSearching": "Finding the nearest driver...",
   "instantFareEstimate": "Estimated fare: {fare} {currency}",
-  "instantCancelRequest": "Cancel request"
+  "instantCancelRequest": "Cancel request",
+  "instantYourFareLabel": "Your fare",
+  "instantRecommendedFare": "Recommended fare: {fare} {currency}",
+  "instantYourFareValue": "Your fare: {fare} {currency}",
+  "instantDriverOfferTitle": "Driver's offer",
+  "instantProposeFare": "Offer a higher fare",
+  "instantSendOffer": "Send offer",
+  "instantCounterSentToast": "Your offer was sent to the passenger. Waiting for approval...",
+  "instantCounterMaxHint": "Max: {fare} {currency}"
 }

@@ -139,6 +139,7 @@ export class InstantDispatchService {
           fromName: request.fromName,
           toName: request.toName,
           fareEstimate: request.fareEstimate ?? '',
+          passengerFare: request.passengerFare ?? request.fareEstimate ?? '',
           currency: request.currency,
           expiresAt: offer.expiresAt.toISOString(),
         },

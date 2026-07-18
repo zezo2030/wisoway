@@ -23,6 +23,78 @@ class InstantAvailability {
   }
 }
 
+/// Distance-based fare recommendation returned before the passenger submits.
+class InstantQuote {
+  final double recommendedFare;
+  final double minFare;
+  final double maxFare;
+  final String currency;
+  final double? distanceKm;
+  final int? durationMinutes;
+
+  const InstantQuote({
+    required this.recommendedFare,
+    required this.minFare,
+    required this.maxFare,
+    required this.currency,
+    this.distanceKm,
+    this.durationMinutes,
+  });
+
+  factory InstantQuote.fromJson(Map<String, dynamic> json) {
+    double parse(dynamic v) => double.tryParse(v?.toString() ?? '') ?? 0;
+    return InstantQuote(
+      recommendedFare: parse(json['recommendedFare']),
+      minFare: parse(json['minFare']),
+      maxFare: parse(json['maxFare']),
+      currency: (json['currency'] ?? 'JOD').toString(),
+      distanceKm: double.tryParse(json['distanceKm']?.toString() ?? ''),
+      durationMinutes: (json['durationMinutes'] as num?)?.toInt(),
+    );
+  }
+}
+
+/// A driver's counter-offer awaiting the passenger's decision.
+class InstantCounterOffer {
+  final String id;
+  final String? driverName;
+  final double? driverRating;
+  final int? driverTotalRatings;
+  final String? vehicleModel;
+  final String? plateNumber;
+  final String proposedFare;
+  final String currency;
+  final DateTime? expiresAt;
+
+  const InstantCounterOffer({
+    required this.id,
+    required this.proposedFare,
+    required this.currency,
+    this.driverName,
+    this.driverRating,
+    this.driverTotalRatings,
+    this.vehicleModel,
+    this.plateNumber,
+    this.expiresAt,
+  });
+
+  factory InstantCounterOffer.fromJson(Map<String, dynamic> json) {
+    return InstantCounterOffer(
+      id: json['id']?.toString() ?? '',
+      driverName: json['driverName']?.toString(),
+      driverRating: (json['driverRating'] as num?)?.toDouble(),
+      driverTotalRatings: (json['driverTotalRatings'] as num?)?.toInt(),
+      vehicleModel: json['vehicleModel']?.toString(),
+      plateNumber: json['plateNumber']?.toString(),
+      proposedFare: json['proposedFare']?.toString() ?? '',
+      currency: (json['currency'] ?? 'JOD').toString(),
+      expiresAt: json['expiresAt'] != null
+          ? DateTime.tryParse(json['expiresAt'].toString())
+          : null,
+    );
+  }
+}
+
 /// A passenger's instant ride request, as seen by the passenger.
 class InstantRequest {
   final String id;
@@ -30,11 +102,15 @@ class InstantRequest {
   final String fromName;
   final String toName;
   final String? fareEstimate;
+  final String? recommendedFare;
+  final String? passengerFare;
+  final String? acceptedFare;
   final String currency;
   final int seatCount;
   final String? matchedDriverId;
   final String? tripId;
   final DateTime? expiresAt;
+  final InstantCounterOffer? counterOffer;
 
   const InstantRequest({
     required this.id,
@@ -44,9 +120,13 @@ class InstantRequest {
     required this.currency,
     required this.seatCount,
     this.fareEstimate,
+    this.recommendedFare,
+    this.passengerFare,
+    this.acceptedFare,
     this.matchedDriverId,
     this.tripId,
     this.expiresAt,
+    this.counterOffer,
   });
 
   bool get isSearching => status == 'searching' || status == 'offered';
@@ -63,12 +143,20 @@ class InstantRequest {
       fromName: (from['name'] ?? json['fromName'] ?? '').toString(),
       toName: (to['name'] ?? json['toName'] ?? '').toString(),
       fareEstimate: json['fareEstimate']?.toString(),
+      recommendedFare: json['recommendedFare']?.toString(),
+      passengerFare: json['passengerFare']?.toString(),
+      acceptedFare: json['acceptedFare']?.toString(),
       currency: (json['currency'] ?? 'JOD').toString(),
       seatCount: (json['seatCount'] as num?)?.toInt() ?? 1,
       matchedDriverId: json['matchedDriverId']?.toString(),
       tripId: json['tripId']?.toString(),
       expiresAt: json['expiresAt'] != null
           ? DateTime.tryParse(json['expiresAt'].toString())
+          : null,
+      counterOffer: json['counterOffer'] is Map
+          ? InstantCounterOffer.fromJson(
+              Map<String, dynamic>.from(json['counterOffer'] as Map),
+            )
           : null,
     );
   }
@@ -80,6 +168,7 @@ class InstantRequestSummary {
   final String fromName;
   final String toName;
   final String? fareEstimate;
+  final String? passengerFare;
   final String currency;
   final int seatCount;
   final double? pickupLat;
@@ -92,6 +181,7 @@ class InstantRequestSummary {
     required this.currency,
     required this.seatCount,
     this.fareEstimate,
+    this.passengerFare,
     this.pickupLat,
     this.pickupLng,
   });
@@ -103,6 +193,8 @@ class InstantRequestSummary {
       fromName: (json['fromName'] ?? '').toString(),
       toName: (json['toName'] ?? '').toString(),
       fareEstimate: json['fareEstimate']?.toString(),
+      passengerFare:
+          (json['passengerFare'] ?? json['fareEstimate'])?.toString(),
       currency: (json['currency'] ?? 'JOD').toString(),
       seatCount: (json['seatCount'] as num?)?.toInt() ?? 1,
       pickupLat: (pickup['latitude'] as num?)?.toDouble(),

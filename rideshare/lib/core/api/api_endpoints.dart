@@ -144,6 +144,7 @@ class ApiEndpoints {
   static const String instantHeartbeat =
       '/instant-rides/availability/heartbeat';
   static const String instantAvailabilityMe = '/instant-rides/availability/me';
+  static const String instantQuotes = '/instant-rides/quotes';
   static const String instantRequests = '/instant-rides/requests';
   static String instantRequestById(String id) => '/instant-rides/requests/$id';
   static const String instantPendingOffer = '/instant-rides/offers/pending';
@@ -151,6 +152,12 @@ class ApiEndpoints {
       '/instant-rides/offers/$id/accept';
   static String instantOfferDecline(String id) =>
       '/instant-rides/offers/$id/decline';
+  static String instantOfferRespond(String id) =>
+      '/instant-rides/offers/$id/respond';
+  static String instantCounterAccept(String requestId, String offerId) =>
+      '/instant-rides/requests/$requestId/offers/$offerId/accept';
+  static String instantCounterDecline(String requestId, String offerId) =>
+      '/instant-rides/requests/$requestId/offers/$offerId/decline';
 
   // Uploads
   static const String uploads = '/uploads';

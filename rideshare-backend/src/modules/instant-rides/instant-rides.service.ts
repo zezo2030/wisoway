@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -30,8 +31,15 @@ import {
   DEFAULT_CURRENCY,
 } from '../../common/currency/country-currency';
 import { InstantDispatchService } from './instant-dispatch.service';
-import { CreateInstantRequestDto } from './dto/create-instant-request.dto';
 import {
+  CreateInstantRequestDto,
+  QuoteInstantRequestDto,
+} from './dto/create-instant-request.dto';
+import { OfferResponseType, RespondOfferDto } from './dto/respond-offer.dto';
+import {
+  COUNTER_FARE_MAX_FACTOR,
+  COUNTER_TTL_SECONDS,
+  EXPIRE_OFFER_JOB,
   EXPIRE_REQUEST_JOB,
   FARE_BASE,
   FARE_MINIMUM,
@@ -41,6 +49,8 @@ import {
   INSTANT_OFFER_TIMEOUT_QUEUE,
   INSTANT_REQUEST_EXPIRY_QUEUE,
   offerTimeoutJobId,
+  PASSENGER_FARE_MAX_FACTOR,
+  PASSENGER_FARE_MIN_FACTOR,
   REQUEST_TTL_SECONDS,
   requestExpiryJobId,
 } from './instant-rides.constants';
@@ -86,6 +96,19 @@ export class InstantRidesService {
 
   // ── Passenger ──────────────────────────────────────────────────────────────
 
+  /** Distance-based fare recommendation shown before the passenger submits. */
+  async getQuote(dto: QuoteInstantRequestDto) {
+    const quote = await this.computeQuote(dto.from, dto.to);
+    return {
+      recommendedFare: quote.recommendedFare.toFixed(2),
+      minFare: quote.minFare.toFixed(2),
+      maxFare: quote.maxFare.toFixed(2),
+      currency: quote.currency,
+      distanceKm: Math.round(quote.distanceKm * 10) / 10,
+      durationMinutes: Math.round(quote.durationMin),
+    };
+  }
+
   async createRequest(passengerId: string, dto: CreateInstantRequestDto) {
     const active = await this.requestRepo.findOne({
       where: {
@@ -102,7 +125,19 @@ export class InstantRidesService {
     }
 
     const seatCount = dto.seatCount ?? 1;
-    const { fare, currency } = await this.estimateFare(dto.from, dto.to);
+    const quote = await this.computeQuote(dto.from, dto.to);
+
+    let passengerFare = quote.recommendedFare;
+    if (dto.passengerFare != null) {
+      const amount = Math.round(dto.passengerFare * 100) / 100;
+      if (amount < quote.minFare || amount > quote.maxFare) {
+        throw new BadRequestException(
+          `السعر خارج الحدود المسموحة (${quote.minFare.toFixed(2)} – ${quote.maxFare.toFixed(2)} ${quote.currency}).`,
+        );
+      }
+      passengerFare = amount;
+    }
+
     const now = new Date();
 
     const request = await this.requestRepo.save(
@@ -122,8 +157,10 @@ export class InstantRidesService {
         },
         seatCount,
         status: InstantRequestStatus.SEARCHING,
-        fareEstimate: fare,
-        currency,
+        fareEstimate: passengerFare.toFixed(2),
+        recommendedFare: quote.recommendedFare.toFixed(2),
+        passengerFare: passengerFare.toFixed(2),
+        currency: quote.currency,
         radiusKm: INITIAL_RADIUS_KM,
         expiresAt: new Date(now.getTime() + REQUEST_TTL_SECONDS * 1000),
       }),
@@ -185,7 +222,10 @@ export class InstantRidesService {
     }
 
     const offer = await this.offerRepo.findOne({
-      where: { requestId: request.id, status: InstantOfferStatus.OFFERED },
+      where: {
+        requestId: request.id,
+        status: In([InstantOfferStatus.OFFERED, InstantOfferStatus.COUNTERED]),
+      },
     });
     if (offer) {
       await this.offerRepo.update(
@@ -239,6 +279,20 @@ export class InstantRidesService {
     };
   }
 
+  /**
+   * Driver responds to an outstanding offer: accept at the passenger's fare,
+   * counter with a higher fare, or decline.
+   */
+  async respondOffer(offerId: string, driverId: string, dto: RespondOfferDto) {
+    if (dto.responseType === OfferResponseType.ACCEPT) {
+      return this.acceptOffer(offerId, driverId);
+    }
+    if (dto.responseType === OfferResponseType.DECLINE) {
+      return this.declineOffer(offerId, driverId);
+    }
+    return this.counterOffer(offerId, driverId, dto.amount);
+  }
+
   async acceptOffer(offerId: string, driverId: string) {
     const offer = await this.offerRepo.findOne({
       where: { id: offerId, driverId },
@@ -256,17 +310,243 @@ export class InstantRidesService {
       throw new ConflictException('الطلب لم يعد متاحاً.');
     }
 
-    const driver = await this.usersService.findById(driverId);
+    const acceptedFare = request.passengerFare ?? request.fareEstimate ?? '0';
+    const { tripId, driverName } = await this.finalizeMatch(
+      request,
+      offer,
+      acceptedFare,
+      InstantOfferStatus.OFFERED,
+    );
+
+    this.notifications
+      .sendPush(request.passengerId, {
+        title: 'تم العثور على سائق!',
+        body: `السائق ${driverName} في الطريق إليك.`,
+        type: 'instant_matched',
+        data: { requestId: request.id, tripId, driverId },
+      })
+      .catch(() => undefined);
+
+    return this.getRequest(request.id, request.passengerId);
+  }
+
+  /** Driver proposes a higher fare; the passenger has to accept it. */
+  private async counterOffer(
+    offerId: string,
+    driverId: string,
+    amount: number | undefined,
+  ) {
+    if (amount == null) {
+      throw new BadRequestException('حدد قيمة العرض.');
+    }
+    const offer = await this.offerRepo.findOne({
+      where: { id: offerId, driverId },
+    });
+    if (!offer) {
+      throw new NotFoundException('العرض غير موجود.');
+    }
+    if (offer.status !== InstantOfferStatus.OFFERED) {
+      throw new ConflictException('العرض لم يعد متاحاً.');
+    }
+    const request = await this.requestRepo.findOne({
+      where: { id: offer.requestId },
+    });
+    if (!request || request.status !== InstantRequestStatus.OFFERED) {
+      throw new ConflictException('الطلب لم يعد متاحاً.');
+    }
+
+    const passengerFare = Number(
+      request.passengerFare ?? request.fareEstimate ?? 0,
+    );
+    const proposed = Math.round(amount * 100) / 100;
+    const maxCounter =
+      Math.round(passengerFare * COUNTER_FARE_MAX_FACTOR * 100) / 100;
+    if (proposed <= passengerFare || proposed > maxCounter) {
+      throw new BadRequestException(
+        `قيمة العرض يجب أن تكون أعلى من سعر الراكب وبحد أقصى ${maxCounter.toFixed(2)} ${request.currency}.`,
+      );
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + COUNTER_TTL_SECONDS * 1000);
+    const claim = await this.offerRepo.update(
+      { id: offerId, status: InstantOfferStatus.OFFERED },
+      {
+        status: InstantOfferStatus.COUNTERED,
+        proposedFare: proposed.toFixed(2),
+        respondedAt: now,
+        expiresAt,
+      },
+    );
+    if (claim.affected !== 1) {
+      throw new ConflictException('العرض لم يعد متاحاً.');
+    }
+
+    // Restart the timeout with the passenger's decision window.
+    await this.removeJob(this.offerTimeoutQueue, offerTimeoutJobId(offerId));
+    await this.offerTimeoutQueue
+      .add(
+        EXPIRE_OFFER_JOB,
+        { offerId },
+        {
+          delay: COUNTER_TTL_SECONDS * 1000,
+          jobId: offerTimeoutJobId(offerId),
+          removeOnComplete: true,
+          removeOnFail: true,
+        },
+      )
+      .catch((err: Error) =>
+        this.logger.warn(`Failed to enqueue counter timeout: ${err.message}`),
+      );
+
+    this.notifications
+      .sendPush(request.passengerId, {
+        title: 'عرض سعر من سائق',
+        body: `عرض السائق ${proposed.toFixed(2)} ${request.currency} لرحلتك.`,
+        type: 'instant_counter_offer',
+        data: {
+          requestId: request.id,
+          offerId,
+          proposedFare: proposed.toFixed(2),
+          currency: request.currency,
+          expiresAt: expiresAt.toISOString(),
+        },
+      })
+      .catch(() => undefined);
+
+    return {
+      ok: true,
+      status: InstantOfferStatus.COUNTERED,
+      proposedFare: proposed.toFixed(2),
+      expiresAt,
+    };
+  }
+
+  // ── Passenger: respond to a driver's counter-offer ─────────────────────────
+
+  async acceptCounterOffer(
+    requestId: string,
+    offerId: string,
+    passengerId: string,
+  ) {
+    const { request, offer } = await this.getCounterPair(
+      requestId,
+      offerId,
+      passengerId,
+    );
+    if (offer.expiresAt.getTime() <= Date.now()) {
+      throw new ConflictException('انتهت صلاحية العرض.');
+    }
+
+    const { tripId } = await this.finalizeMatch(
+      request,
+      offer,
+      offer.proposedFare ?? request.passengerFare ?? '0',
+      InstantOfferStatus.COUNTERED,
+    );
+
+    this.notifications
+      .sendPush(offer.driverId, {
+        title: 'قبل الراكب عرضك!',
+        body: 'توجّه إلى نقطة الانطلاق.',
+        type: 'instant_counter_accepted',
+        data: { requestId: request.id, tripId },
+      })
+      .catch(() => undefined);
+
+    return this.getRequest(request.id, passengerId);
+  }
+
+  async declineCounterOffer(
+    requestId: string,
+    offerId: string,
+    passengerId: string,
+  ) {
+    const { request, offer } = await this.getCounterPair(
+      requestId,
+      offerId,
+      passengerId,
+    );
+
+    const claim = await this.offerRepo.update(
+      { id: offer.id, status: InstantOfferStatus.COUNTERED },
+      { status: InstantOfferStatus.REJECTED, respondedAt: new Date() },
+    );
+    if (claim.affected !== 1) {
+      throw new ConflictException('العرض لم يعد متاحاً.');
+    }
+    await this.freeDriver(offer.driverId, request.id);
+    await this.removeJob(this.offerTimeoutQueue, offerTimeoutJobId(offer.id));
+    await this.requestRepo.update(
+      { id: request.id, status: InstantRequestStatus.OFFERED },
+      { status: InstantRequestStatus.SEARCHING },
+    );
+
+    this.notifications
+      .sendPush(offer.driverId, {
+        title: 'لم يُقبل عرضك',
+        body: 'رفض الراكب السعر المقترح.',
+        type: 'instant_counter_rejected',
+        data: { requestId: request.id },
+      })
+      .catch(() => undefined);
+
+    void this.dispatchService
+      .dispatchNext(request.id)
+      .catch((err: Error) =>
+        this.logger.warn(
+          `dispatchNext after counter decline failed: ${err.message}`,
+        ),
+      );
+
+    return this.getRequest(request.id, passengerId);
+  }
+
+  private async getCounterPair(
+    requestId: string,
+    offerId: string,
+    passengerId: string,
+  ) {
+    const request = await this.requestRepo.findOne({
+      where: { id: requestId },
+    });
+    if (!request) {
+      throw new NotFoundException('الطلب غير موجود.');
+    }
+    if (request.passengerId !== passengerId) {
+      throw new ForbiddenException('غير مصرح.');
+    }
+    const offer = await this.offerRepo.findOne({
+      where: { id: offerId, requestId },
+    });
+    if (!offer || offer.status !== InstantOfferStatus.COUNTERED) {
+      throw new ConflictException('العرض لم يعد متاحاً.');
+    }
+    return { request, offer };
+  }
+
+  /**
+   * One transaction that turns an outstanding offer into a matched ride:
+   * claims the offer + request, creates the INSTANT trip and confirmed
+   * booking at `acceptedFare`, and links them back to the request.
+   */
+  private async finalizeMatch(
+    request: InstantRideRequestEntity,
+    offer: InstantRideOfferEntity,
+    acceptedFare: string,
+    expectedOfferStatus: InstantOfferStatus,
+  ): Promise<{ tripId: string; driverName: string }> {
+    const driver = await this.usersService.findById(offer.driverId);
     const vehicle = offer.vehicleId
       ? await this.vehiclesService.findById(offer.vehicleId).catch(() => null)
-      : await this.vehiclesService.findByDriver(driverId);
+      : await this.vehiclesService.findByDriver(offer.driverId);
 
     let tripId = '';
     await this.requestRepo.manager.transaction(async (m) => {
       // Atomic claim — only one driver can win the offer/request.
       const offerClaim = await m.update(
         InstantRideOfferEntity,
-        { id: offerId, status: InstantOfferStatus.OFFERED },
+        { id: offer.id, status: expectedOfferStatus },
         { status: InstantOfferStatus.ACCEPTED, respondedAt: new Date() },
       );
       if (offerClaim.affected !== 1) {
@@ -277,7 +557,8 @@ export class InstantRidesService {
         { id: request.id, status: InstantRequestStatus.OFFERED },
         {
           status: InstantRequestStatus.ACCEPTED,
-          matchedDriverId: driverId,
+          matchedDriverId: offer.driverId,
+          acceptedFare,
         },
       );
       if (reqClaim.affected !== 1) {
@@ -286,7 +567,7 @@ export class InstantRidesService {
 
       const now = new Date();
       const trip = m.create(TripEntity, {
-        driverId,
+        driverId: offer.driverId,
         driverName: driver?.name ?? null,
         fromName: request.fromName,
         fromAddress: request.fromAddress,
@@ -295,7 +576,7 @@ export class InstantRidesService {
         fromPoint: request.fromPoint,
         toPoint: request.toPoint,
         departureTime: now,
-        price: request.fareEstimate ?? '0',
+        price: acceptedFare,
         currency: request.currency,
         totalSeats: request.seatCount,
         availableSeats: 0,
@@ -313,17 +594,17 @@ export class InstantRidesService {
       const savedTrip = await m.save(trip);
       tripId = savedTrip.id;
 
-      const fareNum = Number(request.fareEstimate ?? 0);
+      const fareNum = Number(acceptedFare);
       const seatPrice =
         request.seatCount > 0
           ? (fareNum / request.seatCount).toFixed(2)
-          : (request.fareEstimate ?? '0');
+          : acceptedFare;
       const booking = m.create(BookingEntity, {
         tripId: savedTrip.id,
         userId: request.passengerId,
         status: BookingStatus.CONFIRMED,
         seatCount: request.seatCount,
-        totalAmount: request.fareEstimate ?? '0',
+        totalAmount: acceptedFare,
         seatPriceAtBooking: seatPrice,
         expiresAt: null,
       });
@@ -336,22 +617,13 @@ export class InstantRidesService {
       );
     });
 
-    await this.removeJob(this.offerTimeoutQueue, offerTimeoutJobId(offerId));
+    await this.removeJob(this.offerTimeoutQueue, offerTimeoutJobId(offer.id));
     await this.removeJob(
       this.requestExpiryQueue,
       requestExpiryJobId(request.id),
     );
 
-    this.notifications
-      .sendPush(request.passengerId, {
-        title: 'تم العثور على سائق!',
-        body: `السائق ${driver?.name ?? ''} في الطريق إليك.`,
-        type: 'instant_matched',
-        data: { requestId: request.id, tripId, driverId },
-      })
-      .catch(() => undefined);
-
-    return this.getRequest(request.id, request.passengerId);
+    return { tripId, driverName: driver?.name ?? '' };
   }
 
   async declineOffer(offerId: string, driverId: string) {
@@ -387,7 +659,8 @@ export class InstantRidesService {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
-  private async estimateFare(from: LatLng, to: LatLng) {
+  /** Distance-based fare recommendation + the bounds a passenger may pick in. */
+  private async computeQuote(from: LatLng, to: LatLng) {
     let distanceKm: number;
     let durationMin = 0;
     try {
@@ -417,11 +690,28 @@ export class InstantRidesService {
       // keep default currency
     }
 
-    const fare = Math.max(
+    const recommendedFare =
+      Math.round(
+        Math.max(
+          FARE_MINIMUM,
+          FARE_BASE + distanceKm * FARE_PER_KM + durationMin * FARE_PER_MIN,
+        ) * 100,
+      ) / 100;
+    const minFare = Math.max(
       FARE_MINIMUM,
-      FARE_BASE + distanceKm * FARE_PER_KM + durationMin * FARE_PER_MIN,
+      Math.round(recommendedFare * PASSENGER_FARE_MIN_FACTOR * 100) / 100,
     );
-    return { fare: fare.toFixed(2), currency };
+    const maxFare =
+      Math.round(recommendedFare * PASSENGER_FARE_MAX_FACTOR * 100) / 100;
+
+    return {
+      recommendedFare,
+      minFare,
+      maxFare,
+      currency,
+      distanceKm,
+      durationMin,
+    };
   }
 
   /** Release a driver's soft lock if still held for this request. */
@@ -441,7 +731,7 @@ export class InstantRidesService {
     }
   }
 
-  private toRequestView(request: InstantRideRequestEntity) {
+  private async toRequestView(request: InstantRideRequestEntity) {
     return {
       id: request.id,
       status: request.status,
@@ -449,10 +739,50 @@ export class InstantRidesService {
       to: { name: request.toName, address: request.toAddress },
       seatCount: request.seatCount,
       fareEstimate: request.fareEstimate,
+      recommendedFare: request.recommendedFare,
+      passengerFare: request.passengerFare,
+      acceptedFare: request.acceptedFare,
       currency: request.currency,
       matchedDriverId: request.matchedDriverId,
       tripId: request.tripId,
       expiresAt: request.expiresAt,
+      counterOffer: await this.getActiveCounterOffer(request),
+    };
+  }
+
+  /** The driver's outstanding counter-offer (if any), enriched for the card UI. */
+  private async getActiveCounterOffer(request: InstantRideRequestEntity) {
+    if (request.status !== InstantRequestStatus.OFFERED) {
+      return null;
+    }
+    const offer = await this.offerRepo.findOne({
+      where: { requestId: request.id, status: InstantOfferStatus.COUNTERED },
+      order: { offeredAt: 'DESC' },
+    });
+    if (!offer || offer.expiresAt.getTime() <= Date.now()) {
+      return null;
+    }
+
+    const driver = await this.usersService
+      .findById(offer.driverId)
+      .catch(() => null);
+    const vehicle = offer.vehicleId
+      ? await this.vehiclesService.findById(offer.vehicleId).catch(() => null)
+      : await this.vehiclesService
+          .findByDriver(offer.driverId)
+          .catch(() => null);
+
+    return {
+      id: offer.id,
+      driverId: offer.driverId,
+      driverName: driver?.name ?? null,
+      driverRating: driver?.rating ?? null,
+      driverTotalRatings: driver?.totalRatings ?? null,
+      vehicleModel: vehicle?.model ?? null,
+      plateNumber: vehicle?.plateNumber ?? null,
+      proposedFare: offer.proposedFare,
+      currency: request.currency,
+      expiresAt: offer.expiresAt,
     };
   }
 
@@ -463,6 +793,7 @@ export class InstantRidesService {
       fromName: request.fromName,
       toName: request.toName,
       fareEstimate: request.fareEstimate,
+      passengerFare: request.passengerFare ?? request.fareEstimate,
       currency: request.currency,
       seatCount: request.seatCount,
       pickup: { latitude: fromLat, longitude: fromLng },

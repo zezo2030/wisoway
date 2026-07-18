@@ -79,6 +79,18 @@ export class InstantRideRequestEntity {
   @Column({ type: 'numeric', precision: 10, scale: 2, nullable: true })
   fareEstimate: string | null;
 
+  /** Server-recommended fare (distance-based) at quote time. */
+  @Column({ type: 'numeric', precision: 10, scale: 2, nullable: true })
+  recommendedFare: string | null;
+
+  /** The fare the passenger is asking (total ride fare). */
+  @Column({ type: 'numeric', precision: 10, scale: 2, nullable: true })
+  passengerFare: string | null;
+
+  /** Immutable final fare agreed at match time. */
+  @Column({ type: 'numeric', precision: 10, scale: 2, nullable: true })
+  acceptedFare: string | null;
+
   @Column({ type: 'varchar', length: 5, default: 'JOD' })
   currency: string;
 

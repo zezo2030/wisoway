@@ -48,4 +48,24 @@ export class CreateInstantRequestDto {
   @Min(1)
   @Max(8)
   seatCount?: number;
+
+  /**
+   * The total fare the passenger offers. Validated server-side against the
+   * distance-based recommendation bounds; omitted → the recommendation is used.
+   */
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  passengerFare?: number;
+}
+
+export class QuoteInstantRequestDto {
+  @ValidateNested()
+  @Type(() => InstantPointDto)
+  from: InstantPointDto;
+
+  @ValidateNested()
+  @Type(() => InstantPointDto)
+  to: InstantPointDto;
 }

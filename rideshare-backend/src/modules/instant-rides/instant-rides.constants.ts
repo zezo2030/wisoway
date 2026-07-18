@@ -22,6 +22,16 @@ export const FARE_PER_KM = 0.5;
 export const FARE_PER_MIN = 0.1;
 export const FARE_MINIMUM = 1.5;
 
+// ── Passenger-priced fares + driver counter-offers ──────────────────────────
+/** Lowest passenger fare accepted, as a fraction of the recommendation. */
+export const PASSENGER_FARE_MIN_FACTOR = 0.7;
+/** Highest passenger fare accepted, as a multiple of the recommendation. */
+export const PASSENGER_FARE_MAX_FACTOR = 2.0;
+/** A driver's counter-offer may exceed the passenger's fare by at most +50%. */
+export const COUNTER_FARE_MAX_FACTOR = 1.5;
+/** How long the passenger has to accept/decline a driver's counter-offer. */
+export const COUNTER_TTL_SECONDS = 30;
+
 // ── Queue names ─────────────────────────────────────────────────────────────
 export const INSTANT_OFFER_TIMEOUT_QUEUE = 'instant-offer-timeout';
 export const INSTANT_REQUEST_EXPIRY_QUEUE = 'instant-request-expiry';

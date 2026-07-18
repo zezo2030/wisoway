@@ -190,8 +190,8 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
           ),
           validator: (value) =>
               widget.initialLocation == null && (value == null || value.isEmpty)
-                  ? context.l10n.requiredWord
-                  : null,
+              ? context.l10n.requiredWord
+              : null,
         ),
         if (_suggestions.isNotEmpty) _buildSuggestions(),
         if (_showFallback) _buildFallback(),
@@ -202,33 +202,36 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
   Widget _buildSuggestions() {
     return Container(
       margin: const EdgeInsets.only(top: 8),
-      decoration: BoxDecoration(
+      child: Material(
         color: T.surface(context),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: T.outline(context)),
-      ),
-      child: Column(
-        children: _suggestions.take(5).map((suggestion) {
-          return ListTile(
-            dense: true,
-            leading: Icon(Icons.place_outlined, color: T.primary(context)),
-            title: Text(
-              suggestion.primaryText.isNotEmpty
-                  ? suggestion.primaryText
-                  : suggestion.description,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: suggestion.secondaryText.isEmpty
-                ? null
-                : Text(
-                    suggestion.secondaryText,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-            onTap: () => _selectSuggestion(suggestion),
-          );
-        }).toList(),
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: T.outline(context)),
+        ),
+        child: Column(
+          children: _suggestions.take(5).map((suggestion) {
+            return ListTile(
+              dense: true,
+              leading: Icon(Icons.place_outlined, color: T.primary(context)),
+              title: Text(
+                suggestion.primaryText.isNotEmpty
+                    ? suggestion.primaryText
+                    : suggestion.description,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: suggestion.secondaryText.isEmpty
+                  ? null
+                  : Text(
+                      suggestion.secondaryText,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+              onTap: () => _selectSuggestion(suggestion),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -256,4 +259,3 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
     );
   }
 }
-

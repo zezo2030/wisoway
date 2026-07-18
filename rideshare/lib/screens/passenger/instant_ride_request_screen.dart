@@ -52,6 +52,13 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
   bool _submitting = false;
   InstantRequest? _request;
   Timer? _poll;
+  Timer? _countdownTicker;
+
+  InstantQuote? _quote;
+  double? _fare;
+  bool _quoteLoading = false;
+  int _quoteSeq = 0;
+  bool _counterBusy = false;
 
   @override
   void initState() {
@@ -71,6 +78,7 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
   @override
   void dispose() {
     _poll?.cancel();
+    _countdownTicker?.cancel();
     _mapController?.dispose();
     _fromController.dispose();
     _toController.dispose();
@@ -227,19 +235,72 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
     return markers;
   }
 
+  // ── Fare quote ────────────────────────────────────────────────────────────────
+
+  /// Fetch the distance-based fare recommendation once both points are set.
+  Future<void> _updateQuote() async {
+    if (_from == null || _to == null) {
+      _quoteSeq++;
+      if (_quote != null || _quoteLoading) {
+        setState(() {
+          _quote = null;
+          _fare = null;
+          _quoteLoading = false;
+        });
+      }
+      return;
+    }
+    final seq = ++_quoteSeq;
+    setState(() => _quoteLoading = true);
+    try {
+      final quote = await _service.getQuote(from: _from!, to: _to!);
+      if (!mounted || seq != _quoteSeq) return;
+      setState(() {
+        _quote = quote;
+        _fare = quote.recommendedFare;
+        _quoteLoading = false;
+      });
+    } catch (_) {
+      if (!mounted || seq != _quoteSeq) return;
+      // Keep any previous quote; the server re-validates on submit anyway.
+      setState(() => _quoteLoading = false);
+    }
+  }
+
+  /// Stepper increment scaled to the fare magnitude (0.25 for JOD-level fares).
+  double get _fareStep {
+    final rec = _quote?.recommendedFare ?? 0;
+    if (rec >= 100) return 5;
+    if (rec >= 20) return 1;
+    return 0.25;
+  }
+
+  void _bumpFare(double direction) {
+    final quote = _quote;
+    if (quote == null) return;
+    final current = _fare ?? quote.recommendedFare;
+    final next = (current + direction * _fareStep)
+        .clamp(quote.minFare, quote.maxFare);
+    setState(() => _fare = (next * 100).roundToDouble() / 100);
+  }
+
   // ── Request lifecycle ─────────────────────────────────────────────────────────
 
   Future<void> _submit() async {
     if (_from == null || _to == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.instantSelectFromTo)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.l10n.instantSelectFromTo)));
       return;
     }
     FocusScope.of(context).unfocus();
     setState(() => _submitting = true);
     try {
-      final request = await _service.createRequest(from: _from!, to: _to!);
+      final request = await _service.createRequest(
+        from: _from!,
+        to: _to!,
+        passengerFare: _fare,
+      );
       if (!mounted) return;
       setState(() => _request = request);
       _startPolling();
@@ -259,16 +320,70 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
         final updated = await _service.getRequest(current.id);
         if (!mounted) return;
         setState(() => _request = updated);
-        if (!updated.isSearching) _poll?.cancel();
+        if (!updated.isSearching) {
+          _poll?.cancel();
+          _countdownTicker?.cancel();
+        }
       } catch (_) {
         // transient — keep polling
       }
     });
+    // 1s repaint so the counter-offer countdown reads smoothly.
+    _countdownTicker?.cancel();
+    _countdownTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && _request?.counterOffer != null) setState(() {});
+    });
+  }
+
+  Future<void> _acceptCounter() async {
+    final request = _request;
+    final offer = request?.counterOffer;
+    if (request == null || offer == null || _counterBusy) return;
+    setState(() => _counterBusy = true);
+    try {
+      final updated = await _service.acceptCounterOffer(request.id, offer.id);
+      if (!mounted) return;
+      setState(() => _request = updated);
+    } catch (e) {
+      if (!mounted) return;
+      ErrorSurface.showFailure(context, ApiClient.mapError(e));
+      await _refreshRequest(request.id);
+    } finally {
+      if (mounted) setState(() => _counterBusy = false);
+    }
+  }
+
+  Future<void> _declineCounter() async {
+    final request = _request;
+    final offer = request?.counterOffer;
+    if (request == null || offer == null || _counterBusy) return;
+    setState(() => _counterBusy = true);
+    try {
+      final updated = await _service.declineCounterOffer(request.id, offer.id);
+      if (!mounted) return;
+      setState(() => _request = updated);
+    } catch (e) {
+      if (!mounted) return;
+      ErrorSurface.showFailure(context, ApiClient.mapError(e));
+      await _refreshRequest(request.id);
+    } finally {
+      if (mounted) setState(() => _counterBusy = false);
+    }
+  }
+
+  Future<void> _refreshRequest(String id) async {
+    try {
+      final updated = await _service.getRequest(id);
+      if (mounted) setState(() => _request = updated);
+    } catch (_) {
+      // keep last known state
+    }
   }
 
   Future<void> _cancel() async {
     final current = _request;
     _poll?.cancel();
+    _countdownTicker?.cancel();
     if (current != null && current.isSearching) {
       try {
         await _service.cancelRequest(current.id);
@@ -281,6 +396,7 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
 
   void _reset() {
     _poll?.cancel();
+    _countdownTicker?.cancel();
     setState(() => _request = null);
   }
 
@@ -444,10 +560,10 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
                 ),
                 const SizedBox(height: 12),
                 Flexible(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(maxHeight: maxSheetHeight),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: maxSheetHeight),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -462,6 +578,7 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
                               setState(() => _from = loc);
                               if (loc != null) _focusCamera();
                               _updateRoute();
+                              _updateQuote();
                             },
                           ),
                           const SizedBox(height: 12),
@@ -476,6 +593,7 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
                               setState(() => _to = loc);
                               if (loc != null) _focusCamera();
                               _updateRoute();
+                              _updateQuote();
                             },
                           ),
                         ],
@@ -484,6 +602,7 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
                   ),
                 ),
                 _buildRouteSummary(context),
+                _buildFareStepper(context),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
                   child: SizedBox(
@@ -493,9 +612,9 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
                       onPressed: ready ? _submit : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: T.primary(context),
-                        disabledBackgroundColor: T.primary(
-                          context,
-                        ).withValues(alpha: 0.4),
+                        disabledBackgroundColor: T
+                            .primary(context)
+                            .withValues(alpha: 0.4),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -551,6 +670,106 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
           if (_routeDistance.isNotEmpty)
             _routeMetric(context, Icons.straighten, _routeDistance),
         ],
+      ),
+    );
+  }
+
+  /// inDrive-style fare row: − / + steppers around the passenger's fare,
+  /// seeded with the server's distance-based recommendation.
+  Widget _buildFareStepper(BuildContext context) {
+    final quote = _quote;
+    if (quote == null) {
+      if (!_quoteLoading) return const SizedBox.shrink();
+      return const Padding(
+        padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
+        child: SizedBox(
+          height: 24,
+          width: 24,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    final fare = _fare ?? quote.recommendedFare;
+    final canDecrease = fare - _fareStep >= quote.minFare - 0.001;
+    final canIncrease = fare + _fareStep <= quote.maxFare + 0.001;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: T.surfaceVariant(context),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            _fareStepButton(
+              context,
+              icon: Icons.remove,
+              enabled: canDecrease,
+              onTap: () => _bumpFare(-1),
+            ),
+            Expanded(
+              child: Column(
+                children: [
+                  Text(
+                    '${fare.toStringAsFixed(2)} ${quote.currency}',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: T.onSurface(context),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    context.l10n.instantRecommendedFare(
+                      quote.recommendedFare.toStringAsFixed(2),
+                      quote.currency,
+                    ),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: T.onSurfaceVariant(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _fareStepButton(
+              context,
+              icon: Icons.add,
+              enabled: canIncrease,
+              onTap: () => _bumpFare(1),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _fareStepButton(
+    BuildContext context, {
+    required IconData icon,
+    required bool enabled,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: T.surface(context),
+      shape: const CircleBorder(),
+      elevation: enabled ? 2 : 0,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: enabled ? onTap : null,
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Icon(
+            icon,
+            color: enabled
+                ? T.onSurface(context)
+                : T.onSurfaceVariant(context).withValues(alpha: 0.4),
+          ),
+        ),
       ),
     );
   }
@@ -635,49 +854,250 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
   }
 
   Widget _buildSearchingView(BuildContext context, InstantRequest request) {
+    final counter = request.counterOffer;
+    final yourFare = request.passengerFare ?? request.fareEstimate;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const SizedBox(height: 8),
-        const SizedBox(
-          width: 56,
-          height: 56,
-          child: CircularProgressIndicator(strokeWidth: 5),
-        ),
-        const SizedBox(height: 20),
-        Text(
-          context.l10n.instantSearching,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: T.onSurface(context),
+        if (counter != null)
+          _buildCounterOfferCard(context, request, counter)
+        else ...[
+          const SizedBox(height: 8),
+          const SizedBox(
+            width: 56,
+            height: 56,
+            child: CircularProgressIndicator(strokeWidth: 5),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          '${request.fromName} ← ${request.toName}',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: T.onSurfaceVariant(context)),
-        ),
-        if (request.fareEstimate != null) ...[
+          const SizedBox(height: 20),
+          Text(
+            context.l10n.instantSearching,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: T.onSurface(context),
+            ),
+          ),
           const SizedBox(height: 8),
           Text(
-            context.l10n.instantFareEstimate(
-              request.fareEstimate!,
-              request.currency,
-            ),
+            '${request.fromName} ← ${request.toName}',
+            textAlign: TextAlign.center,
             style: TextStyle(color: T.onSurfaceVariant(context)),
           ),
+          if (yourFare != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              context.l10n.instantYourFareValue(yourFare, request.currency),
+              style: TextStyle(color: T.onSurfaceVariant(context)),
+            ),
+          ],
         ],
         const SizedBox(height: 16),
         TextButton(
-          onPressed: _cancel,
+          onPressed: _counterBusy ? null : _cancel,
           child: Text(
             context.l10n.instantCancelRequest,
             style: TextStyle(color: AppColors.error),
           ),
         ),
       ],
+    );
+  }
+
+  /// inDrive-style bid card: the driver's counter fare with Accept/Decline.
+  Widget _buildCounterOfferCard(
+    BuildContext context,
+    InstantRequest request,
+    InstantCounterOffer offer,
+  ) {
+    final remaining = offer.expiresAt != null
+        ? offer.expiresAt!.difference(DateTime.now()).inSeconds
+        : 0;
+    final yourFare = request.passengerFare ?? request.fareEstimate;
+    final vehicleLine = [
+      if (offer.vehicleModel != null && offer.vehicleModel!.isNotEmpty)
+        offer.vehicleModel!,
+      if (offer.plateNumber != null && offer.plateNumber!.isNotEmpty)
+        offer.plateNumber!,
+    ].join(' • ');
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: T.surface(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: T.primary(context), width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  context.l10n.instantDriverOfferTitle,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: T.onSurface(context),
+                  ),
+                ),
+              ),
+              if (remaining > 0)
+                Text(
+                  context.l10n.instantOfferCountdown(remaining),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: T.onSurfaceVariant(context),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: T.primary(context).withValues(alpha: 0.12),
+                child: Icon(Icons.person, color: T.primary(context)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      offer.driverName ?? '—',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: T.onSurface(context),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        if (offer.driverRating != null) ...[
+                          const Icon(
+                            Icons.star,
+                            size: 15,
+                            color: AppColors.warning,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            offer.driverRating!.toStringAsFixed(1) +
+                                (offer.driverTotalRatings != null
+                                    ? ' (${offer.driverTotalRatings})'
+                                    : ''),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: T.onSurfaceVariant(context),
+                            ),
+                          ),
+                        ],
+                        if (vehicleLine.isNotEmpty) ...[
+                          if (offer.driverRating != null)
+                            const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              vehicleLine,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: T.onSurfaceVariant(context),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${offer.proposedFare} ${offer.currency}',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: T.primary(context),
+                ),
+              ),
+              const SizedBox(width: 10),
+              if (yourFare != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 3),
+                  child: Text(
+                    context.l10n.instantYourFareValue(
+                      yourFare,
+                      request.currency,
+                    ),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: T.onSurfaceVariant(context),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _counterBusy ? null : _declineCounter,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    context.l10n.instantDecline,
+                    style: TextStyle(color: T.onSurface(context)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _counterBusy ? null : _acceptCounter,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _counterBusy
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.white,
+                            ),
+                          ),
+                        )
+                      : Text(
+                          context.l10n.instantAccept,
+                          style: const TextStyle(
+                            color: AppColors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
