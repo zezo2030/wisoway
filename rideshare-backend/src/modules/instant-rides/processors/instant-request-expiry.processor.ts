@@ -9,8 +9,8 @@ import {
   InstantRequestStatus,
   InstantRideOfferEntity,
   InstantRideRequestEntity,
+  InstantTerminalReason,
 } from '../../../database/entities';
-import { NotificationsService } from '../../notifications/notifications.service';
 import { InstantDispatchService } from '../instant-dispatch.service';
 import {
   DISPATCH_WAVE_JOB,
@@ -34,7 +34,6 @@ export class InstantRequestExpiryProcessor {
     private readonly offerRepo: Repository<InstantRideOfferEntity>,
     @InjectRepository(DriverAvailabilityEntity)
     private readonly availabilityRepo: Repository<DriverAvailabilityEntity>,
-    private readonly notifications: NotificationsService,
     private readonly dispatch: InstantDispatchService,
   ) {}
 
@@ -75,25 +74,12 @@ export class InstantRequestExpiryProcessor {
       );
     }
 
-    await this.requestRepo.update(
-      {
-        id: requestId,
-        status: In([
-          InstantRequestStatus.SEARCHING,
-          InstantRequestStatus.OFFERED,
-        ]),
-      },
-      { status: InstantRequestStatus.NO_DRIVERS },
+    // The outstanding offer above is already cancelled, so the shared helper
+    // reads "all declined" unless nobody was ever offered the ride.
+    await this.dispatch.finalizeSearch(
+      requestId,
+      offer ? InstantTerminalReason.TTL_EXPIRED : undefined,
     );
-
-    await this.notifications
-      .sendPush(request.passengerId, {
-        title: 'انتهت مهلة الطلب',
-        body: 'لم نعثر على سائق متاح. يمكنك المحاولة مرة أخرى.',
-        type: 'instant_no_drivers',
-        data: { requestId },
-      })
-      .catch(() => undefined);
   }
 
   @OnQueueFailed()

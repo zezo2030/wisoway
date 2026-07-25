@@ -7227,19 +7227,67 @@ abstract class AppLocalizations {
   /// No description provided for @instantNoDrivers.
   ///
   /// In ar, this message translates to:
-  /// **'لا يوجد سائق متاح'**
+  /// **'لم نتمكن من العثور على سائق حاليًا'**
   String get instantNoDrivers;
 
   /// No description provided for @instantNoDriversSubtitle.
   ///
   /// In ar, this message translates to:
-  /// **'لم نتمكن من إيجاد سائق قريب الآن. يمكنك المحاولة مرة أخرى.'**
+  /// **'قد يكون جميع السائقين مشغولين أو لا يوجد سائق قريب منك.'**
   String get instantNoDriversSubtitle;
+
+  /// No description provided for @instantNoDriversTip.
+  ///
+  /// In ar, this message translates to:
+  /// **'نصيحة: أعد المحاولة بعد بضع دقائق؛ قد يتوفر سائق قريب منك.'**
+  String get instantNoDriversTip;
+
+  /// No description provided for @instantNoDriversIllustrationLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم يتم العثور على سائق'**
+  String get instantNoDriversIllustrationLabel;
+
+  /// No description provided for @instantNeedHelp.
+  ///
+  /// In ar, this message translates to:
+  /// **'تحتاج مساعدة؟'**
+  String get instantNeedHelp;
+
+  /// No description provided for @instantContactSupport.
+  ///
+  /// In ar, this message translates to:
+  /// **'تواصل مع الدعم'**
+  String get instantContactSupport;
+
+  /// No description provided for @instantRideSafety.
+  ///
+  /// In ar, this message translates to:
+  /// **'أمان الرحلة'**
+  String get instantRideSafety;
+
+  /// No description provided for @instantPickupPoint.
+  ///
+  /// In ar, this message translates to:
+  /// **'نقطة الانطلاق'**
+  String get instantPickupPoint;
+
+  /// No description provided for @instantDropoffPoint.
+  ///
+  /// In ar, this message translates to:
+  /// **'نقطة الوصول'**
+  String get instantDropoffPoint;
+
+  /// No description provided for @instantRetryFareChanged.
+  ///
+  /// In ar, this message translates to:
+  /// **'تغيّر نطاق السعر؛ راجع السعر ثم أعد الطلب.'**
+  String get instantRetryFareChanged;
 
   /// No description provided for @instantTryAgain.
   ///
   /// In ar, this message translates to:
-  /// **'حاول مرة أخرى'**
+  /// **'إعادة المحاولة'**
   String get instantTryAgain;
 
   /// No description provided for @instantSearching.

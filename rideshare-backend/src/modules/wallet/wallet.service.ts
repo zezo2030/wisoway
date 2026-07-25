@@ -16,6 +16,8 @@ import {
   WalletAccountEntity,
   WalletAccountType,
   WalletEntryDirection,
+  WalletHoldEntity,
+  WalletHoldStatus,
   PayoutStatus,
   WalletTransactionEntity,
   WalletTransactionStatus,
@@ -24,6 +26,8 @@ import {
 import { CreateTopupDto } from './dto/create-topup.dto';
 import { CreatePayoutRequestDto } from './dto/create-payout-request.dto';
 import { DriverTripChargeDto } from './dto/driver-trip-charge.dto';
+import { WalletHoldService } from './wallet-hold.service';
+import { PlatformPricingService } from '../payments/platform-pricing.service';
 
 /** Primary ledger row for a (user, bucket): highest positive balance, else JOD, else first. */
 export function pickPrimaryWalletLedgerAccount(
@@ -52,6 +56,8 @@ export class WalletService {
     private readonly tripRepo: Repository<TripEntity>,
     @InjectRepository(UserEntity)
     private readonly userRepo: Repository<UserEntity>,
+    private readonly walletHolds: WalletHoldService,
+    private readonly platformPricing: PlatformPricingService,
   ) {}
 
   private async getOrCreateAccount(
@@ -114,26 +120,55 @@ export class WalletService {
       order: { updatedAt: 'DESC' },
     });
 
-    if (accounts.length === 0) {
-      const account = await this.getOrCreateAccount(userId, accountType);
-      return {
-        accountId: account.id,
-        accountType: account.accountType,
-        currency: account.currency,
-        balance: Number(account.balance),
-        isActive: account.isActive,
-      };
-    }
+    const account =
+      accounts.length === 0
+        ? await this.getOrCreateAccount(userId, accountType)
+        : pickPrimaryWalletLedgerAccount(accounts)!;
 
-    const account = pickPrimaryWalletLedgerAccount(accounts)!;
+    // `balance` is what the account owns; `reserved` is the part promised to
+    // active trip holds. Drivers spend against `available`.
+    const balance = Number(account.balance);
+    const reserved = Number(account.reservedBalance ?? 0);
 
     return {
       accountId: account.id,
       accountType: account.accountType,
       currency: account.currency,
-      balance: Number(account.balance),
+      balance,
+      reservedBalance: reserved,
+      availableBalance: Math.round((balance - reserved) * 100) / 100,
       isActive: account.isActive,
     };
+  }
+
+  /** Active holds for a user — surfaced in the driver wallet screen. */
+  async getActiveHolds(userId: string, role: string) {
+    const accountType =
+      role === WalletAccountType.DRIVER
+        ? WalletAccountType.DRIVER
+        : WalletAccountType.RIDER;
+
+    const accounts = await this.walletAccountRepo.find({
+      where: { userId, accountType },
+    });
+    if (accounts.length === 0) return [];
+
+    const holds = await this.dataSource.getRepository(WalletHoldEntity).find({
+      where: {
+        accountId: In(accounts.map((a) => a.id)),
+        status: WalletHoldStatus.ACTIVE,
+      },
+      order: { createdAt: 'DESC' },
+    });
+
+    return holds.map((h) => ({
+      id: h.id,
+      amount: Number(h.amount),
+      currency: h.currency,
+      referenceType: h.referenceType,
+      referenceId: h.referenceId,
+      createdAt: h.createdAt,
+    }));
   }
 
   /**
@@ -278,6 +313,18 @@ export class WalletService {
     });
   }
 
+  /**
+   * Driver unlocks passenger contact for a trip.
+   *
+   * Since 012-passenger-presence-confirmation this RESERVES the worst-case fee
+   * instead of debiting it. `balance` does not move here — it moves at trip
+   * settlement, and only for seats confirmed present. The hold is sized on
+   * `totalSeats` so the capture (which is bounded by booked seats) can never
+   * exceed what was reserved.
+   *
+   * Set PRESENCE_BILLING_ENABLED=false to fall back to the legacy immediate
+   * debit while the mobile screens roll out.
+   */
   async chargeDriverForTrip(driverId: string, dto: DriverTripChargeDto) {
     const trip = await this.tripRepo.findOne({
       where: { id: dto.tripId, driverId },
@@ -290,7 +337,10 @@ export class WalletService {
         where: {
           referenceType: 'trip',
           referenceId: dto.tripId,
-          type: WalletTransactionType.TRIP_DEBIT,
+          type: In([
+            WalletTransactionType.TRIP_DEBIT,
+            WalletTransactionType.HOLD,
+          ]),
         },
         order: { createdAt: 'DESC' },
       });
@@ -303,9 +353,17 @@ export class WalletService {
       WalletAccountType.DRIVER,
       trip.currency || 'JOD',
     );
-    const seatPrice = Number(trip.price ?? 0);
-    const totalSeats = Number(trip.totalSeats ?? 0);
-    const fee = Math.round(seatPrice * totalSeats * 0.1 * 100) / 100;
+
+    // Single source of truth for the percentage (was hardcoded 0.1 here while
+    // PlatformPricingService read communication_fees.driverUnlockPercent).
+    // 'JO' matches the existing convention in BookingsService/TripsService —
+    // TripEntity carries no country column yet.
+    const feeRow = await this.platformPricing.getActiveFeeRow('JO');
+    const pricing = this.platformPricing.driverUnlockPricing(trip, feeRow);
+    const seatPrice = pricing.seatPrice;
+    const totalSeats = pricing.totalSeats;
+    const percent = pricing.driverUnlockPercent;
+    const maxFee = pricing.feeAmount;
 
     const existing = dto.idempotencyKey
       ? await this.walletTxRepo.findOne({
@@ -315,6 +373,14 @@ export class WalletService {
     if (existing) {
       return existing;
     }
+
+    const pricingSnapshot = {
+      seatPrice,
+      totalSeats,
+      percent,
+      formula: 'seatPrice * billableSeats * percent%',
+      basis: 'presence-confirmed seats',
+    };
 
     return this.dataSource.transaction(async (manager) => {
       const driver = await manager.findOne(UserEntity, {
@@ -333,31 +399,7 @@ export class WalletService {
         throw new NotFoundException('Wallet account not found');
       }
 
-      if (!driver.hasUsedLifetimeFreeTrip) {
-        driver.hasUsedLifetimeFreeTrip = true;
-        await manager.save(driver);
-
-        const freeTripTx = manager.create(WalletTransactionEntity, {
-          accountId: locked.id,
-          type: WalletTransactionType.TRIP_DEBIT,
-          direction: WalletEntryDirection.DEBIT,
-          status: WalletTransactionStatus.POSTED,
-          amount: '0.00',
-          currency: locked.currency,
-          referenceType: 'trip',
-          referenceId: dto.tripId,
-          idempotencyKey: dto.idempotencyKey ?? null,
-          metadata: {
-            seatPrice,
-            totalSeats,
-            percent: 10,
-            formula: 'seatPrice * totalSeats * 10%',
-            freeTripApplied: true,
-            discountPercent: 100,
-          },
-        });
-        const savedFreeTripTx = await manager.save(freeTripTx);
-
+      const markTripUnlocked = async (holdId: string | null) => {
         await manager.update(
           TripEntity,
           { id: dto.tripId },
@@ -365,6 +407,7 @@ export class WalletService {
             driverWalletChargeApplied: true,
             driverWalletChargeAt: new Date(),
             communicationFeeStatus: 'paid',
+            ...(holdId ? { driverFeeHoldId: holdId } : {}),
           },
         );
         await manager.update(
@@ -375,58 +418,89 @@ export class WalletService {
           },
           { hasDriverPaidToContact: true },
         );
+      };
 
-        return savedFreeTripTx;
-      }
+      // Lifetime free trip: no hold, no capture — settlement finds no hold and
+      // no-ops, so the driver is never charged for this trip.
+      if (!driver.hasUsedLifetimeFreeTrip) {
+        driver.hasUsedLifetimeFreeTrip = true;
+        await manager.save(driver);
 
-      const current = Number(locked.balance);
-      if (current < fee) {
-        throw new BadRequestException(
-          'Insufficient wallet balance to activate trip',
+        const freeTripTx = await manager.save(
+          manager.create(WalletTransactionEntity, {
+            accountId: locked.id,
+            type: WalletTransactionType.TRIP_DEBIT,
+            direction: WalletEntryDirection.DEBIT,
+            status: WalletTransactionStatus.POSTED,
+            amount: '0.00',
+            currency: locked.currency,
+            referenceType: 'trip',
+            referenceId: dto.tripId,
+            idempotencyKey: dto.idempotencyKey ?? null,
+            metadata: {
+              ...pricingSnapshot,
+              freeTripApplied: true,
+              discountPercent: 100,
+            },
+          }),
         );
-      }
-      locked.balance = (current - fee).toFixed(2);
-      await manager.save(locked);
 
-      const tx = manager.create(WalletTransactionEntity, {
+        await markTripUnlocked(null);
+        return freeTripTx;
+      }
+
+      if (!this.presenceBillingEnabled()) {
+        // Legacy path — immediate debit of the worst-case fee.
+        const current = Number(locked.balance);
+        if (current < maxFee) {
+          throw new BadRequestException(
+            'Insufficient wallet balance to activate trip',
+          );
+        }
+        locked.balance = (current - maxFee).toFixed(2);
+        await manager.save(locked);
+
+        const tx = await manager.save(
+          manager.create(WalletTransactionEntity, {
+            accountId: locked.id,
+            type: WalletTransactionType.TRIP_DEBIT,
+            direction: WalletEntryDirection.DEBIT,
+            status: WalletTransactionStatus.POSTED,
+            amount: maxFee.toFixed(2),
+            currency: locked.currency,
+            referenceType: 'trip',
+            referenceId: dto.tripId,
+            idempotencyKey: dto.idempotencyKey ?? null,
+            metadata: {
+              seatPrice,
+              totalSeats,
+              percent,
+              formula: 'seatPrice * totalSeats * percent%',
+            },
+          }),
+        );
+
+        await markTripUnlocked(null);
+        return tx;
+      }
+
+      const hold = await this.walletHolds.placeHold({
         accountId: locked.id,
-        type: WalletTransactionType.TRIP_DEBIT,
-        direction: WalletEntryDirection.DEBIT,
-        status: WalletTransactionStatus.POSTED,
-        amount: fee.toFixed(2),
-        currency: locked.currency,
+        amount: maxFee,
         referenceType: 'trip',
         referenceId: dto.tripId,
-        idempotencyKey: dto.idempotencyKey ?? null,
-        metadata: {
-          seatPrice,
-          totalSeats,
-          percent: 10,
-          formula: 'seatPrice * totalSeats * 10%',
-        },
+        metadata: pricingSnapshot,
+        manager,
       });
-      const savedTx = await manager.save(tx);
 
-      await manager.update(
-        TripEntity,
-        { id: dto.tripId },
-        {
-          driverWalletChargeApplied: true,
-          driverWalletChargeAt: new Date(),
-          communicationFeeStatus: 'paid',
-        },
-      );
-      await manager.update(
-        BookingEntity,
-        {
-          tripId: dto.tripId,
-          status: In([BookingStatus.PENDING, BookingStatus.CONFIRMED]),
-        },
-        { hasDriverPaidToContact: true },
-      );
-
-      return savedTx;
+      await markTripUnlocked(hold.id);
+      return hold;
     });
+  }
+
+  /** Feature flag — presence-based settlement. Defaults ON. */
+  private presenceBillingEnabled(): boolean {
+    return process.env.PRESENCE_BILLING_ENABLED !== 'false';
   }
 
   async payTripFromRiderWallet(

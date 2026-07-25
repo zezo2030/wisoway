@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../core/api/api_client.dart';
+import '../../core/constants/route_names.dart';
 import '../../core/services/instant_ride_service.dart';
 import '../../core/services/location_service.dart';
 import '../../core/services/route_service.dart';
@@ -15,14 +16,30 @@ import '../../models/instant_ride_models.dart';
 import '../../models/location_model.dart';
 import '../../widgets/location_autocomplete_field.dart';
 import 'trip_details_screen.dart';
+import 'widgets/no_driver_found_sheet.dart';
+import 'widgets/route_endpoint_label.dart';
 
 /// Passenger "اطلب الآن" flow, inDrive-style: a full-screen map with a pinned
 /// bottom sheet for pickup + destination, then the live search progress
 /// (searching → matched / no drivers) shown over the same map.
 class InstantRideRequestScreen extends StatefulWidget {
   final LocationModel? initialFrom;
+  final LocationModel? initialTo;
 
-  const InstantRideRequestScreen({super.key, this.initialFrom});
+  /// Open straight onto an existing request instead of the input form —
+  /// used to resume a search, and by tests to land on a given state.
+  final InstantRequest? initialRequest;
+
+  /// Overridable so tests can drive the flow without the network.
+  final InstantRideService? service;
+
+  const InstantRideRequestScreen({
+    super.key,
+    this.initialFrom,
+    this.initialTo,
+    this.initialRequest,
+    this.service,
+  });
 
   @override
   State<InstantRideRequestScreen> createState() =>
@@ -32,7 +49,8 @@ class InstantRideRequestScreen extends StatefulWidget {
 class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
   static const LatLng _fallbackCenter = LatLng(31.9539, 35.9106); // Amman
 
-  final InstantRideService _service = InstantRideService();
+  late final InstantRideService _service =
+      widget.service ?? InstantRideService();
   final LocationService _locationService = LocationService();
   final RouteService _routeService = RouteService();
   final TextEditingController _fromController = TextEditingController();
@@ -60,6 +78,18 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
   int _quoteSeq = 0;
   bool _counterBusy = false;
   bool _nudgeBusy = false;
+  bool _retrying = false;
+
+  /// Measured height of the bottom sheet, used to keep the route and the
+  /// Google logo clear of it instead of guessing a fraction of the screen.
+  final GlobalKey _sheetKey = GlobalKey();
+  double _sheetHeight = 0;
+
+  /// Screen positions of the pickup / drop-off name cards, recomputed as the
+  /// camera moves. Null while off-screen or before the map reports them.
+  Offset? _fromLabelAt;
+  Offset? _toLabelAt;
+  bool _labelLookupInFlight = false;
 
   /// Suggested fare the user chose to keep ignoring ("Keep Y").
   String? _dismissedNudgeFare;
@@ -76,6 +106,15 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
       );
     } else {
       _resolveCurrentLocation();
+    }
+    if (widget.initialTo != null) {
+      _to = widget.initialTo;
+      _toController.text = widget.initialTo!.name;
+    }
+    final resumed = widget.initialRequest;
+    if (resumed != null) {
+      _request = resumed;
+      if (resumed.isSearching) _startPolling();
     }
   }
 
@@ -426,15 +465,55 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
     setState(() => _request = null);
   }
 
+  /// "Try again" on the no-driver sheet: server clones the finished request
+  /// and we jump straight back into searching, skipping the input form.
+  Future<void> _retry() async {
+    final current = _request;
+    if (current == null || _retrying) return;
+    setState(() => _retrying = true);
+    try {
+      final next = await _service.retryRequest(current.id);
+      if (!mounted) return;
+      setState(() => _request = next);
+      _startPolling();
+    } on InstantRetryFareChangedException catch (e) {
+      if (!mounted) return;
+      // The fare has to be re-confirmed, so drop back to the form with the
+      // new bounds rather than silently re-pricing the ride.
+      setState(() {
+        _request = null;
+        if (e.quote != null) {
+          _quote = e.quote;
+          _fare = e.quote!.recommendedFare;
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.instantRetryFareChanged)),
+      );
+    } catch (e) {
+      // Keep the failure sheet and its trip details on screen.
+      if (mounted) ErrorSurface.showFailure(context, ApiClient.mapError(e));
+    } finally {
+      if (mounted) setState(() => _retrying = false);
+    }
+  }
+
   // ── Build ─────────────────────────────────────────────────────────────────────
+
+  /// True once the search has ended without a match — the state the
+  /// no-driver sheet, endpoint labels and safety badge belong to.
+  bool get _showingNoDriverFound => _request?.isNoDriverFound ?? false;
 
   @override
   Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measureSheet());
+
     return Scaffold(
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           Positioned.fill(child: _buildMap()),
+          if (_showingNoDriverFound) ..._buildEndpointLabels(context),
           _buildTopBar(context),
           Align(
             alignment: Alignment.bottomCenter,
@@ -442,9 +521,12 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
-              child: _request == null
-                  ? _buildFormSheet(context)
-                  : _buildStatusSheet(context),
+              child: KeyedSubtree(
+                key: _sheetKey,
+                child: _request == null
+                    ? _buildFormSheet(context)
+                    : _buildStatusSheet(context),
+              ),
             ),
           ),
         ],
@@ -452,7 +534,25 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
     );
   }
 
+  /// Keep [_sheetHeight] in sync with what the sheet actually laid out to, so
+  /// the map padding follows a taller failure sheet or a scaled-up font.
+  void _measureSheet() {
+    final box = _sheetKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize || !mounted) return;
+    final height = box.size.height;
+    if ((height - _sheetHeight).abs() < 1) return;
+    setState(() => _sheetHeight = height);
+    _updateEndpointLabels();
+  }
+
   Widget _buildMap() {
+    // Leave room so the bottom sheet doesn't cover the Google logo / markers.
+    // Falls back to a fraction of the screen for the first frame, before the
+    // sheet has been measured.
+    final bottomPadding = _sheetHeight > 0
+        ? _sheetHeight
+        : MediaQuery.of(context).size.height * 0.42;
+
     return GoogleMap(
       onMapCreated: _onMapCreated,
       initialCameraPosition: CameraPosition(target: _mapCenter, zoom: 14),
@@ -463,22 +563,153 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
       zoomControlsEnabled: false,
       compassEnabled: false,
       mapToolbarEnabled: false,
-      // Leave room so the bottom sheet doesn't cover the Google logo / markers.
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).size.height * 0.42,
-      ),
+      padding: EdgeInsets.only(bottom: bottomPadding),
+      onCameraMove: (_) => _updateEndpointLabels(),
+      onCameraIdle: _updateEndpointLabels,
       onTap: (_) => FocusScope.of(context).unfocus(),
     );
   }
 
+  /// Ask the map where the endpoints currently sit on screen. Anything outside
+  /// the part of the map not covered by the sheet is dropped, so a label never
+  /// floats over the sheet or off the viewport.
+  Future<void> _updateEndpointLabels() async {
+    // onCameraMove fires every frame of a pan; one in-flight lookup at a time
+    // keeps the platform-channel traffic bounded.
+    if (_labelLookupInFlight) return;
+    final controller = _mapController;
+    if (controller == null || !_showingNoDriverFound) {
+      if (_fromLabelAt != null || _toLabelAt != null) {
+        setState(() {
+          _fromLabelAt = null;
+          _toLabelAt = null;
+        });
+      }
+      return;
+    }
+
+    final ratio = MediaQuery.of(context).devicePixelRatio;
+    final size = MediaQuery.of(context).size;
+    final topLimit = MediaQuery.of(context).padding.top + 62;
+    final bottomLimit = size.height - _sheetHeight - 12;
+
+    Future<Offset?> at(LocationModel? point) async {
+      if (point == null) return null;
+      final screen = await controller.getScreenCoordinate(
+        LatLng(point.latitude, point.longitude),
+      );
+      final offset = Offset(screen.x / ratio, screen.y / ratio);
+      final visible = offset.dy >= topLimit &&
+          offset.dy <= bottomLimit &&
+          offset.dx >= 0 &&
+          offset.dx <= size.width;
+      return visible ? offset : null;
+    }
+
+    _labelLookupInFlight = true;
+    Offset? from;
+    Offset? to;
+    try {
+      from = await at(_from);
+      to = await at(_to);
+    } finally {
+      _labelLookupInFlight = false;
+    }
+    if (!mounted || from == _fromLabelAt && to == _toLabelAt) return;
+    setState(() {
+      _fromLabelAt = from;
+      _toLabelAt = to;
+    });
+  }
+
+  List<Widget> _buildEndpointLabels(BuildContext context) {
+    Widget? label(Offset? at, String? name, String caption, Color dot) {
+      if (at == null || name == null || name.isEmpty) return null;
+      return Positioned(
+        // Sit just above the marker pin and roughly centred on it.
+        left: at.dx - 95,
+        top: at.dy - 62,
+        width: 190,
+        child: Align(
+          child: RouteEndpointLabel(
+            name: name,
+            caption: caption,
+            dotColor: dot,
+          ),
+        ),
+      );
+    }
+
+    return [
+      label(
+        _fromLabelAt,
+        _from?.name,
+        context.l10n.instantPickupPoint,
+        AppColors.success,
+      ),
+      label(
+        _toLabelAt,
+        _to?.name,
+        context.l10n.instantDropoffPoint,
+        AppColors.error,
+      ),
+    ].whereType<Widget>().toList();
+  }
+
   Widget _buildTopBar(BuildContext context) {
-    return PositionedDirectional(
-      top: MediaQuery.of(context).padding.top + 8,
-      start: 12,
-      child: _circleButton(
-        context,
-        icon: Icons.arrow_back,
-        onTap: () => Navigator.of(context).maybePop(),
+    final top = MediaQuery.of(context).padding.top + 8;
+    return Stack(
+      children: [
+        PositionedDirectional(
+          top: top,
+          start: 12,
+          child: _circleButton(
+            context,
+            icon: Icons.arrow_back,
+            onTap: () => Navigator.of(context).maybePop(),
+          ),
+        ),
+        if (_showingNoDriverFound)
+          PositionedDirectional(
+            top: top,
+            end: 12,
+            child: _safetyBadge(context),
+          ),
+      ],
+    );
+  }
+
+  /// Reassurance chip, deliberately not a button — there is no safety screen
+  /// behind it, and support has its own link in the sheet.
+  Widget _safetyBadge(BuildContext context) {
+    return Material(
+      color: T.surface(context),
+      elevation: 4,
+      shadowColor: T.shadow(context).withValues(alpha: 0.3),
+      borderRadius: BorderRadius.circular(23),
+      child: Container(
+        height: 46,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        alignment: Alignment.center,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.shield_outlined,
+              size: 18,
+              color: T.primary(context),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              context.l10n.instantRideSafety,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: T.onSurface(context),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -511,11 +742,11 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
       width: double.infinity,
       decoration: BoxDecoration(
         color: T.surface(context),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         boxShadow: [
           BoxShadow(
             color: T.shadow(context).withValues(alpha: 0.15),
-            blurRadius: 16,
+            blurRadius: 20,
             offset: const Offset(0, -4),
           ),
         ],
@@ -526,12 +757,12 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
 
   Widget _grabHandle() {
     return Container(
-      width: 44,
-      height: 5,
-      margin: const EdgeInsets.only(top: 10, bottom: 8),
+      width: 40,
+      height: 4,
+      margin: const EdgeInsets.only(top: 10, bottom: 10),
       decoration: BoxDecoration(
-        color: T.outline(context),
-        borderRadius: BorderRadius.circular(3),
+        color: T.outlineVariant(context),
+        borderRadius: BorderRadius.circular(2),
       ),
     );
   }
@@ -853,16 +1084,22 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
           },
         );
       }
+    } else if (request.isNoDriverFound) {
+      content = NoDriverFoundSheet(
+        retrying: _retrying,
+        onRetry: _retry,
+        // The request is already terminal, so this just leaves the flow.
+        onClose: () => Navigator.of(context).maybePop(),
+        onSupport: () =>
+            Navigator.of(context).pushNamed(RouteNames.support),
+      );
     } else if (request.isFailed) {
-      final isCancelled = request.status == 'cancelled';
       content = _statusView(
         context,
-        icon: isCancelled ? Icons.cancel : Icons.search_off,
+        icon: Icons.cancel,
         color: AppColors.error,
-        title: isCancelled
-            ? context.l10n.instantRequestCancelled
-            : context.l10n.instantNoDrivers,
-        subtitle: isCancelled ? '' : context.l10n.instantNoDriversSubtitle,
+        title: context.l10n.instantRequestCancelled,
+        subtitle: '',
         primaryLabel: context.l10n.instantTryAgain,
         onPrimary: _reset,
       );
@@ -870,14 +1107,21 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
       content = _buildSearchingView(context, request);
     }
 
+    // Cap the sheet so a long failure state still leaves the route visible,
+    // and let it scroll on short screens or at large text scales.
+    final maxHeight = MediaQuery.of(context).size.height * 0.72;
+
     return _sheetContainer(
       child: SafeArea(
         top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [_grabHandle(), content],
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [_grabHandle(), content],
+            ),
           ),
         ),
       ),

@@ -6,13 +6,20 @@
  * trip is marked in-progress.  It fires after the no-show grace window
  * (default 30 min; overridable via NO_SHOW_GRACE_OVERRIDE_SECONDS for testing).
  *
- * For each confirmed booking on the trip that has NOT been marked as present
- * (passengerPresenceConfirmedAt is null), the processor:
- *  1. Marks every BookingSeat in that booking as absent (markedAbsentAt)
- *  2. Sets booking.driverMarkedAbsentAt
+ * For each confirmed booking on the trip whose passenger never self-declared,
+ * the processor records a SOFT flag (`autoFlaggedAbsentAt`) on each seat.
+ *
+ * IMPORTANT — this flag is advisory only and NEVER affects billing.
+ * Presence billing is default-billable: a seat is exempted from the driver's
+ * fee only when the DRIVER explicitly marks it absent. If this processor wrote
+ * the billing field instead, any driver whose passengers simply never opened
+ * the app would get a free trip — so it deliberately does not touch
+ * `markedAbsentAt`, `billableOverride`, or `driverMarkedAbsentAt`.
  *
  * Passengers are NEVER auto-charged. Fines are applied manually by admin
  * after investigation via POST /admin/fines.
+ *
+ * D1 / 012-passenger-presence-confirmation.
  */
 import { Processor, Process, OnQueueFailed } from '@nestjs/bull';
 import type { Job } from 'bull';
@@ -46,26 +53,29 @@ export class NoShowDetectorProcessor {
       relations: ['seats'],
     });
 
-    let noShowCount = 0;
+    let flaggedCount = 0;
     for (const booking of bookings) {
       if (booking.passengerPresenceConfirmedAt) continue;
 
       const now = new Date();
-      booking.driverMarkedAbsentAt = now;
-      await this.bookingRepo.save(booking);
-
       const seats = booking.seats ?? [];
       for (const seat of seats) {
-        seat.markedAbsentAt = now;
+        // Only the passenger's silence is recorded. The driver may still mark
+        // this seat present or absent, and until they mark it absent it stays
+        // billable.
+        if (seat.presenceConfirmedAt || seat.markedAbsentAt) continue;
+        seat.autoFlaggedAbsentAt = now;
         await this.seatRepo.save(seat);
       }
 
-      noShowCount++;
-      this.logger.log(`Booking ${booking.id} marked as no-show`);
+      flaggedCount++;
+      this.logger.log(
+        `Booking ${booking.id} flagged: passenger never declared presence (advisory only, still billable)`,
+      );
     }
 
     this.logger.log(
-      `No-show detection complete for trip ${tripId}: ${noShowCount} no-show(s) recorded`,
+      `No-show detection complete for trip ${tripId}: ${flaggedCount} booking(s) soft-flagged`,
     );
   }
 

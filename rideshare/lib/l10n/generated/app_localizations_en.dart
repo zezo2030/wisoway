@@ -3928,11 +3928,37 @@ class AppLocalizationsEn extends AppLocalizations {
   String get instantRequestCancelled => 'Request cancelled';
 
   @override
-  String get instantNoDrivers => 'No driver available';
+  String get instantNoDrivers => 'We couldn\'t find a driver right now';
 
   @override
   String get instantNoDriversSubtitle =>
-      'We couldn\'t find a nearby driver right now. Please try again.';
+      'All nearby drivers may be busy, or none may be close to you.';
+
+  @override
+  String get instantNoDriversTip =>
+      'Tip: Try again in a few minutes; a nearby driver may become available.';
+
+  @override
+  String get instantNoDriversIllustrationLabel => 'No driver found';
+
+  @override
+  String get instantNeedHelp => 'Need help?';
+
+  @override
+  String get instantContactSupport => 'Contact support';
+
+  @override
+  String get instantRideSafety => 'Ride safety';
+
+  @override
+  String get instantPickupPoint => 'Pickup point';
+
+  @override
+  String get instantDropoffPoint => 'Drop-off point';
+
+  @override
+  String get instantRetryFareChanged =>
+      'The fare range changed. Review the fare before trying again.';
 
   @override
   String get instantTryAgain => 'Try again';

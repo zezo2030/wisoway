@@ -18,6 +18,7 @@ import {
   InstantRequestStatus,
   InstantRideOfferEntity,
   InstantRideRequestEntity,
+  InstantTerminalReason,
   TripEntity,
   TripStatus,
   TripType,
@@ -303,7 +304,11 @@ export class InstantRidesService {
 
     await this.requestRepo.update(
       { id: request.id },
-      { status: InstantRequestStatus.CANCELLED },
+      {
+        status: InstantRequestStatus.CANCELLED,
+        terminalReason: InstantTerminalReason.PASSENGER_CANCELLED,
+        endedAt: new Date(),
+      },
     );
     await this.removeJob(
       this.requestExpiryQueue,
@@ -315,6 +320,194 @@ export class InstantRidesService {
     );
 
     return this.getRequest(request.id, passengerId);
+  }
+
+  /**
+   * Start a fresh search from an exhausted request, keeping the same route,
+   * seats and agreed-on fare. Idempotent: a double-tap returns the attempt the
+   * first tap created instead of piling up requests.
+   */
+  async retryRequest(requestId: string, passengerId: string) {
+    const original = await this.requestRepo.findOne({
+      where: { id: requestId },
+    });
+    if (!original) {
+      throw new NotFoundException('الطلب غير موجود.');
+    }
+    if (original.passengerId !== passengerId) {
+      throw new ForbiddenException('غير مصرح.');
+    }
+    this.assertRetryable(original.status);
+
+    const existing = await this.requestRepo.findOne({
+      where: { retryOfRequestId: requestId },
+    });
+    if (existing) {
+      return this.toRequestView(existing);
+    }
+
+    const [fromLng, fromLat] = original.fromPoint.coordinates;
+    const [toLng, toLat] = original.toPoint.coordinates;
+    const quote = await this.computeQuote(
+      { latitude: fromLat, longitude: fromLng },
+      { latitude: toLat, longitude: toLng },
+    );
+
+    // Never re-price silently: if the passenger's fare no longer fits the
+    // recomputed bounds, they have to confirm the new one.
+    const previousFare = Number(
+      original.passengerFare ?? original.fareEstimate ?? 0,
+    );
+    if (previousFare < quote.minFare || previousFare > quote.maxFare) {
+      this.logger.log(
+        `instant_retry_rejected ${JSON.stringify({
+          code: 'INSTANT_RETRY_FARE_RECONFIRMATION_REQUIRED',
+        })}`,
+      );
+      throw new ConflictException({
+        statusCode: 409,
+        code: 'INSTANT_RETRY_FARE_RECONFIRMATION_REQUIRED',
+        message: 'تغيّر نطاق السعر؛ راجع السعر ثم أعد الطلب.',
+        quote: {
+          recommendedFare: quote.recommendedFare.toFixed(2),
+          minFare: quote.minFare.toFixed(2),
+          maxFare: quote.maxFare.toFixed(2),
+          currency: quote.currency,
+          distanceKm: Math.round(quote.distanceKm * 10) / 10,
+          durationMinutes: Math.round(quote.durationMin),
+        },
+      });
+    }
+
+    const now = new Date();
+    let created: InstantRideRequestEntity | null = null;
+    let reused: InstantRideRequestEntity | null = null;
+
+    await this.requestRepo.manager.transaction(async (m) => {
+      // Serialize concurrent retries of the same request on the old row.
+      const locked = await m.findOne(InstantRideRequestEntity, {
+        where: { id: requestId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!locked) {
+        throw new NotFoundException('الطلب غير موجود.');
+      }
+      this.assertRetryable(locked.status);
+
+      const child = await m.findOne(InstantRideRequestEntity, {
+        where: { retryOfRequestId: requestId },
+      });
+      if (child) {
+        reused = child;
+        return;
+      }
+
+      const active = await m.findOne(InstantRideRequestEntity, {
+        where: {
+          passengerId,
+          status: In([
+            InstantRequestStatus.SEARCHING,
+            InstantRequestStatus.OFFERED,
+            InstantRequestStatus.ACCEPTED,
+          ]),
+        },
+      });
+      if (active) {
+        this.logger.log(
+          `instant_retry_rejected ${JSON.stringify({
+            code: 'INSTANT_ACTIVE_REQUEST_EXISTS',
+          })}`,
+        );
+        throw new ConflictException({
+          statusCode: 409,
+          code: 'INSTANT_ACTIVE_REQUEST_EXISTS',
+          message: 'لديك طلب رحلة نشط بالفعل.',
+        });
+      }
+
+      created = await m.save(
+        m.create(InstantRideRequestEntity, {
+          passengerId,
+          retryOfRequestId: original.id,
+          fromName: original.fromName,
+          fromAddress: original.fromAddress,
+          fromPoint: original.fromPoint,
+          toName: original.toName,
+          toAddress: original.toAddress,
+          toPoint: original.toPoint,
+          seatCount: original.seatCount,
+          status: InstantRequestStatus.SEARCHING,
+          fareEstimate: previousFare.toFixed(2),
+          recommendedFare: quote.recommendedFare.toFixed(2),
+          passengerFare: previousFare.toFixed(2),
+          currency: quote.currency,
+          radiusKm: INITIAL_RADIUS_KM,
+          expiresAt: new Date(now.getTime() + REQUEST_TTL_SECONDS * 1000),
+        }),
+      );
+    });
+
+    if (reused) {
+      return this.toRequestView(reused);
+    }
+    const request = created as InstantRideRequestEntity | null;
+    if (!request) {
+      throw new ConflictException({
+        statusCode: 409,
+        code: 'INSTANT_REQUEST_NOT_RETRYABLE',
+        message: 'تعذّر إعادة المحاولة، حدّث الحالة وحاول مجدداً.',
+      });
+    }
+
+    this.logger.log(
+      `instant_retry_created ${JSON.stringify({
+        oldRequestId: original.id,
+        newRequestId: request.id,
+        passengerId,
+      })}`,
+    );
+
+    await this.requestExpiryQueue
+      .add(
+        EXPIRE_REQUEST_JOB,
+        { requestId: request.id },
+        {
+          delay: REQUEST_TTL_SECONDS * 1000,
+          jobId: requestExpiryJobId(request.id),
+          removeOnComplete: true,
+          removeOnFail: true,
+        },
+      )
+      .catch((err: Error) =>
+        this.logger.warn(`Failed to enqueue request expiry: ${err.message}`),
+      );
+
+    void this.dispatchService
+      .dispatchNext(request.id)
+      .catch((err: Error) =>
+        this.logger.warn(`dispatchNext after retry failed: ${err.message}`),
+      );
+
+    return this.toRequestView(request);
+  }
+
+  /** Only an exhausted search can be retried — not a live or cancelled one. */
+  private assertRetryable(status: InstantRequestStatus) {
+    if (
+      status !== InstantRequestStatus.EXPIRED &&
+      status !== InstantRequestStatus.NO_DRIVERS
+    ) {
+      this.logger.log(
+        `instant_retry_rejected ${JSON.stringify({
+          code: 'INSTANT_REQUEST_NOT_RETRYABLE',
+        })}`,
+      );
+      throw new ConflictException({
+        statusCode: 409,
+        code: 'INSTANT_REQUEST_NOT_RETRYABLE',
+        message: 'لا يمكن إعادة المحاولة لهذا الطلب.',
+      });
+    }
   }
 
   // ── Driver ───────────────────────────────────────────────────────────────
@@ -823,6 +1016,10 @@ export class InstantRidesService {
     return {
       id: request.id,
       status: request.status,
+      terminalReason: request.terminalReason ?? null,
+      canRetry: this.canRetry(request.status),
+      retryOfRequestId: request.retryOfRequestId ?? null,
+      endedAt: request.endedAt ?? null,
       from: { name: request.fromName, address: request.fromAddress },
       to: { name: request.toName, address: request.toAddress },
       seatCount: request.seatCount,
@@ -838,6 +1035,14 @@ export class InstantRidesService {
       nudge: this.getNudge(request),
       match: await this.getMatchView(request),
     };
+  }
+
+  /** A search that ended without a match can be started again as-is. */
+  private canRetry(status: InstantRequestStatus) {
+    return (
+      status === InstantRequestStatus.EXPIRED ||
+      status === InstantRequestStatus.NO_DRIVERS
+    );
   }
 
   /**

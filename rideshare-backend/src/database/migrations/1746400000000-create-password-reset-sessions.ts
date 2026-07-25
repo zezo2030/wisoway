@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreatePasswordResetSessions1746400000000
-  implements MigrationInterface
-{
+export class CreatePasswordResetSessions1746400000000 implements MigrationInterface {
   name = 'CreatePasswordResetSessions1746400000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -36,8 +34,6 @@ export class CreatePasswordResetSessions1746400000000
       `DROP INDEX IF EXISTS "idx_password_reset_expires"`,
     );
     await queryRunner.query(`DROP INDEX IF EXISTS "idx_password_reset_phone"`);
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS "password_reset_sessions"`,
-    );
+    await queryRunner.query(`DROP TABLE IF EXISTS "password_reset_sessions"`);
   }
 }

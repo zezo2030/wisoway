@@ -50,7 +50,11 @@ export class UploadUrlInterceptor implements NestInterceptor {
     return host ? `${proto}://${host}` : '';
   }
 
-  private rewrite(value: unknown, base: string, seen: WeakSet<object>): unknown {
+  private rewrite(
+    value: unknown,
+    base: string,
+    seen: WeakSet<object>,
+  ): unknown {
     if (!base) {
       return value;
     }

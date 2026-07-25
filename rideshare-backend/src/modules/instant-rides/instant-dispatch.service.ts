@@ -9,6 +9,7 @@ import {
   InstantRequestStatus,
   InstantRideOfferEntity,
   InstantRideRequestEntity,
+  InstantTerminalReason,
 } from '../../database/entities';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
@@ -62,7 +63,7 @@ export class InstantDispatchService {
       return;
     }
     if (request.expiresAt.getTime() <= Date.now()) {
-      await this.finalizeNoDrivers(request.id);
+      await this.finalizeSearch(request.id);
       return;
     }
 
@@ -243,8 +244,17 @@ export class InstantDispatchService {
       );
   }
 
-  /** No driver could be matched — finalize and notify the passenger. */
-  async finalizeNoDrivers(requestId: string): Promise<void> {
+  /**
+   * The one place a search ends without a match: claims the request, records
+   * why and when it ended, and tells the passenger. Returns whether this call
+   * is the one that finalized it (safe to call from concurrent paths).
+   */
+  async finalizeSearch(
+    requestId: string,
+    forcedReason?: InstantTerminalReason,
+  ): Promise<boolean> {
+    const reason =
+      forcedReason ?? (await this.resolveTerminalReason(requestId));
     const result = await this.requestRepo.update(
       {
         id: requestId,
@@ -253,21 +263,65 @@ export class InstantDispatchService {
           InstantRequestStatus.OFFERED,
         ]),
       },
-      { status: InstantRequestStatus.NO_DRIVERS },
+      {
+        status: InstantRequestStatus.EXPIRED,
+        terminalReason: reason,
+        endedAt: new Date(),
+      },
     );
-    if (!result.affected) return;
+    if (!result.affected) return false;
 
     const request = await this.requestRepo.findOne({
       where: { id: requestId },
     });
-    if (!request) return;
+    if (!request) return false;
+
+    const offerCount = await this.offerRepo.count({ where: { requestId } });
+    // Structured, PII-free: no coordinates or addresses.
+    this.logger.log(
+      `instant_search_ended ${JSON.stringify({
+        requestId,
+        passengerId: request.passengerId,
+        terminalReason: reason,
+        offerCount,
+      })}`,
+    );
+
+    const timedOut = reason === InstantTerminalReason.TTL_EXPIRED;
     await this.notifications
       .sendPush(request.passengerId, {
-        title: 'لا يوجد سائق متاح',
-        body: 'لم نتمكن من إيجاد سائق قريب الآن. يمكنك المحاولة مرة أخرى.',
+        title: timedOut ? 'انتهت مهلة الطلب' : 'لا يوجد سائق متاح',
+        body: timedOut
+          ? 'لم نعثر على سائق متاح. يمكنك المحاولة مرة أخرى.'
+          : 'لم نتمكن من إيجاد سائق قريب الآن. يمكنك المحاولة مرة أخرى.',
         type: 'instant_no_drivers',
-        data: { requestId },
+        data: { requestId, terminalReason: reason },
       })
       .catch(() => undefined);
+
+    return true;
+  }
+
+  /**
+   * No offer at all → nobody qualified; an offer still outstanding when the
+   * window closed → the clock ran out; otherwise every driver said no.
+   */
+  private async resolveTerminalReason(
+    requestId: string,
+  ): Promise<InstantTerminalReason> {
+    const offers = await this.offerRepo.find({
+      where: { requestId },
+      select: ['status'],
+    });
+    if (offers.length === 0) {
+      return InstantTerminalReason.NO_ELIGIBLE_DRIVERS;
+    }
+    const outstanding: string[] = [
+      InstantOfferStatus.OFFERED,
+      InstantOfferStatus.COUNTERED,
+    ];
+    return offers.some((o) => outstanding.includes(o.status))
+      ? InstantTerminalReason.TTL_EXPIRED
+      : InstantTerminalReason.ALL_DECLINED;
   }
 }

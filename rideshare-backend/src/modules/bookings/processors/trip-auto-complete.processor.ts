@@ -15,6 +15,7 @@ import {
   BookingStatus,
 } from '../../../database/entities/booking.entity';
 import { NotificationsService } from '../../notifications/notifications.service';
+import { PresenceService } from '../../trip-time/presence.service';
 
 @Processor('trip-auto-complete')
 export class TripAutoCompleteProcessor {
@@ -25,6 +26,7 @@ export class TripAutoCompleteProcessor {
     @InjectRepository(BookingEntity)
     private bookingRepo: Repository<BookingEntity>,
     private notificationsService: NotificationsService,
+    private presenceService: PresenceService,
   ) {}
 
   @Process('enforce')
@@ -48,6 +50,20 @@ export class TripAutoCompleteProcessor {
     for (const booking of activeBookings) {
       booking.status = BookingStatus.COMPLETED;
       await this.bookingRepo.save(booking);
+    }
+
+    // The driver never pressed "Arrived", so completeTrip() never ran and the
+    // wallet hold would otherwise stay reserved forever. Settle it here on the
+    // roster as it stands — seats the driver never marked absent stay billable.
+    try {
+      const settlement = await this.presenceService.settleTripPresence(tripId);
+      this.logger.log(
+        `trip-auto-complete: trip ${tripId} settled ${settlement.billableSeats}/${settlement.bookedSeats} seats, captured ${settlement.captured} ${settlement.currency}`,
+      );
+    } catch (err) {
+      this.logger.error(
+        `trip-auto-complete: settlement failed for trip ${tripId}: ${(err as Error).message}`,
+      );
     }
 
     this.logger.log(

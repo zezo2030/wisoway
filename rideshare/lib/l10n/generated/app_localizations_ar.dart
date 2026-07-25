@@ -3878,14 +3878,40 @@ class AppLocalizationsAr extends AppLocalizations {
   String get instantRequestCancelled => 'أُلغي الطلب';
 
   @override
-  String get instantNoDrivers => 'لا يوجد سائق متاح';
+  String get instantNoDrivers => 'لم نتمكن من العثور على سائق حاليًا';
 
   @override
   String get instantNoDriversSubtitle =>
-      'لم نتمكن من إيجاد سائق قريب الآن. يمكنك المحاولة مرة أخرى.';
+      'قد يكون جميع السائقين مشغولين أو لا يوجد سائق قريب منك.';
 
   @override
-  String get instantTryAgain => 'حاول مرة أخرى';
+  String get instantNoDriversTip =>
+      'نصيحة: أعد المحاولة بعد بضع دقائق؛ قد يتوفر سائق قريب منك.';
+
+  @override
+  String get instantNoDriversIllustrationLabel => 'لم يتم العثور على سائق';
+
+  @override
+  String get instantNeedHelp => 'تحتاج مساعدة؟';
+
+  @override
+  String get instantContactSupport => 'تواصل مع الدعم';
+
+  @override
+  String get instantRideSafety => 'أمان الرحلة';
+
+  @override
+  String get instantPickupPoint => 'نقطة الانطلاق';
+
+  @override
+  String get instantDropoffPoint => 'نقطة الوصول';
+
+  @override
+  String get instantRetryFareChanged =>
+      'تغيّر نطاق السعر؛ راجع السعر ثم أعد الطلب.';
+
+  @override
+  String get instantTryAgain => 'إعادة المحاولة';
 
   @override
   String get instantSearching => 'نبحث عن أقرب سائق...';

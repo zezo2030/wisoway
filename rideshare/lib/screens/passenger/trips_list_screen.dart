@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import '../../providers/auth_provider.dart';
 import '../../models/trip_model.dart';
 import '../../models/location_model.dart';
@@ -229,203 +231,277 @@ class _TripsListScreenState extends State<TripsListScreen> {
     }
 
     return Scaffold(
+      backgroundColor: T.background(context),
       appBar: AppBar(
         title: Text(context.l10n.availableTripsTitle),
         actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: NotificationIconButton(
-              backgroundColor: AppColors.transparent,
-              iconColor: T.onSurface(context),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.location_on),
-            onPressed: _changeLocation,
-            tooltip: context.l10n.changeLocation,
+          NotificationIconButton(
+            backgroundColor: AppColors.transparent,
+            iconColor: T.onSurface(context),
           ),
           Stack(
             alignment: Alignment.topRight,
             children: [
               IconButton(
-                icon: const Icon(Icons.tune),
+                icon: const Icon(IconsaxPlusLinear.filter),
                 onPressed: _showFilterSheet,
                 tooltip: context.l10n.filterAndSort,
               ),
               if (_hasActiveFilters)
                 Positioned(
-                  top: 8,
-                  right: 8,
+                  top: 10,
+                  right: 10,
                   child: Container(
                     width: 8,
                     height: 8,
                     decoration: BoxDecoration(
                       color: T.primary(context),
                       shape: BoxShape.circle,
+                      border: Border.all(color: T.surface(context), width: 1.5),
                     ),
                   ),
                 ),
             ],
           ),
+          const SizedBox(width: 4),
         ],
       ),
-      body: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: T.surfaceVariant(context),
-            child: Row(
-              children: [
-                Icon(Icons.location_on, color: T.primary(context)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        context.l10n.currentLocationLabel,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: T.onSurfaceVariant(context),
-                        ),
-                      ),
-                      Text(
-                        _userLocation?.name ?? context.l10n.detectingLocation,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: T.onSurface(context),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (_isLoadingLocation)
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _FilterChip(
-                  label: context.l10n.nearbyTrips,
-                  isSelected: _filterType == 'nearby',
-                  onTap: () {
-                    setState(() => _filterType = 'nearby');
-                    _reloadTrips();
-                  },
-                ),
-                const SizedBox(width: 8),
-                _FilterChip(
-                  label: context.l10n.preferredTrips,
-                  isSelected: _filterType == 'preferred',
-                  onTap: () {
-                    setState(() => _filterType = 'preferred');
-                    _reloadTrips();
-                  },
-                ),
-                const SizedBox(width: 8),
-                _FilterChip(
-                  label: context.l10n.allTrips,
-                  isSelected: _filterType == 'all',
-                  onTap: () {
-                    setState(() => _filterType = 'all');
-                    _reloadTrips();
-                  },
-                ),
-              ],
-            ),
-          ),
-          if (_hasActiveFilters)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              color: T.primaryContainer(context).withValues(alpha: 0.3),
-              child: Row(
+      body: RefreshIndicator(
+        onRefresh: _handleRefresh,
+        color: T.primary(context),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: Column(
                 children: [
-                  Icon(Icons.filter_list, size: 14, color: T.primary(context)),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      _activeFiltersText(context),
-                      style: TextStyle(fontSize: 12, color: T.primary(context)),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                  Material(
+                    color: T.surface(context),
+                    child: InkWell(
+                      onTap: _changeLocation,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: T.primaryContainer(context),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                IconsaxPlusBold.gps,
+                                size: 18,
+                                color: T.primary(context),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    context.l10n.currentLocationLabel,
+                                    style: GoogleFonts.tajawal(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: T.onSurfaceVariant(context),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _userLocation?.name ??
+                                        context.l10n.detectingLocation,
+                                    style: GoogleFonts.tajawal(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: T.onSurface(context),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            if (_isLoadingLocation)
+                              SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: T.primary(context),
+                                ),
+                              )
+                            else
+                              Icon(
+                                Directionality.of(context) ==
+                                        TextDirection.rtl
+                                    ? IconsaxPlusLinear.arrow_left_2
+                                    : IconsaxPlusLinear.arrow_right_2,
+                                size: 18,
+                                color: T.outlineVariant(context),
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _fromFilter = null;
-                        _toFilter = null;
-                        _cityFilter = '';
-                        _selectedDate = null;
-                        _sortBy = 'nearest';
-                      });
-                      _reloadTrips();
-                    },
-                    child: Icon(
-                      Icons.close,
-                      size: 16,
-                      color: T.primary(context),
+                  const Divider(height: 1),
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                    child: _SegmentedFilter(
+                      value: _filterType,
+                      segments: [
+                        _SegmentOption(
+                          'nearby',
+                          context.l10n.nearbyTrips,
+                          IconsaxPlusBold.routing,
+                        ),
+                        _SegmentOption(
+                          'preferred',
+                          context.l10n.preferredTrips,
+                          IconsaxPlusBold.heart,
+                        ),
+                        _SegmentOption(
+                          'all',
+                          context.l10n.allTrips,
+                          IconsaxPlusBold.category,
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setState(() => _filterType = value);
+                        _reloadTrips();
+                      },
                     ),
                   ),
+                  if (_hasActiveFilters)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
+                      color: T.primaryContainer(
+                        context,
+                      ).withValues(alpha: 0.3),
+                      child: Row(
+                        children: [
+                          Icon(
+                            IconsaxPlusBold.filter_search,
+                            size: 14,
+                            color: T.primary(context),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              _activeFiltersText(context),
+                              style: GoogleFonts.tajawal(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: T.primary(context),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _fromFilter = null;
+                                _toFilter = null;
+                                _cityFilter = '';
+                                _selectedDate = null;
+                                _sortBy = 'nearest';
+                              });
+                              _reloadTrips();
+                            },
+                            child: Icon(
+                              IconsaxPlusLinear.close_circle,
+                              size: 16,
+                              color: T.primary(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const Divider(height: 1),
                 ],
               ),
             ),
-          const Divider(height: 1),
-          Expanded(
-            child: FutureBuilder<List<TripModel>>(
+            FutureBuilder<List<TripModel>>(
               future: _tripsFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(child: CircularProgressIndicator()),
+                  );
                 }
 
                 if (snapshot.hasError) {
-                  return RefreshIndicator(
-                    onRefresh: _handleRefresh,
-                    color: T.primary(context),
-                    child: ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      children: [
-                        SizedBox(
-                          height: MediaQuery.of(context).size.height * 0.6,
-                          child: Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.error_outline,
-                                  size: 64,
-                                  color: T.error(context),
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  context.l10n.errorWithDetail(
-                                    '${snapshot.error}',
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                Semantics(
-                                  button: true,
-                                  label: context.l10n.tryAgain,
-                                  child: ElevatedButton(
-                                    onPressed: _reloadTrips,
-                                    child: Text(context.l10n.tryAgain),
-                                  ),
-                                ),
-                              ],
+                  return SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 96,
+                            height: 96,
+                            decoration: BoxDecoration(
+                              color: T.error(context).withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              IconsaxPlusBold.danger,
+                              size: 40,
+                              color: T.error(context),
                             ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 20),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 32,
+                            ),
+                            child: Text(
+                              context.l10n.errorWithDetail(
+                                '${snapshot.error}',
+                              ),
+                              style: GoogleFonts.tajawal(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: T.onSurfaceVariant(context),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Semantics(
+                            button: true,
+                            label: context.l10n.tryAgain,
+                            child: FilledButton.icon(
+                              onPressed: _reloadTrips,
+                              icon: const Icon(
+                                IconsaxPlusLinear.refresh,
+                                size: 18,
+                              ),
+                              label: Text(context.l10n.tryAgain),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: T.primary(context),
+                                foregroundColor: T.onPrimary(context),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 }
@@ -479,78 +555,98 @@ class _TripsListScreenState extends State<TripsListScreen> {
                       (_filterType == 'nearby' || _filterType == 'preferred') &&
                       _userLocation == null;
 
-                  return RefreshIndicator(
-                    onRefresh: _handleRefresh,
-                    color: T.primary(context),
-                    child: ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      children: [
-                        SizedBox(
-                          height: MediaQuery.of(context).size.height * 0.6,
-                          child: Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.directions_car_outlined,
-                                  size: 64,
-                                  color: T.outlineVariant(context),
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  locationRequired
-                                      ? context.l10n.enableLocationForTrips
-                                      : context.l10n.noTripsAvailable,
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    color: T.onSurfaceVariant(context),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  locationRequired
-                                      ? context.l10n.chooseLocationThenRetry
-                                      : context.l10n.tryChangingFilterOrLocation,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: T.outlineVariant(context),
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                Semantics(
-                                  button: true,
-                                  label: context.l10n.refreshTripsList,
-                                  child: ElevatedButton(
-                                    onPressed: _reloadTrips,
-                                    child: Text(context.l10n.refresh),
-                                  ),
-                                ),
-                              ],
+                  return SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 96,
+                            height: 96,
+                            decoration: BoxDecoration(
+                              color: T.primaryContainer(context),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              IconsaxPlusBold.routing_2,
+                              size: 40,
+                              color: T.primary(context),
                             ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 20),
+                          Text(
+                            locationRequired
+                                ? context.l10n.enableLocationForTrips
+                                : context.l10n.noTripsAvailable,
+                            style: GoogleFonts.tajawal(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: T.onSurface(context),
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 6),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 32,
+                            ),
+                            child: Text(
+                              locationRequired
+                                  ? context.l10n.chooseLocationThenRetry
+                                  : context.l10n.tryChangingFilterOrLocation,
+                              style: GoogleFonts.tajawal(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: T.onSurfaceVariant(context),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Semantics(
+                            button: true,
+                            label: context.l10n.refreshTripsList,
+                            child: FilledButton.icon(
+                              onPressed: _reloadTrips,
+                              icon: const Icon(
+                                IconsaxPlusLinear.refresh,
+                                size: 18,
+                              ),
+                              label: Text(context.l10n.refresh),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: T.primary(context),
+                                foregroundColor: T.onPrimary(context),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 }
 
-                return RefreshIndicator(
-                  onRefresh: _handleRefresh,
-                  color: T.primary(context),
-                  child: ListView.builder(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(16),
-                    itemCount: filteredTrips.length,
-                    itemBuilder: (context, index) {
-                      final trip = filteredTrips[index];
-                      return _TripCard(trip: trip);
-                    },
+                return SliverPadding(
+                  padding: const EdgeInsets.all(16),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) =>
+                          _TripCard(trip: filteredTrips[index]),
+                      childCount: filteredTrips.length,
+                    ),
                   ),
                 );
               },
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -891,25 +987,109 @@ class _FilterSheetState extends State<_FilterSheet> {
   }
 }
 
-class _FilterChip extends StatelessWidget {
+class _SegmentOption {
+  final String value;
   final String label;
+  final IconData icon;
+
+  const _SegmentOption(this.value, this.label, this.icon);
+}
+
+class _SegmentedFilter extends StatelessWidget {
+  final String value;
+  final List<_SegmentOption> segments;
+  final ValueChanged<String> onChanged;
+
+  const _SegmentedFilter({
+    required this.value,
+    required this.segments,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: T.surfaceVariant(context),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          for (final segment in segments)
+            Expanded(
+              child: _Segment(
+                label: segment.label,
+                icon: segment.icon,
+                isSelected: segment.value == value,
+                onTap: () => onChanged(segment.value),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Segment extends StatelessWidget {
+  final String label;
+  final IconData icon;
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _FilterChip({
+  const _Segment({
     required this.label,
+    required this.icon,
     required this.isSelected,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (_) => onTap(),
-      selectedColor: T.primaryContainer(context),
-      checkmarkColor: T.primary(context),
+    final color = isSelected ? T.primary(context) : T.onSurfaceVariant(context);
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(vertical: 9),
+        decoration: BoxDecoration(
+          color: T.surface(context).withValues(alpha: isSelected ? 1 : 0),
+          borderRadius: BorderRadius.circular(9),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: T.shadow(context).withValues(alpha: 0.12),
+                    blurRadius: 6,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 14, color: color),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  style: GoogleFonts.tajawal(
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -921,175 +1101,269 @@ class _TripCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('yyyy-MM-dd');
     final timeFormat = DateFormat('HH:mm');
+    final dateFormat = DateFormat(
+      'd MMM',
+      Localizations.localeOf(context).languageCode,
+    );
+    final distanceKm = trip.distanceKm;
+    final driverName = trip.driverName;
 
-    return Card(
-      color: AppColors.teal50,
-      elevation: 3,
+    return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.teal200, width: 1.4),
+      decoration: BoxDecoration(
+        color: T.surface(context),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Semantics(
-        button: true,
-        label: context.l10n.tripDetailsFromTo(trip.from.name, trip.to.name),
-        child: InkWell(
-          onTap: () {
-            Navigator.pushNamed(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Material(
+          color: AppColors.transparent,
+          child: InkWell(
+            onTap: () => Navigator.pushNamed(
               context,
               RouteNames.tripDetails,
               arguments: trip.id,
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+            ),
+            splashColor: T.primary(context).withValues(alpha: 0.08),
+            highlightColor: T.primary(context).withValues(alpha: 0.04),
+            child: Semantics(
+              button: true,
+              label: context.l10n.tripDetailsFromTo(
+                trip.from.name,
+                trip.to.name,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Eyebrow: distance-from-me pin (this screen's whole reason
+                  // for existing) or a plain date when distance isn't known.
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        if (distanceKm != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: T.primaryContainer(context),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  IconsaxPlusBold.location,
+                                  size: 13,
+                                  color: T.primary(context),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  context.l10n.distanceKm(
+                                    distanceKm.toStringAsFixed(1),
+                                  ),
+                                  style: GoogleFonts.tajawal(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: T.primary(context),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
                           Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                Icons.location_on,
-                                size: 16,
-                                color: AppColors.success,
+                                IconsaxPlusLinear.calendar,
+                                size: 13,
+                                color: T.onSurfaceVariant(context),
                               ),
                               const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  trip.from.name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                              Text(
+                                dateFormat.format(trip.departureTime),
+                                style: GoogleFonts.tajawal(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: T.onSurfaceVariant(context),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.location_city,
-                                size: 16,
-                                color: T.error(context),
-                              ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  trip.to.name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
                           ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: trip.hasAvailableSeats
-                            ? AppColors.success.withValues(alpha: 0.12)
-                            : T.error(context).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        '${trip.availableSeats}/${trip.totalSeats}',
-                        style: TextStyle(
-                          color: trip.hasAvailableSeats
-                              ? AppColors.successDark
-                              : AppColors.errorDark,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                          decoration: BoxDecoration(
+                            color: trip.hasAvailableSeats
+                                ? AppColors.success.withValues(alpha: 0.1)
+                                : T.error(context).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '${trip.availableSeats}/${trip.totalSeats}',
+                            style: GoogleFonts.tajawal(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: trip.hasAvailableSeats
+                                  ? AppColors.successDark
+                                  : AppColors.errorDark,
+                            ),
+                          ),
                         ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  // Route: vertical timeline (from -> to), the app's
+                  // established route motif.
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Column(
+                          children: [
+                            Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: T.primary(context),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            Container(
+                              width: 2,
+                              height: 28,
+                              color: T.primary(context).withValues(alpha: 0.25),
+                            ),
+                            Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: AppColors.success,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                trip.fromDisplayName,
+                                style: GoogleFonts.tajawal(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: T.onSurface(context),
+                                  height: 1.3,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 14),
+                              Text(
+                                trip.toDisplayName,
+                                style: GoogleFonts.tajawal(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: T.onSurface(context),
+                                  height: 1.3,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  // Footer: time, driver, price (price is the loudest figure).
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: T.surfaceVariant(context).withValues(alpha: 0.4),
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(20),
+                        bottomRight: Radius.circular(20),
                       ),
                     ),
-                  ],
-                ),
-                const Divider(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _InfoItem(
-                        icon: Icons.access_time,
-                        label: context.l10n.departureLabel,
-                        value:
-                            '${dateFormat.format(trip.departureTime)}\n${timeFormat.format(trip.departureTime)}',
-                      ),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 16,
                     ),
-                    Expanded(
-                      child: _InfoItem(
-                        icon: Icons.attach_money,
-                        label: context.l10n.priceLabel,
-                        value: '${trip.price} ${trip.currency}',
-                      ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          IconsaxPlusLinear.clock,
+                          size: 15,
+                          color: T.primary(context),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          timeFormat.format(trip.departureTime),
+                          style: GoogleFonts.tajawal(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: T.primary(context),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        if (driverName != null && driverName.isNotEmpty) ...[
+                          Icon(
+                            IconsaxPlusLinear.profile_2user,
+                            size: 15,
+                            color: T.onSurfaceVariant(context),
+                          ),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              driverName,
+                              style: GoogleFonts.tajawal(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: T.onSurfaceVariant(context),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ] else
+                          const Spacer(),
+                        Text(
+                          '${trip.price.toStringAsFixed(0)} ${trip.currency}',
+                          style: GoogleFonts.tajawal(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: T.primary(context),
+                          ),
+                        ),
+                      ],
                     ),
-                    Expanded(
-                      child: _InfoItem(
-                        icon: Icons.person,
-                        label: context.l10n.driverLabel,
-                        value: trip.driverName ?? '',
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
-    );
-  }
-}
-
-class _InfoItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _InfoItem({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Icon(icon, size: 20, color: T.primary(context)),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(fontSize: 12, color: T.onSurfaceVariant(context)),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
     );
   }
 }

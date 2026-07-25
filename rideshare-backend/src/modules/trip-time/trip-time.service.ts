@@ -21,6 +21,7 @@ import { PassengerConfirmDto } from './dto/passenger-confirm.dto';
 import { DriverConfirmDto } from './dto/driver-confirm.dto';
 import { CompleteTripDto } from './dto/complete-trip.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PresenceService } from './presence.service';
 import { TripShareLinkEntity } from '../../database/entities/trip-share-link.entity';
 import { ErrorCodes } from '../../common/errors/error-codes';
 import {
@@ -42,6 +43,7 @@ export class TripTimeService {
     @InjectRepository(TripShareLinkEntity)
     private shareLinkRepo: Repository<TripShareLinkEntity>,
     private notificationsService: NotificationsService,
+    private readonly presenceService: PresenceService,
     @InjectQueue('trip-auto-start')
     private readonly tripAutoStartQueue: Queue,
     @InjectQueue('trip-auto-complete')
@@ -282,6 +284,11 @@ export class TripTimeService {
       await this.bookingRepo.save(booking);
     }
 
+    // Capture the driver's fee for confirmed-present seats and release the
+    // rest of the hold. Runs AFTER booking statuses are final so the billable
+    // count reflects the settled roster (012-passenger-presence-confirmation).
+    const settlement = await this.presenceService.settleTripPresence(tripId);
+
     // Driver no-show is tracked via passengerReportedDriverAbsentAt for admin
     // review. Fines are no longer auto-applied; admin creates them manually via
     // POST /admin/fines after investigating.
@@ -312,9 +319,17 @@ export class TripTimeService {
       .where('tripId = :tripId', { tripId })
       .execute();
 
-    this.logger.log(`Trip ${tripId} marked arrived by driver ${driverId}`);
+    this.logger.log(
+      `Trip ${tripId} marked arrived by driver ${driverId} — ` +
+        `${settlement.billableSeats}/${settlement.bookedSeats} seats billable, ` +
+        `captured ${settlement.captured} ${settlement.currency}`,
+    );
     await this.cancelTripLifecycleJobs(tripId);
-    return savedTrip;
+
+    // Re-read so the response carries the settlement columns written above.
+    const finalTrip =
+      (await this.tripRepo.findOne({ where: { id: tripId } })) ?? savedTrip;
+    return Object.assign(finalTrip, { settlement });
   }
 
   private async cancelTripLifecycleJobs(tripId: string): Promise<void> {

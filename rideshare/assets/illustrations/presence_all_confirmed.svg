@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 640 640">
+  <!-- Celebratory arc -->
+  <g id="celebration-arcs" fill="none" stroke="#CCFBF1" stroke-width="4" stroke-linecap="round">
+    <path d="M95 259c24-98 112-171 217-176"/>
+    <path d="M392 91c75 20 134 78 158 152"/>
+  </g>
+  <g id="celebration-dots">
+    <circle cx="83" cy="300" r="9" fill="#4ADE80"/>
+    <circle cx="112" cy="217" r="7" fill="#CCFBF1"/>
+    <circle cx="163" cy="151" r="10" fill="#4ADE80"/>
+    <circle cx="238" cy="103" r="7" fill="#CCFBF1"/>
+    <circle cx="400" cy="103" r="8" fill="#4ADE80"/>
+    <circle cx="475" cy="145" r="10" fill="#CCFBF1"/>
+    <circle cx="530" cy="205" r="7" fill="#4ADE80"/>
+    <circle cx="557" cy="282" r="9" fill="#CCFBF1"/>
+  </g>
+
+  <!-- Smaller confirmed car -->
+  <g id="confirmed-car">
+    <path d="M148 363c17-53 58-86 115-86h91c57 0 98 33 116 86l22 35c7 11 10 23 10 36v58c0 25-20 45-45 45H159c-25 0-45-20-45-45v-58c0-13 3-25 10-36z" fill="#14B8A6" stroke="#0D9488" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M174 363c18-35 50-53 95-53h79c43 0 75 18 96 53z" fill="#CCFBF1" stroke="#0D9488" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M309 310v53" fill="none" stroke="#0D9488" stroke-width="4"/>
+    <path d="M132 409c61-18 120-27 177-27 58 0 116 9 175 27v71c0 20-16 37-37 37H169c-20 0-37-17-37-37z" fill="#5EEAD4" stroke="#0D9488" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M132 463h352" fill="none" stroke="#0D9488" stroke-width="4"/>
+    <circle cx="181" cy="514" r="32" fill="#0D9488"/>
+    <circle cx="181" cy="514" r="15" fill="#99F6E4"/>
+    <circle cx="437" cy="514" r="32" fill="#0D9488"/>
+    <circle cx="437" cy="514" r="15" fill="#99F6E4"/>
+  </g>
+
+  <!-- Two occupied seats -->
+  <g id="occupied-seats">
+    <path d="M194 388h101v88H183v-77c0-6 5-11 11-11z" fill="#0D9488" stroke="#0D9488" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M326 388h99c6 0 11 5 11 11v77H326z" fill="#0D9488" stroke="#0D9488" stroke-width="4" stroke-linejoin="round"/>
+    <circle cx="246" cy="367" r="25" fill="#FCD34D" stroke="#0D9488" stroke-width="4"/>
+    <path d="M216 425c0-25 13-42 30-42s30 17 30 42v36h-60z" fill="#F0FDFA" stroke="#0D9488" stroke-width="4" stroke-linejoin="round"/>
+    <circle cx="374" cy="367" r="25" fill="#FCD34D" stroke="#0D9488" stroke-width="4"/>
+    <path d="M344 425c0-25 13-42 30-42s30 17 30 42v36h-60z" fill="#F0FDFA" stroke="#0D9488" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M231 359c7-10 22-13 32-4M359 359c7-10 22-13 32-4" fill="none" stroke="#0D9488" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  <!-- Hero success badge -->
+  <g id="hero-check-badge">
+    <circle cx="320" cy="235" r="132" fill="#22C55E" stroke="#F0FDFA" stroke-width="14"/>
+    <path d="M250 235l46 47 94-107" fill="none" stroke="#FFFFFF" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Grounding dots -->
+  <g id="grounding-dots" fill="#CCFBF1">
+    <circle cx="120" cy="548" r="8"/>
+    <circle cx="151" cy="572" r="5"/>
+    <circle cx="492" cy="565" r="7"/>
+    <circle cx="522" cy="541" r="5"/>
+  </g>
+</svg>

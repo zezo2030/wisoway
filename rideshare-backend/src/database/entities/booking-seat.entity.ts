@@ -18,6 +18,25 @@ import {
 } from 'typeorm';
 import { BookingEntity } from './booking.entity';
 
+/** What the passenger said about their own presence. */
+export const PassengerDeclaredStatus = {
+  IN_VEHICLE: 'in_vehicle',
+  ON_MY_WAY: 'on_my_way',
+  NOT_RIDING: 'not_riding',
+} as const;
+export type PassengerDeclaredStatus =
+  (typeof PassengerDeclaredStatus)[keyof typeof PassengerDeclaredStatus];
+
+/** Why the driver marked a seat absent. */
+export const SeatAbsenceReason = {
+  NO_SHOW: 'no_show',
+  CANCELLED_ON_SITE: 'cancelled_on_site',
+  WRONG_PICKUP: 'wrong_pickup',
+  OTHER: 'other',
+} as const;
+export type SeatAbsenceReason =
+  (typeof SeatAbsenceReason)[keyof typeof SeatAbsenceReason];
+
 @Entity({ name: 'booking_seats' })
 @Index('idx_booking_seats_booking', ['bookingId'])
 @Index('idx_booking_seats_seat_number', ['bookingId', 'seatNumber'], {
@@ -71,6 +90,60 @@ export class BookingSeatEntity {
   @Column({ type: 'timestamp', nullable: true })
   markedAbsentAt: Date | null;
 
+  // ── Presence confirmation (012-passenger-presence-confirmation) ───────────
+
+  /** Passenger declared themselves in the vehicle (status = 'in_vehicle'). */
+  @Column({ type: 'timestamptz', nullable: true })
+  passengerSelfConfirmedAt: Date | null;
+
+  /** Last declaration made by the passenger for this seat. */
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  passengerDeclaredStatus: PassengerDeclaredStatus | null;
+
+  /**
+   * Written by NoShowDetectorProcessor when the passenger never declared
+   * anything.  Display and analytics ONLY — this NEVER affects billing, because
+   * an unopened app must not hand the driver a free trip.
+   */
+  @Column({ type: 'timestamptz', nullable: true })
+  autoFlaggedAbsentAt: Date | null;
+
+  /** Why the driver marked this seat absent. */
+  @Column({ type: 'varchar', length: 30, nullable: true })
+  absenceReason: SeatAbsenceReason | null;
+
+  /**
+   * Three-valued billing flag. Every accepted seat is billable BY DEFAULT:
+   *
+   *   null  → default — billable
+   *   false → driver explicitly marked absent, passenger did not contradict
+   *   true  → forced billable (driver/passenger conflict, or admin resolution)
+   */
+  @Column({ type: 'boolean', nullable: true })
+  billableOverride: boolean | null;
+
+  /** Driver said absent but the passenger had self-confirmed — needs review. */
+  @Column({ type: 'timestamptz', nullable: true })
+  presenceDisputedAt: Date | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  presenceResolvedBy: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  presenceResolutionNote: string | null;
+
+  /** Last presence write by anyone (driver, passenger, admin). */
+  @Column({ type: 'timestamptz', nullable: true })
+  presenceUpdatedAt: Date | null;
+
   @CreateDateColumn()
   createdAt: Date;
+
+  /**
+   * Resolved billing decision for this seat. Default-billable: only an explicit
+   * `billableOverride === false` makes a seat free for the driver.
+   */
+  get isBillable(): boolean {
+    return this.billableOverride !== false;
+  }
 }

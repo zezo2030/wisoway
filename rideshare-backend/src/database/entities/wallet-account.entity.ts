@@ -41,6 +41,14 @@ export class WalletAccountEntity {
   @Column({ type: 'numeric', precision: 14, scale: 2, default: '0' })
   balance: string;
 
+  /**
+   * Funds reserved by active wallet holds. Spendable funds are
+   * `balance - reservedBalance`; `balance` itself only moves when a hold is
+   * captured (012-passenger-presence-confirmation).
+   */
+  @Column({ type: 'numeric', precision: 14, scale: 2, default: '0' })
+  reservedBalance: string;
+
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 

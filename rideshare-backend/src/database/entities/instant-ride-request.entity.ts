@@ -32,6 +32,20 @@ export const InstantRequestStatus = {
 export type InstantRequestStatus =
   (typeof InstantRequestStatus)[keyof typeof InstantRequestStatus];
 
+/** Why a request stopped searching — drives the passenger-facing end screen. */
+export const InstantTerminalReason = {
+  /** No offer was ever made during the whole search window. */
+  NO_ELIGIBLE_DRIVERS: 'no_eligible_drivers',
+  /** One or more offers were made and all ended declined/timed out. */
+  ALL_DECLINED: 'all_declined',
+  /** The TTL elapsed while an offer was still outstanding. */
+  TTL_EXPIRED: 'ttl_expired',
+  /** The passenger cancelled explicitly. */
+  PASSENGER_CANCELLED: 'passenger_cancelled',
+} as const;
+export type InstantTerminalReason =
+  (typeof InstantTerminalReason)[keyof typeof InstantTerminalReason];
+
 /** A passenger's on-demand ("اطلب الآن") ride request. */
 @Entity({ name: 'instant_ride_requests' })
 @Index('instant_requests_passenger_status_idx', ['passengerId', 'status'])
@@ -109,6 +123,22 @@ export class InstantRideRequestEntity {
   /** Current search radius in km; expands while searching. */
   @Column({ type: 'double precision', default: 3 })
   radiusKm: number;
+
+  /** Set together with the terminal status; null while the request is live. */
+  @Column({ type: 'varchar', length: 32, nullable: true })
+  terminalReason: InstantTerminalReason | null;
+
+  /** When searching stopped (matched, gave up, or cancelled). */
+  @Column({ type: 'timestamptz', nullable: true })
+  endedAt: Date | null;
+
+  /** The request this one is a retry of — audit link, one retry per request. */
+  @Column({ type: 'uuid', nullable: true })
+  retryOfRequestId: string | null;
+
+  @ManyToOne(() => InstantRideRequestEntity, { onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'retryOfRequestId' })
+  retryOfRequest: InstantRideRequestEntity | null;
 
   @Column({ type: 'uuid', nullable: true })
   matchedDriverId: string | null;

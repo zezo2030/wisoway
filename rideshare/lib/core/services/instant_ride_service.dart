@@ -1,7 +1,20 @@
+import 'package:dio/dio.dart';
+
 import '../../models/instant_ride_models.dart';
 import '../../models/location_model.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
+
+/// The retried route no longer prices at the passenger's old fare, so they
+/// have to confirm the new one instead of the app changing it silently.
+class InstantRetryFareChangedException implements Exception {
+  final InstantQuote? quote;
+
+  const InstantRetryFareChangedException(this.quote);
+
+  @override
+  String toString() => 'InstantRetryFareChangedException';
+}
 
 /// Client for the instant (on-demand) rides API — "الرحلات المباشرة".
 class InstantRideService {
@@ -126,6 +139,33 @@ class InstantRideService {
     );
     return InstantRequest.fromJson(_unwrap(response));
   }
+
+  /// Search again with the same route after no driver was found.
+  ///
+  /// Throws [InstantRetryFareChangedException] when the server needs the
+  /// passenger to confirm a re-priced fare before the new attempt starts.
+  Future<InstantRequest> retryRequest(String id) async {
+    try {
+      final response = await _api.dio.post(ApiEndpoints.instantRequestRetry(id));
+      return InstantRequest.fromJson(_unwrap(response.data));
+    } on DioException catch (e) {
+      final body = e.response?.data;
+      final data = body is Map ? Map<String, dynamic>.from(body) : null;
+      if (data?['code'] == _fareReconfirmationCode) {
+        throw InstantRetryFareChangedException(
+          data?['quote'] is Map
+              ? InstantQuote.fromJson(
+                  Map<String, dynamic>.from(data!['quote'] as Map),
+                )
+              : null,
+        );
+      }
+      throw ApiClient.mapError(e);
+    }
+  }
+
+  static const String _fareReconfirmationCode =
+      'INSTANT_RETRY_FARE_RECONFIRMATION_REQUIRED';
 
   Future<InstantRequest> cancelRequest(String id) async {
     final response = await _api.delete(ApiEndpoints.instantRequestById(id));

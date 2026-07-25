@@ -5,9 +5,13 @@ import { BookingEntity } from '../../database/entities/booking.entity';
 import { BookingSeatEntity } from '../../database/entities/booking-seat.entity';
 import { TripEntity } from '../../database/entities/trip.entity';
 import { TripShareLinkEntity } from '../../database/entities/trip-share-link.entity';
+import { CommunicationFeeEntity } from '../../database/entities/communication-fee.entity';
 import { TripTimeService } from './trip-time.service';
+import { PresenceService } from './presence.service';
 import { TripTimeController } from './trip-time.controller';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { WalletModule } from '../wallet/wallet.module';
+import { PlatformPricingService } from '../payments/platform-pricing.service';
 
 @Module({
   imports: [
@@ -20,11 +24,13 @@ import { NotificationsModule } from '../notifications/notifications.module';
       BookingSeatEntity,
       TripEntity,
       TripShareLinkEntity,
+      CommunicationFeeEntity,
     ]),
     forwardRef(() => NotificationsModule),
+    WalletModule,
   ],
   controllers: [TripTimeController],
-  providers: [TripTimeService],
-  exports: [TripTimeService],
+  providers: [TripTimeService, PresenceService, PlatformPricingService],
+  exports: [TripTimeService, PresenceService],
 })
 export class TripTimeModule {}

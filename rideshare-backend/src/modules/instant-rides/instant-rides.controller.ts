@@ -111,6 +111,25 @@ export class InstantRidesController {
     return this.instantRides.updateFare(id, passengerId, dto);
   }
 
+  @Post('requests/:id/retry')
+  @ApiOperation({
+    summary: 'Search again with the same route after no driver was found',
+  })
+  @ApiResponse({ status: 201, description: 'New request created, searching' })
+  @ApiResponse({ status: 403, description: 'Request belongs to someone else' })
+  @ApiResponse({ status: 404, description: 'Request not found' })
+  @ApiResponse({
+    status: 409,
+    description:
+      'INSTANT_REQUEST_NOT_RETRYABLE | INSTANT_ACTIVE_REQUEST_EXISTS | INSTANT_RETRY_FARE_RECONFIRMATION_REQUIRED',
+  })
+  retryRequest(
+    @Param('id') id: string,
+    @CurrentUser('id') passengerId: string,
+  ) {
+    return this.instantRides.retryRequest(id, passengerId);
+  }
+
   @Delete('requests/:id')
   @ApiOperation({ summary: 'Cancel an instant request while searching' })
   @ApiResponse({ status: 200, description: 'Request cancelled' })

@@ -168,6 +168,11 @@ class InstantMatch {
 class InstantRequest {
   final String id;
   final String status; // searching | offered | accepted | no_drivers | expired | cancelled
+  /// no_eligible_drivers | all_declined | ttl_expired | passenger_cancelled.
+  /// Null on older backends that don't send it yet.
+  final String? terminalReason;
+  final bool canRetry;
+  final String? retryOfRequestId;
   final String fromName;
   final String toName;
   final String? fareEstimate;
@@ -190,6 +195,9 @@ class InstantRequest {
     required this.toName,
     required this.currency,
     required this.seatCount,
+    this.terminalReason,
+    this.canRetry = false,
+    this.retryOfRequestId,
     this.fareEstimate,
     this.recommendedFare,
     this.passengerFare,
@@ -207,12 +215,23 @@ class InstantRequest {
   bool get isFailed =>
       status == 'no_drivers' || status == 'expired' || status == 'cancelled';
 
+  /// The search ended without a match — `expired` is what the server writes
+  /// now, `no_drivers` is what older rows and older servers still send.
+  bool get isNoDriverFound => status == 'no_drivers' || status == 'expired';
+
   factory InstantRequest.fromJson(Map<String, dynamic> json) {
     final from = json['from'] is Map ? json['from'] as Map : const {};
     final to = json['to'] is Map ? json['to'] as Map : const {};
+    final status = json['status']?.toString() ?? '';
     return InstantRequest(
       id: json['id']?.toString() ?? '',
-      status: json['status']?.toString() ?? '',
+      status: status,
+      terminalReason: json['terminalReason']?.toString(),
+      // Older backends omit the flag; fall back to the terminal status.
+      canRetry: json['canRetry'] is bool
+          ? json['canRetry'] as bool
+          : status == 'no_drivers' || status == 'expired',
+      retryOfRequestId: json['retryOfRequestId']?.toString(),
       fromName: (from['name'] ?? json['fromName'] ?? '').toString(),
       toName: (to['name'] ?? json['toName'] ?? '').toString(),
       fareEstimate: json['fareEstimate']?.toString(),

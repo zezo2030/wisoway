@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 640 640">
+  <!-- Decorative balance -->
+  <g id="decorative-marks" fill="none" stroke="#CCFBF1" stroke-width="4" stroke-linecap="round">
+    <path d="M91 249c-17 16-28 37-31 61"/>
+    <path d="M518 186c22 8 40 23 52 43"/>
+    <path d="M113 474c16 18 36 31 59 38"/>
+  </g>
+  <g id="decorative-dots" fill="#CCFBF1">
+    <circle cx="75" cy="337" r="8"/>
+    <circle cx="548" cy="260" r="10"/>
+    <circle cx="194" cy="118" r="7"/>
+    <circle cx="489" cy="123" r="6"/>
+  </g>
+
+  <!-- Rounded car cabin -->
+  <g id="car">
+    <path d="M122 255c22-74 78-119 155-119h99c73 0 124 40 151 119l28 49c8 14 12 29 12 45v86c0 29-24 53-53 53H126c-29 0-53-24-53-53v-86c0-16 4-31 12-45z" fill="#14B8A6" stroke="#0D9488" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M151 255c23-54 67-84 126-84h91c56 0 99 30 124 84z" fill="#CCFBF1" stroke="#0D9488" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M323 171v84" fill="none" stroke="#0D9488" stroke-width="4"/>
+    <path d="M99 314c78-25 151-38 221-38 74 0 148 13 222 38v108c0 23-19 42-42 42H141c-23 0-42-19-42-42z" fill="#5EEAD4" stroke="#0D9488" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M99 388h443" fill="none" stroke="#0D9488" stroke-width="4"/>
+    <path d="M104 322h-20c-16 0-29 13-29 29v20h44" fill="#14B8A6" stroke="#0D9488" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M537 322h19c16 0 29 13 29 29v20h-43" fill="#14B8A6" stroke="#0D9488" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="152" cy="466" r="40" fill="#0D9488"/>
+    <circle cx="152" cy="466" r="19" fill="#99F6E4"/>
+    <circle cx="487" cy="466" r="40" fill="#0D9488"/>
+    <circle cx="487" cy="466" r="19" fill="#99F6E4"/>
+  </g>
+
+  <!-- Seats -->
+  <g id="seats" stroke="#0D9488" stroke-width="4" stroke-linejoin="round">
+    <path d="M191 280h84c15 0 27 12 27 27v91H177v-104c0-8 6-14 14-14z" fill="#0D9488"/>
+    <path d="M180 355h125v77H180c-14 0-25-11-25-25v-27c0-14 11-25 25-25z" fill="#14B8A6"/>
+    <path d="M360 280h84c8 0 14 6 14 14v104H333v-91c0-15 12-27 27-27z" fill="#0D9488"/>
+    <path d="M330 355h125c14 0 25 11 25 25v27c0 14-11 25-25 25H330z" fill="#14B8A6"/>
+  </g>
+
+  <!-- Present passenger -->
+  <g id="passenger">
+    <circle cx="238" cy="269" r="35" fill="#FCD34D" stroke="#0D9488" stroke-width="4"/>
+    <path d="M197 343c0-31 18-52 41-52s41 21 41 52v48h-82z" fill="#F0FDFA" stroke="#0D9488" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M213 329c14 11 36 11 50 0" fill="none" stroke="#14B8A6" stroke-width="4" stroke-linecap="round"/>
+    <path d="M219 258c10-14 30-18 45-6" fill="none" stroke="#0D9488" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  <!-- Empty seat cue -->
+  <g id="empty-seat-cue">
+    <circle cx="395" cy="326" r="20" fill="#CCFBF1" stroke="#0D9488" stroke-width="4"/>
+    <path d="M385 326h20M395 316v20" fill="none" stroke="#0D9488" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  <!-- Presence check -->
+  <g id="check-badge">
+    <circle cx="490" cy="475" r="86" fill="#22C55E" stroke="#FFFFFF" stroke-width="12"/>
+    <path d="M449 476l27 28 56-64" fill="none" stroke="#FFFFFF" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

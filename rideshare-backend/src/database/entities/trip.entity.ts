@@ -159,6 +159,28 @@ export class TripEntity {
   @Column({ type: 'timestamp', nullable: true })
   driverWalletChargeAt: Date | null;
 
+  // ── Presence settlement (012-passenger-presence-confirmation) ─────────────
+
+  /** Idempotency guard — settlement runs exactly once per trip. */
+  @Column({ type: 'timestamptz', nullable: true })
+  presenceSettledAt: Date | null;
+
+  /** Seats actually charged for, frozen at settlement. */
+  @Column({ type: 'int', nullable: true })
+  billableSeatCount: number | null;
+
+  /** Fee captured from the hold at settlement. */
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  capturedFeeAmount: string | null;
+
+  /** The wallet hold placed at contact-unlock and settled at trip end. */
+  @Column({ type: 'uuid', nullable: true })
+  driverFeeHoldId: string | null;
+
+  /** Driver marked every seat absent, or a presence dispute exists. */
+  @Column({ type: 'boolean', default: false })
+  presenceReviewFlagged: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

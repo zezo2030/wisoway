@@ -149,6 +149,8 @@ class ApiEndpoints {
   static String instantRequestById(String id) => '/instant-rides/requests/$id';
   static String instantRequestFare(String id) =>
       '/instant-rides/requests/$id/fare';
+  static String instantRequestRetry(String id) =>
+      '/instant-rides/requests/$id/retry';
   static const String instantPendingOffer = '/instant-rides/offers/pending';
   static String instantOfferAccept(String id) =>
       '/instant-rides/offers/$id/accept';
