@@ -12,6 +12,9 @@ class NotificationType {
   static const String communicationActivated = 'communication_activated';
   static const String chatMessage = 'chat_message';
   static const String walletCredited = 'wallet_credited';
+  static const String presencePrompt = 'presence_prompt';
+  static const String presenceMarkedAbsent = 'presence_marked_absent';
+  static const String presenceDriverPrompt = 'presence_driver_prompt';
 }
 
 class NotificationModel {

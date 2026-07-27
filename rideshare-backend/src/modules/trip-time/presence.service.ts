@@ -56,11 +56,9 @@ export interface SettlementOutcome {
 /**
  * Presence confirmation and fee settlement.
  *
- * BILLING RULE (approved): **every accepted seat is billable by default.**
- * A seat becomes non-billable only when the driver explicitly marks it absent
- * before the trip is finalised, and only when the passenger has not contradicted
- * that claim. Silence — from either side — leaves the seat billable, so a driver
- * who simply never opens the roster still pays the full fee.
+ * BILLING RULE: a seat is billable only after its passenger explicitly confirms
+ * they are inside the vehicle. Silence, "on my way", and "not riding" never
+ * charge the driver's wallet.
  *
  * 012-passenger-presence-confirmation.
  */
@@ -129,7 +127,7 @@ export class PresenceService {
           /** Passenger vouched for themselves — driver cannot silently zero it. */
           locked: seat.passengerSelfConfirmedAt != null,
           disputed: seat.presenceDisputedAt != null,
-          billable: seat.billableOverride !== false,
+          billable: seat.isBillable,
         };
       }),
     );
@@ -540,15 +538,14 @@ export class PresenceService {
     });
     const seats = bookings.flatMap((b) => b.seats ?? []);
 
-    // DEFAULT-BILLABLE: only an explicit `false` exempts a seat.
-    const billableSeats = seats.filter(
-      (s) => s.billableOverride !== false,
-    ).length;
+    // Passenger confirmation is the sole billing authority.
+    const billableSeats = seats.filter((seat) => seat.isBillable).length;
 
     const capture = this.round2(seatPrice * billableSeats * (percent / 100));
 
-    const result = await this.walletHolds
-      .settleHold({
+    let result: Awaited<ReturnType<WalletHoldService['settleHold']>> | null;
+    try {
+      result = await this.walletHolds.settleHold({
         referenceType: 'trip',
         referenceId: tripId,
         captureAmount: capture,
@@ -560,14 +557,17 @@ export class PresenceService {
           formula: 'seatPrice * billableSeats * percent%',
         },
         manager,
-      })
-      .catch((err: Error) => {
-        // No hold: legacy trip, free lifetime trip, or unlock never happened.
-        this.logger.log(
-          `settleTripPresence ${tripId}: no hold to settle (${err.message})`,
-        );
-        return null;
       });
+    } catch (error) {
+      if (!(error instanceof NotFoundException)) {
+        throw error;
+      }
+      // No hold: legacy trip, free lifetime trip, or unlock never happened.
+      this.logger.log(
+        `settleTripPresence ${tripId}: no wallet hold to settle`,
+      );
+      result = null;
+    }
 
     const now = new Date();
     trip.presenceSettledAt = now;

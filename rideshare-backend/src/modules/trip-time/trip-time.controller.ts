@@ -76,7 +76,7 @@ export class TripTimeController {
   @Roles('driver')
   @ApiOperation({
     summary:
-      'Driver marks seats present/absent. Seats are billable by default — only an explicit absence exempts one.',
+      'Driver records a corroborating present/absent decision. Billing still requires passenger self-confirmation.',
   })
   async presenceConfirm(
     @Param('id') tripId: string,

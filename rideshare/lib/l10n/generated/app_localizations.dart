@@ -1232,6 +1232,31 @@ abstract class AppLocalizations {
   /// **'هل الراكب {name} موجود؟'**
   String preTripPromptDriverBody(String name);
 
+  String get presenceScreenTitle;
+  String get presenceScreenSubtitle;
+  String get presenceHelp;
+  String get presenceDriverStartsAfter;
+  String get presenceMinutes;
+  String get presencePickupTitle;
+  String get presenceQuestionTitle;
+  String get presenceQuestionSubtitle;
+  String get presenceInfoBody;
+  String get presenceInVehicleTitle;
+  String get presenceInVehicleSubtitle;
+  String get presenceOnMyWayTitle;
+  String get presenceOnMyWaySubtitle;
+  String get presenceNotRidingTitle;
+  String get presenceNotRidingSubtitle;
+  String get presencePrivacyLine;
+  String get presenceRequestEndsAfter;
+  String get presenceConfirmedTitle;
+  String get presenceConfirmedBody;
+  String get presenceEdit;
+  String get presenceWindowClosedTitle;
+  String get presenceWindowClosedBody;
+  String get presenceLoadFailed;
+  String get presenceSubmitFailed;
+
   /// Driver button to mark trip as arrived (completes the trip)
   ///
   /// In ar, this message translates to:

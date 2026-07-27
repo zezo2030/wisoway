@@ -30,6 +30,7 @@ class RouteNames {
   static const String tripDetails = '/trip-details';
   static const String seatSelection = '/seat-selection';
   static const String tripRouteMap = '/trip-route-map';
+  static const String presenceConfirmation = '/presence-confirmation';
 
   // Payment Routes
   static const String manualPayment = '/manual-payment';

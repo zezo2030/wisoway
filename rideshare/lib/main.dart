@@ -48,6 +48,7 @@ import 'screens/passenger/trip_details_screen.dart';
 import 'screens/passenger/seat_selection_screen.dart';
 import 'screens/passenger/trip_route_map_screen.dart';
 import 'screens/passenger/passenger_wallet_screen.dart';
+import 'screens/passenger/presence_confirmation_screen.dart';
 import 'models/trip_model.dart';
 import 'models/booking_model.dart';
 import 'screens/payment/manual_payment_screen.dart';
@@ -234,6 +235,16 @@ class MyApp extends StatelessWidget {
                       return MaterialPageRoute(
                         builder: (context) =>
                             TripManagementScreen(tripId: tripId),
+                      );
+                    }
+                    if (settings.name == RouteNames.presenceConfirmation) {
+                      final arguments =
+                          settings.arguments as Map<String, dynamic>;
+                      return MaterialPageRoute(
+                        settings: settings,
+                        builder: (context) => PresenceConfirmationScreen(
+                          bookingId: arguments['bookingId'] as String,
+                        ),
                       );
                     }
                     if (settings.name == RouteNames.editTrip) {

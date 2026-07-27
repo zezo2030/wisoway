@@ -116,6 +116,26 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         // Navigate to the relevant wallet screen
         Navigator.pushNamed(context, RouteNames.passengerWallet);
         break;
+      case NotificationType.presencePrompt:
+      case NotificationType.presenceMarkedAbsent:
+        final bookingId = data?['bookingId'] as String?;
+        if (bookingId != null) {
+          Navigator.pushNamed(
+            context,
+            RouteNames.presenceConfirmation,
+            arguments: {'bookingId': bookingId},
+          );
+        }
+        break;
+      case NotificationType.presenceDriverPrompt:
+        if (tripId != null) {
+          Navigator.pushNamed(
+            context,
+            RouteNames.tripManagement,
+            arguments: tripId,
+          );
+        }
+        break;
     }
   }
 
@@ -166,14 +186,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 child: TextButton.icon(
                   onPressed: () async {
                     await provider.markAllAsRead();
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(context.l10n.allNotificationsRead),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
-                    }
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(context.l10n.allNotificationsRead),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
                   },
                   icon: const Icon(IconsaxPlusBold.tick_circle, size: 18),
                   label: Text(context.l10n.markAllReadCount(unreadCount)),

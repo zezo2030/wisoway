@@ -9,12 +9,9 @@
  * For each confirmed booking on the trip whose passenger never self-declared,
  * the processor records a SOFT flag (`autoFlaggedAbsentAt`) on each seat.
  *
- * IMPORTANT — this flag is advisory only and NEVER affects billing.
- * Presence billing is default-billable: a seat is exempted from the driver's
- * fee only when the DRIVER explicitly marks it absent. If this processor wrote
- * the billing field instead, any driver whose passengers simply never opened
- * the app would get a free trip — so it deliberately does not touch
- * `markedAbsentAt`, `billableOverride`, or `driverMarkedAbsentAt`.
+ * IMPORTANT — this flag is advisory only and NEVER affects billing. Only a
+ * passenger's explicit in-vehicle confirmation makes a seat billable, so this
+ * processor deliberately does not touch `passengerSelfConfirmedAt`.
  *
  * Passengers are NEVER auto-charged. Fines are applied manually by admin
  * after investigation via POST /admin/fines.

@@ -55,6 +55,14 @@ class ApiEndpoints {
       '/bookings/$bookingId/passenger-confirm';
   static String driverConfirm(String bookingId) =>
       '/bookings/$bookingId/driver-confirm';
+  static String presencePrompt(String bookingId) =>
+      '/bookings/$bookingId/presence-prompt';
+  static String presenceDeclare(String bookingId) =>
+      '/bookings/$bookingId/presence-declare';
+  static String presenceRoster(String tripId) =>
+      '/trips/$tripId/presence-roster';
+  static String presenceConfirm(String tripId) =>
+      '/trips/$tripId/presence-confirm';
   static String cancelTrip(String id) => '/trips/$id';
 
   // Bookings (v1 — legacy)

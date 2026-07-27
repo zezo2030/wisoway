@@ -139,11 +139,10 @@ export class BookingSeatEntity {
   @CreateDateColumn()
   createdAt: Date;
 
-  /**
-   * Resolved billing decision for this seat. Default-billable: only an explicit
-   * `billableOverride === false` makes a seat free for the driver.
-   */
+  /** Passenger confirmation is required; an admin override may still exempt it. */
   get isBillable(): boolean {
-    return this.billableOverride !== false;
+    return (
+      this.passengerSelfConfirmedAt != null && this.billableOverride !== false
+    );
   }
 }

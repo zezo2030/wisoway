@@ -45,6 +45,15 @@ class NotificationNavigationService {
         _handleTripStartedNotification(data);
         break;
 
+      case 'presence_prompt':
+      case 'presence_marked_absent':
+        _navigateToPresenceConfirmation(data);
+        break;
+
+      case 'presence_driver_prompt':
+        _navigateToPresenceRoster(data);
+        break;
+
       case 'communication_activated':
         _handleCommunicationNotification(data);
         break;
@@ -109,6 +118,27 @@ class NotificationNavigationService {
     } else {
       _navigateToRoute(RouteNames.notifications);
     }
+  }
+
+  static void _navigateToPresenceConfirmation(Map<String, dynamic> data) {
+    final bookingId = data['bookingId'] as String?;
+    if (bookingId == null) {
+      _navigateToRoute(RouteNames.notifications);
+      return;
+    }
+    _navigateToRoute(
+      RouteNames.presenceConfirmation,
+      arguments: {'bookingId': bookingId},
+    );
+  }
+
+  static void _navigateToPresenceRoster(Map<String, dynamic> data) {
+    final tripId = data['tripId'] as String?;
+    if (tripId == null) {
+      _navigateToRoute(RouteNames.notifications);
+      return;
+    }
+    _navigateToRoute(RouteNames.tripManagement, arguments: tripId);
   }
 
   /// Handle communication activation notification

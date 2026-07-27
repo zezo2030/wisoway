@@ -27,7 +27,7 @@ export class PresenceEntryDto {
 
   @ApiProperty({
     description:
-      'true = occupant was in the vehicle. false = explicitly absent, which is the ONLY way to make a seat non-billable.',
+      'Driver observation used for reconciliation and disputes. Passenger self-confirmation is the billing signal.',
   })
   @IsBoolean()
   present: boolean;
