@@ -28,6 +28,8 @@ import {
   TRIP_AUTO_START_JOB_ID_PREFIX,
   TRIP_AUTO_COMPLETE_JOB_ID_PREFIX,
 } from '../trips/trip-auto-start.util';
+import { AdminAlertsService } from '../admin/admin-alerts.service';
+import { TripEmergencyDto } from './dto/trip-emergency.dto';
 
 @Injectable()
 export class TripTimeService {
@@ -44,10 +46,13 @@ export class TripTimeService {
     private shareLinkRepo: Repository<TripShareLinkEntity>,
     private notificationsService: NotificationsService,
     private readonly presenceService: PresenceService,
+    private readonly adminAlertsService: AdminAlertsService,
     @InjectQueue('trip-auto-start')
     private readonly tripAutoStartQueue: Queue,
     @InjectQueue('trip-auto-complete')
     private readonly tripAutoCompleteQueue: Queue,
+    @InjectRepository(UserEntity)
+    private readonly userRepo: Repository<UserEntity>,
   ) {}
 
   async passengerConfirm(
@@ -353,5 +358,87 @@ export class TripTimeService {
         `cancel trip-auto-complete ${tripId}: ${(err as Error).message}`,
       );
     }
+  }
+
+  async reportEmergency(
+    tripId: string,
+    userId: string,
+    dto: TripEmergencyDto,
+  ) {
+    const trip = await this.tripRepo.findOne({ where: { id: tripId } });
+    if (!trip) {
+      throw new NotFoundException('Trip not found');
+    }
+
+    const isDriver = trip.driverId === userId;
+    let isConfirmedPassenger = false;
+    if (!isDriver) {
+      const booking = await this.bookingRepo.findOne({
+        where: {
+          tripId,
+          userId,
+          status: BookingStatus.CONFIRMED,
+        },
+      });
+      const inProgressBooking = await this.bookingRepo.findOne({
+        where: {
+          tripId,
+          userId,
+          status: BookingStatus.IN_PROGRESS,
+        },
+      });
+      isConfirmedPassenger = !!booking || !!inProgressBooking;
+    }
+
+    if (!isDriver && !isConfirmedPassenger) {
+      throw new ForbiddenException(
+        'Only the driver or a confirmed passenger can trigger emergency',
+      );
+    }
+
+    if (
+      trip.status !== TripStatus.IN_PROGRESS &&
+      trip.status !== TripStatus.PUBLISHED
+    ) {
+      throw new BadRequestException(
+        'Emergency is only available for active trips',
+      );
+    }
+
+    const reporter = await this.userRepo.findOne({
+      where: { id: userId },
+      select: ['id', 'name'],
+    });
+
+    const latitude =
+      dto.latitude ?? trip.lastDriverLocationLat ?? null;
+    const longitude =
+      dto.longitude ?? trip.lastDriverLocationLng ?? null;
+
+    await this.adminAlertsService.notifyTripEmergency({
+      tripId: trip.id,
+      reporterUserId: userId,
+      reporterName: reporter?.name?.trim() || 'User',
+      fromName: trip.fromName,
+      toName: trip.toName,
+      latitude,
+      longitude,
+    });
+
+    this.logger.warn(
+      JSON.stringify({
+        event: 'trip.emergency',
+        tripId,
+        userId,
+        latitude,
+        longitude,
+      }),
+    );
+
+    return {
+      ok: true,
+      tripId,
+      notifiedAt: new Date().toISOString(),
+    };
   }
 }

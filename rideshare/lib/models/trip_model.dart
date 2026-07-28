@@ -53,6 +53,20 @@ class TripModel {
   // Distance (km, from PostGIS)
   final double? distanceKm;
 
+  // Live tracking ETA (in-progress)
+  final double? remainingDistanceKm;
+  final int? remainingDurationSeconds;
+  final DateTime? etaAt;
+  final double? routeProgressPercent;
+  final double? lastDriverLocationLat;
+  final double? lastDriverLocationLng;
+
+  // Driver / vehicle (enriched on GET /trips/:id)
+  final String? driverPhotoUrl;
+  final double? driverRating;
+  final String? vehicleModel;
+  final String? vehiclePlateNumber;
+
   // Stops (up to 5 intermediate waypoints)
   final List<LocationModel> stops;
 
@@ -90,6 +104,16 @@ class TripModel {
     this.billableSeatCount,
     this.capturedFeeAmount,
     this.distanceKm,
+    this.remainingDistanceKm,
+    this.remainingDurationSeconds,
+    this.etaAt,
+    this.routeProgressPercent,
+    this.lastDriverLocationLat,
+    this.lastDriverLocationLng,
+    this.driverPhotoUrl,
+    this.driverRating,
+    this.vehicleModel,
+    this.vehiclePlateNumber,
     this.stops = const [],
     this.notes,
     this.recurrenceRuleId,
@@ -202,6 +226,32 @@ class TripModel {
       distanceKm: json['distanceKm'] != null
           ? _parseDouble(json['distanceKm'])
           : null,
+      remainingDistanceKm: json['remainingDistanceKm'] != null
+          ? _parseDouble(json['remainingDistanceKm'])
+          : null,
+      remainingDurationSeconds: json['remainingDurationSeconds'] != null
+          ? _parseInt(json['remainingDurationSeconds'])
+          : null,
+      etaAt: json['etaAt'] != null
+          ? DateTime.tryParse(json['etaAt'].toString())
+          : null,
+      routeProgressPercent: json['routeProgressPercent'] != null
+          ? _parseDouble(json['routeProgressPercent'])
+          : null,
+      lastDriverLocationLat: json['lastDriverLocationLat'] != null
+          ? _parseDouble(json['lastDriverLocationLat'])
+          : null,
+      lastDriverLocationLng: json['lastDriverLocationLng'] != null
+          ? _parseDouble(json['lastDriverLocationLng'])
+          : null,
+      driverPhotoUrl: BackendUrlResolver.normalize(
+        json['driverPhotoUrl']?.toString(),
+      ),
+      driverRating: json['driverRating'] != null
+          ? _parseDouble(json['driverRating'])
+          : null,
+      vehicleModel: json['vehicleModel']?.toString(),
+      vehiclePlateNumber: json['vehiclePlateNumber']?.toString(),
       stops: (json['stops'] as List?)
               ?.whereType<Map<String, dynamic>>()
               .map((s) => LocationModel.fromStopMap(s))
@@ -245,6 +295,22 @@ class TripModel {
       if (billableSeatCount != null) 'billableSeatCount': billableSeatCount,
       if (capturedFeeAmount != null) 'capturedFeeAmount': capturedFeeAmount,
       if (distanceKm != null) 'distanceKm': distanceKm,
+      if (remainingDistanceKm != null)
+        'remainingDistanceKm': remainingDistanceKm,
+      if (remainingDurationSeconds != null)
+        'remainingDurationSeconds': remainingDurationSeconds,
+      if (etaAt != null) 'etaAt': etaAt!.toIso8601String(),
+      if (routeProgressPercent != null)
+        'routeProgressPercent': routeProgressPercent,
+      if (lastDriverLocationLat != null)
+        'lastDriverLocationLat': lastDriverLocationLat,
+      if (lastDriverLocationLng != null)
+        'lastDriverLocationLng': lastDriverLocationLng,
+      if (driverPhotoUrl != null) 'driverPhotoUrl': driverPhotoUrl,
+      if (driverRating != null) 'driverRating': driverRating,
+      if (vehicleModel != null) 'vehicleModel': vehicleModel,
+      if (vehiclePlateNumber != null)
+        'vehiclePlateNumber': vehiclePlateNumber,
       if (stops.isNotEmpty)
         'stops': stops.asMap().entries
             .map((e) => e.value.toStopMap(order: e.key + 1))
@@ -281,6 +347,16 @@ class TripModel {
     int? billableSeatCount,
     double? capturedFeeAmount,
     double? distanceKm,
+    double? remainingDistanceKm,
+    int? remainingDurationSeconds,
+    DateTime? etaAt,
+    double? routeProgressPercent,
+    double? lastDriverLocationLat,
+    double? lastDriverLocationLng,
+    String? driverPhotoUrl,
+    double? driverRating,
+    String? vehicleModel,
+    String? vehiclePlateNumber,
     List<LocationModel>? stops,
     String? notes,
     String? recurrenceRuleId,
@@ -311,6 +387,19 @@ class TripModel {
       billableSeatCount: billableSeatCount ?? this.billableSeatCount,
       capturedFeeAmount: capturedFeeAmount ?? this.capturedFeeAmount,
       distanceKm: distanceKm ?? this.distanceKm,
+      remainingDistanceKm: remainingDistanceKm ?? this.remainingDistanceKm,
+      remainingDurationSeconds:
+          remainingDurationSeconds ?? this.remainingDurationSeconds,
+      etaAt: etaAt ?? this.etaAt,
+      routeProgressPercent: routeProgressPercent ?? this.routeProgressPercent,
+      lastDriverLocationLat:
+          lastDriverLocationLat ?? this.lastDriverLocationLat,
+      lastDriverLocationLng:
+          lastDriverLocationLng ?? this.lastDriverLocationLng,
+      driverPhotoUrl: driverPhotoUrl ?? this.driverPhotoUrl,
+      driverRating: driverRating ?? this.driverRating,
+      vehicleModel: vehicleModel ?? this.vehicleModel,
+      vehiclePlateNumber: vehiclePlateNumber ?? this.vehiclePlateNumber,
       stops: stops ?? this.stops,
       notes: notes ?? this.notes,
       recurrenceRuleId: recurrenceRuleId ?? this.recurrenceRuleId,

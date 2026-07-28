@@ -29,6 +29,7 @@ class RouteNames {
   // Passenger Routes
   static const String tripsList = '/trips-list';
   static const String tripDetails = '/trip-details';
+  static const String tripInProgress = '/trip-in-progress';
   static const String seatSelection = '/seat-selection';
   static const String tripRouteMap = '/trip-route-map';
   static const String presenceConfirmation = '/presence-confirmation';

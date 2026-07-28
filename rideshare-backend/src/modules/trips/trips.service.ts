@@ -270,7 +270,15 @@ export class TripsService {
 
   async findById(
     tripId: string,
-  ): Promise<TripEntity & { distanceKm?: number }> {
+  ): Promise<
+    TripEntity & {
+      distanceKm?: number;
+      driverPhotoUrl?: string | null;
+      driverRating?: number | null;
+      vehicleModel?: string | null;
+      vehiclePlateNumber?: string | null;
+    }
+  > {
     const result = await this.tripRepo
       .createQueryBuilder('trip')
       .where('trip.id = :id', { id: tripId })
@@ -286,9 +294,20 @@ export class TripsService {
     }
 
     const distanceKm = result.raw[0]?.distance_km;
+    const driver = await this.usersService.findById(trip.driverId);
+    const vehicle = await this.vehiclesService.findByDriver(trip.driverId);
+
     return {
       ...trip,
       distanceKm: distanceKm != null ? Number(distanceKm) : undefined,
+      driverPhotoUrl: driver?.photoUrl ?? null,
+      driverRating:
+        driver?.rating != null ? Number(driver.rating) : null,
+      vehicleModel: vehicle
+        ? `${vehicle.model}`.trim() || null
+        : null,
+      vehiclePlateNumber: vehicle?.plateNumber ?? null,
+      carImageUrl: trip.carImageUrl ?? vehicle?.carImageUrl ?? null,
     };
   }
 

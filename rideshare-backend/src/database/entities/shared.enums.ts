@@ -72,4 +72,5 @@ export enum NotificationChannel {
 export enum AdminAlertType {
   DRIVER_REGISTRATION = 'driver_registration',
   FEE_PAYMENT = 'fee_payment',
+  TRIP_EMERGENCY = 'trip_emergency',
 }

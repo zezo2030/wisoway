@@ -7230,6 +7230,108 @@ abstract class AppLocalizations {
   /// **'تعذّر إنشاء رابط المشاركة'**
   String get shareTripTrackingError;
 
+  /// No description provided for @tripInProgressTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'الرحلة جارية'**
+  String get tripInProgressTitle;
+
+  /// No description provided for @tripInProgressOnTheWay.
+  ///
+  /// In ar, this message translates to:
+  /// **'أنت في الطريق'**
+  String get tripInProgressOnTheWay;
+
+  /// No description provided for @tripInProgressHelp.
+  ///
+  /// In ar, this message translates to:
+  /// **'مساعدة'**
+  String get tripInProgressHelp;
+
+  /// No description provided for @tripInProgressEtaLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'وقت الوصول المتوقع'**
+  String get tripInProgressEtaLabel;
+
+  /// No description provided for @tripInProgressRemainingDistance.
+  ///
+  /// In ar, this message translates to:
+  /// **'المسافة المتبقية'**
+  String get tripInProgressRemainingDistance;
+
+  /// No description provided for @tripInProgressRemainingTime.
+  ///
+  /// In ar, this message translates to:
+  /// **'تبقى للوصول'**
+  String get tripInProgressRemainingTime;
+
+  /// No description provided for @tripInProgressTripDetails.
+  ///
+  /// In ar, this message translates to:
+  /// **'تفاصيل الرحلة'**
+  String get tripInProgressTripDetails;
+
+  /// No description provided for @tripInProgressShareTracking.
+  ///
+  /// In ar, this message translates to:
+  /// **'مشاركة التتبع'**
+  String get tripInProgressShareTracking;
+
+  /// No description provided for @tripInProgressEmergency.
+  ///
+  /// In ar, this message translates to:
+  /// **'الطوارئ'**
+  String get tripInProgressEmergency;
+
+  /// No description provided for @tripInProgressLayers.
+  ///
+  /// In ar, this message translates to:
+  /// **'طبقات'**
+  String get tripInProgressLayers;
+
+  /// No description provided for @tripInProgressRecenter.
+  ///
+  /// In ar, this message translates to:
+  /// **'تمركز'**
+  String get tripInProgressRecenter;
+
+  /// No description provided for @tripInProgressEmergencySent.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم إرسال تنبيه الطوارئ للدعم'**
+  String get tripInProgressEmergencySent;
+
+  /// No description provided for @tripInProgressEmergencyError.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذّر إرسال تنبيه الطوارئ'**
+  String get tripInProgressEmergencyError;
+
+  /// No description provided for @tripInProgressEmergencyConfirmTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تنبيه الطوارئ'**
+  String get tripInProgressEmergencyConfirmTitle;
+
+  /// No description provided for @tripInProgressEmergencyConfirmMessage.
+  ///
+  /// In ar, this message translates to:
+  /// **'سيتم إشعار فريق الدعم بموقعك الحالي. هل تريد المتابعة؟'**
+  String get tripInProgressEmergencyConfirmMessage;
+
+  /// No description provided for @tripInProgressEmergencyConfirmAction.
+  ///
+  /// In ar, this message translates to:
+  /// **'إرسال التنبيه'**
+  String get tripInProgressEmergencyConfirmAction;
+
+  /// No description provided for @tripInProgressEmergencyCancel.
+  ///
+  /// In ar, this message translates to:
+  /// **'إلغاء'**
+  String get tripInProgressEmergencyCancel;
+
   /// No description provided for @locationAutocompleteSuggestions.
   ///
   /// In ar, this message translates to:

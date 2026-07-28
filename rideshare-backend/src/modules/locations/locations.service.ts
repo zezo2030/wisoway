@@ -463,6 +463,10 @@ export class LocationsService {
         overviewPolyline,
         distanceText: leg.distance?.text ?? '',
         durationText: leg.duration?.text ?? '',
+        distanceMeters:
+          typeof leg.distance?.value === 'number' ? leg.distance.value : null,
+        durationSeconds:
+          typeof leg.duration?.value === 'number' ? leg.duration.value : null,
       };
     } catch (error) {
       if (error instanceof BadRequestException) {
@@ -519,6 +523,12 @@ export class LocationsService {
         overviewPolyline: route.geometry,
         distanceText: this.formatDistanceKm(route.distance),
         durationText: this.formatDurationMinutes(route.duration),
+        distanceMeters:
+          typeof route.distance === 'number' ? route.distance : null,
+        durationSeconds:
+          typeof route.duration === 'number'
+            ? Math.round(route.duration)
+            : null,
       };
     } catch (error) {
       if (error instanceof BadRequestException) {

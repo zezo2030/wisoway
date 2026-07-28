@@ -1640,6 +1640,21 @@ class _TripManagementScreenState extends State<TripManagementScreen>
         const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                RouteNames.tripInProgress,
+                arguments: trip.id,
+              );
+            },
+            icon: const Icon(IconsaxPlusLinear.map),
+            label: Text(context.l10n.tripInProgressTitle),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
           child: ElevatedButton.icon(
             onPressed:
                 _markingArrived ? null : () => _onPressArrived(trip),

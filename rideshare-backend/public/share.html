@@ -116,6 +116,21 @@
                 'Departure: ' + d.toLocaleString();
             }
 
+            var etaBits = [];
+            if (data.remainingDistanceKm != null) {
+              etaBits.push(Number(data.remainingDistanceKm).toFixed(0) + ' km left');
+            }
+            if (data.etaMinutes != null) {
+              etaBits.push(data.etaMinutes + ' min');
+            }
+            if (data.etaAt) {
+              etaBits.push('ETA ' + new Date(data.etaAt).toLocaleTimeString());
+            }
+            if (etaBits.length) {
+              document.getElementById('departure-time').textContent +=
+                ' · ' + etaBits.join(' · ');
+            }
+
             if (data.driverLocation) {
               var lat = data.driverLocation.lat;
               var lng = data.driverLocation.lng;

@@ -51,6 +51,7 @@ class ApiEndpoints {
   static String arriveTrip(String id) => '/trips/$id/arrived';
   static String shareLink(String tripId) => '/trips/$tripId/share-link';
   static String publicShare(String token) => '/share/$token';
+  static String tripEmergency(String tripId) => '/trips/$tripId/emergency';
   static String passengerConfirm(String bookingId) =>
       '/bookings/$bookingId/passenger-confirm';
   static String driverConfirm(String bookingId) =>

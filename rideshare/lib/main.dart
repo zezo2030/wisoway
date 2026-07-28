@@ -46,6 +46,7 @@ import 'screens/driver/pending_charges_screen.dart';
 import 'screens/wallet/wallet_topup_request_screen.dart';
 import 'screens/passenger/trips_list_screen.dart';
 import 'screens/passenger/trip_details_screen.dart';
+import 'screens/shared/trip_in_progress_screen.dart';
 import 'screens/passenger/seat_selection_screen.dart';
 import 'screens/passenger/trip_route_map_screen.dart';
 import 'screens/passenger/passenger_wallet_screen.dart';
@@ -279,8 +280,31 @@ class MyApp extends StatelessWidget {
                       final showTrackingShare = args is Map<String, dynamic>
                           ? args['showTrackingShare'] == true
                           : false;
+                      final forceDetails = args is Map<String, dynamic>
+                          ? args['forceDetails'] == true
+                          : false;
                       return MaterialPageRoute(
                         builder: (context) => TripDetailsScreen(
+                          tripId: tripId,
+                          initialBooking: booking,
+                          showTrackingShare: showTrackingShare,
+                          forceDetails: forceDetails,
+                        ),
+                      );
+                    }
+                    if (settings.name == RouteNames.tripInProgress) {
+                      final args = settings.arguments;
+                      final tripId = args is Map<String, dynamic>
+                          ? args['tripId'] as String
+                          : args as String;
+                      final booking = args is Map<String, dynamic>
+                          ? args['booking'] as BookingModel?
+                          : null;
+                      final showTrackingShare = args is Map<String, dynamic>
+                          ? args['showTrackingShare'] == true
+                          : false;
+                      return MaterialPageRoute(
+                        builder: (context) => TripInProgressScreen(
                           tripId: tripId,
                           initialBooking: booking,
                           showTrackingShare: showTrackingShare,

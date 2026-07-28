@@ -3935,6 +3935,58 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shareTripTrackingError => 'Could not create the share link';
 
   @override
+  String get tripInProgressTitle => 'Trip in progress';
+
+  @override
+  String get tripInProgressOnTheWay => 'You are on the way';
+
+  @override
+  String get tripInProgressHelp => 'Help';
+
+  @override
+  String get tripInProgressEtaLabel => 'Expected arrival';
+
+  @override
+  String get tripInProgressRemainingDistance => 'Remaining distance';
+
+  @override
+  String get tripInProgressRemainingTime => 'Time remaining';
+
+  @override
+  String get tripInProgressTripDetails => 'Trip details';
+
+  @override
+  String get tripInProgressShareTracking => 'Share tracking';
+
+  @override
+  String get tripInProgressEmergency => 'Emergency';
+
+  @override
+  String get tripInProgressLayers => 'Layers';
+
+  @override
+  String get tripInProgressRecenter => 'Recenter';
+
+  @override
+  String get tripInProgressEmergencySent => 'Emergency alert sent to support';
+
+  @override
+  String get tripInProgressEmergencyError => 'Could not send emergency alert';
+
+  @override
+  String get tripInProgressEmergencyConfirmTitle => 'Emergency alert';
+
+  @override
+  String get tripInProgressEmergencyConfirmMessage =>
+      'Support will be notified with your current location. Continue?';
+
+  @override
+  String get tripInProgressEmergencyConfirmAction => 'Send alert';
+
+  @override
+  String get tripInProgressEmergencyCancel => 'Cancel';
+
+  @override
   String get locationAutocompleteSuggestions => 'Place suggestions';
 
   @override

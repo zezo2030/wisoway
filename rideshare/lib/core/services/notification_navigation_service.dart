@@ -105,14 +105,14 @@ class NotificationNavigationService {
     }
   }
 
-  /// Handle trip-started notification — opens trip details and prompts the user
+  /// Handle trip-started notification — opens live trip screen and prompts the user
   /// to share live trip tracking with someone.
   static void _handleTripStartedNotification(Map<String, dynamic> data) {
     final tripId = data['tripId'] as String?;
 
     if (tripId != null) {
       _navigateToRoute(
-        RouteNames.tripDetails,
+        RouteNames.tripInProgress,
         arguments: {'tripId': tripId, 'showTrackingShare': true},
       );
     } else {

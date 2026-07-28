@@ -31,11 +31,16 @@ class TripDetailsScreen extends StatefulWidget {
   /// user to share live trip tracking as soon as the screen loads.
   final bool showTrackingShare;
 
+  /// When true, keep showing the classic details screen even if the trip is
+  /// currently in progress (used from the live screen's "trip details" button).
+  final bool forceDetails;
+
   const TripDetailsScreen({
     super.key,
     required this.tripId,
     this.initialBooking,
     this.showTrackingShare = false,
+    this.forceDetails = false,
   });
 
   @override
@@ -84,15 +89,34 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   Future<void> _loadTrip() async {
     try {
       final tripProvider = Provider.of<TripProvider>(context, listen: false);
-      final trip = await tripProvider.getTrip(widget.tripId);
+      final loaded = await tripProvider.getTrip(widget.tripId);
       final activeBooking = _activeBooking ?? await _loadActiveBooking();
       if (!mounted) return;
+      if (loaded == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
       setState(() {
-        _trip = trip;
+        _trip = loaded;
         _activeBooking = activeBooking;
         _isLoading = false;
         _buildMarkers();
       });
+      if (!widget.forceDetails && loaded.status == 'in_progress' && mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          Navigator.pushReplacementNamed(
+            context,
+            RouteNames.tripInProgress,
+            arguments: {
+              'tripId': loaded.id,
+              'booking': activeBooking,
+              'showTrackingShare': widget.showTrackingShare,
+            },
+          );
+        });
+        return;
+      }
       _maybePromptTrackingShare();
     } catch (e) {
       setState(() => _isLoading = false);

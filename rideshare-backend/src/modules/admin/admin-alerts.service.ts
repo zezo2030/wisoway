@@ -14,6 +14,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 const ADMIN_ALERT_TYPES = [
   AdminAlertType.DRIVER_REGISTRATION,
   AdminAlertType.FEE_PAYMENT,
+  AdminAlertType.TRIP_EMERGENCY,
 ] as const;
 
 export interface AdminAlertPreferenceView {
@@ -102,6 +103,34 @@ export class AdminAlertsService {
         paymentId: payment.id,
         amount: Number(payment.amount),
         currency: payment.currency ?? 'JOD',
+      },
+    });
+  }
+
+  async notifyTripEmergency(payload: {
+    tripId: string;
+    reporterUserId: string;
+    reporterName: string;
+    fromName: string;
+    toName: string;
+    latitude: number | null;
+    longitude: number | null;
+  }): Promise<void> {
+    const locationText =
+      payload.latitude != null && payload.longitude != null
+        ? ` at ${payload.latitude.toFixed(5)}, ${payload.longitude.toFixed(5)}`
+        : '';
+
+    await this.dispatch(AdminAlertType.TRIP_EMERGENCY, {
+      title: 'Trip emergency alert',
+      body: `${payload.reporterName} triggered emergency on trip ${payload.fromName} → ${payload.toName}${locationText}.`,
+      notificationType: 'admin_trip_emergency',
+      data: {
+        link: `/trips/${payload.tripId}`,
+        tripId: payload.tripId,
+        reporterUserId: payload.reporterUserId,
+        latitude: payload.latitude,
+        longitude: payload.longitude,
       },
     });
   }

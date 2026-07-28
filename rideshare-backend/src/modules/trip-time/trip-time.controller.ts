@@ -20,6 +20,7 @@ import {
   DriverPresenceConfirmDto,
   PassengerDeclareDto,
 } from './dto/presence.dto';
+import { TripEmergencyDto } from './dto/trip-emergency.dto';
 
 @ApiTags('trip-time')
 @ApiBearerAuth()
@@ -107,5 +108,18 @@ export class TripTimeController {
     @Body() dto: PassengerDeclareDto,
   ) {
     return this.presenceService.passengerDeclare(bookingId, userId, dto);
+  }
+
+  @Post('trips/:id/emergency')
+  @ApiOperation({
+    summary:
+      'Driver or confirmed passenger triggers an emergency alert to admins with current location',
+  })
+  async reportEmergency(
+    @Param('id') tripId: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: TripEmergencyDto,
+  ) {
+    return this.tripTimeService.reportEmergency(tripId, userId, dto);
   }
 }

@@ -6,6 +6,7 @@ import { BookingSeatEntity } from '../../database/entities/booking-seat.entity';
 import { TripEntity } from '../../database/entities/trip.entity';
 import { TripShareLinkEntity } from '../../database/entities/trip-share-link.entity';
 import { CommunicationFeeEntity } from '../../database/entities/communication-fee.entity';
+import { UserEntity } from '../../database/entities/user.entity';
 import { TripTimeService } from './trip-time.service';
 import { PresenceService } from './presence.service';
 import { TripTimeController } from './trip-time.controller';
@@ -25,6 +26,7 @@ import { PlatformPricingService } from '../payments/platform-pricing.service';
       TripEntity,
       TripShareLinkEntity,
       CommunicationFeeEntity,
+      UserEntity,
     ]),
     forwardRef(() => NotificationsModule),
     WalletModule,

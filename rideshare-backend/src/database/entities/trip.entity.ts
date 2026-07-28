@@ -127,6 +127,23 @@ export class TripEntity {
   @Column({ type: 'timestamptz', nullable: true })
   lastDriverLocationAt: Date | null;
 
+  /** Live ETA snapshot (recomputed from Directions/OSRM while in progress). */
+  @Column({ type: 'float', nullable: true })
+  remainingDistanceKm: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  remainingDurationSeconds: number | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  etaAt: Date | null;
+
+  /** 0–100 progress along the planned origin→destination great-circle. */
+  @Column({ type: 'float', nullable: true })
+  routeProgressPercent: number | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  etaComputedAt: Date | null;
+
   /** Pre-trip confirmation push sent timestamp (idempotency guard). */
   @Column({ type: 'timestamptz', nullable: true })
   preTripConfirmSentAt: Date | null;

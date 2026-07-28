@@ -402,7 +402,8 @@ class AppLocalizationsAr extends AppLocalizations {
       'تعذّر تحميل المسار. نعرض نقاط الانطلاق والوصول.';
 
   @override
-  String get notificationsBookingCreatedTitle => 'تم حجز مقعد في رحلتك المشتركة';
+  String get notificationsBookingCreatedTitle =>
+      'تم حجز مقعد في رحلتك المشتركة';
 
   @override
   String get notificationsBookingCreatedBody =>
@@ -3880,6 +3881,58 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get shareTripTrackingError => 'تعذّر إنشاء رابط المشاركة';
+
+  @override
+  String get tripInProgressTitle => 'الرحلة جارية';
+
+  @override
+  String get tripInProgressOnTheWay => 'أنت في الطريق';
+
+  @override
+  String get tripInProgressHelp => 'مساعدة';
+
+  @override
+  String get tripInProgressEtaLabel => 'وقت الوصول المتوقع';
+
+  @override
+  String get tripInProgressRemainingDistance => 'المسافة المتبقية';
+
+  @override
+  String get tripInProgressRemainingTime => 'تبقى للوصول';
+
+  @override
+  String get tripInProgressTripDetails => 'تفاصيل الرحلة';
+
+  @override
+  String get tripInProgressShareTracking => 'مشاركة التتبع';
+
+  @override
+  String get tripInProgressEmergency => 'الطوارئ';
+
+  @override
+  String get tripInProgressLayers => 'طبقات';
+
+  @override
+  String get tripInProgressRecenter => 'تمركز';
+
+  @override
+  String get tripInProgressEmergencySent => 'تم إرسال تنبيه الطوارئ للدعم';
+
+  @override
+  String get tripInProgressEmergencyError => 'تعذّر إرسال تنبيه الطوارئ';
+
+  @override
+  String get tripInProgressEmergencyConfirmTitle => 'تنبيه الطوارئ';
+
+  @override
+  String get tripInProgressEmergencyConfirmMessage =>
+      'سيتم إشعار فريق الدعم بموقعك الحالي. هل تريد المتابعة؟';
+
+  @override
+  String get tripInProgressEmergencyConfirmAction => 'إرسال التنبيه';
+
+  @override
+  String get tripInProgressEmergencyCancel => 'إلغاء';
 
   @override
   String get locationAutocompleteSuggestions => 'اقتراحات الأماكن';
