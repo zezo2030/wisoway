@@ -22,10 +22,13 @@ class ErrorLocalizations {
         "We couldn't load the route. Showing pickup and drop-off points.",
     'errorsOutstandingCharges':
         'You have {count} unpaid charge(s) totaling {total} JOD. Settle them before publishing a new trip.',
+    'errorsNegativeWalletBalance':
+        'Your wallet balance is negative. Settle it before creating shared trips or receiving instant rides.',
     'errorsActionRetry': 'Retry',
     'errorsActionReauthenticate': 'Sign in again',
     'errorsActionOpenSettings': 'Open Settings',
     'errorsActionViewPendingCharges': 'View Charges',
+    'errorsActionTopUpWallet': 'Top up wallet',
     'error': 'Error',
     'ok': 'OK',
   };
@@ -49,10 +52,13 @@ class ErrorLocalizations {
         'تعذّر تحميل المسار. نعرض نقاط الانطلاق والوصول.',
     'errorsOutstandingCharges':
         'لديك {count} رسوم مستحقة بإجمالي {total} د.أ. يجب تسويتها قبل نشر رحلة جديدة.',
+    'errorsNegativeWalletBalance':
+        'رصيد محفظتك سالب. سدد المستحقات قبل إنشاء رحلات مشتركة أو تلقي رحلات مباشرة.',
     'errorsActionRetry': 'إعادة المحاولة',
     'errorsActionReauthenticate': 'تسجيل الدخول مرة أخرى',
     'errorsActionOpenSettings': 'فتح الإعدادات',
     'errorsActionViewPendingCharges': 'عرض الرسوم',
+    'errorsActionTopUpWallet': 'شحن المحفظة',
     'error': 'خطأ',
     'ok': 'موافق',
   };

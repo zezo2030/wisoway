@@ -41,6 +41,15 @@ class TripModel {
   // Communication Fee Status
   final String communicationFeeStatus; // 'not_paid', 'paid'
 
+  // Trip lifecycle timestamps
+  final DateTime? tripStartedAt;
+  final DateTime? tripCompletedAt;
+
+  // Presence settlement (012)
+  final DateTime? presenceSettledAt;
+  final int? billableSeatCount;
+  final double? capturedFeeAmount;
+
   // Distance (km, from PostGIS)
   final double? distanceKm;
 
@@ -75,6 +84,11 @@ class TripModel {
     this.status = 'active',
     this.isVisible = true,
     this.communicationFeeStatus = 'not_paid',
+    this.tripStartedAt,
+    this.tripCompletedAt,
+    this.presenceSettledAt,
+    this.billableSeatCount,
+    this.capturedFeeAmount,
     this.distanceKm,
     this.stops = const [],
     this.notes,
@@ -170,6 +184,21 @@ class TripModel {
       status: json['status'] ?? 'active',
       isVisible: json['isVisible'] ?? true,
       communicationFeeStatus: json['communicationFeeStatus'] ?? 'not_paid',
+      tripStartedAt: json['tripStartedAt'] != null
+          ? DateTime.tryParse(json['tripStartedAt'].toString())
+          : null,
+      tripCompletedAt: json['tripCompletedAt'] != null
+          ? DateTime.tryParse(json['tripCompletedAt'].toString())
+          : null,
+      presenceSettledAt: json['presenceSettledAt'] != null
+          ? DateTime.tryParse(json['presenceSettledAt'].toString())
+          : null,
+      billableSeatCount: json['billableSeatCount'] != null
+          ? _parseInt(json['billableSeatCount'])
+          : null,
+      capturedFeeAmount: json['capturedFeeAmount'] != null
+          ? _parseDouble(json['capturedFeeAmount'])
+          : null,
       distanceKm: json['distanceKm'] != null
           ? _parseDouble(json['distanceKm'])
           : null,
@@ -207,6 +236,14 @@ class TripModel {
       'status': status,
       'isVisible': isVisible,
       'communicationFeeStatus': communicationFeeStatus,
+      if (tripStartedAt != null)
+        'tripStartedAt': tripStartedAt!.toIso8601String(),
+      if (tripCompletedAt != null)
+        'tripCompletedAt': tripCompletedAt!.toIso8601String(),
+      if (presenceSettledAt != null)
+        'presenceSettledAt': presenceSettledAt!.toIso8601String(),
+      if (billableSeatCount != null) 'billableSeatCount': billableSeatCount,
+      if (capturedFeeAmount != null) 'capturedFeeAmount': capturedFeeAmount,
       if (distanceKm != null) 'distanceKm': distanceKm,
       if (stops.isNotEmpty)
         'stops': stops.asMap().entries
@@ -238,6 +275,11 @@ class TripModel {
     String? status,
     bool? isVisible,
     String? communicationFeeStatus,
+    DateTime? tripStartedAt,
+    DateTime? tripCompletedAt,
+    DateTime? presenceSettledAt,
+    int? billableSeatCount,
+    double? capturedFeeAmount,
     double? distanceKm,
     List<LocationModel>? stops,
     String? notes,
@@ -263,6 +305,11 @@ class TripModel {
       isVisible: isVisible ?? this.isVisible,
       communicationFeeStatus:
           communicationFeeStatus ?? this.communicationFeeStatus,
+      tripStartedAt: tripStartedAt ?? this.tripStartedAt,
+      tripCompletedAt: tripCompletedAt ?? this.tripCompletedAt,
+      presenceSettledAt: presenceSettledAt ?? this.presenceSettledAt,
+      billableSeatCount: billableSeatCount ?? this.billableSeatCount,
+      capturedFeeAmount: capturedFeeAmount ?? this.capturedFeeAmount,
       distanceKm: distanceKm ?? this.distanceKm,
       stops: stops ?? this.stops,
       notes: notes ?? this.notes,

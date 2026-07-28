@@ -4055,4 +4055,115 @@ class AppLocalizationsAr extends AppLocalizations {
   String instantAgreedFare(String fare, String currency) {
     return 'الأجرة المتفق عليها: $fare $currency';
   }
+
+  @override
+  String get tripSummaryTitle => 'انتهت الرحلة بنجاح';
+
+  @override
+  String get tripSummaryThanks => 'شكراً لك على رحلتك';
+
+  @override
+  String get tripSummaryHelp => 'مساعدة';
+
+  @override
+  String get tripSummaryArrivalPlace => 'مكان الوصول';
+
+  @override
+  String get tripSummaryDistance => 'المسافة';
+
+  @override
+  String get tripSummaryDuration => 'مدة الرحلة';
+
+  @override
+  String get tripSummaryStartTime => 'وقت البدء';
+
+  @override
+  String get tripSummaryEndTime => 'وقت الانتهاء';
+
+  @override
+  String tripSummaryHoursMinutes(int hours, int minutes) {
+    return '$hours ساعة $minutes دقيقة';
+  }
+
+  @override
+  String tripSummaryHoursOnly(int hours) {
+    return '$hours ساعة';
+  }
+
+  @override
+  String tripSummaryMinutesOnly(int minutes) {
+    return '$minutes دقيقة';
+  }
+
+  @override
+  String tripSummaryConfirmedPassengers(int count) {
+    return 'الركاب الذين أكدوا تواجدهم ($count)';
+  }
+
+  @override
+  String get tripSummaryNoPassengers => 'لا يوجد ركاب لهذه الرحلة.';
+
+  @override
+  String get tripSummaryPassengerFare => 'أجرة الراكب';
+
+  @override
+  String get tripSummaryConfirmed => 'تم التأكيد';
+
+  @override
+  String get tripSummaryNotConfirmed => 'لم يؤكد التواجد';
+
+  @override
+  String tripSummaryPassengerFares(int count) {
+    return 'أجرة الركاب ($count ركاب)';
+  }
+
+  @override
+  String tripSummaryTripFeePercent(int percent) {
+    return 'رسوم الرحلة (%$percent)';
+  }
+
+  @override
+  String get tripSummaryNetAmount => 'المبلغ الصافي الذي ستحصل عليه';
+
+  @override
+  String tripSummaryFeeDeducted(String amount) {
+    return 'تم خصم رسوم الرحلة ($amount) من محفظتك. تأكد من وجود رصيد كافٍ في محفظتك لإنشاء رحلات جديدة.';
+  }
+
+  @override
+  String tripSummaryPayFeePrompt(String amount) {
+    return 'الرصيد غير كافٍ لخصم رسوم الرحلة ($amount). ادفع الآن لتسوية حسابك.';
+  }
+
+  @override
+  String tripSummaryPaymentRequired(String fee, String debt) {
+    return 'تعذر خصم رسوم الرحلة ($fee) بالكامل. رصيد محفظتك سالب بمقدار $debt. ادفع الآن لتسوية الحساب.';
+  }
+
+  @override
+  String get tripSummaryNegativeBalanceRestriction =>
+      'لا يمكنك إنشاء رحلات مشتركة أو تلقي رحلات مباشرة حتى تسوية الرصيد السالب.';
+
+  @override
+  String get tripSummaryPayNow => 'ادفع الآن';
+
+  @override
+  String get tripSummaryChatTitle => 'الدردشة مع الركاب';
+
+  @override
+  String get tripSummaryChatSubtitle => 'تواصل مع ركاب هذه الرحلة';
+
+  @override
+  String get tripSummaryBackHome => 'العودة إلى الصفحة الرئيسية';
+
+  @override
+  String get currencyJodShort => 'د.أ';
+
+  @override
+  String get negativeWalletBalanceBlocked =>
+      'رصيد محفظتك سالب. سدد المستحقات قبل إنشاء رحلات مشتركة أو تلقي رحلات مباشرة.';
+
+  @override
+  String get negativeWalletGoOnlineBlocked =>
+      'رصيد محفظتك سالب. سدد المستحقات قبل تلقي الرحلات المباشرة.';
 }

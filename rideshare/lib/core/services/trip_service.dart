@@ -268,8 +268,14 @@ class TripService {
   /// Driver presses "تم الوصول للوجهة" — marks the trip as completed.
   /// The trip auto-transitions to IN_PROGRESS at departureTime server-side, so
   /// there is no longer a manual "Start Trip" action.
-  Future<void> markTripArrived(String tripId) async {
-    await _api.post(ApiEndpoints.arriveTrip(tripId));
+  /// Returns the completed trip payload including optional `settlement`.
+  Future<Map<String, dynamic>> markTripArrived(String tripId) async {
+    final response = await _api.post(ApiEndpoints.arriveTrip(tripId));
+    final raw = response is Map ? (response['data'] ?? response) : response;
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
+    return {'id': tripId};
   }
 
   /// Driver: lock seat (external booking) or unlock back to available.

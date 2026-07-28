@@ -2522,5 +2522,69 @@
   "instantRaiseTo": "Raise to {fare} {currency}",
   "instantKeepFare": "Keep {fare} {currency}",
   "instantArrivingIn": "Arriving in ~{minutes} min",
-  "instantAgreedFare": "Agreed fare: {fare} {currency}"
+  "instantAgreedFare": "Agreed fare: {fare} {currency}",
+
+  "tripSummaryTitle": "Trip ended successfully",
+  "tripSummaryThanks": "Thank you for your trip",
+  "tripSummaryHelp": "Help",
+  "tripSummaryArrivalPlace": "Arrival place",
+  "tripSummaryDistance": "Distance",
+  "tripSummaryDuration": "Trip duration",
+  "tripSummaryStartTime": "Start time",
+  "tripSummaryEndTime": "End time",
+  "tripSummaryHoursMinutes": "{hours}h {minutes}m",
+  "@tripSummaryHoursMinutes": {
+    "placeholders": {
+      "hours": { "type": "int" },
+      "minutes": { "type": "int" }
+    }
+  },
+  "tripSummaryHoursOnly": "{hours}h",
+  "@tripSummaryHoursOnly": {
+    "placeholders": { "hours": { "type": "int" } }
+  },
+  "tripSummaryMinutesOnly": "{minutes}m",
+  "@tripSummaryMinutesOnly": {
+    "placeholders": { "minutes": { "type": "int" } }
+  },
+  "tripSummaryConfirmedPassengers": "Passengers who confirmed presence ({count})",
+  "@tripSummaryConfirmedPassengers": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "tripSummaryNoPassengers": "No passengers for this trip.",
+  "tripSummaryPassengerFare": "Passenger fare",
+  "tripSummaryConfirmed": "Confirmed",
+  "tripSummaryNotConfirmed": "Did not confirm",
+  "tripSummaryPassengerFares": "Passenger fares ({count} passengers)",
+  "@tripSummaryPassengerFares": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "tripSummaryTripFeePercent": "Trip fee ({percent}%)",
+  "@tripSummaryTripFeePercent": {
+    "placeholders": { "percent": { "type": "int" } }
+  },
+  "tripSummaryNetAmount": "Net amount you will receive",
+  "tripSummaryFeeDeducted": "Trip fees ({amount}) were deducted from your wallet. Keep enough balance to create new trips.",
+  "@tripSummaryFeeDeducted": {
+    "placeholders": { "amount": { "type": "String" } }
+  },
+  "tripSummaryPayFeePrompt": "Insufficient balance to deduct trip fees ({amount}). Pay now to settle your account.",
+  "@tripSummaryPayFeePrompt": {
+    "placeholders": { "amount": { "type": "String" } }
+  },
+  "tripSummaryPaymentRequired": "Trip fees ({fee}) could not be fully deducted. Your wallet is negative by {debt}. Pay now to settle.",
+  "@tripSummaryPaymentRequired": {
+    "placeholders": {
+      "fee": { "type": "String" },
+      "debt": { "type": "String" }
+    }
+  },
+  "tripSummaryNegativeBalanceRestriction": "You cannot create shared trips or receive instant rides until the negative balance is settled.",
+  "tripSummaryPayNow": "Pay now",
+  "tripSummaryChatTitle": "Chat with passengers",
+  "tripSummaryChatSubtitle": "Message the passengers of this trip",
+  "tripSummaryBackHome": "Return to home",
+  "currencyJodShort": "JOD",
+  "negativeWalletBalanceBlocked": "Your wallet balance is negative. Settle it before creating shared trips or receiving instant rides.",
+  "negativeWalletGoOnlineBlocked": "Your wallet balance is negative. Settle it before receiving instant rides."
 }

@@ -39,6 +39,7 @@ import 'screens/driver/edit_trip_screen.dart';
 import 'screens/driver/my_trips_screen.dart';
 import 'screens/driver/vehicle_settings_screen.dart';
 import 'screens/driver/trip_management_screen.dart';
+import 'screens/driver/trip_summary_screen.dart';
 import 'screens/driver/passenger_details_screen.dart';
 import 'screens/driver/driver_wallet_screen.dart';
 import 'screens/driver/pending_charges_screen.dart';
@@ -140,7 +141,9 @@ class MyApp extends StatelessWidget {
                     GlobalWidgetsLocalizations.delegate,
                     GlobalCupertinoLocalizations.delegate,
                   ],
-                  home: const AuthWrapper(),
+                  // TEMP: preview trip summary UI on app launch — remove after review
+                  home: const TripSummaryScreen.preview(),
+                  // home: const AuthWrapper(),
                   routes: {
                     RouteNames.welcome: (context) => const WelcomeScreen(),
                     RouteNames.signIn: (context) => const SignInScreen(),
@@ -235,6 +238,29 @@ class MyApp extends StatelessWidget {
                       return MaterialPageRoute(
                         builder: (context) =>
                             TripManagementScreen(tripId: tripId),
+                      );
+                    }
+                    if (settings.name == RouteNames.tripSummary) {
+                      final args = settings.arguments;
+                      if (args == 'preview' ||
+                          (args is Map && args['preview'] == true)) {
+                        return MaterialPageRoute(
+                          settings: settings,
+                          builder: (context) =>
+                              const TripSummaryScreen.preview(),
+                        );
+                      }
+                      final map = args as Map<String, dynamic>;
+                      return MaterialPageRoute(
+                        settings: settings,
+                        builder: (context) => TripSummaryScreen(
+                          tripId: map['tripId'] as String,
+                          settlement: map['settlement'] is Map
+                              ? Map<String, dynamic>.from(
+                                  map['settlement'] as Map,
+                                )
+                              : null,
+                        ),
                       );
                     }
                     if (settings.name == RouteNames.presenceConfirmation) {

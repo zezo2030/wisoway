@@ -120,6 +120,9 @@ export const ErrorCodes = {
 
   /** Settlement or release referenced a hold that does not exist or is closed. */
   HOLD_NOT_FOUND: 'HOLD_NOT_FOUND',
+
+  /** Driver wallet balance is negative — blocked from publishing / going online. */
+  NEGATIVE_WALLET_BALANCE: 'NEGATIVE_WALLET_BALANCE',
 } as const;
 
 /** Union type of all error code strings. */

@@ -5513,7 +5513,7 @@ abstract class AppLocalizations {
   /// No description provided for @enableLocationBody.
   ///
   /// In ar, this message translates to:
-  /// **'لا يمكن متابعة الرحلة بدون تشغيل خدمات الموقع. يرجى تفعيل GPS الآن.'**
+  /// **'لازم تشغّل GPS وتسمح للتطبيق بالموقع عشان الركاب يشوفوك على الخريطة أثناء تأكيد التواجد والرحلة. مش هتقدر تكمّل من غير التتبع.'**
   String get enableLocationBody;
 
   /// No description provided for @openLocationSettings.
@@ -7535,6 +7535,186 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'الأجرة المتفق عليها: {fare} {currency}'**
   String instantAgreedFare(String fare, String currency);
+
+  /// No description provided for @tripSummaryTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'انتهت الرحلة بنجاح'**
+  String get tripSummaryTitle;
+
+  /// No description provided for @tripSummaryThanks.
+  ///
+  /// In ar, this message translates to:
+  /// **'شكراً لك على رحلتك'**
+  String get tripSummaryThanks;
+
+  /// No description provided for @tripSummaryHelp.
+  ///
+  /// In ar, this message translates to:
+  /// **'مساعدة'**
+  String get tripSummaryHelp;
+
+  /// No description provided for @tripSummaryArrivalPlace.
+  ///
+  /// In ar, this message translates to:
+  /// **'مكان الوصول'**
+  String get tripSummaryArrivalPlace;
+
+  /// No description provided for @tripSummaryDistance.
+  ///
+  /// In ar, this message translates to:
+  /// **'المسافة'**
+  String get tripSummaryDistance;
+
+  /// No description provided for @tripSummaryDuration.
+  ///
+  /// In ar, this message translates to:
+  /// **'مدة الرحلة'**
+  String get tripSummaryDuration;
+
+  /// No description provided for @tripSummaryStartTime.
+  ///
+  /// In ar, this message translates to:
+  /// **'وقت البدء'**
+  String get tripSummaryStartTime;
+
+  /// No description provided for @tripSummaryEndTime.
+  ///
+  /// In ar, this message translates to:
+  /// **'وقت الانتهاء'**
+  String get tripSummaryEndTime;
+
+  /// No description provided for @tripSummaryHoursMinutes.
+  ///
+  /// In ar, this message translates to:
+  /// **'{hours} ساعة {minutes} دقيقة'**
+  String tripSummaryHoursMinutes(int hours, int minutes);
+
+  /// No description provided for @tripSummaryHoursOnly.
+  ///
+  /// In ar, this message translates to:
+  /// **'{hours} ساعة'**
+  String tripSummaryHoursOnly(int hours);
+
+  /// No description provided for @tripSummaryMinutesOnly.
+  ///
+  /// In ar, this message translates to:
+  /// **'{minutes} دقيقة'**
+  String tripSummaryMinutesOnly(int minutes);
+
+  /// No description provided for @tripSummaryConfirmedPassengers.
+  ///
+  /// In ar, this message translates to:
+  /// **'الركاب الذين أكدوا تواجدهم ({count})'**
+  String tripSummaryConfirmedPassengers(int count);
+
+  /// No description provided for @tripSummaryNoPassengers.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا يوجد ركاب لهذه الرحلة.'**
+  String get tripSummaryNoPassengers;
+
+  /// No description provided for @tripSummaryPassengerFare.
+  ///
+  /// In ar, this message translates to:
+  /// **'أجرة الراكب'**
+  String get tripSummaryPassengerFare;
+
+  /// No description provided for @tripSummaryConfirmed.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم التأكيد'**
+  String get tripSummaryConfirmed;
+
+  /// No description provided for @tripSummaryNotConfirmed.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم يؤكد التواجد'**
+  String get tripSummaryNotConfirmed;
+
+  /// No description provided for @tripSummaryPassengerFares.
+  ///
+  /// In ar, this message translates to:
+  /// **'أجرة الركاب ({count} ركاب)'**
+  String tripSummaryPassengerFares(int count);
+
+  /// No description provided for @tripSummaryTripFeePercent.
+  ///
+  /// In ar, this message translates to:
+  /// **'رسوم الرحلة (%{percent})'**
+  String tripSummaryTripFeePercent(int percent);
+
+  /// No description provided for @tripSummaryNetAmount.
+  ///
+  /// In ar, this message translates to:
+  /// **'المبلغ الصافي الذي ستحصل عليه'**
+  String get tripSummaryNetAmount;
+
+  /// No description provided for @tripSummaryFeeDeducted.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم خصم رسوم الرحلة ({amount}) من محفظتك. تأكد من وجود رصيد كافٍ في محفظتك لإنشاء رحلات جديدة.'**
+  String tripSummaryFeeDeducted(String amount);
+
+  /// No description provided for @tripSummaryPayFeePrompt.
+  ///
+  /// In ar, this message translates to:
+  /// **'الرصيد غير كافٍ لخصم رسوم الرحلة ({amount}). ادفع الآن لتسوية حسابك.'**
+  String tripSummaryPayFeePrompt(String amount);
+
+  /// No description provided for @tripSummaryPaymentRequired.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذر خصم رسوم الرحلة ({fee}) بالكامل. رصيد محفظتك سالب بمقدار {debt}. ادفع الآن لتسوية الحساب.'**
+  String tripSummaryPaymentRequired(String fee, String debt);
+
+  /// No description provided for @tripSummaryNegativeBalanceRestriction.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا يمكنك إنشاء رحلات مشتركة أو تلقي رحلات مباشرة حتى تسوية الرصيد السالب.'**
+  String get tripSummaryNegativeBalanceRestriction;
+
+  /// No description provided for @tripSummaryPayNow.
+  ///
+  /// In ar, this message translates to:
+  /// **'ادفع الآن'**
+  String get tripSummaryPayNow;
+
+  /// No description provided for @tripSummaryChatTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'الدردشة مع الركاب'**
+  String get tripSummaryChatTitle;
+
+  /// No description provided for @tripSummaryChatSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تواصل مع ركاب هذه الرحلة'**
+  String get tripSummaryChatSubtitle;
+
+  /// No description provided for @tripSummaryBackHome.
+  ///
+  /// In ar, this message translates to:
+  /// **'العودة إلى الصفحة الرئيسية'**
+  String get tripSummaryBackHome;
+
+  /// No description provided for @currencyJodShort.
+  ///
+  /// In ar, this message translates to:
+  /// **'د.أ'**
+  String get currencyJodShort;
+
+  /// No description provided for @negativeWalletBalanceBlocked.
+  ///
+  /// In ar, this message translates to:
+  /// **'رصيد محفظتك سالب. سدد المستحقات قبل إنشاء رحلات مشتركة أو تلقي رحلات مباشرة.'**
+  String get negativeWalletBalanceBlocked;
+
+  /// No description provided for @negativeWalletGoOnlineBlocked.
+  ///
+  /// In ar, this message translates to:
+  /// **'رصيد محفظتك سالب. سدد المستحقات قبل تلقي الرحلات المباشرة.'**
+  String get negativeWalletGoOnlineBlocked;
 }
 
 class _AppLocalizationsDelegate

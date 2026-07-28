@@ -19,6 +19,7 @@ import { TripTimeModule } from '../trip-time/trip-time.module';
 import { RecurrenceModule } from '../recurrence/recurrence.module';
 import { PendingChargesModule } from '../pending-charges/pending-charges.module';
 import { LocationsModule } from '../locations/locations.module';
+import { WalletModule } from '../wallet/wallet.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { LocationsModule } from '../locations/locations.module';
     UsersModule,
     PendingChargesModule,
     LocationsModule,
+    WalletModule,
   ],
   controllers: [TripsController],
   providers: [TripsService, TripsGateway, WsAuthGuard, WsRateLimitGuard],

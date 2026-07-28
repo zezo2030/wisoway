@@ -1516,15 +1516,23 @@ class _TripManagementScreenState extends State<TripManagementScreen>
 
     setState(() => _markingArrived = true);
     try {
-      await _tripService.markTripArrived(trip.id);
+      final result = await _tripService.markTripArrived(trip.id);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.l10n.tripEndedSuccess),
-          backgroundColor: AppColors.success,
-        ),
+      final settlement = result['settlement'] is Map
+          ? Map<String, dynamic>.from(result['settlement'] as Map)
+          : null;
+      await Navigator.pushNamedAndRemoveUntil(
+        context,
+        RouteNames.tripSummary,
+        (route) =>
+            route.settings.name == RouteNames.home ||
+            route.settings.name == RouteNames.main ||
+            route.isFirst,
+        arguments: {
+          'tripId': trip.id,
+          if (settlement != null) 'settlement': settlement,
+        },
       );
-      await _reloadTrip();
     } catch (e) {
       if (!mounted) return;
       ErrorSurface.showFailure(context, ApiClient.mapError(e));

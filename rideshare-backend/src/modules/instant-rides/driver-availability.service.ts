@@ -4,7 +4,9 @@ import { Repository } from 'typeorm';
 import { DriverAvailabilityEntity } from '../../database/entities';
 import { VehiclesService } from '../vehicles/vehicles.service';
 import { UsersService } from '../users/users.service';
+import { WalletService } from '../wallet/wallet.service';
 import { SetAvailabilityDto } from './dto/set-availability.dto';
+import { ErrorCodes } from '../../common/errors/error-codes';
 
 export type DriverAvailabilityStatus = {
   driverId: string;
@@ -32,6 +34,7 @@ export class DriverAvailabilityService {
     private readonly repo: Repository<DriverAvailabilityEntity>,
     private readonly vehiclesService: VehiclesService,
     private readonly usersService: UsersService,
+    private readonly walletService: WalletService,
   ) {}
 
   /** Driver goes online/offline (and optionally reports their location). */
@@ -162,6 +165,18 @@ export class DriverAvailabilityService {
       throw new ForbiddenException(
         'مركبتك قيد مراجعة الإدارة. لا يمكنك استقبال الرحلات حتى يتم التحقق منها.',
       );
+    }
+    try {
+      await this.walletService.assertNonNegativeDriverBalance(driverId);
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        throw new ForbiddenException({
+          code: ErrorCodes.NEGATIVE_WALLET_BALANCE,
+          message:
+            'رصيد محفظتك سالب. سدد المستحقات قبل تلقي الرحلات المباشرة.',
+        });
+      }
+      throw error;
     }
     return vehicle.id;
   }

@@ -5,6 +5,7 @@ describe('DriverAvailabilityService', () => {
   let repo: any;
   let vehicles: any;
   let users: any;
+  let wallet: any;
   let service: DriverAvailabilityService;
 
   beforeEach(() => {
@@ -17,7 +18,10 @@ describe('DriverAvailabilityService', () => {
     };
     vehicles = { findByDriver: jest.fn() };
     users = { findById: jest.fn() };
-    service = new DriverAvailabilityService(repo, vehicles, users);
+    wallet = {
+      assertNonNegativeDriverBalance: jest.fn().mockResolvedValue(undefined),
+    };
+    service = new DriverAvailabilityService(repo, vehicles, users, wallet);
   });
 
   describe('setAvailability (going online)', () => {

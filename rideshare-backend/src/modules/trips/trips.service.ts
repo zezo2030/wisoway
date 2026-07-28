@@ -28,6 +28,7 @@ import { RecurrenceService } from '../recurrence/recurrence.service';
 import { RecurrenceFrequency } from '../../database/entities/trip-recurrence-rule.entity';
 import { PendingChargesService } from '../pending-charges/pending-charges.service';
 import { LocationsService } from '../locations/locations.service';
+import { WalletService } from '../wallet/wallet.service';
 import {
   currencyForCountry,
   DEFAULT_CURRENCY,
@@ -74,6 +75,7 @@ export class TripsService {
     private recurrenceService: RecurrenceService,
     private pendingChargesService: PendingChargesService,
     private locationsService: LocationsService,
+    private walletService: WalletService,
   ) {}
 
   /**
@@ -151,6 +153,8 @@ export class TripsService {
         totalAmount: outstanding.totalAmount,
       });
     }
+
+    await this.walletService.assertNonNegativeDriverBalance(driverId);
 
     const departureTime = new Date(createTripDto.departureTime);
     if (departureTime <= new Date()) {

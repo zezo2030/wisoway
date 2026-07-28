@@ -2563,5 +2563,69 @@
   "instantAgreedFare": "الأجرة المتفق عليها: {fare} {currency}",
   "@instantAgreedFare": {
     "placeholders": { "fare": { "type": "String" }, "currency": { "type": "String" } }
-  }
+  },
+
+  "tripSummaryTitle": "انتهت الرحلة بنجاح",
+  "tripSummaryThanks": "شكراً لك على رحلتك",
+  "tripSummaryHelp": "مساعدة",
+  "tripSummaryArrivalPlace": "مكان الوصول",
+  "tripSummaryDistance": "المسافة",
+  "tripSummaryDuration": "مدة الرحلة",
+  "tripSummaryStartTime": "وقت البدء",
+  "tripSummaryEndTime": "وقت الانتهاء",
+  "tripSummaryHoursMinutes": "{hours} ساعة {minutes} دقيقة",
+  "@tripSummaryHoursMinutes": {
+    "placeholders": {
+      "hours": { "type": "int" },
+      "minutes": { "type": "int" }
+    }
+  },
+  "tripSummaryHoursOnly": "{hours} ساعة",
+  "@tripSummaryHoursOnly": {
+    "placeholders": { "hours": { "type": "int" } }
+  },
+  "tripSummaryMinutesOnly": "{minutes} دقيقة",
+  "@tripSummaryMinutesOnly": {
+    "placeholders": { "minutes": { "type": "int" } }
+  },
+  "tripSummaryConfirmedPassengers": "الركاب الذين أكدوا تواجدهم ({count})",
+  "@tripSummaryConfirmedPassengers": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "tripSummaryNoPassengers": "لا يوجد ركاب لهذه الرحلة.",
+  "tripSummaryPassengerFare": "أجرة الراكب",
+  "tripSummaryConfirmed": "تم التأكيد",
+  "tripSummaryNotConfirmed": "لم يؤكد التواجد",
+  "tripSummaryPassengerFares": "أجرة الركاب ({count} ركاب)",
+  "@tripSummaryPassengerFares": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "tripSummaryTripFeePercent": "رسوم الرحلة (%{percent})",
+  "@tripSummaryTripFeePercent": {
+    "placeholders": { "percent": { "type": "int" } }
+  },
+  "tripSummaryNetAmount": "المبلغ الصافي الذي ستحصل عليه",
+  "tripSummaryFeeDeducted": "تم خصم رسوم الرحلة ({amount}) من محفظتك. تأكد من وجود رصيد كافٍ في محفظتك لإنشاء رحلات جديدة.",
+  "@tripSummaryFeeDeducted": {
+    "placeholders": { "amount": { "type": "String" } }
+  },
+  "tripSummaryPayFeePrompt": "الرصيد غير كافٍ لخصم رسوم الرحلة ({amount}). ادفع الآن لتسوية حسابك.",
+  "@tripSummaryPayFeePrompt": {
+    "placeholders": { "amount": { "type": "String" } }
+  },
+  "tripSummaryPaymentRequired": "تعذر خصم رسوم الرحلة ({fee}) بالكامل. رصيد محفظتك سالب بمقدار {debt}. ادفع الآن لتسوية الحساب.",
+  "@tripSummaryPaymentRequired": {
+    "placeholders": {
+      "fee": { "type": "String" },
+      "debt": { "type": "String" }
+    }
+  },
+  "tripSummaryNegativeBalanceRestriction": "لا يمكنك إنشاء رحلات مشتركة أو تلقي رحلات مباشرة حتى تسوية الرصيد السالب.",
+  "tripSummaryPayNow": "ادفع الآن",
+  "tripSummaryChatTitle": "الدردشة مع الركاب",
+  "tripSummaryChatSubtitle": "تواصل مع ركاب هذه الرحلة",
+  "tripSummaryBackHome": "العودة إلى الصفحة الرئيسية",
+  "currencyJodShort": "د.أ",
+  "negativeWalletBalanceBlocked": "رصيد محفظتك سالب. سدد المستحقات قبل إنشاء رحلات مشتركة أو تلقي رحلات مباشرة.",
+  "negativeWalletGoOnlineBlocked": "رصيد محفظتك سالب. سدد المستحقات قبل تلقي الرحلات المباشرة."
 }

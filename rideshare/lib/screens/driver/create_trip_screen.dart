@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/trip_provider.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/services/vehicle_service.dart';
+import '../../core/services/payment_service.dart';
 import '../../models/location_model.dart';
 import '../../models/seat_layout_config.dart';
 import '../../models/vehicle_type_template.dart';
@@ -16,6 +17,7 @@ import '../../core/theme/text_styles.dart';
 import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
+import '../../core/errors/failure.dart';
 import '../../l10n/l10n_extensions.dart';
 
 class CreateTripScreen extends StatefulWidget {
@@ -278,6 +280,27 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     if (_departureTime!.isBefore(DateTime.now())) {
       _showError(context.l10n.departureTimeMustBeFuture);
       return;
+    }
+
+    try {
+      final wallet = await PaymentService().getWalletAccountMe();
+      if (!mounted) return;
+      if (wallet.balance < 0) {
+        ErrorSurface.showFailure(
+          context,
+          Failure(
+            category: FailureCategory.permission,
+            messageKey: 'errorsNegativeWalletBalance',
+            displayMessage: context.l10n.negativeWalletBalanceBlocked,
+            severity: FailureSeverity.error,
+            nextAction: FailureAction.topUpWallet,
+            developerDetail: 'wallet.balance=${wallet.balance}',
+          ),
+        );
+        return;
+      }
+    } catch (_) {
+      // Backend still enforces this; continue if wallet lookup fails.
     }
 
     setState(() => _isLoading = true);

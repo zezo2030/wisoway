@@ -28,6 +28,7 @@ import { CreatePayoutRequestDto } from './dto/create-payout-request.dto';
 import { DriverTripChargeDto } from './dto/driver-trip-charge.dto';
 import { WalletHoldService } from './wallet-hold.service';
 import { PlatformPricingService } from '../payments/platform-pricing.service';
+import { ErrorCodes } from '../../common/errors/error-codes';
 
 /** Primary ledger row for a (user, bucket): highest positive balance, else JOD, else first. */
 export function pickPrimaryWalletLedgerAccount(
@@ -139,6 +140,26 @@ export class WalletService {
       availableBalance: Math.round((balance - reserved) * 100) / 100,
       isActive: account.isActive,
     };
+  }
+
+  /**
+   * Blocks drivers with a negative ledger balance from creating shared trips
+   * or going online for instant rides until they top up / settle.
+   */
+  async assertNonNegativeDriverBalance(driverId: string): Promise<void> {
+    const summary = await this.getWalletSummary(
+      driverId,
+      WalletAccountType.DRIVER,
+    );
+    if (summary.balance < 0) {
+      throw new ForbiddenException({
+        code: ErrorCodes.NEGATIVE_WALLET_BALANCE,
+        message:
+          'رصيد محفظتك سالب. سدد المستحقات قبل إنشاء رحلات مشتركة أو تلقي رحلات مباشرة.',
+        balance: summary.balance,
+        currency: summary.currency,
+      });
+    }
   }
 
   /** Active holds for a user — surfaced in the driver wallet screen. */

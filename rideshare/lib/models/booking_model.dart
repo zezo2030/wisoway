@@ -10,6 +10,9 @@ class BookingSeatModel {
   final String gender;
   final bool isMainBooker;
   final DateTime? markedAbsentAt;
+  final DateTime? passengerSelfConfirmedAt;
+  final String? passengerDeclaredStatus;
+  final bool? billableOverride;
   final DateTime createdAt;
 
   const BookingSeatModel({
@@ -20,8 +23,24 @@ class BookingSeatModel {
     required this.gender,
     required this.isMainBooker,
     this.markedAbsentAt,
+    this.passengerSelfConfirmedAt,
+    this.passengerDeclaredStatus,
+    this.billableOverride,
     required this.createdAt,
   });
+
+  /// Passenger confirmed presence (or seat remains billable by default).
+  bool get isPresenceConfirmed {
+    if (passengerSelfConfirmedAt != null && billableOverride != false) {
+      return true;
+    }
+    if (passengerDeclaredStatus == 'in_vehicle' && billableOverride != false) {
+      return true;
+    }
+    if (markedAbsentAt != null || billableOverride == false) return false;
+    if (billableOverride == true) return true;
+    return false;
+  }
 
   factory BookingSeatModel.fromJson(Map<String, dynamic> json) {
     return BookingSeatModel(
@@ -32,6 +51,10 @@ class BookingSeatModel {
       gender: json['gender']?.toString() ?? '',
       isMainBooker: json['isMainBooker'] ?? false,
       markedAbsentAt: BookingModel._dateOrNull(json['markedAbsentAt']),
+      passengerSelfConfirmedAt:
+          BookingModel._dateOrNull(json['passengerSelfConfirmedAt']),
+      passengerDeclaredStatus: json['passengerDeclaredStatus']?.toString(),
+      billableOverride: json['billableOverride'] as bool?,
       createdAt: BookingModel._dateOrNow(json['createdAt']),
     );
   }

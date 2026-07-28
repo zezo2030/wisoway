@@ -164,6 +164,19 @@ class ExceptionMapper {
           outstandingTotal: total,
         );
       }
+      if (code == 'NEGATIVE_WALLET_BALANCE') {
+        final message = data is Map
+            ? (data['message'] as String?)
+            : null;
+        return Failure(
+          category: FailureCategory.permission,
+          messageKey: 'errorsNegativeWalletBalance',
+          displayMessage: message,
+          severity: FailureSeverity.error,
+          nextAction: FailureAction.topUpWallet,
+          developerDetail: detail,
+        );
+      }
     }
 
     if (statusCode != null && statusCode >= 500) {

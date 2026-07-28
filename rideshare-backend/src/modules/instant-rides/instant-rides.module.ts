@@ -12,6 +12,7 @@ import { VehiclesModule } from '../vehicles/vehicles.module';
 import { UsersModule } from '../users/users.module';
 import { LocationsModule } from '../locations/locations.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { WalletModule } from '../wallet/wallet.module';
 import { DriverAvailabilityService } from './driver-availability.service';
 import { InstantDispatchService } from './instant-dispatch.service';
 import { InstantRidesService } from './instant-rides.service';
@@ -48,6 +49,7 @@ import {
     UsersModule,
     LocationsModule,
     NotificationsModule,
+    WalletModule,
   ],
   controllers: [InstantRidesController],
   providers: [

@@ -4112,4 +4112,115 @@ class AppLocalizationsEn extends AppLocalizations {
   String instantAgreedFare(String fare, String currency) {
     return 'Agreed fare: $fare $currency';
   }
+
+  @override
+  String get tripSummaryTitle => 'Trip ended successfully';
+
+  @override
+  String get tripSummaryThanks => 'Thank you for your trip';
+
+  @override
+  String get tripSummaryHelp => 'Help';
+
+  @override
+  String get tripSummaryArrivalPlace => 'Arrival place';
+
+  @override
+  String get tripSummaryDistance => 'Distance';
+
+  @override
+  String get tripSummaryDuration => 'Trip duration';
+
+  @override
+  String get tripSummaryStartTime => 'Start time';
+
+  @override
+  String get tripSummaryEndTime => 'End time';
+
+  @override
+  String tripSummaryHoursMinutes(int hours, int minutes) {
+    return '${hours}h ${minutes}m';
+  }
+
+  @override
+  String tripSummaryHoursOnly(int hours) {
+    return '${hours}h';
+  }
+
+  @override
+  String tripSummaryMinutesOnly(int minutes) {
+    return '${minutes}m';
+  }
+
+  @override
+  String tripSummaryConfirmedPassengers(int count) {
+    return 'Passengers who confirmed presence ($count)';
+  }
+
+  @override
+  String get tripSummaryNoPassengers => 'No passengers for this trip.';
+
+  @override
+  String get tripSummaryPassengerFare => 'Passenger fare';
+
+  @override
+  String get tripSummaryConfirmed => 'Confirmed';
+
+  @override
+  String get tripSummaryNotConfirmed => 'Did not confirm';
+
+  @override
+  String tripSummaryPassengerFares(int count) {
+    return 'Passenger fares ($count passengers)';
+  }
+
+  @override
+  String tripSummaryTripFeePercent(int percent) {
+    return 'Trip fee ($percent%)';
+  }
+
+  @override
+  String get tripSummaryNetAmount => 'Net amount you will receive';
+
+  @override
+  String tripSummaryFeeDeducted(String amount) {
+    return 'Trip fees ($amount) were deducted from your wallet. Keep enough balance to create new trips.';
+  }
+
+  @override
+  String tripSummaryPayFeePrompt(String amount) {
+    return 'Insufficient balance to deduct trip fees ($amount). Pay now to settle your account.';
+  }
+
+  @override
+  String tripSummaryPaymentRequired(String fee, String debt) {
+    return 'Trip fees ($fee) could not be fully deducted. Your wallet is negative by $debt. Pay now to settle.';
+  }
+
+  @override
+  String get tripSummaryNegativeBalanceRestriction =>
+      'You cannot create shared trips or receive instant rides until the negative balance is settled.';
+
+  @override
+  String get tripSummaryPayNow => 'Pay now';
+
+  @override
+  String get tripSummaryChatTitle => 'Chat with passengers';
+
+  @override
+  String get tripSummaryChatSubtitle => 'Message the passengers of this trip';
+
+  @override
+  String get tripSummaryBackHome => 'Return to home';
+
+  @override
+  String get currencyJodShort => 'JOD';
+
+  @override
+  String get negativeWalletBalanceBlocked =>
+      'Your wallet balance is negative. Settle it before creating shared trips or receiving instant rides.';
+
+  @override
+  String get negativeWalletGoOnlineBlocked =>
+      'Your wallet balance is negative. Settle it before receiving instant rides.';
 }

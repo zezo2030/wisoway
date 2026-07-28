@@ -22,6 +22,7 @@ enum FailureAction {
   reauthenticate,
   openSettings,
   viewPendingCharges,
+  topUpWallet,
 }
 
 class Failure extends Equatable {
