@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../bloc/auth/auth_bloc.dart';
-import '../../bloc/auth/auth_event.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/text_styles.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../providers/auth_provider.dart';
 
 Future<bool?> showLogoutConfirmationDialog(BuildContext context) {
   return showDialog<bool>(
@@ -44,10 +43,14 @@ Future<bool?> showLogoutConfirmationDialog(BuildContext context) {
 
 Future<void> handleLogout(BuildContext context) async {
   final confirm = await showLogoutConfirmationDialog(context);
-  if (confirm == true && context.mounted) {
-    context.read<AuthBloc>().add(const AuthSignOut());
-    if (context.mounted) {
-      Navigator.pushReplacementNamed(context, RouteNames.signIn);
-    }
-  }
+  if (confirm != true || !context.mounted) return;
+
+  // AuthWrapper and the rest of the app gate on AuthProvider, not AuthBloc.
+  await context.read<AuthProvider>().signOut();
+  if (!context.mounted) return;
+
+  Navigator.of(context).pushNamedAndRemoveUntil(
+    RouteNames.signIn,
+    (route) => false,
+  );
 }

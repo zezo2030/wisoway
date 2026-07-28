@@ -616,58 +616,81 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get presenceScreenTitle => 'Confirm presence in the vehicle';
+
   @override
   String get presenceScreenSubtitle =>
       'Please confirm your presence to start the trip';
+
   @override
   String get presenceHelp => 'Help';
+
   @override
   String get presenceDriverStartsAfter => 'The driver starts the trip after';
+
   @override
   String get presenceMinutes => 'minutes';
+
   @override
   String get presencePickupTitle => 'Trip pickup point';
+
   @override
   String get presenceQuestionTitle => 'Are you inside the vehicle?';
+
   @override
   String get presenceQuestionSubtitle =>
       'Confirm your presence so the trip can be recorded and started correctly';
+
   @override
   String get presenceInfoBody =>
       'Confirming that you are in the vehicle documents the trip and includes it in your trip history and account reliability.\nNo fee is deducted from the driver\'s wallet when presence is not confirmed.';
+
   @override
   String get presenceInVehicleTitle => 'Yes, I am in the vehicle';
+
   @override
   String get presenceInVehicleSubtitle => 'Confirm presence';
+
   @override
   String get presenceOnMyWayTitle => 'I am on my way to the driver';
+
   @override
   String get presenceOnMyWaySubtitle => 'I will arrive in a few minutes';
+
   @override
   String get presenceNotRidingTitle => 'I am not in the vehicle';
+
   @override
   String get presenceNotRidingSubtitle => 'I will not take this trip';
+
   @override
   String get presencePrivacyLine =>
       'Your data is safe and used only to improve the trip experience';
+
   @override
   String get presenceRequestEndsAfter =>
       'The confirmation request ends automatically after';
+
   @override
   String get presenceConfirmedTitle => 'Presence confirmed';
+
   @override
   String get presenceConfirmedBody =>
       'Thank you. Your choice has been recorded for this trip.';
+
   @override
   String get presenceEdit => 'Edit';
+
   @override
   String get presenceWindowClosedTitle => 'Confirmation time ended';
+
   @override
   String get presenceWindowClosedBody =>
       'You can no longer change your presence for this trip.';
+
   @override
   String get presenceLoadFailed =>
       'Unable to load presence confirmation details';
+
   @override
   String get presenceSubmitFailed =>
       'Unable to save your choice. Please try again.';
@@ -2920,7 +2943,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get enableLocationBody =>
-      'The trip cannot continue without location services enabled. Please enable GPS now.';
+      'Turn on GPS and allow location access so passengers can see you on the map during presence confirmation and the trip. Tracking is required to continue.';
 
   @override
   String get openLocationSettings => 'Open location settings';

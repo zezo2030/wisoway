@@ -77,12 +77,34 @@ class PresencePoint {
   final double? latitude;
   final double? longitude;
 
+  bool get hasCoordinates => latitude != null && longitude != null;
+
   factory PresencePoint.fromJson(Map<String, dynamic> json) {
     return PresencePoint(
       name: json['name']?.toString() ?? '',
       address: json['address']?.toString(),
       latitude: _doubleOrNull(json['lat']),
       longitude: _doubleOrNull(json['lng']),
+    );
+  }
+}
+
+class PresenceDriverLocation {
+  const PresenceDriverLocation({
+    required this.latitude,
+    required this.longitude,
+    this.updatedAt,
+  });
+
+  final double latitude;
+  final double longitude;
+  final DateTime? updatedAt;
+
+  factory PresenceDriverLocation.fromJson(Map<String, dynamic> json) {
+    return PresenceDriverLocation(
+      latitude: _doubleOrNull(json['lat']) ?? 0,
+      longitude: _doubleOrNull(json['lng']) ?? 0,
+      updatedAt: _dateOrNull(json['updatedAt']),
     );
   }
 }
@@ -146,6 +168,7 @@ class PresencePrompt {
     required this.secondsUntilDeparture,
     required this.seats,
     required this.window,
+    this.driverLocation,
   });
 
   final String bookingId;
@@ -157,6 +180,7 @@ class PresencePrompt {
   final int secondsUntilDeparture;
   final List<PresencePromptSeat> seats;
   final PresenceWindow window;
+  final PresenceDriverLocation? driverLocation;
 
   PassengerPresenceStatus? get declaredStatus {
     if (seats.isEmpty) return null;
@@ -167,6 +191,7 @@ class PresencePrompt {
   }
 
   factory PresencePrompt.fromJson(Map<String, dynamic> json) {
+    final rawDriverLocation = json['driverLocation'];
     return PresencePrompt(
       bookingId: json['bookingId']?.toString() ?? '',
       tripId: json['tripId']?.toString() ?? '',
@@ -177,6 +202,9 @@ class PresencePrompt {
       secondsUntilDeparture: _intOrZero(json['secondsUntilDeparture']),
       seats: _mapList(json['seats']).map(PresencePromptSeat.fromJson).toList(),
       window: PresenceWindow.fromJson(_mapOrEmpty(json['window'])),
+      driverLocation: rawDriverLocation is Map
+          ? PresenceDriverLocation.fromJson(_mapOrEmpty(rawDriverLocation))
+          : null,
     );
   }
 }

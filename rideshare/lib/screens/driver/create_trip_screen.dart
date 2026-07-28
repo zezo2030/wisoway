@@ -120,11 +120,12 @@ class _CreateTripScreenState extends State<CreateTripScreen>
   }
 
   Future<bool> _ensureCanCreateTrip() async {
+    // Do not toggle _isCheckingDriverApproval here: that replaces the Form with a
+    // loading scaffold, detaches _formKey, and makes currentState null before the
+    // next frame — which crashes _createTrip on currentState!.
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    setState(() => _isCheckingDriverApproval = true);
     await authProvider.loadUserProfile(silent: true);
     if (!mounted) return false;
-    setState(() => _isCheckingDriverApproval = false);
 
     final user = authProvider.userModel;
     return user != null && user.canCreateTrips;
@@ -264,8 +265,10 @@ class _CreateTripScreenState extends State<CreateTripScreen>
 
   Future<void> _createTrip() async {
     if (!await _ensureCanCreateTrip()) return;
+    if (!mounted) return;
 
-    if (!_formKey.currentState!.validate()) return;
+    final formState = _formKey.currentState;
+    if (formState == null || !formState.validate()) return;
     if (_fromLocation == null ||
         _toLocation == null ||
         _departureTime == null) {
@@ -374,7 +377,10 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     final authProvider = Provider.of<AuthProvider>(context);
     final user = authProvider.userModel;
 
-    if (_isCheckingDriverApproval || authProvider.isRefreshingProfile) {
+    // Only gate on the initial approval check. Listening to isRefreshingProfile
+    // unmounted the Form on every profile refresh (including create-trip submit)
+    // and left _formKey.currentState null.
+    if (_isCheckingDriverApproval) {
       return Scaffold(
         backgroundColor: T.background(context),
         body: Center(

@@ -26,6 +26,7 @@ import '../../core/services/location_service.dart';
 import '../../core/api/websocket_service.dart';
 import '../../core/services/trip_service.dart';
 import '../../l10n/l10n_extensions.dart';
+import 'package:geolocator/geolocator.dart';
 
 class TripManagementScreen extends StatefulWidget {
   final String tripId;
@@ -36,7 +37,8 @@ class TripManagementScreen extends StatefulWidget {
   State<TripManagementScreen> createState() => _TripManagementScreenState();
 }
 
-class _TripManagementScreenState extends State<TripManagementScreen> {
+class _TripManagementScreenState extends State<TripManagementScreen>
+    with WidgetsBindingObserver {
   final BookingService _bookingService = BookingService();
   final TripService _tripService = TripService();
   final PaymentService _paymentService = PaymentService();
@@ -53,31 +55,39 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
   Timer? _locationTrackingTimer;
   bool _locationDialogOpen = false;
   bool _markingArrived = false;
+  bool _liveTrackingActive = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadTrip();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _locationTrackingTimer?.cancel();
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _syncLiveTrackingState();
+    }
+  }
+
   void _syncLiveTrackingState() {
     final trip = _trip;
-    if (trip == null) {
+    if (trip == null || !trip.isDriverLiveTrackingRequired) {
       _locationTrackingTimer?.cancel();
       _locationTrackingTimer = null;
-      return;
-    }
-
-    final isInProgress = trip.status == 'in_progress';
-    if (!isInProgress) {
-      _locationTrackingTimer?.cancel();
-      _locationTrackingTimer = null;
+      if (_liveTrackingActive && mounted) {
+        setState(() => _liveTrackingActive = false);
+      } else {
+        _liveTrackingActive = false;
+      }
       return;
     }
 
@@ -90,36 +100,59 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
 
     _pushDriverLocationTick();
     _locationTrackingTimer = Timer.periodic(
-      const Duration(seconds: 10),
+      const Duration(seconds: 8),
       (_) => _pushDriverLocationTick(),
     );
   }
 
   Future<void> _pushDriverLocationTick() async {
     final trip = _trip;
-    if (!mounted || trip == null || trip.status != 'in_progress') {
+    if (!mounted || trip == null || !trip.isDriverLiveTrackingRequired) {
       return;
     }
 
-    final serviceEnabled = await _locationService.isLocationServiceEnabled();
-    if (!serviceEnabled) {
+    final ready = await _ensureTrackingReady();
+    if (!ready) {
       await _showEnableLocationDialog();
+      if (mounted && _liveTrackingActive) {
+        setState(() => _liveTrackingActive = false);
+      }
       return;
     }
 
     try {
-      final position = await _locationService.getCurrentPosition();
+      final position = await _locationService.getCurrentPosition(
+        checkPrivacyPreference: false,
+      );
       _webSocketService.updateDriverLocation(
         tripId: trip.id,
         latitude: position.latitude,
         longitude: position.longitude,
         speedKph: position.speed > 0 ? position.speed * 3.6 : null,
-        heading: position.heading,
+        heading: position.heading >= 0 ? position.heading : null,
         accuracyMeters: position.accuracy,
       );
+      if (mounted && !_liveTrackingActive) {
+        setState(() => _liveTrackingActive = true);
+      }
     } catch (_) {
+      if (mounted && _liveTrackingActive) {
+        setState(() => _liveTrackingActive = false);
+      }
       await _showEnableLocationDialog();
     }
+  }
+
+  Future<bool> _ensureTrackingReady() async {
+    final serviceEnabled = await _locationService.isLocationServiceEnabled();
+    if (!serviceEnabled) return false;
+
+    var permission = await _locationService.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await _locationService.requestPermission();
+    }
+    return permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse;
   }
 
   Future<void> _showEnableLocationDialog() async {
@@ -129,27 +162,35 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.l10n.enableLocationRequired),
-        content: Text(context.l10n.enableLocationBody),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              await _locationService.openLocationSettings();
-            },
-            child: Text(context.l10n.openLocationSettings),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final enabled = await _locationService.isLocationServiceEnabled();
-              if (!ctx.mounted) return;
-              if (enabled) {
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          title: Text(context.l10n.enableLocationRequired),
+          content: Text(context.l10n.enableLocationBody),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                final permission = await _locationService.checkPermission();
+                if (permission == LocationPermission.deniedForever) {
+                  await _locationService.openAppSettings();
+                } else {
+                  await _locationService.openLocationSettings();
+                }
+              },
+              child: Text(context.l10n.openLocationSettings),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final ready = await _ensureTrackingReady();
+                if (!ready) return;
+                if (!ctx.mounted) return;
                 Navigator.of(ctx).pop();
-              }
-            },
-            child: Text(context.l10n.checkAgain),
-          ),
-        ],
+                _pushDriverLocationTick();
+              },
+              child: Text(context.l10n.checkAgain),
+            ),
+          ],
+        ),
       ),
     );
 
@@ -702,6 +743,9 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
 
                   // Status Card
                   _buildStatusCard(_trip!),
+                  const SizedBox(height: 16),
+
+                  _buildLiveTrackingCard(_trip!),
                   const SizedBox(height: 16),
 
                   _buildArrivedCard(_trip!),
@@ -1487,6 +1531,47 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     } finally {
       if (mounted) setState(() => _markingArrived = false);
     }
+  }
+
+  Widget _buildLiveTrackingCard(TripModel trip) {
+    if (!trip.isDriverLiveTrackingRequired) {
+      return const SizedBox.shrink();
+    }
+
+    final active = _liveTrackingActive;
+    return SectionCard(
+      title: active ? 'التتبع اللحظي مفعّل' : 'التتبع اللحظي مطلوب',
+      icon: active ? IconsaxPlusBold.location : IconsaxPlusLinear.location,
+      iconColor: active ? AppColors.success : AppColors.warning,
+      children: [
+        Text(
+          active
+              ? 'موقعك يظهر للركاب الآن. أبقِ GPS مفعّلاً حتى نهاية الرحلة.'
+              : 'يجب تفعيل الموقع الآن حتى يظهر مكانك للركاب في شاشة تأكيد التواجد.',
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: T.textSecondary(context),
+          ),
+        ),
+        if (!active) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () async {
+                final ready = await _ensureTrackingReady();
+                if (!ready) {
+                  await _showEnableLocationDialog();
+                  return;
+                }
+                await _pushDriverLocationTick();
+              },
+              icon: const Icon(IconsaxPlusBold.location),
+              label: const Text('تفعيل التتبع الآن'),
+            ),
+          ),
+        ],
+      ],
+    );
   }
 
   /// Shown while the trip is IN_PROGRESS. The trip transitions to IN_PROGRESS

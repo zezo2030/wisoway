@@ -604,54 +604,77 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get presenceScreenTitle => 'تأكيد التواجد في السيارة';
+
   @override
   String get presenceScreenSubtitle => 'يرجى تأكيد تواجدك لبدء الرحلة';
+
   @override
   String get presenceHelp => 'مساعدة';
+
   @override
   String get presenceDriverStartsAfter => 'سيبدأ السائق الرحلة بعد';
+
   @override
   String get presenceMinutes => 'دقائق';
+
   @override
   String get presencePickupTitle => 'نقطة بدء الرحلة';
+
   @override
   String get presenceQuestionTitle => 'هل أنت داخل السيارة؟';
+
   @override
   String get presenceQuestionSubtitle =>
       'يرجى تأكيد تواجدك لتوثيق الرحلة وبدئها بشكل صحيح';
+
   @override
   String get presenceInfoBody =>
       'يساعد تأكيد تواجدك داخل السيارة على توثيق الرحلة واحتسابها ضمن سجل رحلاتك وتقييم موثوقية حسابك.\nلن يتم خصم أي رسوم من محفظة السائق في حال عدم التأكيد.';
+
   @override
   String get presenceInVehicleTitle => 'نعم، أنا داخل السيارة';
+
   @override
   String get presenceInVehicleSubtitle => 'تأكيد التواجد';
+
   @override
   String get presenceOnMyWayTitle => 'أنا في طريقي لمقابلة السائق';
+
   @override
   String get presenceOnMyWaySubtitle => 'سأصل خلال دقائق';
+
   @override
   String get presenceNotRidingTitle => 'لست داخل السيارة';
+
   @override
   String get presenceNotRidingSubtitle => 'لن أستقل هذه الرحلة';
+
   @override
   String get presencePrivacyLine =>
       'بياناتك آمنة ويتم استخدامها فقط لتحسين تجربة الرحلة';
+
   @override
   String get presenceRequestEndsAfter => 'سينتهي طلب التأكيد تلقائيًا بعد';
+
   @override
   String get presenceConfirmedTitle => 'تم تأكيد تواجدك';
+
   @override
   String get presenceConfirmedBody => 'شكرًا لك، تم تسجيل اختيارك لهذه الرحلة.';
+
   @override
   String get presenceEdit => 'تعديل';
+
   @override
   String get presenceWindowClosedTitle => 'انتهى وقت التأكيد';
+
   @override
   String get presenceWindowClosedBody =>
       'لم يعد بإمكانك تعديل حالة تواجدك لهذه الرحلة.';
+
   @override
   String get presenceLoadFailed => 'تعذر تحميل بيانات تأكيد التواجد';
+
   @override
   String get presenceSubmitFailed => 'تعذر حفظ اختيارك. حاول مرة أخرى.';
 
@@ -2876,7 +2899,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get enableLocationBody =>
-      'لا يمكن متابعة الرحلة بدون تشغيل خدمات الموقع. يرجى تفعيل GPS الآن.';
+      'لازم تشغّل GPS وتسمح للتطبيق بالموقع عشان الركاب يشوفوك على الخريطة أثناء تأكيد التواجد والرحلة. مش هتقدر تكمّل من غير التتبع.';
 
   @override
   String get openLocationSettings => 'فتح إعدادات الموقع';

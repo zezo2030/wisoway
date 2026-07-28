@@ -291,6 +291,9 @@ class TripModel {
   static const int driverStartTripEarlyMinutes = 15;
   static const int driverStartTripLateMinutes = 30;
 
+  /// Live GPS sharing must be on from presence window until trip ends.
+  static const int driverTrackingEarlyMinutes = 60;
+
   DateTime get driverStartWindowOpens => departureTime.subtract(
         const Duration(minutes: driverStartTripEarlyMinutes),
       );
@@ -298,6 +301,25 @@ class TripModel {
   DateTime get driverStartWindowCloses => departureTime.add(
         const Duration(minutes: driverStartTripLateMinutes),
       );
+
+  DateTime get driverTrackingWindowOpens => departureTime.subtract(
+        const Duration(minutes: driverTrackingEarlyMinutes),
+      );
+
+  bool get isDriverLiveTrackingRequired {
+    if (status == 'completed' ||
+        status == 'cancelled' ||
+        status == 'expired') {
+      return false;
+    }
+    if (status == 'in_progress') return true;
+    if (!(status == 'published' ||
+        status == 'fully_booked' ||
+        status == 'active')) {
+      return false;
+    }
+    return !DateTime.now().isBefore(driverTrackingWindowOpens);
+  }
 
   bool get _canDriverAttemptStartStatus =>
       status == 'published' ||

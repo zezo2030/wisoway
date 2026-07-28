@@ -282,10 +282,9 @@ class HomeDrawer extends StatelessWidget {
                     title: context.l10n.signOut,
                     iconColor: T.error(context),
                     textColor: T.error(context),
-                    onTap: () {
-                      Navigator.pop(context);
-                      handleLogout(context);
-                    },
+                    // Don't pop the drawer first — that disposes this context
+                    // before the confirmation dialog can use it.
+                    onTap: () => handleLogout(context),
                   ),
                 ],
               ),

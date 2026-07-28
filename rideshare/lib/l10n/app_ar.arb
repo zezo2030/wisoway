@@ -1869,7 +1869,7 @@
   "lockSeat": "قفل",
   "seatLockedSuccess": "تم قفل المقعد",
   "enableLocationRequired": "تفعيل الموقع مطلوب",
-  "enableLocationBody": "لا يمكن متابعة الرحلة بدون تشغيل خدمات الموقع. يرجى تفعيل GPS الآن.",
+  "enableLocationBody": "لازم تشغّل GPS وتسمح للتطبيق بالموقع عشان الركاب يشوفوك على الخريطة أثناء تأكيد التواجد والرحلة. مش هتقدر تكمّل من غير التتبع.",
   "openLocationSettings": "فتح إعدادات الموقع",
   "checkAgain": "تحقق مجددًا",
   "tripManagementTitle": "إدارة الرحلة",

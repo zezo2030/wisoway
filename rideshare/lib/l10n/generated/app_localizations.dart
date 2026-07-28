@@ -1232,29 +1232,148 @@ abstract class AppLocalizations {
   /// **'هل الراكب {name} موجود؟'**
   String preTripPromptDriverBody(String name);
 
+  /// No description provided for @presenceScreenTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تأكيد التواجد في السيارة'**
   String get presenceScreenTitle;
+
+  /// No description provided for @presenceScreenSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'يرجى تأكيد تواجدك لبدء الرحلة'**
   String get presenceScreenSubtitle;
+
+  /// No description provided for @presenceHelp.
+  ///
+  /// In ar, this message translates to:
+  /// **'مساعدة'**
   String get presenceHelp;
+
+  /// No description provided for @presenceDriverStartsAfter.
+  ///
+  /// In ar, this message translates to:
+  /// **'سيبدأ السائق الرحلة بعد'**
   String get presenceDriverStartsAfter;
+
+  /// No description provided for @presenceMinutes.
+  ///
+  /// In ar, this message translates to:
+  /// **'دقائق'**
   String get presenceMinutes;
+
+  /// No description provided for @presencePickupTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'نقطة بدء الرحلة'**
   String get presencePickupTitle;
+
+  /// No description provided for @presenceQuestionTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'هل أنت داخل السيارة؟'**
   String get presenceQuestionTitle;
+
+  /// No description provided for @presenceQuestionSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'يرجى تأكيد تواجدك لتوثيق الرحلة وبدئها بشكل صحيح'**
   String get presenceQuestionSubtitle;
+
+  /// No description provided for @presenceInfoBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'يساعد تأكيد تواجدك داخل السيارة على توثيق الرحلة واحتسابها ضمن سجل رحلاتك وتقييم موثوقية حسابك.\nلن يتم خصم أي رسوم من محفظة السائق في حال عدم التأكيد.'**
   String get presenceInfoBody;
+
+  /// No description provided for @presenceInVehicleTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'نعم، أنا داخل السيارة'**
   String get presenceInVehicleTitle;
+
+  /// No description provided for @presenceInVehicleSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تأكيد التواجد'**
   String get presenceInVehicleSubtitle;
+
+  /// No description provided for @presenceOnMyWayTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'أنا في طريقي لمقابلة السائق'**
   String get presenceOnMyWayTitle;
+
+  /// No description provided for @presenceOnMyWaySubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'سأصل خلال دقائق'**
   String get presenceOnMyWaySubtitle;
+
+  /// No description provided for @presenceNotRidingTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'لست داخل السيارة'**
   String get presenceNotRidingTitle;
+
+  /// No description provided for @presenceNotRidingSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'لن أستقل هذه الرحلة'**
   String get presenceNotRidingSubtitle;
+
+  /// No description provided for @presencePrivacyLine.
+  ///
+  /// In ar, this message translates to:
+  /// **'بياناتك آمنة ويتم استخدامها فقط لتحسين تجربة الرحلة'**
   String get presencePrivacyLine;
+
+  /// No description provided for @presenceRequestEndsAfter.
+  ///
+  /// In ar, this message translates to:
+  /// **'سينتهي طلب التأكيد تلقائيًا بعد'**
   String get presenceRequestEndsAfter;
+
+  /// No description provided for @presenceConfirmedTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم تأكيد تواجدك'**
   String get presenceConfirmedTitle;
+
+  /// No description provided for @presenceConfirmedBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'شكرًا لك، تم تسجيل اختيارك لهذه الرحلة.'**
   String get presenceConfirmedBody;
+
+  /// No description provided for @presenceEdit.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعديل'**
   String get presenceEdit;
+
+  /// No description provided for @presenceWindowClosedTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'انتهى وقت التأكيد'**
   String get presenceWindowClosedTitle;
+
+  /// No description provided for @presenceWindowClosedBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم يعد بإمكانك تعديل حالة تواجدك لهذه الرحلة.'**
   String get presenceWindowClosedBody;
+
+  /// No description provided for @presenceLoadFailed.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذر تحميل بيانات تأكيد التواجد'**
   String get presenceLoadFailed;
+
+  /// No description provided for @presenceSubmitFailed.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذر حفظ اختيارك. حاول مرة أخرى.'**
   String get presenceSubmitFailed;
 
   /// Driver button to mark trip as arrived (completes the trip)

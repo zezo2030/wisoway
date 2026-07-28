@@ -1869,7 +1869,7 @@
   "lockSeat": "Lock",
   "seatLockedSuccess": "Seat locked",
   "enableLocationRequired": "Location enable required",
-  "enableLocationBody": "The trip cannot continue without location services enabled. Please enable GPS now.",
+  "enableLocationBody": "Turn on GPS and allow location access so passengers can see you on the map during presence confirmation and the trip. Tracking is required to continue.",
   "openLocationSettings": "Open location settings",
   "checkAgain": "Check again",
   "tripManagementTitle": "Trip Management",

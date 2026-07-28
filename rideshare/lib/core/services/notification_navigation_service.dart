@@ -194,20 +194,26 @@ class NotificationNavigationService {
   }
 
   /// Navigate to a specific route
-  static void _navigateToRoute(String routeName, {Object? arguments}) {
+  static Future<void> _navigateToRoute(
+    String routeName, {
+    Object? arguments,
+  }) async {
     final navigator = navigatorKey.currentState;
     if (navigator == null) {
       debugPrint('Navigator is not available yet');
       return;
     }
 
-    // Use pushNamed for navigation
-    navigator.pushNamed(routeName, arguments: arguments).catchError((error) {
+    try {
+      await navigator.pushNamed(routeName, arguments: arguments);
+    } catch (error) {
       debugPrint('Navigation error: $error');
-      // Fallback: navigate to notifications screen
-      navigator.pushNamed(RouteNames.notifications);
-      return null;
-    });
+      try {
+        await navigator.pushNamed(RouteNames.notifications);
+      } catch (fallbackError) {
+        debugPrint('Fallback navigation error: $fallbackError');
+      }
+    }
   }
 
   /// Handle notification tap from local notification
