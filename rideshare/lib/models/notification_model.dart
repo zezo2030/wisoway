@@ -141,7 +141,9 @@ class NotificationModel {
 
     switch (type) {
       case NotificationType.bookingCreated:
-        return isDriver == true ? 'حجز جديد على رحلتك' : 'تم إنشاء حجز جديد';
+        return isDriver == true
+            ? 'تم حجز مقعد في رحلتك المشتركة'
+            : 'تم إنشاء حجز جديد';
       case NotificationType.bookingConfirmed:
         return isDriver == true ? 'تم تأكيد الحجز' : 'تم تأكيد حجزك';
       case NotificationType.bookingCancelled:
@@ -194,9 +196,16 @@ class NotificationModel {
     switch (type) {
       case NotificationType.bookingCreated:
         if (isDriver == true) {
+          final route = _stringFromData(data, ['route', 'routeLabel']);
+          if (route != null) return route;
+          final fromName = _stringFromData(data, ['fromName']);
+          final toName = _stringFromData(data, ['toName']);
+          if (fromName != null && toName != null) {
+            return '$fromName - $toName';
+          }
           return passengerName != null
               ? 'لديك حجز جديد من $passengerName على رحلتك.'
-              : 'تم إنشاء حجز جديد على رحلتك.';
+              : 'انضم راكب جديد إلى رحلتك المشتركة';
         }
         return 'تم إنشاء حجز جديد بنجاح.';
       case NotificationType.bookingConfirmed:

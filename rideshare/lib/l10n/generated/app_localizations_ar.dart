@@ -402,10 +402,11 @@ class AppLocalizationsAr extends AppLocalizations {
       'تعذّر تحميل المسار. نعرض نقاط الانطلاق والوصول.';
 
   @override
-  String get notificationsBookingCreatedTitle => 'حجز جديد';
+  String get notificationsBookingCreatedTitle => 'تم حجز مقعد في رحلتك المشتركة';
 
   @override
-  String get notificationsBookingCreatedBody => 'تم حجز مقعد جديد في رحلتك';
+  String get notificationsBookingCreatedBody =>
+      'انضم راكب جديد إلى رحلتك المشتركة';
 
   @override
   String get notificationsBookingConfirmedTitle => 'تم تأكيد الحجز';

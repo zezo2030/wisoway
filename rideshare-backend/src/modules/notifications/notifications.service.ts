@@ -247,9 +247,17 @@ export class NotificationsService {
       }
 
       const tokenStrings = targetTokens.map((t) => t.token);
-      const data = this.buildFcmData(userId, payload);
+      const data = this.buildFcmData(userId, {
+        ...payload,
+        data: {
+          ...(payload.data ?? {}),
+          title: payload.title,
+          ...(payload.body ? { body: payload.body } : {}),
+        },
+      });
 
       const collapseKey = this.resolveCollapseKey(payload);
+      const isAndroidCustomBooking = payload.type === 'booking_created';
       const androidNotification: admin.messaging.AndroidNotification = {
         channelId: 'rideshare_notifications',
       };
@@ -275,42 +283,49 @@ export class NotificationsService {
             }
           : undefined;
 
+      // booking_created: Android is data-only so VisionWayMessagingService can
+      // render the rich custom layout. iOS still gets a visible APNS alert.
+      const messageBase: Omit<
+        admin.messaging.Message,
+        'token' | 'tokens'
+      > = {
+        data,
+        ...(webpush ? { webpush } : {}),
+        android: {
+          priority: 'high',
+          ...(collapseKey ? { collapseKey } : {}),
+          ...(isAndroidCustomBooking
+            ? {}
+            : { notification: androidNotification }),
+        },
+        apns: {
+          ...(Object.keys(apnsHeaders).length
+            ? { headers: apnsHeaders }
+            : {}),
+          payload: {
+            aps: {
+              alert: { title: payload.title, body: payload.body },
+              sound: 'default',
+            },
+          },
+        },
+        ...(isAndroidCustomBooking
+          ? {}
+          : {
+              notification: { title: payload.title, body: payload.body },
+            }),
+      };
+
       if (tokenStrings.length === 1) {
         await admin.messaging().send({
           token: tokenStrings[0],
-          notification: { title: payload.title, body: payload.body },
-          data,
-          ...(webpush ? { webpush } : {}),
-          android: {
-            priority: 'high',
-            ...(collapseKey ? { collapseKey } : {}),
-            notification: androidNotification,
-          },
-          apns: {
-            ...(Object.keys(apnsHeaders).length
-              ? { headers: apnsHeaders }
-              : {}),
-            payload: { aps: { sound: 'default' } },
-          },
+          ...messageBase,
         });
         return { successCount: 1, failureCount: 0 };
       } else {
         const response = await admin.messaging().sendEachForMulticast({
           tokens: tokenStrings,
-          notification: { title: payload.title, body: payload.body },
-          data,
-          ...(webpush ? { webpush } : {}),
-          android: {
-            priority: 'high',
-            ...(collapseKey ? { collapseKey } : {}),
-            notification: androidNotification,
-          },
-          apns: {
-            ...(Object.keys(apnsHeaders).length
-              ? { headers: apnsHeaders }
-              : {}),
-            payload: { aps: { sound: 'default' } },
-          },
+          ...messageBase,
         });
         return {
           successCount: response.successCount,
@@ -463,28 +478,107 @@ export class NotificationsService {
 
   // ─── Booking Trigger Methods (T031-T033) ───
 
+  private formatDepartureLabelAr(departureTime: Date): string {
+    const departure = new Date(departureTime);
+    const hours = departure.getHours().toString().padStart(2, '0');
+    const minutes = departure.getMinutes().toString().padStart(2, '0');
+    const time = `${hours}:${minutes}`;
+
+    const now = new Date();
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const startOfDeparture = new Date(
+      departure.getFullYear(),
+      departure.getMonth(),
+      departure.getDate(),
+    );
+    const dayDiff = Math.round(
+      (startOfDeparture.getTime() - startOfToday.getTime()) / 86_400_000,
+    );
+
+    if (dayDiff === 0) return `اليوم ${time}`;
+    if (dayDiff === 1) return `غداً ${time}`;
+
+    const day = departure.getDate().toString().padStart(2, '0');
+    const month = (departure.getMonth() + 1).toString().padStart(2, '0');
+    return `${day}/${month} ${time}`;
+  }
+
+  private tripDistanceKm(trip: TripEntity): number | null {
+    const from = trip.fromPoint?.coordinates;
+    const to = trip.toPoint?.coordinates;
+    if (!from || !to || from.length < 2 || to.length < 2) {
+      return null;
+    }
+    const [lng1, lat1] = from;
+    const [lng2, lat2] = to;
+    const toRad = (value: number) => (value * Math.PI) / 180;
+    const earthRadiusKm = 6371;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lng2 - lng1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) *
+        Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return Math.round(earthRadiusKm * c);
+  }
+
   async notifyDriverOfNewBooking(bookingId: string): Promise<void> {
     try {
       const bookingRepo =
         this.notificationRepo.manager.getRepository(BookingEntity);
       const booking = await bookingRepo.findOne({
         where: { id: bookingId },
-        relations: ['trip'],
+        relations: ['trip', 'user'],
       });
       if (!booking) return;
 
       const trip = booking.trip;
       if (!trip) return;
 
-      await this.sendPush(trip.driverId, {
-        title: 'New Booking',
-        body: `A new booking was made on your trip to ${trip.toName}`,
+      const route = `${trip.fromName} - ${trip.toName}`;
+      const departureLabel = this.formatDepartureLabelAr(trip.departureTime);
+      const distanceKm = this.tripDistanceKm(trip);
+      const distanceLabel =
+        distanceKm != null ? `${distanceKm} كم` : undefined;
+      const meetingPoint = (trip.fromAddress || trip.fromName || '').trim();
+      const seatsLabel = `${trip.availableSeats} مقاعد`;
+      const title = 'تم حجز مقعد في رحلتك المشتركة';
+      const footerTitle = 'انضم راكب جديد إلى رحلتك المشتركة';
+      const footerSubtitle = 'سيتم إعلامك عند انضمام أي راكب آخر';
+
+      await this.create({
+        userId: trip.driverId,
+        title,
+        body: route,
         type: 'booking_created',
         data: {
           type: 'booking_created',
           screen: 'trip_details',
           entityId: trip.id,
+          tripId: trip.id,
           bookingId,
+          title,
+          route,
+          fromName: trip.fromName,
+          toName: trip.toName,
+          departureLabel,
+          ...(distanceKm != null ? { distanceKm: String(distanceKm) } : {}),
+          ...(distanceLabel ? { distanceLabel } : {}),
+          meetingPoint,
+          availableSeats: String(trip.availableSeats),
+          seatsLabel,
+          footerTitle,
+          footerSubtitle,
+          ...(booking.user?.name
+            ? { passengerName: booking.user.name }
+            : {}),
         },
       });
 

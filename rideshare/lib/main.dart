@@ -141,9 +141,7 @@ class MyApp extends StatelessWidget {
                     GlobalWidgetsLocalizations.delegate,
                     GlobalCupertinoLocalizations.delegate,
                   ],
-                  // TEMP: preview trip summary UI on app launch — remove after review
-                  home: const TripSummaryScreen.preview(),
-                  // home: const AuthWrapper(),
+                  home: const AuthWrapper(),
                   routes: {
                     RouteNames.welcome: (context) => const WelcomeScreen(),
                     RouteNames.signIn: (context) => const SignInScreen(),
@@ -241,23 +239,14 @@ class MyApp extends StatelessWidget {
                       );
                     }
                     if (settings.name == RouteNames.tripSummary) {
-                      final args = settings.arguments;
-                      if (args == 'preview' ||
-                          (args is Map && args['preview'] == true)) {
-                        return MaterialPageRoute(
-                          settings: settings,
-                          builder: (context) =>
-                              const TripSummaryScreen.preview(),
-                        );
-                      }
-                      final map = args as Map<String, dynamic>;
+                      final args = settings.arguments as Map<String, dynamic>;
                       return MaterialPageRoute(
                         settings: settings,
                         builder: (context) => TripSummaryScreen(
-                          tripId: map['tripId'] as String,
-                          settlement: map['settlement'] is Map
+                          tripId: args['tripId'] as String,
+                          settlement: args['settlement'] is Map
                               ? Map<String, dynamic>.from(
-                                  map['settlement'] as Map,
+                                  args['settlement'] as Map,
                                 )
                               : null,
                         ),

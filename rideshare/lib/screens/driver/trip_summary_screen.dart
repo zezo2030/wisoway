@@ -13,10 +13,7 @@ import '../../core/theme/text_styles.dart';
 import '../../core/ui/error_surface.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/booking_model.dart';
-import '../../models/location_model.dart';
-import '../../models/seat_layout_config.dart';
 import '../../models/trip_model.dart';
-import '../../models/user_model.dart';
 import '../../models/wallet_account_model.dart';
 import '../../screens/home/widgets/default_avatar.dart';
 
@@ -28,18 +25,10 @@ class TripSummaryScreen extends StatefulWidget {
     super.key,
     required this.tripId,
     this.settlement,
-    this.preview = false,
   });
-
-  /// Temporary UI preview with design mock data (no API).
-  const TripSummaryScreen.preview({super.key})
-      : tripId = 'preview',
-        settlement = null,
-        preview = true;
 
   final String tripId;
   final Map<String, dynamic>? settlement;
-  final bool preview;
 
   @override
   State<TripSummaryScreen> createState() => _TripSummaryScreenState();
@@ -66,128 +55,7 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
   void initState() {
     super.initState();
     _settlement = widget.settlement;
-    if (widget.preview) {
-      _loadPreview();
-    } else {
-      _load();
-    }
-  }
-
-  void _loadPreview() {
-    final endAt = DateTime(2024, 7, 26, 9, 42);
-    final startAt = DateTime(2024, 7, 26, 7, 5);
-    final now = DateTime.now();
-    _settlement = {
-      'billableSeats': 3,
-      'captured': 1.20,
-      'currency': 'JOD',
-    };
-    _trip = TripModel(
-      id: 'preview',
-      driverId: 'preview-driver',
-      from: LocationModel(
-        name: 'عمان - دوار الداخلية',
-        latitude: 31.95,
-        longitude: 35.91,
-      ),
-      to: LocationModel(
-        name: 'عمان - دوار المدينة الرياضية',
-        latitude: 31.98,
-        longitude: 35.86,
-      ),
-      departureTime: startAt,
-      price: 4,
-      currency: 'JOD',
-      totalSeats: 4,
-      availableSeats: 0,
-      seatLayout: SeatLayoutConfig(rows: 2, seatsPerRow: 2),
-      seats: const [],
-      status: 'completed',
-      communicationFeeStatus: 'paid',
-      tripStartedAt: startAt,
-      tripCompletedAt: endAt,
-      billableSeatCount: 3,
-      capturedFeeAmount: 1.20,
-      presenceSettledAt: endAt,
-      distanceKm: 181,
-      createdAt: now,
-      updatedAt: now,
-    );
-    _wallet = WalletAccountModel(
-      accountType: 'driver',
-      currency: 'JOD',
-      balance: 18.80,
-      isActive: true,
-    );
-    _bookings = [
-      _previewBooking(
-        id: 'b1',
-        name: 'Ahmed Mahmoud',
-        confirmed: true,
-        createdAt: now,
-      ),
-      _previewBooking(
-        id: 'b2',
-        name: 'Sara Ali',
-        confirmed: true,
-        createdAt: now,
-      ),
-      _previewBooking(
-        id: 'b3',
-        name: 'Omar Khaled',
-        confirmed: true,
-        createdAt: now,
-      ),
-      _previewBooking(
-        id: 'b4',
-        name: 'Lina Nasser',
-        confirmed: false,
-        createdAt: now,
-      ),
-    ];
-    _loading = false;
-  }
-
-  BookingModel _previewBooking({
-    required String id,
-    required String name,
-    required bool confirmed,
-    required DateTime createdAt,
-  }) {
-    return BookingModel(
-      id: id,
-      tripId: 'preview',
-      userId: id,
-      userPopulated: UserModel(
-        id: id,
-        phoneNumber: '+962700000000',
-        email: '$id@preview.local',
-        name: name,
-        gender: 'male',
-        role: 'passenger',
-        createdAt: createdAt,
-        updatedAt: createdAt,
-      ),
-      seatCount: 1,
-      seats: [
-        BookingSeatModel(
-          id: '$id-seat',
-          bookingId: id,
-          seatNumber: '1',
-          displayName: name,
-          gender: 'male',
-          isMainBooker: true,
-          passengerSelfConfirmedAt: confirmed ? createdAt : null,
-          passengerDeclaredStatus: confirmed ? 'in_vehicle' : null,
-          billableOverride: confirmed ? null : false,
-          markedAbsentAt: confirmed ? null : createdAt,
-          createdAt: createdAt,
-        ),
-      ],
-      status: confirmed ? 'completed' : 'no_show',
-      createdAt: createdAt,
-      updatedAt: createdAt,
-    );
+    _load();
   }
 
   Future<void> _load() async {
@@ -346,18 +214,16 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
 
   void _goHome() {
     Navigator.of(context).pushNamedAndRemoveUntil(
-      widget.preview ? RouteNames.welcome : RouteNames.home,
+      RouteNames.home,
       (route) => false,
     );
   }
 
   void _openHelp() {
-    if (widget.preview) return;
     Navigator.pushNamed(context, RouteNames.support);
   }
 
   void _openChat() {
-    if (widget.preview) return;
     final trip = _trip;
     if (trip == null) return;
     Navigator.pushNamed(
@@ -368,7 +234,6 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
   }
 
   void _payNow() {
-    if (widget.preview) return;
     Navigator.pushNamed(context, RouteNames.driverWalletTopup);
   }
 

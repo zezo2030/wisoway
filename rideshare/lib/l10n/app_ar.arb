@@ -515,11 +515,11 @@
   "@errorsRouteUnavailable": {
     "description": "رسالة تعذر تحميل المسار"
   },
-  "notificationsBookingCreatedTitle": "حجز جديد",
+  "notificationsBookingCreatedTitle": "تم حجز مقعد في رحلتك المشتركة",
   "@notificationsBookingCreatedTitle": {
     "description": "Title for booking created notification"
   },
-  "notificationsBookingCreatedBody": "تم حجز مقعد جديد في رحلتك",
+  "notificationsBookingCreatedBody": "انضم راكب جديد إلى رحلتك المشتركة",
   "@notificationsBookingCreatedBody": {
     "description": "Body for booking created notification"
   },

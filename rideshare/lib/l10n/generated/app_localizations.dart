@@ -863,13 +863,13 @@ abstract class AppLocalizations {
   /// Title for booking created notification
   ///
   /// In ar, this message translates to:
-  /// **'حجز جديد'**
+  /// **'تم حجز مقعد في رحلتك المشتركة'**
   String get notificationsBookingCreatedTitle;
 
   /// Body for booking created notification
   ///
   /// In ar, this message translates to:
-  /// **'تم حجز مقعد جديد في رحلتك'**
+  /// **'انضم راكب جديد إلى رحلتك المشتركة'**
   String get notificationsBookingCreatedBody;
 
   /// Title for booking confirmed notification

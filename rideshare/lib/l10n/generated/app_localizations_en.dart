@@ -407,11 +407,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'We couldn\'t load the route. Showing pickup and drop-off points.';
 
   @override
-  String get notificationsBookingCreatedTitle => 'New Booking';
+  String get notificationsBookingCreatedTitle =>
+      'A seat was booked on your shared trip';
 
   @override
   String get notificationsBookingCreatedBody =>
-      'A new seat was booked on your trip';
+      'A new passenger joined your shared trip';
 
   @override
   String get notificationsBookingConfirmedTitle => 'Booking Confirmed';

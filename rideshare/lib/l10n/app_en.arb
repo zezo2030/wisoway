@@ -515,11 +515,11 @@
   "@errorsRouteUnavailable": {
     "description": "Route unavailable error message"
   },
-  "notificationsBookingCreatedTitle": "New Booking",
+  "notificationsBookingCreatedTitle": "A seat was booked on your shared trip",
   "@notificationsBookingCreatedTitle": {
     "description": "Title for booking created notification"
   },
-  "notificationsBookingCreatedBody": "A new seat was booked on your trip",
+  "notificationsBookingCreatedBody": "A new passenger joined your shared trip",
   "@notificationsBookingCreatedBody": {
     "description": "Body for booking created notification"
   },
