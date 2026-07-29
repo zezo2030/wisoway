@@ -25,9 +25,17 @@ describe('vehicle type catalog resolver', () => {
 
     expect(template.type).toBe('sedan');
     expect(template.usedFallback).toBe(true);
-    expect(template.seats).toBe(3);
+    expect(template.seats).toBe(4);
     expect(logger.warn).toHaveBeenCalledWith(
       expect.stringContaining('spaceship'),
     );
+  });
+
+  it('sedan uses 4 passenger seats in [1, 3] layout', () => {
+    const template = resolveVehicleTypeTemplate('sedan');
+
+    expect(template.seats).toBe(4);
+    expect(template.layout.seatsPerRowList).toEqual([1, 3]);
+    expect(countSeatsInLayout(template.layout)).toBe(4);
   });
 });

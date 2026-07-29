@@ -1,14 +1,27 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import '../../providers/auth_provider.dart';
-import '../../core/constants/app_constants.dart';
+import '../../core/api/api_client.dart';
 import '../../core/constants/route_names.dart';
+import '../../core/services/storage_service.dart';
 import '../../core/theme/colors.dart';
-import '../../widgets/common/form_components.dart';
+import '../../core/ui/error_surface.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../widgets/auth/auth_primary_button.dart';
+import '../../widgets/auth/auth_step_indicator.dart';
+import '../../widgets/auth/auth_text_field.dart';
+import '../../widgets/auth/security_notice.dart';
 
+/// Passenger registration — step 3 of 3.
+///
+/// The account already exists at this point (created by the OTP step), so this
+/// screen only collects the profile photo and the rider's city, then lands on
+/// home.
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({super.key});
 
@@ -19,369 +32,246 @@ class ProfileSetupScreen extends StatefulWidget {
 class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
+  final _cityController = TextEditingController();
+  final StorageService _storageService = StorageService();
 
-  String? _selectedGender;
-  String? _selectedRole;
+  File? _profileImage;
+  bool _isSaving = false;
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
 
   @override
   void initState() {
     super.initState();
-    _initAnimations();
-    _loadInitialData();
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _animationController.dispose();
-    super.dispose();
-  }
-
-  void _initAnimations() {
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 700),
     );
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
-    _slideAnimation =
-        Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(
-          CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
-        );
     _animationController.forward();
   }
 
-  void _loadInitialData() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // 1. Data from User Model (Backend integration)
-      final authProvider = context.read<AuthProvider>();
-      final user = authProvider.userModel;
-
-      if (user != null) {
-        if (user.name.isNotEmpty && _nameController.text.isEmpty) {
-          _nameController.text = user.name;
-        }
-        if (user.email.isNotEmpty && _emailController.text.isEmpty) {
-          _emailController.text = user.email;
-        }
-      }
-
-      // 2. Data from Navigation Arguments (e.g. Sign Up flow fallback)
-      final args =
-          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-      if (args != null) {
-        if (args['name'] != null) _nameController.text = args['name'];
-        if (args['email'] != null) _emailController.text = args['email'];
-        if (args['gender'] != null) _selectedGender = args['gender'];
-        if (args['role'] != null) _selectedRole = args['role'];
-        setState(() {});
-      }
-    });
+  @override
+  void dispose() {
+    _cityController.dispose();
+    _animationController.dispose();
+    super.dispose();
   }
 
-  Future<void> _onSavePressed() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_selectedGender == null) {
-      _showSnackBar(context.l10n.genderRequired, AppColors.warning);
-      return;
-    }
-    if (_selectedRole == null) {
-      _showSnackBar(context.l10n.roleRequired, AppColors.warning);
-      return;
-    }
-
-    final args =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    final phoneNumber = args?['phoneNumber'];
-
-    try {
-      final authProvider = context.read<AuthProvider>();
-      await authProvider.saveUserProfile(
-        name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
-        gender: _selectedGender!,
-        role: _selectedRole!,
-        phoneNumber: phoneNumber != null ? phoneNumber as String : null,
-      );
-
-      if (mounted) {
-        if (_selectedRole == AppConstants.roleDriver) {
-          Navigator.pushReplacementNamed(
-            context,
-            RouteNames.driverCompleteProfile,
-          );
-        } else {
-          await authProvider.loadUserProfile();
-          if (mounted && !(authProvider.userModel?.isPhoneVerified ?? true)) {
-            Navigator.pushReplacementNamed(
-              context,
-              RouteNames.phoneAuth,
-              arguments: {'isLinkPhone': true},
-            );
-          } else if (mounted) {
-            Navigator.pushReplacementNamed(context, RouteNames.home);
-          }
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        _showSnackBar(e.toString(), T.error(context));
-      }
-    }
-  }
-
-  void _showSnackBar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  Future<void> _pickPhoto() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(IconsaxPlusLinear.gallery),
+              title: Text(context.l10n.fromGallery),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(IconsaxPlusLinear.camera),
+              title: Text(context.l10n.fromCamera),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
+            ),
+          ],
+        ),
       ),
     );
+    if (source == null) return;
+
+    final picked = await _storageService.pickImage(source: source);
+    if (picked != null && mounted) {
+      setState(() => _profileImage = File(picked.path));
+    }
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isSaving = true);
+    try {
+      await context.read<AuthProvider>().completePassengerProfile(
+        profileImage: _profileImage,
+        city: _cityController.text.trim(),
+      );
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          RouteNames.home,
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) ErrorSurface.showFailure(context, ApiClient.mapError(e));
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final totalSteps = (args?['authTotalSteps'] as int?) ?? 3;
+
     return Scaffold(
       backgroundColor: T.surface(context),
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
-          child: SlideTransition(
-            position: _slideAnimation,
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 480),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        _buildHeader(),
-                        const SizedBox(height: 32),
-                        _buildFields(),
-                        const SizedBox(height: 40),
-                        _buildSubmitButton(),
-                        const SizedBox(height: 32),
-                      ],
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AuthStepIndicator(
+                          currentStep: totalSteps,
+                          totalSteps: totalSteps,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        l10n.authStepOf(totalSteps, totalSteps),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: T.primary(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+                  Text(
+                    l10n.passengerProfileStepTitle,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 25,
+                      fontWeight: FontWeight.w800,
+                      color: T.onSurface(context),
                     ),
                   ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.only(top: 40, bottom: 32),
-      child: Column(
-        children: [
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  T.primary(context),
-                  T.primary(context).withValues(alpha: 0.7),
+                  const SizedBox(height: 6),
+                  Text(
+                    l10n.passengerProfileStepSubtitle,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: T.onSurfaceVariant(context),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  Center(child: _buildPhotoPicker()),
+                  const SizedBox(height: 8),
+                  Center(
+                    child: Text(
+                      l10n.profilePhotoRequired,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: T.onSurface(context),
+                      ),
+                    ),
+                  ),
+                  Center(
+                    child: Text(
+                      l10n.profilePhotoClearHint,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: T.onSurfaceVariant(context),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 26),
+                  AuthTextField(
+                    controller: _cityController,
+                    label: l10n.profileCityLabel,
+                    hint: l10n.profileCityHint,
+                    icon: IconsaxPlusLinear.location,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? l10n.profileCityRequired
+                        : null,
+                  ),
+                  const SizedBox(height: 20),
+                  const Center(child: SecurityNotice()),
+                  const SizedBox(height: 26),
+                  AuthPrimaryButton(
+                    label: l10n.complete,
+                    loading: _isSaving,
+                    onPressed: _isSaving ? null : _save,
+                  ),
                 ],
               ),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: T.primary(context).withValues(alpha: 0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: const Icon(
-              IconsaxPlusBold.user_edit,
-              size: 48,
-              color: AppColors.white,
             ),
           ),
-          const SizedBox(height: 24),
-          Text(
-            context.l10n.profileSetup,
-            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            context.l10n.profileSetupSubtitle,
-            style: TextStyle(color: T.onSurfaceVariant(context), fontSize: 15),
-            textAlign: TextAlign.center,
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildFields() {
-    return Consumer<AuthProvider>(
-      builder: (context, authProvider, child) {
-        final userModel = authProvider.userModel;
-
-        final bool isEmailFixed =
-            userModel != null && userModel.email.isNotEmpty;
-        final bool isNameFixed = userModel != null && userModel.name.isNotEmpty;
-
-        return Column(
+  Widget _buildPhotoPicker() {
+    return Semantics(
+      button: true,
+      label: context.l10n.uploadProfilePhoto,
+      child: GestureDetector(
+        onTap: _pickPhoto,
+        child: Stack(
+          alignment: Alignment.center,
           children: [
-            ModernInputField(
-              controller: _nameController,
-              label: context.l10n.fullName,
-              hint: context.l10n.fullNameHint,
-              icon: IconsaxPlusLinear.user,
-              readOnly: isNameFixed,
-              enabled: !isNameFixed,
-              validator: (v) => (v == null || v.isEmpty)
-                  ? context.l10n.fullNameRequired
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: T.surfaceVariant(context),
+                border: Border.all(color: T.primary(context), width: 2),
+                image: _profileImage != null
+                    ? DecorationImage(
+                        image: FileImage(_profileImage!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+              ),
+              child: _profileImage == null
+                  ? Icon(
+                      IconsaxPlusBold.profile_circle,
+                      size: 60,
+                      color: T.onSurfaceVariant(context),
+                    )
                   : null,
             ),
-            const SizedBox(height: 20),
-            ModernInputField(
-              controller: _emailController,
-              label: context.l10n.emailOptional,
-              hint: context.l10n.emailHint,
-              icon: IconsaxPlusLinear.sms,
-              keyboardType: TextInputType.emailAddress,
-              readOnly: isEmailFixed,
-              enabled: !isEmailFixed,
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return null;
-                return v.contains('@') ? null : context.l10n.invalidEmail;
-              },
-            ),
-            const SizedBox(height: 28),
-            SectionTitle(title: context.l10n.gender, isRequired: true),
-            const SizedBox(height: 12),
-            _buildGenderCards(),
-            const SizedBox(height: 28),
-            if (_selectedRole == null) ...[
-              SectionTitle(title: context.l10n.role, isRequired: true),
-              const SizedBox(height: 12),
-              _buildRoleCards(),
-            ] else ...[
-              Container(
-                padding: const EdgeInsets.all(16),
+            PositionedDirectional(
+              bottom: 4,
+              end: 4,
+              child: Container(
+                width: 34,
+                height: 34,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: T.primary(context).withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(16),
+                  color: T.primary(context),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: T.surface(context), width: 2),
                 ),
-                child: Row(
-                  children: [
-                    Icon(
-                      IconsaxPlusLinear.info_circle,
-                      color: T.primary(context),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      context.l10n.selectedRoleLabel(
-                        _selectedRole == AppConstants.roleDriver
-                            ? context.l10n.driver
-                            : context.l10n.passenger,
-                      ),
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: T.primary(context),
-                      ),
-                    ),
-                  ],
+                child: Icon(
+                  IconsaxPlusBold.camera,
+                  size: 16,
+                  color: T.onPrimary(context),
                 ),
               ),
-            ],
+            ),
           ],
-        );
-      },
-    );
-  }
-
-  Widget _buildGenderCards() {
-    return Row(
-      children: [
-        Expanded(
-          child: ModernSelectionCard(
-            icon: IconsaxPlusLinear.man,
-            title: context.l10n.male,
-            isSelected: _selectedGender == AppConstants.genderMale,
-            onTap: () =>
-                setState(() => _selectedGender = AppConstants.genderMale),
-            color: T.primary(context),
-          ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: ModernSelectionCard(
-            icon: IconsaxPlusLinear.woman,
-            title: context.l10n.female,
-            isSelected: _selectedGender == AppConstants.genderFemale,
-            onTap: () =>
-                setState(() => _selectedGender = AppConstants.genderFemale),
-            color: T.error(context),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRoleCards() {
-    return Column(
-      children: [
-        ModernSelectionCard(
-          icon: IconsaxPlusLinear.user,
-          title: context.l10n.passenger,
-          subtitle: context.l10n.passengerDescription,
-          isSelected: _selectedRole == AppConstants.rolePassenger,
-          onTap: () =>
-              setState(() => _selectedRole = AppConstants.rolePassenger),
-          color: T.primary(context),
-          isVertical: false,
-        ),
-        const SizedBox(height: 12),
-        ModernSelectionCard(
-          icon: IconsaxPlusLinear.car,
-          title: context.l10n.driver,
-          subtitle: context.l10n.tripOwnerDescription,
-          isSelected: _selectedRole == AppConstants.roleDriver,
-          onTap: () => setState(() => _selectedRole = AppConstants.roleDriver),
-          color: T.primary(context),
-          isVertical: false,
-        ),
-        if (_selectedRole == AppConstants.roleDriver)
-          Padding(
-            padding: const EdgeInsets.only(top: 16),
-            child: InfoCard(message: context.l10n.tripOwnerNote),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildSubmitButton() {
-    return Consumer<AuthProvider>(
-      builder: (context, authProvider, child) {
-        final bool isLoading = authProvider.isLoading;
-        return PrimaryGradientButton(
-          onPressed: isLoading ? null : _onSavePressed,
-          text: context.l10n.saveAndComplete,
-          isLoading: isLoading,
-          trailingIcon: IconsaxPlusLinear.arrow_left_2,
-        );
-      },
+      ),
     );
   }
 }

@@ -25,6 +25,7 @@ import {
   DriverVerifyPhoneDto,
   RegisterDriverDto,
 } from './dto/register-driver.dto';
+import { UpdatePendingDriverRegistrationDto } from './dto/update-pending-driver-registration.dto';
 import { SignInDto } from './dto/sign-in.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { VerifyResetOtpDto } from './dto/verify-reset-otp.dto';
@@ -100,6 +101,29 @@ export class AuthController {
   })
   async registerDriver(@Body() dto: RegisterDriverDto) {
     return this.authService.registerDriver(dto);
+  }
+
+  @Patch('driver/registration')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Update the submitted driver details/documents while the account is pending approval',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Registration updated; account stays pending',
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Not a driver, or the driver is already approved',
+  })
+  async updatePendingDriverRegistration(
+    @CurrentUser('id') userId: string,
+    @Body() dto: UpdatePendingDriverRegistrationDto,
+  ) {
+    return this.authService.updatePendingRegistration(userId, dto);
   }
 
   @Post('refresh')

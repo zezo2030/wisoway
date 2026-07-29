@@ -3874,6 +3874,107 @@ class AppLocalizationsEn extends AppLocalizations {
   String get seatLegendLockedExternal => 'Locked (outside the app)';
 
   @override
+  String get createTripStepRoute => 'Route';
+
+  @override
+  String get createTripStepDetails => 'Trip details';
+
+  @override
+  String get createTripStepReview => 'Review and publish';
+
+  @override
+  String get createTripRouteTitle => 'Where will your trip start?';
+
+  @override
+  String get createTripRouteSubtitle =>
+      'Set the departure and destination; you can add stops (optional)';
+
+  @override
+  String get addStopSubtitle => 'You can add up to 5 stops';
+
+  @override
+  String approxDistanceLabel(String distance) {
+    return 'Approx. distance: $distance';
+  }
+
+  @override
+  String approxDurationLabel(String duration) {
+    return 'Approx. time: $duration';
+  }
+
+  @override
+  String approxDurationHoursMinutes(int hours, int minutes) {
+    return '$hours h $minutes m';
+  }
+
+  @override
+  String approxDurationMinutesOnly(int minutes) {
+    return '$minutes m';
+  }
+
+  @override
+  String get createTripWhenAndHow => 'When and how?';
+
+  @override
+  String get createTripWhenAndHowSubtitle =>
+      'Set your trip details, passenger seats, and price';
+
+  @override
+  String get availableSeatsSection => 'Available seats';
+
+  @override
+  String get availableSeatsCountTitle => 'Available seats count';
+
+  @override
+  String get seatsUnitLabel => 'Seats';
+
+  @override
+  String get jordanianDinarLabel => 'Jordanian Dinar';
+
+  @override
+  String get tripSummaryTitle => 'Trip ended successfully';
+
+  @override
+  String get additionalDetailsTitle => 'Additional details';
+
+  @override
+  String get seatLegendAvailable => 'Available';
+
+  @override
+  String get seatLegendDriver => 'Unavailable (driver)';
+
+  @override
+  String get seatLegendInactive => 'Inactive seat';
+
+  @override
+  String get preventGenderMixingHint =>
+      'Family bookings are exempt. You can turn this off to allow mixing.';
+
+  @override
+  String get reviewTripTitle => 'Review trip';
+
+  @override
+  String get reviewTripSubtitle =>
+      'Check your trip details before publishing it to passengers';
+
+  @override
+  String get publishTrip => 'Publish trip';
+
+  @override
+  String get backToEdit => 'Back to edit';
+
+  @override
+  String get publishTripNotice =>
+      'The trip will be published after review and passengers will be able to book it.';
+
+  @override
+  String get familyBookingLabel => 'Family booking';
+
+  @override
+  String get familyBookingHint =>
+      'Family bookings are exempt from the gender mixing rules on this trip.';
+
+  @override
   String seatColorGuide(String label) {
     return 'Color guide: $label';
   }
@@ -4006,6 +4107,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get instantOfferTitle => 'Instant ride request';
 
   @override
+  String get instantOfferCardTitle => 'New ride request';
+
+  @override
+  String get instantOfferBadge => 'Direct trip';
+
+  @override
+  String get instantOfferDirectSubtitle => 'Direct trip with no stops';
+
+  @override
   String get instantRideAcceptedToast =>
       'Ride accepted. Head to the pickup point.';
 
@@ -4018,7 +4128,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get instantDecline => 'Decline';
 
   @override
+  String get instantOfferIgnore => 'Ignore';
+
+  @override
   String get instantAccept => 'Accept';
+
+  @override
+  String get instantOfferAcceptTrip => 'Accept trip';
+
+  @override
+  String get instantOfferExpectedEarnings => 'Expected earnings';
+
+  @override
+  String get instantOfferIncludesFees => 'Includes platform fees';
+
+  @override
+  String instantOfferPassengerCount(int count) {
+    return '$count passengers';
+  }
+
+  @override
+  String get instantOfferDistance => 'Distance';
+
+  @override
+  String get instantOfferDuration => 'Est. duration';
+
+  @override
+  String get instantOfferPassengersLabel => 'Passengers';
 
   @override
   String get instantRequestNow => 'Request now';
@@ -4167,9 +4303,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get tripSummaryTitle => 'Trip ended successfully';
-
-  @override
   String get tripSummaryThanks => 'Thank you for your trip';
 
   @override
@@ -4276,4 +4409,218 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get negativeWalletGoOnlineBlocked =>
       'Your wallet balance is negative. Settle it before receiving instant rides.';
+
+  @override
+  String authStepOf(int current, int total) {
+    return 'Step $current of $total';
+  }
+
+  @override
+  String get authSecurityNotice =>
+      'All your data is kept secure and will not be shared with any party';
+
+  @override
+  String get authNeedHelp => 'Help';
+
+  @override
+  String get authStepperBasicInfo => 'Basic information';
+
+  @override
+  String get authStepperIdDocs => 'ID & documents';
+
+  @override
+  String get authStepperVehicleInfo => 'Vehicle information';
+
+  @override
+  String get genderRequiredLabel => 'Gender *';
+
+  @override
+  String get documentFormatsHint => 'Supported: JPG, PNG, PDF (max 5 MB)';
+
+  @override
+  String get accountTypePassengerTagline => 'Book direct or shared rides';
+
+  @override
+  String get accountTypeDriverTagline => 'Create trips and pick up passengers';
+
+  @override
+  String get accountTypePassengerFeatureDirectTitle => 'Direct rides';
+
+  @override
+  String get accountTypePassengerFeatureDirectBody =>
+      'Book a private ride that comes to you';
+
+  @override
+  String get accountTypePassengerFeatureSharedTitle => 'Shared rides';
+
+  @override
+  String get accountTypePassengerFeatureSharedBody =>
+      'Join a trip and share the savings';
+
+  @override
+  String get accountTypePassengerFeaturePaymentTitle => 'Safe and easy payment';
+
+  @override
+  String get accountTypePassengerFeaturePaymentBody =>
+      'Multiple secure payment options';
+
+  @override
+  String get accountTypeDriverFeatureTripsTitle => 'Create trips';
+
+  @override
+  String get accountTypeDriverFeatureTripsBody =>
+      'Set your destination and departure';
+
+  @override
+  String get accountTypeDriverFeatureBookingsTitle => 'Receive bookings';
+
+  @override
+  String get accountTypeDriverFeatureBookingsBody =>
+      'Get booking requests from passengers';
+
+  @override
+  String get accountTypeDriverFeatureIncomeTitle => 'Earn extra income';
+
+  @override
+  String get accountTypeDriverFeatureIncomeBody =>
+      'Boost your income in your free time';
+
+  @override
+  String get accountTypeSafetyTitle => 'Your safety is our priority';
+
+  @override
+  String get accountTypeSafetyBody =>
+      'We verify every user to keep the experience safe and trusted for everyone.';
+
+  @override
+  String get passengerSignupTitle => 'Create a new account';
+
+  @override
+  String get passengerSignupSubtitle =>
+      'Register now as a passenger to start your journey with us';
+
+  @override
+  String get driverSignupTitle => 'Create driver account';
+
+  @override
+  String get driverSignupSubtitle =>
+      'Start receiving passengers and earning extra income';
+
+  @override
+  String get fullNameIdHint => 'Write your name as it appears on your ID';
+
+  @override
+  String get phoneConfirmCallHint =>
+      'We\'ll contact you to confirm your account';
+
+  @override
+  String get passwordMinLengthHint => 'Must contain at least 8 characters';
+
+  @override
+  String get confirmPasswordReenterHint => 'Re-enter the password';
+
+  @override
+  String get passengerProfileStepTitle => 'Complete your profile';
+
+  @override
+  String get passengerProfileStepSubtitle =>
+      'Add your photo and city so drivers recognise you';
+
+  @override
+  String get profileCityLabel => 'City *';
+
+  @override
+  String get profileCityHint => 'Enter your city';
+
+  @override
+  String get profileCityRequired => 'City is required';
+
+  @override
+  String get completeDriverProfileTitle => 'Complete driver profile';
+
+  @override
+  String get driverStep2Badge => 'Step 2 of 3: Additional information';
+
+  @override
+  String get driverStep3Badge => 'Step 3 of 3: Vehicle documents';
+
+  @override
+  String get profilePhotoClearHint => 'A clear photo of your face';
+
+  @override
+  String get vehicleTypeSelectHint => 'Choose the vehicle type';
+
+  @override
+  String get vehiclePlateDocHint => 'Enter the plate number as on the license';
+
+  @override
+  String get vehicleModelDocHint => 'Enter the car model';
+
+  @override
+  String get vehicleSeatsDocHint => 'Number of seats available to passengers';
+
+  @override
+  String get driverLicenseUploadHint => 'Tap to upload the license photo';
+
+  @override
+  String get vehicleRegistrationFormRequired => 'Registration form *';
+
+  @override
+  String get insuranceDocumentLabel => 'Insurance *';
+
+  @override
+  String get insuranceImageRequired => 'The insurance document is required';
+
+  @override
+  String get registrationUpdatedSuccess =>
+      'Your details were updated successfully';
+
+  @override
+  String get driverAlreadyApprovedError =>
+      'Your account has already been approved';
+
+  @override
+  String get driverPendingReviewTitle => 'Your registration is under review';
+
+  @override
+  String get driverPendingReviewBody =>
+      'We\'re reviewing your details and documents, and we\'ll notify you as soon as the review is complete.';
+
+  @override
+  String get driverPendingStatusLabel => 'Application status';
+
+  @override
+  String get driverPendingBadge => 'Under review';
+
+  @override
+  String get driverSubmittedDocs => 'Submitted documents';
+
+  @override
+  String get driverDocLicense => 'License';
+
+  @override
+  String get driverDocRegistration => 'Registration form';
+
+  @override
+  String get driverDocInsurance => 'Insurance';
+
+  @override
+  String get driverDocCarPhoto => 'Car photo';
+
+  @override
+  String get driverPendingRestrictionTitle => 'Your account is under review';
+
+  @override
+  String get driverPendingRestrictionBody =>
+      'You will not be able to use the app as a driver until your account is activated.';
+
+  @override
+  String get driverEditRegistrationTitle => 'Need to edit your details?';
+
+  @override
+  String get driverEditRegistrationSubtitle =>
+      'You can update your details or the submitted documents.';
+
+  @override
+  String get driverReturnHome => 'Return to Home';
 }

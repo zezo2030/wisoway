@@ -13,6 +13,10 @@ class SeatLayoutWidget extends StatelessWidget {
   final String? userGender;
   final Function(int)? onSeatTap;
 
+  /// Family bookings are exempt from the trip's gender-mixing rules, so seats
+  /// are not greyed out for gender adjacency while this is on.
+  final bool isFamilyBooking;
+
   const SeatLayoutWidget({
     super.key,
     required this.trip,
@@ -20,6 +24,7 @@ class SeatLayoutWidget extends StatelessWidget {
     this.selectedSeats = const [],
     this.userGender,
     this.onSeatTap,
+    this.isFamilyBooking = false,
   });
 
   @override
@@ -92,6 +97,7 @@ class SeatLayoutWidget extends StatelessWidget {
                                   trip: trip,
                                   seatNumber: seatNumber,
                                   userGender: userGender,
+                                  isFamilyBooking: isFamilyBooking,
                                 )
                               : SeatStatus.available,
                           onTap: onSeatTap != null

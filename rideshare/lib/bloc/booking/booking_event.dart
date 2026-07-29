@@ -16,14 +16,19 @@ class BookingCreateMultiSeat extends BookingEvent {
   final List<BookingSeatRequest> seats;
   final bool sharePhoneWithDriver;
 
+  /// Exempts this booking from the trip's gender-mixing rules (2+ seats only).
+  final bool isFamilyBooking;
+
   const BookingCreateMultiSeat({
     required this.tripId,
     required this.seats,
     this.sharePhoneWithDriver = false,
+    this.isFamilyBooking = false,
   });
 
   @override
-  List<Object?> get props => [tripId, seats, sharePhoneWithDriver];
+  List<Object?> get props =>
+      [tripId, seats, sharePhoneWithDriver, isFamilyBooking];
 }
 
 /// Auto-pick seats on behalf of the user.
@@ -33,15 +38,20 @@ class BookingAutoPick extends BookingEvent {
   final List<BookingSeatRequest> passengers;
   final bool sharePhoneWithDriver;
 
+  /// Exempts this booking from the trip's gender-mixing rules (2+ seats only).
+  final bool isFamilyBooking;
+
   const BookingAutoPick({
     required this.tripId,
     required this.seatCount,
     required this.passengers,
     this.sharePhoneWithDriver = false,
+    this.isFamilyBooking = false,
   });
 
   @override
-  List<Object?> get props => [tripId, seatCount, passengers, sharePhoneWithDriver];
+  List<Object?> get props =>
+      [tripId, seatCount, passengers, sharePhoneWithDriver, isFamilyBooking];
 }
 
 // ── Driver actions ────────────────────────────────────────────────────────────

@@ -207,6 +207,7 @@ class AuthService {
     required String model,
     required int seats,
     required String carImageUrl,
+    required String insuranceImageUrl,
     String? gender,
     String? photoUrl,
     String? licenseImageUrl,
@@ -222,6 +223,7 @@ class AuthService {
       'model': model,
       'seats': seats,
       'carImageUrl': carImageUrl,
+      'insuranceImageUrl': insuranceImageUrl,
     };
     if (gender != null && gender.isNotEmpty) body['gender'] = gender;
     if (photoUrl != null) body['photoUrl'] = photoUrl;
@@ -250,6 +252,15 @@ class AuthService {
     );
   }
 
+  /// Update the submitted driver details/documents while the account is still
+  /// awaiting approval. The backend rejects this once the driver is approved.
+  Future<void> updatePendingDriverRegistration(
+    Map<String, dynamic> data,
+  ) async {
+    await _api.patch(ApiEndpoints.driverPendingRegistration, data: data);
+    _currentUser = await getProfile();
+  }
+
   // ===== Profile Operations =====
   Future<UserModel> getProfile() async {
     final response = await _api.get(ApiEndpoints.me);
@@ -268,6 +279,7 @@ class AuthService {
     String? email,
     String? gender,
     String? profileImageUrl,
+    String? city,
     bool? hidePhoneNumber,
   }) async {
     final Map<String, dynamic> data = {};
@@ -276,6 +288,9 @@ class AuthService {
     }
     if (gender != null) {
       data['gender'] = gender;
+    }
+    if (city != null) {
+      data['city'] = city;
     }
     if (profileImageUrl != null) {
       data['photoUrl'] = profileImageUrl; // backend expects 'photoUrl'

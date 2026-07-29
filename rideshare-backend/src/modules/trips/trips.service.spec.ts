@@ -1,440 +1,348 @@
+/**
+ * TripsService unit tests (TypeORM rewrite).
+ *
+ * The original spec targeted the Mongoose ODM and no longer compiled against
+ * the current TypeORM implementation. This rewrite focuses on `create`, which
+ * owns seat-layout resolution and the per-trip `availableSeats` /
+ * `preventGenderMixing` overrides.
+ */
+
 import { Test, TestingModule } from '@nestjs/testing';
-import { getModelToken } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { TripsService } from './trips.service';
-import { Trip, TripDocument } from './schemas/trip.schema';
+import { getQueueToken } from '@nestjs/bull';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import {
-  NotFoundException,
-  ForbiddenException,
   BadRequestException,
+  ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
+import { TripsService } from './trips.service';
 import { CreateTripDto } from './dto/create-trip.dto';
-import { UpdateTripDto } from './dto/update-trip.dto';
+import { TripEntity } from '../../database/entities/trip.entity';
+import { DriverAvailabilityEntity } from '../../database/entities/driver-availability.entity';
+import { NotificationsService } from '../notifications/notifications.service';
+import { BookingsService } from '../bookings/bookings.service';
+import { VehiclesService } from '../vehicles/vehicles.service';
+import { UsersService } from '../users/users.service';
+import { PlatformPricingService } from '../payments/platform-pricing.service';
+import { TripsGateway } from './trips.gateway';
+import { RecurrenceService } from '../recurrence/recurrence.service';
+import { PendingChargesService } from '../pending-charges/pending-charges.service';
+import { LocationsService } from '../locations/locations.service';
+import { WalletService } from '../wallet/wallet.service';
 
-describe('TripsService', () => {
-  let service: TripsService;
-  let tripModel: Model<TripDocument>;
+const DRIVER_ID = 'driver-uuid';
+const DRIVER_NAME = 'Test Driver';
 
-  const mockTripId = '507f1f77bcf86cd799439011';
-  const mockDriverId = '507f1f77bcf86cd799439012';
+/** Sedan-shaped vehicle: 1 front passenger seat + 3 back seats. */
+const mockVehicle = () => ({
+  id: 'vehicle-uuid',
+  driverId: DRIVER_ID,
+  vehicleType: 'sedan',
+  seats: 4,
+  isVerified: true,
+  carImageUrl: 'https://cdn.example.com/car.jpg',
+  seatLayout: {
+    rows: 2,
+    seatsPerRow: 3,
+    seatsPerRowList: [1, 3],
+    preventGenderMixing: true,
+  },
+});
 
-  const mockTrip = {
-    _id: mockTripId,
-    driverId: mockDriverId,
-    driverName: 'Test Driver',
+const baseDto = (): CreateTripDto =>
+  ({
     from: {
-      name: 'Cairo',
-      latitude: 30.0444,
-      longitude: 31.2357,
-      address: 'Cairo, Egypt',
+      name: 'Amman',
+      latitude: 31.9539,
+      longitude: 35.9106,
+      address: 'Amman, Jordan',
     },
     to: {
-      name: 'Alexandria',
-      latitude: 31.2001,
-      longitude: 29.9187,
-      address: 'Alexandria, Egypt',
+      name: 'Irbid',
+      latitude: 32.5556,
+      longitude: 35.85,
+      address: 'Irbid, Jordan',
     },
-    departureTime: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    price: 100,
-    currency: 'EGP',
-    totalSeats: 4,
-    availableSeats: 4,
-    seatLayout: {
-      rows: 2,
-      seatsPerRow: 2,
-      preventGenderMixing: false,
-    },
-    seats: [
-      {
-        seatNumber: '0-0',
-        status: 'available',
-        userId: null,
-        userName: null,
-        gender: null,
-      },
-      {
-        seatNumber: '0-1',
-        status: 'available',
-        userId: null,
-        userName: null,
-        gender: null,
-      },
-      {
-        seatNumber: '1-0',
-        status: 'available',
-        userId: null,
-        userName: null,
-        gender: null,
-      },
-      {
-        seatNumber: '1-1',
-        status: 'available',
-        userId: null,
-        userName: null,
-        gender: null,
-      },
-    ],
-    status: 'active',
-    isVisible: true,
-    communicationFeeStatus: 'not_paid',
-    carImageUrl: null,
-    save: jest.fn().mockResolvedValue(true),
-  };
+    departureTime: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+    price: 5,
+  }) as CreateTripDto;
 
-  const mockTripModel = {
-    create: jest.fn(),
-    findById: jest.fn(),
-    find: jest.fn(),
-    findOneAndUpdate: jest.fn(),
-    deleteOne: jest.fn(),
-    aggregate: jest.fn(),
-  };
+const makeQueue = () => ({
+  add: jest.fn().mockResolvedValue(undefined),
+  getJob: jest.fn().mockResolvedValue(null),
+});
+
+describe('TripsService (TypeORM)', () => {
+  let service: TripsService;
+  let tripRepo: any;
+  let vehiclesService: any;
+  let usersService: any;
+  let recurrenceService: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TripsService,
         {
-          provide: getModelToken(Trip.name),
-          useValue: mockTripModel,
+          provide: getRepositoryToken(TripEntity),
+          useValue: {
+            create: jest.fn((data: any) => ({ id: 'trip-uuid', ...data })),
+            save: jest.fn((entity: any) => Promise.resolve(entity)),
+            findOne: jest.fn(),
+            find: jest.fn(),
+            createQueryBuilder: jest.fn().mockReturnValue({
+              where: jest.fn().mockReturnThis(),
+              andWhere: jest.fn().mockReturnThis(),
+              addSelect: jest.fn().mockReturnThis(),
+              orderBy: jest.fn().mockReturnThis(),
+              skip: jest.fn().mockReturnThis(),
+              take: jest.fn().mockReturnThis(),
+              getRawAndEntities: jest
+                .fn()
+                .mockResolvedValue({ entities: [], raw: [] }),
+            }),
+          },
+        },
+        {
+          provide: getRepositoryToken(DriverAvailabilityEntity),
+          useValue: { findOne: jest.fn(), save: jest.fn() },
+        },
+        {
+          provide: NotificationsService,
+          useValue: {
+            enqueueCityFanout: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        { provide: BookingsService, useValue: {} },
+        {
+          provide: VehiclesService,
+          useValue: {
+            findByDriver: jest.fn().mockResolvedValue(mockVehicle()),
+          },
+        },
+        {
+          provide: UsersService,
+          useValue: {
+            findById: jest.fn().mockResolvedValue({
+              id: DRIVER_ID,
+              isDriverApproved: true,
+              photoUrl: 'https://cdn.example.com/driver.jpg',
+            }),
+          },
+        },
+        { provide: PlatformPricingService, useValue: {} },
+        {
+          provide: TripsGateway,
+          useValue: { emitTripUpdated: jest.fn() },
+        },
+        { provide: getQueueToken('no-show-detector'), useValue: makeQueue() },
+        { provide: getQueueToken('trip-auto-start'), useValue: makeQueue() },
+        { provide: getQueueToken('trip-auto-complete'), useValue: makeQueue() },
+        {
+          provide: RecurrenceService,
+          useValue: {
+            createRule: jest.fn().mockResolvedValue({ id: 'rule-uuid' }),
+          },
+        },
+        {
+          provide: PendingChargesService,
+          useValue: {
+            getOutstandingSummary: jest
+              .fn()
+              .mockResolvedValue({ count: 0, totalAmount: 0 }),
+          },
+        },
+        {
+          provide: LocationsService,
+          useValue: {
+            reverseGeocode: jest.fn().mockResolvedValue({ countryCode: 'JO' }),
+          },
+        },
+        {
+          provide: WalletService,
+          useValue: {
+            assertNonNegativeDriverBalance: jest
+              .fn()
+              .mockResolvedValue(undefined),
+          },
         },
       ],
     }).compile();
 
     service = module.get<TripsService>(TripsService);
-    tripModel = module.get<Model<TripDocument>>(getModelToken(Trip.name));
+    tripRepo = module.get(getRepositoryToken(TripEntity));
+    vehiclesService = module.get(VehiclesService);
+    usersService = module.get(UsersService);
+    recurrenceService = module.get(RecurrenceService);
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
-  });
+  afterEach(() => jest.clearAllMocks());
 
   describe('create', () => {
-    it('should create a trip with generated seat layout', async () => {
-      const createTripDto: CreateTripDto = {
-        from: mockTrip.from,
-        to: mockTrip.to,
-        departureTime: mockTrip.departureTime.toISOString(),
-        price: mockTrip.price,
-        currency: 'EGP',
-        carImageUrl: null,
-      };
+    it('publishes every layout seat when no override is supplied', async () => {
+      const trip = await service.create(baseDto(), DRIVER_ID, DRIVER_NAME);
 
-      mockTripModel.create.mockResolvedValue(mockTrip);
-
-      const result = await service.create(
-        createTripDto,
-        mockDriverId,
-        'Test Driver',
-      );
-
-      expect(result).toBeDefined();
-      expect(result.driverId).toBe(mockDriverId);
-      expect(result.seats).toHaveLength(4);
-      expect(result.availableSeats).toBe(4);
-      expect(mockTripModel.create).toHaveBeenCalled();
+      expect(trip.seats).toHaveLength(4);
+      expect(trip.totalSeats).toBe(4);
+      expect(trip.availableSeats).toBe(4);
+      expect(trip.seats.map((s: any) => s.seatNumber)).toEqual([
+        '0-0',
+        '1-0',
+        '1-1',
+        '1-2',
+      ]);
     });
 
-    it('should fail with past departure time', async () => {
-      const createTripDto: CreateTripDto = {
-        from: mockTrip.from,
-        to: mockTrip.to,
-        departureTime: new Date(Date.now() - 1000).toISOString(),
-        price: mockTrip.price,
-        currency: 'EGP',
-        carImageUrl: null,
-      };
+    it('clamps published seats to the availableSeats override', async () => {
+      const trip = await service.create(
+        { ...baseDto(), availableSeats: 2 },
+        DRIVER_ID,
+        DRIVER_NAME,
+      );
+
+      expect(trip.totalSeats).toBe(2);
+      expect(trip.availableSeats).toBe(2);
+      expect(trip.seats).toHaveLength(2);
+      expect(trip.seats.map((s: any) => s.seatNumber)).toEqual(['0-0', '1-0']);
+    });
+
+    it('overrides preventGenderMixing without mutating the vehicle shape', async () => {
+      const vehicle = mockVehicle();
+      vehiclesService.findByDriver.mockResolvedValue(vehicle);
+
+      const trip = await service.create(
+        { ...baseDto(), preventGenderMixing: false },
+        DRIVER_ID,
+        DRIVER_NAME,
+      );
+
+      expect(trip.seatLayout.preventGenderMixing).toBe(false);
+      expect(trip.seatLayout.seatsPerRowList).toEqual([1, 3]);
+      expect(vehicle.seatLayout.preventGenderMixing).toBe(true);
+      expect(vehicle.seatLayout.seatsPerRowList).toEqual([1, 3]);
+    });
+
+    it('inherits the vehicle preventGenderMixing when not overridden', async () => {
+      const trip = await service.create(baseDto(), DRIVER_ID, DRIVER_NAME);
+
+      expect(trip.seatLayout.preventGenderMixing).toBe(true);
+    });
+
+    it('rejects an availableSeats override above the layout maximum', async () => {
+      await expect(
+        service.create(
+          { ...baseDto(), availableSeats: 99 },
+          DRIVER_ID,
+          DRIVER_NAME,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects an availableSeats override below one', async () => {
+      await expect(
+        service.create(
+          { ...baseDto(), availableSeats: 0 },
+          DRIVER_ID,
+          DRIVER_NAME,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('carries the overridden seat count and layout into the recurrence template', async () => {
+      await service.create(
+        {
+          ...baseDto(),
+          availableSeats: 3,
+          preventGenderMixing: false,
+          recurrence: { frequency: 'daily' },
+        },
+        DRIVER_ID,
+        DRIVER_NAME,
+      );
+
+      expect(recurrenceService.createRule).toHaveBeenCalled();
+      const templateJson = recurrenceService.createRule.mock.calls[0][1];
+      expect(templateJson.totalSeats).toBe(3);
+      expect(templateJson.seatLayout.preventGenderMixing).toBe(false);
+      expect(templateJson.seatLayout.seatsPerRowList).toEqual([1, 3]);
+    });
+
+    it('links the saved trip to the created recurrence rule', async () => {
+      const trip = await service.create(
+        { ...baseDto(), recurrence: { frequency: 'daily' } },
+        DRIVER_ID,
+        DRIVER_NAME,
+      );
+
+      expect(trip.recurrenceRuleId).toBe('rule-uuid');
+      expect(tripRepo.save).toHaveBeenCalledTimes(2);
+    });
+
+    it('falls back to the vehicle-type template when the vehicle has no layout', async () => {
+      vehiclesService.findByDriver.mockResolvedValue({
+        ...mockVehicle(),
+        seatLayout: null,
+      });
+
+      const trip = await service.create(baseDto(), DRIVER_ID, DRIVER_NAME);
+
+      expect(trip.totalSeats).toBe(4);
+      expect(trip.seatLayout.seatsPerRowList).toEqual([1, 3]);
+      expect(trip.seatLayout.preventGenderMixing).toBe(false);
+    });
+
+    it('rejects a departure time in the past', async () => {
+      await expect(
+        service.create(
+          { ...baseDto(), departureTime: new Date(Date.now() - 1000).toISOString() },
+          DRIVER_ID,
+          DRIVER_NAME,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects a driver without a registered vehicle', async () => {
+      vehiclesService.findByDriver.mockResolvedValue(null);
 
       await expect(
-        service.create(createTripDto, mockDriverId, 'Test Driver'),
-      ).rejects.toThrow(BadRequestException);
+        service.create(baseDto(), DRIVER_ID, DRIVER_NAME),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rejects a driver whose vehicle is not verified', async () => {
+      vehiclesService.findByDriver.mockResolvedValue({
+        ...mockVehicle(),
+        isVerified: false,
+      });
+
+      await expect(
+        service.create(baseDto(), DRIVER_ID, DRIVER_NAME),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rejects a driver without a profile photo', async () => {
+      usersService.findById.mockResolvedValue({
+        id: DRIVER_ID,
+        isDriverApproved: true,
+        photoUrl: null,
+      });
+
+      await expect(
+        service.create(baseDto(), DRIVER_ID, DRIVER_NAME),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 
   describe('findById', () => {
-    it('should find a trip by ID', async () => {
-      mockTripModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockTrip),
-      });
-
-      const result = await service.findById(mockTripId);
-
-      expect(result).toBeDefined();
-      expect(result._id).toBe(mockTripId);
-      expect(mockTripModel.findById).toHaveBeenCalledWith(mockTripId);
-    });
-
-    it('should throw NotFoundException if trip not found', async () => {
-      mockTripModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null),
-      });
-
-      await expect(service.findById(mockTripId)).rejects.toThrow(
+    it('throws NotFoundException when the trip does not exist', async () => {
+      await expect(service.findById('missing-uuid')).rejects.toThrow(
         NotFoundException,
       );
-    });
-  });
-
-  describe('update', () => {
-    it('should update a trip successfully', async () => {
-      const updateTripDto: UpdateTripDto = {
-        price: 150,
-      };
-
-      mockTripModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockTrip),
-      });
-
-      mockTripModel.findOneAndUpdate.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ ...mockTrip, price: 150 }),
-      });
-
-      const result = await service.update(
-        mockTripId,
-        updateTripDto,
-        mockDriverId,
-      );
-
-      expect(result.price).toBe(150);
-    });
-
-    it('should fail if user is not the owner', async () => {
-      const otherDriverId = '507f1f77bcf86cd799439013';
-      const updateTripDto: UpdateTripDto = { price: 150 };
-
-      mockTripModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockTrip),
-      });
-
-      await expect(
-        service.update(mockTripId, updateTripDto, otherDriverId),
-      ).rejects.toThrow(ForbiddenException);
-    });
-
-    it('should fail if trip has bookings and trying to change seats', async () => {
-      const updateTripDto: UpdateTripDto = {
-        totalSeats: 6,
-        seatLayout: { rows: 2, seatsPerRow: 3, preventGenderMixing: false },
-      };
-
-      const tripWithBookings = {
-        ...mockTrip,
-        seats: [
-          {
-            seatNumber: '0-0',
-            status: 'booked',
-            userId: '123',
-            userName: 'User',
-            gender: 'male',
-          },
-          {
-            seatNumber: '0-1',
-            status: 'available',
-            userId: null,
-            userName: null,
-            gender: null,
-          },
-          {
-            seatNumber: '1-0',
-            status: 'available',
-            userId: null,
-            userName: null,
-            gender: null,
-          },
-          {
-            seatNumber: '1-1',
-            status: 'available',
-            userId: null,
-            userName: null,
-            gender: null,
-          },
-        ],
-      };
-
-      mockTripModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(tripWithBookings),
-      });
-
-      await expect(
-        service.update(mockTripId, updateTripDto, mockDriverId),
-      ).rejects.toThrow(BadRequestException);
-    });
-  });
-
-  describe('hide', () => {
-    it('should hide a trip', async () => {
-      mockTripModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockTrip),
-      });
-
-      mockTripModel.findOneAndUpdate.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({
-          ...mockTrip,
-          status: 'hidden',
-          isVisible: false,
-        }),
-      });
-
-      const result = await service.hide(mockTripId, mockDriverId);
-
-      expect(result.status).toBe('hidden');
-      expect(result.isVisible).toBe(false);
-    });
-  });
-
-  describe('show', () => {
-    it('should show a hidden trip', async () => {
-      const hiddenTrip = { ...mockTrip, status: 'hidden', isVisible: false };
-
-      mockTripModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(hiddenTrip),
-      });
-
-      mockTripModel.findOneAndUpdate.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({
-          ...mockTrip,
-          status: 'active',
-          isVisible: true,
-        }),
-      });
-
-      const result = await service.show(mockTripId, mockDriverId);
-
-      expect(result.status).toBe('active');
-      expect(result.isVisible).toBe(true);
-    });
-  });
-
-  describe('complete', () => {
-    it('should complete a trip', async () => {
-      mockTripModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockTrip),
-      });
-
-      mockTripModel.findOneAndUpdate.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ ...mockTrip, status: 'completed' }),
-      });
-
-      const result = await service.complete(mockTripId, mockDriverId);
-
-      expect(result.status).toBe('completed');
-    });
-
-    it('should fail if trip is already completed', async () => {
-      const completedTrip = { ...mockTrip, status: 'completed' };
-
-      mockTripModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(completedTrip),
-      });
-
-      await expect(service.complete(mockTripId, mockDriverId)).rejects.toThrow(
-        BadRequestException,
-      );
-    });
-  });
-
-  describe('cancel', () => {
-    it('should cancel a trip', async () => {
-      mockTripModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockTrip),
-      });
-
-      mockTripModel.findOneAndUpdate.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ ...mockTrip, status: 'cancelled' }),
-      });
-
-      const result = await service.cancel(mockTripId, mockDriverId);
-
-      expect(result.status).toBe('cancelled');
-    });
-
-    it('should fail if trip is already completed', async () => {
-      const completedTrip = { ...mockTrip, status: 'completed' };
-
-      mockTripModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(completedTrip),
-      });
-
-      await expect(service.cancel(mockTripId, mockDriverId)).rejects.toThrow(
-        BadRequestException,
-      );
-    });
-  });
-
-  describe('getSeats', () => {
-    it('should get trip seats', async () => {
-      mockTripModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockTrip),
-      });
-
-      const result = await service.getSeats(mockTripId);
-
-      expect(result).toHaveProperty('seatLayout');
-      expect(result).toHaveProperty('seats');
-      expect(result.seats).toHaveLength(4);
-    });
-
-    it('should throw NotFoundException if trip not found', async () => {
-      mockTripModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null),
-      });
-
-      await expect(service.getSeats(mockTripId)).rejects.toThrow(
-        NotFoundException,
-      );
-    });
-  });
-
-  describe('search', () => {
-    it('should search trips with filters', async () => {
-      const mockQuery = {
-        skip: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockReturnThis(),
-        exec: jest.fn().mockResolvedValue([mockTrip]),
-      };
-
-      mockTripModel.find.mockReturnValue(mockQuery);
-
-      const result = await service.search({
-        fromLatitude: 30.0444,
-        fromLongitude: 31.2357,
-        minPrice: 50,
-        maxPrice: 150,
-        page: 1,
-        limit: 20,
-      });
-
-      expect(result.data).toHaveLength(1);
-      expect(result.meta).toHaveProperty('total');
-    });
-  });
-
-  describe('findByDriver', () => {
-    it('should find trips by driver', async () => {
-      const mockQuery = {
-        skip: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockReturnThis(),
-        exec: jest.fn().mockResolvedValue([mockTrip]),
-      };
-
-      mockTripModel.find.mockReturnValue(mockQuery);
-
-      const result = await service.findByDriver(mockDriverId, {
-        page: 1,
-        limit: 20,
-      });
-
-      expect(result.data).toHaveLength(1);
-      expect(mockTripModel.find).toHaveBeenCalledWith({
-        driverId: mockDriverId,
-      });
     });
   });
 
   describe('generateSeatsGrid', () => {
-    it('should generate seat layout array', () => {
+    it('generates a row-major seat grid', () => {
       const seats = service['generateSeatsGrid'](2, 2);
 
       expect(seats).toHaveLength(4);

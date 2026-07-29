@@ -611,4 +611,172 @@ describe('BookingsService (TypeORM)', () => {
       ).rejects.toThrow(BadRequestException);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // Family booking exemption (create-trip wizard — Task 3)
+  // -------------------------------------------------------------------------
+  describe('family booking exemption', () => {
+    /** Trip with prevent-gender-mixing turned on. */
+    const genderStrictTrip = () => ({
+      ...mockTrip(),
+      seatLayout: { rows: 2, seatsPerRow: 2, preventGenderMixing: true },
+    });
+
+    /** Wires the query-runner mocks so a booking can actually be persisted. */
+    const stubSuccessfulPersist = (trip: any) => {
+      const qr = (dataSource.createQueryRunner as jest.Mock)();
+      (qr.manager.findOne as jest.Mock).mockResolvedValue({ ...trip });
+      (qr.manager.create as jest.Mock).mockImplementation((_, value) => value);
+      (qr.manager.save as jest.Mock).mockImplementation((target, value) => {
+        if (target === BookingEntity) {
+          return Promise.resolve({ ...value, id: BOOKING_ID });
+        }
+        return Promise.resolve(value);
+      });
+      return qr;
+    };
+
+    it('skips gender adjacency when isFamilyBooking is true', async () => {
+      const trip = genderStrictTrip();
+      tripRepo.findOne.mockResolvedValue(trip as any);
+      stubSuccessfulPersist(trip);
+
+      const hydratedBooking = { ...mockBooking(), trip } as any;
+      bookingRepo.findOne.mockResolvedValue(hydratedBooking);
+
+      await expect(
+        service.createMultiSeat(
+          {
+            tripId: TRIP_ID,
+            isFamilyBooking: true,
+            seats: [
+              {
+                seatNumber: '0-0',
+                displayName: 'A',
+                gender: 'male',
+                isMainBooker: true,
+              },
+              {
+                seatNumber: '0-1',
+                displayName: 'B',
+                gender: 'female',
+                isMainBooker: false,
+              },
+            ],
+          },
+          USER_ID,
+        ),
+      ).resolves.toBeTruthy();
+    });
+
+    it('persists isFamilyBooking on the created booking', async () => {
+      const trip = genderStrictTrip();
+      tripRepo.findOne.mockResolvedValue(trip as any);
+      const qr = stubSuccessfulPersist(trip);
+      bookingRepo.findOne.mockResolvedValue(null as any);
+
+      await service.createMultiSeat(
+        {
+          tripId: TRIP_ID,
+          isFamilyBooking: true,
+          seats: [
+            {
+              seatNumber: '0-0',
+              displayName: 'A',
+              gender: 'male',
+              isMainBooker: true,
+            },
+            {
+              seatNumber: '0-1',
+              displayName: 'B',
+              gender: 'female',
+              isMainBooker: false,
+            },
+          ],
+        },
+        USER_ID,
+      );
+
+      const bookingCreateCall = (qr.manager.create as jest.Mock).mock.calls.find(
+        ([target]) => target === BookingEntity,
+      );
+      expect(bookingCreateCall?.[1]).toMatchObject({ isFamilyBooking: true });
+    });
+
+    it('rejects isFamilyBooking with a single seat', async () => {
+      const trip = genderStrictTrip();
+      tripRepo.findOne.mockResolvedValue(trip as any);
+
+      await expect(
+        service.createMultiSeat(
+          {
+            tripId: TRIP_ID,
+            isFamilyBooking: true,
+            seats: [
+              {
+                seatNumber: '0-0',
+                displayName: 'A',
+                gender: 'male',
+                isMainBooker: true,
+              },
+            ],
+          },
+          USER_ID,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('still enforces gender adjacency for non-family bookings', async () => {
+      const trip = genderStrictTrip();
+      tripRepo.findOne.mockResolvedValue(trip as any);
+      stubSuccessfulPersist(trip);
+
+      await expect(
+        service.createMultiSeat(
+          {
+            tripId: TRIP_ID,
+            seats: [
+              {
+                seatNumber: '0-0',
+                displayName: 'A',
+                gender: 'male',
+                isMainBooker: true,
+              },
+              {
+                seatNumber: '0-1',
+                displayName: 'B',
+                gender: 'female',
+                isMainBooker: false,
+              },
+            ],
+          },
+          USER_ID,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('autoPick places a mixed-gender family group despite prevent-mixing', async () => {
+      const trip = { ...genderStrictTrip(), availableSeats: 4, totalSeats: 4 };
+      tripRepo.findOne.mockResolvedValue(trip as any);
+      stubSuccessfulPersist(trip);
+
+      const hydratedBooking = { ...mockBooking(), trip } as any;
+      bookingRepo.findOne.mockResolvedValue(hydratedBooking);
+
+      await expect(
+        service.autoPick(
+          {
+            tripId: TRIP_ID,
+            seatCount: 2,
+            isFamilyBooking: true,
+            passengers: [
+              { displayName: 'A', gender: 'male', isMainBooker: true },
+              { displayName: 'B', gender: 'female', isMainBooker: false },
+            ],
+          },
+          USER_ID,
+        ),
+      ).resolves.toBeTruthy();
+    });
+  });
 });

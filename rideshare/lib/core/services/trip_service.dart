@@ -49,6 +49,8 @@ class TripService {
     List<LocationModel>? stops,
     String? notes,
     Map<String, dynamic>? recurrence,
+    int? availableSeats,
+    bool? preventGenderMixing,
   }) async {
     try {
       final body = <String, dynamic>{
@@ -66,6 +68,9 @@ class TripService {
               .toList(),
         if (notes != null && notes.isNotEmpty) 'notes': notes,
         if (recurrence != null) 'recurrence': recurrence,
+        if (availableSeats != null) 'availableSeats': availableSeats,
+        if (preventGenderMixing != null)
+          'preventGenderMixing': preventGenderMixing,
       };
 
       final response = await _api.post(ApiEndpoints.trips, data: body);

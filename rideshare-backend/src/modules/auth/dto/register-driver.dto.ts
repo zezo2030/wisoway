@@ -123,6 +123,12 @@ export class RegisterDriverDto {
   @MaxLength(500)
   carImageUrl: string;
 
+  /** Insurance document — mandatory for every new driver registration. */
+  @IsString()
+  @IsNotEmpty({ message: 'Insurance image is required' })
+  @MaxLength(500)
+  insuranceImageUrl: string;
+
   /** Optional device binding payload (same shape as verify-otp). */
   @IsOptional()
   @ValidateNested()

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../constants/route_names.dart';
+import 'instant_offer_actions.dart';
 
 /// Service to handle navigation when user taps on notifications
 class NotificationNavigationService {
@@ -62,10 +63,21 @@ class NotificationNavigationService {
         _handleChatMessageNotification(data);
         break;
 
+      case 'instant_offer':
+        _handleInstantOfferNotification(data);
+        break;
+
       default:
         // Navigate to notifications screen for unknown types
         _navigateToRoute(RouteNames.notifications);
     }
+  }
+
+  static void _handleInstantOfferNotification(Map<String, dynamic> data) {
+    InstantOfferActions.handle({
+      ...data,
+      'action': data['action'] ?? 'open',
+    });
   }
 
   /// Handle booking-related notifications

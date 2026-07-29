@@ -105,6 +105,14 @@ export class BookingEntity {
   @Column({ type: 'boolean', default: false })
   sharePhoneWithDriver: boolean;
 
+  /**
+   * Family booking: the seats were booked for one family travelling together,
+   * so trip-level prevent-gender-mixing rules do not apply to this booking.
+   * Only valid for multi-seat (2+) bookings.
+   */
+  @Column({ type: 'boolean', default: false })
+  isFamilyBooking: boolean;
+
   @Column({ type: 'text', nullable: true })
   cancellationReason: string | null;
 

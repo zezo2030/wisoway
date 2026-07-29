@@ -1,19 +1,34 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:provider/provider.dart';
+
 import '../../providers/auth_provider.dart';
-import '../../core/constants/route_names.dart';
+import '../../core/api/api_client.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/constants/route_names.dart';
+import '../../core/errors/failure.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/vehicle_service.dart';
-import '../../models/vehicle_type_template.dart';
 import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
-import '../../core/api/api_client.dart';
-import '../../core/errors/failure.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/vehicle_type_template.dart';
+import '../../widgets/auth/auth_step_indicator.dart';
+import '../../widgets/auth/security_notice.dart';
+import 'driver_complete/driver_complete_step2.dart';
+import 'driver_complete/driver_complete_step3.dart';
+import 'driver_complete/driver_profile_wizard_state.dart';
 
+/// Shell for driver wizard steps 2 and 3.
+///
+/// Two entry points:
+/// * new registration — arrives with a pending registration token, submits
+///   `POST /auth/driver/register` at the end of step 3;
+/// * pending edit (`{'editMode': true}`) — prefills from the account + vehicle
+///   and submits `PATCH /auth/driver/registration` instead.
 class DriverCompleteProfileScreen extends StatefulWidget {
   const DriverCompleteProfileScreen({super.key});
 
@@ -23,22 +38,18 @@ class DriverCompleteProfileScreen extends StatefulWidget {
 }
 
 class _DriverCompleteProfileScreenState
-    extends State<DriverCompleteProfileScreen>
-    with SingleTickerProviderStateMixin {
-  final _formKey = GlobalKey<FormState>();
-  final _plateNumberController = TextEditingController();
-  final _modelController = TextEditingController();
-  final _seatsController = TextEditingController();
-
+    extends State<DriverCompleteProfileScreen> {
+  final _step2FormKey = GlobalKey<FormState>();
   final StorageService _storageService = StorageService();
   final VehicleService _vehicleService = VehicleService();
 
-  // Seat layout is derived from the vehicle type. Templates come from the
-  // backend catalog (with a local fallback if the network is unavailable) so
-  // selecting a car type fills the seat count automatically.
+  late final DriverProfileWizardState _state = DriverProfileWizardState();
+
+  /// Seat counts come from the backend catalog; the local map keeps the
+  /// auto-fill working on the very first run without network.
   Map<String, VehicleTypeTemplate> _templatesByType = {};
   static const Map<String, int> _fallbackSeatsByType = {
-    'sedan': 3,
+    'sedan': 4,
     'suv': 5,
     'van': 7,
     'truck': 2,
@@ -46,38 +57,21 @@ class _DriverCompleteProfileScreenState
     'motorcycle': 1,
   };
 
-  File? _profileImage;
-  File? _driverLicenseImage;
-  File? _vehicleLicenseImage;
-  File? _carImage;
-  String? _selectedVehicleType;
-  bool _isLoading = false;
-  bool _isLoadingUserData = true;
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-
-  String? _firstName;
-  String? _lastName;
-  String? _email;
-  String? _gender;
+  bool _isEditMode = false;
+  bool _isBootstrapping = true;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
-    );
-    _animationController.forward();
-
-    // Get arguments from previous screen or load from Firestore
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadUserData();
-    });
     _loadVehicleTemplates();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrap());
+  }
+
+  @override
+  void dispose() {
+    _state.dispose();
+    super.dispose();
   }
 
   Future<void> _loadVehicleTemplates() async {
@@ -86,989 +80,410 @@ class _DriverCompleteProfileScreenState
       if (!mounted) return;
       setState(() {
         _templatesByType = {for (final t in templates) t.type: t};
-        // Refresh the auto-filled seat count if a type is already chosen.
-        final seats = _seatsForType(_selectedVehicleType);
-        if (seats != null) _seatsController.text = seats.toString();
       });
+      final seats = _seatsForType(_state.vehicleType);
+      if (seats != null) _state.seatsController.text = '$seats';
     } catch (_) {
-      // Network unavailable on first run — the local fallback seat counts
-      // below keep the auto-fill working.
+      // Offline first run — the fallback seat counts still auto-fill.
     }
   }
 
-  /// Default seat count for a vehicle type, from the backend catalog when
-  /// available, otherwise the local fallback. Returns null for unknown types.
   int? _seatsForType(String? type) {
     if (type == null) return null;
     return _templatesByType[type]?.seats ?? _fallbackSeatsByType[type];
   }
 
-  Future<void> _loadUserData() async {
-    // First, try to get data from arguments (if coming from sign up screen)
+  /// Decides between "create account" and "edit while pending", and prefills
+  /// the wizard from the existing account when editing.
+  Future<void> _bootstrap() async {
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    if (args != null && args['firstName'] != null) {
-      setState(() {
-        _firstName = args['firstName'];
-        _lastName = args['lastName'];
-        _email = args['email'];
-        _gender = args['gender'];
-        _isLoadingUserData = false;
-      });
-      return;
-    }
+    final authProvider = context.read<AuthProvider>();
+    final user = authProvider.userModel;
 
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final requestedEdit = args?['editMode'] == true;
+    final pendingDriverAccount =
+        user != null &&
+        user.role == AppConstants.roleDriver &&
+        !user.isDriverApproved;
 
-    // Brand-new driver registration (no account yet): basic info comes from the
-    // pending registration saved at the OTP step, which survives app restarts.
-    final pending = authProvider.pendingDriverRegistration;
-    if (!authProvider.isAuthenticated && pending != null) {
-      setState(() {
-        _firstName = pending.firstName.isNotEmpty ? pending.firstName : null;
-        _lastName = pending.lastName.isNotEmpty ? pending.lastName : null;
-        _email = (pending.email?.isNotEmpty ?? false) ? pending.email : null;
-        _gender = (pending.gender?.isNotEmpty ?? false) ? pending.gender : null;
-        _isLoadingUserData = false;
-      });
-      return;
-    }
+    _isEditMode = requestedEdit || (pendingDriverAccount && !requestedEdit);
 
-    // Existing user upgrading to driver: load from AuthProvider (REST API).
-    try {
-      if (authProvider.userModel == null) {
-        await authProvider.loadUserProfile();
+    if (_isEditMode && user != null) {
+      _state.existingPhotoUrl = user.photoUrl;
+      try {
+        final vehicle = await _vehicleService.getMyVehicle();
+        if (vehicle != null) {
+          _state.plateController.text = vehicle.plateNumber;
+          _state.modelController.text = vehicle.model;
+          _state.seatsController.text = '${vehicle.seats}';
+          _state.setVehicleType(
+            vehicle.vehicleType,
+            label:
+                AppConstants.vehicleTypeLabels[vehicle.vehicleType] ??
+                vehicle.vehicleType,
+            seats: vehicle.seats,
+          );
+          _state.existingLicenseUrl = vehicle.licenseImageUrl;
+          _state.existingVehicleLicenseUrl = vehicle.vehicleLicenseImageUrl;
+          _state.existingInsuranceUrl = vehicle.insuranceImageUrl;
+          _state.existingCarUrl = vehicle.carImageUrl;
+        }
+      } catch (_) {
+        // A missing vehicle just means nothing to prefill.
       }
-
-      final userModel = authProvider.userModel;
-      if (userModel != null) {
-        // Extract firstName and lastName from name
-        final nameParts = userModel.name.split(' ');
-        final firstName = nameParts.isNotEmpty ? nameParts[0] : '';
-        final lastName = nameParts.length > 1
-            ? nameParts.sublist(1).join(' ')
-            : '';
-
-        setState(() {
-          _firstName = firstName.isNotEmpty ? firstName : null;
-          _lastName = lastName.isNotEmpty ? lastName : null;
-          _email = userModel.email.isNotEmpty ? userModel.email : null;
-          _gender = userModel.gender.isNotEmpty ? userModel.gender : null;
-          _isLoadingUserData = false;
-        });
-        return;
-      }
-    } catch (e) {
-      print('❌ Error loading user data: $e');
     }
 
-    // If we can't load data, set loading to false
-    setState(() {
-      _isLoadingUserData = false;
-    });
+    if (mounted) setState(() => _isBootstrapping = false);
   }
 
-  @override
-  void dispose() {
-    _plateNumberController.dispose();
-    _modelController.dispose();
-    _seatsController.dispose();
-    _animationController.dispose();
-    super.dispose();
-  }
+  // ── Pickers ─────────────────────────────────────────────────────────────
 
-  Future<void> _pickImage({
-    required ImageSource source,
-    required Function(File) onImagePicked,
-  }) async {
-    final XFile? image = await _storageService.pickImage(source: source);
-    if (image != null) {
-      onImagePicked(File(image.path));
-    }
-  }
-
-  Future<void> _showImageSourceDialog(Function(File) onImagePicked) async {
-    showModalBottomSheet(
+  Future<void> _pickFile(void Function(File file) assign) async {
+    final source = await showModalBottomSheet<ImageSource>(
       context: context,
-      backgroundColor: AppColors.transparent,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: T.surface(context),
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(IconsaxPlusLinear.gallery),
+              title: Text(context.l10n.fromGallery),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(IconsaxPlusLinear.camera),
+              title: Text(context.l10n.fromCamera),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
+            ),
+          ],
         ),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                margin: const EdgeInsets.symmetric(vertical: 12),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: T.outline(context),
-                  borderRadius: BorderRadius.circular(2),
-                ),
+      ),
+    );
+    if (source == null) return;
+
+    final picked = await _storageService.pickImage(source: source);
+    if (picked == null || !mounted) return;
+    _state.setFile((_) => assign(File(picked.path)));
+  }
+
+  Future<void> _selectVehicleType() async {
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            for (final type in AppConstants.vehicleTypes)
+              ListTile(
+                title: Text(AppConstants.vehicleTypeLabels[type] ?? type),
+                trailing: _state.vehicleType == type
+                    ? Icon(
+                        IconsaxPlusBold.tick_circle,
+                        color: T.primary(sheetContext),
+                      )
+                    : null,
+                onTap: () => Navigator.pop(sheetContext, type),
               ),
-              Semantics(
-                button: true,
-                label: context.l10n.pickImageFromGallery,
-                child: ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: T.secondary(context).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.photo_library,
-                      color: T.secondary(context),
-                    ),
-                  ),
-                  title: Text(context.l10n.fromGallery),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _pickImage(
-                      source: ImageSource.gallery,
-                      onImagePicked: onImagePicked,
-                    );
-                  },
-                ),
-              ),
-              Semantics(
-                button: true,
-                label: context.l10n.captureImageFromCamera,
-                child: ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: T.secondary(context).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(Icons.camera_alt, color: T.secondary(context)),
-                  ),
-                  title: Text(context.l10n.fromCamera),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _pickImage(
-                      source: ImageSource.camera,
-                      onImagePicked: onImagePicked,
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
+          ],
         ),
+      ),
+    );
+    if (selected == null) return;
+    _state.setVehicleType(
+      selected,
+      label: AppConstants.vehicleTypeLabels[selected] ?? selected,
+      seats: _seatsForType(selected),
+    );
+  }
+
+  // ── Navigation between steps ────────────────────────────────────────────
+
+  void _continueToStep3() {
+    if (!(_step2FormKey.currentState?.validate() ?? false)) return;
+    if (!_state.hasProfilePhoto) {
+      _showValidation('Personal photo not uploaded');
+      return;
+    }
+    if (!_state.hasLicense) {
+      _showValidation('Driver license photo not uploaded');
+      return;
+    }
+    _state.goToStep(3);
+  }
+
+  void _showValidation(String developerDetail) {
+    ErrorSurface.showFailure(
+      context,
+      Failure(
+        category: FailureCategory.validation,
+        messageKey: 'errorsValidationGeneric',
+        severity: FailureSeverity.warning,
+        developerDetail: developerDetail,
       ),
     );
   }
 
-  Future<void> _completeProfile() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    // Validate images
-    if (_profileImage == null) {
-      ErrorSurface.showFailure(
-        context,
-        const Failure(
-          category: FailureCategory.validation,
-          messageKey: 'errorsValidationGeneric',
-          severity: FailureSeverity.warning,
-          developerDetail: 'Personal photo not uploaded',
-        ),
-      );
+  Future<void> _submit() async {
+    if (!_state.hasVehicleLicense) {
+      _showValidation('Vehicle license photo not uploaded');
+      return;
+    }
+    if (!_state.hasInsurance) {
+      _showSnackBar(context.l10n.insuranceImageRequired, T.error(context));
+      return;
+    }
+    if (!_state.hasCarPhoto) {
+      _showValidation('Car photo not uploaded');
       return;
     }
 
-    if (_driverLicenseImage == null) {
-      ErrorSurface.showFailure(
-        context,
-        const Failure(
-          category: FailureCategory.validation,
-          messageKey: 'errorsValidationGeneric',
-          severity: FailureSeverity.warning,
-          developerDetail: 'Driver license photo not uploaded',
-        ),
-      );
-      return;
-    }
-
-    if (_vehicleLicenseImage == null) {
-      ErrorSurface.showFailure(
-        context,
-        const Failure(
-          category: FailureCategory.validation,
-          messageKey: 'errorsValidationGeneric',
-          severity: FailureSeverity.warning,
-          developerDetail: 'Vehicle license photo not uploaded',
-        ),
-      );
-      return;
-    }
-
-    if (_carImage == null) {
-      ErrorSurface.showFailure(
-        context,
-        const Failure(
-          category: FailureCategory.validation,
-          messageKey: 'errorsValidationGeneric',
-          severity: FailureSeverity.warning,
-          developerDetail: 'Car photo not uploaded',
-        ),
-      );
-      return;
-    }
-
-    if (_selectedVehicleType == null) {
-      ErrorSurface.showFailure(
-        context,
-        const Failure(
-          category: FailureCategory.validation,
-          messageKey: 'errorsValidationGeneric',
-          severity: FailureSeverity.warning,
-          developerDetail: 'Vehicle type not selected',
-        ),
-      );
-      return;
-    }
-    await _saveDriverProfile();
-  }
-
-  Future<void> _saveDriverProfile() async {
-    setState(() => _isLoading = true);
+    setState(() => _isSubmitting = true);
+    final authProvider = context.read<AuthProvider>();
 
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-      if (authProvider.isAuthenticated) {
-        // Existing user upgrading to driver — the account already exists.
-        await authProvider.saveDriverProfile(
-          firstName: _firstName ?? '',
-          lastName: _lastName ?? '',
-          phoneNumber: authProvider.userModel?.phoneNumber ?? '',
-          profileImage: _profileImage!,
-          vehicleType: _selectedVehicleType!,
-          plateNumber: _plateNumberController.text.trim(),
-          model: _modelController.text.trim(),
-          seats: int.parse(_seatsController.text.trim()),
-          driverLicenseImage: _driverLicenseImage!,
-          vehicleLicenseImage: _vehicleLicenseImage!,
-          carImage: _carImage!,
-          email: _email,
-          gender: _gender, // Pass gender from step 1
+      if (_isEditMode) {
+        await authProvider.updatePendingDriverRegistration(
+          profileImage: _state.profileImage,
+          vehicleType: _state.vehicleType,
+          plateNumber: _state.plateController.text.trim(),
+          model: _state.modelController.text.trim(),
+          seats: int.tryParse(_state.seatsController.text.trim()),
+          driverLicenseImage: _state.licenseImage,
+          vehicleLicenseImage: _state.vehicleLicenseImage,
+          insuranceImage: _state.insuranceImage,
+          carImage: _state.carImage,
         );
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(context.l10n.driverProfileSubmittedFull),
-              backgroundColor: AppColors.success,
-              duration: const Duration(seconds: 5),
-            ),
-          );
-          // AuthWrapper will now show home since the profile is complete.
-          Navigator.pushReplacementNamed(context, RouteNames.home);
-        }
-        return;
-      }
-
-      // Brand-new driver: this is the final step — the account and vehicle are
-      // created atomically here. If anything failed earlier, no account exists.
-      await authProvider.registerDriver(
-        profileImage: _profileImage!,
-        vehicleType: _selectedVehicleType!,
-        plateNumber: _plateNumberController.text.trim(),
-        model: _modelController.text.trim(),
-        seats: int.parse(_seatsController.text.trim()),
-        driverLicenseImage: _driverLicenseImage!,
-        vehicleLicenseImage: _vehicleLicenseImage!,
-        carImage: _carImage!,
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.l10n.driverProfileSubmitted),
-            backgroundColor: AppColors.success,
-            duration: const Duration(seconds: 5),
-          ),
+        if (!mounted) return;
+        _showSnackBar(
+          context.l10n.registrationUpdatedSuccess,
+          AppColors.success,
         );
         Navigator.pushNamedAndRemoveUntil(
           context,
           RouteNames.driverPendingApproval,
           (route) => false,
         );
+        return;
       }
+
+      await authProvider.registerDriver(
+        profileImage: _state.profileImage!,
+        vehicleType: _state.vehicleType!,
+        plateNumber: _state.plateController.text.trim(),
+        model: _state.modelController.text.trim(),
+        seats: int.parse(_state.seatsController.text.trim()),
+        driverLicenseImage: _state.licenseImage!,
+        vehicleLicenseImage: _state.vehicleLicenseImage!,
+        insuranceImage: _state.insuranceImage!,
+        carImage: _state.carImage!,
+      );
+
+      if (!mounted) return;
+      _showSnackBar(context.l10n.driverProfileSubmitted, AppColors.success);
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        RouteNames.driverPendingApproval,
+        (route) => false,
+      );
     } catch (e) {
-      print('❌ Error completing driver profile: $e');
-      if (mounted) {
-        ErrorSurface.showFailure(context, ApiClient.mapError(e));
-      }
+      if (mounted) ErrorSurface.showFailure(context, ApiClient.mapError(e));
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isSubmitting = false);
     }
+  }
+
+  void _showSnackBar(String message, Color color) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Show loading while fetching user data
-    if (_isLoadingUserData) {
+    if (_isBootstrapping) {
       return Scaffold(
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                T.secondary(context),
-                AppColors.teal700,
-                AppColors.teal300,
-              ],
-            ),
-          ),
-          child: const Center(
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
-            ),
+        backgroundColor: T.primary(context),
+        body: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(T.onPrimary(context)),
           ),
         ),
       );
     }
 
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              T.secondary(context),
-              AppColors.teal700,
-              AppColors.teal300,
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: SingleChildScrollView(
+    return ListenableBuilder(
+      listenable: _state,
+      builder: (context, _) {
+        final step = _state.step;
+
+        return PopScope(
+          canPop: step == 2,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop && step == 3) _state.goToStep(2);
+          },
+          child: Scaffold(
+            backgroundColor: T.primary(context),
+            body: SingleChildScrollView(
               child: Column(
                 children: [
-                  // Header Section
+                  _buildHeader(step),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 30,
-                      horizontal: 24,
-                    ),
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppColors.white.withValues(alpha: 0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.drive_eta,
-                            size: 50,
-                            color: AppColors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          context.l10n.driverCompleteProfileTitle,
-                          style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.white,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            context.l10n.driverProfileStep2,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: AppColors.white,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Form Card
-                  Container(
+                    width: double.infinity,
                     decoration: BoxDecoration(
                       color: T.surface(context),
                       borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(30),
-                        topRight: Radius.circular(30),
+                        topLeft: Radius.circular(28),
+                        topRight: Radius.circular(28),
                       ),
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const SizedBox(height: 8),
-                            // Profile Image
-                            Center(
-                              child: Stack(
-                                children: [
-                                  Container(
-                                    width: 120,
-                                    height: 120,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: T.secondary(context),
-                                        width: 3,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: T
-                                              .secondary(context)
-                                              .withValues(alpha: 0.3),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 4),
-                                        ),
-                                      ],
-                                    ),
-                                    child: CircleAvatar(
-                                      radius: 57,
-                                      backgroundColor: T.surface(context),
-                                      backgroundImage: _profileImage != null
-                                          ? FileImage(_profileImage!)
-                                          : null,
-                                      child: _profileImage == null
-                                          ? Icon(
-                                              Icons.person,
-                                              size: 60,
-                                              color: T.onSurfaceVariant(
-                                                context,
-                                              ),
-                                            )
-                                          : null,
-                                    ),
-                                  ),
-                                  Positioned(
-                                    bottom: 0,
-                                    right: 0,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            T.secondary(context),
-                                            AppColors.teal700,
-                                          ],
-                                        ),
-                                        shape: BoxShape.circle,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: T
-                                                .secondary(context)
-                                                .withValues(alpha: 0.4),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ],
-                                      ),
-                                      child: Tooltip(
-                                        message: context.l10n.uploadProfilePhoto,
-                                        child: Semantics(
-                                          button: true,
-                                          label: context.l10n.uploadProfilePhoto,
-                                          child: IconButton(
-                                            icon: const Icon(
-                                              Icons.camera_alt,
-                                              color: AppColors.white,
-                                              size: 20,
-                                            ),
-                                            onPressed: () =>
-                                                _showImageSourceDialog((image) {
-                                                  setState(
-                                                    () => _profileImage = image,
-                                                  );
-                                                }),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+                      child: step == 2
+                          ? DriverCompleteStep2(
+                              state: _state,
+                              formKey: _step2FormKey,
+                              onPickProfilePhoto: () => _pickFile(
+                                (f) => _state.profileImage = f,
                               ),
-                            ),
-                            const SizedBox(height: 12),
-                            Center(
-                              child: Text(
-                                context.l10n.profilePhotoRequired,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: T.onSurfaceVariant(context),
-                                  fontWeight: FontWeight.w500,
-                                ),
+                              onPickLicense: () =>
+                                  _pickFile((f) => _state.licenseImage = f),
+                              onSelectVehicleType: _selectVehicleType,
+                              onContinue: _continueToStep3,
+                            )
+                          : DriverCompleteStep3(
+                              state: _state,
+                              onPickVehicleLicense: () => _pickFile(
+                                (f) => _state.vehicleLicenseImage = f,
                               ),
+                              onPickInsurance: () =>
+                                  _pickFile((f) => _state.insuranceImage = f),
+                              onPickCarPhoto: () =>
+                                  _pickFile((f) => _state.carImage = f),
+                              onBack: () => _state.goToStep(2),
+                              onSubmit: _submit,
+                              isSubmitting: _isSubmitting,
                             ),
-                            const SizedBox(height: 24),
-                            const SizedBox(height: 8),
-                            // Vehicle Type
-                            Semantics(
-                              label: context.l10n.vehicleType,
-                              textField: true,
-                              child: DropdownButtonFormField<String>(
-                                initialValue: _selectedVehicleType,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: T.onSurface(context),
-                                ),
-                                decoration: InputDecoration(
-                                  labelText: context.l10n.vehicleTypeRequired,
-                                  prefixIcon: Container(
-                                    margin: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: T
-                                          .secondary(context)
-                                          .withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Icon(
-                                      Icons.directions_car,
-                                      color: T.secondary(context),
-                                    ),
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                      color: T.outline(context),
-                                    ),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                      color: T.outline(context),
-                                    ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                      color: T.secondary(context),
-                                      width: 2,
-                                    ),
-                                  ),
-                                ),
-                                items: AppConstants.vehicleTypes.map((type) {
-                                  return DropdownMenuItem(
-                                    value: type,
-                                    child: Text(
-                                      AppConstants.vehicleTypeLabels[type] ??
-                                          type,
-                                    ),
-                                  );
-                                }).toList(),
-                                onChanged: (value) {
-                                  setState(() {
-                                    _selectedVehicleType = value;
-                                    // Seat count (and the seat layout stored on
-                                    // the backend) follow the chosen type.
-                                    final seats = _seatsForType(value);
-                                    if (seats != null) {
-                                      _seatsController.text = seats.toString();
-                                    }
-                                  });
-                                },
-                                validator: (value) {
-                                  if (value == null) {
-                                    return context.l10n.vehicleTypeValidation;
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            // Plate Number
-                            Semantics(
-                              label: context.l10n.vehiclePlate,
-                              textField: true,
-                              child: TextFormField(
-                                controller: _plateNumberController,
-                                style: const TextStyle(fontSize: 16),
-                                decoration: InputDecoration(
-                                  labelText: context.l10n.vehiclePlateRequiredLabel,
-                                  prefixIcon: Container(
-                                    margin: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: T
-                                          .secondary(context)
-                                          .withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Icon(
-                                      Icons.confirmation_number,
-                                      color: T.secondary(context),
-                                    ),
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                      color: T.outline(context),
-                                    ),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                      color: T.outline(context),
-                                    ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                      color: T.secondary(context),
-                                      width: 2,
-                                    ),
-                                  ),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return context.l10n.vehiclePlateRequired;
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            // Model
-                            Semantics(
-                              label: context.l10n.vehicleModel,
-                              textField: true,
-                              child: TextFormField(
-                                controller: _modelController,
-                                style: const TextStyle(fontSize: 16),
-                                decoration: InputDecoration(
-                                  labelText: context.l10n.vehicleModelRequiredLabel,
-                                  prefixIcon: Container(
-                                    margin: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: T
-                                          .secondary(context)
-                                          .withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Icon(
-                                      Icons.car_repair,
-                                      color: T.secondary(context),
-                                    ),
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                      color: T.outline(context),
-                                    ),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                      color: T.outline(context),
-                                    ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                      color: T.secondary(context),
-                                      width: 2,
-                                    ),
-                                  ),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return context.l10n.vehicleModelRequired;
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            // Seats
-                            Semantics(
-                              label: context.l10n.vehicleSeats,
-                              textField: true,
-                              child: TextFormField(
-                                controller: _seatsController,
-                                keyboardType: TextInputType.number,
-                                // Seats are set automatically from the selected
-                                // vehicle type, so this field is read-only.
-                                readOnly: true,
-                                style: const TextStyle(fontSize: 16),
-                                decoration: InputDecoration(
-                                  labelText: context.l10n.vehicleSeatsRequiredLabel,
-                                  prefixIcon: Container(
-                                    margin: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: T
-                                          .secondary(context)
-                                          .withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Icon(
-                                      Icons.event_seat,
-                                      color: T.secondary(context),
-                                    ),
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                      color: T.outline(context),
-                                    ),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                      color: T.outline(context),
-                                    ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                      color: T.secondary(context),
-                                      width: 2,
-                                    ),
-                                  ),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return context.l10n.vehicleSeatsRequired;
-                                  }
-                                  final seats = int.tryParse(value);
-                                  if (seats == null || seats < 1) {
-                                    return context.l10n.vehicleSeatsInvalid;
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            // Driver License Image
-                            _buildImagePicker(
-                              title: context.l10n.driverLicenseRequired,
-                              image: _driverLicenseImage,
-                              onImagePicked: (image) {
-                                setState(() => _driverLicenseImage = image);
-                              },
-                            ),
-                            const SizedBox(height: 20),
-                            // Vehicle License Image
-                            _buildImagePicker(
-                              title: context.l10n.vehicleLicenseRequired,
-                              image: _vehicleLicenseImage,
-                              onImagePicked: (image) {
-                                setState(() => _vehicleLicenseImage = image);
-                              },
-                            ),
-                            const SizedBox(height: 20),
-                            // Car Photo (mandatory — shown on every trip)
-                            _buildImagePicker(
-                              title: context.l10n.carPhotoRequired,
-                              image: _carImage,
-                              onImagePicked: (image) {
-                                setState(() => _carImage = image);
-                              },
-                            ),
-                            const SizedBox(height: 32),
-                            Container(
-                              height: 56,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    T.secondary(context),
-                                    AppColors.teal700,
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: T
-                                        .secondary(context)
-                                        .withValues(alpha: 0.3),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Semantics(
-                                button: true,
-                                label: context.l10n.createNewAccount,
-                                child: ElevatedButton(
-                                  onPressed: _isLoading
-                                      ? null
-                                      : _completeProfile,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.transparent,
-                                    shadowColor: AppColors.transparent,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  child: _isLoading
-                                      ? const SizedBox(
-                                          height: 24,
-                                          width: 24,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2.5,
-                                            valueColor:
-                                                AlwaysStoppedAnimation<Color>(
-                                                  AppColors.white,
-                                                ),
-                                          ),
-                                        )
-                                      : Text(
-                                          context.l10n.createNewAccount,
-                                          style: const TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.white,
-                                          ),
-                                        ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-                        ),
-                      ),
                     ),
                   ),
                 ],
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildImagePicker({
-    required String title,
-    required File? image,
-    required Function(File) onImagePicked,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildHeader(int step) {
+    final l10n = context.l10n;
+
+    return Stack(
       children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: T.onSurface(context),
+        SizedBox(
+          height: 250,
+          width: double.infinity,
+          child: Image.asset(
+            'assets/illustrations/auth/auth_driver_step2_header.png',
+            fit: BoxFit.cover,
           ),
         ),
-        const SizedBox(height: 12),
-        Semantics(
-          button: true,
-          label: context.l10n.uploadFileLabel(title),
-          child: GestureDetector(
-            onTap: () => _showImageSourceDialog(onImagePicked),
-            child: Container(
-              height: 140,
-              decoration: BoxDecoration(
-                color: image != null
-                    ? AppColors.transparent
-                    : T.surface(context),
-                border: Border.all(
-                  color: image != null
-                      ? T.secondary(context)
-                      : T.outline(context),
-                  width: image != null ? 2 : 1,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: image != null
-                    ? [
-                        BoxShadow(
-                          color: T.secondary(context).withValues(alpha: 0.2),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
+        Positioned.fill(
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          Directionality.of(context) == TextDirection.rtl
+                              ? Icons.chevron_right_rounded
+                              : Icons.chevron_left_rounded,
+                          color: AppColors.white,
                         ),
-                      ]
-                    : null,
-              ),
-              child: image != null
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: Stack(
+                        onPressed: () {
+                          if (step == 3) {
+                            _state.goToStep(2);
+                          } else {
+                            Navigator.maybePop(context);
+                          }
+                        },
+                      ),
+                      Row(
                         children: [
-                          Image.file(
-                            image,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
+                          Icon(
+                            IconsaxPlusLinear.message_question,
+                            size: 18,
+                            color: AppColors.white,
                           ),
-                          Positioned(
-                            top: 8,
-                            left: 8,
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: T
-                                    .secondary(context)
-                                    .withValues(alpha: 0.9),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(
-                                Icons.check_circle,
-                                color: AppColors.white,
-                                size: 20,
-                              ),
+                          const SizedBox(width: 4),
+                          Text(
+                            l10n.authNeedHelp,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.white,
                             ),
                           ),
+                          const SizedBox(width: 8),
                         ],
                       ),
-                    )
-                  : Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: T
-                                  .secondary(context)
-                                  .withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              Icons.add_photo_alternate,
-                              color: T.secondary(context),
-                              size: 32,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            context.l10n.tapToUpload,
-                            style: TextStyle(
-                              color: T.onSurfaceVariant(context),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: AuthStepIndicator(
+                      currentStep: step,
+                      totalSteps: 3,
+                      labels: [
+                        l10n.authStepperBasicInfo,
+                        l10n.authStepperIdDocs,
+                        l10n.authStepperVehicleInfo,
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    l10n.completeDriverProfileTitle,
+                    style: const TextStyle(
+                      fontSize: 25,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.white.withValues(alpha: 0.22),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      step == 2 ? l10n.driverStep2Badge : l10n.driverStep3Badge,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.white,
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 10),
+                  const SecurityNotice(onDark: true),
+                  const SizedBox(height: 10),
+                ],
+              ),
             ),
           ),
         ),

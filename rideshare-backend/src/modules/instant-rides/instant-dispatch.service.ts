@@ -28,6 +28,7 @@ import {
   RADIUS_STEP_KM,
   offerTimeoutJobId,
 } from './instant-rides.constants';
+import { buildInstantOfferRouteMetrics } from './instant-offer-labels';
 
 /**
  * Sequential dispatch, inDrive style: start at a small radius and expand,
@@ -210,10 +211,23 @@ export class InstantDispatchService {
       { status: InstantRequestStatus.OFFERED },
     );
 
+    const routeMetrics = buildInstantOfferRouteMetrics({
+      fromPoint: request.fromPoint,
+      toPoint: request.toPoint,
+      passengerFare: request.passengerFare,
+      fareEstimate: request.fareEstimate,
+      currency: request.currency,
+      seatCount: request.seatCount,
+    });
+
     await this.notifications
       .sendPush(candidate.driverId, {
-        title: 'طلب رحلة مباشرة جديد',
-        body: `من ${request.fromName} إلى ${request.toName}`,
+        title: 'طلب رحلة جديدة',
+        body: [
+          'رحلة مباشرة بدون توقف',
+          `من ${request.fromName} إلى ${request.toName}`,
+          routeMetrics.earningsLabel,
+        ].join('\n'),
         type: 'instant_offer',
         data: {
           offerId: offer.id,
@@ -224,6 +238,7 @@ export class InstantDispatchService {
           passengerFare: request.passengerFare ?? request.fareEstimate ?? '',
           currency: request.currency,
           expiresAt: offer.expiresAt.toISOString(),
+          ...routeMetrics,
         },
       })
       .catch(() => undefined);

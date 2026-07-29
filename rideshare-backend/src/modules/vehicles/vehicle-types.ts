@@ -32,8 +32,13 @@ export const VEHICLE_TYPE_CATALOG: Record<string, VehicleTypeTemplate> = {
   sedan: {
     type: 'sedan',
     label: { en: 'Sedan', ar: 'سيدان' },
-    seats: 3,
-    layout: { rows: 1, seatsPerRow: 3, preventGenderMixing: false },
+    seats: 4,
+    layout: {
+      rows: 2,
+      seatsPerRow: 3,
+      seatsPerRowList: [1, 3],
+      preventGenderMixing: false,
+    },
   },
   suv: {
     type: 'suv',

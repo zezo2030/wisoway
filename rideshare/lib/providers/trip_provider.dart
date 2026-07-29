@@ -98,6 +98,8 @@ class TripProvider extends ChangeNotifier {
     List<LocationModel>? stops,
     String? notes,
     Map<String, dynamic>? recurrence,
+    int? availableSeats,
+    bool? preventGenderMixing,
   }) async {
     try {
       _setLoading(true);
@@ -113,6 +115,8 @@ class TripProvider extends ChangeNotifier {
         stops: stops,
         notes: notes,
         recurrence: recurrence,
+        availableSeats: availableSeats,
+        preventGenderMixing: preventGenderMixing,
       );
 
       await fetchDriverTrips();

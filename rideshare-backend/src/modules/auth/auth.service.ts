@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
+  ForbiddenException,
   NotFoundException,
   ConflictException,
   Logger,
@@ -26,6 +27,7 @@ import {
   DRIVER_REGISTRATION_TOKEN_PURPOSE,
   DRIVER_REGISTRATION_TOKEN_TTL_SECONDS,
 } from './dto/register-driver.dto';
+import { UpdatePendingDriverRegistrationDto } from './dto/update-pending-driver-registration.dto';
 import { SignInDto } from './dto/sign-in.dto';
 import {
   countSeatsInLayout,
@@ -329,6 +331,7 @@ export class AuthService {
           licenseImageUrl: dto.licenseImageUrl ?? null,
           vehicleLicenseImageUrl: dto.vehicleLicenseImageUrl ?? null,
           carImageUrl: dto.carImageUrl,
+          insuranceImageUrl: dto.insuranceImageUrl ?? null,
         });
         await vehicleRepo.save(vehicle);
 
@@ -369,6 +372,84 @@ export class AuthService {
       deviceState: binding.deviceState,
       pendingPhoneLinkRequired: user.pendingPhoneLink ?? false,
     };
+  }
+
+  /**
+   * Lets a driver correct the details/documents they submitted while the
+   * account is still waiting for admin approval. Once approved, registration
+   * data is frozen here and must go through the regular profile/vehicle
+   * endpoints instead.
+   */
+  async updatePendingRegistration(
+    userId: string,
+    dto: UpdatePendingDriverRegistrationDto,
+  ): Promise<{
+    user: ReturnType<AuthService['sanitizeUser']>;
+    vehicle: VehicleEntity;
+  }> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user || user.role !== PgUserRole.DRIVER) {
+      throw new ForbiddenException('Driver account required');
+    }
+    if (user.isDriverApproved) {
+      throw new ForbiddenException(
+        'Approved drivers cannot update registration via this endpoint',
+      );
+    }
+
+    const hasAny = Object.values(dto).some(
+      (v) => v !== undefined && v !== null,
+    );
+    if (!hasAny) {
+      throw new BadRequestException('At least one field is required');
+    }
+
+    return this.userRepo.manager.transaction(async (em) => {
+      const userRepo = em.getRepository(UserEntity);
+      const vehicleRepo = em.getRepository(VehicleEntity);
+
+      if (dto.photoUrl !== undefined) {
+        user.photoUrl = dto.photoUrl;
+        await userRepo.save(user);
+      }
+
+      const vehicle = await vehicleRepo.findOne({
+        where: { driverId: userId },
+      });
+      if (!vehicle) {
+        throw new NotFoundException('Vehicle not found');
+      }
+
+      if (
+        dto.vehicleType !== undefined &&
+        dto.vehicleType !== vehicle.vehicleType
+      ) {
+        // Seat layout always follows the catalog entry, exactly like register.
+        vehicle.vehicleType = dto.vehicleType;
+        vehicle.seatLayout = resolveVehicleTypeTemplate(
+          dto.vehicleType,
+          this.logger,
+        ).layout;
+        vehicle.seats = countSeatsInLayout(vehicle.seatLayout);
+      }
+      if (dto.plateNumber !== undefined) vehicle.plateNumber = dto.plateNumber;
+      if (dto.model !== undefined) vehicle.model = dto.model;
+      if (dto.seats !== undefined) vehicle.seats = dto.seats;
+      if (dto.licenseImageUrl !== undefined) {
+        vehicle.licenseImageUrl = dto.licenseImageUrl;
+      }
+      if (dto.vehicleLicenseImageUrl !== undefined) {
+        vehicle.vehicleLicenseImageUrl = dto.vehicleLicenseImageUrl;
+      }
+      if (dto.insuranceImageUrl !== undefined) {
+        vehicle.insuranceImageUrl = dto.insuranceImageUrl;
+      }
+      if (dto.carImageUrl !== undefined) vehicle.carImageUrl = dto.carImageUrl;
+
+      await vehicleRepo.save(vehicle);
+
+      return { user: this.sanitizeUser(user), vehicle };
+    });
   }
 
   async login(signInDto: SignInDto): Promise<AuthResponse> {

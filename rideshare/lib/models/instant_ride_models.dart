@@ -275,6 +275,13 @@ class InstantRequestSummary {
   final int seatCount;
   final double? pickupLat;
   final double? pickupLng;
+  final String? distanceKm;
+  final String? durationMinutes;
+  final String? distanceLabel;
+  final String? durationLabel;
+  final String? earningsLabel;
+  final String? tripTypeLabel;
+  final String? seatCountLabel;
 
   const InstantRequestSummary({
     required this.id,
@@ -286,10 +293,20 @@ class InstantRequestSummary {
     this.passengerFare,
     this.pickupLat,
     this.pickupLng,
+    this.distanceKm,
+    this.durationMinutes,
+    this.distanceLabel,
+    this.durationLabel,
+    this.earningsLabel,
+    this.tripTypeLabel,
+    this.seatCountLabel,
   });
 
   factory InstantRequestSummary.fromJson(Map<String, dynamic> json) {
     final pickup = json['pickup'] is Map ? json['pickup'] as Map : const {};
+    final seats = (json['seatCount'] as num?)?.toInt() ??
+        int.tryParse(json['seatCount']?.toString() ?? '') ??
+        1;
     return InstantRequestSummary(
       id: json['id']?.toString() ?? '',
       fromName: (json['fromName'] ?? '').toString(),
@@ -298,9 +315,16 @@ class InstantRequestSummary {
       passengerFare:
           (json['passengerFare'] ?? json['fareEstimate'])?.toString(),
       currency: (json['currency'] ?? 'JOD').toString(),
-      seatCount: (json['seatCount'] as num?)?.toInt() ?? 1,
+      seatCount: seats,
       pickupLat: (pickup['latitude'] as num?)?.toDouble(),
       pickupLng: (pickup['longitude'] as num?)?.toDouble(),
+      distanceKm: json['distanceKm']?.toString(),
+      durationMinutes: json['durationMinutes']?.toString(),
+      distanceLabel: json['distanceLabel']?.toString(),
+      durationLabel: json['durationLabel']?.toString(),
+      earningsLabel: json['earningsLabel']?.toString(),
+      tripTypeLabel: json['tripTypeLabel']?.toString(),
+      seatCountLabel: json['seatCountLabel']?.toString(),
     );
   }
 }

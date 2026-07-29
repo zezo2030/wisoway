@@ -235,6 +235,7 @@ class AuthProvider extends ChangeNotifier {
     required int seats,
     required File driverLicenseImage,
     required File vehicleLicenseImage,
+    required File insuranceImage,
     required File carImage,
   }) async {
     try {
@@ -260,6 +261,10 @@ class AuthProvider extends ChangeNotifier {
       );
       final vehicleLicenseUrl = await _authService.uploadRegistrationFile(
         vehicleLicenseImage,
+        token,
+      );
+      final insuranceUrl = await _authService.uploadRegistrationFile(
+        insuranceImage,
         token,
       );
       final carImageUrl = await _authService.uploadRegistrationFile(
@@ -291,6 +296,7 @@ class AuthProvider extends ChangeNotifier {
         model: model,
         seats: seats,
         carImageUrl: carImageUrl,
+        insuranceImageUrl: insuranceUrl,
         licenseImageUrl: driverLicenseUrl,
         vehicleLicenseImageUrl: vehicleLicenseUrl,
         device: devicePayload,
@@ -307,6 +313,111 @@ class AuthProvider extends ChangeNotifier {
       if (_userModel != null) {
         await _registerDeviceToken(existingToken: fcmToken);
       }
+      _setLoading(false);
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      rethrow;
+    }
+  }
+
+  /// Edit the submitted driver registration while approval is still pending.
+  /// Only the files the driver re-picked are uploaded; everything left null
+  /// keeps the value already stored on the account.
+  Future<void> updatePendingDriverRegistration({
+    File? profileImage,
+    String? vehicleType,
+    String? plateNumber,
+    String? model,
+    int? seats,
+    File? driverLicenseImage,
+    File? vehicleLicenseImage,
+    File? insuranceImage,
+    File? carImage,
+  }) async {
+    try {
+      _setLoading(true);
+      _setError(null);
+
+      final userId = _userModel?.id;
+      if (userId == null) throw Exception('المستخدم غير مسجل دخول');
+
+      Future<String> upload(File file, String folder) async {
+        final url = await _storageService.uploadImage(
+          imageFile: file,
+          folder: folder,
+          fileName: userId,
+        );
+        if (url == null || url.isEmpty) {
+          throw Exception('فشل رفع الملف. حاول مرة أخرى.');
+        }
+        return url;
+      }
+
+      final data = <String, dynamic>{};
+      if (profileImage != null) {
+        data['photoUrl'] = await upload(profileImage, 'profiles');
+      }
+      if (driverLicenseImage != null) {
+        data['licenseImageUrl'] = await upload(
+          driverLicenseImage,
+          'driver_licenses',
+        );
+      }
+      if (vehicleLicenseImage != null) {
+        data['vehicleLicenseImageUrl'] = await upload(
+          vehicleLicenseImage,
+          'vehicle_licenses',
+        );
+      }
+      if (insuranceImage != null) {
+        data['insuranceImageUrl'] = await upload(insuranceImage, 'insurance');
+      }
+      if (carImage != null) {
+        data['carImageUrl'] = await upload(carImage, 'vehicles');
+      }
+      if (vehicleType != null) data['vehicleType'] = vehicleType;
+      if (plateNumber != null) data['plateNumber'] = plateNumber;
+      if (model != null) data['model'] = model;
+      if (seats != null) data['seats'] = seats;
+
+      if (data.isEmpty) {
+        _setLoading(false);
+        return;
+      }
+
+      await _authService.updatePendingDriverRegistration(data);
+      _userModel = _authService.currentUser ?? _userModel;
+      _setLoading(false);
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      rethrow;
+    }
+  }
+
+  /// Final passenger registration step: profile photo + city.
+  Future<void> completePassengerProfile({
+    File? profileImage,
+    required String city,
+  }) async {
+    try {
+      _setLoading(true);
+      _setError(null);
+
+      String? photoUrl;
+      if (profileImage != null && _userModel != null) {
+        photoUrl = await _storageService.uploadProfilePicture(
+          imageFile: profileImage,
+          userId: _userModel!.id,
+        );
+      }
+
+      await _authService.updateProfile(
+        profileImageUrl: photoUrl,
+        city: city.trim(),
+      );
+      _userModel = _authService.currentUser ?? _userModel;
       _setLoading(false);
     } catch (e) {
       _setError(e.toString());

@@ -33,11 +33,16 @@ class CompanionPickerScreen extends StatefulWidget {
   /// Whether to use auto-pick instead of specific seat numbers.
   final bool autoPick;
 
+  /// Family opt-in carried over from the seat-selection step. The toggle on
+  /// this screen stays the last word before submitting.
+  final bool initialIsFamilyBooking;
+
   const CompanionPickerScreen({
     super.key,
     required this.trip,
     this.lockedSeatNumbers = const [],
     this.autoPick = false,
+    this.initialIsFamilyBooking = false,
   });
 
   @override
@@ -48,6 +53,7 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
   final _formKey = GlobalKey<FormState>();
   int _seatCount = 1;
   bool _sharePhone = true;
+  late bool _isFamilyBooking = widget.initialIsFamilyBooking;
 
   // Row data — index 0 is the main booker.
   late List<_PassengerRowData> _rows;
@@ -116,8 +122,14 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
     setState(() {
       _seatCount--;
       _syncRows();
+      if (!_canBookAsFamily) _isFamilyBooking = false;
     });
   }
+
+  /// The family exemption only exists for trips that prevent gender mixing,
+  /// and the API rejects it for single-seat bookings.
+  bool get _canBookAsFamily =>
+      _seatCount >= 2 && widget.trip.seatLayout.preventGenderMixing;
 
   List<BookingSeatRequest> _buildRequests() {
     return List.generate(_rows.length, (i) {
@@ -137,6 +149,7 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
     final passengers = _buildRequests();
+    final isFamilyBooking = _canBookAsFamily && _isFamilyBooking;
 
     if (widget.autoPick) {
       context.read<BookingBloc>().add(
@@ -145,6 +158,7 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
               seatCount: _seatCount,
               passengers: passengers,
               sharePhoneWithDriver: _sharePhone,
+              isFamilyBooking: isFamilyBooking,
             ),
           );
     } else {
@@ -153,6 +167,7 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
               tripId: widget.trip.id,
               seats: passengers,
               sharePhoneWithDriver: _sharePhone,
+              isFamilyBooking: isFamilyBooking,
             ),
           );
     }
@@ -270,6 +285,21 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
                   }),
 
                   const SizedBox(height: 16),
+
+                  // ── Family booking toggle ──────────────────────────────
+                  // Only meaningful on trips that prevent gender mixing, and
+                  // only for 2+ seats; hidden otherwise.
+                  if (_canBookAsFamily) ...[
+                    Card(
+                      child: SwitchListTile(
+                        title: Text(context.l10n.familyBookingLabel),
+                        subtitle: Text(context.l10n.familyBookingHint),
+                        value: _isFamilyBooking,
+                        onChanged: (v) => setState(() => _isFamilyBooking = v),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
 
                   // ── Share phone toggle ─────────────────────────────────
                   Card(

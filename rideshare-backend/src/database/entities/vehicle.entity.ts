@@ -54,6 +54,11 @@ export class VehicleEntity {
   @Column({ type: 'text', nullable: true })
   carImageUrl: string | null;
 
+  /** Vehicle insurance document. Required for registrations from this release
+   * on; nullable for vehicles created before the column existed. */
+  @Column({ type: 'text', nullable: true })
+  insuranceImageUrl: string | null;
+
   @Column({ type: 'boolean', default: false })
   isVerified: boolean;
 

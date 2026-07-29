@@ -77,4 +77,11 @@ export class CreateVehicleDto {
   @IsString()
   @MaxLength(500)
   carImageUrl: string;
+
+  // Optional here (vehicle CRUD outside registration); driver registration
+  // requires it — see RegisterDriverDto.
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  insuranceImageUrl?: string;
 }

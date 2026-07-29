@@ -10,6 +10,7 @@ import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../widgets/auth/auth_step_indicator.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
   final String phoneNumber;
@@ -183,6 +184,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         }
         final afterVerifyRoute = args?['afterVerifyRoute'] as String?;
         if (afterVerifyRoute != null) {
+          final totalSteps = args?['authTotalSteps'] as int?;
           Navigator.pushReplacementNamed(
             context,
             afterVerifyRoute,
@@ -192,6 +194,9 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
               'gender': args?['gender'],
               'role': args?['role'] ?? AppConstants.rolePassenger,
               'phoneNumber': widget.phoneNumber,
+              // Carries the wizard chrome into the final profile step.
+              if (totalSteps != null) 'authStep': totalSteps,
+              if (totalSteps != null) 'authTotalSteps': totalSteps,
             },
           );
         } else {
@@ -306,6 +311,12 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    // Present only for the multi-step registration wizards (passenger 1/2/3).
+    final totalSteps = args?['authTotalSteps'] as int?;
+    final currentStep = (args?['authStep'] as int?) ?? 2;
+
     return Scaffold(
       backgroundColor: T.surface(context),
       body: Stack(
@@ -366,6 +377,29 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                   iconTheme: IconThemeData(color: T.onSurface(context)),
                   centerTitle: true,
                 ),
+                if (totalSteps != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: AuthStepIndicator(
+                            currentStep: currentStep,
+                            totalSteps: totalSteps,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          context.l10n.authStepOf(currentStep, totalSteps),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: T.primary(context),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 Expanded(
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),

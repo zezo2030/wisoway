@@ -50,10 +50,7 @@ class CountryCodePicker extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                _flagEmoji(selectedCountry.iso2),
-                style: const TextStyle(fontSize: 20),
-              ),
+              _flag(selectedCountry.iso2, 20),
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
@@ -77,13 +74,6 @@ class CountryCodePicker extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _flagEmoji(String iso2) {
-    if (iso2.length != 2) return '🌐';
-    final chars = iso2.toUpperCase().codeUnits;
-    if (chars.any((c) => c < 65 || c > 90)) return '🌐';
-    return String.fromCharCodes(chars.map((c) => 0x1F1E6 + (c - 65)));
   }
 
   void _showCountryPicker(BuildContext context) {
@@ -218,10 +208,7 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                       country.dialCode == widget.selectedCountry.dialCode;
 
                   return ListTile(
-                    leading: Text(
-                      _flagEmoji(country.iso2),
-                      style: const TextStyle(fontSize: 24),
-                    ),
+                    leading: _flag(country.iso2, 24),
                     title: Text(
                       country.nameAr,
                       style: TextStyle(
@@ -257,10 +244,25 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
     );
   }
 
-  String _flagEmoji(String iso2) {
-    if (iso2.length != 2) return '🌐';
-    final chars = iso2.toUpperCase().codeUnits;
-    if (chars.any((c) => c < 65 || c > 90)) return '🌐';
-    return String.fromCharCodes(chars.map((c) => 0x1F1E6 + (c - 65)));
+}
+
+/// Jordan ships as a designed asset (used across the auth redesign); every
+/// other country falls back to the regional-indicator flag emoji.
+Widget _flag(String iso2, double size) {
+  if (iso2.toUpperCase() == 'JO') {
+    return Image.asset(
+      'assets/images/auth/auth_flag_jo.png',
+      width: size * 1.35,
+      height: size,
+      fit: BoxFit.contain,
+    );
   }
+  return Text(_flagEmoji(iso2), style: TextStyle(fontSize: size));
+}
+
+String _flagEmoji(String iso2) {
+  if (iso2.length != 2) return '🌐';
+  final chars = iso2.toUpperCase().codeUnits;
+  if (chars.any((c) => c < 65 || c > 90)) return '🌐';
+  return String.fromCharCodes(chars.map((c) => 0x1F1E6 + (c - 65)));
 }

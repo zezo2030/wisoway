@@ -59,21 +59,12 @@ import {
   REQUEST_TTL_SECONDS,
   requestExpiryJobId,
 } from './instant-rides.constants';
+import {
+  buildInstantOfferRouteMetrics,
+  haversineKm,
+} from './instant-offer-labels';
 
 type LatLng = { latitude: number; longitude: number };
-
-function haversineKm(a: LatLng, b: LatLng): number {
-  const R = 6371;
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dLat = toRad(b.latitude - a.latitude);
-  const dLng = toRad(b.longitude - a.longitude);
-  const lat1 = toRad(a.latitude);
-  const lat2 = toRad(b.latitude);
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
-  return R * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
-}
 
 @Injectable()
 export class InstantRidesService {
@@ -1138,6 +1129,14 @@ export class InstantRidesService {
 
   private toRequestSummary(request: InstantRideRequestEntity) {
     const [fromLng, fromLat] = request.fromPoint.coordinates;
+    const routeMetrics = buildInstantOfferRouteMetrics({
+      fromPoint: request.fromPoint,
+      toPoint: request.toPoint,
+      passengerFare: request.passengerFare,
+      fareEstimate: request.fareEstimate,
+      currency: request.currency,
+      seatCount: request.seatCount,
+    });
     return {
       id: request.id,
       fromName: request.fromName,
@@ -1146,7 +1145,14 @@ export class InstantRidesService {
       passengerFare: request.passengerFare ?? request.fareEstimate,
       currency: request.currency,
       seatCount: request.seatCount,
+      seatCountLabel: routeMetrics.seatCountLabel,
       pickup: { latitude: fromLat, longitude: fromLng },
+      distanceKm: routeMetrics.distanceKm,
+      durationMinutes: routeMetrics.durationMinutes,
+      distanceLabel: routeMetrics.distanceLabel,
+      durationLabel: routeMetrics.durationLabel,
+      earningsLabel: routeMetrics.earningsLabel,
+      tripTypeLabel: routeMetrics.tripTypeLabel,
     };
   }
 }

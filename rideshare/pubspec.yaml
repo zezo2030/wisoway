@@ -88,7 +88,9 @@ flutter:
     - assets/
     # A directory entry is not recursive, so subfolders need their own line.
     - assets/illustrations/
+    - assets/illustrations/auth/
     - assets/images/
+    - assets/images/auth/
     - assets/images/trip_in_progress/
 
 flutter_launcher_icons:

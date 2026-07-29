@@ -15,6 +15,8 @@ class NotificationType {
   static const String presencePrompt = 'presence_prompt';
   static const String presenceMarkedAbsent = 'presence_marked_absent';
   static const String presenceDriverPrompt = 'presence_driver_prompt';
+  static const String instantOffer = 'instant_offer';
+  static const String instantOfferCancelled = 'instant_offer_cancelled';
 }
 
 class NotificationModel {
@@ -168,6 +170,8 @@ class NotificationModel {
         return 'رسالة جديدة';
       case NotificationType.walletCredited:
         return 'تم إضافة رصيد إلى محفظتك';
+      case NotificationType.instantOffer:
+        return 'رحلة مباشرة جديدة';
       default:
         return _sanitizeFallback(fallbackTitle, defaultValue: 'إشعار جديد');
     }
@@ -265,6 +269,14 @@ class NotificationModel {
           return 'تمت إضافة $amount $currency إلى محفظتك بنجاح.';
         }
         return 'تمت إضافة رصيد جديد إلى محفظتك.';
+      case NotificationType.instantOffer:
+        final fromName = _stringFromData(data, ['fromName']) ?? '—';
+        final toName = _stringFromData(data, ['toName']) ?? '—';
+        return [
+          'رحلة مباشرة بدون توقف متاحة الآن',
+          'من $fromName إلى $toName',
+          'افتح التطبيق لعرض التفاصيل',
+        ].join('\n');
       default:
         return _sanitizeFallback(
           fallbackBody,

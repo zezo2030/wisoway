@@ -7,14 +7,20 @@ import com.google.firebase.messaging.RemoteMessage
 import io.flutter.plugins.firebase.messaging.FlutterFirebaseMessagingService
 
 /**
- * Intercepts booking_created FCM data messages to show the rich shared-trip
- * notification while delegating everything else to FlutterFire.
+ * Intercepts rich FCM data messages (shared booking + instant offer) while
+ * delegating everything else to FlutterFire.
  */
 class VisionWayMessagingService : FlutterFirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         val data = message.data
-        if (data["type"] == "booking_created" && !isAppInForeground()) {
-            BookingNotificationHelper.show(applicationContext, data)
+        val type = data["type"]
+        if (!isAppInForeground()) {
+            when (type) {
+                "booking_created" ->
+                    BookingNotificationHelper.show(applicationContext, data)
+                "instant_offer" ->
+                    InstantOfferNotificationHelper.show(applicationContext, data)
+            }
         }
         super.onMessageReceived(message)
     }

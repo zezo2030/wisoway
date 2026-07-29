@@ -11,6 +11,7 @@ class VehicleModel {
   final String? licenseImageUrl; // Driver's license image
   final String? vehicleLicenseImageUrl; // Vehicle license image
   final String? carImageUrl; // Photo of the car itself
+  final String? insuranceImageUrl; // Vehicle insurance document
   final bool isVerified;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -26,6 +27,7 @@ class VehicleModel {
     this.licenseImageUrl,
     this.vehicleLicenseImageUrl,
     this.carImageUrl,
+    this.insuranceImageUrl,
     this.isVerified = false,
     required this.createdAt,
     required this.updatedAt,
@@ -49,6 +51,7 @@ class VehicleModel {
       licenseImageUrl: json['licenseImageUrl'],
       vehicleLicenseImageUrl: json['vehicleLicenseImageUrl'],
       carImageUrl: json['carImageUrl'],
+      insuranceImageUrl: json['insuranceImageUrl'],
       isVerified: json['isVerified'] ?? false,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
@@ -71,6 +74,7 @@ class VehicleModel {
       'licenseImageUrl': licenseImageUrl,
       'vehicleLicenseImageUrl': vehicleLicenseImageUrl,
       'carImageUrl': carImageUrl,
+      'insuranceImageUrl': insuranceImageUrl,
       'isVerified': isVerified,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
@@ -90,6 +94,7 @@ class VehicleModel {
     String? licenseImageUrl,
     String? vehicleLicenseImageUrl,
     String? carImageUrl,
+    String? insuranceImageUrl,
     bool? isVerified,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -106,6 +111,7 @@ class VehicleModel {
       vehicleLicenseImageUrl:
           vehicleLicenseImageUrl ?? this.vehicleLicenseImageUrl,
       carImageUrl: carImageUrl ?? this.carImageUrl,
+      insuranceImageUrl: insuranceImageUrl ?? this.insuranceImageUrl,
       isVerified: isVerified ?? this.isVerified,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

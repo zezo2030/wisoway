@@ -20,6 +20,8 @@ class ApiEndpoints {
   // the account + vehicle atomically in the final step.
   static const String driverVerifyPhone = '/auth/driver/verify-phone';
   static const String driverRegister = '/auth/driver/register';
+  // Edit the submitted driver details/documents while approval is pending.
+  static const String driverPendingRegistration = '/auth/driver/registration';
   static const String linkPhone = '/auth/link-phone';
   static const String refresh = '/auth/refresh';
   static const String logout = '/auth/logout';

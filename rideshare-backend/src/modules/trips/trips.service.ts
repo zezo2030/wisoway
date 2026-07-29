@@ -161,8 +161,29 @@ export class TripsService {
       throw new BadRequestException('Departure time must be in the future');
     }
 
-    const seatLayout = this.resolveVehicleSeatLayout(vehicle);
-    const seats = this.generateSeatsFromLayout(seatLayout);
+    // The trip carries its own copy of the layout so a per-trip
+    // preventGenderMixing choice never mutates the vehicle's settings.
+    const baseLayout = this.resolveVehicleSeatLayout(vehicle);
+    const seatLayout = {
+      ...baseLayout,
+      seatsPerRowList: baseLayout.seatsPerRowList
+        ? [...baseLayout.seatsPerRowList]
+        : undefined,
+      preventGenderMixing:
+        createTripDto.preventGenderMixing ??
+        baseLayout.preventGenderMixing ??
+        false,
+    };
+
+    const fullSeats = this.generateSeatsFromLayout(seatLayout);
+    const maxSeats = fullSeats.length;
+    const requested = createTripDto.availableSeats ?? maxSeats;
+    if (requested < 1 || requested > maxSeats) {
+      throw new BadRequestException(
+        `availableSeats must be between 1 and ${maxSeats}`,
+      );
+    }
+    const seats = fullSeats.slice(0, requested);
     const totalSeats = seats.length;
 
     // Currency follows the country of the trip's departure point.

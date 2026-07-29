@@ -8,6 +8,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../models/notification_model.dart';
+import 'instant_offer_actions.dart';
 import 'notification_navigation_service.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
@@ -56,6 +57,17 @@ class PushNotificationService {
       },
     );
 
+    _bookingNotificationChannel.setMethodCallHandler((call) async {
+      if (call.method == 'onInstantOfferAction') {
+        final args = call.arguments;
+        if (args is Map) {
+          await InstantOfferActions.handle(Map<String, dynamic>.from(args));
+        }
+        return null;
+      }
+      return null;
+    });
+
     await _localNotifications
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
@@ -82,6 +94,30 @@ class PushNotificationService {
         ?.createNotificationChannel(_androidChannel);
 
     _isInitialized = true;
+
+    // Cold-start Accept/Reject — delay until navigator exists.
+    Future<void>.delayed(const Duration(milliseconds: 800), () {
+      unawaited(_consumePendingInstantOfferAction());
+    });
+  }
+
+  static Future<void> consumePendingInstantOfferAction() =>
+      _consumePendingInstantOfferAction();
+
+  static Future<void> _consumePendingInstantOfferAction() async {
+    if (defaultTargetPlatform != TargetPlatform.android || kIsWeb) return;
+    try {
+      final pending = await _bookingNotificationChannel.invokeMethod(
+        'getPendingInstantOfferAction',
+      );
+      if (pending is Map) {
+        await InstantOfferActions.handle(Map<String, dynamic>.from(pending));
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Failed to consume pending instant offer action: $e');
+      }
+    }
   }
 
   static Future<void> setupMessageHandlers() async {
@@ -173,6 +209,18 @@ class PushNotificationService {
       if (shown) return;
     }
 
+    if (type == NotificationType.instantOffer && !kIsWeb) {
+      // Prefer in-app dialog when one is already visible for this offer.
+      final offerId = data['offerId']?.toString();
+      if (offerId != null &&
+          InstantOfferActions.isDialogOpen &&
+          InstantOfferActions.openDialogOfferId == offerId) {
+        return;
+      }
+      final shown = await _showAndroidInstantOfferNotification(data);
+      if (shown) return;
+    }
+
     final title = NotificationModel.localizedTitleFor(
       type: type,
       data: data,
@@ -260,11 +308,61 @@ class PushNotificationService {
     }
   }
 
+  static Future<bool> _showAndroidInstantOfferNotification(
+    Map<String, dynamic> data,
+  ) async {
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      return false;
+    }
+
+    try {
+      final payload = <String, String>{};
+      data.forEach((key, value) {
+        if (value != null) {
+          payload[key] = value.toString();
+        }
+      });
+      await _bookingNotificationChannel.invokeMethod(
+        'showInstantOfferNotification',
+        payload,
+      );
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Failed to show custom instant offer notification: $e');
+      }
+      return false;
+    }
+  }
+
+  static Future<void> cancelAndroidInstantOfferNotification(
+    String offerId,
+  ) async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+    if (offerId.isEmpty) return;
+    try {
+      await _bookingNotificationChannel.invokeMethod(
+        'cancelInstantOfferNotification',
+        {'offerId': offerId},
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('Failed to cancel instant offer notification: $e');
+      }
+    }
+  }
+
   static String? _collapseKeyFor(String type, Map<String, dynamic> data) {
     if (type == 'chat_message') {
       final roomId = data['chatRoomId']?.toString();
       if (roomId != null && roomId.isNotEmpty) {
         return 'chat_$roomId';
+      }
+    }
+    if (type == NotificationType.instantOffer) {
+      final offerId = data['offerId']?.toString();
+      if (offerId != null && offerId.isNotEmpty) {
+        return 'instant_offer_$offerId';
       }
     }
     return null;

@@ -2429,6 +2429,56 @@
   },
   "seatLegendSelected": "محدد",
   "seatLegendLockedExternal": "مقفل (خارج التطبيق)",
+  "createTripStepRoute": "المسار",
+  "createTripStepDetails": "تفاصيل الرحلة",
+  "createTripStepReview": "مراجعة ونشر",
+  "createTripRouteTitle": "أين ستبدأ رحلتك؟",
+  "createTripRouteSubtitle": "حدد نقطة الانطلاق والوجهة ويمكنك إضافة محطات توقف (اختياري)",
+  "addStopSubtitle": "يمكنك إضافة حتى 5 محطات",
+  "approxDistanceLabel": "المسافة التقريبية: {distance}",
+  "@approxDistanceLabel": {
+    "placeholders": {
+      "distance": { "type": "String" }
+    }
+  },
+  "approxDurationLabel": "الوقت التقريبي: {duration}",
+  "@approxDurationLabel": {
+    "placeholders": {
+      "duration": { "type": "String" }
+    }
+  },
+  "approxDurationHoursMinutes": "{hours} س {minutes} د",
+  "@approxDurationHoursMinutes": {
+    "placeholders": {
+      "hours": { "type": "int" },
+      "minutes": { "type": "int" }
+    }
+  },
+  "approxDurationMinutesOnly": "{minutes} د",
+  "@approxDurationMinutesOnly": {
+    "placeholders": {
+      "minutes": { "type": "int" }
+    }
+  },
+  "createTripWhenAndHow": "متى وكيف؟",
+  "createTripWhenAndHowSubtitle": "حدد تفاصيل رحلتك ومقاعد الركاب والسعر",
+  "availableSeatsSection": "المقاعد المتاحة",
+  "availableSeatsCountTitle": "عدد المقاعد المتاحة",
+  "seatsUnitLabel": "مقاعد",
+  "jordanianDinarLabel": "دينار أردني",
+  "tripSummaryTitle": "ملخص الرحلة",
+  "additionalDetailsTitle": "تفاصيل إضافية",
+  "seatLegendAvailable": "متاح",
+  "seatLegendDriver": "غير متاح (السائق)",
+  "seatLegendInactive": "مقعد خامل",
+  "preventGenderMixingHint": "يستثنى من ذلك حجز العائلة. يمكن تعطيل هذا الخيار والسماح بالاختلاط.",
+  "reviewTripTitle": "مراجعة الرحلة",
+  "reviewTripSubtitle": "تحقق من تفاصيل رحلتك قبل نشرها للركاب",
+  "publishTrip": "نشر الرحلة",
+  "backToEdit": "العودة للتعديل",
+  "publishTripNotice": "سيتم نشر الرحلة بعد المراجعة وسيتمكن الركاب من الحجز.",
+  "familyBookingLabel": "حجز عائلة",
+  "familyBookingHint": "يُستثنى حجز العائلة من قواعد منع الاختلاط على هذه الرحلة.",
   "seatColorGuide": "دليل الألوان: {label}",
   "@seatColorGuide": {
     "placeholders": {
@@ -2509,13 +2559,27 @@
   "instantOnlineReady": "متصل — جاهز لاستقبال الطلبات",
   "instantOffline": "غير متصل",
   "instantOfferTitle": "طلب رحلة مباشرة",
+  "instantOfferCardTitle": "طلب رحلة جديدة",
+  "instantOfferBadge": "رحلة مباشرة",
+  "instantOfferDirectSubtitle": "رحلة مباشرة بدون توقف",
   "instantRideAcceptedToast": "تم قبول الرحلة. توجّه إلى نقطة الانطلاق.",
-  "instantOfferCountdown": "تنتهي خلال {seconds} ثانية",
+  "instantOfferCountdown": "ينتهي خلال {seconds} ثانية",
   "@instantOfferCountdown": {
     "placeholders": { "seconds": { "type": "int" } }
   },
   "instantDecline": "رفض",
+  "instantOfferIgnore": "تجاهل",
   "instantAccept": "قبول",
+  "instantOfferAcceptTrip": "قبول الرحلة",
+  "instantOfferExpectedEarnings": "الأرباح المتوقعة",
+  "instantOfferIncludesFees": "يشمل رسوم المنصة",
+  "instantOfferPassengerCount": "{count} راكب",
+  "@instantOfferPassengerCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "instantOfferDistance": "المسافة",
+  "instantOfferDuration": "المدة التقديرية",
+  "instantOfferPassengersLabel": "عدد الركاب",
   "instantRequestNow": "اطلب الآن",
   "instantRequestNowTitle": "اطلب رحلة الآن",
   "instantRequestNowSubtitle": "سائق قريب يصل إليك مباشرة",
@@ -2644,5 +2708,81 @@
   "tripSummaryBackHome": "العودة إلى الصفحة الرئيسية",
   "currencyJodShort": "د.أ",
   "negativeWalletBalanceBlocked": "رصيد محفظتك سالب. سدد المستحقات قبل إنشاء رحلات مشتركة أو تلقي رحلات مباشرة.",
-  "negativeWalletGoOnlineBlocked": "رصيد محفظتك سالب. سدد المستحقات قبل تلقي الرحلات المباشرة."
+  "negativeWalletGoOnlineBlocked": "رصيد محفظتك سالب. سدد المستحقات قبل تلقي الرحلات المباشرة.",
+  "authStepOf": "خطوة {current} من {total}",
+  "@authStepOf": {
+    "description": "Step counter shown on the auth wizard screens",
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "authSecurityNotice": "جميع بياناتك محفوظة بأمان ولن تتم مشاركتها مع أي جهة",
+  "authNeedHelp": "مساعدة",
+  "authStepperBasicInfo": "المعلومات الأساسية",
+  "authStepperIdDocs": "الهوية والمستندات",
+  "authStepperVehicleInfo": "معلومات السيارة",
+  "genderRequiredLabel": "الجنس *",
+  "documentFormatsHint": "الصيغ المدعومة: JPG، PNG، PDF (الحد الأقصى 5 ميجابايت)",
+  "accountTypePassengerTagline": "احجز رحلات مباشرة أو مشتركة",
+  "accountTypeDriverTagline": "أنشئ رحلات واستقبل الركاب",
+  "accountTypePassengerFeatureDirectTitle": "رحلات مباشرة",
+  "accountTypePassengerFeatureDirectBody": "احجز رحلة خاصة تصلك مباشرة",
+  "accountTypePassengerFeatureSharedTitle": "رحلات مشتركة",
+  "accountTypePassengerFeatureSharedBody": "انضم لرحلة وشارك في التوفير",
+  "accountTypePassengerFeaturePaymentTitle": "دفع آمن وسهل",
+  "accountTypePassengerFeaturePaymentBody": "خيارات دفع متعددة وآمنة",
+  "accountTypeDriverFeatureTripsTitle": "أنشئ رحلات",
+  "accountTypeDriverFeatureTripsBody": "حدد وجهتك والانطلاق",
+  "accountTypeDriverFeatureBookingsTitle": "استقبل الحجوزات",
+  "accountTypeDriverFeatureBookingsBody": "احصل على طلبات الركاب",
+  "accountTypeDriverFeatureIncomeTitle": "حقق دخلاً إضافيا",
+  "accountTypeDriverFeatureIncomeBody": "زد دخلك في أوقات فراغك",
+  "accountTypeSafetyTitle": "أمانك هو أولويتنا",
+  "accountTypeSafetyBody": "نتحقق من جميع المستخدمين لضمان تجربة آمنة وموثوقة للجميع.",
+  "passengerSignupTitle": "إنشاء حساب جديد",
+  "passengerSignupSubtitle": "سجل الآن كراكب لبدء رحلتك معنا",
+  "driverSignupTitle": "إنشاء حساب سائق",
+  "driverSignupSubtitle": "ابدأ باستقبال الركاب وتحقيق دخل إضافي",
+  "fullNameIdHint": "اكتب اسمك كما هو في الهوية",
+  "phoneConfirmCallHint": "سنتصل بك لتأكيد حسابك",
+  "passwordMinLengthHint": "يجب أن تحتوي على 8 أحرف على الأقل",
+  "confirmPasswordReenterHint": "أعد إدخال كلمة المرور",
+  "passengerProfileStepTitle": "أكمل ملفك الشخصي",
+  "passengerProfileStepSubtitle": "أضف صورتك ومدينتك ليتعرف عليك السائقون",
+  "profileCityLabel": "المدينة *",
+  "profileCityHint": "أدخل اسم مدينتك",
+  "profileCityRequired": "المدينة مطلوبة",
+  "completeDriverProfileTitle": "أكمل ملف السائق",
+  "driverStep2Badge": "الخطوة 2 من 3: المعلومات الإضافية",
+  "driverStep3Badge": "الخطوة 3 من 3: مستندات السيارة",
+  "profilePhotoClearHint": "صورة واضحة لوجهك",
+  "vehicleTypeSelectHint": "اختر نوع المركبة",
+  "vehiclePlateDocHint": "أدخل رقم اللوحة كما في الرخصة",
+  "vehicleModelDocHint": "أدخل موديل السيارة",
+  "vehicleSeatsDocHint": "عدد المقاعد المتاحة للركاب",
+  "driverLicenseUploadHint": "اضغط لرفع صورة الرخصة",
+  "vehicleRegistrationFormRequired": "الاستمارة *",
+  "insuranceDocumentLabel": "التأمين *",
+  "insuranceImageRequired": "وثيقة التأمين مطلوبة",
+  "registrationUpdatedSuccess": "تم تحديث بياناتك بنجاح",
+  "driverAlreadyApprovedError": "تمت الموافقة على حسابك بالفعل",
+  "driverPendingReviewTitle": "طلب تسجيلك قيد المراجعة",
+  "driverPendingReviewBody": "نقوم حاليًا بمراجعة بياناتك ومستنداتك، وسنرسل لك إشعارًا فور الانتهاء من المراجعة.",
+  "driverPendingStatusLabel": "حالة الطلب",
+  "driverPendingBadge": "قيد المراجعة",
+  "driverSubmittedDocs": "المستندات المرسلة",
+  "driverDocLicense": "الرخصة",
+  "driverDocRegistration": "الاستمارة",
+  "driverDocInsurance": "التأمين",
+  "driverDocCarPhoto": "صورة السيارة",
+  "driverPendingRestrictionTitle": "حسابك قيد المراجعة",
+  "driverPendingRestrictionBody": "لن تتمكن من استخدام التطبيق حتى يتم تفعيل حسابك كسائق.",
+  "driverEditRegistrationTitle": "تحتاج لتعديل بياناتك؟",
+  "driverEditRegistrationSubtitle": "يمكنك تحديث بياناتك أو المستندات المرسلة.",
+  "driverReturnHome": "العودة إلى الرئيسية"
 }

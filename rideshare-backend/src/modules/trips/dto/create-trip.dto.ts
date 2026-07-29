@@ -2,6 +2,7 @@ import {
   IsString,
   IsNumber,
   IsInt,
+  IsBoolean,
   IsOptional,
   IsUrl,
   IsIn,
@@ -130,4 +131,22 @@ export class CreateTripDto {
   @ValidateNested()
   @Type(() => RecurrenceDto)
   recurrence?: RecurrenceDto;
+
+  /**
+   * Number of seats the driver wants to publish for this trip. Defaults to
+   * every seat in the vehicle layout; must stay within 1..layout seat count.
+   */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  availableSeats?: number;
+
+  /**
+   * Per-trip gender-mixing rule. Overrides the vehicle default for this trip
+   * only — the vehicle's own setting is never mutated.
+   */
+  @IsOptional()
+  @IsBoolean()
+  preventGenderMixing?: boolean;
 }

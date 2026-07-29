@@ -257,7 +257,9 @@ export class NotificationsService {
       });
 
       const collapseKey = this.resolveCollapseKey(payload);
-      const isAndroidCustomBooking = payload.type === 'booking_created';
+      const isAndroidCustomRich =
+        payload.type === 'booking_created' ||
+        payload.type === 'instant_offer';
       const androidNotification: admin.messaging.AndroidNotification = {
         channelId: 'rideshare_notifications',
       };
@@ -283,8 +285,9 @@ export class NotificationsService {
             }
           : undefined;
 
-      // booking_created: Android is data-only so VisionWayMessagingService can
-      // render the rich custom layout. iOS still gets a visible APNS alert.
+      // booking_created / instant_offer: Android is data-only so
+      // VisionWayMessagingService can render the rich custom layout.
+      // iOS still gets a visible APNS alert.
       const messageBase: Omit<
         admin.messaging.Message,
         'token' | 'tokens'
@@ -294,7 +297,7 @@ export class NotificationsService {
         android: {
           priority: 'high',
           ...(collapseKey ? { collapseKey } : {}),
-          ...(isAndroidCustomBooking
+          ...(isAndroidCustomRich
             ? {}
             : { notification: androidNotification }),
         },
@@ -309,7 +312,7 @@ export class NotificationsService {
             },
           },
         },
-        ...(isAndroidCustomBooking
+        ...(isAndroidCustomRich
           ? {}
           : {
               notification: { title: payload.title, body: payload.body },
