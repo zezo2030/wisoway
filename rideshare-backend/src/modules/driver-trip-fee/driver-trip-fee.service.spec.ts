@@ -143,6 +143,8 @@ describe('DriverTripFeeService.chargeAtTripStart', () => {
   let blindTxLookups: number;
   let lockedAccounts: any[];
   let loggedErrors: jest.SpyInstance;
+  let blindChargeLookups: number;
+  let bookingUpdateShouldFail: boolean;
 
   const trip = () =>
     ({
@@ -173,6 +175,8 @@ describe('DriverTripFeeService.chargeAtTripStart', () => {
     tripSaveShouldFail = false;
     recordedCharges = [];
     blindTxLookups = 0;
+    blindChargeLookups = 0;
+    bookingUpdateShouldFail = false;
     lockedAccounts = [account];
     // Several tests drive failure paths on purpose; keep the run's output clean
     // while still being able to assert the service shouted.
@@ -181,6 +185,17 @@ describe('DriverTripFeeService.chargeAtTripStart', () => {
       .mockImplementation(() => undefined);
     pendingCharges = {
       record: jest.fn().mockImplementation(async (params: any) => {
+        // uq_pending_charges_trip_driver_fee is UNIQUE in the real schema.
+        if (
+          params.kind === PendingChargeKind.DRIVER_TRIP_FEE &&
+          recordedCharges.some(
+            (c) => c.tripId === params.tripId && c.kind === params.kind,
+          )
+        ) {
+          throw new Error(
+            `duplicate key value violates unique constraint "uq_pending_charges_trip_driver_fee"`,
+          );
+        }
         const row = { id: `pc-${recordedCharges.length + 1}`, ...params };
         recordedCharges.push(row);
         return row;
@@ -283,17 +298,28 @@ describe('DriverTripFeeService.chargeAtTripStart', () => {
           provide: getRepositoryToken(BookingEntity),
           useValue: {
             find: async (options: any) => findBookings(options),
-            update: async () => ({ affected: confirmedBookings.length }),
+            update: async () => {
+              if (bookingUpdateShouldFail)
+                throw new Error('booking update failed');
+              return { affected: confirmedBookings.length };
+            },
           },
         },
         { provide: getRepositoryToken(UserEntity), useValue: {} },
         {
           provide: getRepositoryToken(PendingChargeEntity),
           useValue: {
-            findOne: async ({ where }: any) =>
-              recordedCharges.find(
-                (c) => c.tripId === where.tripId && c.kind === where.kind,
-              ) ?? null,
+            findOne: async ({ where }: any) => {
+              if (blindChargeLookups > 0) {
+                blindChargeLookups -= 1;
+                return null;
+              }
+              return (
+                recordedCharges.find(
+                  (c) => c.tripId === where.tripId && c.kind === where.kind,
+                ) ?? null
+              );
+            },
           },
         },
         { provide: getRepositoryToken(WalletAccountEntity), useValue: {} },
@@ -499,6 +525,43 @@ describe('DriverTripFeeService.chargeAtTripStart', () => {
     expect(loggedErrors).toHaveBeenCalledWith(
       expect.stringContaining('has no DRIVER wallet account'),
     );
+  });
+
+  it('records the shortfall once when two callers race past the existence check', async () => {
+    account.balance = '0.00';
+
+    const winner = trip();
+    await service.chargeAtTripStart(winner);
+    expect(recordedCharges).toHaveLength(1);
+
+    // The loser's audit-row read AND its pending-charge existence check both
+    // land before the winner's rows are visible, so it walks all the way to
+    // the insert. Only the unique index stands between it and a second charge
+    // — and a second charge means a second real wallet deduction attempt.
+    blindTxLookups = 1;
+    blindChargeLookups = 1;
+    const loser = trip();
+    const result = await service.chargeAtTripStart(loser);
+
+    expect(recordedCharges).toHaveLength(1);
+    // Attempted once per caller and not retried after the violation.
+    expect(pendingCharges.record).toHaveBeenCalledTimes(2);
+    expect(result.reason).toBe('already-charged');
+    expect(result.pendingRemainder).toBe(1.6);
+    expect(loser.driverWalletChargeApplied).toBe(true);
+  });
+
+  it('leaves the trip unstamped when the booking update fails', async () => {
+    bookingUpdateShouldFail = true;
+    const t = trip();
+    const result = await service.chargeAtTripStart(t);
+
+    // The money moved, but the stamp must not persist: it is what makes the
+    // next sweep short-circuit, and these bookings still need
+    // hasDriverPaidToContact.
+    expect(result.charged).toBe(1.6);
+    expect(savedTrips).not.toContain(t);
+    expect(t.driverWalletChargeApplied).toBe(false);
   });
 
   it('snapshots the pricing basis onto the transaction metadata', async () => {

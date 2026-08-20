@@ -373,7 +373,9 @@ export class DriverTripFeeService {
     trip.capturedFeeAmount = charged.toFixed(2);
 
     try {
-      await this.tripRepo.save(trip);
+      // Bookings first: the trip stamp is what makes the next sweep
+      // short-circuit, so persisting it before the booking update would strand
+      // those bookings without hasDriverPaidToContact and nothing would retry.
       await this.bookingRepo.update(
         {
           tripId: trip.id,
@@ -385,6 +387,7 @@ export class DriverTripFeeService {
         },
         { hasDriverPaidToContact: true },
       );
+      await this.tripRepo.save(trip);
     } catch (err) {
       // The money is already correct and the trip must be able to start, so
       // this never propagates. Roll the in-memory flags back so a caller that
@@ -428,8 +431,10 @@ export class DriverTripFeeService {
   }
 
   /**
-   * Puts the shortfall on file exactly once. Returns false when it could not
-   * be recorded, which tells the caller to leave the trip unstamped so the
+   * Puts the shortfall on file exactly once, guaranteed by the partial unique
+   * index uq_pending_charges_trip_driver_fee rather than by the read below,
+   * which is only a fast path. Returns false when the debt could not be
+   * recorded at all, which tells the caller to leave the trip unstamped so the
    * reconciliation sweep comes back for it.
    */
   private async settleShortfall(
@@ -444,12 +449,23 @@ export class DriverTripFeeService {
         where: { tripId: trip.id, kind: PendingChargeKind.DRIVER_TRIP_FEE },
       });
       if (!existing) {
-        await this.pendingCharges.record({
-          userId: trip.driverId,
-          kind: PendingChargeKind.DRIVER_TRIP_FEE,
-          amount,
-          tripId: trip.id,
-        });
+        try {
+          await this.pendingCharges.record({
+            userId: trip.driverId,
+            kind: PendingChargeKind.DRIVER_TRIP_FEE,
+            amount,
+            tripId: trip.id,
+          });
+        } catch (err) {
+          // The check above and this insert are not atomic, so a concurrent
+          // caller can land between them. uq_pending_charges_trip_driver_fee
+          // is what actually guarantees one charge per trip; losing that race
+          // means the debt is on file, which is the outcome we wanted.
+          if (!this.isDuplicateKeyError(err)) throw err;
+          this.logger.log(
+            `Trip ${trip.id}: shortfall already recorded by a concurrent caller`,
+          );
+        }
       }
       return true;
     } catch (err) {
