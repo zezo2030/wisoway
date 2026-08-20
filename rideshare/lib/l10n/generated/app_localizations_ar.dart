@@ -4519,4 +4519,70 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get driverReturnHome => 'العودة إلى الرئيسية';
+
+  @override
+  String get tripBookedTitle => 'تم حجز رحلتك المشتركة';
+
+  @override
+  String get tripBookedSubtitle => 'تم حجز جميع المقاعد بنجاح';
+
+  @override
+  String get tripDayLabel => 'يوم الرحلة';
+
+  @override
+  String get tripTimeLabel => 'موعد الرحلة';
+
+  @override
+  String get tripMeetingPointLabel => 'مكان التجمع';
+
+  @override
+  String get tripDistanceShortLabel => 'المسافة';
+
+  @override
+  String get tripSeatsLabel => 'عدد المقاعد';
+
+  @override
+  String get tripSeatsComplete => 'مكتملة';
+
+  @override
+  String tripSeatsBookedOf(String booked, String total) {
+    return '$booked من $total';
+  }
+
+  @override
+  String bookedPassengersTitle(int count) {
+    return 'الركاب المحجوزون ($count)';
+  }
+
+  @override
+  String seatChipLabel(String number) {
+    return 'مقعد $number';
+  }
+
+  @override
+  String get passengerFareLabel => 'أجرة الراكب';
+
+  @override
+  String passengersTotalLabel(int count) {
+    return 'المجموع من الركاب ($count) ركاب';
+  }
+
+  @override
+  String tripFeePercentLabel(String percent) {
+    return 'رسوم الرحلة ($percent%)';
+  }
+
+  @override
+  String get tripFeeChargedAtStartNotice =>
+      'سيتم خصم رسوم الرحلة من محفظتك عند انطلاق الرحلة. حافظ على وجود رصيد في محفظتك لضمان قدرتك على إنشاء رحلات جديدة.';
+
+  @override
+  String get contactPassengersTitle => 'التواصل مع الركاب';
+
+  @override
+  String get contactPassengersSubtitle => 'اتصال أو دردشة حية';
+
+  @override
+  String get confirmYourPresenceCta =>
+      'قم بتأكيد تواجدك في الوقت والمكان المحدد';
 }

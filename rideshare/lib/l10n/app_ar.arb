@@ -2756,5 +2756,61 @@
   "driverPendingRestrictionBody": "لن تتمكن من استخدام التطبيق حتى يتم تفعيل حسابك كسائق.",
   "driverEditRegistrationTitle": "تحتاج لتعديل بياناتك؟",
   "driverEditRegistrationSubtitle": "يمكنك تحديث بياناتك أو المستندات المرسلة.",
-  "driverReturnHome": "العودة إلى الرئيسية"
+  "driverReturnHome": "العودة إلى الرئيسية",
+  "tripBookedTitle": "تم حجز رحلتك المشتركة",
+  "tripBookedSubtitle": "تم حجز جميع المقاعد بنجاح",
+  "tripDayLabel": "يوم الرحلة",
+  "tripTimeLabel": "موعد الرحلة",
+  "tripMeetingPointLabel": "مكان التجمع",
+  "tripDistanceShortLabel": "المسافة",
+  "tripSeatsLabel": "عدد المقاعد",
+  "tripSeatsComplete": "مكتملة",
+  "tripSeatsBookedOf": "{booked} من {total}",
+  "@tripSeatsBookedOf": {
+    "placeholders": {
+      "booked": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "bookedPassengersTitle": "الركاب المحجوزون ({count})",
+  "@bookedPassengersTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "seatChipLabel": "مقعد {number}",
+  "@seatChipLabel": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "passengerFareLabel": "أجرة الراكب",
+  "passengersTotalLabel": "المجموع من الركاب ({count}) ركاب",
+  "@passengersTotalLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tripFeePercentLabel": "رسوم الرحلة ({percent}%)",
+  "@tripFeePercentLabel": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "tripFeeChargedAtStartNotice": "سيتم خصم رسوم الرحلة من محفظتك عند انطلاق الرحلة. حافظ على وجود رصيد في محفظتك لضمان قدرتك على إنشاء رحلات جديدة.",
+  "contactPassengersTitle": "التواصل مع الركاب",
+  "contactPassengersSubtitle": "اتصال أو دردشة حية",
+  "confirmYourPresenceCta": "قم بتأكيد تواجدك في الوقت والمكان المحدد"
 }

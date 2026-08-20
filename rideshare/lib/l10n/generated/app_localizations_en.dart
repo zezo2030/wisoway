@@ -4583,4 +4583,70 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get driverReturnHome => 'Return to Home';
+
+  @override
+  String get tripBookedTitle => 'Your shared trip is booked';
+
+  @override
+  String get tripBookedSubtitle => 'All seats were booked successfully';
+
+  @override
+  String get tripDayLabel => 'Trip day';
+
+  @override
+  String get tripTimeLabel => 'Trip time';
+
+  @override
+  String get tripMeetingPointLabel => 'Meeting point';
+
+  @override
+  String get tripDistanceShortLabel => 'Distance';
+
+  @override
+  String get tripSeatsLabel => 'Seats';
+
+  @override
+  String get tripSeatsComplete => 'Full';
+
+  @override
+  String tripSeatsBookedOf(String booked, String total) {
+    return '$booked of $total';
+  }
+
+  @override
+  String bookedPassengersTitle(int count) {
+    return 'Booked passengers ($count)';
+  }
+
+  @override
+  String seatChipLabel(String number) {
+    return 'Seat $number';
+  }
+
+  @override
+  String get passengerFareLabel => 'Passenger fare';
+
+  @override
+  String passengersTotalLabel(int count) {
+    return 'Total from passengers ($count)';
+  }
+
+  @override
+  String tripFeePercentLabel(String percent) {
+    return 'Trip fee ($percent%)';
+  }
+
+  @override
+  String get tripFeeChargedAtStartNotice =>
+      'The trip fee will be deducted from your wallet when the trip starts. Keep a balance in your wallet so you can keep creating new trips.';
+
+  @override
+  String get contactPassengersTitle => 'Contact passengers';
+
+  @override
+  String get contactPassengersSubtitle => 'Call or live chat';
+
+  @override
+  String get confirmYourPresenceCta =>
+      'Please be present at the specified time and place';
 }

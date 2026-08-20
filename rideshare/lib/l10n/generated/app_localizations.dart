@@ -8377,6 +8377,114 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'العودة إلى الرئيسية'**
   String get driverReturnHome;
+
+  /// No description provided for @tripBookedTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم حجز رحلتك المشتركة'**
+  String get tripBookedTitle;
+
+  /// No description provided for @tripBookedSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم حجز جميع المقاعد بنجاح'**
+  String get tripBookedSubtitle;
+
+  /// No description provided for @tripDayLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'يوم الرحلة'**
+  String get tripDayLabel;
+
+  /// No description provided for @tripTimeLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'موعد الرحلة'**
+  String get tripTimeLabel;
+
+  /// No description provided for @tripMeetingPointLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'مكان التجمع'**
+  String get tripMeetingPointLabel;
+
+  /// No description provided for @tripDistanceShortLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'المسافة'**
+  String get tripDistanceShortLabel;
+
+  /// No description provided for @tripSeatsLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'عدد المقاعد'**
+  String get tripSeatsLabel;
+
+  /// No description provided for @tripSeatsComplete.
+  ///
+  /// In ar, this message translates to:
+  /// **'مكتملة'**
+  String get tripSeatsComplete;
+
+  /// No description provided for @tripSeatsBookedOf.
+  ///
+  /// In ar, this message translates to:
+  /// **'{booked} من {total}'**
+  String tripSeatsBookedOf(String booked, String total);
+
+  /// No description provided for @bookedPassengersTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'الركاب المحجوزون ({count})'**
+  String bookedPassengersTitle(int count);
+
+  /// No description provided for @seatChipLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'مقعد {number}'**
+  String seatChipLabel(String number);
+
+  /// No description provided for @passengerFareLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'أجرة الراكب'**
+  String get passengerFareLabel;
+
+  /// No description provided for @passengersTotalLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'المجموع من الركاب ({count}) ركاب'**
+  String passengersTotalLabel(int count);
+
+  /// No description provided for @tripFeePercentLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'رسوم الرحلة ({percent}%)'**
+  String tripFeePercentLabel(String percent);
+
+  /// No description provided for @tripFeeChargedAtStartNotice.
+  ///
+  /// In ar, this message translates to:
+  /// **'سيتم خصم رسوم الرحلة من محفظتك عند انطلاق الرحلة. حافظ على وجود رصيد في محفظتك لضمان قدرتك على إنشاء رحلات جديدة.'**
+  String get tripFeeChargedAtStartNotice;
+
+  /// No description provided for @contactPassengersTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'التواصل مع الركاب'**
+  String get contactPassengersTitle;
+
+  /// No description provided for @contactPassengersSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'اتصال أو دردشة حية'**
+  String get contactPassengersSubtitle;
+
+  /// No description provided for @confirmYourPresenceCta.
+  ///
+  /// In ar, this message translates to:
+  /// **'قم بتأكيد تواجدك في الوقت والمكان المحدد'**
+  String get confirmYourPresenceCta;
 }
 
 class _AppLocalizationsDelegate
