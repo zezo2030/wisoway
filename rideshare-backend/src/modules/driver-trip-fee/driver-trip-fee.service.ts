@@ -159,6 +159,28 @@ export class DriverTripFeeService {
       };
     }
 
+    // Second idempotency layer, covering the window where the ledger committed
+    // but stampTripCharged did not. The audit row's unique idempotencyKey is
+    // the durable record that this trip's fee was already processed. Without
+    // this read the retry would collide with that unique index inside the
+    // transaction and throw, so the trip would never get stamped and every
+    // future sweep would retry it forever.
+    const existingCharge = await this.walletTxRepo.findOne({
+      where: { idempotencyKey: this.tripFeeIdempotencyKey(trip.id) },
+    });
+    if (existingCharge) {
+      const alreadyCharged = Number(existingCharge.amount ?? 0);
+      await this.stampTripCharged(trip, alreadyCharged);
+      return {
+        tripId: trip.id,
+        charged: alreadyCharged,
+        pendingRemainder: 0,
+        currency: quote.currency,
+        applied: false,
+        reason: 'already-charged',
+      };
+    }
+
     // The auto-start processor flips confirmed bookings to IN_PROGRESS before
     // calling us, so both statuses count as "someone actually rode".
     const confirmedBookings = await this.bookingRepo.find({
@@ -199,7 +221,7 @@ export class DriverTripFeeService {
             currency: quote.currency,
             referenceType: 'trip',
             referenceId: trip.id,
-            idempotencyKey: `trip-fee:${trip.id}`,
+            idempotencyKey: this.tripFeeIdempotencyKey(trip.id),
             metadata,
           }),
         );
@@ -248,17 +270,22 @@ export class DriverTripFeeService {
           Number(account.balance) - charged,
         ).toFixed(2);
         await manager.save(WalletAccountEntity, account);
-        await writeAuditRow(account.id, charged, {
-          ...metadataBase,
-          feeAmount: quote.amount,
-          shortfall: remainder,
-        });
         await this.walletService.syncUserLegacyWalletMirror(
           trip.driverId,
           WalletAccountType.DRIVER,
           manager,
         );
       }
+
+      // Written on every outcome, including charged === 0 against an empty
+      // wallet. This row is the idempotency record, so it must exist even when
+      // no money moved — otherwise a retried sweep finds nothing, re-runs, and
+      // records the shortfall as a second pending charge.
+      await writeAuditRow(account.id, charged, {
+        ...metadataBase,
+        feeAmount: quote.amount,
+        shortfall: remainder,
+      });
 
       return { charged, remainder, reason: undefined };
     });
@@ -322,6 +349,11 @@ export class DriverTripFeeService {
       },
       { hasDriverPaidToContact: true },
     );
+  }
+
+  /** One audit row per trip; this key is the durable idempotency guard. */
+  private tripFeeIdempotencyKey(tripId: string): string {
+    return `trip-fee:${tripId}`;
   }
 
   private round2(value: number): number {

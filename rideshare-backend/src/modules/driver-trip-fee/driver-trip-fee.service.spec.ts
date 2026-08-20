@@ -135,6 +135,7 @@ describe('DriverTripFeeService.chargeAtTripStart', () => {
   let savedTrips: any[];
   let confirmedBookings: any[];
   let pendingCharges: { record: jest.Mock };
+  let tripSaveShouldFail: boolean;
 
   const trip = () =>
     ({
@@ -160,6 +161,7 @@ describe('DriverTripFeeService.chargeAtTripStart', () => {
     savedTrips = [];
     confirmedBookings = [{ id: 'b-1' }, { id: 'b-2' }];
     pendingCharges = { record: jest.fn().mockResolvedValue({ id: 'pc-1' }) };
+    tripSaveShouldFail = false;
 
     const manager = {
       createQueryBuilder: () => ({
@@ -176,7 +178,16 @@ describe('DriverTripFeeService.chargeAtTripStart', () => {
       create: (_entity: any, data: any) => ({ ...data }),
       save: async (entity: any, obj?: any) => {
         const row = obj ?? entity;
-        if (row?.type) savedTxs.push(row);
+        if (row?.type) {
+          // wallet_tx_idempotency_idx is UNIQUE in the real schema — a replay
+          // that reaches this point must blow up exactly as Postgres would.
+          if (savedTxs.some((t) => t.idempotencyKey === row.idempotencyKey)) {
+            throw new Error(
+              `duplicate key value violates unique constraint "wallet_tx_idempotency_idx"`,
+            );
+          }
+          savedTxs.push(row);
+        }
         if (row?.driverWalletChargeApplied !== undefined) savedTrips.push(row);
         return row;
       },
@@ -213,6 +224,7 @@ describe('DriverTripFeeService.chargeAtTripStart', () => {
           provide: getRepositoryToken(TripEntity),
           useValue: {
             save: async (t: any) => {
+              if (tripSaveShouldFail) throw new Error('stamp failed');
               savedTrips.push(t);
               return t;
             },
@@ -227,7 +239,14 @@ describe('DriverTripFeeService.chargeAtTripStart', () => {
         },
         { provide: getRepositoryToken(UserEntity), useValue: {} },
         { provide: getRepositoryToken(WalletAccountEntity), useValue: {} },
-        { provide: getRepositoryToken(WalletTransactionEntity), useValue: {} },
+        {
+          provide: getRepositoryToken(WalletTransactionEntity),
+          useValue: {
+            findOne: async ({ where }: any) =>
+              savedTxs.find((t) => t.idempotencyKey === where.idempotencyKey) ??
+              null,
+          },
+        },
       ],
     }).compile();
 
@@ -305,6 +324,37 @@ describe('DriverTripFeeService.chargeAtTripStart', () => {
     expect(pendingCharges.record).toHaveBeenCalledWith(
       expect.objectContaining({ amount: 1.6 }),
     );
+  });
+
+  it('does not double-charge when the trip stamp fails and the sweep retries', async () => {
+    account.balance = '0.00';
+
+    // Run 1: nothing to debit, so the whole fee is carried forward — and then
+    // the audit stamp never lands.
+    tripSaveShouldFail = true;
+    await expect(service.chargeAtTripStart(trip())).rejects.toThrow(
+      'stamp failed',
+    );
+    expect(pendingCharges.record).toHaveBeenCalledTimes(1);
+
+    // Task 9's sweep re-loads the trip from the DB, where the stamp never
+    // landed, so driverWalletChargeApplied is still false.
+    tripSaveShouldFail = false;
+    const retried = trip();
+    const second = await service.chargeAtTripStart(retried);
+
+    // The wallet transaction written by run 1 is the idempotency record: the
+    // retry must move no money and must not re-record the debt...
+    expect(pendingCharges.record).toHaveBeenCalledTimes(1);
+    expect(account.balance).toBe('0.00');
+    expect(savedTxs).toHaveLength(1);
+    expect(second.applied).toBe(false);
+    expect(second.reason).toBe('already-charged');
+
+    // ...but it must still converge by stamping the trip, or every future
+    // sweep would retry this trip forever.
+    expect(retried.driverWalletChargeApplied).toBe(true);
+    expect(savedTrips).toContain(retried);
   });
 
   it('snapshots the pricing basis onto the transaction metadata', async () => {
