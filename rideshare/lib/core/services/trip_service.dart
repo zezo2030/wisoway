@@ -1,5 +1,8 @@
+import 'package:flutter/foundation.dart';
+
 import '../../models/trip_model.dart';
 import '../../models/location_model.dart';
+import '../../models/trip_fee_quote.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
 
@@ -105,6 +108,31 @@ class TripService {
       return null;
     } catch (e) {
       print('❌ Error getting pricing preview: $e');
+      return null;
+    }
+  }
+
+  /// Driver-side fee preview at publish time (before the trip exists), used
+  /// on the create-trip review step. `percent` mirrors the backend's
+  /// configured `driverUnlockPercent` — never hardcode it client-side.
+  /// Returns null on failure; the caller keeps the fee line in a neutral
+  /// unavailable state rather than blocking publish.
+  Future<TripFeeQuote?> getTripFeeQuote({
+    required double seatPrice,
+    required int totalSeats,
+  }) async {
+    try {
+      final response = await _api.get(
+        ApiEndpoints.feeQuote,
+        queryParameters: {'seatPrice': seatPrice, 'totalSeats': totalSeats},
+      );
+      final data = response is Map ? (response['data'] ?? response) : response;
+      if (data is Map) {
+        return TripFeeQuote.fromJson(Map<String, dynamic>.from(data));
+      }
+      return null;
+    } catch (e) {
+      debugPrint('❌ Error getting trip fee quote: $e');
       return null;
     }
   }

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../l10n/l10n_extensions.dart';
+import '../../../models/trip_fee_quote.dart';
 import '../../../models/vehicle_model.dart';
 import 'create_trip_stepper.dart';
 import 'create_trip_wizard_state.dart';
@@ -18,11 +19,19 @@ class Step3Review extends StatelessWidget {
     required this.wizard,
     required this.vehicle,
     required this.currency,
+    this.feeQuote,
+    this.isLoadingFeeQuote = false,
   });
 
   final CreateTripWizardState wizard;
   final VehicleModel? vehicle;
   final String currency;
+
+  /// Fetched once by the parent screen when the review step is reached.
+  /// Null while unavailable (loading, or the request failed) — the fee line
+  /// stays neutral rather than blocking publish or showing a wrong number.
+  final TripFeeQuote? feeQuote;
+  final bool isLoadingFeeQuote;
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +47,10 @@ class Step3Review extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           _buildSummaryCard(context),
+          if (_feeNoticeContent(context) case final feeNotice?) ...[
+            const SizedBox(height: 16),
+            feeNotice,
+          ],
           const SizedBox(height: 16),
           _buildExtrasCard(context),
           const SizedBox(height: 16),
@@ -469,6 +482,91 @@ class Step3Review extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  // --- fee notice ------------------------------------------------------------
+
+  /// The fee line for the review step. While the quote is loading, shows a
+  /// neutral progress row; if it never loads, the row is omitted entirely —
+  /// the backend still enforces the balance check at publish time, so this
+  /// line is purely informational and must never block or misreport.
+  Widget? _feeNoticeContent(BuildContext context) {
+    const feeBg = Color(0xFFE8F4FC);
+    const feeBorder = Color(0xFFB6D9F0);
+    const feeIcon = Color(0xFF2B6CB0);
+
+    Widget container(Widget child) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: feeBg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: feeBorder),
+        ),
+        child: child,
+      );
+    }
+
+    if (isLoadingFeeQuote) {
+      return container(
+        Row(
+          children: [
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2, color: feeIcon),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                context.l10n.loading,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: T.onSurface(context),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final quote = feeQuote;
+    final price = wizard.price;
+    if (quote == null || price == null) return null;
+
+    // Recomputed from the current price/seat count rather than trusting the
+    // quote's own `amount` verbatim, in case those values changed after the
+    // quote was fetched. `percent` always comes from the API — never a
+    // literal (the deleted invoice dialogs both hardcoded '5%').
+    final amount = price * wizard.availableSeatCount * quote.percent / 100;
+
+    return container(
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(IconsaxPlusBold.wallet_1, color: feeIcon),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              context.l10n.createTripFeeNotice(
+                _formatPercent(quote.percent),
+                amount.toStringAsFixed(2),
+                quote.currency,
+              ),
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: T.onSurface(context),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatPercent(double percent) {
+    return percent == percent.roundToDouble()
+        ? percent.toStringAsFixed(0)
+        : percent.toStringAsFixed(1);
   }
 
   // --- publish notice ------------------------------------------------------

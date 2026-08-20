@@ -3918,6 +3918,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'The trip will be published after review and passengers will be able to book it.';
 
   @override
+  String createTripFeeNotice(String percent, String amount, String currency) {
+    return 'Trip fee ($percent%): $amount $currency — deducted from your wallet when the trip starts.';
+  }
+
+  @override
+  String insufficientBalanceForTripFee(String balance, String required) {
+    return 'Your wallet balance ($balance) does not cover the trip fee ($required). Top up before publishing.';
+  }
+
+  @override
   String get familyBookingLabel => 'Family booking';
 
   @override
@@ -4320,7 +4330,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String tripSummaryFeeDeducted(String amount) {
-    return 'Trip fees ($amount) were deducted from your wallet. Keep enough balance to create new trips.';
+    return 'Trip fees ($amount) were deducted from your wallet when the trip started. Keep enough balance to create new trips.';
   }
 
   @override

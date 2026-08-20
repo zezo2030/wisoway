@@ -177,6 +177,26 @@ class ExceptionMapper {
           developerDetail: detail,
         );
       }
+      if (code == 'INSUFFICIENT_BALANCE_FOR_TRIP_FEE') {
+        final balance = data is Map ? (data['balance'] as num?)?.toDouble() : null;
+        final requiredAmount =
+            data is Map ? (data['requiredAmount'] as num?)?.toDouble() : null;
+        final currency = data is Map ? data['currency'] as String? : null;
+        return Failure(
+          category: FailureCategory.permission,
+          // Deliberately not in ErrorLocalizations: the create-trip screen
+          // always intercepts this messageKey before it reaches the generic
+          // ErrorSurface dialog, and renders it via the ARB-based
+          // `insufficientBalanceForTripFee` string instead.
+          messageKey: 'errorsInsufficientBalanceForTripFee',
+          severity: FailureSeverity.error,
+          nextAction: FailureAction.topUpWallet,
+          developerDetail: detail,
+          insufficientFeeBalance: balance,
+          insufficientFeeRequiredAmount: requiredAmount,
+          insufficientFeeCurrency: currency,
+        );
+      }
     }
 
     if (statusCode != null && statusCode >= 500) {

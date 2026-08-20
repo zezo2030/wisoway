@@ -7220,6 +7220,18 @@ abstract class AppLocalizations {
   /// **'سيتم نشر الرحلة بعد المراجعة وسيتمكن الركاب من الحجز.'**
   String get publishTripNotice;
 
+  /// No description provided for @createTripFeeNotice.
+  ///
+  /// In ar, this message translates to:
+  /// **'رسوم الرحلة ({percent}%): {amount} {currency} — تُخصم من محفظتك عند انطلاق الرحلة.'**
+  String createTripFeeNotice(String percent, String amount, String currency);
+
+  /// No description provided for @insufficientBalanceForTripFee.
+  ///
+  /// In ar, this message translates to:
+  /// **'رصيد محفظتك ({balance}) لا يغطي رسوم الرحلة ({required}). اشحن محفظتك قبل نشر الرحلة.'**
+  String insufficientBalanceForTripFee(String balance, String required);
+
   /// No description provided for @familyBookingLabel.
   ///
   /// In ar, this message translates to:
@@ -7913,7 +7925,7 @@ abstract class AppLocalizations {
   /// No description provided for @tripSummaryFeeDeducted.
   ///
   /// In ar, this message translates to:
-  /// **'تم خصم رسوم الرحلة ({amount}) من محفظتك. تأكد من وجود رصيد كافٍ في محفظتك لإنشاء رحلات جديدة.'**
+  /// **'تم خصم رسوم الرحلة ({amount}) من محفظتك عند انطلاق الرحلة. تأكد من وجود رصيد كافٍ في محفظتك لإنشاء رحلات جديدة.'**
   String tripSummaryFeeDeducted(String amount);
 
   /// No description provided for @tripSummaryPayFeePrompt.

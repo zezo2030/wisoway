@@ -6,7 +6,9 @@ import '../../providers/trip_provider.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/services/vehicle_service.dart';
 import '../../core/services/payment_service.dart';
+import '../../core/services/trip_service.dart';
 import '../../models/seat_layout_config.dart';
+import '../../models/trip_fee_quote.dart';
 import '../../models/vehicle_type_template.dart';
 import '../../models/vehicle_model.dart';
 import '../../core/theme/text_styles.dart';
@@ -45,6 +47,9 @@ class _CreateTripScreenState extends State<CreateTripScreen>
   bool _isLoadingVehicle = true;
   bool _isLoading = false;
   bool _isCheckingDriverApproval = true;
+
+  TripFeeQuote? _feeQuote;
+  bool _isLoadingFeeQuote = false;
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -148,6 +153,31 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     if (index == _wizard.stepIndex) return;
     FocusScope.of(context).unfocus();
     setState(() => _wizard.goToStep(index));
+    if (index == CreateTripWizardState.lastStepIndex) {
+      _loadFeeQuote();
+    }
+  }
+
+  /// Fetches the driver's fee quote once, when the review step is reached
+  /// (not on every rebuild — the review step stays mounted for the whole
+  /// wizard via IndexedStack). If it fails, the review step keeps the fee
+  /// line in a neutral unavailable state; the backend still enforces the
+  /// balance check on publish, so this is purely informational.
+  Future<void> _loadFeeQuote() async {
+    final price = _wizard.price;
+    final seats = _wizard.availableSeatCount;
+    if (price == null || seats < 1) return;
+
+    setState(() => _isLoadingFeeQuote = true);
+    final quote = await TripService().getTripFeeQuote(
+      seatPrice: price,
+      totalSeats: seats,
+    );
+    if (!mounted) return;
+    setState(() {
+      _feeQuote = quote;
+      _isLoadingFeeQuote = false;
+    });
   }
 
   void _goNext() {
@@ -316,10 +346,53 @@ class _CreateTripScreenState extends State<CreateTripScreen>
         throw Exception('فشل إنشاء الرحلة');
       }
     } catch (e) {
-      if (mounted) ErrorSurface.showFailure(context, ApiClient.mapError(e));
+      if (mounted) {
+        final failure = ApiClient.mapError(e);
+        if (failure.messageKey == 'errorsInsufficientBalanceForTripFee') {
+          _showInsufficientBalanceForTripFeeDialog(failure);
+        } else {
+          ErrorSurface.showFailure(context, failure);
+        }
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  /// 403 INSUFFICIENT_BALANCE_FOR_TRIP_FEE from the publish call — the
+  /// driver's wallet can't cover the fee that will be deducted when the
+  /// trip starts. Intercepted before the generic ErrorSurface path so it can
+  /// use the ARB-based `insufficientBalanceForTripFee` copy and offer a
+  /// direct top-up action.
+  void _showInsufficientBalanceForTripFeeDialog(Failure failure) {
+    final currency = failure.insufficientFeeCurrency ?? _currency;
+    final balance =
+        '${(failure.insufficientFeeBalance ?? 0).toStringAsFixed(2)} $currency';
+    final required =
+        '${(failure.insufficientFeeRequiredAmount ?? 0).toStringAsFixed(2)} $currency';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(context.l10n.error),
+        content: Text(
+          context.l10n.insufficientBalanceForTripFee(balance, required),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(context.l10n.cancel),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              Navigator.of(context).pushNamed(RouteNames.driverWalletTopup);
+            },
+            child: Text(context.l10n.topUpWallet),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showError(String msg) {
@@ -474,6 +547,8 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                             wizard: _wizard,
                             vehicle: _vehicle,
                             currency: _currency,
+                            feeQuote: _feeQuote,
+                            isLoadingFeeQuote: _isLoadingFeeQuote,
                           ),
                         ],
                       ),

@@ -46,6 +46,8 @@ class ApiEndpoints {
   static const String preferredTrips = '/trips/preferred';
   static String tripById(String id) => '/trips/$id';
   static String tripPricingPreview(String id) => '/trips/$id/pricing-preview';
+  // Driver fee preview at publish time, before the trip exists.
+  static const String feeQuote = '/trips/fee-quote';
   static String tripSeats(String id) => '/trips/$id/seats';
   static String tripSeatLock(String id) => '/trips/$id/seats/lock';
   static String hideTrip(String id) => '/trips/$id/hide';

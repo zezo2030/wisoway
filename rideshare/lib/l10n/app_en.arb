@@ -2434,6 +2434,21 @@
   "publishTrip": "Publish trip",
   "backToEdit": "Back to edit",
   "publishTripNotice": "The trip will be published after review and passengers will be able to book it.",
+  "createTripFeeNotice": "Trip fee ({percent}%): {amount} {currency} — deducted from your wallet when the trip starts.",
+  "@createTripFeeNotice": {
+    "placeholders": {
+      "percent": { "type": "String" },
+      "amount": { "type": "String" },
+      "currency": { "type": "String" }
+    }
+  },
+  "insufficientBalanceForTripFee": "Your wallet balance ({balance}) does not cover the trip fee ({required}). Top up before publishing.",
+  "@insufficientBalanceForTripFee": {
+    "placeholders": {
+      "balance": { "type": "String" },
+      "required": { "type": "String" }
+    }
+  },
   "familyBookingLabel": "Family booking",
   "familyBookingHint": "Family bookings are exempt from the gender mixing rules on this trip.",
   "seatColorGuide": "Color guide: {label}",
@@ -2602,7 +2617,7 @@
     "placeholders": { "percent": { "type": "int" } }
   },
   "tripSummaryNetAmount": "Net amount you will receive",
-  "tripSummaryFeeDeducted": "Trip fees ({amount}) were deducted from your wallet. Keep enough balance to create new trips.",
+  "tripSummaryFeeDeducted": "Trip fees ({amount}) were deducted from your wallet when the trip started. Keep enough balance to create new trips.",
   "@tripSummaryFeeDeducted": {
     "placeholders": { "amount": { "type": "String" } }
   },

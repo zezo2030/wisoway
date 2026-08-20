@@ -2434,6 +2434,21 @@
   "publishTrip": "نشر الرحلة",
   "backToEdit": "العودة للتعديل",
   "publishTripNotice": "سيتم نشر الرحلة بعد المراجعة وسيتمكن الركاب من الحجز.",
+  "createTripFeeNotice": "رسوم الرحلة ({percent}%): {amount} {currency} — تُخصم من محفظتك عند انطلاق الرحلة.",
+  "@createTripFeeNotice": {
+    "placeholders": {
+      "percent": { "type": "String" },
+      "amount": { "type": "String" },
+      "currency": { "type": "String" }
+    }
+  },
+  "insufficientBalanceForTripFee": "رصيد محفظتك ({balance}) لا يغطي رسوم الرحلة ({required}). اشحن محفظتك قبل نشر الرحلة.",
+  "@insufficientBalanceForTripFee": {
+    "placeholders": {
+      "balance": { "type": "String" },
+      "required": { "type": "String" }
+    }
+  },
   "familyBookingLabel": "حجز عائلة",
   "familyBookingHint": "يُستثنى حجز العائلة من قواعد منع الاختلاط على هذه الرحلة.",
   "seatColorGuide": "دليل الألوان: {label}",
@@ -2643,7 +2658,7 @@
     "placeholders": { "percent": { "type": "int" } }
   },
   "tripSummaryNetAmount": "المبلغ الصافي الذي ستحصل عليه",
-  "tripSummaryFeeDeducted": "تم خصم رسوم الرحلة ({amount}) من محفظتك. تأكد من وجود رصيد كافٍ في محفظتك لإنشاء رحلات جديدة.",
+  "tripSummaryFeeDeducted": "تم خصم رسوم الرحلة ({amount}) من محفظتك عند انطلاق الرحلة. تأكد من وجود رصيد كافٍ في محفظتك لإنشاء رحلات جديدة.",
   "@tripSummaryFeeDeducted": {
     "placeholders": { "amount": { "type": "String" } }
   },

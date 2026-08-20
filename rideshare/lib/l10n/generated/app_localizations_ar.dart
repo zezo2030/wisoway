@@ -3865,6 +3865,16 @@ class AppLocalizationsAr extends AppLocalizations {
       'سيتم نشر الرحلة بعد المراجعة وسيتمكن الركاب من الحجز.';
 
   @override
+  String createTripFeeNotice(String percent, String amount, String currency) {
+    return 'رسوم الرحلة ($percent%): $amount $currency — تُخصم من محفظتك عند انطلاق الرحلة.';
+  }
+
+  @override
+  String insufficientBalanceForTripFee(String balance, String required) {
+    return 'رصيد محفظتك ($balance) لا يغطي رسوم الرحلة ($required). اشحن محفظتك قبل نشر الرحلة.';
+  }
+
+  @override
   String get familyBookingLabel => 'حجز عائلة';
 
   @override
@@ -4263,7 +4273,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String tripSummaryFeeDeducted(String amount) {
-    return 'تم خصم رسوم الرحلة ($amount) من محفظتك. تأكد من وجود رصيد كافٍ في محفظتك لإنشاء رحلات جديدة.';
+    return 'تم خصم رسوم الرحلة ($amount) من محفظتك عند انطلاق الرحلة. تأكد من وجود رصيد كافٍ في محفظتك لإنشاء رحلات جديدة.';
   }
 
   @override
