@@ -23,6 +23,21 @@
 - Existing money in `wallet_holds` must be returned to drivers by migration, not stranded.
 - Currency default throughout: `'JOD'`. Country code for pricing lookups: `'JO'`.
 - Backend verification commands: `npm test` and `npm run lint` in `rideshare-backend/`.
+- **The backend suite is RED before this plan starts** — 11 suites / 84 tests fail
+  on the base commit (`c139030`). The pass criterion for every task is therefore
+  **"no new failing suite or test beyond that baseline"**, not "all green".
+  Four of the eleven are in this plan's blast radius and **must** end green:
+  `test/unit/booking-viewer-serializer.spec.ts`,
+  `test/contract/calls/calls-initiate.contract.spec.ts`,
+  `test/contract/chat/chat-gating.contract.spec.ts`,
+  `src/modules/chat/chat.service.spec.ts`.
+  The other seven (auth/devices, auth/removed-paths, trips/create-with-stops,
+  locations.service, vehicles.service, payments-cliq-topup.service,
+  notifications.service, admin.service) are pre-existing breakage — do not fix
+  them as part of this plan, and do not let them mask a regression.
+- The working tree carries 71 uncommitted paths of unrelated in-flight work.
+  Stage **explicit paths only**. Never run `git add -A` or `git add .` at the
+  repo root, and never `git stash`, `git checkout --`, or `git clean`.
 - Mobile verification commands: `flutter test` and `flutter analyze` in `rideshare/`.
 - Every commit message ends with:
   `Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>`
@@ -1332,8 +1347,17 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 - Modify: `rideshare-backend/src/modules/chat/chat-postgres.service.ts:62,158,217,242,318`
 - Modify: `rideshare-backend/src/modules/chat/chat.service.ts:119`
 - Modify: `rideshare-backend/src/modules/bookings/serializers/booking-viewer.serializer.ts`
-- Create: `rideshare-backend/src/modules/bookings/serializers/booking-viewer.serializer.spec.ts` (does not exist today)
-- Create: `rideshare-backend/src/modules/calls/calls.service.spec.ts` (does not exist today)
+- Rewrite: `rideshare-backend/test/unit/booking-viewer-serializer.spec.ts` (**exists** — asserts the masking contract this task removes, and is already failing at baseline)
+- Rewrite: `rideshare-backend/test/contract/settlement/viewer-mask.contract.spec.ts` (**exists** — asserts "UNSETTLED: displayName masked, chatEnabled=false")
+- Rewrite: `rideshare-backend/test/contract/chat/chat-gating.contract.spec.ts` (**exists** — asserts `403 BOOKING_NOT_SETTLED`)
+- Rewrite: `rideshare-backend/test/contract/calls/calls-initiate.contract.spec.ts` (**exists** — already failing at baseline)
+
+**These four files encode the exact rule this task deletes.** They are shape-only
+contract specs (they assert response shapes, not live HTTP). Each must be turned
+into its inverse — contact is open, chat and call are always enabled, no
+`BOOKING_NOT_SETTLED` — not deleted, because they are the only regression net for
+the masking behaviour. Do not create new spec files beside the sources; this
+repo keeps its serializer and contract specs under `test/`.
 
 **Interfaces:**
 - Consumes: nothing.
@@ -1341,7 +1365,7 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 
 - [ ] **Step 1: Write the failing tests**
 
-Create `rideshare-backend/src/modules/bookings/serializers/booking-viewer.serializer.spec.ts`:
+Replace the body of `rideshare-backend/test/unit/booking-viewer-serializer.spec.ts` with this. Its current `settledAt`-based describe blocks are stale — they already fail at baseline because the serializer keys off `hasDriverPaidToContact`, not `settledAt`.
 
 ```typescript
 import { BookingViewerSerializer } from './booking-viewer.serializer';
@@ -1382,7 +1406,20 @@ describe('BookingViewerSerializer', () => {
 });
 ```
 
-Create `rideshare-backend/src/modules/calls/calls.service.spec.ts`. Read `calls.service.ts` first to mirror its constructor dependencies in the testing module, and to get the real name of the initiate method and its DTO:
+Then invert the three contract specs:
+
+- `test/contract/settlement/viewer-mask.contract.spec.ts` — replace the
+  UNSETTLED-masks-PII expectations with "every viewer sees the raw values and
+  `chatEnabled`/`callEnabled` are true", keeping the same five surfaces it sweeps
+  (booking detail, my-bookings, my-trips, chat preview, notification payload).
+- `test/contract/chat/chat-gating.contract.spec.ts` — replace the five
+  `BOOKING_NOT_SETTLED` cases with their inverses: REST returns 200/201 and the
+  WebSocket connection stays open for a confirmed booking regardless of payment.
+  Rename the describe to reflect that chat is ungated.
+- `test/contract/calls/calls-initiate.contract.spec.ts` — drop the
+  unpaid-booking rejection case and assert the call is initiated instead.
+
+Optionally add a focused unit spec at `rideshare-backend/src/modules/calls/calls.service.spec.ts` (does not exist). Read `calls.service.ts` first to mirror its constructor dependencies and the real name of the initiate method and its DTO:
 
 ```typescript
 it('allows a call on a confirmed booking that was never paid for', async () => {
