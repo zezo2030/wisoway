@@ -1672,14 +1672,10 @@
   "createTripShort": "Create trip",
   "newTrip": "New trip",
   "createNewTripSemantic": "Create new trip",
-  "tripFeeInvoiceTitle": "Trip Fee Invoice",
   "seatPrice": "Seat price",
   "seatsCountLabel": "Number of seats",
-  "feePercentage": "Fee percentage",
   "totalLabel": "Total",
   "tripFeeDeductExplanation": "The fee will be deducted from your wallet and the passenger details of this trip will be unlocked. The number of seats or bookings is not changed.",
-  "payFees": "Pay fees",
-  "tripFeePaidSuccess": "Trip fee paid successfully",
   "payingInProgress": "Paying...",
   "unknownLocation": "Unknown location",
   "tripFromToSemantic": "Trip from {from} to {to}",
@@ -1705,7 +1701,6 @@
   "toShort": "To",
   "perSeatSuffix": "/ seat",
   "seatsWord": "seats",
-  "tripFeePaidLabel": "Trip fee paid",
   "passengerDetailsTitle": "Passenger Details",
   "seatLabelWithValue": "Seat {seat}",
   "@seatLabelWithValue": {
@@ -1886,7 +1881,6 @@
     }
   },
   "freeTripAvailableExplanation": "You have a free trip available. A 100% discount will be applied to make the total 0.",
-  "tripFeeFullExplanation": "The payment covers the full trip fee and does not change the number of seats or bookings.",
   "hideTripTitle": "Hide Trip",
   "hideTripConfirm": "Are you sure you want to hide this trip?",
   "hideAction": "Hide",
@@ -1913,41 +1907,6 @@
   "freeTripAvailableShort": "Free trip available",
   "balanceFromPlatformWallet": "Balance from the platform wallet (unified wallet)",
   "tripFeeLabel": "Trip fee",
-  "tripFeeReady": "Trip fee invoice is ready",
-  "tripFeeBreakdownWithFreeTrip": "Fee: 5% × {seats} seats × {price} {currency}, free trip discount 100% = {amount} {currency}",
-  "@tripFeeBreakdownWithFreeTrip": {
-    "placeholders": {
-      "seats": {
-        "type": "int"
-      },
-      "price": {
-        "type": "String"
-      },
-      "currency": {
-        "type": "String"
-      },
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
-  "tripFeeBreakdown": "5% × {seats} seats × {price} {currency} = {amount} {currency}",
-  "@tripFeeBreakdown": {
-    "placeholders": {
-      "seats": {
-        "type": "int"
-      },
-      "price": {
-        "type": "String"
-      },
-      "currency": {
-        "type": "String"
-      },
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
   "applyFreeTrip": "Apply free trip",
   "pendingBookingsCard": "Pending bookings ({count})",
   "@pendingBookingsCard": {
@@ -1957,7 +1916,6 @@
       }
     }
   },
-  "confirmBookingUnlocksDetails": "Confirming the booking unlocks passenger details (free trip or one-time wallet deduction per trip)",
   "passengerFallback": "Passenger",
   "seatLabelShort": "Seat {seat}",
   "@seatLabelShort": {
@@ -1967,7 +1925,6 @@
       }
     }
   },
-  "chatAvailableAfterFee": "Chat and contact are available after paying the trip fee",
   "awaitingConfirmation": "Awaiting confirmation",
   "seatsWithValue": "Seats: {seat}",
   "@seatsWithValue": {
@@ -2578,7 +2535,8 @@
   "instantRequestCancelled": "Request cancelled",
   "instantNoDrivers": "We couldn't find a driver right now",
   "instantNoDriversSubtitle": "All nearby drivers may be busy, or none may be close to you.",
-  "instantNoDriversTip": "Tip: Try again in a few minutes; a nearby driver may become available.",
+  "instantNoDriversTip": "Tip: You can try again in a few minutes.",
+  "instantNoDriversTipKeepSearching": "We'll keep looking for you.",
   "instantNoDriversIllustrationLabel": "No driver found",
   "instantNeedHelp": "Need help?",
   "instantContactSupport": "Contact support",

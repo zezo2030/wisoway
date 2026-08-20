@@ -51,7 +51,6 @@ class _TripManagementScreenState extends State<TripManagementScreen>
   WalletAccountModel? _walletAccount;
   String _confirmingBookingId = '';
   String _rejectingBookingId = '';
-  bool _isPayingTripFee = false;
   Timer? _locationTrackingTimer;
   bool _locationDialogOpen = false;
   bool _markingArrived = false;
@@ -376,127 +375,6 @@ class _TripManagementScreenState extends State<TripManagementScreen>
   bool get _hasWalletSummary =>
       _wallet != null || _walletAccount != null;
 
-  double _baseTripFeeAmount(TripModel trip) {
-    return ((trip.price * trip.totalSeats * 0.05) * 100).round() / 100;
-  }
-
-  bool get _hasAvailableFreeTrip =>
-      _wallet != null && !_wallet!.hasUsedLifetimeFreeTrip;
-
-  double _tripFeeAmount(TripModel trip) {
-    if (_hasAvailableFreeTrip) return 0;
-    return _baseTripFeeAmount(trip);
-  }
-
-  Future<void> _showTripFeeInvoice(TripModel trip) async {
-    final baseAmount = _baseTripFeeAmount(trip);
-    final hasFreeTrip = _hasAvailableFreeTrip;
-    final amount = _tripFeeAmount(trip);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.l10n.tripFeeInvoiceTitle),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _invoiceRow(
-              context.l10n.seatPrice,
-              '${trip.price} ${trip.currency}',
-            ),
-            _invoiceRow(context.l10n.seatsCountLabel, '${trip.totalSeats}'),
-            _invoiceRow(context.l10n.feePercentage, '5%'),
-            if (hasFreeTrip)
-              _invoiceRow(
-                context.l10n.freeTripDiscountLabel,
-                context.l10n.freeTripDiscountValue(
-                  baseAmount.toStringAsFixed(2),
-                  trip.currency,
-                ),
-              ),
-            const Divider(height: 24),
-            _invoiceRow(
-              context.l10n.totalLabel,
-              '${amount.toStringAsFixed(2)} ${trip.currency}',
-              isTotal: true,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              hasFreeTrip
-                  ? context.l10n.freeTripAvailableExplanation
-                  : context.l10n.tripFeeFullExplanation,
-              style: AppTextStyles.bodySmall.copyWith(
-                color: T.textSecondary(context),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(context.l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(context.l10n.payFees),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      await _payTripFee(trip);
-    }
-  }
-
-  Widget _invoiceRow(String label, String value, {bool isTotal = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: AppTextStyles.bodyMedium.copyWith(
-                fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
-              ),
-            ),
-          ),
-          Text(
-            value,
-            style: AppTextStyles.bodyMedium.copyWith(
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _payTripFee(TripModel trip) async {
-    setState(() => _isPayingTripFee = true);
-    try {
-      await _paymentService.chargeDriverTrip(
-        tripId: trip.id,
-        idempotencyKey:
-            'driver-trip-fee:${trip.id}:${DateTime.now().millisecondsSinceEpoch}',
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.l10n.tripFeePaidSuccess),
-          backgroundColor: AppColors.success,
-        ),
-      );
-      await _loadTrip();
-      await _loadWallet();
-    } catch (e) {
-      if (!mounted) return;
-      ErrorSurface.showFailure(context, ApiClient.mapError(e));
-    } finally {
-      if (mounted) setState(() => _isPayingTripFee = false);
-    }
-  }
-
   Future<void> _hideTrip() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -749,10 +627,6 @@ class _TripManagementScreenState extends State<TripManagementScreen>
                   const SizedBox(height: 16),
 
                   _buildArrivedCard(_trip!),
-                  const SizedBox(height: 16),
-
-                  // Trip fee payment
-                  _buildTripFeePaymentCard(_trip!),
                   const SizedBox(height: 16),
 
                   // Trip Details Card
@@ -1046,121 +920,12 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     );
   }
 
-  Widget _buildTripFeePaymentCard(TripModel trip) {
-    final isPaid = trip.communicationFeeStatus == 'paid';
-    final hasFreeTrip = _hasAvailableFreeTrip;
-    final amount = _tripFeeAmount(trip);
-    return SectionCard(
-      title: context.l10n.tripFeeLabel,
-      icon: Icons.receipt_long_outlined,
-      iconColor: isPaid ? AppColors.success : AppColors.warning,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: (isPaid ? AppColors.success : AppColors.warning)
-                    .withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                isPaid ? IconsaxPlusBold.tick_circle : IconsaxPlusBold.wallet_1,
-                color: isPaid ? AppColors.success : AppColors.warning,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isPaid
-                        ? context.l10n.tripFeePaidLabel
-                        : context.l10n.tripFeeReady,
-                    style: AppTextStyles.bodyLarge.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: T.onSurface(context),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    hasFreeTrip
-                        ? context.l10n.tripFeeBreakdownWithFreeTrip(
-                            trip.totalSeats,
-                            '${trip.price}',
-                            trip.currency,
-                            amount.toStringAsFixed(2),
-                          )
-                        : context.l10n.tripFeeBreakdown(
-                            trip.totalSeats,
-                            '${trip.price}',
-                            trip.currency,
-                            amount.toStringAsFixed(2),
-                          ),
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: T.textSecondary(context),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        if (!isPaid) ...[
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _isPayingTripFee
-                  ? null
-                  : () => _showTripFeeInvoice(trip),
-              icon: _isPayingTripFee
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.white,
-                      ),
-                    )
-                  : const Icon(IconsaxPlusBold.wallet_1),
-              label: Text(
-                _isPayingTripFee
-                    ? context.l10n.payingInProgress
-                    : hasFreeTrip
-                    ? context.l10n.applyFreeTrip
-                    : context.l10n.payFees,
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.success,
-                foregroundColor: AppColors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
   Widget _buildPendingBookingsCard(List<BookingModel> pendingBookings) {
     return SectionCard(
       title: context.l10n.pendingBookingsCard(pendingBookings.length),
       icon: IconsaxPlusBold.clock,
       iconColor: AppColors.warning,
       children: [
-        Text(
-          context.l10n.confirmBookingUnlocksDetails,
-          style: AppTextStyles.bodySmall.copyWith(
-            color: T.textSecondary(context),
-          ),
-        ),
-        const SizedBox(height: 16),
         ...pendingBookings.map((b) => _buildPendingBookingItem(b)),
       ],
     );
@@ -1170,14 +935,11 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     final isConfirming = _confirmingBookingId == booking.id;
     final isRejecting = _rejectingBookingId == booking.id;
     final seatText = booking.seatSummary.isNotEmpty ? booking.seatSummary : '-';
-    final canOpenPassengerDetails =
-        booking.hasDriverPaidToContact && booking.userPopulated != null;
+    final canOpenPassengerDetails = booking.userPopulated != null;
     final titleText = canOpenPassengerDetails
         ? (booking.userPopulated?.name ?? context.l10n.passengerFallback)
         : context.l10n.seatLabelShort(seatText);
-    final subtitleText = canOpenPassengerDetails
-        ? context.l10n.chatAvailableAfterFee
-        : context.l10n.awaitingConfirmation;
+    final subtitleText = context.l10n.awaitingConfirmation;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -2172,17 +1934,12 @@ class _TripManagementScreenState extends State<TripManagementScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Show passenger name only if driver has paid to contact
                   Text(
-                    booking.hasDriverPaidToContact
-                        ? (booking.userPopulated?.name ??
-                            context.l10n.passengerFallback)
-                        : context.l10n.anonymousPassenger,
+                    booking.userPopulated?.name ??
+                        context.l10n.passengerFallback,
                     style: AppTextStyles.titleSmall.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: booking.hasDriverPaidToContact
-                          ? T.onSurface(context).withValues(alpha: 0.87)
-                          : T.textSecondary(context),
+                      color: T.onSurface(context).withValues(alpha: 0.87),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -2206,8 +1963,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
                       ),
                     ],
                   ),
-                  if (booking.hasDriverPaidToContact &&
-                      booking.sharePhoneWithDriver) ...[
+                  if (booking.sharePhoneWithDriver) ...[
                     const SizedBox(height: 4),
                     Row(
                       children: [

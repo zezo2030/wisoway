@@ -1672,14 +1672,10 @@
   "createTripShort": "إنشاء رحلة",
   "newTrip": "رحلة جديدة",
   "createNewTripSemantic": "إنشاء رحلة جديدة",
-  "tripFeeInvoiceTitle": "فاتورة رسوم الرحلة",
   "seatPrice": "سعر المقعد",
   "seatsCountLabel": "عدد المقاعد",
-  "feePercentage": "نسبة الرسوم",
   "totalLabel": "الإجمالي",
   "tripFeeDeductExplanation": "سيتم خصم الرسوم من محفظتك وفتح بيانات ركاب هذه الرحلة. لا يتم تغيير عدد المقاعد أو الحجوزات.",
-  "payFees": "دفع الرسوم",
-  "tripFeePaidSuccess": "تم دفع رسوم الرحلة بنجاح",
   "payingInProgress": "جاري الدفع...",
   "unknownLocation": "موقع غير معروف",
   "tripFromToSemantic": "رحلة من {from} إلى {to}",
@@ -1705,7 +1701,6 @@
   "toShort": "إلى",
   "perSeatSuffix": "/ مقعد",
   "seatsWord": "مقاعد",
-  "tripFeePaidLabel": "رسوم الرحلة مدفوعة",
   "passengerDetailsTitle": "تفاصيل الراكب",
   "seatLabelWithValue": "مقعد {seat}",
   "@seatLabelWithValue": {
@@ -1886,7 +1881,6 @@
     }
   },
   "freeTripAvailableExplanation": "لديك رحلة مجانية متاحة. سيتم تطبيق خصم 100% ليصبح الإجمالي 0.",
-  "tripFeeFullExplanation": "الدفع يخص رسوم الرحلة كاملة ولا يغير عدد المقاعد أو الحجوزات.",
   "hideTripTitle": "إخفاء الرحلة",
   "hideTripConfirm": "هل أنت متأكد من إخفاء هذه الرحلة؟",
   "hideAction": "إخفاء",
@@ -1913,41 +1907,6 @@
   "freeTripAvailableShort": "رحلة مجانية متاحة",
   "balanceFromPlatformWallet": "الرصيد من محفظة المنصة (المحفظة الموحدة)",
   "tripFeeLabel": "رسوم الرحلة",
-  "tripFeeReady": "فاتورة رسوم الرحلة جاهزة",
-  "tripFeeBreakdownWithFreeTrip": "الرسوم: 5% × {seats} مقاعد × {price} {currency}، خصم رحلة مجانية 100% = {amount} {currency}",
-  "@tripFeeBreakdownWithFreeTrip": {
-    "placeholders": {
-      "seats": {
-        "type": "int"
-      },
-      "price": {
-        "type": "String"
-      },
-      "currency": {
-        "type": "String"
-      },
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
-  "tripFeeBreakdown": "5% × {seats} مقاعد × {price} {currency} = {amount} {currency}",
-  "@tripFeeBreakdown": {
-    "placeholders": {
-      "seats": {
-        "type": "int"
-      },
-      "price": {
-        "type": "String"
-      },
-      "currency": {
-        "type": "String"
-      },
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
   "applyFreeTrip": "تطبيق الرحلة المجانية",
   "pendingBookingsCard": "حجوزات قيد التأكيد ({count})",
   "@pendingBookingsCard": {
@@ -1957,7 +1916,6 @@
       }
     }
   },
-  "confirmBookingUnlocksDetails": "تأكيد الحجز يفتح بيانات الراكب (رحلة مجانية أو خصم من المحفظة مرة واحدة للرحلة)",
   "passengerFallback": "راكب",
   "seatLabelShort": "مقعد {seat}",
   "@seatLabelShort": {
@@ -1967,7 +1925,6 @@
       }
     }
   },
-  "chatAvailableAfterFee": "المحادثة والتواصل متاحان بعد دفع رسوم الرحلة",
   "awaitingConfirmation": "بانتظار التأكيد",
   "seatsWithValue": "المقاعد: {seat}",
   "@seatsWithValue": {
@@ -2595,7 +2552,8 @@
   "instantRequestCancelled": "أُلغي الطلب",
   "instantNoDrivers": "لم نتمكن من العثور على سائق حاليًا",
   "instantNoDriversSubtitle": "قد يكون جميع السائقين مشغولين أو لا يوجد سائق قريب منك.",
-  "instantNoDriversTip": "نصيحة: أعد المحاولة بعد بضع دقائق؛ قد يتوفر سائق قريب منك.",
+  "instantNoDriversTip": "نصيحة: يمكنك المحاولة مرة أخرى بعد دقائق.",
+  "instantNoDriversTipKeepSearching": "وسنستمر بالبحث لك.",
   "instantNoDriversIllustrationLabel": "لم يتم العثور على سائق",
   "instantNeedHelp": "تحتاج مساعدة؟",
   "instantContactSupport": "تواصل مع الدعم",

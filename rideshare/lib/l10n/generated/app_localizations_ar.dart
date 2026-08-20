@@ -2557,16 +2557,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get createNewTripSemantic => 'إنشاء رحلة جديدة';
 
   @override
-  String get tripFeeInvoiceTitle => 'فاتورة رسوم الرحلة';
-
-  @override
   String get seatPrice => 'سعر المقعد';
 
   @override
   String get seatsCountLabel => 'عدد المقاعد';
-
-  @override
-  String get feePercentage => 'نسبة الرسوم';
 
   @override
   String get totalLabel => 'الإجمالي';
@@ -2574,12 +2568,6 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get tripFeeDeductExplanation =>
       'سيتم خصم الرسوم من محفظتك وفتح بيانات ركاب هذه الرحلة. لا يتم تغيير عدد المقاعد أو الحجوزات.';
-
-  @override
-  String get payFees => 'دفع الرسوم';
-
-  @override
-  String get tripFeePaidSuccess => 'تم دفع رسوم الرحلة بنجاح';
 
   @override
   String get payingInProgress => 'جاري الدفع...';
@@ -2627,9 +2615,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get seatsWord => 'مقاعد';
-
-  @override
-  String get tripFeePaidLabel => 'رسوم الرحلة مدفوعة';
 
   @override
   String get passengerDetailsTitle => 'تفاصيل الراكب';
@@ -2925,10 +2910,6 @@ class AppLocalizationsAr extends AppLocalizations {
       'لديك رحلة مجانية متاحة. سيتم تطبيق خصم 100% ليصبح الإجمالي 0.';
 
   @override
-  String get tripFeeFullExplanation =>
-      'الدفع يخص رسوم الرحلة كاملة ولا يغير عدد المقاعد أو الحجوزات.';
-
-  @override
   String get hideTripTitle => 'إخفاء الرحلة';
 
   @override
@@ -2981,29 +2962,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get tripFeeLabel => 'رسوم الرحلة';
 
   @override
-  String get tripFeeReady => 'فاتورة رسوم الرحلة جاهزة';
-
-  @override
-  String tripFeeBreakdownWithFreeTrip(
-    int seats,
-    String price,
-    String currency,
-    String amount,
-  ) {
-    return 'الرسوم: 5% × $seats مقاعد × $price $currency، خصم رحلة مجانية 100% = $amount $currency';
-  }
-
-  @override
-  String tripFeeBreakdown(
-    int seats,
-    String price,
-    String currency,
-    String amount,
-  ) {
-    return '5% × $seats مقاعد × $price $currency = $amount $currency';
-  }
-
-  @override
   String get applyFreeTrip => 'تطبيق الرحلة المجانية';
 
   @override
@@ -3012,20 +2970,12 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get confirmBookingUnlocksDetails =>
-      'تأكيد الحجز يفتح بيانات الراكب (رحلة مجانية أو خصم من المحفظة مرة واحدة للرحلة)';
-
-  @override
   String get passengerFallback => 'راكب';
 
   @override
   String seatLabelShort(String seat) {
     return 'مقعد $seat';
   }
-
-  @override
-  String get chatAvailableAfterFee =>
-      'المحادثة والتواصل متاحان بعد دفع رسوم الرحلة';
 
   @override
   String get awaitingConfirmation => 'بانتظار التأكيد';
@@ -4150,8 +4100,10 @@ class AppLocalizationsAr extends AppLocalizations {
       'قد يكون جميع السائقين مشغولين أو لا يوجد سائق قريب منك.';
 
   @override
-  String get instantNoDriversTip =>
-      'نصيحة: أعد المحاولة بعد بضع دقائق؛ قد يتوفر سائق قريب منك.';
+  String get instantNoDriversTip => 'نصيحة: يمكنك المحاولة مرة أخرى بعد دقائق.';
+
+  @override
+  String get instantNoDriversTipKeepSearching => 'وسنستمر بالبحث لك.';
 
   @override
   String get instantNoDriversIllustrationLabel => 'لم يتم العثور على سائق';

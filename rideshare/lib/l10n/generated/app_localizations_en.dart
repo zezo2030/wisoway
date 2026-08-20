@@ -2596,16 +2596,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get createNewTripSemantic => 'Create new trip';
 
   @override
-  String get tripFeeInvoiceTitle => 'Trip Fee Invoice';
-
-  @override
   String get seatPrice => 'Seat price';
 
   @override
   String get seatsCountLabel => 'Number of seats';
-
-  @override
-  String get feePercentage => 'Fee percentage';
 
   @override
   String get totalLabel => 'Total';
@@ -2613,12 +2607,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get tripFeeDeductExplanation =>
       'The fee will be deducted from your wallet and the passenger details of this trip will be unlocked. The number of seats or bookings is not changed.';
-
-  @override
-  String get payFees => 'Pay fees';
-
-  @override
-  String get tripFeePaidSuccess => 'Trip fee paid successfully';
 
   @override
   String get payingInProgress => 'Paying...';
@@ -2666,9 +2654,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get seatsWord => 'seats';
-
-  @override
-  String get tripFeePaidLabel => 'Trip fee paid';
 
   @override
   String get passengerDetailsTitle => 'Passenger Details';
@@ -2968,10 +2953,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'You have a free trip available. A 100% discount will be applied to make the total 0.';
 
   @override
-  String get tripFeeFullExplanation =>
-      'The payment covers the full trip fee and does not change the number of seats or bookings.';
-
-  @override
   String get hideTripTitle => 'Hide Trip';
 
   @override
@@ -3024,29 +3005,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tripFeeLabel => 'Trip fee';
 
   @override
-  String get tripFeeReady => 'Trip fee invoice is ready';
-
-  @override
-  String tripFeeBreakdownWithFreeTrip(
-    int seats,
-    String price,
-    String currency,
-    String amount,
-  ) {
-    return 'Fee: 5% × $seats seats × $price $currency, free trip discount 100% = $amount $currency';
-  }
-
-  @override
-  String tripFeeBreakdown(
-    int seats,
-    String price,
-    String currency,
-    String amount,
-  ) {
-    return '5% × $seats seats × $price $currency = $amount $currency';
-  }
-
-  @override
   String get applyFreeTrip => 'Apply free trip';
 
   @override
@@ -3055,20 +3013,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get confirmBookingUnlocksDetails =>
-      'Confirming the booking unlocks passenger details (free trip or one-time wallet deduction per trip)';
-
-  @override
   String get passengerFallback => 'Passenger';
 
   @override
   String seatLabelShort(String seat) {
     return 'Seat $seat';
   }
-
-  @override
-  String get chatAvailableAfterFee =>
-      'Chat and contact are available after paying the trip fee';
 
   @override
   String get awaitingConfirmation => 'Awaiting confirmation';
@@ -4205,8 +4155,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'All nearby drivers may be busy, or none may be close to you.';
 
   @override
-  String get instantNoDriversTip =>
-      'Tip: Try again in a few minutes; a nearby driver may become available.';
+  String get instantNoDriversTip => 'Tip: You can try again in a few minutes.';
+
+  @override
+  String get instantNoDriversTipKeepSearching => 'We\'ll keep looking for you.';
 
   @override
   String get instantNoDriversIllustrationLabel => 'No driver found';

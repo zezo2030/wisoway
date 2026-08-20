@@ -44,9 +44,7 @@ class _PassengerDetailsScreenState extends State<PassengerDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final user = _booking.userPopulated;
-    // Communication-fee reveal: once the driver pays the trip unlock fee,
-    // passenger details and chat are available even while the booking is pending.
-    final hasData = _booking.hasDriverPaidToContact && user != null;
+    final hasData = user != null;
 
     return Scaffold(
       appBar: AppBar(

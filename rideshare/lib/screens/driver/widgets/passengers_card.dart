@@ -69,15 +69,10 @@ class _PassengerItem extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    booking.hasDriverPaidToContact
-                        ? (booking.userPopulated?.name ??
-                              context.l10n.passengerLabel)
-                        : context.l10n.anonymousPassenger,
+                    booking.userPopulated?.name ?? context.l10n.passengerLabel,
                     style: AppTextStyles.titleSmall.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: booking.hasDriverPaidToContact
-                          ? AppColors.slate800
-                          : AppColors.slate400,
+                      color: AppColors.slate800,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -95,8 +90,7 @@ class _PassengerItem extends StatelessWidget {
                           color: AppColors.slate400,
                         ),
                       ),
-                      if (booking.hasDriverPaidToContact &&
-                          booking.sharePhoneWithDriver) ...[
+                      if (booking.sharePhoneWithDriver) ...[
                         const SizedBox(width: 12),
                         const Icon(
                           IconsaxPlusLinear.call,

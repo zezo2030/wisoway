@@ -4892,12 +4892,6 @@ abstract class AppLocalizations {
   /// **'إنشاء رحلة جديدة'**
   String get createNewTripSemantic;
 
-  /// No description provided for @tripFeeInvoiceTitle.
-  ///
-  /// In ar, this message translates to:
-  /// **'فاتورة رسوم الرحلة'**
-  String get tripFeeInvoiceTitle;
-
   /// No description provided for @seatPrice.
   ///
   /// In ar, this message translates to:
@@ -4910,12 +4904,6 @@ abstract class AppLocalizations {
   /// **'عدد المقاعد'**
   String get seatsCountLabel;
 
-  /// No description provided for @feePercentage.
-  ///
-  /// In ar, this message translates to:
-  /// **'نسبة الرسوم'**
-  String get feePercentage;
-
   /// No description provided for @totalLabel.
   ///
   /// In ar, this message translates to:
@@ -4927,18 +4915,6 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'سيتم خصم الرسوم من محفظتك وفتح بيانات ركاب هذه الرحلة. لا يتم تغيير عدد المقاعد أو الحجوزات.'**
   String get tripFeeDeductExplanation;
-
-  /// No description provided for @payFees.
-  ///
-  /// In ar, this message translates to:
-  /// **'دفع الرسوم'**
-  String get payFees;
-
-  /// No description provided for @tripFeePaidSuccess.
-  ///
-  /// In ar, this message translates to:
-  /// **'تم دفع رسوم الرحلة بنجاح'**
-  String get tripFeePaidSuccess;
 
   /// No description provided for @payingInProgress.
   ///
@@ -5029,12 +5005,6 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'مقاعد'**
   String get seatsWord;
-
-  /// No description provided for @tripFeePaidLabel.
-  ///
-  /// In ar, this message translates to:
-  /// **'رسوم الرحلة مدفوعة'**
-  String get tripFeePaidLabel;
 
   /// No description provided for @passengerDetailsTitle.
   ///
@@ -5552,12 +5522,6 @@ abstract class AppLocalizations {
   /// **'لديك رحلة مجانية متاحة. سيتم تطبيق خصم 100% ليصبح الإجمالي 0.'**
   String get freeTripAvailableExplanation;
 
-  /// No description provided for @tripFeeFullExplanation.
-  ///
-  /// In ar, this message translates to:
-  /// **'الدفع يخص رسوم الرحلة كاملة ولا يغير عدد المقاعد أو الحجوزات.'**
-  String get tripFeeFullExplanation;
-
   /// No description provided for @hideTripTitle.
   ///
   /// In ar, this message translates to:
@@ -5654,34 +5618,6 @@ abstract class AppLocalizations {
   /// **'رسوم الرحلة'**
   String get tripFeeLabel;
 
-  /// No description provided for @tripFeeReady.
-  ///
-  /// In ar, this message translates to:
-  /// **'فاتورة رسوم الرحلة جاهزة'**
-  String get tripFeeReady;
-
-  /// No description provided for @tripFeeBreakdownWithFreeTrip.
-  ///
-  /// In ar, this message translates to:
-  /// **'الرسوم: 5% × {seats} مقاعد × {price} {currency}، خصم رحلة مجانية 100% = {amount} {currency}'**
-  String tripFeeBreakdownWithFreeTrip(
-    int seats,
-    String price,
-    String currency,
-    String amount,
-  );
-
-  /// No description provided for @tripFeeBreakdown.
-  ///
-  /// In ar, this message translates to:
-  /// **'5% × {seats} مقاعد × {price} {currency} = {amount} {currency}'**
-  String tripFeeBreakdown(
-    int seats,
-    String price,
-    String currency,
-    String amount,
-  );
-
   /// No description provided for @applyFreeTrip.
   ///
   /// In ar, this message translates to:
@@ -5694,12 +5630,6 @@ abstract class AppLocalizations {
   /// **'حجوزات قيد التأكيد ({count})'**
   String pendingBookingsCard(int count);
 
-  /// No description provided for @confirmBookingUnlocksDetails.
-  ///
-  /// In ar, this message translates to:
-  /// **'تأكيد الحجز يفتح بيانات الراكب (رحلة مجانية أو خصم من المحفظة مرة واحدة للرحلة)'**
-  String get confirmBookingUnlocksDetails;
-
   /// No description provided for @passengerFallback.
   ///
   /// In ar, this message translates to:
@@ -5711,12 +5641,6 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'مقعد {seat}'**
   String seatLabelShort(String seat);
-
-  /// No description provided for @chatAvailableAfterFee.
-  ///
-  /// In ar, this message translates to:
-  /// **'المحادثة والتواصل متاحان بعد دفع رسوم الرحلة'**
-  String get chatAvailableAfterFee;
 
   /// No description provided for @awaitingConfirmation.
   ///
@@ -7725,8 +7649,14 @@ abstract class AppLocalizations {
   /// No description provided for @instantNoDriversTip.
   ///
   /// In ar, this message translates to:
-  /// **'نصيحة: أعد المحاولة بعد بضع دقائق؛ قد يتوفر سائق قريب منك.'**
+  /// **'نصيحة: يمكنك المحاولة مرة أخرى بعد دقائق.'**
   String get instantNoDriversTip;
+
+  /// No description provided for @instantNoDriversTipKeepSearching.
+  ///
+  /// In ar, this message translates to:
+  /// **'وسنستمر بالبحث لك.'**
+  String get instantNoDriversTipKeepSearching;
 
   /// No description provided for @instantNoDriversIllustrationLabel.
   ///
