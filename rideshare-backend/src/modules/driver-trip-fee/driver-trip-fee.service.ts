@@ -11,9 +11,10 @@
  */
 import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import {
   BookingEntity,
+  PendingChargeEntity,
   TripEntity,
   UserEntity,
   WalletAccountEntity,
@@ -76,6 +77,8 @@ export class DriverTripFeeService {
     private readonly walletAccountRepo: Repository<WalletAccountEntity>,
     @InjectRepository(WalletTransactionEntity)
     private readonly walletTxRepo: Repository<WalletTransactionEntity>,
+    @InjectRepository(PendingChargeEntity)
+    private readonly pendingChargeRepo: Repository<PendingChargeEntity>,
     private readonly dataSource: DataSource,
     private readonly walletService: WalletService,
     private readonly pendingCharges: PendingChargesService,
@@ -137,9 +140,19 @@ export class DriverTripFeeService {
   /**
    * The one and only debit. Called when the trip flips to IN_PROGRESS.
    *
-   * Idempotent by trip.driverWalletChargeApplied, so a replayed BullMQ job or a
-   * reconciliation sweep cannot double-charge. Never throws for a business
-   * reason — the caller must be able to start the trip regardless.
+   * Idempotent at three layers, so a replayed BullMQ job, a reconciliation
+   * sweep, or two of them racing cannot double-charge:
+   *   1. trip.driverWalletChargeApplied — the cheap in-row stamp;
+   *   2. a read of the audit row keyed trip-fee:<tripId>, covering the window
+   *      where the ledger committed but the stamp did not;
+   *   3. the unique index behind that key, which catches the racing caller who
+   *      passed layer 2 before the winner committed. That loser converges on
+   *      the winner's row rather than propagating the violation.
+   *
+   * Never throws for a business reason — not for a lost race, not for a failed
+   * stamp, not for a failed shortfall insert. The caller must be able to start
+   * the trip regardless. When the debt could not be recorded the trip is left
+   * unstamped on purpose, so the sweep comes back and repairs it.
    */
   async chargeAtTripStart(trip: TripEntity): Promise<TripFeeChargeResult> {
     const quote = await this.computeExpectedFee({
@@ -169,16 +182,11 @@ export class DriverTripFeeService {
       where: { idempotencyKey: this.tripFeeIdempotencyKey(trip.id) },
     });
     if (existingCharge) {
-      const alreadyCharged = Number(existingCharge.amount ?? 0);
-      await this.stampTripCharged(trip, alreadyCharged);
-      return {
-        tripId: trip.id,
-        charged: alreadyCharged,
-        pendingRemainder: 0,
-        currency: quote.currency,
-        applied: false,
-        reason: 'already-charged',
-      };
+      return this.convergeOnExistingCharge(
+        trip,
+        existingCharge,
+        quote.currency,
+      );
     }
 
     // The auto-start processor flips confirmed bookings to IN_PROGRESS before
@@ -198,7 +206,7 @@ export class DriverTripFeeService {
       formula: 'seatPrice * totalSeats * percent%',
     };
 
-    const outcome = await this.dataSource.transaction(async (manager) => {
+    const runLedger = async (manager: EntityManager) => {
       const driver = await manager.findOne(UserEntity, {
         where: { id: trip.driverId },
         lock: { mode: 'pessimistic_write' },
@@ -258,7 +266,15 @@ export class DriverTripFeeService {
       }
 
       if (!account) {
-        return { charged: 0, remainder: quote.amount, reason: undefined };
+        // No ledger row means no audit row can be written (accountId is NOT
+        // NULL), so a retry could not be deduplicated. Recording a charge here
+        // would double-record on the next sweep, so we record nothing and
+        // shout instead.
+        this.logger.error(
+          `Trip ${trip.id}: driver ${trip.driverId} has no DRIVER wallet account; ` +
+            `fee of ${quote.amount.toFixed(2)} ${quote.currency} could not be charged`,
+        );
+        return { charged: 0, remainder: 0, reason: undefined };
       }
 
       const available = Math.max(Number(account.balance), 0);
@@ -288,18 +304,37 @@ export class DriverTripFeeService {
       });
 
       return { charged, remainder, reason: undefined };
-    });
+    };
 
-    if (outcome.remainder > 0) {
-      await this.pendingCharges.record({
-        userId: trip.driverId,
-        kind: PendingChargeKind.DRIVER_TRIP_FEE,
-        amount: outcome.remainder,
-        tripId: trip.id,
-      });
+    let outcome: {
+      charged: number;
+      remainder: number;
+      reason?: 'no-bookings' | 'free-trip';
+    };
+    try {
+      outcome = await this.dataSource.transaction(runLedger);
+    } catch (err) {
+      // Layer 3: a concurrent caller passed the guard above before the winner
+      // committed, and lost on the unique index. The rollback already undid
+      // this side's balance mutation, so converge on the winner's row.
+      const winner = this.isDuplicateKeyError(err)
+        ? await this.walletTxRepo.findOne({
+            where: { idempotencyKey: this.tripFeeIdempotencyKey(trip.id) },
+          })
+        : null;
+      if (!winner) throw err;
+      this.logger.warn(
+        `Trip ${trip.id} fee: lost the race to a concurrent charge, converging on the committed row`,
+      );
+      return this.convergeOnExistingCharge(trip, winner, quote.currency);
     }
 
-    await this.stampTripCharged(trip, outcome.charged);
+    // Only stamp once the debt is safely on file. If the insert failed, leaving
+    // the trip unstamped is what brings the sweep back to repair it.
+    const debtRecorded = await this.settleShortfall(trip, outcome.remainder);
+    if (debtRecorded) {
+      await this.stampTripCharged(trip, outcome.charged);
+    }
 
     this.logger.log(
       `Trip ${trip.id} fee: charged ${outcome.charged.toFixed(2)} ${quote.currency}` +
@@ -336,18 +371,104 @@ export class DriverTripFeeService {
     trip.driverWalletChargeAt = now;
     trip.communicationFeeStatus = 'paid';
     trip.capturedFeeAmount = charged.toFixed(2);
-    await this.tripRepo.save(trip);
 
-    await this.bookingRepo.update(
-      {
-        tripId: trip.id,
-        status: In([
-          BookingStatus.PENDING,
-          BookingStatus.CONFIRMED,
-          BookingStatus.IN_PROGRESS,
-        ]),
-      },
-      { hasDriverPaidToContact: true },
+    try {
+      await this.tripRepo.save(trip);
+      await this.bookingRepo.update(
+        {
+          tripId: trip.id,
+          status: In([
+            BookingStatus.PENDING,
+            BookingStatus.CONFIRMED,
+            BookingStatus.IN_PROGRESS,
+          ]),
+        },
+        { hasDriverPaidToContact: true },
+      );
+    } catch (err) {
+      // The money is already correct and the trip must be able to start, so
+      // this never propagates. Roll the in-memory flags back so a caller that
+      // saves this entity later does not persist a stamp the DB rejected; the
+      // sweep re-reads the trip and converges on the audit row.
+      trip.driverWalletChargeApplied = false;
+      trip.driverWalletChargeAt = null;
+      this.logger.error(
+        `Trip ${trip.id}: fee captured but the audit stamp failed — reconciliation will retry: ${(err as Error).message}`,
+      );
+    }
+  }
+
+  /**
+   * Converge on an audit row this trip already has: move no money, make sure
+   * the shortfall it recorded is still owed somewhere, and stamp the trip.
+   */
+  private async convergeOnExistingCharge(
+    trip: TripEntity,
+    existing: WalletTransactionEntity,
+    currency: string,
+  ): Promise<TripFeeChargeResult> {
+    const charged = Number(existing.amount ?? 0);
+    const shortfall = this.round2(Number(existing.metadata?.shortfall ?? 0));
+
+    // The ledger and the PendingCharge insert are not atomic with each other,
+    // so a crash between them leaves a debt with nothing to collect it. The
+    // audit row's shortfall is the only surviving evidence — re-record it.
+    if (await this.settleShortfall(trip, shortfall)) {
+      await this.stampTripCharged(trip, charged);
+    }
+
+    return {
+      tripId: trip.id,
+      charged,
+      pendingRemainder: shortfall,
+      currency,
+      applied: false,
+      reason: 'already-charged',
+    };
+  }
+
+  /**
+   * Puts the shortfall on file exactly once. Returns false when it could not
+   * be recorded, which tells the caller to leave the trip unstamped so the
+   * reconciliation sweep comes back for it.
+   */
+  private async settleShortfall(
+    trip: TripEntity,
+    amount: number,
+  ): Promise<boolean> {
+    if (amount <= 0) return true;
+    try {
+      // PendingChargesService.record has no dedupe of its own, so the
+      // existence check has to live here.
+      const existing = await this.pendingChargeRepo.findOne({
+        where: { tripId: trip.id, kind: PendingChargeKind.DRIVER_TRIP_FEE },
+      });
+      if (!existing) {
+        await this.pendingCharges.record({
+          userId: trip.driverId,
+          kind: PendingChargeKind.DRIVER_TRIP_FEE,
+          amount,
+          tripId: trip.id,
+        });
+      }
+      return true;
+    } catch (err) {
+      this.logger.error(
+        `Trip ${trip.id}: could not record the ${amount.toFixed(2)} shortfall, ` +
+          `leaving the trip unstamped so reconciliation repairs it: ${(err as Error).message}`,
+      );
+      return false;
+    }
+  }
+
+  /** Postgres unique-violation, however TypeORM happens to wrap it. */
+  private isDuplicateKeyError(err: unknown): boolean {
+    const e = err as { code?: string; driverError?: { code?: string } };
+    if ((e?.driverError?.code ?? e?.code) === '23505') return true;
+    const message = (err as Error)?.message ?? '';
+    return (
+      message.includes('duplicate key value') ||
+      message.includes('wallet_tx_idempotency_idx')
     );
   }
 

@@ -1,15 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, Logger } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import {
   BookingEntity,
+  PendingChargeEntity,
   TripEntity,
   UserEntity,
   WalletAccountEntity,
   WalletAccountType,
   WalletTransactionEntity,
 } from '../../database/entities';
+import { BookingStatus } from '../../database/entities/booking.entity';
 import { PendingChargeKind } from '../../database/entities/pending-charge.entity';
 import { TripStatus } from '../../database/entities/shared.enums';
 import { PlatformPricingService } from '../payments/platform-pricing.service';
@@ -42,6 +44,7 @@ describe('DriverTripFeeService — quoting and publish guard', () => {
         { provide: getRepositoryToken(TripEntity), useValue: {} },
         { provide: getRepositoryToken(BookingEntity), useValue: {} },
         { provide: getRepositoryToken(UserEntity), useValue: {} },
+        { provide: getRepositoryToken(PendingChargeEntity), useValue: {} },
         { provide: getRepositoryToken(WalletAccountEntity), useValue: {} },
         { provide: getRepositoryToken(WalletTransactionEntity), useValue: {} },
       ],
@@ -136,6 +139,10 @@ describe('DriverTripFeeService.chargeAtTripStart', () => {
   let confirmedBookings: any[];
   let pendingCharges: { record: jest.Mock };
   let tripSaveShouldFail: boolean;
+  let recordedCharges: any[];
+  let blindTxLookups: number;
+  let lockedAccounts: any[];
+  let loggedErrors: jest.SpyInstance;
 
   const trip = () =>
     ({
@@ -159,22 +166,46 @@ describe('DriverTripFeeService.chargeAtTripStart', () => {
     driver = { id: 'driver-1', hasUsedLifetimeFreeTrip: true };
     savedTxs = [];
     savedTrips = [];
-    confirmedBookings = [{ id: 'b-1' }, { id: 'b-2' }];
-    pendingCharges = { record: jest.fn().mockResolvedValue({ id: 'pc-1' }) };
+    confirmedBookings = [
+      { id: 'b-1', status: BookingStatus.CONFIRMED },
+      { id: 'b-2', status: BookingStatus.IN_PROGRESS },
+    ];
     tripSaveShouldFail = false;
+    recordedCharges = [];
+    blindTxLookups = 0;
+    lockedAccounts = [account];
+    // Several tests drive failure paths on purpose; keep the run's output clean
+    // while still being able to assert the service shouted.
+    loggedErrors = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    pendingCharges = {
+      record: jest.fn().mockImplementation(async (params: any) => {
+        const row = { id: `pc-${recordedCharges.length + 1}`, ...params };
+        recordedCharges.push(row);
+        return row;
+      }),
+    };
+
+    // Honours where.status, so dropping a status from the service's filter
+    // actually changes what comes back.
+    const findBookings = ({ where }: any) => {
+      const wanted = where?.status?.value ?? [];
+      return confirmedBookings.filter((b: any) => wanted.includes(b.status));
+    };
 
     const manager = {
       createQueryBuilder: () => ({
         setLock: () => ({
           where: () => ({
             andWhere: () => ({
-              orderBy: () => ({ getMany: async () => [account] }),
+              orderBy: () => ({ getMany: async () => lockedAccounts }),
             }),
           }),
         }),
       }),
       findOne: async (entity: any) => (entity === UserEntity ? driver : null),
-      find: async () => confirmedBookings,
+      find: async (_entity: any, options: any) => findBookings(options ?? {}),
       create: (_entity: any, data: any) => ({ ...data }),
       save: async (entity: any, obj?: any) => {
         const row = obj ?? entity;
@@ -194,8 +225,26 @@ describe('DriverTripFeeService.chargeAtTripStart', () => {
       update: async () => ({ affected: 1 }),
     };
 
+    // A real transaction rolls back. The unique-index failure undoing the
+    // balance mutation is the only thing preventing a concurrent double-debit,
+    // so the fake has to model it or that property is untestable.
     const dataSource = {
-      transaction: async (cb: any) => cb(manager),
+      transaction: async (cb: any) => {
+        const snapshot = {
+          balance: account.balance,
+          txs: [...savedTxs],
+          freeTrip: driver.hasUsedLifetimeFreeTrip,
+        };
+        try {
+          return await cb(manager);
+        } catch (err) {
+          account.balance = snapshot.balance;
+          savedTxs.length = 0;
+          savedTxs.push(...snapshot.txs);
+          driver.hasUsedLifetimeFreeTrip = snapshot.freeTrip;
+          throw err;
+        }
+      },
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -233,18 +282,37 @@ describe('DriverTripFeeService.chargeAtTripStart', () => {
         {
           provide: getRepositoryToken(BookingEntity),
           useValue: {
-            find: async () => confirmedBookings,
+            find: async (options: any) => findBookings(options),
             update: async () => ({ affected: confirmedBookings.length }),
           },
         },
         { provide: getRepositoryToken(UserEntity), useValue: {} },
+        {
+          provide: getRepositoryToken(PendingChargeEntity),
+          useValue: {
+            findOne: async ({ where }: any) =>
+              recordedCharges.find(
+                (c) => c.tripId === where.tripId && c.kind === where.kind,
+              ) ?? null,
+          },
+        },
         { provide: getRepositoryToken(WalletAccountEntity), useValue: {} },
         {
           provide: getRepositoryToken(WalletTransactionEntity),
           useValue: {
-            findOne: async ({ where }: any) =>
-              savedTxs.find((t) => t.idempotencyKey === where.idempotencyKey) ??
-              null,
+            findOne: async ({ where }: any) => {
+              // Models the window where a racing transaction has not committed
+              // yet, so this caller's guard read sees nothing.
+              if (blindTxLookups > 0) {
+                blindTxLookups -= 1;
+                return null;
+              }
+              return (
+                savedTxs.find(
+                  (t) => t.idempotencyKey === where.idempotencyKey,
+                ) ?? null
+              );
+            },
           },
         },
       ],
@@ -262,7 +330,10 @@ describe('DriverTripFeeService.chargeAtTripStart', () => {
   });
 
   it('charges on all four seats even though only two are booked', async () => {
-    confirmedBookings = [{ id: 'b-1' }, { id: 'b-2' }];
+    confirmedBookings = [
+      { id: 'b-1', status: BookingStatus.CONFIRMED },
+      { id: 'b-2', status: BookingStatus.CONFIRMED },
+    ];
     const result = await service.chargeAtTripStart(trip());
     expect(result.charged).toBe(1.6);
   });
@@ -330,12 +401,15 @@ describe('DriverTripFeeService.chargeAtTripStart', () => {
     account.balance = '0.00';
 
     // Run 1: nothing to debit, so the whole fee is carried forward — and then
-    // the audit stamp never lands.
+    // the audit stamp never lands. That must not surface as a throw; the trip
+    // has to be able to start regardless.
     tripSaveShouldFail = true;
-    await expect(service.chargeAtTripStart(trip())).rejects.toThrow(
-      'stamp failed',
-    );
+    const first = trip();
+    const firstResult = await service.chargeAtTripStart(first);
+    expect(firstResult.pendingRemainder).toBe(1.6);
     expect(pendingCharges.record).toHaveBeenCalledTimes(1);
+    // The stamp did not persist, so the in-memory entity must not claim it did.
+    expect(first.driverWalletChargeApplied).toBe(false);
 
     // Task 9's sweep re-loads the trip from the DB, where the stamp never
     // landed, so driverWalletChargeApplied is still false.
@@ -355,6 +429,76 @@ describe('DriverTripFeeService.chargeAtTripStart', () => {
     // sweep would retry this trip forever.
     expect(retried.driverWalletChargeApplied).toBe(true);
     expect(savedTrips).toContain(retried);
+  });
+
+  it('re-records a shortfall lost when the pending-charge insert failed', async () => {
+    account.balance = '0.00';
+
+    // The ledger commits, then the PendingCharge insert dies before any row
+    // exists. Nothing is left to collect the debt but the audit row.
+    pendingCharges.record.mockRejectedValueOnce(new Error('insert failed'));
+    const first = trip();
+    await service.chargeAtTripStart(first);
+    expect(pendingCharges.record).toHaveBeenCalledTimes(1);
+    expect(recordedCharges).toHaveLength(0);
+    // Unstamped on purpose — that is what brings the sweep back.
+    expect(first.driverWalletChargeApplied).toBe(false);
+
+    const retried = trip();
+    const second = await service.chargeAtTripStart(retried);
+
+    expect(second.reason).toBe('already-charged');
+    expect(second.pendingRemainder).toBe(1.6);
+    expect(recordedCharges).toHaveLength(1);
+    expect(recordedCharges[0]).toMatchObject({
+      userId: 'driver-1',
+      kind: PendingChargeKind.DRIVER_TRIP_FEE,
+      amount: 1.6,
+      tripId: 'trip-1',
+    });
+    expect(retried.driverWalletChargeApplied).toBe(true);
+  });
+
+  it('rolls the balance back and converges when it loses a concurrent race', async () => {
+    await service.chargeAtTripStart(trip());
+    expect(account.balance).toBe('8.40');
+
+    // The loser's guard read lands before the winner commits, so it sees no
+    // audit row, proceeds to debit, and only then hits the unique index.
+    blindTxLookups = 1;
+    const loser = trip();
+    const result = await service.chargeAtTripStart(loser);
+
+    expect(result.applied).toBe(false);
+    expect(result.reason).toBe('already-charged');
+    // Rolled back by the transaction — a second 1.60 would leave 6.80.
+    expect(account.balance).toBe('8.40');
+    expect(savedTxs).toHaveLength(1);
+    expect(pendingCharges.record).not.toHaveBeenCalled();
+    expect(loser.driverWalletChargeApplied).toBe(true);
+  });
+
+  it('charges a trip whose bookings the processor already flipped to IN_PROGRESS', async () => {
+    confirmedBookings = [
+      { id: 'b-1', status: BookingStatus.IN_PROGRESS },
+      { id: 'b-2', status: BookingStatus.IN_PROGRESS },
+    ];
+    const result = await service.chargeAtTripStart(trip());
+    expect(result.charged).toBe(1.6);
+    expect(result.reason).toBeUndefined();
+  });
+
+  it('charges nothing when the driver has no wallet ledger account', async () => {
+    lockedAccounts = [];
+    const result = await service.chargeAtTripStart(trip());
+    expect(result.charged).toBe(0);
+    // Records nothing: with no account there is no audit row to dedupe a
+    // retry against, so recording here would double-record on the next sweep.
+    expect(result.pendingRemainder).toBe(0);
+    expect(pendingCharges.record).not.toHaveBeenCalled();
+    expect(loggedErrors).toHaveBeenCalledWith(
+      expect.stringContaining('has no DRIVER wallet account'),
+    );
   });
 
   it('snapshots the pricing basis onto the transaction metadata', async () => {

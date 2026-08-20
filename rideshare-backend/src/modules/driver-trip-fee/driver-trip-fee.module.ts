@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import {
   BookingEntity,
   CommunicationFeeEntity,
+  PendingChargeEntity,
   TripEntity,
   UserEntity,
   WalletAccountEntity,
@@ -22,6 +23,7 @@ import { DriverTripFeeService } from './driver-trip-fee.service';
       WalletAccountEntity,
       WalletTransactionEntity,
       CommunicationFeeEntity,
+      PendingChargeEntity,
     ]),
     WalletModule,
     PendingChargesModule,
