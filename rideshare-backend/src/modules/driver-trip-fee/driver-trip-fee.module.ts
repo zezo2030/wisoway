@@ -13,6 +13,7 @@ import { PlatformPricingService } from '../payments/platform-pricing.service';
 import { PendingChargesModule } from '../pending-charges/pending-charges.module';
 import { WalletModule } from '../wallet/wallet.module';
 import { DriverTripFeeService } from './driver-trip-fee.service';
+import { DriverTripFeeReconciliationJob } from './driver-trip-fee-reconciliation.job';
 
 @Module({
   imports: [
@@ -28,7 +29,11 @@ import { DriverTripFeeService } from './driver-trip-fee.service';
     WalletModule,
     PendingChargesModule,
   ],
-  providers: [DriverTripFeeService, PlatformPricingService],
+  providers: [
+    DriverTripFeeService,
+    PlatformPricingService,
+    DriverTripFeeReconciliationJob,
+  ],
   exports: [DriverTripFeeService],
 })
 export class DriverTripFeeModule {}

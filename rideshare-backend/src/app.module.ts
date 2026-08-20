@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -67,6 +68,10 @@ import { InstantRidesModule } from './modules/instant-rides/instant-rides.module
       envFilePath: '.env',
     }),
     PostgresModule,
+    // Nothing registered @nestjs/schedule before, so every @Cron in the repo was
+    // inert. DriverTripFeeReconciliationJob — the net under a lost trip-auto-start
+    // job — depends on it actually running.
+    ScheduleModule.forRoot(),
     // Single limit: multiple forRoot entries all apply to every route, so the old
     // 20/min bucket capped *all* traffic (including /bookings/my), not only public APIs.
     ThrottlerModule.forRoot([
