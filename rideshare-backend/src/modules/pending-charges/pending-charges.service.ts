@@ -33,10 +33,15 @@ import {
   WalletService,
 } from '../wallet/wallet.service';
 
-function walletAccountTypeForCharge(
+const DRIVER_CHARGE_KINDS: ReadonlySet<PendingChargeKind> = new Set([
+  PendingChargeKind.DRIVER_NO_SHOW,
+  PendingChargeKind.DRIVER_TRIP_FEE,
+]);
+
+export function walletAccountTypeForCharge(
   kind: PendingChargeKind,
 ): WalletAccountType {
-  return kind === PendingChargeKind.DRIVER_NO_SHOW
+  return DRIVER_CHARGE_KINDS.has(kind)
     ? WalletAccountType.DRIVER
     : WalletAccountType.RIDER;
 }

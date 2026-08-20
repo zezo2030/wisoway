@@ -123,6 +123,9 @@ export const ErrorCodes = {
 
   /** Driver wallet balance is negative — blocked from publishing / going online. */
   NEGATIVE_WALLET_BALANCE: 'NEGATIVE_WALLET_BALANCE',
+
+  /** Driver wallet cannot cover the platform fee for the trip being published. */
+  INSUFFICIENT_BALANCE_FOR_TRIP_FEE: 'INSUFFICIENT_BALANCE_FOR_TRIP_FEE',
 } as const;
 
 /** Union type of all error code strings. */
