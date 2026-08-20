@@ -735,7 +735,13 @@ class _TripManagementScreenState extends State<TripManagementScreen>
           meetingPoint: trip.from.address,
           originName: trip.from.name,
           distanceKm: trip.distanceKm,
-          bookedSeats: seatRows.length,
+          // Seats sold on the trip itself, so the «مكتملة» badge tracks
+          // `availableSeats == 0` rather than however many confirmed
+          // bookings happen to have loaded into the roster below.
+          bookedSeats: (trip.totalSeats - trip.availableSeats).clamp(
+            0,
+            trip.totalSeats,
+          ),
           totalSeats: trip.totalSeats,
         ),
       ),
