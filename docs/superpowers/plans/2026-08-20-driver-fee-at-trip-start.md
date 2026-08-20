@@ -41,6 +41,9 @@
 | `rideshare-backend/src/database/migrations/1747000000000-add-driver-trip-fee-pending-charge-kind.ts` | Extends the `pending_charges.kind` enum |
 | `rideshare-backend/src/database/migrations/1747100000000-release-wallet-holds-fee-at-trip-start.ts` | Returns reserved money, stamps already-captured trips |
 | `rideshare-backend/src/modules/bookings/processors/trip-auto-start.processor.spec.ts` | Processor tests (does not exist today) |
+| `rideshare/lib/screens/driver/widgets/trip_route_card.dart` | Origin → destination card from the mock |
+| `rideshare/lib/screens/driver/widgets/trip_facts_strip.dart` | Five-column day/time/meeting-point/distance/seats strip |
+| `rideshare/lib/screens/driver/widgets/trip_fare_breakdown_card.dart` | Passenger fare, passengers total, trip fee |
 
 **Deleted**
 
@@ -2039,7 +2042,235 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 
 ---
 
-### Task 13: Full-stack verification
+### Task 13: Mobile — rebuild the pre-departure state to match the design mock
+
+**Files:**
+- Modify: `rideshare/lib/screens/driver/trip_management_screen.dart`
+- Create: `rideshare/lib/screens/driver/widgets/trip_route_card.dart`
+- Create: `rideshare/lib/screens/driver/widgets/trip_facts_strip.dart`
+- Create: `rideshare/lib/screens/driver/widgets/trip_fare_breakdown_card.dart`
+- Modify: `rideshare/lib/screens/driver/widgets/passengers_card.dart`
+- Modify: `rideshare/lib/l10n/app_ar.arb`, `rideshare/lib/l10n/app_en.arb`
+- Test: `rideshare/test/driver/trip_management_pre_departure_test.dart`
+
+**Interfaces:**
+- Consumes: `TripModel` (`from`/`to` as `LocationModel` with `name` + `address`, `departureTime`, `distanceKm`, `price`, `currency`, `totalSeats`, `availableSeats`, `status`, `tripStartedAt`), `BookingModel.seats` (`BookingSeatModel.seatNumber`, `displayName`), `BookingModel.userPopulated` (`UserModel.name`, `rating`, `photoUrl`, `phoneNumber`). All verified to exist.
+- Produces: nothing downstream.
+
+**Locked decisions:**
+- This is the **pre-departure state of the existing screen**, not a new screen and not a full replacement. When `trip.tripStartedAt == null` the body renders exactly the mock's sections in the mock's order. Once the trip starts, the existing live-tracking and "وصلت" cards return.
+- **Colours come from the app theme, not the mock.** The mock's forest green is replaced by `Theme.of(context).colorScheme.primary` (`teal600 #0D9488`). Never hardcode the mock's green.
+
+**Pre-departure body, top to bottom — the mock's exact order:**
+
+1. **Header** — a circular white back button at the screen's start edge; centred title `tripBookedTitle` with a filled check-circle icon in `colorScheme.primary`; subtitle `tripBookedSubtitle` in `textSecondary`.
+2. **Route card** (`trip_route_card.dart`) — white, `borderRadius: 16`, soft shadow. Origin at the start edge with a small filled `primary` dot above `trip.from.name`; destination at the end edge with a red map-pin above `trip.to.name`; between them a dashed connector with a car glyph in a filled `primary` circle at its centre. Labels «من» / «إلى» sit above the names in `textTertiary`.
+3. **Facts strip** (`trip_facts_strip.dart`) — inside the same card, below a `divider`. Five equal columns, each an icon over a label over a value: `tripDayLabel` (calendar), `tripTimeLabel` (clock), `tripMeetingPointLabel` (pin), `tripDistanceLabel` (route), `tripSeatsLabel` (people). Values: formatted weekday + date, formatted time, `trip.from.address` (see the fallback below), `'${trip.distanceKm!.round()} كم'`, `'${booked} من ${trip.totalSeats}'` with «مكتملة» beneath in `success` when `trip.availableSeats == 0`.
+4. **Section header** — `bookedPassengersTitle(count)`.
+5. **Passenger rows** — one per seat, not per booking: a booking of 2 seats renders 2 rows. Avatar, name, `star` icon + `rating.toStringAsFixed(1)`, a seat chip `seatLabel(seatNumber)` on a `primaryContainer` background, then a `chat` outlined button and a `call` outlined button. Contact is unconditional — Task 10 removed the gate.
+6. **Fare card** (`trip_fare_breakdown_card.dart`) — three rows: `passengerFareLabel` → `trip.price`; `passengersTotalLabel(count)` → `price × bookedSeats`; `tripFeePercentLabel(percent)` → the fee, rendered in `colorScheme.error`. The percent and amount come from the `/trips/fee-quote` client added in Task 11 — never a literal.
+7. **Fee notice** — an info box on `primaryContainer` with an info icon, showing `tripFeeChargedAtStartNotice`.
+8. **Contact bar** — a white bar with a chat icon button at the start edge and a `primary`-tinted action at the end edge: `contactPassengersTitle` over `contactPassengersSubtitle`.
+9. **Primary CTA** — full-width filled `primary` button, `confirmYourPresenceCta`, wired to the existing driver presence-confirmation call.
+
+**One data gap:** the mock's «مكان التجمع» has no dedicated field. `trip.from.address` (backed by `trips.fromAddress`, nullable) is the closest match. When it is null, render `trip.from.name` rather than an empty cell. Do **not** add a new column for this — it is out of scope.
+
+- [ ] **Step 1: Read the current screen before touching it**
+
+```bash
+cd rideshare
+sed -n '600,800p' lib/screens/driver/trip_management_screen.dart
+grep -n "Widget _build" lib/screens/driver/trip_management_screen.dart
+```
+
+Note which cards guard on trip status already, and how the driver presence-confirmation action is currently invoked — Step 9's CTA reuses it rather than adding a new call.
+
+- [ ] **Step 2: Add the strings**
+
+`app_ar.arb`:
+```json
+  "tripBookedTitle": "تم حجز رحلتك المشتركة",
+  "tripBookedSubtitle": "تم حجز جميع المقاعد بنجاح",
+  "tripDayLabel": "يوم الرحلة",
+  "tripTimeLabel": "موعد الرحلة",
+  "tripMeetingPointLabel": "مكان التجمع",
+  "tripDistanceLabel": "المسافة",
+  "tripSeatsLabel": "عدد المقاعد",
+  "tripSeatsComplete": "مكتملة",
+  "tripSeatsBookedOf": "{booked} من {total}",
+  "@tripSeatsBookedOf": {
+    "placeholders": { "booked": {}, "total": {} }
+  },
+  "tripDistanceKm": "{km} كم",
+  "@tripDistanceKm": { "placeholders": { "km": {} } },
+  "bookedPassengersTitle": "الركاب المحجوزون ({count})",
+  "@bookedPassengersTitle": { "placeholders": { "count": {} } },
+  "seatLabel": "مقعد {number}",
+  "@seatLabel": { "placeholders": { "number": {} } },
+  "passengerFareLabel": "أجرة الراكب",
+  "passengersTotalLabel": "المجموع من الركاب ({count}) ركاب",
+  "@passengersTotalLabel": { "placeholders": { "count": {} } },
+  "tripFeePercentLabel": "رسوم الرحلة ({percent}%)",
+  "@tripFeePercentLabel": { "placeholders": { "percent": {} } },
+  "tripFeeChargedAtStartNotice": "سيتم خصم رسوم الرحلة من محفظتك عند انطلاق الرحلة. حافظ على وجود رصيد في محفظتك لضمان قدرتك على إنشاء رحلات جديدة.",
+  "contactPassengersTitle": "التواصل مع الركاب",
+  "contactPassengersSubtitle": "اتصال أو دردشة حية",
+  "confirmYourPresenceCta": "قم بتأكيد تواجدك في الوقت والمكان المحدد",
+```
+
+Add the English equivalents in `app_en.arb` with the same keys and placeholders.
+
+`tripFeeChargedAtStartNotice` is the **one place this screen deliberately departs from the mock.** The mock reads «عند انتهاء الرحلة»; the fee is charged at trip start, so the mock's wording would be factually wrong and would produce exactly the driver disputes this work exists to prevent.
+
+Regenerate: `flutter gen-l10n`
+
+- [ ] **Step 3: Write the failing test**
+
+Create `rideshare/test/driver/trip_management_pre_departure_test.dart`:
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:rideshare/l10n/generated/app_localizations.dart';
+
+void main() {
+  Widget wrap(Widget child) => MaterialApp(
+        locale: const Locale('ar'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(body: child),
+      );
+
+  testWidgets('route card shows origin and destination names',
+      (tester) async {
+    await tester.pumpWidget(wrap(
+      TripRouteCard(
+        from: LocationModel(name: 'عمان', latitude: 0, longitude: 0),
+        to: LocationModel(name: 'الطفيلة', latitude: 0, longitude: 0),
+      ),
+    ));
+
+    expect(find.text('عمان'), findsOneWidget);
+    expect(find.text('الطفيلة'), findsOneWidget);
+  });
+
+  testWidgets('facts strip falls back to the origin name with no address',
+      (tester) async {
+    await tester.pumpWidget(wrap(
+      TripFactsStrip(
+        departureTime: DateTime(2024, 7, 26, 7, 0),
+        meetingPoint: null,
+        originName: 'عمان',
+        distanceKm: 181,
+        bookedSeats: 4,
+        totalSeats: 4,
+      ),
+    ));
+
+    expect(find.text('عمان'), findsOneWidget);
+    expect(find.textContaining('181'), findsOneWidget);
+    expect(find.text('4 من 4'), findsOneWidget);
+    expect(find.text('مكتملة'), findsOneWidget);
+  });
+
+  testWidgets('facts strip hides the complete badge when seats remain',
+      (tester) async {
+    await tester.pumpWidget(wrap(
+      TripFactsStrip(
+        departureTime: DateTime(2024, 7, 26, 7, 0),
+        meetingPoint: 'دوار المدينة الرياضية',
+        originName: 'عمان',
+        distanceKm: 181,
+        bookedSeats: 2,
+        totalSeats: 4,
+      ),
+    ));
+
+    expect(find.text('دوار المدينة الرياضية'), findsOneWidget);
+    expect(find.text('2 من 4'), findsOneWidget);
+    expect(find.text('مكتملة'), findsNothing);
+  });
+
+  testWidgets('fare breakdown multiplies by booked seats and shows the fee',
+      (tester) async {
+    await tester.pumpWidget(wrap(
+      TripFareBreakdownCard(
+        seatPrice: 4.0,
+        bookedSeats: 4,
+        feeAmount: 1.6,
+        feePercent: 10,
+        currency: 'JOD',
+      ),
+    ));
+
+    expect(find.textContaining('4.00'), findsWidgets);
+    expect(find.textContaining('16.00'), findsOneWidget);
+    expect(find.textContaining('1.60'), findsOneWidget);
+    expect(find.textContaining('10'), findsWidgets);
+  });
+
+  testWidgets('the fee notice says at trip start, not at trip end',
+      (tester) async {
+    await tester.pumpWidget(wrap(const TripFeeNotice()));
+
+    expect(find.textContaining('عند انطلاق الرحلة'), findsOneWidget);
+    expect(find.textContaining('عند انتهاء الرحلة'), findsNothing);
+  });
+}
+```
+
+Add the imports for the three new widgets and `LocationModel` once they exist.
+
+- [ ] **Step 4: Run tests to verify they fail**
+
+Run: `cd rideshare && flutter test test/driver/trip_management_pre_departure_test.dart`
+Expected: FAIL — the three widgets do not exist.
+
+- [ ] **Step 5: Build the three widgets**
+
+Write `trip_route_card.dart`, `trip_facts_strip.dart` and `trip_fare_breakdown_card.dart` as stateless widgets taking plain values, never a `TripModel` — that keeps them testable without model fixtures, which is what the test above assumes.
+
+Every colour reads from `Theme.of(context).colorScheme` or `AppColors`. Use `Directionality`-aware edges (`start`/`end`), never `left`/`right`: the screen is Arabic-first and must not break in English.
+
+- [ ] **Step 6: Recompose the screen body**
+
+In `trip_management_screen.dart`, split the body on trip state:
+
+```dart
+final isPreDeparture = _trip!.tripStartedAt == null;
+```
+
+When `isPreDeparture`, render sections 1–9 in the order listed above and render **none** of `_buildWalletCard`, `_buildLiveTrackingCard`, `_buildArrivedCard`, `_buildStatisticsRow`, `_buildSeatLayoutCard`, `_buildCarImageCard` or `_buildQuickActionsCard`. When the trip has started, keep today's composition unchanged.
+
+Do not delete those builders — they are still the post-departure body.
+
+- [ ] **Step 7: Run tests and the analyzer**
+
+```bash
+cd rideshare && flutter analyze && flutter test
+```
+Expected: analyze clean, all tests PASS.
+
+- [ ] **Step 8: Compare against the mock side by side**
+
+Run the app on a device or emulator, open a fully-booked trip as the driver, and check against `screenshot/` — spacing, order, the seat chips, the «مكتملة» badge, and the red fee amount. Fix any drift before committing.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add rideshare/lib rideshare/test
+git -c user.email="zeinsaad657@gmail.com" -c user.name="zeinsaad657" commit -m "feat(mobile): rebuild the pre-departure driver screen to the design mock
+
+Route card, facts strip, per-seat passenger rows with open contact, fare
+breakdown and the presence CTA, in the app's teal palette. Post-departure
+composition is unchanged.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
+```
+
+---
+
+### Task 14: Full-stack verification
 
 **Files:** none modified.
 
