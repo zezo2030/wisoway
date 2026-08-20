@@ -19,7 +19,6 @@ import { TripTimeModule } from '../trip-time/trip-time.module';
 import { RecurrenceModule } from '../recurrence/recurrence.module';
 import { PendingChargesModule } from '../pending-charges/pending-charges.module';
 import { LocationsModule } from '../locations/locations.module';
-import { WalletModule } from '../wallet/wallet.module';
 import { DriverTripFeeModule } from '../driver-trip-fee/driver-trip-fee.module';
 
 @Module({
@@ -49,7 +48,6 @@ import { DriverTripFeeModule } from '../driver-trip-fee/driver-trip-fee.module';
     UsersModule,
     PendingChargesModule,
     LocationsModule,
-    WalletModule,
     DriverTripFeeModule,
   ],
   controllers: [TripsController],

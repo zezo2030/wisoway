@@ -359,6 +359,22 @@ describe('TripsService (TypeORM)', () => {
         expect.objectContaining({ seatPrice: 4, totalSeats: 4 }),
       );
     });
+
+    it('passes the resolved trip currency to the fee guard, not the raw DTO value', async () => {
+      // The departure point geocodes to Jordan (mocked below), which resolves
+      // to JOD — deliberately different from the client-supplied 'USD' so this
+      // test fails if the guard were fed the raw DTO currency instead.
+      await service.create(
+        { ...baseDto(), currency: 'USD' },
+        DRIVER_ID,
+        DRIVER_NAME,
+      );
+
+      expect(driverTripFee.assertDriverCanCoverTripFee).toHaveBeenCalledWith(
+        DRIVER_ID,
+        expect.objectContaining({ currency: 'JOD' }),
+      );
+    });
   });
 
   describe('findById', () => {
