@@ -431,7 +431,7 @@ describe('BookingsService (TypeORM)', () => {
       expect(result.data[0].hasDriverPaidToContact).toBe(true);
     });
 
-    it('should reveal user via trip.driverWalletChargeApplied fallback when mirror is stale', async () => {
+    it('should reveal user and enable chat/call via the driverWalletChargeApplied case too', async () => {
       tripsService.findById.mockResolvedValue(mockTrip() as any);
       const passenger = { id: USER_ID, fullName: 'P1' };
       bookingRepo.find.mockResolvedValue([
@@ -452,10 +452,13 @@ describe('BookingsService (TypeORM)', () => {
       expect(result.data[0].user).toEqual(passenger);
       expect(result.data[0].chatEnabled).toBe(true);
       expect(result.data[0].callEnabled).toBe(true);
-      expect(result.data[0].hasDriverPaidToContact).toBe(true);
+      // hasDriverPaidToContact is an audit passthrough now, not an access
+      // flag — it is NOT forced to true just because the trip-level charge
+      // landed. The row's own stored value comes back unchanged.
+      expect(result.data[0].hasDriverPaidToContact).toBe(false);
     });
 
-    it('should mask user and disable chat/call when both flags are false', async () => {
+    it('regression: still reveals user and enables chat/call when neither payment flag is set — the contact gate must not come back', async () => {
       tripsService.findById.mockResolvedValue(mockTrip() as any);
       const passenger = { id: USER_ID, fullName: 'P1' };
       bookingRepo.find.mockResolvedValue([
@@ -473,9 +476,12 @@ describe('BookingsService (TypeORM)', () => {
         limit: 20,
       });
 
-      expect(result.data[0].user).toBeNull();
-      expect(result.data[0].chatEnabled).toBe(false);
-      expect(result.data[0].callEnabled).toBe(false);
+      expect(result.data[0].user).toEqual(passenger);
+      expect(result.data[0].chatEnabled).toBe(true);
+      expect(result.data[0].callEnabled).toBe(true);
+      // Audit passthrough: the driver has genuinely not been charged yet,
+      // so this stays false — but that must not mask the passenger or
+      // disable chat/call the way the old gate did.
       expect(result.data[0].hasDriverPaidToContact).toBe(false);
     });
 
@@ -697,9 +703,9 @@ describe('BookingsService (TypeORM)', () => {
         USER_ID,
       );
 
-      const bookingCreateCall = (qr.manager.create as jest.Mock).mock.calls.find(
-        ([target]) => target === BookingEntity,
-      );
+      const bookingCreateCall = (
+        qr.manager.create as jest.Mock
+      ).mock.calls.find(([target]) => target === BookingEntity);
       expect(bookingCreateCall?.[1]).toMatchObject({ isFamilyBooking: true });
     });
 

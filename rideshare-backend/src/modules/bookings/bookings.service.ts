@@ -536,32 +536,17 @@ export class BookingsService {
       this.bookingRepo.count({ where: { tripId } }),
     ]);
 
-    // Reveal passenger info + enable chat/call once the driver has paid the
-    // trip fee — for any booking on the trip, regardless of status. The
-    // mirror flag (`hasDriverPaidToContact`) is normally kept in sync at
-    // booking-create / accept / confirm and at trip-fee-payment time; the
-    // `trip.driverWalletChargeApplied` fallback guards against a stale
-    // mirror.
-    const data = rawData.map((b) => {
-      const unlocked =
-        b.hasDriverPaidToContact === true ||
-        b.trip?.driverWalletChargeApplied === true;
-      if (unlocked) {
-        return {
-          ...b,
-          hasDriverPaidToContact: true,
-          chatEnabled: true,
-          callEnabled: true,
-        };
-      }
-      return {
-        ...b,
-        user: null as unknown as BookingEntity['user'],
-        hasDriverPaidToContact: false,
-        chatEnabled: false,
-        callEnabled: false,
-      };
-    });
+    // Passenger identity and chat/call are always open to the trip's driver
+    // for every booking on the trip, regardless of status — the platform fee
+    // is charged once at trip start and does not gate contact access.
+    // `hasDriverPaidToContact` is passed through unchanged below: it is an
+    // audit stamp of when that fee was charged, not an access flag, so it
+    // reflects the row's real stored value rather than being forced to true.
+    const data = rawData.map((b) => ({
+      ...b,
+      chatEnabled: true,
+      callEnabled: true,
+    }));
 
     return {
       data,
