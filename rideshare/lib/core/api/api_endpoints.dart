@@ -1,7 +1,15 @@
-/// عنوان الباكند. غيّر القيمة هنا فقط — `flutter run` يكفي.
+/// عنوان الباكند:
+/// - Docker (nginx): http://<IP>/api/v1  (منفذ 80)
+/// - تطوير محلي (nest start:dev): http://<IP>:3000/api/v1
+/// - محاكي أندرويد + Docker: http://10.0.2.2/api/v1
+/// - محاكي أندرويد + nest محلي: http://10.0.2.2:3000/api/v1
+/// للتخصيص: flutter run --dart-define=BASE_URL=http://IP/api/v1
 class ApiEndpoints {
-  static const String baseUrl = 'http://192.168.1.9/api/v1';
-  // static const String baseUrl = 'https://vision-way.tech/api/v1';
+  static const String baseUrl = String.fromEnvironment(
+    'BASE_URL',
+    defaultValue: 'https://vision-way.tech/api/v1',
+    // defaultValue: 'http://192.168.1.2/api/v1',
+  );
 
   // Auth
   static const String register = '/auth/register';
@@ -147,7 +155,6 @@ class ApiEndpoints {
       '/instant-rides/availability/heartbeat';
   static const String instantAvailabilityMe = '/instant-rides/availability/me';
   static const String instantQuotes = '/instant-rides/quotes';
-  static const String instantNearbyDrivers = '/instant-rides/nearby-drivers';
   static const String instantRequests = '/instant-rides/requests';
   static String instantRequestById(String id) => '/instant-rides/requests/$id';
   static String instantRequestFare(String id) =>
