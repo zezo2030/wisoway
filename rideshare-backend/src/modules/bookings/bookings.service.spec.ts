@@ -392,6 +392,37 @@ describe('BookingsService (TypeORM)', () => {
       expect(qb.leftJoinAndSelect).toHaveBeenCalledWith('b.trip', 'trip');
       expect(qb.leftJoinAndSelect).toHaveBeenCalledWith('b.seats', 'seats');
     });
+
+    // Mirrors the findByTrip coercion for the passenger side. GET /bookings/my
+    // feeds booking_card.dart, and app builds predating the ungating gate chat
+    // and call on this flag — which now stays false until trip start, so the
+    // stored value would strip contact from every passenger yet to update.
+    it('coerces hasDriverPaidToContact for app builds that predate the ungating', async () => {
+      const stored = {
+        ...mockBooking(),
+        hasDriverPaidToContact: false,
+        seats: [],
+      };
+      const qb = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([stored]),
+        clone: jest.fn(),
+      };
+      qb.clone.mockReturnValue({ getCount: jest.fn().mockResolvedValue(1) });
+      (bookingRepo.createQueryBuilder as any).mockReturnValue({ ...qb });
+
+      const result = await service.findByUser(USER_ID, { page: 1, limit: 20 });
+
+      expect(result.data[0].hasDriverPaidToContact).toBe(true);
+      // Coerced on a copy — the loaded entity must never carry the forced
+      // value, or a later save would write it to the row.
+      expect(stored.hasDriverPaidToContact).toBe(false);
+    });
   });
 
   // -------------------------------------------------------------------------

@@ -492,10 +492,27 @@ export class BookingsService {
     }
 
     const countQb = qb.clone();
-    const [data, total] = await Promise.all([
+    const [rawData, total] = await Promise.all([
       qb.skip(skip).take(limit).getMany(),
       countQb.getCount(),
     ]);
+
+    // BACKWARD COMPATIBILITY — DO NOT "CLEAN THIS UP".
+    // Same reason as the identical coercion in findByTrip below, for the
+    // passenger side: GET /bookings/my feeds booking_card.dart, and app builds
+    // that predate the ungating gate their chat and call buttons on
+    // hasDriverPaidToContact. The column is now only an audit stamp of when the
+    // platform fee was charged, and it stays false until trip start, so
+    // returning the stored value would strip contact from every passenger who
+    // has not updated yet — the opposite of what this branch is for.
+    // Coerced on a shallow copy, never on the loaded entity, so nothing can
+    // persist the forced value back to the row. The admin dashboard reads the
+    // real stored flag through a different path (admin-dashboard.service.ts).
+    // Remove only once the pre-ungating app builds are out of circulation.
+    const data = rawData.map((b) => ({
+      ...b,
+      hasDriverPaidToContact: true,
+    }));
 
     return {
       data,
