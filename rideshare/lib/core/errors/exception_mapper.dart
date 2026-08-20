@@ -184,10 +184,12 @@ class ExceptionMapper {
         final currency = data is Map ? data['currency'] as String? : null;
         return Failure(
           category: FailureCategory.permission,
-          // Deliberately not in ErrorLocalizations: the create-trip screen
-          // always intercepts this messageKey before it reaches the generic
-          // ErrorSurface dialog, and renders it via the ARB-based
-          // `insufficientBalanceForTripFee` string instead.
+          // The create-trip screen intercepts this messageKey before it
+          // reaches the generic ErrorSurface dialog and renders it via the
+          // ARB-based `insufficientBalanceForTripFee` string instead (which
+          // carries the exact balance/required numbers). A static fallback
+          // entry still exists in ErrorLocalizations so a stray path through
+          // ErrorSurface never shows the raw key.
           messageKey: 'errorsInsufficientBalanceForTripFee',
           severity: FailureSeverity.error,
           nextAction: FailureAction.topUpWallet,

@@ -24,6 +24,8 @@ class ErrorLocalizations {
         'You have {count} unpaid charge(s) totaling {total} JOD. Settle them before publishing a new trip.',
     'errorsNegativeWalletBalance':
         'Your wallet balance is negative. Settle it before creating shared trips or receiving instant rides.',
+    'errorsInsufficientBalanceForTripFee':
+        'Your wallet balance is not enough to cover the trip fee. Top up your wallet before publishing.',
     'errorsActionRetry': 'Retry',
     'errorsActionReauthenticate': 'Sign in again',
     'errorsActionOpenSettings': 'Open Settings',
@@ -54,6 +56,8 @@ class ErrorLocalizations {
         'لديك {count} رسوم مستحقة بإجمالي {total} د.أ. يجب تسويتها قبل نشر رحلة جديدة.',
     'errorsNegativeWalletBalance':
         'رصيد محفظتك سالب. سدد المستحقات قبل إنشاء رحلات مشتركة أو تلقي رحلات مباشرة.',
+    'errorsInsufficientBalanceForTripFee':
+        'رصيد محفظتك لا يكفي لتغطية رسوم الرحلة. اشحن محفظتك قبل نشر الرحلة.',
     'errorsActionRetry': 'إعادة المحاولة',
     'errorsActionReauthenticate': 'تسجيل الدخول مرة أخرى',
     'errorsActionOpenSettings': 'فتح الإعدادات',
