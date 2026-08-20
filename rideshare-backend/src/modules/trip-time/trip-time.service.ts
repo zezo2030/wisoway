@@ -30,6 +30,7 @@ import {
 } from '../trips/trip-auto-start.util';
 import { AdminAlertsService } from '../admin/admin-alerts.service';
 import { TripEmergencyDto } from './dto/trip-emergency.dto';
+import { DriverTripFeeService } from '../driver-trip-fee/driver-trip-fee.service';
 
 @Injectable()
 export class TripTimeService {
@@ -53,6 +54,7 @@ export class TripTimeService {
     private readonly tripAutoCompleteQueue: Queue,
     @InjectRepository(UserEntity)
     private readonly userRepo: Repository<UserEntity>,
+    private readonly driverTripFee: DriverTripFeeService,
   ) {}
 
   async passengerConfirm(
@@ -289,9 +291,43 @@ export class TripTimeService {
       await this.bookingRepo.save(booking);
     }
 
-    // Capture the driver's fee for confirmed-present seats and release the
-    // rest of the hold. Runs AFTER booking statuses are final so the billable
-    // count reflects the settled roster (012-passenger-presence-confirmation).
+    // Net for a debit that failed at trip start (Task 5 deliberately swallows
+    // that failure so a ledger problem can never block a trip from starting).
+    // chargeAtTripStart is itself idempotent; this guard just avoids a
+    // pointless round-trip. Mirrors the identical sweep in
+    // trip-auto-complete.processor.ts (the 24h fallback completion path) so a
+    // trip is reconciled regardless of which of the two completion paths it
+    // takes. Runs AFTER booking statuses are final and BEFORE presence
+    // settlement, matching that other site.
+    if (!trip.driverWalletChargeApplied) {
+      try {
+        const result = await this.driverTripFee.chargeAtTripStart(trip);
+        // applied === false means chargeAtTripStart short-circuited on its own
+        // idempotency (already charged elsewhere) — nothing was recovered here.
+        // charged/pendingRemainder both 0 with applied === true means a real,
+        // legitimate no-op (free trip, no bookings) rather than a recovery.
+        if (
+          result.applied &&
+          (result.charged > 0 || result.pendingRemainder > 0)
+        ) {
+          this.logger.log(
+            `trip-auto-complete: RECOVERED fee for trip ${tripId} — charged ${result.charged.toFixed(2)} ${result.currency}` +
+              (result.pendingRemainder > 0
+                ? `, ${result.pendingRemainder.toFixed(2)} recorded as pending charge`
+                : '') +
+              ` that trip-start missed`,
+          );
+        }
+      } catch (err) {
+        this.logger.error(
+          `trip-auto-complete: fee reconciliation failed for trip ${tripId}: ${(err as Error).message}`,
+        );
+      }
+    }
+
+    // Bookkeeping only — no money moves here. Task 7 removed the wallet hold
+    // this used to settle, and Task 3 moved the one platform-fee debit to
+    // trip start (reconciled above when it failed there).
     const settlement = await this.presenceService.settleTripPresence(tripId);
 
     // Driver no-show is tracked via passengerReportedDriverAbsentAt for admin
@@ -360,11 +396,7 @@ export class TripTimeService {
     }
   }
 
-  async reportEmergency(
-    tripId: string,
-    userId: string,
-    dto: TripEmergencyDto,
-  ) {
+  async reportEmergency(tripId: string, userId: string, dto: TripEmergencyDto) {
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
     if (!trip) {
       throw new NotFoundException('Trip not found');
@@ -410,10 +442,8 @@ export class TripTimeService {
       select: ['id', 'name'],
     });
 
-    const latitude =
-      dto.latitude ?? trip.lastDriverLocationLat ?? null;
-    const longitude =
-      dto.longitude ?? trip.lastDriverLocationLng ?? null;
+    const latitude = dto.latitude ?? trip.lastDriverLocationLat ?? null;
+    const longitude = dto.longitude ?? trip.lastDriverLocationLng ?? null;
 
     await this.adminAlertsService.notifyTripEmergency({
       tripId: trip.id,

@@ -12,6 +12,7 @@ import { PresenceService } from './presence.service';
 import { TripTimeController } from './trip-time.controller';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PlatformPricingService } from '../payments/platform-pricing.service';
+import { DriverTripFeeModule } from '../driver-trip-fee/driver-trip-fee.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { PlatformPricingService } from '../payments/platform-pricing.service';
       UserEntity,
     ]),
     forwardRef(() => NotificationsModule),
+    DriverTripFeeModule,
   ],
   controllers: [TripTimeController],
   providers: [TripTimeService, PresenceService, PlatformPricingService],
