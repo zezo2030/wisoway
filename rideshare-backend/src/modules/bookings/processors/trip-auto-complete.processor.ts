@@ -16,6 +16,7 @@ import {
 } from '../../../database/entities/booking.entity';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { PresenceService } from '../../trip-time/presence.service';
+import { DriverTripFeeService } from '../../driver-trip-fee/driver-trip-fee.service';
 
 @Processor('trip-auto-complete')
 export class TripAutoCompleteProcessor {
@@ -27,6 +28,7 @@ export class TripAutoCompleteProcessor {
     private bookingRepo: Repository<BookingEntity>,
     private notificationsService: NotificationsService,
     private presenceService: PresenceService,
+    private readonly driverTripFee: DriverTripFeeService,
   ) {}
 
   @Process('enforce')
@@ -50,6 +52,36 @@ export class TripAutoCompleteProcessor {
     for (const booking of activeBookings) {
       booking.status = BookingStatus.COMPLETED;
       await this.bookingRepo.save(booking);
+    }
+
+    // Net for a debit that failed at trip start (Task 5 deliberately swallows
+    // that failure so a ledger problem can never block a trip from starting).
+    // chargeAtTripStart is itself idempotent; this guard just avoids a
+    // pointless round-trip. A trip is only ever left unstamped on purpose, so
+    // this is the recovery path — log loudly when it actually recovers money,
+    // and just as loudly when it can't, since nothing else will retry this
+    // trip once this job finishes.
+    if (!trip.driverWalletChargeApplied) {
+      try {
+        const result = await this.driverTripFee.chargeAtTripStart(trip);
+        // applied === false means chargeAtTripStart short-circuited on its own
+        // idempotency (already charged elsewhere) — nothing was recovered here.
+        // charged/pendingRemainder both 0 with applied === true means a real,
+        // legitimate no-op (free trip, no bookings) rather than a recovery.
+        if (result.applied && (result.charged > 0 || result.pendingRemainder > 0)) {
+          this.logger.log(
+            `trip-auto-complete: RECOVERED fee for trip ${tripId} — charged ${result.charged.toFixed(2)} ${result.currency}` +
+              (result.pendingRemainder > 0
+                ? `, ${result.pendingRemainder.toFixed(2)} recorded as pending charge`
+                : '') +
+              ` that trip-start missed`,
+          );
+        }
+      } catch (err) {
+        this.logger.error(
+          `trip-auto-complete: fee reconciliation failed for trip ${tripId}: ${(err as Error).message}`,
+        );
+      }
     }
 
     // The driver never pressed "Arrived", so completeTrip() never ran and the
