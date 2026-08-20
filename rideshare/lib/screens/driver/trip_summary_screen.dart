@@ -13,9 +13,41 @@ import '../../core/theme/text_styles.dart';
 import '../../core/ui/error_surface.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/booking_model.dart';
+import '../../models/trip_fee_quote.dart';
 import '../../models/trip_model.dart';
 import '../../models/wallet_account_model.dart';
 import '../../screens/home/widgets/default_avatar.dart';
+import 'widgets/trip_fare_breakdown_card.dart';
+
+/// Resolves what the trip summary should show as the platform fee.
+///
+/// Order: what the settlement reported, then the trip's own stamp, then the
+/// server-computed quote. Returns null for "not known yet" — never zero, and
+/// never a locally computed guess.
+///
+/// The fallback this replaces was `seatPrice * billableSeats * 0.10`: a literal
+/// rate applied to presence-confirmed seats. Both halves were wrong. The rate is
+/// configured server-side, and the fee is charged on the trip's TOTAL seats, so
+/// a 4-seat trip charged 1.60 with 2 riders aboard displayed as "20%". The quote
+/// from `GET /trips/fee-quote` is the only acceptable fallback because it is
+/// computed on the same basis the backend charges on.
+@visibleForTesting
+double? resolveTripSummaryFee({
+  required Object? capturedFromSettlement,
+  required Object? capturedOnTrip,
+  required double? quotedAmount,
+}) {
+  double round2(double value) => (value * 100).round() / 100;
+
+  final captured = capturedFromSettlement ?? capturedOnTrip;
+  if (captured != null) {
+    final parsed =
+        captured is num ? captured.toDouble() : double.tryParse('$captured');
+    if (parsed != null) return round2(parsed);
+  }
+  if (quotedAmount != null) return round2(quotedAmount);
+  return null;
+}
 
 /// Post-trip summary shown after the driver marks arrival / trip completes.
 /// Matches the driver "انتهت الرحلة بنجاح" design: route stats, presence roster,
@@ -49,6 +81,7 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
   List<BookingModel> _bookings = const [];
   WalletAccountModel? _wallet;
   Map<String, dynamic>? _settlement;
+  TripFeeQuote? _feeQuote;
   bool _loading = true;
 
   @override
@@ -87,11 +120,24 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
         _wallet = wallet;
         _loading = false;
       });
+      await _loadFeeQuote(trip);
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
       ErrorSurface.showFailure(context, ApiClient.mapError(e));
     }
+  }
+
+  /// The platform fee percentage and its all-seats basis come from
+  /// `GET /trips/fee-quote`, never from a literal. Returns null on failure, in
+  /// which case the fee row renders a neutral placeholder rather than guessing.
+  Future<void> _loadFeeQuote(TripModel trip) async {
+    final quote = await _tripService.getTripFeeQuote(
+      seatPrice: trip.price,
+      totalSeats: trip.totalSeats,
+    );
+    if (!mounted) return;
+    setState(() => _feeQuote = quote);
   }
 
   double get _seatPrice => _trip?.price ?? 0;
@@ -109,28 +155,26 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
         );
   }
 
-  double get _serviceFee {
-    final captured = _settlement?['captured'] ?? _trip?.capturedFeeAmount;
-    if (captured != null) {
-      final parsed = captured is num
-          ? captured.toDouble()
-          : double.tryParse('$captured');
-      if (parsed != null) return (parsed * 100).round() / 100;
-    }
-    return ((_seatPrice * _billableSeats * 0.10) * 100).round() / 100;
-  }
+  /// What the platform actually took from the wallet at trip start.
+  double? get _serviceFee => resolveTripSummaryFee(
+        capturedFromSettlement: _settlement?['captured'],
+        capturedOnTrip: _trip?.capturedFeeAmount,
+        quotedAmount: _feeQuote?.amount,
+      );
 
-  int get _feePercent {
-    final total = _seatPrice * _billableSeats;
-    if (total <= 0) return 10;
-    return ((_serviceFee / total) * 100).round().clamp(1, 100);
-  }
+  /// Whatever the fee actually was, for arithmetic that must not show a blank.
+  double get _serviceFeeOrZero => _serviceFee ?? 0;
+
+  /// Straight from the API. Never back-derived from the amount: the fee's basis
+  /// (all seats) is not the basis this screen totals fares on (ridden seats),
+  /// so dividing one by the other produces a percentage that never existed.
+  double? get _feePercent => _feeQuote?.percent;
 
   double get _passengerFaresTotal =>
       (_seatPrice * _billableSeats * 100).round() / 100;
 
   double get _netAmount =>
-      ((_passengerFaresTotal - _serviceFee) * 100).round() / 100;
+      ((_passengerFaresTotal - _serviceFeeOrZero) * 100).round() / 100;
 
   bool get _walletNegative => (_wallet?.balance ?? 0) < 0;
 
@@ -138,7 +182,7 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
       !_walletNegative &&
       ((_settlement?['captured'] != null) ||
           (_trip?.capturedFeeAmount != null) ||
-          _serviceFee == 0);
+          _serviceFeeOrZero == 0);
 
   List<_PassengerRow> get _passengerRows {
     final rows = <_PassengerRow>[];
@@ -670,8 +714,16 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
           const SizedBox(height: 14),
           _financeRow(
             icon: IconsaxPlusBold.shield_tick,
-            label: context.l10n.tripSummaryTripFeePercent(_feePercent),
-            value: _money(_serviceFee),
+            // Names the seat count the fee was actually charged on — the whole
+            // car — so the driver does not try to divide it by the ridden-seat
+            // fare total above and get a percentage that was never charged.
+            label: context.l10n.tripFeeOfSeatsLabel(
+              _feePercent == null
+                  ? '—'
+                  : TripFareBreakdownCard.formatPercent(_feePercent!),
+              _trip?.totalSeats ?? 0,
+            ),
+            value: _serviceFee == null ? '—' : _money(_serviceFee!),
             valueColor: _feeRed,
           ),
           const SizedBox(height: 14),
@@ -746,7 +798,7 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
                 Expanded(
                   child: Text(
                     context.l10n.tripSummaryPaymentRequired(
-                      _money(_serviceFee),
+                      _money(_serviceFeeOrZero),
                       _money((_wallet?.balance ?? 0).abs()),
                     ),
                     style: AppTextStyles.bodySmall.copyWith(
@@ -800,7 +852,7 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
       );
     }
 
-    if (!_feeDeductedSuccessfully && _serviceFee > 0) {
+    if (!_feeDeductedSuccessfully && _serviceFeeOrZero > 0) {
       return Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -812,7 +864,7 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              context.l10n.tripSummaryPayFeePrompt(_money(_serviceFee)),
+              context.l10n.tripSummaryPayFeePrompt(_money(_serviceFeeOrZero)),
               style: AppTextStyles.bodySmall.copyWith(
                 color: const Color(0xFF9A3412),
                 height: 1.45,
@@ -850,7 +902,7 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
         children: [
           Expanded(
             child: Text(
-              context.l10n.tripSummaryFeeDeducted(_money(_serviceFee)),
+              context.l10n.tripSummaryFeeDeducted(_money(_serviceFeeOrZero)),
               style: AppTextStyles.bodySmall.copyWith(
                 color: const Color(0xFF374151),
                 height: 1.45,
