@@ -1,229 +1,45 @@
 /**
  * T185 — Unit tests for BookingViewerSerializer
  *
- * Coverage targets:
- *  - Admin viewer: always receives raw values regardless of settlement state.
- *  - Settled booking (settledAt IS NOT NULL): PII fully revealed, contact channels enabled.
- *  - Unsettled booking (settledAt IS NULL): PII masked to '***', contact channels disabled.
- *  - Nullable PII fields already null: masking leaves them null (does not replace with '***').
- *  - Missing otherParty: no crash; channels still masked.
+ * Contact details are no longer gated behind a driver payment — the platform
+ * fee is charged at trip start and unlocks nothing. This spec asserts the
+ * inverse of the old masking contract: every viewer always sees the raw
+ * otherParty fields and chat/call are always enabled.
  */
 
-import {
-  BookingViewerSerializer,
-  MaskableBookingView,
-  ViewerRole,
-} from '../../src/modules/bookings/serializers/booking-viewer.serializer';
-
-const MASK = '***';
-
-const makeSettledBooking = (
-  overrides: Partial<MaskableBookingView> = {},
-): MaskableBookingView => ({
-  settledAt: new Date('2026-01-15T10:00:00Z'),
-  chatEnabled: false,
-  callEnabled: false,
-  otherParty: {
-    displayName: 'Ahmad Khalil',
-    phone: '+962790000001',
-    phoneNumber: '+962790000001',
-    photoUrl: 'https://cdn.example.com/photo.jpg',
-  },
-  ...overrides,
-});
-
-const makeUnsettledBooking = (
-  overrides: Partial<MaskableBookingView> = {},
-): MaskableBookingView => ({
-  settledAt: null,
-  chatEnabled: false,
-  callEnabled: false,
-  otherParty: {
-    displayName: 'Ahmad Khalil',
-    phone: '+962790000001',
-    phoneNumber: '+962790000001',
-    photoUrl: 'https://cdn.example.com/photo.jpg',
-  },
-  ...overrides,
-});
+import { BookingViewerSerializer } from '../../src/modules/bookings/serializers/booking-viewer.serializer';
 
 describe('BookingViewerSerializer', () => {
-  // ── Admin viewer ────────────────────────────────────────────────────────────
+  const raw = {
+    chatEnabled: false,
+    callEnabled: false,
+    otherParty: {
+      displayName: 'أحمد محمود',
+      phone: '0790000000',
+      phoneNumber: '+962790000000',
+      photoUrl: 'https://cdn/x.jpg',
+    },
+  };
 
-  describe('admin viewer', () => {
-    it('returns raw data unchanged when booking is settled', () => {
-      const booking = makeSettledBooking();
-      const result = BookingViewerSerializer.serialize(booking, 'admin');
-      expect(result).toBe(booking); // same reference — no copy made
-    });
+  it('reveals contact details to the driver with no payment', () => {
+    const out = BookingViewerSerializer.serialize({ ...raw }, 'driver');
 
-    it('returns raw data unchanged when booking is unsettled', () => {
-      const booking = makeUnsettledBooking();
-      const result = BookingViewerSerializer.serialize(booking, 'admin');
-      expect(result).toBe(booking);
-    });
-
-    it('does not mask PII fields even when unsettled', () => {
-      const booking = makeUnsettledBooking();
-      const result = BookingViewerSerializer.serialize(booking, 'admin');
-      expect(result.otherParty?.displayName).toBe('Ahmad Khalil');
-      expect(result.otherParty?.phone).toBe('+962790000001');
-    });
+    expect(out.otherParty?.displayName).toBe('أحمد محمود');
+    expect(out.otherParty?.phone).toBe('0790000000');
+    expect(out.otherParty?.phoneNumber).toBe('+962790000000');
+    expect(out.otherParty?.photoUrl).toBe('https://cdn/x.jpg');
   });
 
-  // ── Settled booking ─────────────────────────────────────────────────────────
-
-  describe('settled booking (settledAt IS NOT NULL)', () => {
-    it.each<ViewerRole>(['passenger', 'driver'])(
-      '%s viewer: reveals PII fields',
-      (role) => {
-        const booking = makeSettledBooking();
-        const result = BookingViewerSerializer.serialize(booking, role);
-        expect(result.otherParty?.displayName).toBe('Ahmad Khalil');
-        expect(result.otherParty?.phone).toBe('+962790000001');
-        expect(result.otherParty?.phoneNumber).toBe('+962790000001');
-        expect(result.otherParty?.photoUrl).toBe(
-          'https://cdn.example.com/photo.jpg',
-        );
-      },
-    );
-
-    it.each<ViewerRole>(['passenger', 'driver'])(
-      '%s viewer: enables chat and call channels',
-      (role) => {
-        const booking = makeSettledBooking();
-        const result = BookingViewerSerializer.serialize(booking, role);
-        expect(result.chatEnabled).toBe(true);
-        expect(result.callEnabled).toBe(true);
-      },
-    );
-
-    it('treats settledAt as a string timestamp as settled', () => {
-      const booking = makeSettledBooking({ settledAt: '2026-01-15T10:00:00Z' });
-      const result = BookingViewerSerializer.serialize(booking, 'passenger');
-      expect(result.chatEnabled).toBe(true);
-    });
+  it('enables chat and call for every viewer role', () => {
+    for (const role of ['driver', 'passenger', 'admin'] as const) {
+      const out = BookingViewerSerializer.serialize({ ...raw }, role);
+      expect(out.chatEnabled).toBe(true);
+      expect(out.callEnabled).toBe(true);
+    }
   });
 
-  // ── Unsettled booking ───────────────────────────────────────────────────────
-
-  describe('unsettled booking (settledAt IS NULL)', () => {
-    it.each<ViewerRole>(['passenger', 'driver'])(
-      '%s viewer: masks displayName',
-      (role) => {
-        const booking = makeUnsettledBooking();
-        const result = BookingViewerSerializer.serialize(booking, role);
-        expect(result.otherParty?.displayName).toBe(MASK);
-      },
-    );
-
-    it.each<ViewerRole>(['passenger', 'driver'])(
-      '%s viewer: masks phone',
-      (role) => {
-        const booking = makeUnsettledBooking();
-        const result = BookingViewerSerializer.serialize(booking, role);
-        expect(result.otherParty?.phone).toBe(MASK);
-      },
-    );
-
-    it.each<ViewerRole>(['passenger', 'driver'])(
-      '%s viewer: masks phoneNumber',
-      (role) => {
-        const booking = makeUnsettledBooking();
-        const result = BookingViewerSerializer.serialize(booking, role);
-        expect(result.otherParty?.phoneNumber).toBe(MASK);
-      },
-    );
-
-    it.each<ViewerRole>(['passenger', 'driver'])(
-      '%s viewer: masks photoUrl',
-      (role) => {
-        const booking = makeUnsettledBooking();
-        const result = BookingViewerSerializer.serialize(booking, role);
-        expect(result.otherParty?.photoUrl).toBe(MASK);
-      },
-    );
-
-    it.each<ViewerRole>(['passenger', 'driver'])(
-      '%s viewer: disables chat and call channels',
-      (role) => {
-        const booking = makeUnsettledBooking();
-        const result = BookingViewerSerializer.serialize(booking, role);
-        expect(result.chatEnabled).toBe(false);
-        expect(result.callEnabled).toBe(false);
-      },
-    );
-
-    it('does not replace null PII fields with mask string', () => {
-      const booking = makeUnsettledBooking({
-        otherParty: {
-          displayName: null,
-          phone: null,
-          phoneNumber: null,
-          photoUrl: null,
-        },
-      });
-      const result = BookingViewerSerializer.serialize(booking, 'passenger');
-      // Null fields should remain null, not be replaced with '***'
-      expect(result.otherParty?.displayName).toBeNull();
-      expect(result.otherParty?.phone).toBeNull();
-      expect(result.otherParty?.phoneNumber).toBeNull();
-      expect(result.otherParty?.photoUrl).toBeNull();
-    });
-
-    it('handles missing otherParty without throwing', () => {
-      const booking = makeUnsettledBooking({ otherParty: undefined });
-      expect(() =>
-        BookingViewerSerializer.serialize(booking, 'passenger'),
-      ).not.toThrow();
-    });
-
-    it('still disables channels when otherParty is absent', () => {
-      const booking = makeUnsettledBooking({ otherParty: undefined });
-      const result = BookingViewerSerializer.serialize(booking, 'passenger');
-      expect(result.chatEnabled).toBe(false);
-      expect(result.callEnabled).toBe(false);
-    });
-
-    it('preserves non-PII extra fields on otherParty untouched', () => {
-      const booking = makeUnsettledBooking({
-        otherParty: {
-          displayName: 'Ahmad Khalil',
-          phone: '+962790000001',
-          phoneNumber: '+962790000001',
-          photoUrl: 'https://cdn.example.com/photo.jpg',
-          rating: 4.8,
-          tripCount: 23,
-        },
-      });
-      const result = BookingViewerSerializer.serialize(booking, 'driver');
-      expect(result.otherParty?.rating).toBe(4.8);
-      expect(result.otherParty?.tripCount).toBe(23);
-    });
-
-    it('does not mutate the original booking object', () => {
-      const booking = makeUnsettledBooking();
-      const originalDisplayName = booking.otherParty?.displayName;
-      BookingViewerSerializer.serialize(booking, 'passenger');
-      expect(booking.otherParty?.displayName).toBe(originalDisplayName);
-    });
-  });
-
-  // ── Default viewer (no role passed) ────────────────────────────────────────
-
-  describe('default viewer (role = undefined)', () => {
-    it('treats undefined role as non-admin and applies masking when unsettled', () => {
-      const booking = makeUnsettledBooking();
-      const result = BookingViewerSerializer.serialize(booking);
-      expect(result.otherParty?.displayName).toBe(MASK);
-      expect(result.chatEnabled).toBe(false);
-    });
-
-    it('treats undefined role as non-admin and reveals when settled', () => {
-      const booking = makeSettledBooking();
-      const result = BookingViewerSerializer.serialize(booking);
-      expect(result.otherParty?.displayName).toBe('Ahmad Khalil');
-      expect(result.chatEnabled).toBe(true);
-    });
+  it('never emits the *** mask', () => {
+    const out = BookingViewerSerializer.serialize({ ...raw }, 'driver');
+    expect(JSON.stringify(out)).not.toContain('***');
   });
 });

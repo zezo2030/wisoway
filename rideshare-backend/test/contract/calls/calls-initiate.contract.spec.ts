@@ -2,23 +2,22 @@
  * T133 — Contract test: POST /bookings/:id/calls/initiate
  *
  * Covers:
- *  1. Happy path: settled booking, caller is main booker or trip driver →
+ *  1. Happy path: confirmed booking, caller is main booker or trip driver →
  *     { callSessionId, proxyNumberE164, expiresAt } returned; call_sessions row created.
- *  2. Booking not settled: 403 BOOKING_NOT_SETTLED.
- *  3. Pool exhausted: 503 NO_PROXY_NUMBERS_AVAILABLE.
- *  4. hidePhoneNumber=true: proxy number returned; real number never in response.
- *  5. Caller is not a participant: 403.
- *
- * Intentionally FAILS before T145 (CallsService.initiate) lands.
+ *     This holds regardless of whether the driver has been charged the trip
+ *     fee yet — calls are no longer gated on payment.
+ *  2. Pool exhausted: 503 NO_PROXY_NUMBERS_AVAILABLE.
+ *  3. hidePhoneNumber=true: proxy number returned; real number never in response.
+ *  4. Caller is not a participant: 403.
  */
 
 describe('POST /bookings/:id/calls/initiate (Contract)', () => {
-  describe('Happy path — settled booking', () => {
+  describe('Happy path — confirmed booking, driver not yet charged', () => {
     it('should return 201 with callSessionId, proxyNumberE164, and expiresAt', () => {
       const responseShape = {
-        callSessionId: expect.any(String),
-        proxyNumberE164: expect.any(String),
-        expiresAt: expect.any(String),
+        callSessionId: 'call-session-1',
+        proxyNumberE164: '+962790000001',
+        expiresAt: new Date().toISOString(),
       };
 
       expect(responseShape.callSessionId).toEqual(expect.any(String));
@@ -47,6 +46,19 @@ describe('POST /bookings/:id/calls/initiate (Contract)', () => {
     });
   });
 
+  describe('Happy path — driver already charged the trip fee', () => {
+    it('should still return 201 — charging the fee changes nothing about call access', () => {
+      const responseShape = {
+        callSessionId: 'call-session-2',
+        proxyNumberE164: '+962790000002',
+        expiresAt: new Date().toISOString(),
+      };
+
+      expect(responseShape.callSessionId).toEqual(expect.any(String));
+      expect(responseShape.proxyNumberE164).toMatch(/^\+/);
+    });
+  });
+
   describe('hidePhoneNumber preference', () => {
     it('should return the proxy number when callee has hidePhoneNumber=true', () => {
       const responseShape = {
@@ -60,16 +72,6 @@ describe('POST /bookings/:id/calls/initiate (Contract)', () => {
   });
 
   describe('Error cases', () => {
-    it('should return 403 BOOKING_NOT_SETTLED when booking.settledAt is null', () => {
-      const errorShape = {
-        statusCode: 403,
-        code: 'BOOKING_NOT_SETTLED',
-        message: expect.any(String),
-      };
-
-      expect(errorShape.code).toBe('BOOKING_NOT_SETTLED');
-    });
-
     it('should return 503 NO_PROXY_NUMBERS_AVAILABLE when pool is exhausted', () => {
       const errorShape = {
         statusCode: 503,

@@ -13,7 +13,6 @@ import {
 } from '../../database/entities/call-session.entity';
 import { UserEntity } from '../../database/entities/user.entity';
 import { ProxyPoolService } from './proxy-pool.service';
-import { ErrorCodes } from '../../common/errors/error-codes';
 
 const SESSION_EXPIRY_MINUTES = 60;
 
@@ -44,15 +43,6 @@ export class CallsService {
       relations: ['trip'],
     });
     if (!booking) throw new NotFoundException('Booking not found');
-
-    // Calls require the driver to have paid the contact-unlock fee.
-    if (!booking.hasDriverPaidToContact) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: ErrorCodes.BOOKING_NOT_SETTLED,
-        message: 'Calls are only available after the driver unlocks contact',
-      });
-    }
 
     // Must be a participant (passenger or driver)
     const isPassenger = booking.userId === callerId;

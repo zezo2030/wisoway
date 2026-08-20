@@ -58,15 +58,6 @@ export class ChatPostgresService {
         'Passenger must have a pending or confirmed booking for this trip',
       );
     }
-    // Phase 7 (US5): chat is gated on settlement — booking must be marked paid.
-    if (!booking.hasDriverPaidToContact && !trip.driverWalletChargeApplied) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'COMMUNICATION_FEE_REQUIRED',
-        message:
-          'Chat is available after the driver pays the communication fee',
-      });
-    }
 
     let room = await this.chatRoomRepo.findOne({
       where: { tripId, passengerId },
@@ -128,11 +119,11 @@ export class ChatPostgresService {
   }
 
   /**
-   * Get or create the trip-wide GROUP room (driver + all settled passengers).
-   * Distinct from the 1:1 rooms above — the group room is the single
-   * ChatRoomEntity for a trip with `passengerId = null`. Membership is
-   * reconciled lazily on each access so newly-booked/just-settled passengers
-   * (and the requester) are added without a separate background job.
+   * Get or create the trip-wide GROUP room (driver + all confirmed/pending
+   * passengers). Distinct from the 1:1 rooms above — the group room is the
+   * single ChatRoomEntity for a trip with `passengerId = null`. Membership is
+   * reconciled lazily on each access so newly-booked passengers (and the
+   * requester) are added without a separate background job.
    */
   async getOrCreateGroupRoom(
     tripId: string,
@@ -143,9 +134,8 @@ export class ChatPostgresService {
 
     const isDriver = trip.driverId === userId;
 
-    // Passengers must have a pending/confirmed booking that is settled
-    // (driver paid the per-passenger fee, or the trip-level wallet charge
-    // applied). The driver always has access.
+    // Passengers must have a pending/confirmed booking for this trip. The
+    // driver always has access.
     if (!isDriver) {
       const booking = await this.bookingRepo.findOne({
         where: { tripId, userId, status: In(['pending', 'confirmed']) },
@@ -154,14 +144,6 @@ export class ChatPostgresService {
         throw new ForbiddenException(
           'You must have a pending or confirmed booking to access this chat',
         );
-      }
-      if (!booking.hasDriverPaidToContact && !trip.driverWalletChargeApplied) {
-        throw new ForbiddenException({
-          statusCode: 403,
-          code: 'COMMUNICATION_FEE_REQUIRED',
-          message:
-            'Chat is available after the driver pays the communication fee',
-        });
       }
     }
 
@@ -206,16 +188,14 @@ export class ChatPostgresService {
     return room;
   }
 
-  /** Driver + every passenger whose booking is settled, for the group room. */
+  /** Driver + every passenger with a pending/confirmed booking, for the group room. */
   private async computeGroupParticipantIds(
     trip: TripEntity,
   ): Promise<string[]> {
     const bookings = await this.bookingRepo.find({
       where: { tripId: trip.id, status: In(['pending', 'confirmed']) },
     });
-    const passengerIds = bookings
-      .filter((b) => b.hasDriverPaidToContact || trip.driverWalletChargeApplied)
-      .map((b) => b.userId);
+    const passengerIds = bookings.map((b) => b.userId);
     return [trip.driverId, ...new Set(passengerIds)];
   }
 
@@ -237,15 +217,6 @@ export class ChatPostgresService {
         throw new ForbiddenException(
           'You must have a pending or confirmed booking to access this chat',
         );
-      }
-      // Phase 7 (US5): settlement gate — booking must be marked paid.
-      if (!booking.hasDriverPaidToContact && !trip.driverWalletChargeApplied) {
-        throw new ForbiddenException({
-          statusCode: 403,
-          code: 'COMMUNICATION_FEE_REQUIRED',
-          message:
-            'Chat is available after the driver pays the communication fee',
-        });
       }
     }
   }
@@ -305,24 +276,6 @@ export class ChatPostgresService {
         code: 'CHAT_CLOSED_TRIP_ENDED',
         message: 'This trip has ended, so you can no longer send messages',
       });
-    }
-
-    if (room.passengerId) {
-      const booking = await this.bookingRepo.findOne({
-        where: {
-          tripId: room.tripId,
-          userId: room.passengerId,
-          status: In(['pending', 'confirmed']),
-        },
-      });
-      if (booking && !booking.hasDriverPaidToContact) {
-        throw new ForbiddenException({
-          statusCode: 403,
-          code: 'COMMUNICATION_FEE_REQUIRED',
-          message:
-            'Chat is available after the driver pays the communication fee',
-        });
-      }
     }
 
     const user = await this.userRepo.findOne({ where: { id: userId } });

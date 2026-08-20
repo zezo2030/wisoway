@@ -109,18 +109,6 @@ export class ChatService {
           'You must have a pending or confirmed booking to access this chat',
         );
       }
-
-      // Check if driver has paid communication fee (for passenger to chat)
-      const hasPaidFee = await this.paymentsService.hasUserPaidCommunicationFee(
-        booking._id.toString(),
-        trip.driverId.toString(),
-      );
-
-      if (!hasPaidFee && !(trip as any).driverWalletChargeApplied) {
-        throw new ForbiddenException(
-          'Driver has not paid the communication fee to unlock chat',
-        );
-      }
     }
   }
 
