@@ -18,7 +18,6 @@ import {
 import { TripsService } from './trips.service';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { TripEntity } from '../../database/entities/trip.entity';
-import { DriverAvailabilityEntity } from '../../database/entities/driver-availability.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BookingsService } from '../bookings/bookings.service';
 import { VehiclesService } from '../vehicles/vehicles.service';
@@ -107,10 +106,6 @@ describe('TripsService (TypeORM)', () => {
           },
         },
         {
-          provide: getRepositoryToken(DriverAvailabilityEntity),
-          useValue: { findOne: jest.fn(), save: jest.fn() },
-        },
-        {
           provide: NotificationsService,
           useValue: {
             enqueueCityFanout: jest.fn().mockResolvedValue(undefined),
@@ -138,7 +133,6 @@ describe('TripsService (TypeORM)', () => {
           provide: TripsGateway,
           useValue: { emitTripUpdated: jest.fn() },
         },
-        { provide: getQueueToken('no-show-detector'), useValue: makeQueue() },
         { provide: getQueueToken('trip-auto-start'), useValue: makeQueue() },
         { provide: getQueueToken('trip-auto-complete'), useValue: makeQueue() },
         {
@@ -419,6 +413,76 @@ describe('TripsService (TypeORM)', () => {
         DRIVER_ID,
         expect.objectContaining({ currency: 'JOD' }),
       );
+    });
+  });
+
+  describe('update', () => {
+    /** findById() goes through the query builder, not findOne(). */
+    function arrangeTrip(overrides: Partial<TripEntity> = {}) {
+      const trip = {
+        id: 'trip-uuid',
+        driverId: DRIVER_ID,
+        price: '1.00',
+        currency: 'JOD',
+        totalSeats: 4,
+        seats: [],
+        departureTime: new Date(Date.now() + 48 * 60 * 60 * 1000),
+        driverWalletChargeApplied: false,
+        ...overrides,
+      } as unknown as TripEntity;
+      tripRepo.createQueryBuilder.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getRawAndEntities: jest
+          .fn()
+          .mockResolvedValue({ entities: [trip], raw: [{}] }),
+      });
+      return trip;
+    }
+
+    it('re-runs the fee guard when the price is raised on an unbilled trip', async () => {
+      arrangeTrip();
+
+      await service.update('trip-uuid', { price: 20 } as any, DRIVER_ID);
+
+      expect(driverTripFee.assertDriverCanCoverTripFee).toHaveBeenCalledWith(
+        DRIVER_ID,
+        expect.objectContaining({ seatPrice: 20, totalSeats: 4 }),
+      );
+    });
+
+    it('rejects a price rise the driver cannot cover', async () => {
+      arrangeTrip();
+      driverTripFee.assertDriverCanCoverTripFee.mockRejectedValue(
+        new ForbiddenException({
+          code: ErrorCodes.INSUFFICIENT_BALANCE_FOR_TRIP_FEE,
+        }),
+      );
+
+      await expect(
+        service.update('trip-uuid', { price: 20 } as any, DRIVER_ID),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(tripRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('leaves the guard alone when the price is untouched', async () => {
+      arrangeTrip();
+
+      await service.update('trip-uuid', { notes: 'hi' } as any, DRIVER_ID);
+
+      expect(driverTripFee.assertDriverCanCoverTripFee).not.toHaveBeenCalled();
+    });
+
+    it('does not re-guard a trip whose fee was already charged', async () => {
+      arrangeTrip({ driverWalletChargeApplied: true });
+
+      await service.update('trip-uuid', { price: 20 } as any, DRIVER_ID);
+
+      expect(driverTripFee.assertDriverCanCoverTripFee).not.toHaveBeenCalled();
     });
   });
 

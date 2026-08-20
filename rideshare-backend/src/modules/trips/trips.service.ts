@@ -6,12 +6,11 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Not, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 import { TripEntity } from '../../database/entities/trip.entity';
-import { DriverAvailabilityEntity } from '../../database/entities/driver-availability.entity';
-import { TripStatus, TripType } from '../../database/entities/shared.enums';
+import { TripStatus } from '../../database/entities/shared.enums';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { SearchTripsDto } from './dto/search-trips.dto';
@@ -59,15 +58,12 @@ export class TripsService {
 
   constructor(
     @InjectRepository(TripEntity) private tripRepo: Repository<TripEntity>,
-    @InjectRepository(DriverAvailabilityEntity)
-    private driverAvailabilityRepo: Repository<DriverAvailabilityEntity>,
     private notificationsService: NotificationsService,
     private bookingsService: BookingsService,
     private vehiclesService: VehiclesService,
     private usersService: UsersService,
     private platformPricing: PlatformPricingService,
     private tripsGateway: TripsGateway,
-    @InjectQueue('no-show-detector') private noShowQueue: Queue,
     @InjectQueue('trip-auto-start')
     private tripAutoStartQueue: Queue,
     @InjectQueue('trip-auto-complete')
@@ -606,6 +602,25 @@ export class TripsService {
       });
     }
 
+    // The publish guard in create() only ever saw the price the trip went live
+    // with. `price` is updatable, and the fee is seatPrice * totalSeats, so a
+    // PATCH can raise the fee well past the balance that cleared the guard —
+    // publish 4 seats at 1.00 with 0.50 in the wallet (fee 0.40, passes), then
+    // PATCH the price to 20.00 and the fee is 8.00 against that same 0.50.
+    // Re-run the guard on the new price, but only while the trip is still
+    // unbilled: once driverWalletChargeApplied is stamped the amount is final
+    // by design and is never recomputed, so a later edit must not re-guard it.
+    if (
+      updateTripDto.price != null &&
+      trip.driverWalletChargeApplied !== true
+    ) {
+      await this.driverTripFee.assertDriverCanCoverTripFee(driverId, {
+        seatPrice: Number(updateTripDto.price),
+        totalSeats: trip.totalSeats ?? 0,
+        currency: trip.currency,
+      });
+    }
+
     if (updateTripDto.from) {
       trip.fromName = updateTripDto.from.name;
       trip.fromAddress = updateTripDto.from.address ?? trip.fromAddress;
@@ -662,65 +677,12 @@ export class TripsService {
     return this.tripRepo.save(trip);
   }
 
-  async complete(tripId: string, driverId: string): Promise<TripEntity> {
-    const trip = await this.findById(tripId);
-    if (trip.driverId !== driverId) {
-      throw new ForbiddenException('You are not the owner of this trip');
-    }
-    if (trip.status === TripStatus.COMPLETED) {
-      throw new BadRequestException('Trip is already completed');
-    }
-    trip.status = TripStatus.COMPLETED;
-    const savedTrip = await this.tripRepo.save(trip);
-
-    // Instant trips: release the driver's availability lock so they can take
-    // new on-demand requests once this ride is done.
-    if (savedTrip.tripType === TripType.INSTANT) {
-      await this.driverAvailabilityRepo.update(
-        { driverId, currentRequestId: Not(IsNull()) },
-        { currentRequestId: null },
-      );
-    }
-
-    await this.removeTripLifecycleJobs(tripId);
-
-    await this.bookingsService.markAsCompleted(tripId);
-    const bookings = await this.bookingsService.findByTripInternal(tripId);
-    for (const booking of bookings) {
-      await this.notificationsService.create({
-        userId: booking.userId,
-        type: 'trip_completed',
-        title: 'Trip Completed',
-        body: `The trip to ${trip.toName} has been completed`,
-        data: { tripId },
-      });
-    }
-
-    // T080: Enqueue no-show detection after the grace window
-    const graceSeconds = process.env.NO_SHOW_GRACE_OVERRIDE_SECONDS
-      ? Number(process.env.NO_SHOW_GRACE_OVERRIDE_SECONDS)
-      : 30 * 60; // 30 minutes default
-    this.noShowQueue
-      .add(
-        'detect-no-shows',
-        { tripId },
-        {
-          delay: graceSeconds * 1000,
-          attempts: 2,
-          backoff: { type: 'exponential', delay: 10000 },
-          jobId: `no-show-${tripId}`,
-          removeOnComplete: true,
-        },
-      )
-      .catch((err) =>
-        this.logger.warn(
-          `Failed to enqueue no-show detector for trip ${tripId}: ${(err as Error).message}`,
-        ),
-      );
-
-    this.logger.log(`Trip ${tripId} completed`);
-    return savedTrip;
-  }
+  // `complete()` (PATCH :id/legacy-complete) was deleted here. It set COMPLETED
+  // with no status precondition and removed the queued lifecycle jobs — including
+  // the auto-start job that charges the platform fee — without ever running the
+  // fee sweep the two live completion paths (TripTimeService.completeTrip and
+  // TripAutoCompleteProcessor) run. No client called it. Completion goes through
+  // TripTimeService.completeTrip only.
 
   async cancel(tripId: string, driverId: string): Promise<TripEntity> {
     const trip = await this.findById(tripId);

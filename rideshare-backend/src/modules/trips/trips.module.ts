@@ -4,7 +4,6 @@ import { BullModule } from '@nestjs/bull';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TripEntity } from '../../database/entities/trip.entity';
-import { DriverAvailabilityEntity } from '../../database/entities/driver-availability.entity';
 import { TripsService } from './trips.service';
 import { TripsController } from './trips.controller';
 import { TripsGateway } from './trips.gateway';
@@ -23,9 +22,8 @@ import { DriverTripFeeModule } from '../driver-trip-fee/driver-trip-fee.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([TripEntity, DriverAvailabilityEntity]),
+    TypeOrmModule.forFeature([TripEntity]),
     BullModule.registerQueue(
-      { name: 'no-show-detector' },
       { name: 'trip-auto-start' },
       { name: 'trip-auto-complete' },
     ),

@@ -214,17 +214,12 @@ export class TripsController {
     return this.tripTimeService.completeTrip(id, driverId, dto);
   }
 
-  @Patch(':id/legacy-complete')
-  @UseGuards(RolesGuard)
-  @Roles('driver')
-  @ApiOperation({ summary: 'Legacy complete trip (kept for backward compat)' })
-  @ApiResponse({ status: 200, description: 'Trip completed successfully' })
-  @ApiResponse({ status: 400, description: 'Bad request' })
-  @ApiResponse({ status: 403, description: 'Not the owner' })
-  @ApiResponse({ status: 404, description: 'Trip not found' })
-  async complete(@Param('id') id: string, @CurrentUser('id') driverId: string) {
-    return this.tripsService.complete(id, driverId);
-  }
+  // PATCH :id/legacy-complete and TripsService.complete were deleted: no client
+  // ever called them, and they completed a trip without the platform-fee sweep
+  // the other two completion paths run, while also removing the queued
+  // auto-start job. Because they had no status precondition, a driver could
+  // call them on a still-PUBLISHED trip before departure and ride for free.
+  // Completion now goes through POST :id/arrived / :id/complete only.
 
   @Patch(':id/show')
   @UseGuards(RolesGuard)
