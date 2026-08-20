@@ -247,6 +247,52 @@ export class TripTimeService {
     trip.tripCompletedAt = now;
     const savedTrip = await this.tripRepo.save(trip);
 
+    // Net for a debit that failed at trip start (Task 5 deliberately swallows
+    // that failure so a ledger problem can never block a trip from starting).
+    // chargeAtTripStart is itself idempotent; this guard just avoids a
+    // pointless round-trip. Mirrors the identical sweep in
+    // trip-auto-complete.processor.ts (the 24h fallback completion path) so a
+    // trip is reconciled regardless of which of the two completion paths it
+    // takes.
+    //
+    // Runs BEFORE any booking status is touched, and that ordering is
+    // load-bearing. chargeAtTripStart decides whether a fee is owed by counting
+    // bookings In([CONFIRMED, IN_PROGRESS]); the no-show pass and the
+    // IN_PROGRESS -> COMPLETED pass below both move bookings out of that set. A
+    // sweep placed after them therefore sees zero bookings, takes the
+    // 'no-bookings' branch, writes a 0.00 audit row and stamps the trip — which
+    // also hides it from the reconciliation cron, whose query is
+    // driverWalletChargeApplied IS NOT TRUE. The rescue path would permanently
+    // zero the fee it exists to recover. (The earlier "after booking statuses
+    // are final" rationale came from the presence-based model, where the
+    // billable seat count set the amount. The fee is on totalSeats now, so only
+    // the existence of bookings matters and nothing here needs final statuses.)
+    if (!trip.driverWalletChargeApplied) {
+      try {
+        const result = await this.driverTripFee.chargeAtTripStart(trip);
+        // applied === false means chargeAtTripStart short-circuited on its own
+        // idempotency (already charged elsewhere) — nothing was recovered here.
+        // charged/pendingRemainder both 0 with applied === true means a real,
+        // legitimate no-op (free trip, no bookings) rather than a recovery.
+        if (
+          result.applied &&
+          (result.charged > 0 || result.pendingRemainder > 0)
+        ) {
+          this.logger.log(
+            `trip-auto-complete: RECOVERED fee for trip ${tripId} — charged ${result.charged.toFixed(2)} ${result.currency}` +
+              (result.pendingRemainder > 0
+                ? `, ${result.pendingRemainder.toFixed(2)} recorded as pending charge`
+                : '') +
+              ` that trip-start missed`,
+          );
+        }
+      } catch (err) {
+        this.logger.error(
+          `trip-auto-complete: fee reconciliation failed for trip ${tripId}: ${(err as Error).message}`,
+        );
+      }
+    }
+
     const noShowMap = new Map<string, Set<string>>();
     if (dto.noShowSeats?.length) {
       for (const entry of dto.noShowSeats) {
@@ -289,40 +335,6 @@ export class TripTimeService {
     for (const booking of activeBookings) {
       booking.status = BookingStatus.COMPLETED;
       await this.bookingRepo.save(booking);
-    }
-
-    // Net for a debit that failed at trip start (Task 5 deliberately swallows
-    // that failure so a ledger problem can never block a trip from starting).
-    // chargeAtTripStart is itself idempotent; this guard just avoids a
-    // pointless round-trip. Mirrors the identical sweep in
-    // trip-auto-complete.processor.ts (the 24h fallback completion path) so a
-    // trip is reconciled regardless of which of the two completion paths it
-    // takes. Runs AFTER booking statuses are final and BEFORE presence
-    // settlement, matching that other site.
-    if (!trip.driverWalletChargeApplied) {
-      try {
-        const result = await this.driverTripFee.chargeAtTripStart(trip);
-        // applied === false means chargeAtTripStart short-circuited on its own
-        // idempotency (already charged elsewhere) — nothing was recovered here.
-        // charged/pendingRemainder both 0 with applied === true means a real,
-        // legitimate no-op (free trip, no bookings) rather than a recovery.
-        if (
-          result.applied &&
-          (result.charged > 0 || result.pendingRemainder > 0)
-        ) {
-          this.logger.log(
-            `trip-auto-complete: RECOVERED fee for trip ${tripId} — charged ${result.charged.toFixed(2)} ${result.currency}` +
-              (result.pendingRemainder > 0
-                ? `, ${result.pendingRemainder.toFixed(2)} recorded as pending charge`
-                : '') +
-              ` that trip-start missed`,
-          );
-        }
-      } catch (err) {
-        this.logger.error(
-          `trip-auto-complete: fee reconciliation failed for trip ${tripId}: ${(err as Error).message}`,
-        );
-      }
     }
 
     // Bookkeeping only — no money moves here. Task 7 removed the wallet hold

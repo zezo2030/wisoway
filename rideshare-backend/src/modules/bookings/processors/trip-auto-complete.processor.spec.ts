@@ -1,7 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { TripEntity } from '../../../database/entities/trip.entity';
-import { BookingEntity } from '../../../database/entities/booking.entity';
+import {
+  BookingEntity,
+  BookingStatus,
+} from '../../../database/entities/booking.entity';
 import { TripStatus } from '../../../database/entities/shared.enums';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { PresenceService } from '../../trip-time/presence.service';
@@ -13,8 +16,11 @@ describe('TripAutoCompleteProcessor — fee reconciliation sweep', () => {
   let trip: any;
   let driverTripFee: { chargeAtTripStart: jest.Mock };
   let presenceService: { settleTripPresence: jest.Mock };
+  /** Mutable booking store, so status flips are observable in call order. */
+  let bookings: any[];
 
   beforeEach(async () => {
+    bookings = [];
     trip = {
       id: 'trip-1',
       driverId: 'driver-1',
@@ -54,7 +60,17 @@ describe('TripAutoCompleteProcessor — fee reconciliation sweep', () => {
         },
         {
           provide: getRepositoryToken(BookingEntity),
-          useValue: { find: async () => [], save: async (b: any) => b },
+          useValue: {
+            find: async ({ where }: any) =>
+              bookings.filter(
+                (b) =>
+                  b.tripId === where.tripId &&
+                  (where.status === undefined || b.status === where.status),
+              ),
+            // find() hands back live references, so the processor's status
+            // writes land in `bookings` without save() doing anything.
+            save: async (b: any) => b,
+          },
         },
         {
           provide: NotificationsService,
@@ -137,5 +153,66 @@ describe('TripAutoCompleteProcessor — fee reconciliation sweep', () => {
     expect(logSpy).not.toHaveBeenCalledWith(
       expect.stringContaining('RECOVERED'),
     );
+  });
+  // Regression: the sweep used to run AFTER the IN_PROGRESS -> COMPLETED pass
+  // below it. chargeAtTripStart decides whether a fee is owed by counting
+  // bookings In([CONFIRMED, IN_PROGRESS]), so by then there were none: it took
+  // the 'no-bookings' branch, wrote a 0.00 audit row and stamped the trip,
+  // which also hid it from the reconciliation cron (driverWalletChargeApplied
+  // IS NOT TRUE). The rescue path permanently zeroed the fee it exists to
+  // recover.
+  it('charges before the booking flip — a real fee, not a no-bookings 0.00', async () => {
+    trip.driverWalletChargeApplied = false;
+    bookings = [
+      { id: 'b-1', tripId: 'trip-1', status: BookingStatus.IN_PROGRESS },
+    ];
+
+    let outcome: any;
+    let statusesWhenCharged: string[] = [];
+    driverTripFee.chargeAtTripStart.mockImplementation(async (t: any) => {
+      // Mirrors DriverTripFeeService: no CONFIRMED/IN_PROGRESS booking at the
+      // moment of the call means no fee is owed at all.
+      statusesWhenCharged = bookings.map((b) => b.status);
+      const active = bookings.filter(
+        (b) =>
+          b.status === BookingStatus.CONFIRMED ||
+          b.status === BookingStatus.IN_PROGRESS,
+      );
+      outcome =
+        active.length === 0
+          ? {
+              tripId: t.id,
+              charged: 0,
+              pendingRemainder: 0,
+              currency: 'JOD',
+              applied: true,
+              reason: 'no-bookings',
+            }
+          : {
+              tripId: t.id,
+              charged: 1.6,
+              pendingRemainder: 0,
+              currency: 'JOD',
+              applied: true,
+            };
+      return outcome;
+    });
+
+    await processor.handle({ data: { tripId: 'trip-1' } } as any);
+
+    expect(outcome.charged).toBeGreaterThan(0);
+    expect(outcome.reason).not.toBe('no-bookings');
+    expect(statusesWhenCharged).toContain(BookingStatus.IN_PROGRESS);
+  });
+
+  it('still completes the bookings after the charge', async () => {
+    trip.driverWalletChargeApplied = false;
+    bookings = [
+      { id: 'b-1', tripId: 'trip-1', status: BookingStatus.IN_PROGRESS },
+    ];
+
+    await processor.handle({ data: { tripId: 'trip-1' } } as any);
+
+    expect(bookings[0].status).toBe(BookingStatus.COMPLETED);
   });
 });

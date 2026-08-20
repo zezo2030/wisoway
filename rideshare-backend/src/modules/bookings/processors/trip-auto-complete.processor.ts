@@ -46,14 +46,6 @@ export class TripAutoCompleteProcessor {
     trip.tripCompletedAt = now;
     await this.tripRepo.save(trip);
 
-    const activeBookings = await this.bookingRepo.find({
-      where: { tripId, status: BookingStatus.IN_PROGRESS },
-    });
-    for (const booking of activeBookings) {
-      booking.status = BookingStatus.COMPLETED;
-      await this.bookingRepo.save(booking);
-    }
-
     // Net for a debit that failed at trip start (Task 5 deliberately swallows
     // that failure so a ledger problem can never block a trip from starting).
     // chargeAtTripStart is itself idempotent; this guard just avoids a
@@ -61,6 +53,16 @@ export class TripAutoCompleteProcessor {
     // this is the recovery path — log loudly when it actually recovers money,
     // and just as loudly when it can't, since nothing else will retry this
     // trip once this job finishes.
+    //
+    // Runs BEFORE the IN_PROGRESS -> COMPLETED booking pass below, and that
+    // ordering is load-bearing. chargeAtTripStart decides whether a fee is owed
+    // by counting bookings In([CONFIRMED, IN_PROGRESS]); flipping them first
+    // empties that set, so the sweep would take the 'no-bookings' branch, write
+    // a 0.00 audit row and stamp the trip — which also hides it from the
+    // reconciliation cron, whose query is driverWalletChargeApplied IS NOT
+    // TRUE. The rescue path would permanently zero the fee it exists to
+    // recover. The fee is charged on totalSeats, so only the existence of
+    // bookings matters here and nothing needs their final statuses.
     if (!trip.driverWalletChargeApplied) {
       try {
         const result = await this.driverTripFee.chargeAtTripStart(trip);
@@ -85,6 +87,14 @@ export class TripAutoCompleteProcessor {
           `trip-auto-complete: fee reconciliation failed for trip ${tripId}: ${(err as Error).message}`,
         );
       }
+    }
+
+    const activeBookings = await this.bookingRepo.find({
+      where: { tripId, status: BookingStatus.IN_PROGRESS },
+    });
+    for (const booking of activeBookings) {
+      booking.status = BookingStatus.COMPLETED;
+      await this.bookingRepo.save(booking);
     }
 
     // The driver never pressed "Arrived", so completeTrip() never ran and the
