@@ -4155,10 +4155,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'All nearby drivers may be busy, or none may be close to you.';
 
   @override
-  String get instantNoDriversTip => 'Tip: You can try again in a few minutes.';
-
-  @override
-  String get instantNoDriversTipKeepSearching => 'We\'ll keep looking for you.';
+  String get instantNoDriversTip =>
+      'Tip: Try again in a few minutes; a nearby driver may become available.';
 
   @override
   String get instantNoDriversIllustrationLabel => 'No driver found';

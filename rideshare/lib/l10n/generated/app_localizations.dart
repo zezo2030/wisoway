@@ -7649,14 +7649,8 @@ abstract class AppLocalizations {
   /// No description provided for @instantNoDriversTip.
   ///
   /// In ar, this message translates to:
-  /// **'نصيحة: يمكنك المحاولة مرة أخرى بعد دقائق.'**
+  /// **'نصيحة: أعد المحاولة بعد بضع دقائق؛ قد يتوفر سائق قريب منك.'**
   String get instantNoDriversTip;
-
-  /// No description provided for @instantNoDriversTipKeepSearching.
-  ///
-  /// In ar, this message translates to:
-  /// **'وسنستمر بالبحث لك.'**
-  String get instantNoDriversTipKeepSearching;
 
   /// No description provided for @instantNoDriversIllustrationLabel.
   ///

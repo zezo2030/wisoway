@@ -4100,10 +4100,8 @@ class AppLocalizationsAr extends AppLocalizations {
       'قد يكون جميع السائقين مشغولين أو لا يوجد سائق قريب منك.';
 
   @override
-  String get instantNoDriversTip => 'نصيحة: يمكنك المحاولة مرة أخرى بعد دقائق.';
-
-  @override
-  String get instantNoDriversTipKeepSearching => 'وسنستمر بالبحث لك.';
+  String get instantNoDriversTip =>
+      'نصيحة: أعد المحاولة بعد بضع دقائق؛ قد يتوفر سائق قريب منك.';
 
   @override
   String get instantNoDriversIllustrationLabel => 'لم يتم العثور على سائق';
