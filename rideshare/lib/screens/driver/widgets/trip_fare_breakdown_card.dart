@@ -22,6 +22,7 @@ class TripFareBreakdownCard extends StatelessWidget {
     required this.bookedSeats,
     required this.feeAmount,
     required this.feePercent,
+    required this.feeSeats,
     required this.currency,
   });
 
@@ -29,9 +30,16 @@ class TripFareBreakdownCard extends StatelessWidget {
   final int bookedSeats;
   final double? feeAmount;
   final double? feePercent;
+
+  /// Seat count the fee is actually charged on — the whole car, not the
+  /// passengers listed above. Naming it in the row stops the driver from
+  /// dividing the fee by a total it was never a percentage of.
+  final int feeSeats;
+
   final String currency;
 
-  static String formatPercent(double percent) => percent == percent.roundToDouble()
+  static String formatPercent(double percent) =>
+      percent == percent.roundToDouble()
       ? percent.toStringAsFixed(0)
       : percent.toStringAsFixed(1);
 
@@ -58,18 +66,16 @@ class TripFareBreakdownCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _FareRow(
-            label: l10n.passengerFareLabel,
-            value: _money(seatPrice),
-          ),
+          _FareRow(label: l10n.passengerFareLabel, value: _money(seatPrice)),
           _FareRow(
             label: l10n.passengersTotalLabel(bookedSeats),
             value: _money(seatPrice * bookedSeats),
           ),
           _FareRow(
-            label: percent == null
-                ? l10n.tripFeePercentLabel('—')
-                : l10n.tripFeePercentLabel(formatPercent(percent)),
+            label: l10n.tripFeeOfSeatsLabel(
+              percent == null ? '—' : formatPercent(percent),
+              feeSeats,
+            ),
             value: amount == null ? '—' : _money(amount),
             valueColor: T.error(context),
           ),

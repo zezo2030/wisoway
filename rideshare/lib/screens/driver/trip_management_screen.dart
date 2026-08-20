@@ -20,6 +20,7 @@ import '../../models/trip_fee_quote.dart';
 import 'widgets/trip_route_card.dart';
 import 'widgets/trip_facts_strip.dart';
 import 'widgets/trip_fare_breakdown_card.dart';
+import 'widgets/trip_passenger_seat_row.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../widgets/notification_icon_button.dart';
 import '../../utils/seat_layout_helpers.dart';
@@ -36,7 +37,23 @@ import 'package:geolocator/geolocator.dart';
 class TripManagementScreen extends StatefulWidget {
   final String tripId;
 
-  const TripManagementScreen({super.key, required this.tripId});
+  /// Test seam. When set, the screen renders this trip directly instead of
+  /// fetching it, and skips the socket / location / wallet side effects that
+  /// `_loadTrip` kicks off. Never set from production code.
+  @visibleForTesting
+  final TripModel? previewTrip;
+
+  /// Test seam companion to [previewTrip] — the bookings the body composes
+  /// from, instead of a live `getTripBookings` call.
+  @visibleForTesting
+  final List<BookingModel>? previewBookings;
+
+  const TripManagementScreen({
+    super.key,
+    required this.tripId,
+    this.previewTrip,
+    this.previewBookings,
+  });
 
   @override
   State<TripManagementScreen> createState() => _TripManagementScreenState();
@@ -52,6 +69,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
   TripModel? _trip;
   bool _isLoading = true;
   WalletModel? _wallet;
+
   /// Postgres ledger (`/wallet/me`); real balance used for trip charges.
   WalletAccountModel? _walletAccount;
   String _confirmingBookingId = '';
@@ -65,10 +83,23 @@ class _TripManagementScreenState extends State<TripManagementScreen>
   /// come from `GET /trips/fee-quote` — never a client-side literal.
   TripFeeQuote? _feeQuote;
 
+  /// Set only by the [TripManagementScreen.previewBookings] test seam.
+  Future<List<BookingModel>>? _previewBookingsFuture;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    final preview = widget.previewTrip;
+    if (preview != null) {
+      _trip = preview;
+      _isLoading = false;
+      final bookings = widget.previewBookings;
+      if (bookings != null) {
+        _previewBookingsFuture = Future.value(bookings);
+      }
+      return;
+    }
     _loadTrip();
   }
 
@@ -268,9 +299,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     if (seatData.isBooked) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.l10n.bookedSeatsManagedByBookings),
-        ),
+        SnackBar(content: Text(context.l10n.bookedSeatsManagedByBookings)),
       );
       return;
     }
@@ -282,9 +311,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
         context: context,
         builder: (ctx) => AlertDialog(
           title: Text(context.l10n.openSeatTitle),
-          content: Text(
-            context.l10n.openSeatBody(displaySeatNumber),
-          ),
+          content: Text(context.l10n.openSeatBody(displaySeatNumber)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -332,9 +359,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(context.l10n.lockSeatTitle),
-        content: Text(
-          context.l10n.lockSeatBody(displaySeatNumber),
-        ),
+        content: Text(context.l10n.lockSeatBody(displaySeatNumber)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -396,8 +421,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
   String get _walletDisplayCurrency =>
       _walletAccount?.currency ?? _wallet?.currency ?? 'JOD';
 
-  bool get _hasWalletSummary =>
-      _wallet != null || _walletAccount != null;
+  bool get _hasWalletSummary => _wallet != null || _walletAccount != null;
 
   Future<void> _hideTrip() async {
     final confirmed = await showDialog<bool>(
@@ -572,54 +596,56 @@ class _TripManagementScreenState extends State<TripManagementScreen>
       appBar: isPreDeparture
           ? null
           : AppBar(
-        elevation: 0,
-        title: Text(
-          context.l10n.tripManagementTitle,
-          style: AppTextStyles.titleMedium.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: NotificationIconButton(
-              backgroundColor: AppColors.transparent,
-              iconColor: T.onSurface(context).withValues(alpha: 0.87),
+              elevation: 0,
+              title: Text(
+                context.l10n.tripManagementTitle,
+                style: AppTextStyles.titleMedium.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: NotificationIconButton(
+                    backgroundColor: AppColors.transparent,
+                    iconColor: T.onSurface(context).withValues(alpha: 0.87),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.forum_outlined),
+                  tooltip: context.l10n.tripGroupChat,
+                  onPressed: () {
+                    Navigator.pushNamed(
+                      context,
+                      RouteNames.groupChat,
+                      arguments: {'tripId': widget.tripId, 'trip': _trip},
+                    );
+                  },
+                ),
+                if (_trip!.isActive)
+                  IconButton(
+                    icon: const Icon(IconsaxPlusLinear.eye_slash),
+                    onPressed: _hideTrip,
+                    tooltip: context.l10n.hideTripTooltip,
+                  )
+                else if (_trip!.isHidden)
+                  IconButton(
+                    icon: const Icon(IconsaxPlusLinear.eye),
+                    onPressed: _showTrip,
+                    tooltip: context.l10n.showTripTooltip,
+                  ),
+                IconButton(
+                  icon: const Icon(IconsaxPlusLinear.trash),
+                  onPressed: _deleteTrip,
+                  tooltip: context.l10n.deleteTripTooltip,
+                  color: AppColors.error,
+                ),
+              ],
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.forum_outlined),
-            tooltip: context.l10n.tripGroupChat,
-            onPressed: () {
-              Navigator.pushNamed(
-                context,
-                RouteNames.groupChat,
-                arguments: {'tripId': widget.tripId, 'trip': _trip},
-              );
-            },
-          ),
-          if (_trip!.isActive)
-            IconButton(
-              icon: const Icon(IconsaxPlusLinear.eye_slash),
-              onPressed: _hideTrip,
-              tooltip: context.l10n.hideTripTooltip,
-            )
-          else if (_trip!.isHidden)
-            IconButton(
-              icon: const Icon(IconsaxPlusLinear.eye),
-              onPressed: _showTrip,
-              tooltip: context.l10n.showTripTooltip,
-            ),
-          IconButton(
-            icon: const Icon(IconsaxPlusLinear.trash),
-            onPressed: _deleteTrip,
-            tooltip: context.l10n.deleteTripTooltip,
-            color: AppColors.error,
-          ),
-        ],
-      ),
       body: FutureBuilder<List<BookingModel>>(
-        future: _bookingService.getTripBookings(widget.tripId),
+        future:
+            _previewBookingsFuture ??
+            _bookingService.getTripBookings(widget.tripId),
         builder: (context, bookingsSnapshot) {
           final bookings = bookingsSnapshot.data ?? [];
           final pendingBookings = bookings.where((b) => b.isPending).toList();
@@ -637,7 +663,11 @@ class _TripManagementScreenState extends State<TripManagementScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: isPreDeparture
-                      ? _buildPreDepartureBody(_trip!, confirmedBookings)
+                      ? _buildPreDepartureBody(
+                          _trip!,
+                          pendingBookings,
+                          confirmedBookings,
+                        )
                       : [
                           // Header Card with Route
                           _buildHeaderCard(_trip!, dateFormat, timeFormat),
@@ -715,9 +745,13 @@ class _TripManagementScreenState extends State<TripManagementScreen>
 
   List<Widget> _buildPreDepartureBody(
     TripModel trip,
+    List<BookingModel> pendingBookings,
     List<BookingModel> confirmedBookings,
   ) {
-    final seatRows = _preDepartureSeatRows(trip, confirmedBookings);
+    final entries = passengerSeatEntries(
+      confirmedBookings,
+      fallbackName: context.l10n.passengerFallback,
+    );
 
     return [
       // 1 — Header
@@ -735,21 +769,41 @@ class _TripManagementScreenState extends State<TripManagementScreen>
           meetingPoint: trip.from.address,
           originName: trip.from.name,
           distanceKm: trip.distanceKm,
-          // Seats sold on the trip itself, so the «مكتملة» badge tracks
-          // `availableSeats == 0` rather than however many confirmed
-          // bookings happen to have loaded into the roster below.
-          bookedSeats: (trip.totalSeats - trip.availableSeats).clamp(
-            0,
-            trip.totalSeats,
-          ),
+          // Numerator counts seats on *confirmed* bookings. `availableSeats`
+          // is decremented the moment a booking is created, while it is still
+          // PENDING, so it would otherwise report seats the driver has not
+          // accepted yet. The «مكتملة» badge still tracks availability, since
+          // a car with no free seats cannot take more requests.
+          bookedSeats: entries.length,
           totalSeats: trip.totalSeats,
+          isFull: trip.availableSeats == 0,
         ),
       ),
-      const SizedBox(height: 24),
+      const SizedBox(height: 16),
+
+      // Live tracking — its window opens *before* departure, so it belongs in
+      // this branch too; hiding it here would hide it in exactly the window it
+      // was built for.
+      if (trip.isDriverLiveTrackingRequired) ...[
+        _buildLiveTrackingCard(trip),
+        const SizedBox(height: 16),
+      ],
+
+      // Pending booking requests. Bookings expire unanswered after 3 hours and
+      // this screen is the driver's only accept/reject surface, so it must
+      // render before departure — above the confirmed roster.
+      if (pendingBookings.isNotEmpty) ...[
+        _buildPendingBookingsCard(pendingBookings),
+        const SizedBox(height: 16),
+      ],
+
+      // Tops the gap above the roster header back up to the design's 24 when
+      // neither interstitial card above is showing.
+      const SizedBox(height: 8),
 
       // 4 — Section header
       Text(
-        context.l10n.bookedPassengersTitle(seatRows.length),
+        context.l10n.bookedPassengersTitle(entries.length),
         style: AppTextStyles.titleSmall.copyWith(
           fontWeight: FontWeight.bold,
           color: T.onSurface(context),
@@ -758,15 +812,19 @@ class _TripManagementScreenState extends State<TripManagementScreen>
       const SizedBox(height: 12),
 
       // 5 — One row per seat (a 2-seat booking renders 2 rows)
-      ...seatRows,
-      if (seatRows.isNotEmpty) const SizedBox(height: 12),
+      ...entries.map(_buildPassengerSeatRow),
+      if (entries.isNotEmpty) const SizedBox(height: 12),
 
       // 6 — Fare breakdown
       TripFareBreakdownCard(
         seatPrice: trip.price,
-        bookedSeats: seatRows.length,
+        bookedSeats: entries.length,
         feeAmount: _feeQuote?.amount,
         feePercent: _feeQuote?.percent,
+        // The fee is charged on the whole car, not on the passengers listed
+        // above, so the row names its own basis rather than leaving the
+        // driver to divide the fee by a total it does not match.
+        feeSeats: trip.totalSeats,
         currency: _feeQuote?.currency ?? trip.currency,
       ),
       const SizedBox(height: 16),
@@ -779,8 +837,8 @@ class _TripManagementScreenState extends State<TripManagementScreen>
       _buildContactBar(trip),
       const SizedBox(height: 20),
 
-      // 9 — Primary CTA
-      _buildPresenceCta(),
+      // 9 — Presence reminder
+      _buildPresenceReminder(),
       const SizedBox(height: 24),
     ];
   }
@@ -794,7 +852,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
   Widget _buildPreDepartureHeader() {
     return Row(
       children: [
-        _CircleIconButton(
+        CircleIconButton(
           icon: const BackButtonIcon(),
           tooltip: MaterialLocalizations.of(context).backButtonTooltip,
           onPressed: () => Navigator.of(context).maybePop(),
@@ -805,11 +863,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.check_circle,
-                    size: 20,
-                    color: T.primary(context),
-                  ),
+                  Icon(Icons.check_circle, size: 20, color: T.primary(context)),
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(
@@ -833,6 +887,10 @@ class _TripManagementScreenState extends State<TripManagementScreen>
               ),
             ],
           ),
+        ),
+        NotificationIconButton(
+          backgroundColor: AppColors.transparent,
+          iconColor: T.onSurface(context).withValues(alpha: 0.87),
         ),
         _buildTripActionsMenu(),
       ],
@@ -886,152 +944,26 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     );
   }
 
-  /// Section 5 — one row per booked seat, not per booking. Contact is
-  /// unconditional: the pay-to-unlock gate was removed earlier in this plan.
-  List<Widget> _preDepartureSeatRows(
-    TripModel trip,
-    List<BookingModel> bookings,
-  ) {
-    final rows = <Widget>[];
-    for (final booking in bookings) {
-      final fallbackName =
-          booking.userPopulated?.name ?? context.l10n.passengerFallback;
-      if (booking.seats.isNotEmpty) {
-        for (final seat in booking.seats) {
-          rows.add(
-            _buildPassengerSeatRow(
-              booking: booking,
-              seatNumber: seat.seatNumber,
-              displayName: seat.displayName.trim().isNotEmpty
-                  ? seat.displayName
-                  : fallbackName,
-            ),
-          );
-        }
-      } else {
-        rows.add(
-          _buildPassengerSeatRow(
-            booking: booking,
-            seatNumber: booking.seatNumber ?? '',
-            displayName: fallbackName,
-          ),
-        );
-      }
-    }
-    return rows;
-  }
-
-  Widget _buildPassengerSeatRow({
-    required BookingModel booking,
-    required String seatNumber,
-    required String displayName,
-  }) {
-    final user = booking.userPopulated;
-    final phone = user?.phoneNumber ?? '';
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: T.surface(context),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: T.shadow(context).withValues(alpha: 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
+  /// Section 5 — maps one expanded seat entry onto the roster row widget.
+  /// The per-seat expansion itself lives in `passengerSeatEntries`.
+  Widget _buildPassengerSeatRow(PassengerSeatEntry entry) {
+    return TripPassengerSeatRow(
+      displayName: entry.displayName,
+      seatNumber: entry.seatNumber,
+      rating: entry.rating,
+      photoUrl: entry.photoUrl,
+      onChat: () => Navigator.pushNamed(
+        context,
+        RouteNames.driverChat,
+        arguments: {
+          'tripId': widget.tripId,
+          'passengerId': entry.userId,
+          'passengerName': entry.displayName,
+        },
       ),
-      child: Row(
-        children: [
-          _PassengerAvatar(photoUrl: user?.photoUrl),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  displayName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.titleSmall.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: T.onSurface(context),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(
-                      IconsaxPlusBold.star,
-                      size: 14,
-                      color: AppColors.warning,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      (user?.rating ?? 0).toStringAsFixed(1),
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: T.textSecondary(context),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          if (seatNumber.isNotEmpty) ...[
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 4,
-              ),
-              decoration: BoxDecoration(
-                color: T.primaryContainer(context),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                context.l10n.seatChipLabel(seatNumber),
-                style: AppTextStyles.labelSmall.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: T.onPrimaryContainer(context),
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(width: 8),
-          _CircleIconButton(
-            icon: Icon(
-              IconsaxPlusLinear.message,
-              size: 18,
-              color: T.primary(context),
-            ),
-            tooltip: context.l10n.chat,
-            bordered: true,
-            onPressed: () => Navigator.pushNamed(
-              context,
-              RouteNames.driverChat,
-              arguments: {
-                'tripId': widget.tripId,
-                'passengerId': booking.userId,
-                'passengerName': displayName,
-              },
-            ),
-          ),
-          const SizedBox(width: 8),
-          _CircleIconButton(
-            icon: Icon(
-              IconsaxPlusLinear.call,
-              size: 18,
-              color: T.primary(context),
-            ),
-            tooltip: context.l10n.call,
-            bordered: true,
-            onPressed: phone.isEmpty ? null : () => _launchCall(phone),
-          ),
-        ],
-      ),
+      onCall: entry.phoneNumber.isEmpty
+          ? null
+          : () => _launchCall(entry.phoneNumber),
     );
   }
 
@@ -1109,23 +1041,39 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     );
   }
 
-  /// Section 9 — the mock's full-width primary bar reminding the driver to be
-  /// at the pickup point on time.
-  Widget _buildPresenceCta() {
+  /// Section 9 — a reminder, not an action.
+  ///
+  /// The mock styles this as a filled primary button, but there is no driver
+  /// presence-confirmation call in the app to wire it to: `presenceConfirm` is
+  /// referenced nowhere, `PresenceService` is passenger-side and keyed by
+  /// booking, and the backend route is a per-seat driver confirm — a different
+  /// action from copy about the driver's own attendance. Rather than ship a
+  /// button that does nothing when tapped, it reads as the reminder it is,
+  /// using section 7's treatment.
+  Widget _buildPresenceReminder() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: T.primary(context),
+        color: T.primaryContainer(context),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Text(
-        context.l10n.confirmYourPresenceCta,
-        textAlign: TextAlign.center,
-        style: AppTextStyles.button.copyWith(
-          fontWeight: FontWeight.bold,
-          color: T.onPrimary(context),
-        ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(IconsaxPlusLinear.clock, size: 20, color: T.primary(context)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              context.l10n.confirmYourPresenceCta,
+              style: AppTextStyles.bodySmall.copyWith(
+                fontWeight: FontWeight.bold,
+                color: T.onPrimaryContainer(context),
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1388,9 +1336,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
       title: context.l10n.pendingBookingsCard(pendingBookings.length),
       icon: IconsaxPlusBold.clock,
       iconColor: AppColors.warning,
-      children: [
-        ...pendingBookings.map((b) => _buildPendingBookingItem(b)),
-      ],
+      children: [...pendingBookings.map((b) => _buildPendingBookingItem(b))],
     );
   }
 
@@ -1881,8 +1827,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
-            onPressed:
-                _markingArrived ? null : () => _onPressArrived(trip),
+            onPressed: _markingArrived ? null : () => _onPressArrived(trip),
             icon: _markingArrived
                 ? SizedBox(
                     width: 20,
@@ -2051,9 +1996,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
           _buildDetailRow(
             icon: IconsaxPlusBold.routing_2,
             label: context.l10n.tripDistanceLabel,
-            value: context.l10n.distanceKm(
-              trip.distanceKm!.toStringAsFixed(1),
-            ),
+            value: context.l10n.distanceKm(trip.distanceKm!.toStringAsFixed(1)),
             color: T.primary(context),
           ),
           const Divider(height: 32),
@@ -2601,94 +2544,6 @@ class _TripManagementScreenState extends State<TripManagementScreen>
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// Circular white button used by the pre-departure header and the passenger
-/// rows' chat / call actions.
-class _CircleIconButton extends StatelessWidget {
-  const _CircleIconButton({
-    required this.icon,
-    required this.onPressed,
-    this.tooltip,
-    this.bordered = false,
-  });
-
-  final Widget icon;
-  final VoidCallback? onPressed;
-  final String? tooltip;
-  final bool bordered;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: T.surface(context),
-        shape: BoxShape.circle,
-        border: bordered
-            ? Border.all(color: T.primary(context).withValues(alpha: 0.3))
-            : null,
-        boxShadow: bordered
-            ? null
-            : [
-                BoxShadow(
-                  color: T.shadow(context).withValues(alpha: 0.08),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-      ),
-      child: IconButton(
-        padding: EdgeInsets.zero,
-        iconSize: 18,
-        tooltip: tooltip,
-        onPressed: onPressed,
-        icon: icon,
-      ),
-    );
-  }
-}
-
-/// Passenger avatar for the pre-departure roster: the profile photo when there
-/// is one, otherwise a neutral profile glyph.
-class _PassengerAvatar extends StatelessWidget {
-  const _PassengerAvatar({required this.photoUrl});
-
-  final String? photoUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    final url = photoUrl;
-    if (url != null && url.isNotEmpty) {
-      return ClipOval(
-        child: CachedNetworkImage(
-          imageUrl: url,
-          width: 44,
-          height: 44,
-          fit: BoxFit.cover,
-          errorWidget: (_, _, _) => _fallback(context),
-        ),
-      );
-    }
-    return _fallback(context);
-  }
-
-  Widget _fallback(BuildContext context) {
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        color: T.primaryContainer(context),
-        shape: BoxShape.circle,
-      ),
-      child: Icon(
-        IconsaxPlusBold.profile,
-        size: 22,
-        color: T.primary(context),
       ),
     );
   }

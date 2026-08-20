@@ -4632,8 +4632,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String tripFeePercentLabel(String percent) {
-    return 'Trip fee ($percent%)';
+  String tripFeeOfSeatsLabel(String percent, int seats) {
+    return 'Trip fee ($percent% of $seats seats)';
   }
 
   @override

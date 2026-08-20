@@ -24,6 +24,7 @@ class TripFactsStrip extends StatelessWidget {
     required this.distanceKm,
     required this.bookedSeats,
     required this.totalSeats,
+    this.isFull,
   });
 
   final DateTime departureTime;
@@ -33,11 +34,17 @@ class TripFactsStrip extends StatelessWidget {
   final int bookedSeats;
   final int totalSeats;
 
+  /// Overrides the "car is full" test. The caller passes
+  /// `trip.availableSeats == 0`, because [bookedSeats] counts only *confirmed*
+  /// seats while availability is decremented as soon as a booking is created.
+  /// Defaults to comparing the two seat counts.
+  final bool? isFull;
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final locale = Localizations.localeOf(context).toString();
-    final isFull = totalSeats > 0 && bookedSeats >= totalSeats;
+    final full = isFull ?? (totalSeats > 0 && bookedSeats >= totalSeats);
 
     final meeting = (meetingPoint != null && meetingPoint!.trim().isNotEmpty)
         ? meetingPoint!
@@ -74,7 +81,7 @@ class TripFactsStrip extends StatelessWidget {
             icon: IconsaxPlusLinear.profile_2user,
             label: l10n.tripSeatsLabel,
             value: l10n.tripSeatsBookedOf('$bookedSeats', '$totalSeats'),
-            badge: isFull ? l10n.tripSeatsComplete : null,
+            badge: full ? l10n.tripSeatsComplete : null,
           ),
         ],
       ),

@@ -2801,11 +2801,14 @@
       }
     }
   },
-  "tripFeePercentLabel": "رسوم الرحلة ({percent}%)",
-  "@tripFeePercentLabel": {
+  "tripFeeOfSeatsLabel": "رسوم الرحلة ({percent}% من {seats} مقاعد)",
+  "@tripFeeOfSeatsLabel": {
     "placeholders": {
       "percent": {
         "type": "String"
+      },
+      "seats": {
+        "type": "int"
       }
     }
   },

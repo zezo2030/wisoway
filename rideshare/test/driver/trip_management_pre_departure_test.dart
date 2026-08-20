@@ -75,6 +75,7 @@ void main() {
           bookedSeats: 4,
           feeAmount: 1.6,
           feePercent: 10,
+          feeSeats: 4,
           currency: 'JOD',
         ),
       ),

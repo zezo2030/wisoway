@@ -8456,11 +8456,11 @@ abstract class AppLocalizations {
   /// **'المجموع من الركاب ({count}) ركاب'**
   String passengersTotalLabel(int count);
 
-  /// No description provided for @tripFeePercentLabel.
+  /// No description provided for @tripFeeOfSeatsLabel.
   ///
   /// In ar, this message translates to:
-  /// **'رسوم الرحلة ({percent}%)'**
-  String tripFeePercentLabel(String percent);
+  /// **'رسوم الرحلة ({percent}% من {seats} مقاعد)'**
+  String tripFeeOfSeatsLabel(String percent, int seats);
 
   /// No description provided for @tripFeeChargedAtStartNotice.
   ///

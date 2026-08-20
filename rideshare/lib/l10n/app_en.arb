@@ -2718,7 +2718,7 @@
   "seatChipLabel": "Seat {number}",
   "passengerFareLabel": "Passenger fare",
   "passengersTotalLabel": "Total from passengers ({count})",
-  "tripFeePercentLabel": "Trip fee ({percent}%)",
+  "tripFeeOfSeatsLabel": "Trip fee ({percent}% of {seats} seats)",
   "tripFeeChargedAtStartNotice": "The trip fee will be deducted from your wallet when the trip starts. Keep a balance in your wallet so you can keep creating new trips.",
   "contactPassengersTitle": "Contact passengers",
   "contactPassengersSubtitle": "Call or live chat",

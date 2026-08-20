@@ -116,7 +116,10 @@ class _Endpoint extends StatelessWidget {
     return Column(
       crossAxisAlignment: alignment,
       children: [
-        SizedBox(height: markerHeight, child: Center(child: marker)),
+        SizedBox(
+          height: markerHeight,
+          child: Center(child: marker),
+        ),
         const SizedBox(height: 8),
         Text(
           label,
@@ -166,9 +169,7 @@ class _RouteConnector extends StatelessWidget {
   Widget build(BuildContext context) {
     final dash = Expanded(
       child: CustomPaint(
-        painter: _DashedLinePainter(
-          color: T.outlineVariant(context),
-        ),
+        painter: _DashedLinePainter(color: T.outlineVariant(context)),
         child: const SizedBox(height: 2),
       ),
     );
