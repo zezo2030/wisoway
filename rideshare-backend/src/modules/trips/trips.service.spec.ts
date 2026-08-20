@@ -28,7 +28,8 @@ import { TripsGateway } from './trips.gateway';
 import { RecurrenceService } from '../recurrence/recurrence.service';
 import { PendingChargesService } from '../pending-charges/pending-charges.service';
 import { LocationsService } from '../locations/locations.service';
-import { WalletService } from '../wallet/wallet.service';
+import { DriverTripFeeService } from '../driver-trip-fee/driver-trip-fee.service';
+import { ErrorCodes } from '../../common/errors/error-codes';
 
 const DRIVER_ID = 'driver-uuid';
 const DRIVER_NAME = 'Test Driver';
@@ -78,6 +79,7 @@ describe('TripsService (TypeORM)', () => {
   let vehiclesService: any;
   let usersService: any;
   let recurrenceService: any;
+  let driverTripFee: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -159,11 +161,12 @@ describe('TripsService (TypeORM)', () => {
           },
         },
         {
-          provide: WalletService,
+          provide: DriverTripFeeService,
           useValue: {
-            assertNonNegativeDriverBalance: jest
+            assertDriverCanCoverTripFee: jest
               .fn()
-              .mockResolvedValue(undefined),
+              .mockResolvedValue({ amount: 1.6 }),
+            computeExpectedFee: jest.fn(),
           },
         },
       ],
@@ -174,6 +177,7 @@ describe('TripsService (TypeORM)', () => {
     vehiclesService = module.get(VehiclesService);
     usersService = module.get(UsersService);
     recurrenceService = module.get(RecurrenceService);
+    driverTripFee = module.get<DriverTripFeeService>(DriverTripFeeService);
   });
 
   afterEach(() => jest.clearAllMocks());
@@ -294,7 +298,10 @@ describe('TripsService (TypeORM)', () => {
     it('rejects a departure time in the past', async () => {
       await expect(
         service.create(
-          { ...baseDto(), departureTime: new Date(Date.now() - 1000).toISOString() },
+          {
+            ...baseDto(),
+            departureTime: new Date(Date.now() - 1000).toISOString(),
+          },
           DRIVER_ID,
           DRIVER_NAME,
         ),
@@ -330,6 +337,27 @@ describe('TripsService (TypeORM)', () => {
       await expect(
         service.create(baseDto(), DRIVER_ID, DRIVER_NAME),
       ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rejects publishing when the driver cannot cover the trip fee', async () => {
+      driverTripFee.assertDriverCanCoverTripFee.mockRejectedValue(
+        new ForbiddenException({
+          code: ErrorCodes.INSUFFICIENT_BALANCE_FOR_TRIP_FEE,
+        }),
+      );
+
+      await expect(
+        service.create(baseDto(), DRIVER_ID, DRIVER_NAME),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('passes the seat price and total seat count to the fee guard', async () => {
+      await service.create({ ...baseDto(), price: 4 }, DRIVER_ID, DRIVER_NAME);
+
+      expect(driverTripFee.assertDriverCanCoverTripFee).toHaveBeenCalledWith(
+        DRIVER_ID,
+        expect.objectContaining({ seatPrice: 4, totalSeats: 4 }),
+      );
     });
   });
 

@@ -27,6 +27,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { TripTimeService } from '../trip-time/trip-time.service';
 import { CompleteTripDto } from '../trip-time/dto/complete-trip.dto';
+import { DriverTripFeeService } from '../driver-trip-fee/driver-trip-fee.service';
 
 @ApiTags('trips')
 @Controller('trips')
@@ -36,6 +37,7 @@ export class TripsController {
   constructor(
     private readonly tripsService: TripsService,
     private readonly tripTimeService: TripTimeService,
+    private readonly driverTripFee: DriverTripFeeService,
   ) {}
 
   @Post()
@@ -88,6 +90,21 @@ export class TripsController {
     return this.tripsService.findByDriver(driverId, {
       page: page || 1,
       limit: limit || 20,
+    });
+  }
+
+  @Get('fee-quote')
+  @ApiOperation({
+    summary: 'Platform fee a driver will be charged for a trip of this shape',
+  })
+  @ApiResponse({ status: 200, description: 'Fee quote' })
+  async feeQuote(
+    @Query('seatPrice') seatPrice: string,
+    @Query('totalSeats') totalSeats: string,
+  ) {
+    return this.driverTripFee.computeExpectedFee({
+      seatPrice: Number(seatPrice ?? 0),
+      totalSeats: Number(totalSeats ?? 0),
     });
   }
 

@@ -20,6 +20,7 @@ import { RecurrenceModule } from '../recurrence/recurrence.module';
 import { PendingChargesModule } from '../pending-charges/pending-charges.module';
 import { LocationsModule } from '../locations/locations.module';
 import { WalletModule } from '../wallet/wallet.module';
+import { DriverTripFeeModule } from '../driver-trip-fee/driver-trip-fee.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { WalletModule } from '../wallet/wallet.module';
     PendingChargesModule,
     LocationsModule,
     WalletModule,
+    DriverTripFeeModule,
   ],
   controllers: [TripsController],
   providers: [TripsService, TripsGateway, WsAuthGuard, WsRateLimitGuard],

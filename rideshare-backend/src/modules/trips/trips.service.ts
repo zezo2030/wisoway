@@ -28,7 +28,7 @@ import { RecurrenceService } from '../recurrence/recurrence.service';
 import { RecurrenceFrequency } from '../../database/entities/trip-recurrence-rule.entity';
 import { PendingChargesService } from '../pending-charges/pending-charges.service';
 import { LocationsService } from '../locations/locations.service';
-import { WalletService } from '../wallet/wallet.service';
+import { DriverTripFeeService } from '../driver-trip-fee/driver-trip-fee.service';
 import {
   currencyForCountry,
   DEFAULT_CURRENCY,
@@ -75,7 +75,7 @@ export class TripsService {
     private recurrenceService: RecurrenceService,
     private pendingChargesService: PendingChargesService,
     private locationsService: LocationsService,
-    private walletService: WalletService,
+    private driverTripFee: DriverTripFeeService,
   ) {}
 
   /**
@@ -154,8 +154,6 @@ export class TripsService {
       });
     }
 
-    await this.walletService.assertNonNegativeDriverBalance(driverId);
-
     const departureTime = new Date(createTripDto.departureTime);
     if (departureTime <= new Date()) {
       throw new BadRequestException('Departure time must be in the future');
@@ -185,6 +183,14 @@ export class TripsService {
     }
     const seats = fullSeats.slice(0, requested);
     const totalSeats = seats.length;
+
+    // Nothing is reserved between publish and start, so the driver must be able
+    // to cover the whole fee up front or the trip does not go live.
+    await this.driverTripFee.assertDriverCanCoverTripFee(driverId, {
+      seatPrice: Number(createTripDto.price ?? 0),
+      totalSeats,
+      currency: createTripDto.currency ?? 'JOD',
+    });
 
     // Currency follows the country of the trip's departure point.
     const currency = await this.resolveTripCurrency(
@@ -289,9 +295,7 @@ export class TripsService {
     return savedTrip;
   }
 
-  async findById(
-    tripId: string,
-  ): Promise<
+  async findById(tripId: string): Promise<
     TripEntity & {
       distanceKm?: number;
       driverPhotoUrl?: string | null;
@@ -322,11 +326,8 @@ export class TripsService {
       ...trip,
       distanceKm: distanceKm != null ? Number(distanceKm) : undefined,
       driverPhotoUrl: driver?.photoUrl ?? null,
-      driverRating:
-        driver?.rating != null ? Number(driver.rating) : null,
-      vehicleModel: vehicle
-        ? `${vehicle.model}`.trim() || null
-        : null,
+      driverRating: driver?.rating != null ? Number(driver.rating) : null,
+      vehicleModel: vehicle ? `${vehicle.model}`.trim() || null : null,
       vehiclePlateNumber: vehicle?.plateNumber ?? null,
       carImageUrl: trip.carImageUrl ?? vehicle?.carImageUrl ?? null,
     };
