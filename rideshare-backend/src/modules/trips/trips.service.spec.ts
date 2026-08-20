@@ -80,6 +80,7 @@ describe('TripsService (TypeORM)', () => {
   let usersService: any;
   let recurrenceService: any;
   let driverTripFee: any;
+  let locationsService: any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -178,6 +179,7 @@ describe('TripsService (TypeORM)', () => {
     usersService = module.get(UsersService);
     recurrenceService = module.get(RecurrenceService);
     driverTripFee = module.get<DriverTripFeeService>(DriverTripFeeService);
+    locationsService = module.get<LocationsService>(LocationsService);
   });
 
   afterEach(() => jest.clearAllMocks());
@@ -252,6 +254,22 @@ describe('TripsService (TypeORM)', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
+    it('rejects an out-of-range seat count before resolving currency or checking the fee guard', async () => {
+      // Pins the order: the seat-count range check is local/pure and must run
+      // before the geocode behind resolveTripCurrency and before the fee
+      // guard, so an invalid request never pays for either.
+      await expect(
+        service.create(
+          { ...baseDto(), availableSeats: 99 },
+          DRIVER_ID,
+          DRIVER_NAME,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(locationsService.reverseGeocode).not.toHaveBeenCalled();
+      expect(driverTripFee.assertDriverCanCoverTripFee).not.toHaveBeenCalled();
+    });
+
     it('carries the overridden seat count and layout into the recurrence template', async () => {
       await service.create(
         {
@@ -306,6 +324,33 @@ describe('TripsService (TypeORM)', () => {
           DRIVER_NAME,
         ),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects an invalid departure time before resolving currency or checking the fee guard', async () => {
+      // Pins the order: outstanding-charges -> departure-time -> seat-count ->
+      // resolveTripCurrency -> fee-guard. A driver who submits both a past
+      // departure time and an unaffordable trip must see the departure-time
+      // error, and the request must never pay for the geocode or wallet read
+      // behind the later checks.
+      driverTripFee.assertDriverCanCoverTripFee.mockRejectedValue(
+        new ForbiddenException({
+          code: ErrorCodes.INSUFFICIENT_BALANCE_FOR_TRIP_FEE,
+        }),
+      );
+
+      await expect(
+        service.create(
+          {
+            ...baseDto(),
+            departureTime: new Date(Date.now() - 1000).toISOString(),
+          },
+          DRIVER_ID,
+          DRIVER_NAME,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(locationsService.reverseGeocode).not.toHaveBeenCalled();
+      expect(driverTripFee.assertDriverCanCoverTripFee).not.toHaveBeenCalled();
     });
 
     it('rejects a driver without a registered vehicle', async () => {

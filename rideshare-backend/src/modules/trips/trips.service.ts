@@ -154,6 +154,17 @@ export class TripsService {
       });
     }
 
+    // Local form validation runs before any network call: departure time,
+    // then the seat-count range, then (below) the geocode behind
+    // resolveTripCurrency and the fee guard. That way an obviously invalid
+    // request never pays for a geocode round-trip, and the fee guard — the
+    // most expensive check, and the least likely to be the driver's actual
+    // mistake — runs last.
+    const departureTime = new Date(createTripDto.departureTime);
+    if (departureTime <= new Date()) {
+      throw new BadRequestException('Departure time must be in the future');
+    }
+
     // The trip carries its own copy of the layout so a per-trip
     // preventGenderMixing choice never mutates the vehicle's settings.
     const baseLayout = this.resolveVehicleSeatLayout(vehicle);
@@ -168,6 +179,8 @@ export class TripsService {
         false,
     };
 
+    // Range check first: it only needs requested/maxSeats and is pure/local,
+    // so it belongs with the other local validation above the guard.
     const fullSeats = this.generateSeatsFromLayout(seatLayout);
     const maxSeats = fullSeats.length;
     const requested = createTripDto.availableSeats ?? maxSeats;
@@ -176,6 +189,7 @@ export class TripsService {
         `availableSeats must be between 1 and ${maxSeats}`,
       );
     }
+    // totalSeats, by contrast, exists only to feed the fee guard below.
     const seats = fullSeats.slice(0, requested);
     const totalSeats = seats.length;
 
@@ -189,20 +203,14 @@ export class TripsService {
     );
 
     // Nothing is reserved between publish and start, so the driver must be able
-    // to cover the whole fee up front or the trip does not go live. Runs in the
-    // slot the old balance check occupied — right after the outstanding-charges
-    // check and before the departure-time check — so precedence between error
-    // types is unchanged from before this guard replaced it.
+    // to cover the whole fee up front or the trip does not go live. Deliberately
+    // last: it is the most expensive check (a wallet read after the geocode
+    // above) and the least likely to be the driver's actual mistake.
     await this.driverTripFee.assertDriverCanCoverTripFee(driverId, {
       seatPrice: Number(createTripDto.price ?? 0),
       totalSeats,
       currency,
     });
-
-    const departureTime = new Date(createTripDto.departureTime);
-    if (departureTime <= new Date()) {
-      throw new BadRequestException('Departure time must be in the future');
-    }
 
     const trip = this.tripRepo.create({
       driverId,
