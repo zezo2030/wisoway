@@ -11,19 +11,27 @@
  */
 import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import {
   BookingEntity,
   TripEntity,
   UserEntity,
   WalletAccountEntity,
   WalletAccountType,
+  WalletEntryDirection,
   WalletTransactionEntity,
+  WalletTransactionStatus,
+  WalletTransactionType,
 } from '../../database/entities';
+import { BookingStatus } from '../../database/entities/booking.entity';
+import { PendingChargeKind } from '../../database/entities/pending-charge.entity';
 import { ErrorCodes } from '../../common/errors/error-codes';
 import { PlatformPricingService } from '../payments/platform-pricing.service';
 import { PendingChargesService } from '../pending-charges/pending-charges.service';
-import { WalletService } from '../wallet/wallet.service';
+import {
+  pickPrimaryWalletLedgerAccount,
+  WalletService,
+} from '../wallet/wallet.service';
 
 export interface TripFeeBasis {
   seatPrice: number;
@@ -37,6 +45,18 @@ export interface TripFeeQuote {
   totalSeats: number;
   percent: number;
   currency: string;
+}
+
+export interface TripFeeChargeResult {
+  tripId: string;
+  /** Actually debited from the wallet. */
+  charged: number;
+  /** Recorded as a PendingCharge; 0 when the fee was paid in full. */
+  pendingRemainder: number;
+  currency: string;
+  /** False when the call short-circuited on idempotency. */
+  applied: boolean;
+  reason?: 'already-charged' | 'no-bookings' | 'free-trip';
 }
 
 const PRICING_COUNTRY = 'JO';
@@ -112,6 +132,196 @@ export class DriverTripFeeService {
     }
 
     return quote;
+  }
+
+  /**
+   * The one and only debit. Called when the trip flips to IN_PROGRESS.
+   *
+   * Idempotent by trip.driverWalletChargeApplied, so a replayed BullMQ job or a
+   * reconciliation sweep cannot double-charge. Never throws for a business
+   * reason — the caller must be able to start the trip regardless.
+   */
+  async chargeAtTripStart(trip: TripEntity): Promise<TripFeeChargeResult> {
+    const quote = await this.computeExpectedFee({
+      seatPrice: Number(trip.price ?? 0),
+      totalSeats: trip.totalSeats ?? 0,
+      currency: trip.currency,
+    });
+
+    if (trip.driverWalletChargeApplied) {
+      return {
+        tripId: trip.id,
+        charged: Number(trip.capturedFeeAmount ?? 0),
+        pendingRemainder: 0,
+        currency: quote.currency,
+        applied: false,
+        reason: 'already-charged',
+      };
+    }
+
+    // The auto-start processor flips confirmed bookings to IN_PROGRESS before
+    // calling us, so both statuses count as "someone actually rode".
+    const confirmedBookings = await this.bookingRepo.find({
+      where: {
+        tripId: trip.id,
+        status: In([BookingStatus.CONFIRMED, BookingStatus.IN_PROGRESS]),
+      },
+      select: { id: true },
+    });
+
+    const metadataBase = {
+      seatPrice: quote.seatPrice,
+      totalSeats: quote.totalSeats,
+      percent: quote.percent,
+      formula: 'seatPrice * totalSeats * percent%',
+    };
+
+    const outcome = await this.dataSource.transaction(async (manager) => {
+      const driver = await manager.findOne(UserEntity, {
+        where: { id: trip.driverId },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      const writeAuditRow = async (
+        accountId: string | null,
+        amount: number,
+        metadata: Record<string, unknown>,
+      ) => {
+        if (!accountId) return;
+        await manager.save(
+          WalletTransactionEntity,
+          manager.create(WalletTransactionEntity, {
+            accountId,
+            type: WalletTransactionType.TRIP_DEBIT,
+            direction: WalletEntryDirection.DEBIT,
+            status: WalletTransactionStatus.POSTED,
+            amount: amount.toFixed(2),
+            currency: quote.currency,
+            referenceType: 'trip',
+            referenceId: trip.id,
+            idempotencyKey: `trip-fee:${trip.id}`,
+            metadata,
+          }),
+        );
+      };
+
+      const lockedAccounts = await manager
+        .createQueryBuilder(WalletAccountEntity, 'wa')
+        .setLock('pessimistic_write')
+        .where('wa.userId = :userId', { userId: trip.driverId })
+        .andWhere('wa.accountType = :accountType', {
+          accountType: WalletAccountType.DRIVER,
+        })
+        .orderBy('wa.id', 'ASC')
+        .getMany();
+      const account = pickPrimaryWalletLedgerAccount(lockedAccounts);
+
+      if (confirmedBookings.length === 0) {
+        await writeAuditRow(account?.id ?? null, 0, {
+          ...metadataBase,
+          reason: 'no-bookings',
+        });
+        return { charged: 0, remainder: 0, reason: 'no-bookings' as const };
+      }
+
+      if (driver && !driver.hasUsedLifetimeFreeTrip) {
+        driver.hasUsedLifetimeFreeTrip = true;
+        await manager.save(UserEntity, driver);
+        await writeAuditRow(account?.id ?? null, 0, {
+          ...metadataBase,
+          freeTripApplied: true,
+          discountPercent: 100,
+        });
+        return { charged: 0, remainder: 0, reason: 'free-trip' as const };
+      }
+
+      if (!account) {
+        return { charged: 0, remainder: quote.amount, reason: undefined };
+      }
+
+      const available = Math.max(Number(account.balance), 0);
+      const charged = this.round2(Math.min(available, quote.amount));
+      const remainder = this.round2(quote.amount - charged);
+
+      if (charged > 0) {
+        account.balance = this.round2(
+          Number(account.balance) - charged,
+        ).toFixed(2);
+        await manager.save(WalletAccountEntity, account);
+        await writeAuditRow(account.id, charged, {
+          ...metadataBase,
+          feeAmount: quote.amount,
+          shortfall: remainder,
+        });
+        await this.walletService.syncUserLegacyWalletMirror(
+          trip.driverId,
+          WalletAccountType.DRIVER,
+          manager,
+        );
+      }
+
+      return { charged, remainder, reason: undefined };
+    });
+
+    if (outcome.remainder > 0) {
+      await this.pendingCharges.record({
+        userId: trip.driverId,
+        kind: PendingChargeKind.DRIVER_TRIP_FEE,
+        amount: outcome.remainder,
+        tripId: trip.id,
+      });
+    }
+
+    await this.stampTripCharged(trip, outcome.charged);
+
+    this.logger.log(
+      `Trip ${trip.id} fee: charged ${outcome.charged.toFixed(2)} ${quote.currency}` +
+        (outcome.remainder > 0
+          ? `, ${outcome.remainder.toFixed(2)} carried forward`
+          : '') +
+        (outcome.reason ? ` (${outcome.reason})` : ''),
+    );
+
+    return {
+      tripId: trip.id,
+      charged: outcome.charged,
+      pendingRemainder: outcome.remainder,
+      currency: quote.currency,
+      applied: true,
+      reason: outcome.reason,
+    };
+  }
+
+  /**
+   * Audit stamp. These columns no longer gate anything — they record when and
+   * how much the platform took, and the admin dashboard reads them.
+   *
+   * Deliberately outside the ledger transaction: if the stamp fails, the
+   * reconciliation sweep re-runs the charge, and the idempotencyKey on the
+   * audit row plus the balance check keep that safe.
+   */
+  private async stampTripCharged(
+    trip: TripEntity,
+    charged: number,
+  ): Promise<void> {
+    const now = new Date();
+    trip.driverWalletChargeApplied = true;
+    trip.driverWalletChargeAt = now;
+    trip.communicationFeeStatus = 'paid';
+    trip.capturedFeeAmount = charged.toFixed(2);
+    await this.tripRepo.save(trip);
+
+    await this.bookingRepo.update(
+      {
+        tripId: trip.id,
+        status: In([
+          BookingStatus.PENDING,
+          BookingStatus.CONFIRMED,
+          BookingStatus.IN_PROGRESS,
+        ]),
+      },
+      { hasDriverPaidToContact: true },
+    );
   }
 
   private round2(value: number): number {
