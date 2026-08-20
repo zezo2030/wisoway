@@ -21,7 +21,6 @@ import {
 } from '../../database/entities';
 import { ErrorCodes } from '../../common/errors/error-codes';
 import { NotificationsService } from '../notifications/notifications.service';
-import { WalletHoldService } from '../wallet/wallet-hold.service';
 import { PlatformPricingService } from '../payments/platform-pricing.service';
 import {
   DriverPresenceConfirmDto,
@@ -46,19 +45,22 @@ export interface SettlementOutcome {
   tripId: string;
   billableSeats: number;
   bookedSeats: number;
+  /** Always 0 — kept for API/shape compatibility. The fee is charged once, at trip start. */
   captured: number;
+  /** Always 0 — there is nothing left to release; no money is ever reserved. */
   released: number;
   currency: string;
-  /** False when there was nothing to settle (no hold, or already settled). */
+  /** Always false — settlement never moves money any more. */
   applied: boolean;
 }
 
 /**
- * Presence confirmation and fee settlement.
+ * Presence confirmation and settlement record-keeping.
  *
- * BILLING RULE: a seat is billable only after its passenger explicitly confirms
- * they are inside the vehicle. Silence, "on my way", and "not riding" never
- * charge the driver's wallet.
+ * A seat is billable only after its passenger explicitly confirms they are
+ * inside the vehicle — this still drives no-show flags and the operational
+ * roster. It no longer drives any wallet movement: the driver's fee is a
+ * single debit taken at trip start by `DriverTripFeeService`.
  *
  * 012-passenger-presence-confirmation.
  */
@@ -74,7 +76,6 @@ export class PresenceService {
     @InjectRepository(BookingSeatEntity)
     private readonly seatRepo: Repository<BookingSeatEntity>,
     private readonly notifications: NotificationsService,
-    private readonly walletHolds: WalletHoldService,
     private readonly platformPricing: PlatformPricingService,
   ) {}
 
@@ -133,8 +134,12 @@ export class PresenceService {
     );
 
     const billableSeats = seats.filter((s) => s.billable).length;
-    const maxFee = this.round2(seatPrice * (trip.totalSeats ?? 0) * (percent / 100));
-    const estimatedFee = this.round2(seatPrice * billableSeats * (percent / 100));
+    // The fee is now a single fixed debit at trip start, on all seats —
+    // there is nothing left to estimate per confirmed seat.
+    const maxFee = this.round2(
+      seatPrice * (trip.totalSeats ?? 0) * (percent / 100),
+    );
+    const estimatedFee = maxFee;
 
     const now = new Date();
     const opensAt = new Date(
@@ -160,35 +165,16 @@ export class PresenceService {
         billableSeats,
         estimatedFee: estimatedFee.toFixed(2),
         maxFee: maxFee.toFixed(2),
-        estimatedRelease: this.round2(
-          Math.max(maxFee - estimatedFee, 0),
-        ).toFixed(2),
       },
     };
   }
 
-  /**
-   * Pricing inputs. Prefers the snapshot frozen into the hold at unlock so a
-   * mid-trip change to `communication_fees` cannot alter what the driver pays.
-   */
+  /** Pricing inputs for the current fee schedule. */
   private async pricingFor(trip: TripEntity): Promise<{
     percent: number;
     seatPrice: number;
     currency: string;
   }> {
-    const hold = await this.walletHolds.getActiveHold('trip', trip.id);
-    const snap = (hold?.metadata ?? null) as {
-      percent?: number;
-      seatPrice?: number;
-    } | null;
-    if (snap && typeof snap.percent === 'number') {
-      return {
-        percent: snap.percent,
-        seatPrice: Number(snap.seatPrice ?? trip.price ?? 0),
-        currency: hold?.currency ?? trip.currency ?? 'JOD',
-      };
-    }
-
     const row = await this.platformPricing.getActiveFeeRow('JO');
     const pricing = this.platformPricing.driverUnlockPricing(trip, row);
     return {
@@ -497,12 +483,16 @@ export class PresenceService {
   // ── Settlement ────────────────────────────────────────────────────────────
 
   /**
-   * Capture the driver's fee for confirmed-present seats and release the rest.
+   * Record presence settlement for a trip: which seats were confirmed
+   * present, which were not, and whether the roster needs admin review.
    *
-   * Idempotent by `trip.presenceSettledAt`, and safe to call when no hold was
-   * ever placed (legacy trips, lifetime-free trips) — it simply records a zero
-   * settlement. Called from `completeTrip`, the auto-complete fallback, and the
-   * reconciliation job, so a trip can never strand a hold.
+   * Moves no money. The driver's fee is charged once, at trip start, by
+   * `DriverTripFeeService` — this method must never write
+   * `trip.capturedFeeAmount`, only read it back for reporting on an
+   * already-settled trip.
+   *
+   * Idempotent by `trip.presenceSettledAt`. Called from `completeTrip`, the
+   * auto-complete fallback, and the reconciliation job.
    */
   async settleTripPresence(
     tripId: string,
@@ -518,7 +508,7 @@ export class PresenceService {
     const trip = await tripRepo.findOne({ where: { id: tripId } });
     if (!trip) throw new NotFoundException('Trip not found');
 
-    const { percent, seatPrice, currency } = await this.pricingFor(trip);
+    const { currency } = await this.pricingFor(trip);
 
     if (trip.presenceSettledAt) {
       return {
@@ -538,41 +528,13 @@ export class PresenceService {
     });
     const seats = bookings.flatMap((b) => b.seats ?? []);
 
-    // Passenger confirmation is the sole billing authority.
+    // Passenger confirmation is still the record of who actually rode —
+    // it just no longer drives a charge or refund.
     const billableSeats = seats.filter((seat) => seat.isBillable).length;
-
-    const capture = this.round2(seatPrice * billableSeats * (percent / 100));
-
-    let result: Awaited<ReturnType<WalletHoldService['settleHold']>> | null;
-    try {
-      result = await this.walletHolds.settleHold({
-        referenceType: 'trip',
-        referenceId: tripId,
-        captureAmount: capture,
-        metadata: {
-          billableSeats,
-          bookedSeats: seats.length,
-          seatPrice,
-          percent,
-          formula: 'seatPrice * billableSeats * percent%',
-        },
-        manager,
-      });
-    } catch (error) {
-      if (!(error instanceof NotFoundException)) {
-        throw error;
-      }
-      // No hold: legacy trip, free lifetime trip, or unlock never happened.
-      this.logger.log(
-        `settleTripPresence ${tripId}: no wallet hold to settle`,
-      );
-      result = null;
-    }
 
     const now = new Date();
     trip.presenceSettledAt = now;
     trip.billableSeatCount = billableSeats;
-    trip.capturedFeeAmount = (result?.captured ?? 0).toFixed(2);
     if (seats.length > 0 && billableSeats === 0) {
       // Driver claimed nobody boarded — informational flag for admin review.
       trip.presenceReviewFlagged = true;
@@ -580,7 +542,7 @@ export class PresenceService {
     await tripRepo.save(trip);
 
     this.logger.log(
-      `Trip ${tripId} settled: ${billableSeats}/${seats.length} billable seats, captured ${result?.captured ?? 0} ${currency}`,
+      `Trip ${tripId} settled: ${billableSeats}/${seats.length} billable seats (no money moved)`,
     );
 
     void this.notifyAbsentPassengers(trip, bookings);
@@ -589,10 +551,10 @@ export class PresenceService {
       tripId,
       billableSeats,
       bookedSeats: seats.length,
-      captured: result?.captured ?? 0,
-      released: result?.released ?? 0,
+      captured: 0,
+      released: 0,
       currency,
-      applied: result?.applied ?? false,
+      applied: false,
     };
   }
 

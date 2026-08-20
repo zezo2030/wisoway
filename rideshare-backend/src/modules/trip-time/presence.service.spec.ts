@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException } from '@nestjs/common';
 import {
   BookingEntity,
   BookingStatus,
@@ -10,7 +10,6 @@ import {
 } from '../../database/entities';
 import { PresenceService } from './presence.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { WalletHoldService } from '../wallet/wallet-hold.service';
 import { PlatformPricingService } from '../payments/platform-pricing.service';
 
 const SEAT_PRICE = 2;
@@ -19,7 +18,9 @@ const PERCENT = 10; // → 0.20 JOD per billable seat
 /** departureTime far enough in the past that both windows are open. */
 const DEPARTURE = new Date(Date.now() - 5 * 60 * 1000);
 
-function makeSeat(overrides: Partial<BookingSeatEntity> = {}): BookingSeatEntity {
+function makeSeat(
+  overrides: Partial<BookingSeatEntity> = {},
+): BookingSeatEntity {
   return Object.assign(new BookingSeatEntity(), {
     id: `seat-${Math.random().toString(36).slice(2, 8)}`,
     bookingId: 'b1',
@@ -79,13 +80,14 @@ describe('PresenceService', () => {
   let tripRepo: any;
   let bookingRepo: any;
   let seatRepo: any;
-  let walletHolds: jest.Mocked<Partial<WalletHoldService>>;
 
   beforeEach(async () => {
     tripRepo = {
       findOne: jest.fn(),
       save: jest.fn(async (t: TripEntity) => t),
-      manager: { getRepository: jest.fn(() => ({ find: jest.fn(async () => []) })) },
+      manager: {
+        getRepository: jest.fn(() => ({ find: jest.fn(async () => []) })),
+      },
     };
     bookingRepo = {
       find: jest.fn(),
@@ -93,21 +95,6 @@ describe('PresenceService', () => {
       save: jest.fn(async (b: BookingEntity) => b),
     };
     seatRepo = { save: jest.fn(async (s: BookingSeatEntity) => s) };
-
-    walletHolds = {
-      getActiveHold: jest.fn(async () => ({
-        id: 'hold-1',
-        currency: 'JOD',
-        metadata: { percent: PERCENT, seatPrice: SEAT_PRICE },
-      })) as any,
-      settleHold: jest.fn(async ({ captureAmount }: any) => ({
-        hold: {} as any,
-        captured: captureAmount,
-        released: Math.round((0.8 - captureAmount) * 100) / 100,
-        currency: 'JOD',
-        applied: true,
-      })),
-    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -119,7 +106,6 @@ describe('PresenceService', () => {
           provide: NotificationsService,
           useValue: { create: jest.fn(async () => ({})) },
         },
-        { provide: WalletHoldService, useValue: walletHolds },
         {
           provide: PlatformPricingService,
           useValue: {
@@ -257,54 +243,48 @@ describe('PresenceService', () => {
       bookingRepo.find.mockResolvedValue([makeBooking(seats)]);
     }
 
-    it('charges nothing when no passenger confirms presence', async () => {
-      arrangeSeats([makeSeat(), makeSeat({ seatNumber: '1B' })]);
-
-      const out = await service.settleTripPresence('t1');
-
-      expect(out.billableSeats).toBe(0);
-      expect(out.captured).toBe(0);
-    });
-
-    it('charges only for passengers who explicitly confirmed presence', async () => {
-      arrangeSeats([
-        makeSeat({ passengerSelfConfirmedAt: new Date() }),
-        makeSeat({ seatNumber: '1B', billableOverride: false }),
-        makeSeat({
-          seatNumber: '1C',
-          presenceConfirmedAt: new Date(),
-        }),
+    it('records presence without moving any money', async () => {
+      const trip = makeTrip();
+      tripRepo.findOne.mockResolvedValue(trip);
+      bookingRepo.find.mockResolvedValue([
+        makeBooking([
+          makeSeat({ passengerSelfConfirmedAt: new Date() }),
+          makeSeat({ seatNumber: '1B', billableOverride: false }),
+          makeSeat({
+            seatNumber: '1C',
+            presenceConfirmedAt: new Date(),
+          }),
+        ]),
       ]);
 
-      const out = await service.settleTripPresence('t1');
+      const outcome = await service.settleTripPresence('t1');
 
-      expect(out.billableSeats).toBe(1);
-      expect(out.captured).toBe(0.2);
-      expect(out.released).toBe(0.6);
+      expect(outcome.captured).toBe(0);
+      expect(outcome.released).toBe(0);
+      expect(outcome.billableSeats).toBe(1);
+      expect(trip.presenceSettledAt).toBeInstanceOf(Date);
     });
 
-    it('does not charge seats that were only auto-flagged by the no-show detector', async () => {
-      arrangeSeats([
-        makeSeat({ autoFlaggedAbsentAt: new Date() }),
-        makeSeat({ seatNumber: '1B', autoFlaggedAbsentAt: new Date() }),
+    it('leaves capturedFeeAmount alone — it belongs to the trip-start charge', async () => {
+      const trip = makeTrip({ capturedFeeAmount: '1.60' });
+      tripRepo.findOne.mockResolvedValue(trip);
+      bookingRepo.find.mockResolvedValue([
+        makeBooking([makeSeat({ passengerSelfConfirmedAt: new Date() })]),
       ]);
 
-      const out = await service.settleTripPresence('t1');
+      await service.settleTripPresence('t1');
 
-      expect(out.billableSeats).toBe(0);
-      expect(out.captured).toBe(0);
+      expect(trip.capturedFeeAmount).toBe('1.60');
     });
 
-    it('captures nothing and flags for review when no seat is confirmed', async () => {
+    it('flags a trip for review when seats existed but nobody confirmed', async () => {
       arrangeSeats([
         makeSeat({ billableOverride: false }),
         makeSeat({ seatNumber: '1B', billableOverride: false }),
       ]);
 
-      const out = await service.settleTripPresence('t1');
+      await service.settleTripPresence('t1');
 
-      expect(out.billableSeats).toBe(0);
-      expect(out.captured).toBe(0);
       expect(tripRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ presenceReviewFlagged: true }),
       );
@@ -322,33 +302,8 @@ describe('PresenceService', () => {
       const out = await service.settleTripPresence('t1');
 
       expect(out.applied).toBe(false);
-      expect(walletHolds.settleHold).not.toHaveBeenCalled();
-    });
-
-    it('still records a settlement when no hold exists (free lifetime trip)', async () => {
-      arrangeSeats([makeSeat()]);
-      (walletHolds.settleHold as jest.Mock).mockRejectedValueOnce(
-        new NotFoundException('HOLD_NOT_FOUND'),
-      );
-
-      const out = await service.settleTripPresence('t1');
-
-      expect(out.captured).toBe(0);
-      expect(tripRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ presenceSettledAt: expect.any(Date) }),
-      );
-    });
-
-    it('does not mark the trip settled when wallet settlement fails', async () => {
-      arrangeSeats([makeSeat({ passengerSelfConfirmedAt: new Date() })]);
-      (walletHolds.settleHold as jest.Mock).mockRejectedValueOnce(
-        new Error('wallet unavailable'),
-      );
-
-      await expect(service.settleTripPresence('t1')).rejects.toThrow(
-        'wallet unavailable',
-      );
-      expect(tripRepo.save).not.toHaveBeenCalled();
+      expect(out.captured).toBe(0.4);
+      expect(out.released).toBe(0);
     });
 
     it('only counts seats from confirmed/in-progress/completed bookings', async () => {

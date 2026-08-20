@@ -11,7 +11,6 @@ import { TripTimeService } from './trip-time.service';
 import { PresenceService } from './presence.service';
 import { TripTimeController } from './trip-time.controller';
 import { NotificationsModule } from '../notifications/notifications.module';
-import { WalletModule } from '../wallet/wallet.module';
 import { PlatformPricingService } from '../payments/platform-pricing.service';
 
 @Module({
@@ -29,7 +28,6 @@ import { PlatformPricingService } from '../payments/platform-pricing.service';
       UserEntity,
     ]),
     forwardRef(() => NotificationsModule),
-    WalletModule,
   ],
   controllers: [TripTimeController],
   providers: [TripTimeService, PresenceService, PlatformPricingService],

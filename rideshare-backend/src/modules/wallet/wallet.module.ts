@@ -12,7 +12,6 @@ import {
 } from '../../database/entities';
 import { WalletController } from './wallet.controller';
 import { WalletService } from './wallet.service';
-import { WalletHoldService } from './wallet-hold.service';
 import { PlatformPricingService } from '../payments/platform-pricing.service';
 
 @Module({
@@ -29,7 +28,7 @@ import { PlatformPricingService } from '../payments/platform-pricing.service';
     ]),
   ],
   controllers: [WalletController],
-  providers: [WalletService, WalletHoldService, PlatformPricingService],
-  exports: [WalletService, WalletHoldService],
+  providers: [WalletService, PlatformPricingService],
+  exports: [WalletService],
 })
 export class WalletModule {}

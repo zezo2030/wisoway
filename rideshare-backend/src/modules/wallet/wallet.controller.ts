@@ -5,7 +5,6 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { WalletService } from './wallet.service';
 import { CreateTopupDto } from './dto/create-topup.dto';
-import { DriverTripChargeDto } from './dto/driver-trip-charge.dto';
 import { CreatePayoutRequestDto } from './dto/create-payout-request.dto';
 
 @ApiTags('wallet')
@@ -47,15 +46,6 @@ export class WalletController {
     @Body() dto: CreateTopupDto,
   ) {
     return this.walletService.createTopup(userId, role, dto);
-  }
-
-  @Post('driver/trip-charge')
-  @ApiOperation({ summary: 'Charge driver wallet to activate trip' })
-  async chargeDriverTrip(
-    @CurrentUser('id') driverId: string,
-    @Body() dto: DriverTripChargeDto,
-  ) {
-    return this.walletService.chargeDriverForTrip(driverId, dto);
   }
 
   @Post('rider/pay-trip')

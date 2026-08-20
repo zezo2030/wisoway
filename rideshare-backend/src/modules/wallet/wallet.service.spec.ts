@@ -9,7 +9,6 @@ import {
   WalletTransactionEntity,
 } from '../../database/entities';
 import { WalletService } from './wallet.service';
-import { WalletHoldService } from './wallet-hold.service';
 import { PlatformPricingService } from '../payments/platform-pricing.service';
 
 describe('WalletService', () => {
@@ -59,15 +58,6 @@ describe('WalletService', () => {
           provide: getRepositoryToken(UserEntity),
           useValue: {
             findOne: jest.fn(),
-          },
-        },
-        {
-          provide: WalletHoldService,
-          useValue: {
-            placeHold: jest.fn(),
-            settleHold: jest.fn(),
-            releaseHold: jest.fn(),
-            getActiveHold: jest.fn(),
           },
         },
         {
