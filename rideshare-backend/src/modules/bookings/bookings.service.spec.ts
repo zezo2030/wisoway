@@ -179,7 +179,6 @@ describe('BookingsService (TypeORM)', () => {
         {
           provide: PaymentsService,
           useValue: {
-            chargeDriverWalletForTrip: jest.fn(),
             resolvePassengerWalletPaymentForBooking: jest.fn(),
           },
         },
@@ -452,10 +451,10 @@ describe('BookingsService (TypeORM)', () => {
       expect(result.data[0].user).toEqual(passenger);
       expect(result.data[0].chatEnabled).toBe(true);
       expect(result.data[0].callEnabled).toBe(true);
-      // hasDriverPaidToContact is an audit passthrough now, not an access
-      // flag — it is NOT forced to true just because the trip-level charge
-      // landed. The row's own stored value comes back unchanged.
-      expect(result.data[0].hasDriverPaidToContact).toBe(false);
+      // Coerced true for backward compatibility: app builds predating the
+      // ungating still branch their roster on this flag, and returning the
+      // stored false would mask the passenger on those builds.
+      expect(result.data[0].hasDriverPaidToContact).toBe(true);
     });
 
     it('regression: still reveals user and enables chat/call when neither payment flag is set — the contact gate must not come back', async () => {
@@ -479,10 +478,11 @@ describe('BookingsService (TypeORM)', () => {
       expect(result.data[0].user).toEqual(passenger);
       expect(result.data[0].chatEnabled).toBe(true);
       expect(result.data[0].callEnabled).toBe(true);
-      // Audit passthrough: the driver has genuinely not been charged yet,
-      // so this stays false — but that must not mask the passenger or
-      // disable chat/call the way the old gate did.
-      expect(result.data[0].hasDriverPaidToContact).toBe(false);
+      // The driver genuinely has not been charged yet — the stored column is
+      // still false — but this driver-facing response coerces it to true so an
+      // older app build does not lock a roster that is meant to be open. The
+      // real audit value is read by the dashboard through a different path.
+      expect(result.data[0].hasDriverPaidToContact).toBe(true);
     });
 
     it('should request the trip relation', async () => {

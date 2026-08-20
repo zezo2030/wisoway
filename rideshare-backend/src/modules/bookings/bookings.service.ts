@@ -539,11 +539,21 @@ export class BookingsService {
     // Passenger identity and chat/call are always open to the trip's driver
     // for every booking on the trip, regardless of status — the platform fee
     // is charged once at trip start and does not gate contact access.
-    // `hasDriverPaidToContact` is passed through unchanged below: it is an
-    // audit stamp of when that fee was charged, not an access flag, so it
-    // reflects the row's real stored value rather than being forced to true.
+    //
+    // BACKWARD COMPATIBILITY — DO NOT "CLEAN THIS UP".
+    // `hasDriverPaidToContact` is now only an audit stamp of when the fee was
+    // charged, and it stays false on every trip until trip start. App builds
+    // that predate the ungating still branch their roster on this flag, so
+    // returning the stored value here would mask passenger names and hide the
+    // call/chat buttons for every driver who has not updated yet — a *more*
+    // locked roster after deploy than before it. Forcing it true on this
+    // driver-facing response keeps those builds working. The admin dashboard's
+    // audit view reads the real stored flag through a different path
+    // (admin-dashboard.service.ts) and is unaffected.
+    // Remove only once the pre-ungating app builds are out of circulation.
     const data = rawData.map((b) => ({
       ...b,
+      hasDriverPaidToContact: true,
       chatEnabled: true,
       callEnabled: true,
     }));

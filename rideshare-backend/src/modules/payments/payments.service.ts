@@ -7,17 +7,11 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { PaymentEntity } from '../../database/entities/payment.entity';
-import { CommunicationFeeEntity } from '../../database/entities/communication-fee.entity';
 import { TripEntity } from '../../database/entities/trip.entity';
 import { UserEntity } from '../../database/entities/user.entity';
-import {
-  BookingEntity,
-  BookingStatus,
-  PgUserRole,
-  WalletAccountType,
-} from '../../database/entities';
+import { PgUserRole, WalletAccountType } from '../../database/entities';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { CreateCommunicationFeeDto } from './dto/create-communication-fee.dto';
 import { CreateWalletTopupDto } from './dto/create-wallet-topup.dto';
@@ -63,11 +57,8 @@ export class PaymentsService {
   constructor(
     @InjectRepository(PaymentEntity)
     private paymentRepo: Repository<PaymentEntity>,
-    @InjectRepository(CommunicationFeeEntity)
-    private communicationFeeRepo: Repository<CommunicationFeeEntity>,
     @InjectRepository(TripEntity) private tripRepo: Repository<TripEntity>,
     @InjectRepository(UserEntity) private userRepo: Repository<UserEntity>,
-    private dataSource: DataSource,
     private notificationsService: NotificationsService,
     private a2aCliqService: A2aCliqService,
     private platformPricing: PlatformPricingService,
@@ -345,164 +336,14 @@ export class PaymentsService {
     };
   }
 
-  async chargeDriverWalletForTrip(
-    driverId: string,
-    tripId: string,
-  ): Promise<void> {
-    const trip = await this.tripRepo.findOne({ where: { id: tripId } });
-    if (!trip) {
-      throw new NotFoundException('Trip not found');
-    }
-    if (trip.driverId !== driverId) {
-      throw new ForbiddenException('Not the driver of this trip');
-    }
-    if (trip.driverWalletChargeApplied) {
-      return;
-    }
-
-    const driver = await this.userRepo.findOne({
-      where: { id: driverId },
-      select: [
-        'id',
-        'walletBalance',
-        'walletCurrency',
-        'hasUsedLifetimeFreeTrip',
-      ],
-    });
-    if (!driver) {
-      throw new NotFoundException('User not found');
-    }
-
-    const countryCode = 'JO';
-    const communicationFee = await this.communicationFeeRepo.findOne({
-      where: { countryCode, isActive: true },
-    });
-    const unlock = this.platformPricing.driverUnlockPricing(
-      trip,
-      communicationFee,
-    );
-    const feeAmount = unlock.feeAmount;
-    const currency = unlock.currency ?? driver.walletCurrency ?? 'JOD';
-    const lifetimeFreeEnabled =
-      communicationFee?.lifetimeFreeTripEnabled !== false;
-
-    const qr = this.dataSource.createQueryRunner();
-    await qr.connect();
-    await qr.startTransaction();
-    try {
-      if (lifetimeFreeEnabled && !driver.hasUsedLifetimeFreeTrip) {
-        await qr.manager.update(
-          UserEntity,
-          { id: driverId },
-          { hasUsedLifetimeFreeTrip: true },
-        );
-        await qr.manager.update(
-          TripEntity,
-          { id: tripId },
-          {
-            driverWalletChargeApplied: true,
-            driverWalletChargeAt: new Date(),
-            communicationFeeStatus: 'paid',
-          },
-        );
-        await qr.manager.update(
-          BookingEntity,
-          {
-            tripId,
-            status: In([BookingStatus.PENDING, BookingStatus.CONFIRMED]),
-          },
-          { hasDriverPaidToContact: true },
-        );
-        await qr.commitTransaction();
-        this.logger.log(
-          `Lifetime free trip used for driver ${driverId}, trip ${tripId}`,
-        );
-        return;
-      }
-
-      const balance = Number(driver.walletBalance ?? 0);
-      if (feeAmount > 0 && balance < feeAmount) {
-        // Don't roll back here — the outer catch handles it. Doing both
-        // raises TransactionNotStartedError on the second rollback and
-        // hides the real cause (insufficient balance).
-        throw new BadRequestException(
-          'Insufficient wallet balance. Please top up your wallet to confirm bookings and view passenger details.',
-        );
-      }
-
-      if (feeAmount <= 0) {
-        await qr.manager.update(
-          TripEntity,
-          { id: tripId },
-          {
-            driverWalletChargeApplied: true,
-            driverWalletChargeAt: new Date(),
-            communicationFeeStatus: 'paid',
-          },
-        );
-        await qr.manager.update(
-          BookingEntity,
-          {
-            tripId,
-            status: In([BookingStatus.PENDING, BookingStatus.CONFIRMED]),
-          },
-          { hasDriverPaidToContact: true },
-        );
-        await qr.commitTransaction();
-        this.logger.log(
-          `Zero unlock fee for driver ${driverId}, trip ${tripId}; marked paid.`,
-        );
-        return;
-      }
-
-      await qr.manager
-        .createQueryBuilder()
-        .update(UserEntity)
-        .set({ walletBalance: () => '"walletBalance" - :fee' })
-        .setParameter('fee', feeAmount)
-        .where('id = :id', { id: driverId })
-        .execute();
-      const payment = qr.manager.create(PaymentEntity, {
-        userId: driverId,
-        tripId,
-        amount: feeAmount,
-        currency,
-        method: 'manual',
-        status: 'approved',
-        paymentType: 'wallet_trip_charge',
-        direction: 'debit',
-      });
-      await qr.manager.save(PaymentEntity, payment);
-      await qr.manager.update(
-        TripEntity,
-        { id: tripId },
-        {
-          driverWalletChargeApplied: true,
-          driverWalletChargeAt: new Date(),
-          communicationFeeStatus: 'paid',
-        },
-      );
-      await qr.manager.update(
-        BookingEntity,
-        {
-          tripId,
-          status: In([BookingStatus.PENDING, BookingStatus.CONFIRMED]),
-        },
-        { hasDriverPaidToContact: true },
-      );
-      await qr.commitTransaction();
-      this.logger.log(
-        `Wallet charged ${feeAmount} ${currency} for driver ${driverId}, trip ${tripId}`,
-      );
-    } catch (err) {
-      if (qr.isTransactionActive) {
-        await qr.rollbackTransaction();
-      }
-      throw err;
-    } finally {
-      await qr.release();
-    }
-  }
+  // chargeDriverWalletForTrip() was deleted here. It was a second, complete
+  // driver-fee implementation: it computed the fee from driverUnlockPricing,
+  // consumed hasUsedLifetimeFreeTrip, debited users.walletBalance directly
+  // (bypassing the wallet ledger) and stamped driverWalletChargeApplied /
+  // communicationFeeStatus / hasDriverPaidToContact — all without writing the
+  // `trip-fee:<tripId>` audit row that DriverTripFeeService.chargeAtTripStart
+  // uses for idempotency, so it could silently defeat it. Nothing called it.
+  // DriverTripFeeService is the only path that charges a driver for a trip.
 
   async getWalletMe(userId: string): Promise<{
     balance: number;
