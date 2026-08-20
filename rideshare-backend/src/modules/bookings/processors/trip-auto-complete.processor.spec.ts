@@ -110,9 +110,7 @@ describe('TripAutoCompleteProcessor — fee reconciliation sweep', () => {
 
     await processor.handle({ data: { tripId: 'trip-1' } } as any);
 
-    expect(logSpy).toHaveBeenCalledWith(
-      expect.stringContaining('RECOVERED'),
-    );
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('RECOVERED'));
   });
 
   it('logs at error level, with the trip id and error, when the sweep charge attempt fails', async () => {

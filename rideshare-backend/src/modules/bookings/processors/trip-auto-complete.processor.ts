@@ -68,7 +68,10 @@ export class TripAutoCompleteProcessor {
         // idempotency (already charged elsewhere) — nothing was recovered here.
         // charged/pendingRemainder both 0 with applied === true means a real,
         // legitimate no-op (free trip, no bookings) rather than a recovery.
-        if (result.applied && (result.charged > 0 || result.pendingRemainder > 0)) {
+        if (
+          result.applied &&
+          (result.charged > 0 || result.pendingRemainder > 0)
+        ) {
           this.logger.log(
             `trip-auto-complete: RECOVERED fee for trip ${tripId} — charged ${result.charged.toFixed(2)} ${result.currency}` +
               (result.pendingRemainder > 0
