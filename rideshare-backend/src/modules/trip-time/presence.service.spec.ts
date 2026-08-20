@@ -259,6 +259,7 @@ describe('PresenceService', () => {
 
       const outcome = await service.settleTripPresence('t1');
 
+      // Nothing was ever charged on this trip, so nothing to report.
       expect(outcome.captured).toBe(0);
       expect(outcome.released).toBe(0);
       expect(outcome.billableSeats).toBe(1);
@@ -275,6 +276,42 @@ describe('PresenceService', () => {
       await service.settleTripPresence('t1');
 
       expect(trip.capturedFeeAmount).toBe('1.60');
+    });
+
+    // The driver's trip summary renders `settlement.captured` ahead of the
+    // trip's own capturedFeeAmount, so a 0 here is not "unknown" — it is a
+    // claim that the fee was 0.00 on a trip that was just debited 1.60.
+    it('reports the fee already charged at trip start on a fresh settlement', async () => {
+      tripRepo.findOne.mockResolvedValue(
+        makeTrip({ capturedFeeAmount: '1.60' }),
+      );
+      bookingRepo.find.mockResolvedValue([
+        makeBooking([makeSeat({ passengerSelfConfirmedAt: new Date() })]),
+      ]);
+
+      const outcome = await service.settleTripPresence('t1');
+
+      expect(outcome.captured).toBe(1.6);
+    });
+
+    it('reports the same captured amount whether or not it settled before', async () => {
+      const fresh = makeTrip({ capturedFeeAmount: '1.60' });
+      tripRepo.findOne.mockResolvedValue(fresh);
+      bookingRepo.find.mockResolvedValue([
+        makeBooking([makeSeat({ passengerSelfConfirmedAt: new Date() })]),
+      ]);
+      const first = await service.settleTripPresence('t1');
+
+      tripRepo.findOne.mockResolvedValue(
+        makeTrip({
+          capturedFeeAmount: '1.60',
+          presenceSettledAt: new Date(),
+          billableSeatCount: 1,
+        }),
+      );
+      const second = await service.settleTripPresence('t1');
+
+      expect(second.captured).toBe(first.captured);
     });
 
     it('flags a trip for review when seats existed but nobody confirmed', async () => {

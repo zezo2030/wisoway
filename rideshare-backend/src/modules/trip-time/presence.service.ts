@@ -551,7 +551,13 @@ export class PresenceService {
       tripId,
       billableSeats,
       bookedSeats: seats.length,
-      captured: 0,
+      // Read back, never written here: the fee was already debited at trip
+      // start by DriverTripFeeService. Reporting 0 would tell the driver's
+      // trip summary the fee was 0.00 on a trip their wallet was just debited
+      // for — the summary reads this field ahead of trip.capturedFeeAmount,
+      // and 0 is not null, so it would shadow the real value. Matches the
+      // already-settled branch above.
+      captured: Number(trip.capturedFeeAmount ?? 0),
       released: 0,
       currency,
       applied: false,
