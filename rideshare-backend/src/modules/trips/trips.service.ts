@@ -10,11 +10,12 @@ import { Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 import { TripEntity } from '../../database/entities/trip.entity';
-import { TripStatus } from '../../database/entities/shared.enums';
+import { TripStatus, TripType } from '../../database/entities/shared.enums';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { SearchTripsDto } from './dto/search-trips.dto';
 import { LocationBasedTripsDto } from './dto/location-based-trips.dto';
+import { PriceSuggestionQueryDto } from './dto/price-suggestion-query.dto';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BookingsService } from '../bookings/bookings.service';
@@ -29,6 +30,10 @@ import { PendingChargesService } from '../pending-charges/pending-charges.servic
 import { LocationsService } from '../locations/locations.service';
 import { DriverTripFeeService } from '../driver-trip-fee/driver-trip-fee.service';
 import {
+  TripPassengerSummary,
+  TripPassengerSummaryService,
+} from '../bookings/trip-passenger-summary.service';
+import {
   currencyForCountry,
   DEFAULT_CURRENCY,
 } from '../../common/currency/country-currency';
@@ -41,6 +46,25 @@ import {
   resolveVehicleTypeTemplate,
   type SeatLayout,
 } from '../vehicles/vehicle-types';
+import {
+  PRICE_SUGGESTION_LOOKBACK_DAYS,
+  PRICE_SUGGESTION_MIN_SAMPLE,
+  PRICE_SUGGESTION_RADIUS_M,
+  SEAT_PRICE_BAND,
+  SEAT_PRICE_BASE,
+  SEAT_PRICE_MINIMUM,
+  SEAT_PRICE_PER_KM,
+} from './trip-price.constants';
+
+/** Per-seat price band offered to a driver while publishing a trip. */
+export interface TripPriceSuggestion {
+  /** Currency the trip will be stored in — derived, never driver-picked. */
+  currency: string;
+  min: number;
+  max: number;
+  /** Where the band came from, so the UI can word the hint honestly. */
+  basis: 'history' | 'distance';
+}
 
 function getFromLatLng(trip: TripEntity): { lat: number; lng: number } {
   const c = trip.fromPoint?.coordinates;
@@ -51,6 +75,9 @@ function getToLatLng(trip: TripEntity): { lat: number; lng: number } {
   const c = trip.toPoint?.coordinates;
   return c ? { lat: c[1], lng: c[0] } : { lat: 0, lng: 0 };
 }
+
+/** A trip as returned by the list endpoints, with its passenger summary. */
+export type TripListItem = TripEntity & TripPassengerSummary;
 
 @Injectable()
 export class TripsService {
@@ -72,6 +99,7 @@ export class TripsService {
     private pendingChargesService: PendingChargesService,
     private locationsService: LocationsService,
     private driverTripFee: DriverTripFeeService,
+    private tripPassengerSummary: TripPassengerSummaryService,
   ) {}
 
   /**
@@ -100,6 +128,153 @@ export class TripsService {
       );
     }
     return fallbackCurrency ?? DEFAULT_CURRENCY;
+  }
+
+  /**
+   * Per-seat price band suggested to a driver publishing this route.
+   *
+   * Prefers what drivers actually charged on comparable recent trips, and
+   * falls back to a distance estimate when that sample is too thin. The
+   * currency is resolved the same way {@link create} resolves it, so the hint
+   * is always quoted in the currency the trip will really be stored in.
+   */
+  async getPriceSuggestion(
+    query: PriceSuggestionQueryDto,
+  ): Promise<TripPriceSuggestion> {
+    const currency = await this.resolveTripCurrency({
+      latitude: query.fromLat,
+      longitude: query.fromLng,
+    });
+
+    const historical = await this.historicalPriceBand(query);
+    if (historical) {
+      return { currency, ...historical };
+    }
+
+    return { currency, ...(await this.distancePriceBand(query)) };
+  }
+
+  /**
+   * Interquartile price range of recent scheduled trips whose endpoints both
+   * sit within {@link PRICE_SUGGESTION_RADIUS_M} of the requested route.
+   * Returns null when the sample is too small to be representative.
+   */
+  private async historicalPriceBand(
+    query: PriceSuggestionQueryDto,
+  ): Promise<{ min: number; max: number; basis: 'history' } | null> {
+    const since = new Date(
+      Date.now() - PRICE_SUGGESTION_LOOKBACK_DAYS * 24 * 3600 * 1000,
+    );
+
+    let row:
+      | {
+          sampleSize?: string | number;
+          p25?: string | null;
+          p75?: string | null;
+        }
+      | undefined;
+    try {
+      row = await this.tripRepo
+        .createQueryBuilder('trip')
+        .select('COUNT(*)', 'sampleSize')
+        .addSelect(
+          'percentile_cont(0.25) WITHIN GROUP (ORDER BY trip.price)',
+          'p25',
+        )
+        .addSelect(
+          'percentile_cont(0.75) WITHIN GROUP (ORDER BY trip.price)',
+          'p75',
+        )
+        .where('trip.tripType = :tripType', { tripType: TripType.SCHEDULED })
+        .andWhere('trip.price > 0')
+        .andWhere('trip.departureTime >= :since', { since })
+        .andWhere(
+          'ST_DWithin(trip.fromPoint, ST_SetSRID(ST_MakePoint(:fromLng, :fromLat), 4326)::geography, :radiusM)',
+          {
+            fromLng: query.fromLng,
+            fromLat: query.fromLat,
+            radiusM: PRICE_SUGGESTION_RADIUS_M,
+          },
+        )
+        .andWhere(
+          'ST_DWithin(trip.toPoint, ST_SetSRID(ST_MakePoint(:toLng, :toLat), 4326)::geography, :radiusM)',
+          {
+            toLng: query.toLng,
+            toLat: query.toLat,
+            radiusM: PRICE_SUGGESTION_RADIUS_M,
+          },
+        )
+        .getRawOne();
+    } catch (error) {
+      this.logger.warn(
+        `Historical price sample failed, falling back to distance: ${
+          error instanceof Error ? error.message : 'unknown error'
+        }`,
+      );
+      return null;
+    }
+
+    const sampleSize = Number(row?.sampleSize ?? 0);
+    const p25 = Number(row?.p25);
+    const p75 = Number(row?.p75);
+    if (
+      sampleSize < PRICE_SUGGESTION_MIN_SAMPLE ||
+      !Number.isFinite(p25) ||
+      !Number.isFinite(p75)
+    ) {
+      return null;
+    }
+
+    return { ...this.roundPriceBand(p25, p75), basis: 'history' };
+  }
+
+  /** Distance-based band used when no comparable trips have been published. */
+  private async distancePriceBand(
+    query: PriceSuggestionQueryDto,
+  ): Promise<{ min: number; max: number; basis: 'distance' }> {
+    let distanceKm: number;
+    try {
+      const distance = await this.locationsService.getDistance(
+        query.fromLat,
+        query.fromLng,
+        query.toLat,
+        query.toLng,
+      );
+      distanceKm = distance.distanceKm;
+    } catch {
+      distanceKm = this.calculateDistanceKm(
+        query.fromLat,
+        query.fromLng,
+        query.toLat,
+        query.toLng,
+      );
+    }
+
+    const estimate = Math.max(
+      SEAT_PRICE_MINIMUM,
+      SEAT_PRICE_BASE + distanceKm * SEAT_PRICE_PER_KM,
+    );
+
+    return {
+      ...this.roundPriceBand(
+        estimate * (1 - SEAT_PRICE_BAND),
+        estimate * (1 + SEAT_PRICE_BAND),
+      ),
+      basis: 'distance',
+    };
+  }
+
+  /**
+   * Whole-unit band: never below the seat-price minimum, and never collapsed
+   * to a single value (a "14 - 14" hint reads like a fixed fare).
+   */
+  private roundPriceBand(
+    low: number,
+    high: number,
+  ): { min: number; max: number } {
+    const min = Math.max(SEAT_PRICE_MINIMUM, Math.round(low));
+    const max = Math.round(high);
+    return { min, max: max > min ? max : min + 1 };
   }
 
   async getPricingPreview(tripId: string, countryCode: string = 'JO') {
@@ -310,6 +485,7 @@ export class TripsService {
       distanceKm?: number;
       driverPhotoUrl?: string | null;
       driverRating?: number | null;
+      vehicleType?: string | null;
       vehicleModel?: string | null;
       vehiclePlateNumber?: string | null;
     }
@@ -337,6 +513,9 @@ export class TripsService {
       distanceKm: distanceKm != null ? Number(distanceKm) : undefined,
       driverPhotoUrl: driver?.photoUrl ?? null,
       driverRating: driver?.rating != null ? Number(driver.rating) : null,
+      // Clients choose the cabin artwork by type; two types can share a seat
+      // layout, so the layout alone cannot identify the vehicle.
+      vehicleType: vehicle?.vehicleType ?? null,
       vehicleModel: vehicle ? `${vehicle.model}`.trim() || null : null,
       vehiclePlateNumber: vehicle?.plateNumber ?? null,
       carImageUrl: trip.carImageUrl ?? vehicle?.carImageUrl ?? null,
@@ -750,7 +929,7 @@ export class TripsService {
 
   async getNearbyTrips(
     query: LocationBasedTripsDto,
-  ): Promise<PaginatedResult<TripEntity>> {
+  ): Promise<PaginatedResult<TripListItem>> {
     const { page = 1, limit = 20, latitude, longitude } = query;
     const radiusKm = query.radiusKm ?? 50;
     const skip = (page - 1) * limit;
@@ -781,9 +960,9 @@ export class TripsService {
       .sort((a, b) => a.distanceKm - b.distanceKm);
 
     const total = withDistance.length;
-    const data = withDistance
-      .slice(skip, skip + limit)
-      .map((item) => item.trip);
+    const data = await this.withPassengerSummary(
+      withDistance.slice(skip, skip + limit).map((item) => item.trip),
+    );
 
     return {
       data,
@@ -798,7 +977,7 @@ export class TripsService {
 
   async getPreferredTrips(
     query: LocationBasedTripsDto,
-  ): Promise<PaginatedResult<TripEntity>> {
+  ): Promise<PaginatedResult<TripListItem>> {
     const { page = 1, limit = 20, latitude, longitude } = query;
     const radiusKm = query.radiusKm ?? 80;
     const skip = (page - 1) * limit;
@@ -860,7 +1039,9 @@ export class TripsService {
     );
 
     const total = scoredTrips.length;
-    const data = scoredTrips.slice(skip, skip + limit).map((item) => item.trip);
+    const data = await this.withPassengerSummary(
+      scoredTrips.slice(skip, skip + limit).map((item) => item.trip),
+    );
 
     return {
       data,
@@ -871,6 +1052,26 @@ export class TripsService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  /**
+   * Decorates a page of trips with "who is already on board" so list cards can
+   * show the taken seats and passenger avatars. One aggregate query per page.
+   */
+  private async withPassengerSummary(
+    trips: TripEntity[],
+  ): Promise<TripListItem[]> {
+    const summaries = await this.tripPassengerSummary.forTrips(
+      trips.map((trip) => trip.id),
+    );
+
+    return trips.map((trip) => {
+      const summary = summaries.get(trip.id);
+      return Object.assign(trip, {
+        bookedSeats: summary?.bookedSeats ?? 0,
+        passengerAvatars: summary?.passengerAvatars ?? [],
+      });
+    });
   }
 
   private calculateDistanceKm(

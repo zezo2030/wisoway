@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../l10n/l10n_extensions.dart';
+import '../../../models/trip_price_suggestion.dart';
+import '../../../utils/western_digits.dart';
 import '../../../widgets/vehicle_seat_layout_picker.dart';
 import 'create_trip_stepper.dart';
 import 'create_trip_wizard_state.dart';
@@ -19,6 +21,8 @@ class Step2Details extends StatelessWidget {
     super.key,
     required this.wizard,
     required this.isLoadingVehicle,
+    required this.currency,
+    required this.priceSuggestion,
     required this.onChanged,
     required this.onPickDate,
     required this.onPickTime,
@@ -28,6 +32,14 @@ class Step2Details extends StatelessWidget {
 
   final CreateTripWizardState wizard;
   final bool isLoadingVehicle;
+
+  /// Currency the trip will be published in. Derived by the backend from the
+  /// departure point's country, so the driver never picks it.
+  final String currency;
+
+  /// Per-seat price band for this route; null while loading or unavailable.
+  final TripPriceSuggestion? priceSuggestion;
+
   final VoidCallback onChanged;
   final VoidCallback onPickDate;
   final VoidCallback onPickTime;
@@ -38,7 +50,7 @@ class Step2Details extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -46,15 +58,15 @@ class Step2Details extends StatelessWidget {
             title: context.l10n.createTripWhenAndHow,
             subtitle: context.l10n.createTripWhenAndHowSubtitle,
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
           _buildScheduleCard(context),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildSeatsCard(context),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildPriceCard(context),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildGenderMixingCard(context),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildNotesAndRecurrenceRow(context),
         ],
       ),
@@ -80,67 +92,126 @@ class Step2Details extends StatelessWidget {
   Widget _buildScheduleCard(BuildContext context) {
     final locale = Localizations.localeOf(context).toString();
     final departure = wizard.departureTime;
+
+    // Designs use Western digits and the wide day-period word, neither of
+    // which the Arabic locale data produces on its own.
     final dateText = departure == null
         ? ''
-        : DateFormat.yMMMMEEEEd(locale).format(departure);
+        : toWesternDigits(DateFormat.yMMMMEEEEd(locale).format(departure));
+    final period = departure == null
+        ? ''
+        : (departure.hour < 12
+              ? context.l10n.timePeriodAm
+              : context.l10n.timePeriodPm);
     final timeText = departure == null
         ? ''
-        : DateFormat('hh:mm a', locale).format(departure);
+        : '${toWesternDigits(DateFormat('hh:mm').format(departure))} $period';
 
+    // Two slots share one card, split by a hairline as in the mockup.
     return CreateTripCard(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: _labelled(
-              context,
-              label: context.l10n.dateLabel,
-              child: CreateTripPickerField(
-                hint: context.l10n.dateLabel,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _buildScheduleSlot(
+                context,
+                label: context.l10n.dateLabel,
                 value: dateText,
                 icon: IconsaxPlusBroken.calendar_1,
-                iconColor: T.secondary(context),
                 onTap: onPickDate,
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _labelled(
-              context,
-              label: context.l10n.departureTimeLabel,
-              child: CreateTripPickerField(
-                hint: context.l10n.departureTimeLabel,
+            const SizedBox(width: 6),
+            VerticalDivider(width: 1, thickness: 1, color: T.outline(context)),
+            const SizedBox(width: 6),
+            Expanded(
+              child: _buildScheduleSlot(
+                context,
+                label: context.l10n.departureTimeLabel,
                 value: timeText,
                 icon: IconsaxPlusBroken.clock,
-                iconColor: T.secondary(context),
                 onTap: onPickTime,
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _labelled(
+  Widget _buildScheduleSlot(
     BuildContext context, {
     required String label,
-    required Widget child,
+    required String value,
+    required IconData icon,
+    required VoidCallback onTap,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: AppTextStyles.labelLarge.copyWith(
-            fontWeight: FontWeight.bold,
-            color: T.onSurface(context),
-          ),
+    final isEmpty = value.isEmpty;
+
+    return Semantics(
+      button: true,
+      label: label,
+      value: value,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Row(
+          children: [
+            _iconChip(context, icon),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontSize: 12,
+                      color: T.onSurfaceVariant(context),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    isEmpty ? label : value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: isEmpty
+                          ? T.textSecondary(context)
+                          : T.onSurface(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 16,
+              color: T.outlineVariant(context),
+            ),
+          ],
         ),
-        const SizedBox(height: 10),
-        child,
-      ],
+      ),
+    );
+  }
+
+  /// Brand-tinted rounded icon square used inside fields (cards use
+  /// [CreateTripSectionHeader], which draws its own).
+  Widget _iconChip(BuildContext context, IconData icon) {
+    final primary = T.primary(context);
+    return Container(
+      width: 28,
+      height: 28,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: primary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Icon(icon, color: primary, size: 15),
     );
   }
 
@@ -153,22 +224,12 @@ class Step2Details extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(IconsaxPlusBroken.profile_2user, color: T.primary(context)),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  context.l10n.availableSeatsSection,
-                  style: AppTextStyles.titleMedium.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: T.onSurface(context),
-                  ),
-                ),
-              ),
-            ],
+          CreateTripSectionHeader(
+            icon: IconsaxPlusBroken.profile_2user,
+            title: context.l10n.availableSeatsSection,
+            subtitle: context.l10n.availableSeatsSectionSubtitle,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           if (isLoadingVehicle)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 8),
@@ -179,6 +240,7 @@ class Step2Details extends StatelessWidget {
           else
             VehicleSeatLayoutPicker(
               layout: layout,
+              vehicleType: wizard.vehicleType,
               availableSeatCount: wizard.availableSeatCount,
               onAvailableSeatCountChanged: (value) {
                 wizard.setAvailableSeatCount(value);
@@ -230,22 +292,11 @@ class Step2Details extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(IconsaxPlusBroken.wallet_1, color: T.primary(context)),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  context.l10n.pricePerSeat,
-                  style: AppTextStyles.titleMedium.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: T.onSurface(context),
-                  ),
-                ),
-              ),
-            ],
+          CreateTripSectionHeader(
+            icon: IconsaxPlusBroken.dollar_circle,
+            title: context.l10n.pricePerSeat,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
@@ -255,32 +306,21 @@ class Step2Details extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: T.primary(context).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    'JOD',
-                    style: AppTextStyles.labelLarge.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: T.primary(context),
-                    ),
+                Text(
+                  context.l10n.currencyFullName(currency),
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: T.onSurfaceVariant(context),
                   ),
                 ),
-                const SizedBox(width: 8),
                 Expanded(
                   child: TextFormField(
                     controller: wizard.priceController,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
+                    textAlign: TextAlign.center,
                     onChanged: (_) => onChanged(),
-                    style: AppTextStyles.titleMedium.copyWith(
+                    style: AppTextStyles.headlineSmall.copyWith(
                       fontWeight: FontWeight.bold,
                       color: T.onSurface(context),
                     ),
@@ -293,7 +333,7 @@ class Step2Details extends StatelessWidget {
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
                       isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     validator: (v) {
                       if (v == null || v.isEmpty) {
@@ -306,13 +346,82 @@ class Step2Details extends StatelessWidget {
                     },
                   ),
                 ),
-                Text(
-                  context.l10n.jordanianDinarLabel,
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: T.onSurfaceVariant(context),
-                  ),
-                ),
+                _buildCurrencyChip(context),
               ],
+            ),
+          ),
+          _buildPriceSuggestion(context),
+        ],
+      ),
+    );
+  }
+
+  /// Reads as a picker, but the currency comes from the departure point's
+  /// country and the backend overrides anything the client sends — so this is
+  /// a display of the resolved currency, not an editable control.
+  Widget _buildCurrencyChip(BuildContext context) {
+    return Semantics(
+      readOnly: true,
+      label: context.l10n.currencyFullName(currency),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: T.surfaceVariant(context),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                currency,
+                style: AppTextStyles.labelLarge.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: T.onSurface(context),
+                ),
+              ),
+              const SizedBox(width: 2),
+              Icon(
+                Icons.arrow_drop_down_rounded,
+                size: 20,
+                color: T.onSurfaceVariant(context),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPriceSuggestion(BuildContext context) {
+    final suggestion = priceSuggestion;
+    if (suggestion == null || !suggestion.hasBand) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            IconsaxPlusBroken.info_circle,
+            size: 15,
+            color: T.outlineVariant(context),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              context.l10n.suggestedPriceForRoute(
+                suggestion.min.toStringAsFixed(0),
+                suggestion.max.toStringAsFixed(0),
+                context.l10n.currencyShortName(suggestion.currency),
+              ),
+              style: AppTextStyles.bodyMedium.copyWith(
+                fontSize: 12,
+                color: T.onSurfaceVariant(context),
+              ),
             ),
           ),
         ],
@@ -327,31 +436,19 @@ class Step2Details extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Wrapped in a transparent Material: the surrounding card paints its
-          // own background, which would otherwise swallow the tile's ink.
-          Material(
-            type: MaterialType.transparency,
-            child: SwitchListTile.adaptive(
-              contentPadding: EdgeInsets.zero,
+          CreateTripSectionHeader(
+            icon: IconsaxPlusBroken.shield_tick,
+            title: context.l10n.preventGenderMixing,
+            trailing: Switch.adaptive(
               value: wizard.preventGenderMixing,
+              activeThumbColor: T.primary(context),
               onChanged: (value) {
                 wizard.preventGenderMixing = value;
                 onChanged();
               },
-              title: Text(
-                context.l10n.preventGenderMixing,
-                style: AppTextStyles.titleMedium.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: T.onSurface(context),
-                ),
-              ),
-              secondary: Icon(
-                IconsaxPlusBroken.shield_tick,
-                color: T.primary(context),
-              ),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           Text(
             context.l10n.preventGenderMixingHint,
             style: AppTextStyles.bodyMedium.copyWith(
@@ -370,57 +467,44 @@ class Step2Details extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(IconsaxPlusBroken.message, color: T.primary(context)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  context.l10n.notesForPassengers,
-                  style: AppTextStyles.titleMedium.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: T.onSurface(context),
-                  ),
-                ),
-              ),
-              Text(
-                context.l10n.optionalLabel,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: T.outlineVariant(context),
-                ),
-              ),
-            ],
+          CreateTripSectionHeader(
+            icon: IconsaxPlusBroken.message,
+            title: context.l10n.notesForPassengers,
+            titleSuffix: '(${context.l10n.optionalLabel})',
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           TextFormField(
             controller: wizard.notesController,
-            maxLines: 4,
+            maxLines: 3,
             maxLength: 120,
             style: AppTextStyles.bodyLarge.copyWith(
+              fontSize: 14,
               color: T.onSurface(context),
             ),
             decoration: InputDecoration(
               filled: true,
-              fillColor: T.surface(context),
+              fillColor: T.surfaceVariant(context),
               hintText: context.l10n.tripNotesHint,
               hintStyle: AppTextStyles.bodyMedium.copyWith(
+                fontSize: 13,
                 color: T.onSurfaceVariant(context),
               ),
+              contentPadding: const EdgeInsets.all(12),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide.none,
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(color: T.outline(context)),
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide(color: T.primary(context), width: 2),
               ),
               counterStyle: AppTextStyles.bodyMedium.copyWith(
                 color: T.onSurfaceVariant(context),
-                fontSize: 12,
+                fontSize: 11,
               ),
             ),
           ),
@@ -436,46 +520,27 @@ class Step2Details extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(IconsaxPlusBroken.refresh, color: T.primary(context)),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  context.l10n.tripRecurrence,
-                  style: AppTextStyles.titleMedium.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: T.onSurface(context),
-                  ),
-                ),
+          CreateTripSectionHeader(
+            icon: IconsaxPlusBroken.refresh,
+            title: context.l10n.tripRecurrence,
+            trailing: Semantics(
+              label: context.l10n.enableTripRecurrenceSemantic(
+                wizard.enableRecurrence
+                    ? context.l10n.recurrenceStateEnabled
+                    : context.l10n.recurrenceStateDisabled,
               ),
-              Semantics(
-                label: context.l10n.enableTripRecurrenceSemantic(
-                  wizard.enableRecurrence
-                      ? context.l10n.recurrenceStateEnabled
-                      : context.l10n.recurrenceStateDisabled,
-                ),
-                child: Switch.adaptive(
-                  value: wizard.enableRecurrence,
-                  activeThumbColor: T.primary(context),
-                  onChanged: (v) {
-                    wizard.enableRecurrence = v;
-                    onChanged();
-                  },
-                ),
+              child: Switch.adaptive(
+                value: wizard.enableRecurrence,
+                activeThumbColor: T.primary(context),
+                onChanged: (v) {
+                  wizard.enableRecurrence = v;
+                  onChanged();
+                },
               ),
-            ],
+            ),
           ),
           if (!wizard.enableRecurrence)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                context.l10n.recurrenceDisabledHint,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: T.onSurfaceVariant(context),
-                ),
-              ),
-            )
+            _buildRecurrenceCollapsedRow(context)
           else ...[
             const SizedBox(height: 20),
             Container(
@@ -577,6 +642,42 @@ class Step2Details extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  /// Collapsed recurrence summary; tapping it turns recurrence on, which is
+  /// what the trailing chevron promises.
+  Widget _buildRecurrenceCollapsedRow(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Semantics(
+        button: true,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            wizard.enableRecurrence = true;
+            onChanged();
+          },
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  context.l10n.recurrenceCollapsedHint,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontSize: 13,
+                    color: T.onSurfaceVariant(context),
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: T.outlineVariant(context),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

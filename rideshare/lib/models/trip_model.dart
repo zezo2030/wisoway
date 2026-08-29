@@ -64,6 +64,10 @@ class TripModel {
   // Driver / vehicle (enriched on GET /trips/:id)
   final String? driverPhotoUrl;
   final double? driverRating;
+  /// Backend vehicle type key (`standard_car`, `large_bus`, ...). Drives which
+  /// cabin artwork the seat map draws; null for trips whose driver has no
+  /// vehicle on file, which fall back to the plain seat grid.
+  final String? vehicleType;
   final String? vehicleModel;
   final String? vehiclePlateNumber;
 
@@ -72,6 +76,12 @@ class TripModel {
 
   // Driver notes visible to passengers
   final String? notes;
+
+  // Passenger summary attached by the trip list endpoints
+  /// Seats already taken by live bookings — powers the "N seats left" line.
+  final int bookedSeats;
+  /// Photos of passengers already on board (max 3, oldest booking first).
+  final List<String> passengerAvatars;
 
   // Recurrence rule that spawned this trip (if any)
   final String? recurrenceRuleId;
@@ -112,10 +122,13 @@ class TripModel {
     this.lastDriverLocationLng,
     this.driverPhotoUrl,
     this.driverRating,
+    this.vehicleType,
     this.vehicleModel,
     this.vehiclePlateNumber,
     this.stops = const [],
     this.notes,
+    this.bookedSeats = 0,
+    this.passengerAvatars = const [],
     this.recurrenceRuleId,
     required this.createdAt,
     required this.updatedAt,
@@ -250,6 +263,7 @@ class TripModel {
       driverRating: json['driverRating'] != null
           ? _parseDouble(json['driverRating'])
           : null,
+      vehicleType: json['vehicleType']?.toString(),
       vehicleModel: json['vehicleModel']?.toString(),
       vehiclePlateNumber: json['vehiclePlateNumber']?.toString(),
       stops: (json['stops'] as List?)
@@ -258,6 +272,12 @@ class TripModel {
               .toList() ??
           [],
       notes: json['notes'] as String?,
+      bookedSeats: _parseInt(json['bookedSeats']),
+      passengerAvatars: (json['passengerAvatars'] as List?)
+              ?.map((e) => BackendUrlResolver.normalize(e?.toString()))
+              .whereType<String>()
+              .toList() ??
+          const [],
       recurrenceRuleId: json['recurrenceRuleId']?.toString(),
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
@@ -308,6 +328,7 @@ class TripModel {
         'lastDriverLocationLng': lastDriverLocationLng,
       if (driverPhotoUrl != null) 'driverPhotoUrl': driverPhotoUrl,
       if (driverRating != null) 'driverRating': driverRating,
+      if (vehicleType != null) 'vehicleType': vehicleType,
       if (vehicleModel != null) 'vehicleModel': vehicleModel,
       if (vehiclePlateNumber != null)
         'vehiclePlateNumber': vehiclePlateNumber,
@@ -316,6 +337,8 @@ class TripModel {
             .map((e) => e.value.toStopMap(order: e.key + 1))
             .toList(),
       if (notes != null) 'notes': notes,
+      'bookedSeats': bookedSeats,
+      'passengerAvatars': passengerAvatars,
       if (recurrenceRuleId != null) 'recurrenceRuleId': recurrenceRuleId,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
@@ -355,10 +378,13 @@ class TripModel {
     double? lastDriverLocationLng,
     String? driverPhotoUrl,
     double? driverRating,
+    String? vehicleType,
     String? vehicleModel,
     String? vehiclePlateNumber,
     List<LocationModel>? stops,
     String? notes,
+    int? bookedSeats,
+    List<String>? passengerAvatars,
     String? recurrenceRuleId,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -398,10 +424,13 @@ class TripModel {
           lastDriverLocationLng ?? this.lastDriverLocationLng,
       driverPhotoUrl: driverPhotoUrl ?? this.driverPhotoUrl,
       driverRating: driverRating ?? this.driverRating,
+      vehicleType: vehicleType ?? this.vehicleType,
       vehicleModel: vehicleModel ?? this.vehicleModel,
       vehiclePlateNumber: vehiclePlateNumber ?? this.vehiclePlateNumber,
       stops: stops ?? this.stops,
       notes: notes ?? this.notes,
+      bookedSeats: bookedSeats ?? this.bookedSeats,
+      passengerAvatars: passengerAvatars ?? this.passengerAvatars,
       recurrenceRuleId: recurrenceRuleId ?? this.recurrenceRuleId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

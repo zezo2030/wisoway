@@ -40,6 +40,9 @@ class CreateTripWizardState {
   // --- Step 1: details -----------------------------------------------------
   DateTime? departureTime;
   SeatLayoutConfig? layout;
+  /// Vehicle type key, used to pick the cabin artwork. Null when the driver has
+  /// no vehicle on file, which falls back to the plain seat grid.
+  String? vehicleType;
   int availableSeatCount = 0;
   bool preventGenderMixing = false;
   final TextEditingController priceController = TextEditingController();
@@ -105,6 +108,7 @@ class CreateTripWizardState {
   /// vehicle-type [template] when the vehicle has no stored layout.
   void initFromVehicle(VehicleModel? vehicle, SeatLayoutConfig? template) {
     layout = vehicle?.seatLayout ?? template;
+    vehicleType = vehicle?.vehicleType;
     availableSeatCount = maxLayoutSeats;
     preventGenderMixing = layout?.preventGenderMixing ?? false;
   }

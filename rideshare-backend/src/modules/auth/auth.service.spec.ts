@@ -257,3 +257,158 @@ describe('AuthService — pending driver registration update', () => {
     ).rejects.toThrow(/driver/i);
   });
 });
+
+describe('AuthService — local OTP', () => {
+  it('stores the code and writes it to the log instead of sending SMS', async () => {
+    const createOtpCode = jest.fn().mockResolvedValue({ id: 'otp-1' });
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AuthService,
+        {
+          provide: UsersService,
+          useValue: { createOtpCode },
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn((key: string) =>
+              key === 'OTP_PROVIDER' || key === 'twilio.OTP_PROVIDER'
+                ? 'local'
+                : undefined,
+            ),
+          },
+        },
+        { provide: DeviceFingerprintService, useValue: {} },
+        { provide: AccountRiskService, useValue: {} },
+        { provide: NotificationsService, useValue: {} },
+        { provide: AdminAlertsService, useValue: {} },
+        { provide: getRepositoryToken(UserEntity), useValue: {} },
+        {
+          provide: getRepositoryToken(PasswordResetSessionEntity),
+          useValue: {},
+        },
+      ],
+    }).compile();
+
+    const service = module.get<AuthService>(AuthService);
+    const result = await service.sendOtp({ phoneNumber: '+962790000000' });
+
+    expect(result.message).toBe('OTP sent successfully');
+    expect(createOtpCode).toHaveBeenCalledTimes(1);
+    expect(createOtpCode).toHaveBeenCalledWith(
+      '+962790000000',
+      expect.stringMatching(/^\d{6}$/),
+    );
+  });
+});
+
+/**
+ * The app offers "sign in with your phone number" as a first-class action, so a
+ * correct OTP has to be able to sign an existing account in. It previously
+ * rejected anyone who already had a password, which left that button unable to
+ * sign anybody in.
+ */
+describe('AuthService — OTP sign-in for existing accounts', () => {
+  const PHONE = '+962790000001';
+
+  async function arrange(user: Partial<UserEntity> | null) {
+    const userRepo = {
+      createQueryBuilder: jest.fn().mockReturnValue({
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(user),
+      }),
+      update: jest.fn().mockResolvedValue(undefined),
+    };
+    const usersService = {
+      findOtpCode: jest.fn().mockResolvedValue({ id: 'otp-1' }),
+      markOtpCodeAsUsed: jest.fn().mockResolvedValue(undefined),
+      verifyOtpCode: jest.fn().mockResolvedValue(true),
+      findById: jest.fn().mockResolvedValue(user),
+      findByPhone: jest.fn().mockResolvedValue(user),
+      linkPhone: jest.fn().mockResolvedValue(user),
+      create: jest.fn(),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AuthService,
+        { provide: UsersService, useValue: usersService },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn(() => 'local') },
+        },
+        { provide: DeviceFingerprintService, useValue: {} },
+        { provide: AccountRiskService, useValue: {} },
+        { provide: NotificationsService, useValue: {} },
+        { provide: AdminAlertsService, useValue: {} },
+        { provide: getRepositoryToken(UserEntity), useValue: userRepo },
+        {
+          provide: getRepositoryToken(PasswordResetSessionEntity),
+          useValue: {},
+        },
+      ],
+    }).compile();
+
+    const service = module.get<AuthService>(AuthService);
+    jest
+      .spyOn(service as any, 'generateTokens')
+      .mockResolvedValue({ accessToken: 'a', refreshToken: 'r' });
+    return { service, userRepo, usersService };
+  }
+
+  const existing = {
+    id: 'user-1',
+    phoneNumber: PHONE,
+    name: 'Existing',
+    passwordHash: 'already-hashed',
+    isPhoneVerified: true,
+    isActive: true,
+  } as Partial<UserEntity>;
+
+  it('signs in an existing account when the OTP is correct', async () => {
+    const { service } = await arrange(existing);
+
+    const result = await service.verifyOtp({ phoneNumber: PHONE, code: '123456' });
+
+    expect(result.accessToken).toBe('a');
+    expect(result.user.id).toBe('user-1');
+    expect(result.accountState).toBe('active');
+  });
+
+  it('never overwrites an existing password with one sent alongside the OTP', async () => {
+    const { service, userRepo } = await arrange(existing);
+
+    await service.verifyOtp({
+      phoneNumber: PHONE,
+      code: '123456',
+      password: 'AttackerPass1',
+    } as any);
+
+    expect(userRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('still reports a banned account rather than signing it in silently', async () => {
+    const { service } = await arrange({ ...existing, bannedAt: new Date() });
+
+    const result = await service.verifyOtp({ phoneNumber: PHONE, code: '123456' });
+
+    expect(result.accountState).toBe('banned');
+  });
+
+  it('still finishes setup for an account that has no password yet', async () => {
+    const { service, userRepo } = await arrange({
+      ...existing,
+      passwordHash: null,
+    });
+
+    await service.verifyOtp({
+      phoneNumber: PHONE,
+      code: '123456',
+      password: 'NewPass1234',
+    } as any);
+
+    expect(userRepo.update).toHaveBeenCalledTimes(1);
+  });
+});

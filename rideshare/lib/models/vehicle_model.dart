@@ -3,7 +3,9 @@ import 'seat_layout_config.dart';
 class VehicleModel {
   final String id;
   final String driverId; // User ID of the driver
-  final String vehicleType; // 'sedan', 'suv', 'van', 'truck', etc.
+  /// Backend vehicle type key: 'standard_car', 'family_suv', 'medium_bus',
+  /// 'large_bus'.
+  final String vehicleType;
   final String plateNumber;
   final String model;
   final int seats;

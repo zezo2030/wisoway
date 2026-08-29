@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
 import { UserEntity } from '../../database/entities/user.entity';
+import { AdminSeedService } from './seeds/admin-seed.service';
 import { TripEntity } from '../../database/entities/trip.entity';
 import { VehicleEntity } from '../../database/entities/vehicle.entity';
 import { PaymentEntity } from '../../database/entities/payment.entity';
@@ -84,6 +85,7 @@ import { PendingChargesModule } from '../pending-charges/pending-charges.module'
     AdminNoShowController,
   ],
   providers: [
+    AdminSeedService,
     AdminDashboardService,
     AdminFlagsService,
     AdminBanService,

@@ -1,6 +1,7 @@
 import {
   countSeatsInLayout,
   resolveVehicleTypeTemplate,
+  DEFAULT_VEHICLE_TYPE,
   SUPPORTED_VEHICLE_TYPES,
 } from '../../src/modules/vehicles/vehicle-types';
 
@@ -23,7 +24,7 @@ describe('vehicle type catalog resolver', () => {
 
     const template = resolveVehicleTypeTemplate('spaceship', logger);
 
-    expect(template.type).toBe('sedan');
+    expect(template.type).toBe(DEFAULT_VEHICLE_TYPE);
     expect(template.usedFallback).toBe(true);
     expect(template.seats).toBe(4);
     expect(logger.warn).toHaveBeenCalledWith(
@@ -31,8 +32,8 @@ describe('vehicle type catalog resolver', () => {
     );
   });
 
-  it('sedan uses 4 passenger seats in [1, 3] layout', () => {
-    const template = resolveVehicleTypeTemplate('sedan');
+  it('standard_car uses 4 passenger seats in [1, 3] layout', () => {
+    const template = resolveVehicleTypeTemplate('standard_car');
 
     expect(template.seats).toBe(4);
     expect(template.layout.seatsPerRowList).toEqual([1, 3]);

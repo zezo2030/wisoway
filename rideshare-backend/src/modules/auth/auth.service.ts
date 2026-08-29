@@ -92,30 +92,17 @@ export class AuthService {
     @InjectRepository(PasswordResetSessionEntity)
     private passwordResetSessionRepo: Repository<PasswordResetSessionEntity>,
   ) {
-    const accountSid = this.configService.get<string>('TWILIO_ACCOUNT_SID');
-    const authToken = this.configService.get<string>('TWILIO_AUTH_TOKEN');
-    const apiKeySid = this.configService.get<string>('TWILIO_API_KEY_SID');
-    const apiKeySecret = this.configService.get<string>(
-      'TWILIO_API_KEY_SECRET',
-    );
-    this.twilioVerifyServiceSid = this.configService.get<string>(
-      'TWILIO_VERIFY_SERVICE_SID',
-    );
-    const provider = this.configService
-      .get<string>('OTP_PROVIDER')
-      ?.toLowerCase();
-    this.otpProvider = provider === 'local' ? 'local' : 'twilio';
+    this.otpProvider = this.resolveOtpProvider();
+    this.twilioVerifyServiceSid =
+      this.configService.get<string>('TWILIO_VERIFY_SERVICE_SID') ??
+      this.configService.get<string>('twilio.TWILIO_VERIFY_SERVICE_SID');
 
-    if (
-      accountSid &&
-      apiKeySid &&
-      apiKeySecret &&
-      accountSid.startsWith('AC') &&
-      apiKeySid.startsWith('SK')
-    ) {
-      this.twilioClient = new Twilio(apiKeySid, apiKeySecret, { accountSid });
-    } else if (accountSid && authToken && accountSid.startsWith('AC')) {
-      this.twilioClient = new Twilio(accountSid, authToken);
+    if (this.otpProvider === 'local') {
+      this.logger.warn(
+        'OTP provider is local — SMS is disabled. Codes are written to this log.',
+      );
+    } else {
+      this.initTwilioClient();
     }
   }
 
@@ -127,7 +114,7 @@ export class AuthService {
     if (this.otpProvider === 'local') {
       const code = String(Math.floor(100000 + Math.random() * 900000));
       await this.usersService.createOtpCode(phoneNumber, code);
-      console.log(`[OTP Local] Phone: ${phoneNumber} → Code: ${code}`);
+      this.logger.warn(`OTP for ${phoneNumber}: ${code} (SMS disabled)`);
       return {
         message: 'OTP sent successfully',
         expiresIn: 300,
@@ -169,22 +156,24 @@ export class AuthService {
     const found = await this.findUserByPhoneWithPassword(phoneNumber);
     if (found) {
       user = found;
-      if (!user.passwordHash && password) {
+      if (!user.passwordHash) {
+        // Account exists but was never given a password — finish that setup.
+        if (!password) {
+          throw new BadRequestException(
+            'Password is required to finish account setup for this phone number.',
+          );
+        }
         await this.userRepo.update(user.id, {
           passwordHash: await bcrypt.hash(password, 12),
           passwordChangedAt: new Date(),
           isPhoneVerified: true,
         });
         user = await this.usersService.findById(user.id);
-      } else if (user.passwordHash) {
-        throw new ConflictException(
-          'Phone number is already registered. Please sign in with your password.',
-        );
-      } else if (!password) {
-        throw new BadRequestException(
-          'Password is required to finish account setup for this phone number.',
-        );
       }
+      // Otherwise this is a sign-in: the OTP above already proved the caller
+      // owns the number, which is what "sign in with your phone number" means.
+      // Any `password` sent alongside is deliberately ignored — an OTP must
+      // never be able to silently replace an existing credential.
 
       if (!user.isPhoneVerified) {
         await this.usersService.linkPhone(user.id, phoneNumber);
@@ -927,6 +916,43 @@ export class AuthService {
     }
 
     return user;
+  }
+
+  private resolveOtpProvider(): OtpProvider {
+    const raw = (
+      this.configService.get<string>('OTP_PROVIDER') ??
+      this.configService.get<string>('twilio.OTP_PROVIDER') ??
+      process.env.OTP_PROVIDER ??
+      'local'
+    ).toLowerCase();
+    return raw === 'twilio' ? 'twilio' : 'local';
+  }
+
+  private initTwilioClient(): void {
+    const accountSid =
+      this.configService.get<string>('TWILIO_ACCOUNT_SID') ??
+      this.configService.get<string>('twilio.TWILIO_ACCOUNT_SID');
+    const authToken =
+      this.configService.get<string>('TWILIO_AUTH_TOKEN') ??
+      this.configService.get<string>('twilio.TWILIO_AUTH_TOKEN');
+    const apiKeySid =
+      this.configService.get<string>('TWILIO_API_KEY_SID') ??
+      this.configService.get<string>('twilio.TWILIO_API_KEY_SID');
+    const apiKeySecret =
+      this.configService.get<string>('TWILIO_API_KEY_SECRET') ??
+      this.configService.get<string>('twilio.TWILIO_API_KEY_SECRET');
+
+    if (
+      accountSid &&
+      apiKeySid &&
+      apiKeySecret &&
+      accountSid.startsWith('AC') &&
+      apiKeySid.startsWith('SK')
+    ) {
+      this.twilioClient = new Twilio(apiKeySid, apiKeySecret, { accountSid });
+    } else if (accountSid && authToken && accountSid.startsWith('AC')) {
+      this.twilioClient = new Twilio(accountSid, authToken);
+    }
   }
 
   private async verifyPhoneOtp(
