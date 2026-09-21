@@ -1,7 +1,7 @@
 /* QA 03 — the scheduled-trip lifecycle: publish, search, book, accept,
    chat, presence, complete, rate. */
 const L = require('./lib');
-const { req, data, errMsg } = L;
+const { req, data, errMsg, config } = L;
 const A = require('./accounts.json');
 const fs = require('fs');
 
@@ -17,15 +17,15 @@ const TO = { name: 'Zarqa — Downtown', latitude: 32.0727, longitude: 36.0879, 
 /** Tokens rotate across suites; re-login the ones whose password we know. */
 async function freshTokens() {
   const li = await req('POST', '/auth/login', {
-    body: { phoneNumber: P1.phone, password: 'Passenger@99999' },
+    body: { phoneNumber: P1.phone, password: config.passenger.resetPassword },
   });
   if (li.status === 200 || li.status === 201) P1.token = data(li).accessToken;
-  for (const cand of ['Passenger@12345', 'Passenger@54321']) {
+  for (const cand of [config.passenger.password, config.passenger.altPassword]) {
     const r = await req('POST', '/auth/login', { body: { phoneNumber: P2.phone, password: cand } });
     if (r.status === 200 || r.status === 201) { P2.token = data(r).accessToken; break; }
   }
   const dl = await req('POST', '/auth/login', {
-    body: { phoneNumber: D1.phone, password: 'Driver@12345' },
+    body: { phoneNumber: D1.phone, password: config.driver.password },
   });
   if (dl.status === 200 || dl.status === 201) D1.token = data(dl).accessToken;
   const al = await L.loginAdmin();

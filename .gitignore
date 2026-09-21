@@ -169,3 +169,9 @@ rideshare/assets/images/My Pictures/
 
 # Flutter golden-test failure artifacts
 **/test/**/failures/
+
+# QA harness: local settings and generated run state
+rideshare-backend/qa/.env.qa
+rideshare-backend/qa/trip-context.json
+rideshare-backend/qa/ui/.driver-account.json
+rideshare-backend/qa/ui/.driver-phone

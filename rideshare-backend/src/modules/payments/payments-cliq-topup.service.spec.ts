@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { getQueueToken } from '@nestjs/bull';
 import {
   BadRequestException,
   ForbiddenException,
@@ -29,6 +30,7 @@ describe('PaymentsService – CliQ wallet top-up', () => {
   let paymentRepo: ReturnType<typeof makeRepo>;
   let a2aCliqService: jest.Mocked<A2aCliqService>;
   let walletService: jest.Mocked<Partial<WalletService>>;
+  let cliqPollQueue: { add: jest.Mock; remove: jest.Mock };
 
   const mockUser = { id: 'user-1', role: PgUserRole.RIDER };
 
@@ -36,12 +38,14 @@ describe('PaymentsService – CliQ wallet top-up', () => {
     paymentRepo = makeRepo();
     a2aCliqService = {
       purchase: jest.fn(),
+      purchaseAndAwait: jest.fn(),
       paymentInquiry: jest.fn(),
       getToken: jest.fn(),
     } as unknown as jest.Mocked<A2aCliqService>;
     walletService = {
       creditPostedTopup: jest.fn(),
     };
+    cliqPollQueue = { add: jest.fn(), remove: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -61,6 +65,12 @@ describe('PaymentsService – CliQ wallet top-up', () => {
         { provide: A2aCliqService, useValue: a2aCliqService },
         { provide: PlatformPricingService, useValue: {} },
         { provide: WalletService, useValue: walletService },
+        // PaymentsService enqueues CliQ polling jobs; the suites here never
+        // reach that path, so an inert queue is enough.
+        {
+          provide: getQueueToken('cliq-poll'),
+          useValue: cliqPollQueue,
+        },
       ],
     }).compile();
 
@@ -99,11 +109,15 @@ describe('PaymentsService – CliQ wallet top-up', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('creates pending payment and calls purchase for cliq_a2a', async () => {
-      a2aCliqService.purchase.mockResolvedValue({
-        errorCode: 0,
-        description: 'Success',
+    it('creates the payment and drives it through purchaseAndAwait for cliq_a2a', async () => {
+      // Still pending after the foreground poll: the service keeps the payment
+      // pending and hands it to the background queue.
+      a2aCliqService.purchaseAndAwait.mockResolvedValue({
         MSGID: 'msg-abc',
+        StatusCode: '3011',
+        StatusDescription: 'Pending',
+        isTerminal: false,
+        isSuccess: false,
       });
 
       const result = await service.createWalletTopup('user-1', {
@@ -113,15 +127,20 @@ describe('PaymentsService – CliQ wallet top-up', () => {
         aliasValue: '00962777000000',
       });
 
-      expect(a2aCliqService.purchase).toHaveBeenCalledTimes(1);
+      expect(a2aCliqService.purchaseAndAwait).toHaveBeenCalledTimes(1);
       expect(paymentRepo.save).toHaveBeenCalledTimes(2); // initial + gateway ref
       expect(result.method).toBe('cliq_a2a');
+      expect(result.status).toBe('pending');
+      expect(cliqPollQueue.add).toHaveBeenCalledTimes(1);
     });
 
-    it('marks payment as rejected when purchase gateway returns error', async () => {
-      a2aCliqService.purchase.mockResolvedValue({
-        errorCode: 5,
-        description: 'Invalid alias',
+    it('marks payment as rejected on a terminal gateway refusal', async () => {
+      a2aCliqService.purchaseAndAwait.mockResolvedValue({
+        MSGID: 'msg-bad',
+        StatusCode: '3010',
+        StatusDescription: 'Self payment is not allowed',
+        isTerminal: true,
+        isSuccess: false,
       });
 
       await expect(
@@ -144,7 +163,7 @@ describe('PaymentsService – CliQ wallet top-up', () => {
         proofImageUrl: 'https://cdn.example.com/proof.jpg',
       });
 
-      expect(a2aCliqService.purchase).not.toHaveBeenCalled();
+      expect(a2aCliqService.purchaseAndAwait).not.toHaveBeenCalled();
       expect(result.method).toBe('manual');
       expect(result.status).toBe('pending');
     });

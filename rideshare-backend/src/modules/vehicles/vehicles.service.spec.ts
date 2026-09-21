@@ -1,220 +1,219 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getModelToken } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { VehiclesService } from './vehicles.service';
-import { Vehicle, VehicleDocument } from './schemas/vehicle.schema';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import {
   NotFoundException,
   ForbiddenException,
   ConflictException,
 } from '@nestjs/common';
+import { VehiclesService } from './vehicles.service';
+import { VehicleEntity } from '../../database/entities/vehicle.entity';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
+import { countSeatsInLayout, resolveVehicleTypeTemplate } from './vehicle-types';
 
 describe('VehiclesService', () => {
   let service: VehiclesService;
-  let vehicleModel: Model<VehicleDocument>;
-
-  const mockVehicleId = '507f1f77bcf86cd799439011';
-  const mockDriverId = '507f1f77bcf86cd799439012';
-  const mockOtherDriverId = '507f1f77bcf86cd799439013';
-
-  const mockVehicle = {
-    _id: mockVehicleId,
-    driverId: mockDriverId,
-    vehicleType: 'sedan',
-    plateNumber: 'ABC123',
-    model: 'Toyota Camry',
-    seats: 4,
-    licenseImageUrl: 'https://s3.amazonaws.com/license.jpg',
-    vehicleLicenseImageUrl: 'https://s3.amazonaws.com/vehicle-license.jpg',
-    isVerified: false,
-    save: jest.fn().mockResolvedValue(true),
+  let vehicleRepo: {
+    findOne: jest.Mock;
+    create: jest.Mock;
+    save: jest.Mock;
+    merge: jest.Mock;
+    remove: jest.Mock;
   };
 
-  const mockVehicleModel = {
-    create: jest.fn(),
-    findOne: jest.fn(),
-    findById: jest.fn(),
-    findOneAndUpdate: jest.fn(),
-    findOneAndDelete: jest.fn(),
-    deleteOne: jest.fn(),
-  };
+  const driverId = 'driver-1';
+  const otherDriverId = 'driver-2';
+  const vehicleId = 'vehicle-1';
+
+  const mockVehicle = (): VehicleEntity =>
+    ({
+      id: vehicleId,
+      driverId,
+      vehicleType: 'sedan',
+      plateNumber: 'ABC-123',
+      model: 'Toyota Camry',
+      seats: 4,
+      isVerified: false,
+    }) as VehicleEntity;
 
   beforeEach(async () => {
+    vehicleRepo = {
+      findOne: jest.fn(),
+      create: jest.fn((data) => data),
+      save: jest.fn(async (entity) => entity),
+      merge: jest.fn((target, patch) => Object.assign(target, patch)),
+      remove: jest.fn(async (entity) => entity),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         VehiclesService,
         {
-          provide: getModelToken(Vehicle.name),
-          useValue: mockVehicleModel,
+          provide: getRepositoryToken(VehicleEntity),
+          useValue: vehicleRepo,
         },
       ],
     }).compile();
 
     service = module.get<VehiclesService>(VehiclesService);
-    vehicleModel = module.get<Model<VehicleDocument>>(
-      getModelToken(Vehicle.name),
-    );
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
+  it('should be defined', () => {
+    expect(service).toBeDefined();
   });
 
   describe('create', () => {
-    it('should create a vehicle successfully', async () => {
-      const createVehicleDto: CreateVehicleDto = {
-        vehicleType: 'sedan',
-        plateNumber: 'ABC123',
-        model: 'Toyota Camry',
-        seats: 4,
-        licenseImageUrl: 'https://s3.amazonaws.com/license.jpg',
-        vehicleLicenseImageUrl: 'https://s3.amazonaws.com/vehicle-license.jpg',
-      };
+    const dto = {
+      vehicleType: 'sedan',
+      plateNumber: 'ABC-123',
+      model: 'Toyota Camry',
+    } as CreateVehicleDto;
 
-      mockVehicleModel.findOne.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null),
-      });
+    it('creates a vehicle for a driver who has none', async () => {
+      vehicleRepo.findOne.mockResolvedValue(null);
 
-      mockVehicleModel.create.mockResolvedValue(mockVehicle);
+      const result = await service.create(dto, driverId);
 
-      const result = await service.create(createVehicleDto, mockDriverId);
-
-      expect(result).toBeDefined();
-      expect(result.driverId).toBe(mockDriverId);
-      expect(result.vehicleType).toBe('sedan');
-      expect(mockVehicleModel.create).toHaveBeenCalled();
+      expect(vehicleRepo.findOne).toHaveBeenCalledWith({ where: { driverId } });
+      expect(vehicleRepo.save).toHaveBeenCalledTimes(1);
+      expect(result).toEqual(expect.objectContaining({ driverId }));
     });
 
-    it('should fail if driver already has a vehicle', async () => {
-      const createVehicleDto: CreateVehicleDto = {
-        vehicleType: 'sedan',
-        plateNumber: 'ABC123',
-        model: 'Toyota Camry',
-        seats: 4,
-      };
+    it('derives the seat layout and seat count from the vehicle type', async () => {
+      vehicleRepo.findOne.mockResolvedValue(null);
+      const expectedLayout = resolveVehicleTypeTemplate('sedan').layout;
 
-      mockVehicleModel.findOne.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockVehicle),
-      });
+      const result = await service.create(dto, driverId);
 
-      await expect(
-        service.create(createVehicleDto, mockDriverId),
-      ).rejects.toThrow(ConflictException);
+      expect(result.seatLayout).toEqual(expectedLayout);
+      expect(result.seats).toBe(countSeatsInLayout(expectedLayout));
+    });
+
+    it('keeps a seat layout the client supplied', async () => {
+      vehicleRepo.findOne.mockResolvedValue(null);
+      const seatLayout = resolveVehicleTypeTemplate('sedan').layout;
+
+      const result = await service.create(
+        { ...dto, seatLayout } as CreateVehicleDto,
+        driverId,
+      );
+
+      expect(result.seatLayout).toEqual(seatLayout);
+    });
+
+    it('refuses a second vehicle for the same driver', async () => {
+      vehicleRepo.findOne.mockResolvedValue(mockVehicle());
+
+      await expect(service.create(dto, driverId)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(vehicleRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getVehicleTypes', () => {
+    it('returns the catalog of templates', () => {
+      const { types } = service.getVehicleTypes();
+
+      expect(Array.isArray(types)).toBe(true);
+      expect(types.length).toBeGreaterThan(0);
     });
   });
 
   describe('findByDriver', () => {
-    it('should find vehicle by driver ID', async () => {
-      mockVehicleModel.findOne.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockVehicle),
-      });
+    it('returns the driver vehicle', async () => {
+      const vehicle = mockVehicle();
+      vehicleRepo.findOne.mockResolvedValue(vehicle);
 
-      const result = await service.findByDriver(mockDriverId);
+      await expect(service.findByDriver(driverId)).resolves.toBe(vehicle);
+      expect(vehicleRepo.findOne).toHaveBeenCalledWith({ where: { driverId } });
+    });
 
-      expect(result).toBeDefined();
-      expect(result.driverId).toBe(mockDriverId);
-      expect(mockVehicleModel.findOne).toHaveBeenCalledWith({
-        driverId: mockDriverId,
+    it('returns null when the driver has no vehicle', async () => {
+      vehicleRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.findByDriver(driverId)).resolves.toBeNull();
+    });
+  });
+
+  describe('findById', () => {
+    it('returns the vehicle', async () => {
+      const vehicle = mockVehicle();
+      vehicleRepo.findOne.mockResolvedValue(vehicle);
+
+      await expect(service.findById(vehicleId)).resolves.toBe(vehicle);
+      expect(vehicleRepo.findOne).toHaveBeenCalledWith({
+        where: { id: vehicleId },
       });
     });
 
-    it('should return null if no vehicle found', async () => {
-      mockVehicleModel.findOne.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null),
-      });
+    it('throws when the vehicle is missing', async () => {
+      vehicleRepo.findOne.mockResolvedValue(null);
 
-      const result = await service.findByDriver(mockDriverId);
-
-      expect(result).toBeNull();
+      await expect(service.findById(vehicleId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('update', () => {
-    it('should update vehicle successfully', async () => {
-      const updateVehicleDto: UpdateVehicleDto = {
-        model: 'Toyota Corolla',
-      };
+    const patch = { model: 'Honda Accord' } as UpdateVehicleDto;
 
-      mockVehicleModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockVehicle),
-      });
+    it('applies the patch for the owner', async () => {
+      const vehicle = mockVehicle();
+      vehicleRepo.findOne.mockResolvedValue(vehicle);
 
-      mockVehicleModel.findOneAndUpdate.mockReturnValue({
-        exec: jest
-          .fn()
-          .mockResolvedValue({ ...mockVehicle, model: 'Toyota Corolla' }),
-      });
+      const result = await service.update(vehicleId, patch, driverId);
 
-      const result = await service.update(
-        mockVehicleId,
-        updateVehicleDto,
-        mockDriverId,
-      );
-
-      expect(result.model).toBe('Toyota Corolla');
+      expect(vehicleRepo.merge).toHaveBeenCalledWith(vehicle, patch);
+      expect(vehicleRepo.save).toHaveBeenCalledWith(vehicle);
+      expect(result.model).toBe('Honda Accord');
     });
 
-    it('should fail if vehicle not found', async () => {
-      const updateVehicleDto: UpdateVehicleDto = { model: 'Toyota Corolla' };
+    it('throws when the vehicle is missing', async () => {
+      vehicleRepo.findOne.mockResolvedValue(null);
 
-      mockVehicleModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null),
-      });
-
-      await expect(
-        service.update(mockVehicleId, updateVehicleDto, mockDriverId),
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('should fail if user is not the owner', async () => {
-      const updateVehicleDto: UpdateVehicleDto = { model: 'Toyota Corolla' };
-
-      mockVehicleModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockVehicle),
-      });
-
-      await expect(
-        service.update(mockVehicleId, updateVehicleDto, mockOtherDriverId),
-      ).rejects.toThrow(ForbiddenException);
-    });
-  });
-
-  describe('delete', () => {
-    it('should delete vehicle successfully', async () => {
-      mockVehicleModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockVehicle),
-      });
-
-      mockVehicleModel.findOneAndDelete.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockVehicle),
-      });
-
-      const result = await service.delete(mockVehicleId, mockDriverId);
-
-      expect(result).toBeDefined();
-      expect(result._id).toBe(mockVehicleId);
-    });
-
-    it('should fail if vehicle not found', async () => {
-      mockVehicleModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null),
-      });
-
-      await expect(service.delete(mockVehicleId, mockDriverId)).rejects.toThrow(
+      await expect(service.update(vehicleId, patch, driverId)).rejects.toThrow(
         NotFoundException,
       );
     });
 
-    it('should fail if user is not the owner', async () => {
-      mockVehicleModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockVehicle),
-      });
+    it('refuses a driver who does not own the vehicle', async () => {
+      vehicleRepo.findOne.mockResolvedValue(mockVehicle());
 
       await expect(
-        service.delete(mockVehicleId, mockOtherDriverId),
+        service.update(vehicleId, patch, otherDriverId),
       ).rejects.toThrow(ForbiddenException);
+      expect(vehicleRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('delete', () => {
+    it('removes the vehicle for the owner and returns it', async () => {
+      const vehicle = mockVehicle();
+      vehicleRepo.findOne.mockResolvedValue(vehicle);
+
+      const result = await service.delete(vehicleId, driverId);
+
+      expect(vehicleRepo.remove).toHaveBeenCalledWith(vehicle);
+      expect(result).toBe(vehicle);
+    });
+
+    it('throws when the vehicle is missing', async () => {
+      vehicleRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.delete(vehicleId, driverId)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('refuses a driver who does not own the vehicle', async () => {
+      vehicleRepo.findOne.mockResolvedValue(mockVehicle());
+
+      await expect(service.delete(vehicleId, otherDriverId)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(vehicleRepo.remove).not.toHaveBeenCalled();
     });
   });
 });

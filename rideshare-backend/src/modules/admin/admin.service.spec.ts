@@ -9,6 +9,23 @@ import { Booking, BookingDocument } from '../bookings/schemas/booking.schema';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 
+/**
+ * A Mongoose query-builder stub. AdminService chains select/skip/limit/sort/
+ * populate in varying orders, so every chainable call returns the stub itself
+ * and only exec() resolves.
+ */
+const query = (result: unknown) => {
+  const q: Record<string, jest.Mock> = {};
+  for (const m of ['select', 'skip', 'limit', 'sort', 'populate', 'lean']) {
+    q[m] = jest.fn(() => q);
+  }
+  q.exec = jest.fn().mockResolvedValue(result);
+  // Some call sites await the query directly instead of calling exec().
+  (q as any).then = (onOk: any, onErr: any) =>
+    Promise.resolve(result).then(onOk, onErr);
+  return q;
+};
+
 describe('AdminService', () => {
   let service: AdminService;
   let userModel: Model<UserDocument>;
@@ -24,6 +41,7 @@ describe('AdminService', () => {
     email: 'test@example.com',
     phoneNumber: '+201234567890',
     role: UserRole.PASSENGER,
+    photoUrl: 'https://cdn.example.com/driver.jpg',
     gender: 'male',
     isActive: true,
     rating: 4.5,
@@ -67,7 +85,7 @@ describe('AdminService', () => {
 
   const mockVehicle = {
     _id: 'vehicle-id-1',
-    driverId: 'driver-id-1',
+    driverId: { _id: 'driver-id-1' },
     vehicleType: 'sedan',
     plateNumber: 'ABC-123',
     model: 'Toyota Camry',
@@ -91,18 +109,10 @@ describe('AdminService', () => {
         {
           provide: 'UserModel',
           useValue: {
-            find: jest.fn().mockReturnValue({
-              skip: jest.fn().mockReturnValue({
-                limit: jest.fn().mockReturnValue({
-                  sort: jest.fn().mockReturnValue({
-                    exec: jest.fn().mockResolvedValue([mockUser]),
-                  }),
-                }),
-              }),
-            }),
-            findById: jest.fn().mockResolvedValue(mockUser),
-            findByIdAndUpdate: jest.fn().mockResolvedValue(mockUser),
-            countDocuments: jest.fn().mockResolvedValue(1),
+            find: jest.fn(() => query([mockUser])),
+            findById: jest.fn(() => query(mockUser)),
+            findByIdAndUpdate: jest.fn(() => query(mockUser)),
+            countDocuments: jest.fn(() => query(1)),
             aggregate: jest.fn().mockResolvedValue([
               { _id: 'passenger', count: 100 },
               { _id: 'driver', count: 20 },
@@ -113,59 +123,44 @@ describe('AdminService', () => {
         {
           provide: 'TripModel',
           useValue: {
-            find: jest.fn().mockReturnValue({
-              skip: jest.fn().mockReturnValue({
-                limit: jest.fn().mockReturnValue({
-                  sort: jest.fn().mockReturnValue({
-                    exec: jest.fn().mockResolvedValue([mockTrip]),
-                  }),
-                }),
-              }),
-            }),
-            findById: jest.fn().mockResolvedValue(mockTrip),
-            countDocuments: jest.fn().mockResolvedValue(1),
+            find: jest.fn(() => query([mockTrip])),
+            countDocuments: jest.fn(() => query(50)),
             aggregate: jest.fn().mockResolvedValue([
-              { _id: 'active', count: 45 },
-              { _id: 'completed', count: 890 },
+              { _id: 'completed', count: 30 },
+              { _id: 'published', count: 20 },
             ]),
           },
         },
         {
           provide: 'PaymentModel',
           useValue: {
-            find: jest.fn().mockReturnValue({
-              skip: jest.fn().mockReturnValue({
-                limit: jest.fn().mockReturnValue({
-                  sort: jest.fn().mockReturnValue({
-                    populate: jest.fn().mockReturnValue({
-                      exec: jest.fn().mockResolvedValue([mockPayment]),
-                    }),
-                  }),
-                }),
-              }),
-            }),
-            findById: jest.fn().mockResolvedValue(mockPayment),
-            countDocuments: jest.fn().mockResolvedValue(1),
-            aggregate: jest.fn().mockResolvedValue([{ total: 125000 }]),
+            find: jest.fn(() => query([mockPayment])),
+            countDocuments: jest.fn(() => query(10)),
+            aggregate: jest.fn().mockResolvedValue([{ _id: null, total: 5000 }]),
           },
         },
         {
           provide: 'VehicleModel',
           useValue: {
-            find: jest.fn().mockReturnValue({
-              exec: jest.fn().mockResolvedValue([mockVehicle]),
-            }),
-            findById: jest.fn().mockResolvedValue(mockVehicle),
-            findByIdAndUpdate: jest.fn().mockResolvedValue(mockVehicle),
-            countDocuments: jest.fn().mockResolvedValue(5),
+            find: jest.fn(() => query([mockVehicle])),
+            findById: jest.fn(() => query(mockVehicle)),
+            findByIdAndUpdate: jest.fn(() => query(mockVehicle)),
+            countDocuments: jest.fn(() => query(5)),
           },
         },
         {
           provide: 'BookingModel',
           useValue: {
-            countDocuments: jest.fn().mockResolvedValue(100),
+            find: jest.fn(() => query([])),
+            countDocuments: jest.fn(() => query(100)),
           },
         },
+        // AdminService injects these too. The suites below never exercise
+        // them, so a bare stub is enough to let the module compile.
+        { provide: 'RatingModel', useValue: { countDocuments: jest.fn().mockResolvedValue(0) } },
+        { provide: 'ChatRoomModel', useValue: { countDocuments: jest.fn().mockResolvedValue(0) } },
+        { provide: 'MessageModel', useValue: { countDocuments: jest.fn().mockResolvedValue(0) } },
+        { provide: 'NotificationModel', useValue: { countDocuments: jest.fn().mockResolvedValue(0) } },
         {
           provide: NotificationsService,
           useValue: {
@@ -270,7 +265,7 @@ describe('AdminService', () => {
     });
 
     it('should throw NotFoundException if user not found', async () => {
-      jest.spyOn(userModel, 'findById').mockResolvedValueOnce(null as any);
+      jest.spyOn(userModel, 'findById').mockReturnValueOnce(query(null) as any);
 
       await expect(
         service.changeUserRole('non-existent-id', UserRole.DRIVER),
@@ -427,7 +422,7 @@ describe('AdminService', () => {
 
       expect(notificationsService.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: 'vehicle_verified',
+          type: 'driver_approved',
         }),
       );
     });
