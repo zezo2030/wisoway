@@ -46,30 +46,36 @@ class CountryCodePicker extends StatelessWidget {
               ),
             ],
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _flag(selectedCountry.iso2, 20),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  selectedCountry.dialCode,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: T.onSurface(context),
+          // A dial code is inherently LTR: under the ambient RTL the row order
+          // flips and "+962" renders as "962+". Scoping the chip to LTR keeps
+          // flag / code / chevron reading as designed in both locales.
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _flag(selectedCountry.iso2, 20),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    selectedCountry.dialCode,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: T.onSurface(context),
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              const SizedBox(width: 4),
-              Icon(
-                IconsaxPlusLinear.arrow_down_2,
-                size: 16,
-                color: T.onSurfaceVariant(context),
-              ),
-            ],
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 18,
+                  color: T.onSurfaceVariant(context),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -243,7 +249,6 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
       ),
     );
   }
-
 }
 
 /// Jordan ships as a designed asset (used across the auth redesign); every
@@ -251,7 +256,7 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
 Widget _flag(String iso2, double size) {
   if (iso2.toUpperCase() == 'JO') {
     return Image.asset(
-      'assets/images/auth/auth_flag_jo.png',
+      'assets/images/auth/auth_flag_jo.webp',
       width: size * 1.35,
       height: size,
       fit: BoxFit.contain,

@@ -4,21 +4,9 @@ A new Flutter project.
 
 ## ربط الباكند (Backend)
 
-1. **تشغيل الباكند** من مجلد `rideshare-backend`:
-   ```bash
-   npm run start:dev
-   ```
-   الباكند يعمل على `http://localhost:3003` والـ API تحت `api/v1`.
+العنوان في `lib/core/api/api_endpoints.dart`. حالياً Docker المحلي: `http://192.168.1.9/api/v1`.
 
-2. **التطبيق مضبوط مسبقاً** على:
-   - **محاكي أندرويد:** `http://10.0.2.2:3003/api/v1`
-   - للتشغيل على **جهاز حقيقي** استخدم IP جهازك:
-     ```bash
-     flutter run --dart-define=BASE_URL=http://192.168.1.XXX:3003/api/v1
-     ```
-   - **محاكي iOS:** غيّر الـ default في `lib/core/api/api_endpoints.dart` إلى `http://127.0.0.1:3003/api/v1` أو استخدم dart-define.
-
-3. تأكد أن MongoDB و Redis يعملان (حسب إعدادات الباكند في `.env`).
+بعدها `flutter run` يكفي. لو تغيّر IP الجهاز، عدّل `baseUrl` في نفس الملف.
 
 ## Getting Started
 

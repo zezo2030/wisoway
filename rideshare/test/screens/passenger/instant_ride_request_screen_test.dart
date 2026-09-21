@@ -19,6 +19,49 @@ void main() {
     expect(find.text("We couldn't find a driver right now"), findsOneWidget);
   });
 
+  testWidgets('the failure sheet names the radius nobody was found in', (
+    tester,
+  ) async {
+    await _pumpScreen(
+      tester,
+      request: _request(
+        'no_drivers',
+        terminalReason: 'no_eligible_drivers',
+        searchRadiusKm: 25,
+      ),
+    );
+
+    expect(
+      find.text('No driver is available within 25 km of your pickup point.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Check that the pickup point really is where you are now.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a search where everyone declined says so instead', (
+    tester,
+  ) async {
+    await _pumpScreen(
+      tester,
+      request: _request('no_drivers', terminalReason: 'all_declined'),
+    );
+
+    expect(
+      find.text(
+        'Nearby drivers did not accept your fare. Try raising it a little.',
+      ),
+      findsOneWidget,
+    );
+    // The pickup hint only belongs on the nobody-in-range case.
+    expect(
+      find.text('Check that the pickup point really is where you are now.'),
+      findsNothing,
+    );
+  });
+
   testWidgets('an expired request shows the same sheet', (tester) async {
     await _pumpScreen(tester, request: _request('expired'));
 
@@ -132,7 +175,113 @@ void main() {
       find.text('The fare range changed. Review the fare before trying again.'),
       findsOneWidget,
     );
-    expect(find.text('4.50 JOD'), findsOneWidget);
+    // The passenger's fare field is re-seeded with the new recommendation.
+    final field = tester.widget<TextField>(
+      find.byKey(const ValueKey('instant-fare-field')),
+    );
+    expect(field.controller!.text, '4.50');
+    expect(find.text('Recommended fare: 4.50 JOD'), findsOneWidget);
+  });
+
+  testWidgets('a searching request shows the progress steps and cancel', (
+    tester,
+  ) async {
+    // Not _pumpScreen: the search ring animates and the request polls on a
+    // timer, so the tree never settles.
+    await tester.pumpWidget(
+      _app(
+        InstantRideRequestScreen(
+          initialRequest: _request('searching', id: 'req-1'),
+          service: _FakeInstantRideService(),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.text('Finding the nearest driver...'), findsOneWidget);
+    expect(find.text('Reaching out to drivers near you'), findsOneWidget);
+    for (final step in [
+      'Request sent',
+      'Finding a driver',
+      'Driver offer',
+      'Driver on the way',
+    ]) {
+      expect(find.text(step), findsOneWidget);
+    }
+    expect(find.text('Cancel request'), findsOneWidget);
+    await _disposeScreen(tester);
+  });
+
+  testWidgets('the searching sheet lets the passenger raise the fare', (
+    tester,
+  ) async {
+    final service = _FakeInstantRideService();
+    await tester.pumpWidget(
+      _app(
+        InstantRideRequestScreen(
+          initialRequest: _request(
+            'searching',
+            id: 'req-1',
+            passengerFare: '5.00',
+            maxFare: 10,
+          ),
+          service: service,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.text('Your fare'), findsOneWidget);
+    expect(find.text('5 JOD'), findsOneWidget);
+    // Nothing to send until the fare is nudged up.
+    final raise = tester.widget<ElevatedButton>(
+      find.widgetWithText(ElevatedButton, 'Raise fare'),
+    );
+    expect(raise.onPressed, isNull);
+
+    await tester.tap(find.byIcon(Icons.add));
+    await tester.pump();
+    expect(find.text('5.25 JOD'), findsOneWidget);
+    expect(find.text('Raise to 5.25 JOD'), findsOneWidget);
+
+    await tester.tap(find.text('Raise to 5.25 JOD'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(service.raisedTo, 5.25);
+    await _disposeScreen(tester);
+  });
+
+  testWidgets('a matched request shows the driver card and actions', (
+    tester,
+  ) async {
+    await _pumpScreen(
+      tester,
+      request: _request(
+        'accepted',
+        match: const InstantMatch(
+          currency: 'JOD',
+          tripId: 'trip-1',
+          bookingId: 'bk-1',
+          driverId: 'drv-1',
+          driverName: 'Mohammed Ahmed',
+          driverRating: 4.9,
+          vehicleModel: 'Hyundai Sonata',
+          plateNumber: 'A B C 1234',
+          pickupEtaSeconds: 180,
+        ),
+      ),
+    );
+
+    expect(find.text('Driver found!'), findsOneWidget);
+    expect(find.text('Mohammed Ahmed'), findsOneWidget);
+    expect(find.text('A B C 1234'), findsOneWidget);
+    expect(find.text('3 min'), findsOneWidget);
+    expect(find.text('Call'), findsOneWidget);
+    expect(find.text('Chat'), findsOneWidget);
+    expect(find.text('Track ride'), findsOneWidget);
+    expect(find.text('Cancel request'), findsOneWidget);
   });
 
   testWidgets('closing the finished request pops without cancelling it', (
@@ -166,9 +315,24 @@ void main() {
   });
 }
 
-InstantRequest _request(String status, {String id = 'req-1'}) {
+InstantRequest _request(
+  String status, {
+  String id = 'req-1',
+  InstantMatch? match,
+  String? passengerFare,
+  double? maxFare,
+  String? terminalReason,
+  double? searchRadiusKm,
+}) {
   return InstantRequest(
     id: id,
+    passengerFare: passengerFare,
+    recommendedFare: passengerFare,
+    maxFare: maxFare,
+    terminalReason: terminalReason,
+    searchRadiusKm: searchRadiusKm,
+    match: match,
+    tripId: match?.tripId,
     status: status,
     fromName: 'Abdali',
     toName: 'Airport',
@@ -209,30 +373,32 @@ Future<void> _pumpScreen(
     service: service ?? _FakeInstantRideService(),
   );
 
-  await tester.pumpWidget(
-    MaterialApp(
-      theme: AppTheme.lightTheme,
-      locale: const Locale('en'),
-      supportedLocales: AppLocalizations.supportedLocales,
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      routes: {
-        RouteNames.support: (_) =>
-            const Scaffold(body: Text('support screen')),
-      },
-      home: pushed ? _Launcher(screen: screen) : screen,
-    ),
-  );
+  await tester.pumpWidget(_app(pushed ? _Launcher(screen: screen) : screen));
   await tester.pumpAndSettle();
 
   if (pushed) {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
   }
+}
+
+/// The screen's host app: theme, English strings, and the support route.
+Widget _app(Widget home) {
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    locale: const Locale('en'),
+    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: const [
+      AppLocalizations.delegate,
+      GlobalMaterialLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+    ],
+    routes: {
+      RouteNames.support: (_) => const Scaffold(body: Text('support screen')),
+    },
+    home: home,
+  );
 }
 
 /// Replaces the screen so its polling timers are cancelled before the test ends.
@@ -255,9 +421,9 @@ class _Launcher extends StatelessWidget {
           children: [
             const Text('home'),
             ElevatedButton(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => screen),
-              ),
+              onPressed: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute<void>(builder: (_) => screen)),
               child: const Text('open'),
             ),
           ],
@@ -289,6 +455,19 @@ class _FakeInstantRideService extends InstantRideService {
     return retryResult ?? _request('searching', id: 'req-2');
   }
 
+  double? raisedTo;
+
+  @override
+  Future<InstantRequest> updateFare(String id, double passengerFare) async {
+    raisedTo = passengerFare;
+    return _request(
+      'searching',
+      id: id,
+      passengerFare: passengerFare.toStringAsFixed(2),
+      maxFare: 10,
+    );
+  }
+
   @override
   Future<InstantRequest> cancelRequest(String id) async {
     cancelledIds.add(id);
@@ -298,4 +477,10 @@ class _FakeInstantRideService extends InstantRideService {
   @override
   Future<InstantRequest> getRequest(String id) async =>
       _request('searching', id: id);
+
+  @override
+  Future<List<InstantNearbyDriverPin>> nearbyDriverPins({
+    required double latitude,
+    required double longitude,
+  }) async => const [];
 }

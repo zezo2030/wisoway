@@ -15,12 +15,13 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rideshare/l10n/generated/app_localizations.dart';
 import 'package:provider/provider.dart';
 
-import '../../../lib/screens/auth/phone_auth_screen.dart';
-import '../../../lib/screens/auth/otp_verification_screen.dart';
-import '../../../lib/providers/auth_provider.dart';
-import '../../../lib/core/constants/app_constants.dart';
+import 'package:rideshare/screens/auth/phone_auth_screen.dart';
+import 'package:rideshare/screens/auth/otp_verification_screen.dart';
+import 'package:rideshare/providers/auth_provider.dart';
+import 'package:rideshare/core/constants/app_constants.dart';
 
 // ---------------------------------------------------------------------------
 // Minimal stub for AuthProvider so we don't hit a real server.
@@ -33,6 +34,9 @@ class _FakeAuthProvider extends ChangeNotifier implements AuthProvider {
 
 Widget _wrap(Widget child) {
   return MaterialApp(
+    locale: const Locale('ar'),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
     home: ChangeNotifierProvider<AuthProvider>(
       create: (_) => _FakeAuthProvider(),
       child: child,
@@ -60,29 +64,25 @@ void main() {
       // No field with "email" label/hint should be present
       expect(
         find.byWidgetPredicate((w) {
-          if (w is TextField) {
-            return w.keyboardType == TextInputType.emailAddress;
-          }
-          if (w is TextFormField) {
-            return w.keyboardType == TextInputType.emailAddress;
-          }
-          return false;
+          return w is TextField &&
+              w.keyboardType == TextInputType.emailAddress;
         }),
         findsNothing,
       );
     });
 
-    testWidgets('does NOT render Google or Facebook sign-in buttons',
-        (tester) async {
+    testWidgets('does NOT render Google or Facebook sign-in buttons', (
+      tester,
+    ) async {
       await tester.pumpWidget(_wrap(const PhoneAuthScreen()));
       // No text referencing social providers
       expect(find.textContaining('Google', findRichText: true), findsNothing);
-      expect(
-          find.textContaining('Facebook', findRichText: true), findsNothing);
+      expect(find.textContaining('Facebook', findRichText: true), findsNothing);
     });
 
-    testWidgets('shows validation error when submitting empty phone',
-        (tester) async {
+    testWidgets('shows validation error when submitting empty phone', (
+      tester,
+    ) async {
       await tester.pumpWidget(_wrap(const PhoneAuthScreen()));
       await tester.tap(find.byType(ElevatedButton));
       await tester.pump();
@@ -91,8 +91,7 @@ void main() {
     });
 
     testWidgets('isLinkPhone=true shows confirmation title', (tester) async {
-      await tester.pumpWidget(
-          _wrap(const PhoneAuthScreen(isLinkPhone: true)));
+      await tester.pumpWidget(_wrap(const PhoneAuthScreen(isLinkPhone: true)));
       expect(find.text('تأكيد رقم الهاتف'), findsOneWidget);
     });
 
@@ -113,10 +112,7 @@ void main() {
         _wrap(OTPVerificationScreen(phoneNumber: testPhone)),
       );
       // Each digit input is a TextField inside a Container
-      expect(
-        find.byType(TextField),
-        findsNWidgets(AppConstants.otpLength),
-      );
+      expect(find.byType(TextField), findsNWidgets(AppConstants.otpLength));
     });
 
     testWidgets('renders masked phone number in body text', (tester) async {
@@ -127,26 +123,23 @@ void main() {
       expect(find.textContaining('+20'), findsWidgets);
     });
 
-    testWidgets('resend button is initially disabled (timer running)',
-        (tester) async {
+    testWidgets('resend button is initially disabled (timer running)', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(OTPVerificationScreen(phoneNumber: testPhone)),
       );
       // The resend text should show a countdown, not an active tap target
-      expect(
-        find.textContaining('إعادة إرسال الرمز خلال'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('إعادة إرسال الرمز خلال'), findsOneWidget);
     });
 
-    testWidgets('verify button is disabled when OTP fields are empty',
-        (tester) async {
+    testWidgets('verify button is disabled when OTP fields are empty', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(OTPVerificationScreen(phoneNumber: testPhone)),
       );
-      final button = tester.widget<ElevatedButton>(
-        find.byType(ElevatedButton),
-      );
+      final button = tester.widget<ElevatedButton>(find.byType(ElevatedButton));
       // onPressed should be null (disabled) when no digits entered
       expect(button.onPressed, isNull);
     });

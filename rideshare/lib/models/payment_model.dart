@@ -104,10 +104,10 @@ class PaymentModel {
       paymentGatewayRef: json['paymentGatewayRef'],
       adminNote: json['adminNote'],
       createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
+          ? DateTime.parse(json['createdAt']).toLocal()
           : DateTime.now(),
       updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
+          ? DateTime.parse(json['updatedAt']).toLocal()
           : DateTime.now(),
     );
   }

@@ -136,8 +136,8 @@ export const translations = {
     confirmUserDesc: "Are you sure you want to confirm this user account?",
     approveDriverTitle: "Approve Driver",
     rejectDriverTitle: "Reject Driver",
-    approveDriverDesc: "Approve this driver to allow creating trips?",
-    rejectDriverDesc: "Reject this driver? They will not be able to create trips.",
+    approveDriverDesc: "Approving activates the driver account AND its vehicle together, allowing trip creation.",
+    rejectDriverDesc: "Rejecting blocks both the driver account and its vehicle.",
     userDetail: "User Detail",
     // User Detail page
     userProfile: "User Profile",
@@ -615,6 +615,17 @@ export const translations = {
     // Fines (driver penalties — admin-issued only)
     nav_fines: "Fines",
     nav_noShowReports: "No-Show Reports",
+
+    // Pending Drivers (driver account review queue)
+    nav_pendingDrivers: "Pending Drivers",
+    pendingDriversTitle: "Pending Driver Approvals",
+    pendingDriversSubtitle: "Review driver accounts awaiting approval and approve or reject them.",
+    pendingDriversContact: "Contact",
+    pendingDriversActions: "Actions",
+    pendingDriversEmpty: "No pending drivers found.",
+    pendingDriversLoadError: "Failed to load pending drivers. Please try again.",
+    pendingDriversActionError: "Failed to update driver approval",
+
     finesTitle: "Driver Fines",
     finesSubtitle: "Issue and manage manual penalties against drivers after investigation.",
     createFine: "Issue Fine",
@@ -1318,6 +1329,17 @@ export const translations = {
     // Fines (driver penalties — admin-issued only)
     nav_fines: "الغرامات",
     nav_noShowReports: "بلاغات عدم الحضور",
+
+    // Pending Drivers (driver account review queue)
+    nav_pendingDrivers: "سائقون بانتظار المراجعة",
+    pendingDriversTitle: "مراجعة حسابات السائقين",
+    pendingDriversSubtitle: "راجع حسابات السائقين المنتظرة للموافقة وقبولها أو رفضها.",
+    pendingDriversContact: "بيانات التواصل",
+    pendingDriversActions: "الإجراءات",
+    pendingDriversEmpty: "لا يوجد سائقون بانتظار المراجعة.",
+    pendingDriversLoadError: "فشل تحميل السائقين المنتظرين. حاول مرة أخرى.",
+    pendingDriversActionError: "فشل تحديث موافقة السائق",
+
     finesTitle: "غرامات السائقين",
     finesSubtitle: "إصدار وإدارة الغرامات اليدوية على السائقين بعد التحقيق.",
     createFine: "إصدار غرامة",

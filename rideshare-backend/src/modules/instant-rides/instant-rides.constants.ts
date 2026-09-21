@@ -7,12 +7,30 @@
  */
 
 // ── Dispatch (sequential matching) ──────────────────────────────────────────
-export const INITIAL_RADIUS_KM = 3;
-export const RADIUS_STEP_KM = 3;
-export const MAX_RADIUS_KM = 10;
+/**
+ * Read a positive number from the environment, falling back when the variable
+ * is unset or not a usable number. Deployments differ enough between a dense
+ * city and a rural governorate that these have to be tunable per market
+ * without a rebuild.
+ */
+function envKm(name: string, fallback: number): number {
+  const parsed = Number(process.env[name]);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+/** Radius of the first sweep — keeps dense-city matches close. */
+export const INITIAL_RADIUS_KM = envKm('INSTANT_INITIAL_RADIUS_KM', 3);
+/**
+ * Ceiling for the search. Raising this never worsens a city match: candidates
+ * are always ordered nearest-first, so a wider ring is only ever reached after
+ * the closer ones came back empty. It does raise the worst-case pickup wait,
+ * which is the real trade-off — at PICKUP_ETA_SPEED_KMH, 25 km is roughly an
+ * hour of approach.
+ */
+export const MAX_RADIUS_KM = envKm('INSTANT_MAX_RADIUS_KM', 25);
 
 /** How long a single driver has to respond to an offer. */
-export const OFFER_TTL_SECONDS = 12;
+export const OFFER_TTL_SECONDS = 25;
 /** Overall window before a request gives up searching. */
 export const REQUEST_TTL_SECONDS = 180;
 /**

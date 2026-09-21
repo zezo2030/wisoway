@@ -91,4 +91,33 @@ describe('DriverAvailabilityService', () => {
       expect(status.driverId).toBe('d1');
     });
   });
+
+  describe('findNearbyDriverPins', () => {
+    it('returns anonymous coordinates rounded to ~110 m', async () => {
+      const qb: any = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([
+          { lat: '31.958731', lng: '35.912264' },
+          { lat: 31.951112, lng: 35.90995 },
+        ]),
+      };
+      repo.createQueryBuilder = jest.fn().mockReturnValue(qb);
+
+      const pins = await service.findNearbyDriverPins(31.95, 35.91);
+
+      expect(pins).toEqual([
+        { latitude: 31.959, longitude: 35.912 },
+        { latitude: 31.951, longitude: 35.91 },
+      ]);
+      // Nothing that could identify the driver leaves the service.
+      for (const pin of pins) {
+        expect(Object.keys(pin).sort()).toEqual(['latitude', 'longitude']);
+      }
+    });
+  });
 });

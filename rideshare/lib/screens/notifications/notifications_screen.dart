@@ -136,6 +136,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           );
         }
         break;
+      case NotificationType.driverApproved:
+      case NotificationType.driverRejected:
+        // Driver account review outcome → open the driver account status screen
+        Navigator.pushNamed(context, RouteNames.driverPendingApproval);
+        break;
     }
   }
 

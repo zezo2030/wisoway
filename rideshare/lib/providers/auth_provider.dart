@@ -3,6 +3,7 @@ import 'dart:io';
 import '../core/services/auth_service.dart';
 import '../core/services/device_fingerprint_service.dart';
 import '../core/services/push_notification_service.dart';
+import '../core/services/saved_places_service.dart';
 import '../core/services/storage_service.dart';
 import '../core/services/vehicle_service.dart';
 import '../core/storage/token_storage.dart';
@@ -651,6 +652,12 @@ class AuthProvider extends ChangeNotifier {
       _setLoading(true);
       _setError(null);
       await _deregisterDeviceToken();
+      // Drop this account's saved and recent places before the id is gone, so
+      // they cannot surface under the next account on this device.
+      final signingOutUserId = _userModel?.id;
+      if (signingOutUserId != null && signingOutUserId.isNotEmpty) {
+        await SavedPlacesService(userId: signingOutUserId).clearAll();
+      }
       await _authService.logout();
       _userModel = null;
       _setLoading(false);

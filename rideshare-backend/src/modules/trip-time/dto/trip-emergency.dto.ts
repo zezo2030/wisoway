@@ -3,7 +3,9 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 export class TripEmergencyDto {
-  @ApiPropertyOptional({ description: 'Current latitude when emergency triggered' })
+  @ApiPropertyOptional({
+    description: 'Current latitude when emergency triggered',
+  })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
@@ -11,7 +13,9 @@ export class TripEmergencyDto {
   @Max(90)
   latitude?: number;
 
-  @ApiPropertyOptional({ description: 'Current longitude when emergency triggered' })
+  @ApiPropertyOptional({
+    description: 'Current longitude when emergency triggered',
+  })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()

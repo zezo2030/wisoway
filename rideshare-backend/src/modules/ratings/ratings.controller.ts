@@ -6,7 +6,6 @@ import {
   Param,
   Query,
   UseGuards,
-  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -20,6 +19,7 @@ import { RatingsService } from './ratings.service';
 import { CreateRatingDto } from './dto/create-rating.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PaginationDto } from '../../common/dto/pagination.dto';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('ratings')
 @ApiBearerAuth()
@@ -41,9 +41,16 @@ export class RatingsController {
     description: 'Forbidden - not a participant of this trip',
   })
   @ApiResponse({ status: 404, description: 'Trip or user not found' })
-  async create(@Body() createRatingDto: CreateRatingDto, @Req() req: any) {
-    const userRole = req.user.role || 'passenger';
-    return this.ratingsService.create(createRatingDto, req.user.sub, userRole);
+  async create(
+    @Body() createRatingDto: CreateRatingDto,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: string,
+  ) {
+    return this.ratingsService.create(
+      createRatingDto,
+      userId,
+      role || 'passenger',
+    );
   }
 
   @Get('user/:userId')
@@ -83,8 +90,11 @@ export class RatingsController {
   @ApiQuery({ name: 'page', required: false, type: Number, default: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, default: 20 })
   @ApiResponse({ status: 200, description: 'Returns paginated ratings' })
-  async findByRater(@Req() req: any, @Query() pagination: PaginationDto) {
-    return this.ratingsService.findByRater(req.user.sub, {
+  async findByRater(
+    @CurrentUser('id') userId: string,
+    @Query() pagination: PaginationDto,
+  ) {
+    return this.ratingsService.findByRater(userId, {
       page: pagination.page || 1,
       limit: pagination.limit || 20,
     });

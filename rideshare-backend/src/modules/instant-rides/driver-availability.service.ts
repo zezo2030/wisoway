@@ -24,6 +24,12 @@ export type NearbyDriver = {
   distanceMeters: number;
 };
 
+/** Anonymous, coarse position of an online driver, shown on passenger maps. */
+export type NearbyDriverPin = {
+  latitude: number;
+  longitude: number;
+};
+
 @Injectable()
 export class DriverAvailabilityService {
   /** Drivers whose heartbeat is older than this are treated as offline. */
@@ -148,6 +154,54 @@ export class DriverAvailabilityService {
     }));
   }
 
+  /**
+   * Approximate map pins of our online drivers near a point, for the
+   * passenger's instant-ride map. Deliberately anonymous: no driver ids, and
+   * coordinates rounded to ~110 m so a pin can't be tracked back to a specific
+   * driver. Busy drivers (locked on a request) are included — they are still
+   * real drivers of ours on the road nearby.
+   */
+  async findNearbyDriverPins(
+    latitude: number,
+    longitude: number,
+    radiusMeters = 5_000,
+    limit = 8,
+  ): Promise<NearbyDriverPin[]> {
+    const staleCutoff = new Date(Date.now() - this.staleThresholdMs);
+    const rows: Array<{ lat: string | number; lng: string | number }> =
+      await this.repo
+        .createQueryBuilder('a')
+        .select('ST_Y(a."point"::geometry)', 'lat')
+        .addSelect('ST_X(a."point"::geometry)', 'lng')
+        .where('a."isOnline" = true')
+        .andWhere('a."point" IS NOT NULL')
+        .andWhere('a."lastSeenAt" >= :staleCutoff', { staleCutoff })
+        .andWhere(
+          `ST_DWithin(
+            a."point",
+            ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography,
+            :radiusMeters
+          )`,
+          { longitude, latitude, radiusMeters },
+        )
+        .addSelect(
+          `ST_Distance(
+            a."point",
+            ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography
+          )`,
+          'distance_meters',
+        )
+        .orderBy('distance_meters', 'ASC')
+        .limit(limit)
+        .getRawMany();
+
+    const round = (value: number) => Math.round(value * 1_000) / 1_000;
+    return rows.map((row) => ({
+      latitude: round(Number(row.lat)),
+      longitude: round(Number(row.lng)),
+    }));
+  }
+
   private async assertCanGoOnline(driverId: string): Promise<string> {
     const driver = await this.usersService.findById(driverId);
     if (driver?.isDriverApproved === false) {
@@ -172,8 +226,7 @@ export class DriverAvailabilityService {
       if (error instanceof ForbiddenException) {
         throw new ForbiddenException({
           code: ErrorCodes.NEGATIVE_WALLET_BALANCE,
-          message:
-            'رصيد محفظتك سالب. سدد المستحقات قبل تلقي الرحلات المباشرة.',
+          message: 'رصيد محفظتك سالب. سدد المستحقات قبل تلقي الرحلات المباشرة.',
         });
       }
       throw error;

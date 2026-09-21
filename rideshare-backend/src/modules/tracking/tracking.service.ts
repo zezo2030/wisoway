@@ -77,9 +77,7 @@ export class TrackingService {
       remainingDistanceKm:
         eta?.remainingDistanceKm ?? trip.remainingDistanceKm ?? null,
       remainingDurationSeconds:
-        eta?.remainingDurationSeconds ??
-        trip.remainingDurationSeconds ??
-        null,
+        eta?.remainingDurationSeconds ?? trip.remainingDurationSeconds ?? null,
       etaAt: eta?.etaAt ?? trip.etaAt ?? null,
       routeProgressPercent:
         eta?.routeProgressPercent ?? trip.routeProgressPercent ?? null,
@@ -197,7 +195,10 @@ export class TrackingService {
       toCoords[1],
       toCoords[0],
     );
-    const done = Math.max(0, Math.min(100, ((total - remaining) / total) * 100));
+    const done = Math.max(
+      0,
+      Math.min(100, ((total - remaining) / total) * 100),
+    );
     return Number(done.toFixed(1));
   }
 
@@ -213,9 +214,7 @@ export class TrackingService {
     const dLon = toRad(lon2 - lon1);
     const a =
       Math.sin(dLat / 2) ** 2 +
-      Math.cos(toRad(lat1)) *
-        Math.cos(toRad(lat2)) *
-        Math.sin(dLon / 2) ** 2;
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
     return 2 * r * Math.asin(Math.sqrt(a));
   }
 

@@ -50,14 +50,18 @@ void main() {
         expect(failure.nextAction, FailureAction.retry);
       });
 
-      test('HTTP 401 → auth session expired failure', () {
+      // A 401 means two different things depending on whether the request was
+      // authenticated, and telling a user their session expired when they in
+      // fact mistyped a password sends them to the wrong fix.
+      test('HTTP 401 on an authenticated request → session expired', () {
+        final options = RequestOptions(
+          path: '/test',
+          headers: {'Authorization': 'Bearer token'},
+        );
         final error = DioException(
           type: DioExceptionType.badResponse,
-          response: Response(
-            statusCode: 401,
-            requestOptions: RequestOptions(path: '/test'),
-          ),
-          requestOptions: RequestOptions(path: '/test'),
+          response: Response(statusCode: 401, requestOptions: options),
+          requestOptions: options,
         );
 
         final failure = ExceptionMapper.fromError(error);
@@ -66,6 +70,22 @@ void main() {
         expect(failure.messageKey, 'errorsAuthSessionExpired');
         expect(failure.severity, FailureSeverity.error);
         expect(failure.nextAction, FailureAction.reauthenticate);
+      });
+
+      test('HTTP 401 on a public request → invalid credentials', () {
+        final options = RequestOptions(path: '/auth/login');
+        final error = DioException(
+          type: DioExceptionType.badResponse,
+          response: Response(statusCode: 401, requestOptions: options),
+          requestOptions: options,
+        );
+
+        final failure = ExceptionMapper.fromError(error);
+
+        expect(failure.category, FailureCategory.auth);
+        expect(failure.messageKey, 'errorsAuthInvalidCredentials');
+        // Not a reauth prompt: there is no session to renew.
+        expect(failure.nextAction, isNull);
       });
 
       test('HTTP 500 → server error failure', () {

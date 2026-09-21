@@ -68,7 +68,11 @@ void main() {
     expect(find.byType(TripRouteCard), findsOneWidget);
     expect(find.byType(TripFareBreakdownCard), findsOneWidget);
     expect(find.byType(TripFeeNotice), findsOneWidget);
-    expect(find.text('تم حجز رحلتك المشتركة'), findsOneWidget);
+    // The fixture carries no bookings, so the header is the waiting one. It
+    // used to assert the fully-booked wording here, which is what let the
+    // header congratulate a driver on an empty car — see
+    // trip_management_header_test.dart for the state-by-state cases.
+    expect(find.text('رحلتك منشورة'), findsOneWidget);
   });
 
   testWidgets('after departure the original body returns', (tester) async {
@@ -78,7 +82,7 @@ void main() {
     expect(find.byType(TripRouteCard), findsNothing);
     expect(find.byType(TripFareBreakdownCard), findsNothing);
     expect(find.byType(TripFeeNotice), findsNothing);
-    expect(find.text('تم حجز رحلتك المشتركة'), findsNothing);
+    expect(find.text('رحلتك منشورة'), findsNothing);
 
     // …and the original composition is back, AppBar and all.
     expect(find.byType(AppBar), findsOneWidget);

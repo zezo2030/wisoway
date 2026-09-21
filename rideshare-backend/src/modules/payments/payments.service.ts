@@ -235,25 +235,88 @@ export class PaymentsService {
     return this.paymentRepo.save(payment);
   }
 
+  /**
+   * `page`/`limit` arrive as query strings, so they are coerced here rather
+   * than trusted as numbers, and clamped so a caller cannot ask for the whole
+   * table in one page.
+   */
+  private resolvePaging(query: QueryPaymentsDto): {
+    page: number;
+    limit: number;
+  } {
+    const page = Math.max(1, Number(query?.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(query?.limit) || 20));
+    return { page, limit };
+  }
+
+  private buildPaymentFilter(query: QueryPaymentsDto): Record<string, unknown> {
+    const where: Record<string, unknown> = {};
+    if (query?.status) where.status = query.status;
+    if (query?.paymentType) where.paymentType = query.paymentType;
+    return where;
+  }
+
+  /**
+   * The current user's own payments — top-ups, trip payments and fees.
+   *
+   * This and `findById`/`findAll` below were stubs returning an empty page and
+   * a hard 404 since the initial commit, so `GET /payments/my`,
+   * `GET /payments/:id` and the admin listing never showed anything despite
+   * rows existing in `payments`.
+   */
   async findByUser(
-    _userId: string,
-    _query: QueryPaymentsDto,
+    userId: string,
+    query: QueryPaymentsDto,
   ): Promise<PaginatedResult<PaymentEntity>> {
-    return { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
+    const { page, limit } = this.resolvePaging(query);
+    const [data, total] = await this.paymentRepo.findAndCount({
+      where: { ...this.buildPaymentFilter(query), userId },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    return {
+      data,
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
   }
 
+  /**
+   * A single payment. Non-admins may only read their own — otherwise a payment
+   * id would expose another user's amounts and proof image.
+   */
   async findById(
-    _paymentId: string,
-    _userId: string,
-    _isAdmin: boolean = false,
+    paymentId: string,
+    userId: string,
+    isAdmin: boolean = false,
   ): Promise<PaymentEntity> {
-    throw new NotFoundException('Payment not found');
+    const payment = await this.paymentRepo.findOne({
+      where: { id: paymentId },
+    });
+    if (!payment) {
+      throw new NotFoundException('Payment not found');
+    }
+    if (!isAdmin && payment.userId !== userId) {
+      throw new ForbiddenException('Not authorized to view this payment');
+    }
+    return payment;
   }
 
+  /** Admin-wide payment listing. */
   async findAll(
-    _query: QueryPaymentsDto,
+    query: QueryPaymentsDto,
   ): Promise<PaginatedResult<PaymentEntity>> {
-    return { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
+    const { page, limit } = this.resolvePaging(query);
+    const [data, total] = await this.paymentRepo.findAndCount({
+      where: this.buildPaymentFilter(query),
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    return {
+      data,
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   /**

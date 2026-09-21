@@ -9,6 +9,7 @@ import { PaymentEntity } from '../../database/entities/payment.entity';
 import { BookingsController } from './bookings.controller';
 import { BookingsV2Controller } from './bookings-v2.controller';
 import { BookingsService } from './bookings.service';
+import { TripPassengerSummaryService } from './trip-passenger-summary.service';
 import { BookingsTimeoutProcessor } from './processors/bookings-timeout.processor';
 import { NoShowDetectorProcessor } from './processors/no-show-detector.processor';
 import { TripAutoStartProcessor } from './processors/trip-auto-start.processor';
@@ -46,11 +47,12 @@ import { DriverTripFeeModule } from '../driver-trip-fee/driver-trip-fee.module';
   controllers: [BookingsController, BookingsV2Controller],
   providers: [
     BookingsService,
+    TripPassengerSummaryService,
     BookingsTimeoutProcessor,
     NoShowDetectorProcessor,
     TripAutoStartProcessor,
     TripAutoCompleteProcessor,
   ],
-  exports: [BookingsService],
+  exports: [BookingsService, TripPassengerSummaryService],
 })
 export class BookingsModule {}

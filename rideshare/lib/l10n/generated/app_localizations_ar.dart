@@ -119,10 +119,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get appearance => 'المظهر';
 
   @override
-  String get darkMode => 'الوضع الداكن';
+  String get darkMode => 'الوضع الليلي';
 
   @override
-  String get darkModeSubtitle => 'تفعيل المظهر الداكن للتطبيق';
+  String get darkModeSubtitle => 'تفعيل الوضع الداكن';
 
   @override
   String get themeMode => 'سمة التطبيق';
@@ -691,7 +691,55 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get welcomeSubtitle =>
-      'رحلتك تبدأ من هنا. اختر وجهتك وانطلق معنا بكل أمان وراحة.';
+      'رحلتك تبدأ من هنا. اختر وجهتك وانطلق معنا برحلات مباشرة أو مشتركة بأمان وراحة.';
+
+  @override
+  String get welcomeSubtitleHighlightDirect => 'مباشرة';
+
+  @override
+  String get welcomeSubtitleHighlightShared => 'مشتركة';
+
+  @override
+  String get welcomeBrandTagline => 'طريق الرؤية';
+
+  @override
+  String get welcomeDirectTitle => 'رحلات مباشرة';
+
+  @override
+  String get welcomeDirectBody => 'رحلتك الخاصة مباشرة وسريعة ومريحة';
+
+  @override
+  String get welcomeSharedTitle => 'رحلات مشتركة';
+
+  @override
+  String get welcomeSharedBody => 'شارك الرحلة ووفر أكثر صديق للبيئة';
+
+  @override
+  String get welcomeFeaturePricingTitle => 'أسعار شفافة';
+
+  @override
+  String get welcomeFeaturePricingBody => 'أسعار عادلة بدون مفاجآت';
+
+  @override
+  String get welcomeFeatureSpeedTitle => 'سرعة وسهولة';
+
+  @override
+  String get welcomeFeatureSpeedBody => 'احجز رحلتك في خطوات بسيطة';
+
+  @override
+  String get welcomeFeatureSafetyTitle => 'أمان وموثوقية';
+
+  @override
+  String get welcomeFeatureSafetyBody => 'سائقون موثوقون ورحلات آمنة';
+
+  @override
+  String get welcomeTermsPrefix => 'بالتسجيل، أنت توافق على';
+
+  @override
+  String get welcomeTermsLink => 'الشروط والأحكام';
+
+  @override
+  String get welcomeTermsAnd => 'و';
 
   @override
   String get signIn => 'تسجيل الدخول';
@@ -700,7 +748,37 @@ class AppLocalizationsAr extends AppLocalizations {
   String get createNewAccount => 'إنشاء حساب جديد';
 
   @override
-  String get signInSubtitle => 'أهلاً بك مجدداً! سجل دخولك للمتابعة.';
+  String get signInSubtitle => 'سجل دخولك للمتابعة';
+
+  @override
+  String get signInWelcomeBack => 'أهلاً بعـودتك 👋';
+
+  @override
+  String get signInOrDivider => 'أو';
+
+  @override
+  String get signInWithPhoneNumber => 'تسجيل الدخول باستخدام رقم الهاتف';
+
+  @override
+  String get signInNewUserQuestion => 'مستخدم جديد؟';
+
+  @override
+  String get signInFeatureTrustedTitle => 'موثوق ومعتمد';
+
+  @override
+  String get signInFeatureTrustedBody => 'سائقون موثوقون ورحلات آمنة';
+
+  @override
+  String get signInFeatureFastTitle => 'سريع وسهل';
+
+  @override
+  String get signInFeatureFastBody => 'حجز رحلتك في خطوات بسيطة';
+
+  @override
+  String get signInFeaturePrivacyTitle => 'أمان وخصوصية';
+
+  @override
+  String get signInFeaturePrivacyBody => 'بياناتك محمية بأعلى المعايير';
 
   @override
   String get password => 'كلمة المرور';
@@ -712,7 +790,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get passwordTooShort => 'كلمة المرور قصيرة';
 
   @override
-  String get forgotPassword => 'نسيت كلمة السر؟';
+  String get forgotPassword => 'نسيت كلمة المرور؟';
 
   @override
   String get noAccountQuestion => 'ليس لديك حساب؟ ';
@@ -1503,6 +1581,15 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get chooseLocationManually => 'اختيار الموقع يدوياً';
+
+  @override
+  String get homeDetectMyLocation => 'تحديد موقعي';
+
+  @override
+  String get homeLocationAccurate => 'تم تحديد الموقع بدقة';
+
+  @override
+  String get homeLocationUnknown => 'لم يُحدد الموقع بعد';
 
   @override
   String get myActiveTrips => 'رحلاتي القائمة';
@@ -2389,6 +2476,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get notesForPassengers => 'ملاحظات للركاب';
+
+  @override
+  String get notesForPassengersSubtitle => 'تظهر للركاب مع تفاصيل الرحلة';
 
   @override
   String get tripNotesHint =>
@@ -3827,6 +3917,104 @@ class AppLocalizationsAr extends AppLocalizations {
   String get seatsUnitLabel => 'مقاعد';
 
   @override
+  String get timePeriodAm => 'صباحًا';
+
+  @override
+  String get timePeriodPm => 'مساءً';
+
+  @override
+  String get scheduleSection => 'الموعد';
+
+  @override
+  String get seatsAndPriceSection => 'المقاعد والسعر';
+
+  @override
+  String get tripOptionsSection => 'خيارات الرحلة';
+
+  @override
+  String get seatsQuestion => 'كم مقعداً تعرض؟';
+
+  @override
+  String vehicleCapacityHint(int count) {
+    return 'سيارتك تتسع لـ $count مقاعد';
+  }
+
+  @override
+  String get tripTotalLabel => 'إجمالي الرحلة';
+
+  @override
+  String get availableSeatsSectionSubtitle =>
+      'اختر عدد المقاعد المتاحة لهذه الرحلة';
+
+  @override
+  String get recurrenceCollapsedHint => 'تكرار أسبوعي أو يومي';
+
+  @override
+  String suggestedPriceForRoute(String min, String max, String currency) {
+    return 'السعر المقترح لهذا المسار: $min - $max $currency';
+  }
+
+  @override
+  String currencyShortName(String currency) {
+    String _temp0 = intl.Intl.selectLogic(currency, {
+      'JOD': 'دينار',
+      'SAR': 'ريال',
+      'AED': 'درهم',
+      'KWD': 'دينار',
+      'BHD': 'دينار',
+      'OMR': 'ريال',
+      'QAR': 'ريال',
+      'EGP': 'جنيه',
+      'ILS': 'شيكل',
+      'IQD': 'دينار',
+      'LBP': 'ليرة',
+      'SYP': 'ليرة',
+      'YER': 'ريال',
+      'LYD': 'دينار',
+      'SDG': 'جنيه',
+      'DZD': 'دينار',
+      'MAD': 'درهم',
+      'TND': 'دينار',
+      'MRU': 'أوقية',
+      'USD': 'دولار',
+      'GBP': 'جنيه',
+      'TRY': 'ليرة',
+      'other': '$currency',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String currencyFullName(String currency) {
+    String _temp0 = intl.Intl.selectLogic(currency, {
+      'JOD': 'دينار أردني',
+      'SAR': 'ريال سعودي',
+      'AED': 'درهم إماراتي',
+      'KWD': 'دينار كويتي',
+      'BHD': 'دينار بحريني',
+      'OMR': 'ريال عُماني',
+      'QAR': 'ريال قطري',
+      'EGP': 'جنيه مصري',
+      'ILS': 'شيكل',
+      'IQD': 'دينار عراقي',
+      'LBP': 'ليرة لبنانية',
+      'SYP': 'ليرة سورية',
+      'YER': 'ريال يمني',
+      'LYD': 'دينار ليبي',
+      'SDG': 'جنيه سوداني',
+      'DZD': 'دينار جزائري',
+      'MAD': 'درهم مغربي',
+      'TND': 'دينار تونسي',
+      'MRU': 'أوقية موريتانية',
+      'USD': 'دولار أمريكي',
+      'GBP': 'جنيه إسترليني',
+      'TRY': 'ليرة تركية',
+      'other': '$currency',
+    });
+    return '$_temp0';
+  }
+
+  @override
   String get jordanianDinarLabel => 'دينار أردني';
 
   @override
@@ -3834,6 +4022,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get additionalDetailsTitle => 'تفاصيل إضافية';
+
+  @override
+  String get publishTripNoticeTitle => 'الرحلة ستنتشر بعد المراجعة';
+
+  @override
+  String get tripSummarySection => 'ملخص الرحلة';
 
   @override
   String get seatLegendAvailable => 'متاح';
@@ -3862,7 +4056,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get publishTripNotice =>
-      'سيتم نشر الرحلة بعد المراجعة وسيتمكن الركاب من الحجز.';
+      'بمجرد نشر الرحلة سيتمكن الركاب من حجز المقاعد المتاحة';
 
   @override
   String createTripFeeNotice(String percent, String amount, String currency) {
@@ -4070,7 +4264,88 @@ class AppLocalizationsAr extends AppLocalizations {
   String get instantRequestNowTitle => 'اطلب رحلة الآن';
 
   @override
-  String get instantRequestNowSubtitle => 'سائق قريب يصل إليك مباشرة';
+  String get instantRequestNowSubtitle => 'سائق يأتي إليك مباشرة';
+
+  @override
+  String get instantFormFromLabel => 'من';
+
+  @override
+  String get instantFormToLabel => 'إلى';
+
+  @override
+  String get instantFormToHint => 'اختر وجهتك';
+
+  @override
+  String get instantFormChange => 'تغيير';
+
+  @override
+  String get instantFormPickOnMap => 'حدد على الخريطة';
+
+  @override
+  String get instantFormDriverArrives => 'يصل السائق خلال';
+
+  @override
+  String get instantFormDistance => 'المسافة';
+
+  @override
+  String get instantFormDuration => 'مدة الرحلة';
+
+  @override
+  String get instantFormMinutesUnit => 'دقيقة';
+
+  @override
+  String get instantFormKmUnit => 'كم';
+
+  @override
+  String get instantFormPriceAfterDestination =>
+      'يتم احتساب السعر بعد تحديد الوجهة';
+
+  @override
+  String get instantFormChooseDestinationCta => 'اختر الوجهة لعرض السعر';
+
+  @override
+  String get instantFormYourFareTitle => 'سعرك للرحلة';
+
+  @override
+  String get instantFormFareHint => 'اكتب السعر';
+
+  @override
+  String instantFormFareRange(String min, String max, String currency) {
+    return 'النطاق المسموح: $min – $max $currency';
+  }
+
+  @override
+  String instantFormFareOutOfRange(String min, String max, String currency) {
+    return 'السعر يجب أن يكون بين $min و$max $currency';
+  }
+
+  @override
+  String get instantFormFareNote =>
+      'السائق قد يقبل سعرك أو يقترح سعرًا أعلى. الدفع نقدًا للسائق مباشرة.';
+
+  @override
+  String get instantTrustSupport => 'دعم 24/7';
+
+  @override
+  String get instantTrustSupportSub => 'نحن هنا لمساعدتك';
+
+  @override
+  String get instantTrustSafe => 'آمن وموثوق';
+
+  @override
+  String get instantTrustSafeSub => 'رحلتك في أمان';
+
+  @override
+  String get instantTrustTracking => 'تتبع الرحلة';
+
+  @override
+  String get instantTrustTrackingSub => 'شارك رحلتك مع من تحب';
+
+  @override
+  String get instantTrustCash => 'دفع نقدي';
+
+  @override
+  String get instantTrustCashSub => 'ادفع للسائق مباشرة';
 
   @override
   String get instantSelectFromTo => 'اختر نقطة الانطلاق والوصول.';
@@ -4089,6 +4364,33 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get instantDriverFound => 'تم العثور على سائق!';
+
+  @override
+  String get instantMatchedSubtitle => 'السائق في طريقه إليك';
+
+  @override
+  String get instantMatchedArrival => 'الوصول خلال';
+
+  @override
+  String get instantMatchedShareTitle =>
+      'شارك تفاصيل رحلتك مع جهة اتصال موثوقة';
+
+  @override
+  String get instantMatchedTrackSubtitle => 'يمكنك مشاركة موقعك مع السائق';
+
+  @override
+  String get instantMatchedCancelTitle => 'إلغاء الرحلة؟';
+
+  @override
+  String get instantMatchedCancelBody =>
+      'تم قبول رحلتك من السائق. سيتم إلغاء الحجز وإبلاغ السائق.';
+
+  @override
+  String get instantMatchedKeep => 'الاستمرار';
+
+  @override
+  String get instantMatchedCallFailed =>
+      'تعذر بدء الاتصال الآن. حاول مرة أخرى.';
 
   @override
   String get instantDriverOnTheWay => 'السائق في طريقه إلى نقطة الانطلاق.';
@@ -4110,8 +4412,26 @@ class AppLocalizationsAr extends AppLocalizations {
       'قد يكون جميع السائقين مشغولين أو لا يوجد سائق قريب منك.';
 
   @override
-  String get instantNoDriversTip =>
-      'نصيحة: أعد المحاولة بعد بضع دقائق؛ قد يتوفر سائق قريب منك.';
+  String instantNoDriversWithinRadius(String km) {
+    return 'لا يوجد سائق متاح ضمن $km كم من نقطة انطلاقك.';
+  }
+
+  @override
+  String get instantNoDriversAllDeclined =>
+      'السائقون القريبون لم يقبلوا سعرك. جرّب رفعه قليلاً.';
+
+  @override
+  String get instantNoDriversTimedOut => 'انتهت مدة البحث قبل أن يرد أي سائق.';
+
+  @override
+  String get instantNoDriversCheckPickup =>
+      'تأكد أن نقطة الانطلاق هي مكانك الحالي فعلاً.';
+
+  @override
+  String get instantNoDriversTip => 'نصيحة: يمكنك المحاولة مرة أخرى بعد دقائق.';
+
+  @override
+  String get instantNoDriversTipKeepSearching => 'وسنستمر بالبحث لك.';
 
   @override
   String get instantNoDriversIllustrationLabel => 'لم يتم العثور على سائق';
@@ -4139,7 +4459,42 @@ class AppLocalizationsAr extends AppLocalizations {
   String get instantTryAgain => 'إعادة المحاولة';
 
   @override
-  String get instantSearching => 'نبحث عن أقرب سائق...';
+  String get instantSearching => 'جاري البحث عن سائق...';
+
+  @override
+  String get instantSearchingSubtitle => 'يتم التواصل مع السائقين القريبين منك';
+
+  @override
+  String get instantSearchingEta => 'الوصول المتوقع';
+
+  @override
+  String get instantSearchingApprox => 'تقريباً';
+
+  @override
+  String instantSearchingMinutes(String minutes) {
+    return '$minutes دقيقة';
+  }
+
+  @override
+  String instantSearchingKm(String km) {
+    return '$km كم';
+  }
+
+  @override
+  String get instantSearchingTip =>
+      'قد يستغرق العثور على سائق وقتاً أطول في أوقات الذروة. شكراً لصبرك';
+
+  @override
+  String get instantStepRequested => 'تم إنشاء الطلب';
+
+  @override
+  String get instantStepSearching => 'البحث عن سائق';
+
+  @override
+  String get instantStepDriverOffer => 'عرض السائق';
+
+  @override
+  String get instantStepDriverOnWay => 'السائق في الطريق';
 
   @override
   String instantFareEstimate(String fare, String currency) {
@@ -4153,6 +4508,22 @@ class AppLocalizationsAr extends AppLocalizations {
   String get instantYourFareLabel => 'سعرك';
 
   @override
+  String get instantRaiseFare => 'رفع السعر';
+
+  @override
+  String get instantFareRaiseHint => 'ارفع سعرك لجذب السائقين أسرع';
+
+  @override
+  String get instantFareLockedWhileOffered =>
+      'بانتظار رد السائق على سعرك الحالي';
+
+  @override
+  String get instantFareMaxReached => 'وصلت إلى الحد الأقصى للسعر';
+
+  @override
+  String get instantFareRaisedToast => 'تم رفع سعرك وإبلاغ السائقين القريبين';
+
+  @override
   String instantRecommendedFare(String fare, String currency) {
     return 'السعر المقترح: $fare $currency';
   }
@@ -4160,6 +4531,35 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String instantYourFareValue(String fare, String currency) {
     return 'سعرك: $fare $currency';
+  }
+
+  @override
+  String get instantOfferDetailsTitle => 'تفاصيل الطلب';
+
+  @override
+  String get instantOfferOpenDetails => 'عرض تفاصيل الطلب';
+
+  @override
+  String get instantOfferCashNote => 'الدفع نقدًا للسائق · يشمل رسوم المنصة';
+
+  @override
+  String get instantOfferPickupDistance => 'المسافة إلى الراكب';
+
+  @override
+  String get instantOfferPickupEta => 'وقت الوصول للراكب';
+
+  @override
+  String get instantOfferTripDistance => 'مسافة الرحلة';
+
+  @override
+  String get instantCounterBadge => 'عرض سعر';
+
+  @override
+  String get instantCounterProposedLabel => 'سعر السائق';
+
+  @override
+  String instantCounterRangeHint(String min, String max, String currency) {
+    return 'بين $min و$max $currency';
   }
 
   @override
@@ -4458,6 +4858,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get vehicleSeatsDocHint => 'عدد المقاعد المتاحة للركاب';
 
   @override
+  String get vehicleSeatsAutoHint => 'يُحسب تلقائيًا حسب نوع المركبة';
+
+  @override
+  String get vehicleSeatsPickTypeFirst => 'اختر نوع المركبة أولًا';
+
+  @override
   String get driverLicenseUploadHint => 'اضغط لرفع صورة الرخصة';
 
   @override
@@ -4527,6 +4933,20 @@ class AppLocalizationsAr extends AppLocalizations {
   String get tripBookedSubtitle => 'تم حجز جميع المقاعد بنجاح';
 
   @override
+  String get tripPublishedTitle => 'رحلتك منشورة';
+
+  @override
+  String get tripPublishedSubtitle => 'في انتظار حجز الركاب';
+
+  @override
+  String get tripPartiallyBookedTitle => 'تم حجز مقاعد في رحلتك';
+
+  @override
+  String tripPartiallyBookedSubtitle(int booked, int total) {
+    return '$booked من $total مقاعد محجوزة';
+  }
+
+  @override
   String get tripDayLabel => 'يوم الرحلة';
 
   @override
@@ -4585,4 +5005,375 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get confirmYourPresenceCta =>
       'قم بتأكيد تواجدك في الوقت والمكان المحدد';
+
+  @override
+  String get driverHomeReadyTitle => 'جاهز لاستقبال الركاب؟';
+
+  @override
+  String get driverHomeReadySubtitle =>
+      'قم بنشر رحلة أو اتصل لاستقبال طلبات مباشرة.';
+
+  @override
+  String get driverStatusLabel => 'الحالة';
+
+  @override
+  String get instantOfflineHint => 'لن تستقبل طلبات مباشرة';
+
+  @override
+  String get instantOnlineHint => 'ستصلك طلبات الركاب القريبين';
+
+  @override
+  String get instantGoOnlineHint =>
+      'قم بالتفعيل لتظهر رحلاتك المباشرة للركاب في منطقتك';
+
+  @override
+  String get publishSharedTrip => 'انشر رحلة مشتركة جديدة';
+
+  @override
+  String get publishSharedTripSubtitle =>
+      'حدّد مسارك وتفاصيل رحلتك واستقبل حجوزات الركاب';
+
+  @override
+  String get locationUpdatedJustNow => 'آخر تحديث الآن';
+
+  @override
+  String locationUpdatedMinutesAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'آخر تحديث قبل $count دقيقة',
+      few: 'آخر تحديث قبل $count دقائق',
+      two: 'آخر تحديث قبل دقيقتين',
+      one: 'آخر تحديث قبل دقيقة',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get showOnMapAction => 'عرض على الخريطة';
+
+  @override
+  String get updateLocationAction => 'تحديث الموقع';
+
+  @override
+  String get todaySummary => 'ملخص اليوم';
+
+  @override
+  String get statNewRequests => 'طلبات جديدة';
+
+  @override
+  String get statNewRequestsHint => 'تحتاج إلى رد';
+
+  @override
+  String get statTodayTrips => 'رحلات اليوم';
+
+  @override
+  String get statTodayTripsHint => 'رحلة منشورة';
+
+  @override
+  String get statBookings => 'الحجوزات';
+
+  @override
+  String get statBookingsHint => 'إجمالي الحجوزات';
+
+  @override
+  String get viewAllStats => 'عرض جميع الإحصائيات';
+
+  @override
+  String get driverCurrentTripsTitle => 'رحلاتك الحالية';
+
+  @override
+  String get noPublishedTripsTitle => 'لا توجد رحلات منشورة';
+
+  @override
+  String get noPublishedTripsSubtitle =>
+      'قم بإنشاء ونشر رحلتك الأولى ليبدأ الركاب بالحجز.';
+
+  @override
+  String get publishTripNow => 'انشر رحلة الآن';
+
+  @override
+  String get instantOnline => 'متصل';
+
+  @override
+  String get driverApprovedReviewTitle => 'تم قبول حسابك كسائق';
+
+  @override
+  String get driverApprovedReviewBody =>
+      'تمت الموافقة على بياناتك ومستنداتك. يمكنك الآن نشر رحلاتك واستقبال حجوزات الركاب.';
+
+  @override
+  String get driverApprovedBadge => 'مقبول';
+
+  @override
+  String get driverApprovedRestrictionTitle => 'حسابك مفعّل';
+
+  @override
+  String get driverApprovedRestrictionBody =>
+      'يمكنك الآن استخدام التطبيق كسائق ونشر الرحلات.';
+
+  @override
+  String get driverStatusRefreshing => 'جارٍ تحديث حالة الطلب…';
+
+  @override
+  String get profileAccountSection => 'الحساب';
+
+  @override
+  String get profileAppSection => 'التطبيق';
+
+  @override
+  String get profileTrustedAccount => 'حساب موثوق';
+
+  @override
+  String get profileUntrustedAccount => 'حساب غير موثق';
+
+  @override
+  String get editProfileSubtitle => 'تحديث بياناتك وصورتك الشخصية';
+
+  @override
+  String get paymentMethods => 'طرق الدفع';
+
+  @override
+  String get paymentMethodsSubtitle => 'إدارة بطاقاتك ووسائل الدفع';
+
+  @override
+  String get savedAddresses => 'العناوين المحفوظة';
+
+  @override
+  String get savedAddressesSubtitle => 'إدارة أماكن الانطلاق والوصول';
+
+  @override
+  String get pastTrips => 'الرحلات السابقة';
+
+  @override
+  String get pastTripsSubtitle => 'عرض جميع رحلاتك السابقة';
+
+  @override
+  String get cancelledTrips => 'الرحلات الملغاة';
+
+  @override
+  String get cancelledTripsSubtitle => 'عرض الرحلات التي تم إلغاؤها';
+
+  @override
+  String get settingsSubtitle => 'تخصيص تجربتك في التطبيق';
+
+  @override
+  String get notificationsSubtitle => 'إدارة تفضيلات الإشعارات';
+
+  @override
+  String get languageSubtitle => 'تغيير لغة التطبيق';
+
+  @override
+  String get helpSupportSubtitle => 'الأسئلة الشائعة وطرق المساعدة';
+
+  @override
+  String get contactUsSubtitle => 'تحتاج إلى مساعدة؟ نحن هنا من أجلك';
+
+  @override
+  String get aboutAppSubtitle => 'الإصدار والشروط والسياسات';
+
+  @override
+  String get walletTopUpBalance => 'شحن الرصيد';
+
+  @override
+  String get walletTrialBalanceHint =>
+      'رصيد ترحيبي – يُخصم تلقائياً من رحلاتك القادمة';
+
+  @override
+  String get homeChooseModeSubtitle => 'اختر الطريقة التي تناسبك اليوم';
+
+  @override
+  String get rideModeSharedBadge => 'أوفر';
+
+  @override
+  String get rideModeSharedTitle => 'رحلة مشتركة';
+
+  @override
+  String get rideModeSharedSubtitle =>
+      'شارك الرحلة مع ركاب آخرين وسافر بتكلفة أقل';
+
+  @override
+  String get rideModeSharedPerkSeats => 'ركاب مشاركون';
+
+  @override
+  String get rideModeSharedPerkPrice => 'أسعار أقل';
+
+  @override
+  String get rideModeSharedPerkEco => 'صديق للبيئة';
+
+  @override
+  String get rideModeSharedCta => 'ابحث عن رحلة';
+
+  @override
+  String get rideModePrivateBadge => 'أسرع';
+
+  @override
+  String get rideModePrivateTitle => 'رحلة مع سائق';
+
+  @override
+  String get rideModePrivateSubtitle => 'سائق يأتي إليك مباشرة وتنطلق فوراً';
+
+  @override
+  String get rideModePrivatePerkFast => 'الأسرع';
+
+  @override
+  String get rideModePrivatePerkPrivacy => 'خصوصية تامة';
+
+  @override
+  String get rideModePrivatePerkDirect => 'مباشرة';
+
+  @override
+  String get rideModePrivateCta => 'اطلب الآن';
+
+  @override
+  String get suggestedTripsTitle => 'رحلات مقترحة لك';
+
+  @override
+  String get tripDepartsToday => 'اليوم';
+
+  @override
+  String tripSeatsLeft(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count مقعداً متاحاً',
+      few: '$count مقاعد متاحة',
+      two: 'مقعدان متاحان',
+      one: 'مقعد واحد متاح',
+      zero: 'لا مقاعد متاحة',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String morePassengersCount(int count) {
+    return '+$count';
+  }
+
+  @override
+  String get trustSafeRideTitle => 'رحلة آمنة';
+
+  @override
+  String get trustSafeRideSubtitle => 'سائقون موثوقون وتقييمات حقيقية';
+
+  @override
+  String get trustSupportTitle => 'دعم 24/7';
+
+  @override
+  String get trustSupportSubtitle => 'نحن هنا لمساعدتك في أي وقت';
+
+  @override
+  String get trustPaymentsTitle => 'خيارات دفع متعددة';
+
+  @override
+  String get trustPaymentsSubtitle => 'ادفع بطريقتك المفضلة';
+
+  @override
+  String get trustOnTimeTitle => 'في موعدك';
+
+  @override
+  String get trustOnTimeSubtitle => 'نصل بك في الوقت المحدد';
+
+  @override
+  String get routeSearchTitle => 'تحديد المسار';
+
+  @override
+  String get routeSearchSwap => 'تبديل نقطتي الانطلاق والوصول';
+
+  @override
+  String get routeSearchFromHint => 'من أين؟';
+
+  @override
+  String get routeSearchToHint => 'إلى أين؟';
+
+  @override
+  String get routeSearchPickOnMap => 'اختيار على الخريطة';
+
+  @override
+  String get routeSearchHome => 'البيت';
+
+  @override
+  String get routeSearchWork => 'العمل';
+
+  @override
+  String get routeSearchAddHome => 'إضافة البيت';
+
+  @override
+  String get routeSearchAddWork => 'إضافة العمل';
+
+  @override
+  String get routeSearchRecents => 'آخر الأماكن';
+
+  @override
+  String get routeSearchSaved => 'المحفوظات';
+
+  @override
+  String get routeSearchClearRecents => 'مسح السجل';
+
+  @override
+  String get routeSearchNoResults =>
+      'لا توجد نتائج. جرّب اسم المدينة أو حدد المكان على الخريطة.';
+
+  @override
+  String get routeSearchFailed => 'تعذر البحث';
+
+  @override
+  String get routeSearchRetry => 'إعادة المحاولة';
+
+  @override
+  String get routeSearchTooManyRequests =>
+      'طلبات كثيرة. انتظر قليلاً ثم أعد المحاولة.';
+
+  @override
+  String get routeSearchCurrentLocation => 'موقعي الحالي';
+
+  @override
+  String get routeSearchAddressUnavailable => 'العنوان غير متاح';
+
+  @override
+  String get routeSearchConfirmPoint => 'تأكيد النقطة';
+
+  @override
+  String get routeSearchConfirmOrigin => 'تأكيد نقطة الانطلاق';
+
+  @override
+  String get routeSearchConfirmDestination => 'تأكيد نقطة الوصول';
+
+  @override
+  String get routeSearchMyLocation => 'موقعي';
+
+  @override
+  String get routeSearchLoadingAddress => 'جارِ تحديد العنوان…';
+
+  @override
+  String get routeSearchClearField => 'مسح';
+
+  @override
+  String get routeSearchStopHint => 'ابحث عن محطة توقف';
+
+  @override
+  String distanceMetersShort(String meters) {
+    return '$meters م';
+  }
+
+  @override
+  String distanceKmShort(String km) {
+    return '$km كم';
+  }
+
+  @override
+  String instantOfferDistanceFallback(String km) {
+    return '$km كم';
+  }
+
+  @override
+  String instantOfferDurationFallback(String minutes) {
+    return '$minutes د';
+  }
+
+  @override
+  String get instantOfferCurrencyJod => 'د.أ';
+
+  @override
+  String get instantOfferCurrencySar => 'ر.س';
 }

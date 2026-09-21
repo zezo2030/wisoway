@@ -26,11 +26,10 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.text(
-        'Tip: Try again in a few minutes; a nearby driver may become available.',
-      ),
+      find.text('Tip: You can try again in a few minutes.'),
       findsOneWidget,
     );
+    expect(find.text("We'll keep looking for you."), findsOneWidget);
     expect(find.text('Try again'), findsOneWidget);
     expect(find.text('Cancel request'), findsOneWidget);
     expect(find.text('Need help?'), findsOneWidget);

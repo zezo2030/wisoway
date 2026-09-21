@@ -146,11 +146,11 @@
   "@appearance": {
     "description": "قسم المظهر في الإعدادات"
   },
-  "darkMode": "الوضع الداكن",
+  "darkMode": "الوضع الليلي",
   "@darkMode": {
     "description": "خيار تبديل الوضع الداكن"
   },
-  "darkModeSubtitle": "تفعيل المظهر الداكن للتطبيق",
+  "darkModeSubtitle": "تفعيل الوضع الداكن",
   "@darkModeSubtitle": {
     "description": "وصف خيار الوضع الداكن"
   },
@@ -821,14 +821,40 @@
     "description": "Driver action to mark a passenger as absent at trip completion"
   },
   "welcomeTitle": "مرحباً بك في VisionWay",
-  "welcomeSubtitle": "رحلتك تبدأ من هنا. اختر وجهتك وانطلق معنا بكل أمان وراحة.",
+  "welcomeSubtitle": "رحلتك تبدأ من هنا. اختر وجهتك وانطلق معنا برحلات مباشرة أو مشتركة بأمان وراحة.",
+  "welcomeSubtitleHighlightDirect": "مباشرة",
+  "welcomeSubtitleHighlightShared": "مشتركة",
+  "welcomeBrandTagline": "طريق الرؤية",
+  "welcomeDirectTitle": "رحلات مباشرة",
+  "welcomeDirectBody": "رحلتك الخاصة مباشرة وسريعة ومريحة",
+  "welcomeSharedTitle": "رحلات مشتركة",
+  "welcomeSharedBody": "شارك الرحلة ووفر أكثر صديق للبيئة",
+  "welcomeFeaturePricingTitle": "أسعار شفافة",
+  "welcomeFeaturePricingBody": "أسعار عادلة بدون مفاجآت",
+  "welcomeFeatureSpeedTitle": "سرعة وسهولة",
+  "welcomeFeatureSpeedBody": "احجز رحلتك في خطوات بسيطة",
+  "welcomeFeatureSafetyTitle": "أمان وموثوقية",
+  "welcomeFeatureSafetyBody": "سائقون موثوقون ورحلات آمنة",
+  "welcomeTermsPrefix": "بالتسجيل، أنت توافق على",
+  "welcomeTermsLink": "الشروط والأحكام",
+  "welcomeTermsAnd": "و",
   "signIn": "تسجيل الدخول",
   "createNewAccount": "إنشاء حساب جديد",
-  "signInSubtitle": "أهلاً بك مجدداً! سجل دخولك للمتابعة.",
+  "signInSubtitle": "سجل دخولك للمتابعة",
+  "signInWelcomeBack": "أهلاً بعـودتك 👋",
+  "signInOrDivider": "أو",
+  "signInWithPhoneNumber": "تسجيل الدخول باستخدام رقم الهاتف",
+  "signInNewUserQuestion": "مستخدم جديد؟",
+  "signInFeatureTrustedTitle": "موثوق ومعتمد",
+  "signInFeatureTrustedBody": "سائقون موثوقون ورحلات آمنة",
+  "signInFeatureFastTitle": "سريع وسهل",
+  "signInFeatureFastBody": "حجز رحلتك في خطوات بسيطة",
+  "signInFeaturePrivacyTitle": "أمان وخصوصية",
+  "signInFeaturePrivacyBody": "بياناتك محمية بأعلى المعايير",
   "password": "كلمة المرور",
   "passwordRequired": "كلمة المرور مطلوبة",
   "passwordTooShort": "كلمة المرور قصيرة",
-  "forgotPassword": "نسيت كلمة السر؟",
+  "forgotPassword": "نسيت كلمة المرور؟",
   "noAccountQuestion": "ليس لديك حساب؟ ",
   "phoneNumberFirst": "يرجى إدخال رقم الهاتف أولاً",
   "passwordResetLinkSent": "تم إرسال رابط إعادة تعيين كلمة المرور",
@@ -1139,6 +1165,9 @@
   "determiningLocation": "جاري تحديد الموقع...",
   "detectLocationAutomatically": "تحديد الموقع تلقائياً",
   "chooseLocationManually": "اختيار الموقع يدوياً",
+  "homeDetectMyLocation": "تحديد موقعي",
+  "homeLocationAccurate": "تم تحديد الموقع بدقة",
+  "homeLocationUnknown": "لم يُحدد الموقع بعد",
   "myActiveTrips": "رحلاتي القائمة",
   "errorLoadingTrips": "خطأ في تحميل الرحلات",
   "noActiveTripsTitle": "لا توجد رحلات قائمة",
@@ -1599,6 +1628,7 @@
     }
   },
   "notesForPassengers": "ملاحظات للركاب",
+  "notesForPassengersSubtitle": "تظهر للركاب مع تفاصيل الرحلة",
   "tripNotesHint": "مثال: التوقف في صيدلية البتراء، لا تأخر أكثر من 5 دقائق...",
   "tripRecurrence": "تكرار الرحلة",
   "enableTripRecurrenceSemantic": "تفعيل تكرار الرحلة: {state}",
@@ -2395,26 +2425,36 @@
   "approxDistanceLabel": "المسافة التقريبية: {distance}",
   "@approxDistanceLabel": {
     "placeholders": {
-      "distance": { "type": "String" }
+      "distance": {
+        "type": "String"
+      }
     }
   },
   "approxDurationLabel": "الوقت التقريبي: {duration}",
   "@approxDurationLabel": {
     "placeholders": {
-      "duration": { "type": "String" }
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "approxDurationHoursMinutes": "{hours} س {minutes} د",
   "@approxDurationHoursMinutes": {
     "placeholders": {
-      "hours": { "type": "int" },
-      "minutes": { "type": "int" }
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "approxDurationMinutesOnly": "{minutes} د",
   "@approxDurationMinutesOnly": {
     "placeholders": {
-      "minutes": { "type": "int" }
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "createTripWhenAndHow": "متى وكيف؟",
@@ -2422,9 +2462,62 @@
   "availableSeatsSection": "المقاعد المتاحة",
   "availableSeatsCountTitle": "عدد المقاعد المتاحة",
   "seatsUnitLabel": "مقاعد",
+  "timePeriodAm": "صباحًا",
+  "timePeriodPm": "مساءً",
+  "scheduleSection": "الموعد",
+  "seatsAndPriceSection": "المقاعد والسعر",
+  "tripOptionsSection": "خيارات الرحلة",
+  "seatsQuestion": "كم مقعداً تعرض؟",
+  "vehicleCapacityHint": "سيارتك تتسع لـ {count} مقاعد",
+  "@vehicleCapacityHint": {
+    "description": "Total passenger seats the driver vehicle has.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tripTotalLabel": "إجمالي الرحلة",
+  "availableSeatsSectionSubtitle": "اختر عدد المقاعد المتاحة لهذه الرحلة",
+  "recurrenceCollapsedHint": "تكرار أسبوعي أو يومي",
+  "suggestedPriceForRoute": "السعر المقترح لهذا المسار: {min} - {max} {currency}",
+  "@suggestedPriceForRoute": {
+    "description": "Per-seat price band suggested for the chosen route.",
+    "placeholders": {
+      "min": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      }
+    }
+  },
+  "currencyShortName": "{currency, select, JOD{دينار} SAR{ريال} AED{درهم} KWD{دينار} BHD{دينار} OMR{ريال} QAR{ريال} EGP{جنيه} ILS{شيكل} IQD{دينار} LBP{ليرة} SYP{ليرة} YER{ريال} LYD{دينار} SDG{جنيه} DZD{دينار} MAD{درهم} TND{دينار} MRU{أوقية} USD{دولار} GBP{جنيه} TRY{ليرة} other{{currency}}}",
+  "@currencyShortName": {
+    "description": "Short unit name for a currency code.",
+    "placeholders": {
+      "currency": {
+        "type": "String"
+      }
+    }
+  },
+  "currencyFullName": "{currency, select, JOD{دينار أردني} SAR{ريال سعودي} AED{درهم إماراتي} KWD{دينار كويتي} BHD{دينار بحريني} OMR{ريال عُماني} QAR{ريال قطري} EGP{جنيه مصري} ILS{شيكل} IQD{دينار عراقي} LBP{ليرة لبنانية} SYP{ليرة سورية} YER{ريال يمني} LYD{دينار ليبي} SDG{جنيه سوداني} DZD{دينار جزائري} MAD{درهم مغربي} TND{دينار تونسي} MRU{أوقية موريتانية} USD{دولار أمريكي} GBP{جنيه إسترليني} TRY{ليرة تركية} other{{currency}}}",
+  "@currencyFullName": {
+    "description": "Full display name for a currency code.",
+    "placeholders": {
+      "currency": {
+        "type": "String"
+      }
+    }
+  },
   "jordanianDinarLabel": "دينار أردني",
-  "tripSummaryTitle": "ملخص الرحلة",
+  "tripSummaryTitle": "انتهت الرحلة بنجاح",
   "additionalDetailsTitle": "تفاصيل إضافية",
+  "publishTripNoticeTitle": "الرحلة ستنتشر بعد المراجعة",
+  "tripSummarySection": "ملخص الرحلة",
   "seatLegendAvailable": "متاح",
   "seatLegendDriver": "غير متاح (السائق)",
   "seatLegendInactive": "مقعد خامل",
@@ -2433,20 +2526,30 @@
   "reviewTripSubtitle": "تحقق من تفاصيل رحلتك قبل نشرها للركاب",
   "publishTrip": "نشر الرحلة",
   "backToEdit": "العودة للتعديل",
-  "publishTripNotice": "سيتم نشر الرحلة بعد المراجعة وسيتمكن الركاب من الحجز.",
+  "publishTripNotice": "بمجرد نشر الرحلة سيتمكن الركاب من حجز المقاعد المتاحة",
   "createTripFeeNotice": "رسوم الرحلة ({percent}%): {amount} {currency} — تُخصم من محفظتك عند انطلاق الرحلة.",
   "@createTripFeeNotice": {
     "placeholders": {
-      "percent": { "type": "String" },
-      "amount": { "type": "String" },
-      "currency": { "type": "String" }
+      "percent": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      }
     }
   },
   "insufficientBalanceForTripFee": "رصيد محفظتك ({balance}) لا يغطي رسوم الرحلة ({required}). اشحن محفظتك قبل نشر الرحلة.",
   "@insufficientBalanceForTripFee": {
     "placeholders": {
-      "balance": { "type": "String" },
-      "required": { "type": "String" }
+      "balance": {
+        "type": "String"
+      },
+      "required": {
+        "type": "String"
+      }
     }
   },
   "familyBookingLabel": "حجز عائلة",
@@ -2537,7 +2640,11 @@
   "instantRideAcceptedToast": "تم قبول الرحلة. توجّه إلى نقطة الانطلاق.",
   "instantOfferCountdown": "ينتهي خلال {seconds} ثانية",
   "@instantOfferCountdown": {
-    "placeholders": { "seconds": { "type": "int" } }
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
   },
   "instantDecline": "رفض",
   "instantOfferIgnore": "تجاهل",
@@ -2547,27 +2654,84 @@
   "instantOfferIncludesFees": "يشمل رسوم المنصة",
   "instantOfferPassengerCount": "{count} راكب",
   "@instantOfferPassengerCount": {
-    "placeholders": { "count": { "type": "int" } }
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "instantOfferDistance": "المسافة",
   "instantOfferDuration": "المدة التقديرية",
   "instantOfferPassengersLabel": "عدد الركاب",
   "instantRequestNow": "اطلب الآن",
   "instantRequestNowTitle": "اطلب رحلة الآن",
-  "instantRequestNowSubtitle": "سائق قريب يصل إليك مباشرة",
+  "instantRequestNowSubtitle": "سائق يأتي إليك مباشرة",
+  "instantFormFromLabel": "من",
+  "instantFormToLabel": "إلى",
+  "instantFormToHint": "اختر وجهتك",
+  "instantFormChange": "تغيير",
+  "instantFormPickOnMap": "حدد على الخريطة",
+  "instantFormDriverArrives": "يصل السائق خلال",
+  "instantFormDistance": "المسافة",
+  "instantFormDuration": "مدة الرحلة",
+  "instantFormMinutesUnit": "دقيقة",
+  "instantFormKmUnit": "كم",
+  "instantFormPriceAfterDestination": "يتم احتساب السعر بعد تحديد الوجهة",
+  "instantFormChooseDestinationCta": "اختر الوجهة لعرض السعر",
+  "instantFormYourFareTitle": "سعرك للرحلة",
+  "instantFormFareHint": "اكتب السعر",
+  "instantFormFareRange": "النطاق المسموح: {min} – {max} {currency}",
+  "instantFormFareOutOfRange": "السعر يجب أن يكون بين {min} و{max} {currency}",
+  "instantFormFareNote": "السائق قد يقبل سعرك أو يقترح سعرًا أعلى. الدفع نقدًا للسائق مباشرة.",
+  "instantTrustSupport": "دعم 24/7",
+  "instantTrustSupportSub": "نحن هنا لمساعدتك",
+  "instantTrustSafe": "آمن وموثوق",
+  "instantTrustSafeSub": "رحلتك في أمان",
+  "instantTrustTracking": "تتبع الرحلة",
+  "instantTrustTrackingSub": "شارك رحلتك مع من تحب",
+  "instantTrustCash": "دفع نقدي",
+  "instantTrustCashSub": "ادفع للسائق مباشرة",
+  "@instantFormFareRange": {
+    "placeholders": {
+      "min": {"type": "String"},
+      "max": {"type": "String"},
+      "currency": {"type": "String"}
+    }
+  },
+  "@instantFormFareOutOfRange": {
+    "placeholders": {
+      "min": {"type": "String"},
+      "max": {"type": "String"},
+      "currency": {"type": "String"}
+    }
+  },
   "instantSelectFromTo": "اختر نقطة الانطلاق والوصول.",
   "instantFromHint": "مكان الانطلاق",
   "instantFromPickerTitle": "اختر نقطة الانطلاق",
   "instantToHint": "مكان الوصول",
   "instantToPickerTitle": "اختر نقطة الوصول",
   "instantDriverFound": "تم العثور على سائق!",
+  "instantMatchedSubtitle": "السائق في طريقه إليك",
+  "instantMatchedArrival": "الوصول خلال",
+  "instantMatchedShareTitle": "شارك تفاصيل رحلتك مع جهة اتصال موثوقة",
+  "instantMatchedTrackSubtitle": "يمكنك مشاركة موقعك مع السائق",
+  "instantMatchedCancelTitle": "إلغاء الرحلة؟",
+  "instantMatchedCancelBody": "تم قبول رحلتك من السائق. سيتم إلغاء الحجز وإبلاغ السائق.",
+  "instantMatchedKeep": "الاستمرار",
+  "instantMatchedCallFailed": "تعذر بدء الاتصال الآن. حاول مرة أخرى.",
   "instantDriverOnTheWay": "السائق في طريقه إلى نقطة الانطلاق.",
   "instantTrackTrip": "تتبّع الرحلة",
   "instantDone": "تم",
   "instantRequestCancelled": "أُلغي الطلب",
   "instantNoDrivers": "لم نتمكن من العثور على سائق حاليًا",
   "instantNoDriversSubtitle": "قد يكون جميع السائقين مشغولين أو لا يوجد سائق قريب منك.",
-  "instantNoDriversTip": "نصيحة: أعد المحاولة بعد بضع دقائق؛ قد يتوفر سائق قريب منك.",
+  "instantNoDriversWithinRadius": "لا يوجد سائق متاح ضمن {km} كم من نقطة انطلاقك.",
+  "instantNoDriversAllDeclined": "السائقون القريبون لم يقبلوا سعرك. جرّب رفعه قليلاً.",
+  "instantNoDriversTimedOut": "انتهت مدة البحث قبل أن يرد أي سائق.",
+  "instantNoDriversCheckPickup": "تأكد أن نقطة الانطلاق هي مكانك الحالي فعلاً.",
+  "@instantNoDriversWithinRadius": {"placeholders": {"km": {"type": "String"}}},
+  "instantNoDriversTip": "نصيحة: يمكنك المحاولة مرة أخرى بعد دقائق.",
+  "instantNoDriversTipKeepSearching": "وسنستمر بالبحث لك.",
   "instantNoDriversIllustrationLabel": "لم يتم العثور على سائق",
   "instantNeedHelp": "تحتاج مساعدة؟",
   "instantContactSupport": "تواصل مع الدعم",
@@ -2576,20 +2740,74 @@
   "instantDropoffPoint": "نقطة الوصول",
   "instantRetryFareChanged": "تغيّر نطاق السعر؛ راجع السعر ثم أعد الطلب.",
   "instantTryAgain": "إعادة المحاولة",
-  "instantSearching": "نبحث عن أقرب سائق...",
+  "instantSearching": "جاري البحث عن سائق...",
+  "instantSearchingSubtitle": "يتم التواصل مع السائقين القريبين منك",
+  "instantSearchingEta": "الوصول المتوقع",
+  "instantSearchingApprox": "تقريباً",
+  "instantSearchingMinutes": "{minutes} دقيقة",
+  "instantSearchingKm": "{km} كم",
+  "instantSearchingTip": "قد يستغرق العثور على سائق وقتاً أطول في أوقات الذروة. شكراً لصبرك",
+  "instantStepRequested": "تم إنشاء الطلب",
+  "instantStepSearching": "البحث عن سائق",
+  "instantStepDriverOffer": "عرض السائق",
+  "instantStepDriverOnWay": "السائق في الطريق",
+  "@instantSearchingMinutes": {"placeholders": {"minutes": {"type": "String"}}},
+  "@instantSearchingKm": {"placeholders": {"km": {"type": "String"}}},
   "instantFareEstimate": "الأجرة التقديرية: {fare} {currency}",
   "@instantFareEstimate": {
-    "placeholders": { "fare": { "type": "String" }, "currency": { "type": "String" } }
+    "placeholders": {
+      "fare": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      }
+    }
   },
   "instantCancelRequest": "إلغاء الطلب",
   "instantYourFareLabel": "سعرك",
+  "instantRaiseFare": "رفع السعر",
+  "instantFareRaiseHint": "ارفع سعرك لجذب السائقين أسرع",
+  "instantFareLockedWhileOffered": "بانتظار رد السائق على سعرك الحالي",
+  "instantFareMaxReached": "وصلت إلى الحد الأقصى للسعر",
+  "instantFareRaisedToast": "تم رفع سعرك وإبلاغ السائقين القريبين",
   "instantRecommendedFare": "السعر المقترح: {fare} {currency}",
   "@instantRecommendedFare": {
-    "placeholders": { "fare": { "type": "String" }, "currency": { "type": "String" } }
+    "placeholders": {
+      "fare": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      }
+    }
   },
   "instantYourFareValue": "سعرك: {fare} {currency}",
   "@instantYourFareValue": {
-    "placeholders": { "fare": { "type": "String" }, "currency": { "type": "String" } }
+    "placeholders": {
+      "fare": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      }
+    }
+  },
+  "instantOfferDetailsTitle": "تفاصيل الطلب",
+  "instantOfferOpenDetails": "عرض تفاصيل الطلب",
+  "instantOfferCashNote": "الدفع نقدًا للسائق · يشمل رسوم المنصة",
+  "instantOfferPickupDistance": "المسافة إلى الراكب",
+  "instantOfferPickupEta": "وقت الوصول للراكب",
+  "instantOfferTripDistance": "مسافة الرحلة",
+  "instantCounterBadge": "عرض سعر",
+  "instantCounterProposedLabel": "سعر السائق",
+  "instantCounterRangeHint": "بين {min} و{max} {currency}",
+  "@instantCounterRangeHint": {
+    "placeholders": {
+      "min": {"type": "String"},
+      "max": {"type": "String"},
+      "currency": {"type": "String"}
+    }
   },
   "instantDriverOfferTitle": "عرض من السائق",
   "instantProposeFare": "اقترح سعرًا أعلى",
@@ -2597,28 +2815,58 @@
   "instantCounterSentToast": "أُرسل عرضك للراكب. بانتظار موافقته...",
   "instantCounterMaxHint": "الحد الأقصى: {fare} {currency}",
   "@instantCounterMaxHint": {
-    "placeholders": { "fare": { "type": "String" }, "currency": { "type": "String" } }
+    "placeholders": {
+      "fare": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      }
+    }
   },
   "instantNudgeTitle": "لا يوجد سائق قريب حتى الآن",
   "instantNudgeSubtitle": "جرّب رفع سعرك لجذب سائق أسرع",
   "instantRaiseTo": "ارفع إلى {fare} {currency}",
   "@instantRaiseTo": {
-    "placeholders": { "fare": { "type": "String" }, "currency": { "type": "String" } }
+    "placeholders": {
+      "fare": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      }
+    }
   },
   "instantKeepFare": "استمر بـ {fare} {currency}",
   "@instantKeepFare": {
-    "placeholders": { "fare": { "type": "String" }, "currency": { "type": "String" } }
+    "placeholders": {
+      "fare": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      }
+    }
   },
   "instantArrivingIn": "يصل خلال ~{minutes} دقيقة",
   "@instantArrivingIn": {
-    "placeholders": { "minutes": { "type": "int" } }
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
   },
   "instantAgreedFare": "الأجرة المتفق عليها: {fare} {currency}",
   "@instantAgreedFare": {
-    "placeholders": { "fare": { "type": "String" }, "currency": { "type": "String" } }
+    "placeholders": {
+      "fare": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      }
+    }
   },
-
-  "tripSummaryTitle": "انتهت الرحلة بنجاح",
   "tripSummaryThanks": "شكراً لك على رحلتك",
   "tripSummaryHelp": "مساعدة",
   "tripSummaryArrivalPlace": "مكان الوصول",
@@ -2629,21 +2877,37 @@
   "tripSummaryHoursMinutes": "{hours} ساعة {minutes} دقيقة",
   "@tripSummaryHoursMinutes": {
     "placeholders": {
-      "hours": { "type": "int" },
-      "minutes": { "type": "int" }
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "tripSummaryHoursOnly": "{hours} ساعة",
   "@tripSummaryHoursOnly": {
-    "placeholders": { "hours": { "type": "int" } }
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
   },
   "tripSummaryMinutesOnly": "{minutes} دقيقة",
   "@tripSummaryMinutesOnly": {
-    "placeholders": { "minutes": { "type": "int" } }
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
   },
   "tripSummaryConfirmedPassengers": "الركاب الذين أكدوا تواجدهم ({count})",
   "@tripSummaryConfirmedPassengers": {
-    "placeholders": { "count": { "type": "int" } }
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "tripSummaryNoPassengers": "لا يوجد ركاب لهذه الرحلة.",
   "tripSummaryPassengerFare": "أجرة الراكب",
@@ -2651,26 +2915,46 @@
   "tripSummaryNotConfirmed": "لم يؤكد التواجد",
   "tripSummaryPassengerFares": "أجرة الركاب ({count} ركاب)",
   "@tripSummaryPassengerFares": {
-    "placeholders": { "count": { "type": "int" } }
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "tripSummaryTripFeePercent": "رسوم الرحلة (%{percent})",
   "@tripSummaryTripFeePercent": {
-    "placeholders": { "percent": { "type": "int" } }
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
   },
   "tripSummaryNetAmount": "المبلغ الصافي الذي ستحصل عليه",
   "tripSummaryFeeDeducted": "تم خصم رسوم الرحلة ({amount}) من محفظتك عند انطلاق الرحلة. تأكد من وجود رصيد كافٍ في محفظتك لإنشاء رحلات جديدة.",
   "@tripSummaryFeeDeducted": {
-    "placeholders": { "amount": { "type": "String" } }
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
   },
   "tripSummaryPayFeePrompt": "الرصيد غير كافٍ لخصم رسوم الرحلة ({amount}). ادفع الآن لتسوية حسابك.",
   "@tripSummaryPayFeePrompt": {
-    "placeholders": { "amount": { "type": "String" } }
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
   },
   "tripSummaryPaymentRequired": "تعذر خصم رسوم الرحلة ({fee}) بالكامل. رصيد محفظتك سالب بمقدار {debt}. ادفع الآن لتسوية الحساب.",
   "@tripSummaryPaymentRequired": {
     "placeholders": {
-      "fee": { "type": "String" },
-      "debt": { "type": "String" }
+      "fee": {
+        "type": "String"
+      },
+      "debt": {
+        "type": "String"
+      }
     }
   },
   "tripSummaryNegativeBalanceRestriction": "لا يمكنك إنشاء رحلات مشتركة أو تلقي رحلات مباشرة حتى تسوية الرصيد السالب.",
@@ -2737,6 +3021,8 @@
   "vehiclePlateDocHint": "أدخل رقم اللوحة كما في الرخصة",
   "vehicleModelDocHint": "أدخل موديل السيارة",
   "vehicleSeatsDocHint": "عدد المقاعد المتاحة للركاب",
+  "vehicleSeatsAutoHint": "يُحسب تلقائيًا حسب نوع المركبة",
+  "vehicleSeatsPickTypeFirst": "اختر نوع المركبة أولًا",
   "driverLicenseUploadHint": "اضغط لرفع صورة الرخصة",
   "vehicleRegistrationFormRequired": "الاستمارة *",
   "insuranceDocumentLabel": "التأمين *",
@@ -2759,6 +3045,16 @@
   "driverReturnHome": "العودة إلى الرئيسية",
   "tripBookedTitle": "تم حجز رحلتك المشتركة",
   "tripBookedSubtitle": "تم حجز جميع المقاعد بنجاح",
+  "tripPublishedTitle": "رحلتك منشورة",
+  "tripPublishedSubtitle": "في انتظار حجز الركاب",
+  "tripPartiallyBookedTitle": "تم حجز مقاعد في رحلتك",
+  "tripPartiallyBookedSubtitle": "{booked} من {total} مقاعد محجوزة",
+  "@tripPartiallyBookedSubtitle": {
+    "placeholders": {
+      "booked": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
   "tripDayLabel": "يوم الرحلة",
   "tripTimeLabel": "موعد الرحلة",
   "tripMeetingPointLabel": "مكان التجمع",
@@ -2815,5 +3111,164 @@
   "tripFeeChargedAtStartNotice": "سيتم خصم رسوم الرحلة من محفظتك عند انطلاق الرحلة. حافظ على وجود رصيد في محفظتك لضمان قدرتك على إنشاء رحلات جديدة.",
   "contactPassengersTitle": "التواصل مع الركاب",
   "contactPassengersSubtitle": "اتصال أو دردشة حية",
-  "confirmYourPresenceCta": "قم بتأكيد تواجدك في الوقت والمكان المحدد"
+  "confirmYourPresenceCta": "قم بتأكيد تواجدك في الوقت والمكان المحدد",
+  "driverHomeReadyTitle": "جاهز لاستقبال الركاب؟",
+  "driverHomeReadySubtitle": "قم بنشر رحلة أو اتصل لاستقبال طلبات مباشرة.",
+  "driverStatusLabel": "الحالة",
+  "instantOfflineHint": "لن تستقبل طلبات مباشرة",
+  "instantOnlineHint": "ستصلك طلبات الركاب القريبين",
+  "instantGoOnlineHint": "قم بالتفعيل لتظهر رحلاتك المباشرة للركاب في منطقتك",
+  "publishSharedTrip": "انشر رحلة مشتركة جديدة",
+  "publishSharedTripSubtitle": "حدّد مسارك وتفاصيل رحلتك واستقبل حجوزات الركاب",
+  "locationUpdatedJustNow": "آخر تحديث الآن",
+  "locationUpdatedMinutesAgo": "{count, plural, =1{آخر تحديث قبل دقيقة} =2{آخر تحديث قبل دقيقتين} few{آخر تحديث قبل {count} دقائق} other{آخر تحديث قبل {count} دقيقة}}",
+  "@locationUpdatedMinutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "showOnMapAction": "عرض على الخريطة",
+  "updateLocationAction": "تحديث الموقع",
+  "todaySummary": "ملخص اليوم",
+  "statNewRequests": "طلبات جديدة",
+  "statNewRequestsHint": "تحتاج إلى رد",
+  "statTodayTrips": "رحلات اليوم",
+  "statTodayTripsHint": "رحلة منشورة",
+  "statBookings": "الحجوزات",
+  "statBookingsHint": "إجمالي الحجوزات",
+  "viewAllStats": "عرض جميع الإحصائيات",
+  "driverCurrentTripsTitle": "رحلاتك الحالية",
+  "noPublishedTripsTitle": "لا توجد رحلات منشورة",
+  "noPublishedTripsSubtitle": "قم بإنشاء ونشر رحلتك الأولى ليبدأ الركاب بالحجز.",
+  "publishTripNow": "انشر رحلة الآن",
+  "instantOnline": "متصل",
+  "driverApprovedReviewTitle": "تم قبول حسابك كسائق",
+  "driverApprovedReviewBody": "تمت الموافقة على بياناتك ومستنداتك. يمكنك الآن نشر رحلاتك واستقبال حجوزات الركاب.",
+  "driverApprovedBadge": "مقبول",
+  "driverApprovedRestrictionTitle": "حسابك مفعّل",
+  "driverApprovedRestrictionBody": "يمكنك الآن استخدام التطبيق كسائق ونشر الرحلات.",
+  "driverStatusRefreshing": "جارٍ تحديث حالة الطلب…",
+  "profileAccountSection": "الحساب",
+  "profileAppSection": "التطبيق",
+  "profileTrustedAccount": "حساب موثوق",
+  "profileUntrustedAccount": "حساب غير موثق",
+  "editProfileSubtitle": "تحديث بياناتك وصورتك الشخصية",
+  "paymentMethods": "طرق الدفع",
+  "paymentMethodsSubtitle": "إدارة بطاقاتك ووسائل الدفع",
+  "savedAddresses": "العناوين المحفوظة",
+  "savedAddressesSubtitle": "إدارة أماكن الانطلاق والوصول",
+  "pastTrips": "الرحلات السابقة",
+  "pastTripsSubtitle": "عرض جميع رحلاتك السابقة",
+  "cancelledTrips": "الرحلات الملغاة",
+  "cancelledTripsSubtitle": "عرض الرحلات التي تم إلغاؤها",
+  "settingsSubtitle": "تخصيص تجربتك في التطبيق",
+  "notificationsSubtitle": "إدارة تفضيلات الإشعارات",
+  "languageSubtitle": "تغيير لغة التطبيق",
+  "helpSupportSubtitle": "الأسئلة الشائعة وطرق المساعدة",
+  "contactUsSubtitle": "تحتاج إلى مساعدة؟ نحن هنا من أجلك",
+  "aboutAppSubtitle": "الإصدار والشروط والسياسات",
+  "walletTopUpBalance": "شحن الرصيد",
+  "walletTrialBalanceHint": "رصيد ترحيبي – يُخصم تلقائياً من رحلاتك القادمة",
+  "homeChooseModeSubtitle": "اختر الطريقة التي تناسبك اليوم",
+  "rideModeSharedBadge": "أوفر",
+  "rideModeSharedTitle": "رحلة مشتركة",
+  "rideModeSharedSubtitle": "شارك الرحلة مع ركاب آخرين وسافر بتكلفة أقل",
+  "rideModeSharedPerkSeats": "ركاب مشاركون",
+  "rideModeSharedPerkPrice": "أسعار أقل",
+  "rideModeSharedPerkEco": "صديق للبيئة",
+  "rideModeSharedCta": "ابحث عن رحلة",
+  "rideModePrivateBadge": "أسرع",
+  "rideModePrivateTitle": "رحلة مع سائق",
+  "rideModePrivateSubtitle": "سائق يأتي إليك مباشرة وتنطلق فوراً",
+  "rideModePrivatePerkFast": "الأسرع",
+  "rideModePrivatePerkPrivacy": "خصوصية تامة",
+  "rideModePrivatePerkDirect": "مباشرة",
+  "rideModePrivateCta": "اطلب الآن",
+  "suggestedTripsTitle": "رحلات مقترحة لك",
+  "tripDepartsToday": "اليوم",
+  "tripSeatsLeft": "{count, plural, =0{لا مقاعد متاحة} =1{مقعد واحد متاح} =2{مقعدان متاحان} few{{count} مقاعد متاحة} other{{count} مقعداً متاحاً}}",
+  "@tripSeatsLeft": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "morePassengersCount": "+{count}",
+  "@morePassengersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "trustSafeRideTitle": "رحلة آمنة",
+  "trustSafeRideSubtitle": "سائقون موثوقون وتقييمات حقيقية",
+  "trustSupportTitle": "دعم 24/7",
+  "trustSupportSubtitle": "نحن هنا لمساعدتك في أي وقت",
+  "trustPaymentsTitle": "خيارات دفع متعددة",
+  "trustPaymentsSubtitle": "ادفع بطريقتك المفضلة",
+  "trustOnTimeTitle": "في موعدك",
+  "trustOnTimeSubtitle": "نصل بك في الوقت المحدد",
+  "routeSearchTitle": "تحديد المسار",
+  "routeSearchSwap": "تبديل نقطتي الانطلاق والوصول",
+  "routeSearchFromHint": "من أين؟",
+  "routeSearchToHint": "إلى أين؟",
+  "routeSearchPickOnMap": "اختيار على الخريطة",
+  "routeSearchHome": "البيت",
+  "routeSearchWork": "العمل",
+  "routeSearchAddHome": "إضافة البيت",
+  "routeSearchAddWork": "إضافة العمل",
+  "routeSearchRecents": "آخر الأماكن",
+  "routeSearchSaved": "المحفوظات",
+  "routeSearchClearRecents": "مسح السجل",
+  "routeSearchNoResults": "لا توجد نتائج. جرّب اسم المدينة أو حدد المكان على الخريطة.",
+  "routeSearchFailed": "تعذر البحث",
+  "routeSearchRetry": "إعادة المحاولة",
+  "routeSearchTooManyRequests": "طلبات كثيرة. انتظر قليلاً ثم أعد المحاولة.",
+  "routeSearchCurrentLocation": "موقعي الحالي",
+  "routeSearchAddressUnavailable": "العنوان غير متاح",
+  "routeSearchConfirmPoint": "تأكيد النقطة",
+  "routeSearchConfirmOrigin": "تأكيد نقطة الانطلاق",
+  "routeSearchConfirmDestination": "تأكيد نقطة الوصول",
+  "routeSearchMyLocation": "موقعي",
+  "routeSearchLoadingAddress": "جارِ تحديد العنوان…",
+  "routeSearchClearField": "مسح",
+  "routeSearchStopHint": "ابحث عن محطة توقف",
+  "distanceMetersShort": "{meters} م",
+  "distanceKmShort": "{km} كم",
+  "@distanceMetersShort": {
+    "placeholders": {
+      "meters": {
+        "type": "String"
+      }
+    }
+  },
+  "@distanceKmShort": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "instantOfferDistanceFallback": "{km} كم",
+  "@instantOfferDistanceFallback": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "instantOfferDurationFallback": "{minutes} د",
+  "@instantOfferDurationFallback": {
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "instantOfferCurrencyJod": "د.أ",
+  "instantOfferCurrencySar": "ر.س"
 }

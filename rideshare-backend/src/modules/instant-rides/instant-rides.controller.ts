@@ -3,9 +3,11 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -25,7 +27,9 @@ import {
   CreateInstantRequestDto,
   QuoteInstantRequestDto,
 } from './dto/create-instant-request.dto';
+import { NearbyDriversQueryDto } from './dto/nearby-drivers.dto';
 import { RespondOfferDto } from './dto/respond-offer.dto';
+import { normalizeOfferLocale } from './instant-offer-labels';
 import { UpdateFareDto } from './dto/update-fare.dto';
 
 @ApiTags('instant-rides')
@@ -68,6 +72,18 @@ export class InstantRidesController {
   }
 
   // ── Passenger: request an instant ride ──────────────────────────────────────
+
+  @Get('nearby-drivers')
+  @ApiOperation({
+    summary: 'Anonymous approximate pins of our online drivers near a point',
+  })
+  @ApiResponse({ status: 200, description: 'Nearby driver pins returned' })
+  nearbyDrivers(@Query() query: NearbyDriversQueryDto) {
+    return this.availability.findNearbyDriverPins(
+      query.latitude,
+      query.longitude,
+    );
+  }
 
   @Post('quotes')
   @ApiOperation({
@@ -146,8 +162,14 @@ export class InstantRidesController {
   @Roles('driver')
   @ApiOperation({ summary: 'Get the driver’s currently outstanding offer' })
   @ApiResponse({ status: 200, description: 'Pending offer (or null) returned' })
-  pendingOffer(@CurrentUser('id') driverId: string) {
-    return this.instantRides.getPendingOffer(driverId);
+  pendingOffer(
+    @CurrentUser('id') driverId: string,
+    @Headers('accept-language') acceptLanguage?: string,
+  ) {
+    return this.instantRides.getPendingOffer(
+      driverId,
+      normalizeOfferLocale(acceptLanguage),
+    );
   }
 
   @Post('offers/:id/accept')

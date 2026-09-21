@@ -21,6 +21,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 
 @ApiTags('vehicles')
 @Controller('vehicles')
@@ -29,7 +30,18 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 export class VehiclesController {
   constructor(private readonly vehiclesService: VehiclesService) {}
 
+  /**
+   * Public: driver sign-up asks for the vehicle type in step 2, before the
+   * account exists and before any JWT is issued — the caller only holds a
+   * short-lived registration token. While this required auth the request 401'd,
+   * the picker had nothing to show and driver registration could not be
+   * completed from the app at all.
+   *
+   * Safe to expose: the catalog is static config (`listVehicleTypeTemplates()`)
+   * with no user or tenant data in it.
+   */
   @Get('types')
+  @Public()
   @ApiOperation({ summary: 'Get supported vehicle types and seat layouts' })
   @ApiResponse({ status: 200, description: 'Vehicle type catalog returned' })
   async getVehicleTypes() {

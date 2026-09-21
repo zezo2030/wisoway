@@ -3,23 +3,35 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import '../../../core/services/location_service.dart';
+import '../../../core/services/saved_places_service.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../l10n/l10n_extensions.dart';
-import '../../../models/location_model.dart';
-import '../../../widgets/location_autocomplete_field.dart';
-import '../../../widgets/location_picker_widget.dart';
+import '../../../widgets/route_fields_card.dart';
+import '../../location/route_search_screen.dart';
 import 'create_trip_stepper.dart';
 import 'create_trip_wizard_state.dart';
 
 /// Wizard step 1 — pick the route: origin, destination and optional stops.
+///
+/// Each endpoint opens the inDrive-style place search, which looks up any
+/// place on the map and orders results by distance from the driver's device
+/// location, nearest first.
 class Step1Route extends StatelessWidget {
-  const Step1Route({super.key, required this.wizard, required this.onChanged});
+  const Step1Route({
+    super.key,
+    required this.wizard,
+    required this.onChanged,
+    required this.savedPlaces,
+  });
 
   final CreateTripWizardState wizard;
 
   /// Invoked after any mutation so the shell can rebuild (footer gating).
   final VoidCallback onChanged;
+
+  /// Backs the search screen's shortcuts and recent places.
+  final SavedPlacesService savedPlaces;
 
   static const double _avgHighwayKmh = 80;
 
@@ -53,86 +65,21 @@ class Step1Route extends StatelessWidget {
   }
 
   Widget _buildLocationsCard(BuildContext context) {
-    return CreateTripCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              PositionedDirectional(
-                start: 23,
-                top: 36,
-                bottom: 36,
-                child: Container(
-                  width: 2,
-                  color: T.outlineVariant(context).withValues(alpha: 0.45),
-                ),
-              ),
-              Column(
-                children: [
-                  _labelledField(
-                    context,
-                    label: context.l10n.fromLabel,
-                    labelColor: T.success(context),
-                    child: LocationAutocompleteField(
-                      controller: wizard.fromController,
-                      hint: context.l10n.departurePointTitle,
-                      mapPickerTitle: context.l10n.selectOriginPoint,
-                      icon: Icons.trip_origin,
-                      iconColor: T.success(context),
-                      initialLocation: wizard.from,
-                      onLocationSelected: (location) {
-                        wizard.from = location;
-                        onChanged();
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _labelledField(
-                    context,
-                    label: context.l10n.toLabel,
-                    labelColor: T.error(context),
-                    child: LocationAutocompleteField(
-                      controller: wizard.toController,
-                      hint: context.l10n.arrivalPointTitle,
-                      mapPickerTitle: context.l10n.selectDestination,
-                      icon: Icons.location_on,
-                      iconColor: T.error(context),
-                      initialLocation: wizard.to,
-                      onLocationSelected: (location) {
-                        wizard.to = location;
-                        onChanged();
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _labelledField(
-    BuildContext context, {
-    required String label,
-    required Color labelColor,
-    required Widget child,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: AppTextStyles.labelLarge.copyWith(
-            fontWeight: FontWeight.bold,
-            color: labelColor,
-          ),
-        ),
-        const SizedBox(height: 8),
-        child,
-      ],
+    return RouteFieldsCard(
+      from: wizard.from,
+      to: wizard.to,
+      originLabel: context.l10n.fromLabel,
+      destinationLabel: context.l10n.toLabel,
+      originHint: context.l10n.departurePointTitle,
+      destinationHint: context.l10n.arrivalPointTitle,
+      savedPlaces: savedPlaces,
+      onChanged: (from, to) {
+        wizard.from = from;
+        wizard.to = to;
+        wizard.fromController.text = from?.name ?? '';
+        wizard.toController.text = to?.name ?? '';
+        onChanged();
+      },
     );
   }
 
@@ -413,15 +360,31 @@ class Step1Route extends StatelessWidget {
   }
 
   Future<void> _addStop(BuildContext context) async {
-    final location = await Navigator.push<LocationModel>(
+    // Stops sit between the two endpoints, so open the map midway along the
+    // route when both are known rather than wherever the phone happens to be.
+    LatLng? fallback;
+    if (wizard.from != null && wizard.to != null) {
+      fallback = LatLng(
+        (wizard.from!.latitude + wizard.to!.latitude) / 2,
+        (wizard.from!.longitude + wizard.to!.longitude) / 2,
+      );
+    }
+
+    // A stop is searched for by name like any other place, with the map still
+    // one tap away inside the search screen.
+    final selection = await Navigator.push<RouteSelection>(
       context,
       MaterialPageRoute(
-        builder: (context) => LocationPickerWidget(
+        builder: (context) => RouteSearchScreen.singlePoint(
+          savedPlaces: savedPlaces,
           title: context.l10n.selectStopNumber(wizard.stops.length + 1),
-          onLocationSelected: (_) {},
+          hint: context.l10n.routeSearchStopHint,
+          mapFallbackCenter: fallback,
         ),
       ),
     );
+
+    final location = selection?.from;
     if (location == null) return;
     wizard.addStop(location);
     onChanged();

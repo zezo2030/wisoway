@@ -20,13 +20,23 @@ void main() {
     ) async {
       late String resolved;
       await tester.pumpWidget(
-        Directionality(
+        Localizations(
+          // The locale drives the copy; direction only mirrors the layout.
+          locale: direction == TextDirection.rtl
+              ? const Locale('ar')
+              : const Locale('en'),
+          delegates: const [
+            DefaultMaterialLocalizations.delegate,
+            DefaultWidgetsLocalizations.delegate,
+          ],
+          child: Directionality(
           textDirection: direction,
           child: Builder(
             builder: (context) {
               resolved = ErrorLocalizations.resolve(context, key);
               return const SizedBox.shrink();
             },
+          ),
           ),
         ),
       );

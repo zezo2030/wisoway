@@ -171,16 +171,6 @@ class TripGetAddressFromCoordinates extends TripEvent {
   List<Object?> get props => [latitude, longitude];
 }
 
-// Get Coordinates from Address
-class TripGetCoordinatesFromAddress extends TripEvent {
-  final String address;
-
-  const TripGetCoordinatesFromAddress(this.address);
-
-  @override
-  List<Object?> get props => [address];
-}
-
 // Clear Error
 class TripClearError extends TripEvent {
   const TripClearError();

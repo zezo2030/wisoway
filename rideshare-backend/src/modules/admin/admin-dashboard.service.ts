@@ -44,6 +44,7 @@ export interface AdminUsersQuery {
   isActive?: boolean;
   registeredWithinDays?: number;
   isConfirmed?: boolean;
+  isDriverApproved?: boolean;
 }
 
 export interface AdminPaymentsQuery {
@@ -242,7 +243,11 @@ export class AdminDashboardService {
   }
 
   /**
-   * Approve or reject a driver
+   * Approve or reject a driver.
+   *
+   * The driver account and its vehicle share a single review decision:
+   * approving sets both `users.isDriverApproved` and `vehicles.isVerified`,
+   * rejecting clears both — atomically, with one notification.
    */
   async approveDriver(userId: string, approved: boolean): Promise<UserEntity> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
@@ -257,18 +262,39 @@ export class AdminDashboardService {
         'Driver profile photo is required before approval',
       );
     }
-    user.isDriverApproved = approved;
-    await this.userRepo.save(user);
+
+    const vehicle = await this.vehicleRepo.findOne({
+      where: { driverId: userId },
+    });
+    if (approved && !vehicle) {
+      throw new BadRequestException(
+        'Driver has no registered vehicle to approve',
+      );
+    }
+
+    await this.userRepo.manager.transaction(async (manager) => {
+      user.isDriverApproved = approved;
+      await manager.save(user);
+
+      if (vehicle) {
+        vehicle.isVerified = approved;
+        await manager.save(vehicle);
+      }
+    });
 
     await this.notificationsService.create({
       userId,
       type: approved ? 'driver_approved' : 'driver_rejected',
       title: approved ? 'تم قبول حسابك كسائق' : 'تم رفض طلب حسابك كسائق',
       body: approved
-        ? 'تهانينا! تم قبول حسابك كسائق. يمكنك الآن إنشاء الرحلات.'
+        ? 'تهانينا! تم قبول حسابك ومركبتك كسائق. يمكنك الآن إنشاء الرحلات.'
         : 'تم رفض طلب تسجيلك كسائق. يرجى التواصل مع الدعم لمزيد من المعلومات.',
       data: { approved },
     });
+
+    this.logger.log(
+      `Driver ${userId} and vehicle ${vehicle?.id ?? 'none'} approval status changed to ${approved}`,
+    );
 
     return user;
   }
@@ -331,6 +357,11 @@ export class AdminDashboardService {
     }
     if (query.isActive !== undefined) {
       qb.andWhere('user.isActive = :isActive', { isActive: query.isActive });
+    }
+    if (query.isDriverApproved !== undefined) {
+      qb.andWhere('user.isDriverApproved = :isDriverApproved', {
+        isDriverApproved: query.isDriverApproved,
+      });
     }
     if (query.search?.trim()) {
       const term = `%${query.search.trim()}%`;
@@ -530,6 +561,13 @@ export class AdminDashboardService {
     }
   }
 
+  /**
+   * Verify or reject a vehicle.
+   *
+   * Kept for backwards compatibility: the decision is applied to the owning
+   * driver account as well, so `isDriverApproved` and `isVerified` always
+   * move together (single merged driver review).
+   */
   async verifyVehicle(
     vehicleId: string,
     isVerified: boolean,
@@ -542,24 +580,86 @@ export class AdminDashboardService {
       throw new NotFoundException('Vehicle not found');
     }
 
-    vehicle.isVerified = isVerified;
-    const saved = await this.vehicleRepo.save(vehicle);
+    await this.userRepo.manager.transaction(async (manager) => {
+      vehicle.isVerified = isVerified;
+      await manager.save(vehicle);
+
+      if (vehicle.driver && vehicle.driver.role === PgUserRole.DRIVER) {
+        if (isVerified && !vehicle.driver.photoUrl) {
+          throw new BadRequestException(
+            'Driver profile photo is required before approval',
+          );
+        }
+        vehicle.driver.isDriverApproved = isVerified;
+        await manager.save(vehicle.driver);
+      }
+    });
 
     await this.notificationsService.create({
       userId: vehicle.driverId,
-      type: isVerified ? 'vehicle_verified' : 'vehicle_rejected',
-      title: isVerified ? 'Vehicle Verified' : 'Vehicle Rejected',
+      type: isVerified ? 'driver_approved' : 'driver_rejected',
+      title: isVerified ? 'تم قبول حسابك كسائق' : 'تم رفض طلب حسابك كسائق',
       body: isVerified
-        ? 'Your vehicle has been verified. You can now create trips.'
-        : 'Your vehicle verification was rejected. Please check details and resubmit.',
+        ? 'تهانينا! تم قبول حسابك ومركبتك كسائق. يمكنك الآن إنشاء الرحلات.'
+        : 'تم رفض طلب تسجيلك كسائق. يرجى التواصل مع الدعم لمزيد من المعلومات.',
       data: { vehicleId, isVerified },
     });
 
     this.logger.log(
-      `Vehicle ${vehicleId} verification status changed to ${isVerified}`,
+      `Vehicle ${vehicleId} and its driver verification status changed to ${isVerified}`,
     );
 
-    return saved;
+    return vehicle;
+  }
+
+  /**
+   * Pending driver review queue with the driver's vehicle and documents
+   * merged into a single row (one review covers account + vehicle).
+   */
+  async getPendingDrivers(query: AdminUsersQuery): Promise<
+    PaginatedResult<
+      UserEntity & { vehicle: VehicleEntity | null }
+    >
+  > {
+    const page = Math.max(1, query.page ?? 1);
+    const limit = Math.min(100, Math.max(1, query.limit ?? 20));
+    const skip = (page - 1) * limit;
+
+    const qb = this.userRepo
+      .createQueryBuilder('user')
+      .where('user.role = :role', { role: PgUserRole.DRIVER })
+      .andWhere('user.isDriverApproved = :approved', { approved: false })
+      .orderBy('user.createdAt', 'ASC')
+      .skip(skip)
+      .take(limit);
+
+    if (query.search?.trim()) {
+      const term = `%${query.search.trim()}%`;
+      qb.andWhere(
+        '(user.name ILIKE :term OR user.email ILIKE :term OR user.phoneNumber ILIKE :term)',
+        { term },
+      );
+    }
+
+    const [drivers, total] = await qb.getManyAndCount();
+
+    const driverIds = drivers.map((d) => d.id);
+    const vehicles = driverIds.length
+      ? await this.vehicleRepo.find({ where: { driverId: In(driverIds) } })
+      : [];
+    const vehicleByDriver = new Map(
+      vehicles.map((v) => [v.driverId, v] as const),
+    );
+
+    return {
+      data: drivers.map(
+        (driver) =>
+          Object.assign(driver, {
+            vehicle: vehicleByDriver.get(driver.id) ?? null,
+          }) as UserEntity & { vehicle: VehicleEntity | null },
+      ),
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   async getTrips(query: AdminTripsQuery): Promise<PaginatedResult<TripEntity>> {

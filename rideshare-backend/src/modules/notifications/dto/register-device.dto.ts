@@ -25,4 +25,13 @@ export class RegisterDeviceDto {
   @IsOptional()
   @MaxLength(32)
   appVersion?: string;
+
+  @ApiPropertyOptional({
+    description: 'App language the device is using',
+    enum: ['ar', 'en'],
+  })
+  @IsString()
+  @IsOptional()
+  @IsIn(['ar', 'en'])
+  locale?: 'ar' | 'en';
 }

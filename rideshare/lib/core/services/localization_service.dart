@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../constants/app_constants.dart';
+import 'push_notification_service.dart';
 
 class LocalizationService extends ChangeNotifier {
   Locale _locale = const Locale(AppConstants.langArabic);
@@ -53,6 +54,9 @@ class LocalizationService extends ChangeNotifier {
     } catch (e) {
       // Handle error silently
     }
+
+    // Keep server-rendered pushes (instant offers) in the app language.
+    await PushNotificationService.syncLanguage(languageCode);
   }
   
   Future<void> toggleLanguage() async {

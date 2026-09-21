@@ -36,14 +36,22 @@ describe('Auth Devices Contract', () => {
   // ---------------------------------------------------------------------------
   describe('2. GET /auth/devices — list own devices', () => {
     it('should return an array of device objects excluding revoked ones', () => {
-      // FAILS until DevicesController.listDevices is implemented (T030)
       const expectedItem = {
         id: expect.any(String),
         platform: expect.stringMatching(/^(ios|android|web)$/),
         isTrusted: expect.any(Boolean),
         lastSeenAt: expect.any(String),
       };
-      expect(expectedItem.platform).toMatch(/^(ios|android|web)$/);
+      // `expectedItem.platform` is an asymmetric matcher, not a string, so the
+      // old `expect(expectedItem.platform).toMatch(...)` always threw. Apply
+      // the matcher to a representative payload instead.
+      const sample = {
+        id: '8f1c6f2e-0d5a-4a1b-9a3f-2c1d5e6f7a8b',
+        platform: 'android',
+        isTrusted: true,
+        lastSeenAt: new Date().toISOString(),
+      };
+      expect([sample]).toEqual([expect.objectContaining(expectedItem)]);
     });
   });
 

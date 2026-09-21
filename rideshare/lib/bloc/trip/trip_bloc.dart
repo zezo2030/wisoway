@@ -18,7 +18,6 @@ class TripBloc extends Bloc<TripEvent, TripState> {
     on<TripDelete>(_onDelete);
     on<TripGetCurrentLocation>(_onGetCurrentLocation);
     on<TripGetAddressFromCoordinates>(_onGetAddressFromCoordinates);
-    on<TripGetCoordinatesFromAddress>(_onGetCoordinatesFromAddress);
     on<TripClearError>(_onClearError);
   }
 
@@ -126,26 +125,6 @@ class TripBloc extends Bloc<TripEvent, TripState> {
         longitude: event.longitude,
       );
       emit(TripAddressLoaded(address));
-    } catch (e) {
-      final failure = ApiClient.mapError(e);
-      emit(TripError(failure.messageKey, failure: failure));
-    }
-  }
-
-  Future<void> _onGetCoordinatesFromAddress(
-    TripGetCoordinatesFromAddress event,
-    Emitter<TripState> emit,
-  ) async {
-    emit(const TripLoading());
-    try {
-      final location = await _locationService.getCoordinatesFromAddress(
-        event.address,
-      );
-      if (location != null) {
-        emit(TripLocationLoaded(location));
-      } else {
-        emit(const TripError('فشل في الحصول على إحداثيات الموقع'));
-      }
     } catch (e) {
       final failure = ApiClient.mapError(e);
       emit(TripError(failure.messageKey, failure: failure));

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -64,11 +65,14 @@ import 'screens/profile/edit_profile_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/settings/change_password_screen.dart';
 import 'screens/settings/account_security_devices_screen.dart';
+import 'screens/settings/notification_settings_screen.dart';
+import 'screens/settings/privacy_settings_screen.dart';
 import 'screens/settings/support_screen.dart';
 import 'screens/settings/about_screen.dart';
 import 'screens/auth/banned_screen.dart';
 import 'screens/passenger/complaint_screen.dart';
 import 'screens/passenger/refund_request_screen.dart';
+
 // Removed unused notification_service.dart
 
 //admin@rideshare.com
@@ -86,21 +90,40 @@ void main() async {
   // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Initialize Firebase App Check to prevent warnings
-  // Using debug provider for development, use deviceCheckProvider for production
-  await FirebaseAppCheck.instance.activate(
-    androidProvider:
-        AndroidProvider.debug, // Change to deviceCheckProvider for production
-    appleProvider:
-        AppleProvider.debug, // Change to deviceCheckProvider for production
-  );
-
-  await PushNotificationService.initialize();
+  // App Check and push notifications are both optional at startup: the app is
+  // fully usable without them, so a failure in either must never stop us from
+  // reaching runApp(). Awaiting them unguarded is what made a release build
+  // launch to a blank screen when App Check threw.
+  await _initOptional('App Check', _activateAppCheck);
+  await _initOptional('Push notifications', PushNotificationService.initialize);
 
   // Note: FirebaseAuth has been replaced with Custom backend REST API.
   // Language settings can be passed in request headers via Interceptors.
 
   runApp(const MyApp());
+}
+
+/// Run a non-essential startup step, logging and swallowing any failure.
+Future<void> _initOptional(String label, Future<void> Function() step) async {
+  try {
+    await step();
+  } catch (e, stack) {
+    debugPrint('[startup] $label failed, continuing without it: $e');
+    debugPrintStack(stackTrace: stack);
+  }
+}
+
+/// The debug App Check providers only work in a debug build; in a release APK
+/// `activate` throws and the app never starts. Attest for real once shipped.
+Future<void> _activateAppCheck() {
+  return FirebaseAppCheck.instance.activate(
+    androidProvider: kReleaseMode
+        ? AndroidProvider.playIntegrity
+        : AndroidProvider.debug,
+    appleProvider: kReleaseMode
+        ? AppleProvider.deviceCheck
+        : AppleProvider.debug,
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -189,6 +212,10 @@ class MyApp extends StatelessWidget {
                         const ChangePasswordScreen(),
                     RouteNames.accountSecurityDevices: (context) =>
                         const AccountSecurityDevicesScreen(),
+                    RouteNames.notificationSettings: (context) =>
+                        const NotificationSettingsScreen(),
+                    RouteNames.privacySettings: (context) =>
+                        const PrivacySettingsScreen(),
                     RouteNames.banned: (context) => const BannedScreen(),
                     RouteNames.pendingCharges: (context) =>
                         const PendingChargesScreen(),

@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddTripLiveEtaAndEmergencyAlert1746700000000
-  implements MigrationInterface
-{
+export class AddTripLiveEtaAndEmergencyAlert1746700000000 implements MigrationInterface {
   name = 'AddTripLiveEtaAndEmergencyAlert1746700000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

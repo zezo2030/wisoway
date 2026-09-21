@@ -24,6 +24,7 @@ class ApiClient {
 
     _dio.interceptors.add(AuthInterceptor());
     if (kDebugMode) {
+      debugPrint('ApiClient baseUrl=${ApiEndpoints.baseUrl}');
       _dio.interceptors.add(LogInterceptor(
         requestBody: true,
         responseBody: true,
@@ -33,9 +34,20 @@ class ApiClient {
 
   Dio get dio => _dio;
 
-  Future<dynamic> get(String path, {Map<String, dynamic>? queryParameters}) async {
+  /// [cancelToken] lets a caller abort an in-flight request — used by the
+  /// location search screen so a superseded keystroke stops consuming the
+  /// provider budget instead of merely having its response ignored.
+  Future<dynamic> get(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    CancelToken? cancelToken,
+  }) async {
     try {
-      final response = await _dio.get(path, queryParameters: queryParameters);
+      final response = await _dio.get(
+        path,
+        queryParameters: queryParameters,
+        cancelToken: cancelToken,
+      );
       return response.data;
     } catch (e, st) {
       throw ExceptionMapper.fromError(e, st);

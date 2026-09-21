@@ -150,7 +150,7 @@
   "@darkMode": {
     "description": "Dark mode toggle option"
   },
-  "darkModeSubtitle": "Enable dark theme for the app",
+  "darkModeSubtitle": "Turn on the dark theme",
   "@darkModeSubtitle": {
     "description": "Dark mode option description"
   },
@@ -821,10 +821,36 @@
     "description": "Driver action to mark a passenger as absent at trip completion"
   },
   "welcomeTitle": "Welcome to VisionWay",
-  "welcomeSubtitle": "Your journey starts here. Pick a destination and travel safely and comfortably.",
+  "welcomeSubtitle": "Your journey starts here. Pick your destination and travel with us on direct or shared rides, safely and comfortably.",
+  "welcomeSubtitleHighlightDirect": "direct",
+  "welcomeSubtitleHighlightShared": "shared",
+  "welcomeBrandTagline": "طريق الرؤية",
+  "welcomeDirectTitle": "Direct rides",
+  "welcomeDirectBody": "Your own ride: direct, fast and comfortable",
+  "welcomeSharedTitle": "Shared rides",
+  "welcomeSharedBody": "Share the ride, save more, greener travel",
+  "welcomeFeaturePricingTitle": "Transparent pricing",
+  "welcomeFeaturePricingBody": "Fair fares with no surprises",
+  "welcomeFeatureSpeedTitle": "Fast and simple",
+  "welcomeFeatureSpeedBody": "Book your ride in a few steps",
+  "welcomeFeatureSafetyTitle": "Safe and reliable",
+  "welcomeFeatureSafetyBody": "Trusted drivers and secure trips",
+  "welcomeTermsPrefix": "By signing up, you agree to the",
+  "welcomeTermsLink": "Terms & Conditions",
+  "welcomeTermsAnd": "and",
   "signIn": "Sign in",
   "createNewAccount": "Create a new account",
-  "signInSubtitle": "Welcome back! Sign in to continue.",
+  "signInSubtitle": "Sign in to continue",
+  "signInWelcomeBack": "Welcome back 👋",
+  "signInOrDivider": "or",
+  "signInWithPhoneNumber": "Sign in with your phone number",
+  "signInNewUserQuestion": "New here?",
+  "signInFeatureTrustedTitle": "Trusted and verified",
+  "signInFeatureTrustedBody": "Vetted drivers and safe trips",
+  "signInFeatureFastTitle": "Fast and simple",
+  "signInFeatureFastBody": "Book your ride in a few steps",
+  "signInFeaturePrivacyTitle": "Safety and privacy",
+  "signInFeaturePrivacyBody": "Your data is protected to the highest standard",
   "password": "Password",
   "passwordRequired": "Password is required",
   "passwordTooShort": "Password is too short",
@@ -1139,6 +1165,9 @@
   "determiningLocation": "Determining location...",
   "detectLocationAutomatically": "Detect location automatically",
   "chooseLocationManually": "Choose location manually",
+  "homeDetectMyLocation": "Locate me",
+  "homeLocationAccurate": "Location pinned precisely",
+  "homeLocationUnknown": "Location not set yet",
   "myActiveTrips": "My active trips",
   "errorLoadingTrips": "Error loading trips",
   "noActiveTripsTitle": "No active trips",
@@ -1599,6 +1628,7 @@
     }
   },
   "notesForPassengers": "Notes for passengers",
+  "notesForPassengersSubtitle": "Shown to passengers with the trip details",
   "tripNotesHint": "Example: stop at Petra Pharmacy, don't be more than 5 minutes late...",
   "tripRecurrence": "Trip recurrence",
   "enableTripRecurrenceSemantic": "Enable trip recurrence: {state}",
@@ -2395,26 +2425,36 @@
   "approxDistanceLabel": "Approx. distance: {distance}",
   "@approxDistanceLabel": {
     "placeholders": {
-      "distance": { "type": "String" }
+      "distance": {
+        "type": "String"
+      }
     }
   },
   "approxDurationLabel": "Approx. time: {duration}",
   "@approxDurationLabel": {
     "placeholders": {
-      "duration": { "type": "String" }
+      "duration": {
+        "type": "String"
+      }
     }
   },
   "approxDurationHoursMinutes": "{hours} h {minutes} m",
   "@approxDurationHoursMinutes": {
     "placeholders": {
-      "hours": { "type": "int" },
-      "minutes": { "type": "int" }
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "approxDurationMinutesOnly": "{minutes} m",
   "@approxDurationMinutesOnly": {
     "placeholders": {
-      "minutes": { "type": "int" }
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "createTripWhenAndHow": "When and how?",
@@ -2422,9 +2462,24 @@
   "availableSeatsSection": "Available seats",
   "availableSeatsCountTitle": "Available seats count",
   "seatsUnitLabel": "Seats",
+  "timePeriodAm": "AM",
+  "timePeriodPm": "PM",
+  "scheduleSection": "Schedule",
+  "seatsAndPriceSection": "Seats and price",
+  "tripOptionsSection": "Trip options",
+  "seatsQuestion": "How many seats are you offering?",
+  "vehicleCapacityHint": "Your vehicle seats {count}",
+  "tripTotalLabel": "Trip total",
+  "availableSeatsSectionSubtitle": "Choose how many seats are open on this trip",
+  "recurrenceCollapsedHint": "Weekly or daily repeat",
+  "suggestedPriceForRoute": "Suggested price for this route: {min} - {max} {currency}",
+  "currencyShortName": "{currency, select, other{{currency}}}",
+  "currencyFullName": "{currency, select, JOD{Jordanian Dinar} SAR{Saudi Riyal} AED{UAE Dirham} KWD{Kuwaiti Dinar} BHD{Bahraini Dinar} OMR{Omani Rial} QAR{Qatari Riyal} EGP{Egyptian Pound} ILS{Israeli Shekel} IQD{Iraqi Dinar} LBP{Lebanese Pound} SYP{Syrian Pound} YER{Yemeni Rial} LYD{Libyan Dinar} SDG{Sudanese Pound} DZD{Algerian Dinar} MAD{Moroccan Dirham} TND{Tunisian Dinar} MRU{Mauritanian Ouguiya} USD{US Dollar} GBP{British Pound} TRY{Turkish Lira} other{{currency}}}",
   "jordanianDinarLabel": "Jordanian Dinar",
-  "tripSummaryTitle": "Trip summary",
+  "tripSummaryTitle": "Trip ended successfully",
   "additionalDetailsTitle": "Additional details",
+  "publishTripNoticeTitle": "The trip goes live after review",
+  "tripSummarySection": "Trip summary",
   "seatLegendAvailable": "Available",
   "seatLegendDriver": "Unavailable (driver)",
   "seatLegendInactive": "Inactive seat",
@@ -2433,20 +2488,30 @@
   "reviewTripSubtitle": "Check your trip details before publishing it to passengers",
   "publishTrip": "Publish trip",
   "backToEdit": "Back to edit",
-  "publishTripNotice": "The trip will be published after review and passengers will be able to book it.",
+  "publishTripNotice": "Once the trip is published, passengers can book the available seats",
   "createTripFeeNotice": "Trip fee ({percent}%): {amount} {currency} — deducted from your wallet when the trip starts.",
   "@createTripFeeNotice": {
     "placeholders": {
-      "percent": { "type": "String" },
-      "amount": { "type": "String" },
-      "currency": { "type": "String" }
+      "percent": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      }
     }
   },
   "insufficientBalanceForTripFee": "Your wallet balance ({balance}) does not cover the trip fee ({required}). Top up before publishing.",
   "@insufficientBalanceForTripFee": {
     "placeholders": {
-      "balance": { "type": "String" },
-      "required": { "type": "String" }
+      "balance": {
+        "type": "String"
+      },
+      "required": {
+        "type": "String"
+      }
     }
   },
   "familyBookingLabel": "Family booking",
@@ -2530,7 +2595,11 @@
   "instantOfferIncludesFees": "Includes platform fees",
   "instantOfferPassengerCount": "{count} passengers",
   "@instantOfferPassengerCount": {
-    "placeholders": { "count": { "type": "int" } }
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "instantOfferDistance": "Distance",
   "instantOfferDuration": "Est. duration",
@@ -2538,19 +2607,72 @@
   "instantRequestNow": "Request now",
   "instantRequestNowTitle": "Request a ride now",
   "instantRequestNowSubtitle": "A nearby driver comes straight to you",
+  "instantFormFromLabel": "From",
+  "instantFormToLabel": "To",
+  "instantFormToHint": "Choose your destination",
+  "instantFormChange": "Change",
+  "instantFormPickOnMap": "Pick on map",
+  "instantFormDriverArrives": "Driver arrives in",
+  "instantFormDistance": "Distance",
+  "instantFormDuration": "Trip duration",
+  "instantFormMinutesUnit": "min",
+  "instantFormKmUnit": "km",
+  "instantFormPriceAfterDestination": "The fare is calculated after you choose a destination",
+  "instantFormChooseDestinationCta": "Choose a destination to see the fare",
+  "instantFormYourFareTitle": "Your fare for the ride",
+  "instantFormFareHint": "Enter a fare",
+  "instantFormFareRange": "Allowed range: {min} – {max} {currency}",
+  "instantFormFareOutOfRange": "The fare must be between {min} and {max} {currency}",
+  "instantFormFareNote": "The driver may accept your fare or propose a higher one. Pay the driver in cash.",
+  "instantTrustSupport": "24/7 support",
+  "instantTrustSupportSub": "We are here to help",
+  "instantTrustSafe": "Safe and trusted",
+  "instantTrustSafeSub": "Your ride is in safe hands",
+  "instantTrustTracking": "Trip tracking",
+  "instantTrustTrackingSub": "Share your ride with loved ones",
+  "instantTrustCash": "Cash payment",
+  "instantTrustCashSub": "Pay the driver directly",
+  "@instantFormFareRange": {
+    "placeholders": {
+      "min": {"type": "String"},
+      "max": {"type": "String"},
+      "currency": {"type": "String"}
+    }
+  },
+  "@instantFormFareOutOfRange": {
+    "placeholders": {
+      "min": {"type": "String"},
+      "max": {"type": "String"},
+      "currency": {"type": "String"}
+    }
+  },
   "instantSelectFromTo": "Choose pickup and destination.",
   "instantFromHint": "Pickup location",
   "instantFromPickerTitle": "Choose pickup point",
   "instantToHint": "Destination",
   "instantToPickerTitle": "Choose destination",
   "instantDriverFound": "Driver found!",
+  "instantMatchedSubtitle": "Your driver is on the way",
+  "instantMatchedArrival": "Arrives in",
+  "instantMatchedShareTitle": "Share your trip details with a trusted contact",
+  "instantMatchedTrackSubtitle": "You can share your location with the driver",
+  "instantMatchedCancelTitle": "Cancel the ride?",
+  "instantMatchedCancelBody": "A driver has accepted your ride. The booking will be cancelled and the driver notified.",
+  "instantMatchedKeep": "Keep the ride",
+  "instantMatchedCallFailed": "Could not start the call right now. Please try again.",
   "instantDriverOnTheWay": "The driver is on the way to the pickup point.",
   "instantTrackTrip": "Track ride",
   "instantDone": "Done",
   "instantRequestCancelled": "Request cancelled",
   "instantNoDrivers": "We couldn't find a driver right now",
   "instantNoDriversSubtitle": "All nearby drivers may be busy, or none may be close to you.",
-  "instantNoDriversTip": "Tip: Try again in a few minutes; a nearby driver may become available.",
+  "instantNoDriversWithinRadius": "No driver is available within {km} km of your pickup point.",
+  "instantNoDriversAllDeclined": "Nearby drivers did not accept your fare. Try raising it a little.",
+  "instantNoDriversTimedOut": "The search window ended before any driver responded.",
+  "instantNoDriversCheckPickup": "Check that the pickup point really is where you are now.",
+  "@instantNoDriversWithinRadius": {"placeholders": {"km": {"type": "String"}}},
+  "instantNoDriversTip": "Tip: You can try again in a few minutes.",
+  "instantNoDriversTipKeepSearching": "We'll keep looking for you.",
   "instantNoDriversIllustrationLabel": "No driver found",
   "instantNeedHelp": "Need help?",
   "instantContactSupport": "Contact support",
@@ -2560,11 +2682,44 @@
   "instantRetryFareChanged": "The fare range changed. Review the fare before trying again.",
   "instantTryAgain": "Try again",
   "instantSearching": "Finding the nearest driver...",
+  "instantSearchingSubtitle": "Reaching out to drivers near you",
+  "instantSearchingEta": "Expected pickup",
+  "instantSearchingApprox": "approx.",
+  "instantSearchingMinutes": "{minutes} min",
+  "instantSearchingKm": "{km} km",
+  "instantSearchingTip": "Finding a driver can take longer at peak times. Thanks for your patience",
+  "instantStepRequested": "Request sent",
+  "instantStepSearching": "Finding a driver",
+  "instantStepDriverOffer": "Driver offer",
+  "instantStepDriverOnWay": "Driver on the way",
+  "@instantSearchingMinutes": {"placeholders": {"minutes": {"type": "String"}}},
+  "@instantSearchingKm": {"placeholders": {"km": {"type": "String"}}},
   "instantFareEstimate": "Estimated fare: {fare} {currency}",
   "instantCancelRequest": "Cancel request",
   "instantYourFareLabel": "Your fare",
+  "instantRaiseFare": "Raise fare",
+  "instantFareRaiseHint": "Raise your fare to attract drivers faster",
+  "instantFareLockedWhileOffered": "Waiting for a driver to answer your current fare",
+  "instantFareMaxReached": "You have reached the maximum fare",
+  "instantFareRaisedToast": "Your fare was raised and nearby drivers notified",
   "instantRecommendedFare": "Recommended fare: {fare} {currency}",
   "instantYourFareValue": "Your fare: {fare} {currency}",
+  "instantOfferDetailsTitle": "Request details",
+  "instantOfferOpenDetails": "View request details",
+  "instantOfferCashNote": "Cash to the driver · platform fees included",
+  "instantOfferPickupDistance": "Distance to pickup",
+  "instantOfferPickupEta": "Time to pickup",
+  "instantOfferTripDistance": "Trip distance",
+  "instantCounterBadge": "Fare offer",
+  "instantCounterProposedLabel": "Driver's price",
+  "instantCounterRangeHint": "Between {min} and {max} {currency}",
+  "@instantCounterRangeHint": {
+    "placeholders": {
+      "min": {"type": "String"},
+      "max": {"type": "String"},
+      "currency": {"type": "String"}
+    }
+  },
   "instantDriverOfferTitle": "Driver's offer",
   "instantProposeFare": "Offer a higher fare",
   "instantSendOffer": "Send offer",
@@ -2576,8 +2731,6 @@
   "instantKeepFare": "Keep {fare} {currency}",
   "instantArrivingIn": "Arriving in ~{minutes} min",
   "instantAgreedFare": "Agreed fare: {fare} {currency}",
-
-  "tripSummaryTitle": "Trip ended successfully",
   "tripSummaryThanks": "Thank you for your trip",
   "tripSummaryHelp": "Help",
   "tripSummaryArrivalPlace": "Arrival place",
@@ -2588,21 +2741,37 @@
   "tripSummaryHoursMinutes": "{hours}h {minutes}m",
   "@tripSummaryHoursMinutes": {
     "placeholders": {
-      "hours": { "type": "int" },
-      "minutes": { "type": "int" }
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "tripSummaryHoursOnly": "{hours}h",
   "@tripSummaryHoursOnly": {
-    "placeholders": { "hours": { "type": "int" } }
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
   },
   "tripSummaryMinutesOnly": "{minutes}m",
   "@tripSummaryMinutesOnly": {
-    "placeholders": { "minutes": { "type": "int" } }
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
   },
   "tripSummaryConfirmedPassengers": "Passengers who confirmed presence ({count})",
   "@tripSummaryConfirmedPassengers": {
-    "placeholders": { "count": { "type": "int" } }
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "tripSummaryNoPassengers": "No passengers for this trip.",
   "tripSummaryPassengerFare": "Passenger fare",
@@ -2610,26 +2779,46 @@
   "tripSummaryNotConfirmed": "Did not confirm",
   "tripSummaryPassengerFares": "Passenger fares ({count} passengers)",
   "@tripSummaryPassengerFares": {
-    "placeholders": { "count": { "type": "int" } }
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "tripSummaryTripFeePercent": "Trip fee ({percent}%)",
   "@tripSummaryTripFeePercent": {
-    "placeholders": { "percent": { "type": "int" } }
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
   },
   "tripSummaryNetAmount": "Net amount you will receive",
   "tripSummaryFeeDeducted": "Trip fees ({amount}) were deducted from your wallet when the trip started. Keep enough balance to create new trips.",
   "@tripSummaryFeeDeducted": {
-    "placeholders": { "amount": { "type": "String" } }
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
   },
   "tripSummaryPayFeePrompt": "Insufficient balance to deduct trip fees ({amount}). Pay now to settle your account.",
   "@tripSummaryPayFeePrompt": {
-    "placeholders": { "amount": { "type": "String" } }
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
   },
   "tripSummaryPaymentRequired": "Trip fees ({fee}) could not be fully deducted. Your wallet is negative by {debt}. Pay now to settle.",
   "@tripSummaryPaymentRequired": {
     "placeholders": {
-      "fee": { "type": "String" },
-      "debt": { "type": "String" }
+      "fee": {
+        "type": "String"
+      },
+      "debt": {
+        "type": "String"
+      }
     }
   },
   "tripSummaryNegativeBalanceRestriction": "You cannot create shared trips or receive instant rides until the negative balance is settled.",
@@ -2685,6 +2874,8 @@
   "vehiclePlateDocHint": "Enter the plate number as on the license",
   "vehicleModelDocHint": "Enter the car model",
   "vehicleSeatsDocHint": "Number of seats available to passengers",
+  "vehicleSeatsAutoHint": "Calculated automatically from the vehicle type",
+  "vehicleSeatsPickTypeFirst": "Select the vehicle type first",
   "driverLicenseUploadHint": "Tap to upload the license photo",
   "vehicleRegistrationFormRequired": "Registration form *",
   "insuranceDocumentLabel": "Insurance *",
@@ -2707,6 +2898,16 @@
   "driverReturnHome": "Return to Home",
   "tripBookedTitle": "Your shared trip is booked",
   "tripBookedSubtitle": "All seats were booked successfully",
+  "tripPublishedTitle": "Your trip is published",
+  "tripPublishedSubtitle": "Waiting for passengers to book",
+  "tripPartiallyBookedTitle": "Seats booked on your trip",
+  "tripPartiallyBookedSubtitle": "{booked} of {total} seats booked",
+  "@tripPartiallyBookedSubtitle": {
+    "placeholders": {
+      "booked": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
   "tripDayLabel": "Trip day",
   "tripTimeLabel": "Trip time",
   "tripMeetingPointLabel": "Meeting point",
@@ -2722,5 +2923,164 @@
   "tripFeeChargedAtStartNotice": "The trip fee will be deducted from your wallet when the trip starts. Keep a balance in your wallet so you can keep creating new trips.",
   "contactPassengersTitle": "Contact passengers",
   "contactPassengersSubtitle": "Call or live chat",
-  "confirmYourPresenceCta": "Please be present at the specified time and place"
+  "confirmYourPresenceCta": "Please be present at the specified time and place",
+  "driverHomeReadyTitle": "Ready to pick up riders?",
+  "driverHomeReadySubtitle": "Publish a trip or go online to receive instant requests.",
+  "driverStatusLabel": "Status",
+  "instantOfflineHint": "You won't receive instant requests",
+  "instantOnlineHint": "Nearby riders can request you now",
+  "instantGoOnlineHint": "Go online so riders in your area can see you for instant rides",
+  "publishSharedTrip": "Publish a new shared trip",
+  "publishSharedTripSubtitle": "Set your route and trip details, then take rider bookings",
+  "locationUpdatedJustNow": "Updated just now",
+  "locationUpdatedMinutesAgo": "{count, plural, =1{Updated a minute ago} other{Updated {count} minutes ago}}",
+  "@locationUpdatedMinutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "showOnMapAction": "Show on map",
+  "updateLocationAction": "Update location",
+  "todaySummary": "Today's summary",
+  "statNewRequests": "New requests",
+  "statNewRequestsHint": "Awaiting your reply",
+  "statTodayTrips": "Trips today",
+  "statTodayTripsHint": "Published",
+  "statBookings": "Bookings",
+  "statBookingsHint": "Total bookings",
+  "viewAllStats": "View all stats",
+  "driverCurrentTripsTitle": "Your active trips",
+  "noPublishedTripsTitle": "No published trips",
+  "noPublishedTripsSubtitle": "Create and publish your first trip so riders can start booking.",
+  "publishTripNow": "Publish a trip now",
+  "instantOnline": "Online",
+  "driverApprovedReviewTitle": "Your driver account is approved",
+  "driverApprovedReviewBody": "Your details and documents were approved. You can now publish trips and take rider bookings.",
+  "driverApprovedBadge": "Approved",
+  "driverApprovedRestrictionTitle": "Your account is active",
+  "driverApprovedRestrictionBody": "You can now use the app as a driver and publish trips.",
+  "driverStatusRefreshing": "Refreshing your request status…",
+  "profileAccountSection": "Account",
+  "profileAppSection": "App",
+  "profileTrustedAccount": "Verified account",
+  "profileUntrustedAccount": "Unverified account",
+  "editProfileSubtitle": "Update your details and profile photo",
+  "paymentMethods": "Payment methods",
+  "paymentMethodsSubtitle": "Manage your cards and payment methods",
+  "savedAddresses": "Saved addresses",
+  "savedAddressesSubtitle": "Manage your pickup and drop-off places",
+  "pastTrips": "Past trips",
+  "pastTripsSubtitle": "View all your past trips",
+  "cancelledTrips": "Cancelled trips",
+  "cancelledTripsSubtitle": "View trips that were cancelled",
+  "settingsSubtitle": "Customize your app experience",
+  "notificationsSubtitle": "Manage your notification preferences",
+  "languageSubtitle": "Change the app language",
+  "helpSupportSubtitle": "FAQs and ways to get help",
+  "contactUsSubtitle": "Need a hand? We are here for you",
+  "aboutAppSubtitle": "Version, terms and policies",
+  "walletTopUpBalance": "Add funds",
+  "walletTrialBalanceHint": "Welcome balance – deducted automatically from your upcoming trips",
+  "homeChooseModeSubtitle": "Pick the way that suits you today",
+  "rideModeSharedBadge": "Cheaper",
+  "rideModeSharedTitle": "Shared ride",
+  "rideModeSharedSubtitle": "Share the ride with other passengers and travel for less",
+  "rideModeSharedPerkSeats": "Fellow riders",
+  "rideModeSharedPerkPrice": "Lower fares",
+  "rideModeSharedPerkEco": "Eco friendly",
+  "rideModeSharedCta": "Find a ride",
+  "rideModePrivateBadge": "Faster",
+  "rideModePrivateTitle": "Ride with a driver",
+  "rideModePrivateSubtitle": "A driver comes straight to you and you set off right away",
+  "rideModePrivatePerkFast": "Fastest",
+  "rideModePrivatePerkPrivacy": "Full privacy",
+  "rideModePrivatePerkDirect": "Direct",
+  "rideModePrivateCta": "Request now",
+  "suggestedTripsTitle": "Trips suggested for you",
+  "tripDepartsToday": "Today",
+  "tripSeatsLeft": "{count, plural, =0{No seats left} =1{1 seat left} other{{count} seats left}}",
+  "@tripSeatsLeft": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "morePassengersCount": "+{count}",
+  "@morePassengersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "trustSafeRideTitle": "Safe ride",
+  "trustSafeRideSubtitle": "Trusted drivers and genuine ratings",
+  "trustSupportTitle": "24/7 support",
+  "trustSupportSubtitle": "We are here to help you any time",
+  "trustPaymentsTitle": "Multiple payment options",
+  "trustPaymentsSubtitle": "Pay the way you prefer",
+  "trustOnTimeTitle": "On time",
+  "trustOnTimeSubtitle": "We get you there on schedule",
+  "routeSearchTitle": "Set route",
+  "routeSearchSwap": "Swap origin and destination",
+  "routeSearchFromHint": "From where?",
+  "routeSearchToHint": "Where to?",
+  "routeSearchPickOnMap": "Choose on map",
+  "routeSearchHome": "Home",
+  "routeSearchWork": "Work",
+  "routeSearchAddHome": "Add home",
+  "routeSearchAddWork": "Add work",
+  "routeSearchRecents": "Recent places",
+  "routeSearchSaved": "Saved",
+  "routeSearchClearRecents": "Clear history",
+  "routeSearchNoResults": "No results. Try adding the city name or choose the place on the map.",
+  "routeSearchFailed": "Search failed",
+  "routeSearchRetry": "Retry",
+  "routeSearchTooManyRequests": "Too many requests. Wait a moment and try again.",
+  "routeSearchCurrentLocation": "My current location",
+  "routeSearchAddressUnavailable": "Address unavailable",
+  "routeSearchConfirmPoint": "Confirm point",
+  "routeSearchConfirmOrigin": "Confirm pickup point",
+  "routeSearchConfirmDestination": "Confirm drop-off point",
+  "routeSearchMyLocation": "My location",
+  "routeSearchLoadingAddress": "Finding address…",
+  "routeSearchClearField": "Clear",
+  "routeSearchStopHint": "Search for a stop",
+  "distanceMetersShort": "{meters} m",
+  "distanceKmShort": "{km} km",
+  "@distanceMetersShort": {
+    "placeholders": {
+      "meters": {
+        "type": "String"
+      }
+    }
+  },
+  "@distanceKmShort": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "instantOfferDistanceFallback": "{km} km",
+  "@instantOfferDistanceFallback": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "instantOfferDurationFallback": "{minutes} min",
+  "@instantOfferDurationFallback": {
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "instantOfferCurrencyJod": "JOD",
+  "instantOfferCurrencySar": "SAR"
 }

@@ -29,9 +29,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * debit (`DriverTripFeeService`, which short-circuits on that stamp) can never
  * charge them a second time.
  */
-export class ReleaseWalletHoldsFeeAtTripStart1747200000000
-  implements MigrationInterface
-{
+export class ReleaseWalletHoldsFeeAtTripStart1747200000000 implements MigrationInterface {
   name = 'ReleaseWalletHoldsFeeAtTripStart1747200000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

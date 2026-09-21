@@ -17,13 +17,44 @@ class NoDriverFoundSheet extends StatelessWidget {
   final VoidCallback onSupport;
   final bool retrying;
 
+  /// Why the search ended, as the server classified it. Null on older backends,
+  /// which fall back to the generic wording.
+  final String? terminalReason;
+
+  /// How far the search reached, in km — named in the "no driver within N km"
+  /// message so the passenger can judge whether their pickup point is wrong.
+  final double? searchRadiusKm;
+
   const NoDriverFoundSheet({
     super.key,
     required this.onRetry,
     required this.onClose,
     required this.onSupport,
     this.retrying = false,
+    this.terminalReason,
+    this.searchRadiusKm,
   });
+
+  /// Says what actually happened rather than "no drivers": nobody in range,
+  /// everyone declined the fare, or the window closed mid-offer.
+  String _subtitle(BuildContext context) {
+    final l10n = context.l10n;
+    switch (terminalReason) {
+      case 'no_eligible_drivers':
+        final km = searchRadiusKm;
+        if (km == null) return l10n.instantNoDriversSubtitle;
+        final shown = km == km.roundToDouble()
+            ? km.round().toString()
+            : km.toStringAsFixed(1);
+        return l10n.instantNoDriversWithinRadius(shown);
+      case 'all_declined':
+        return l10n.instantNoDriversAllDeclined;
+      case 'ttl_expired':
+        return l10n.instantNoDriversTimedOut;
+      default:
+        return l10n.instantNoDriversSubtitle;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +86,7 @@ class NoDriverFoundSheet extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          l10n.instantNoDriversSubtitle,
+          _subtitle(context),
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 14.5,
@@ -63,6 +94,20 @@ class NoDriverFoundSheet extends StatelessWidget {
             color: T.onSurfaceVariant(context),
           ),
         ),
+        // A pickup point that is not where the rider stands is the usual
+        // reason nobody is in range, so say so only in that case.
+        if (terminalReason == 'no_eligible_drivers') ...[
+          const SizedBox(height: 6),
+          Text(
+            l10n.instantNoDriversCheckPickup,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.4,
+              color: T.onSurfaceVariant(context),
+            ),
+          ),
+        ],
         const SizedBox(height: 18),
         _tipCard(context),
         const SizedBox(height: 18),
@@ -85,20 +130,33 @@ class NoDriverFoundSheet extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.lightbulb_outline,
-            size: 20,
-            color: T.primary(context),
-          ),
+          Icon(Icons.lightbulb_outline, size: 20, color: T.primary(context)),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              context.l10n.instantNoDriversTip,
-              style: TextStyle(
-                fontSize: 13,
-                height: 1.4,
-                color: T.onSurfaceVariant(context),
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  context.l10n.instantNoDriversTip,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.4,
+                    fontWeight: FontWeight.w600,
+                    color: T.onSurface(context),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  context.l10n.instantNoDriversTipKeepSearching,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.4,
+                    color: T.onSurfaceVariant(context),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -177,10 +235,7 @@ class NoDriverFoundSheet extends StatelessWidget {
         Flexible(
           child: Text(
             context.l10n.instantNeedHelp,
-            style: TextStyle(
-              fontSize: 13,
-              color: T.onSurfaceVariant(context),
-            ),
+            style: TextStyle(fontSize: 13, color: T.onSurfaceVariant(context)),
           ),
         ),
         const SizedBox(width: 4),

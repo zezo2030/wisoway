@@ -10,12 +10,17 @@ import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../widgets/auth/auth_hero.dart';
+import '../../widgets/auth/auth_language_switcher.dart';
 import '../../widgets/auth/auth_phone_field.dart';
 import '../../widgets/auth/auth_primary_button.dart';
 import '../../widgets/auth/auth_step_indicator.dart';
 import '../../widgets/auth/auth_text_field.dart';
 import '../../widgets/auth/gender_select_cards.dart';
-import '../../widgets/auth/security_notice.dart';
+
+/// The driver illustration puts its car in the middle band, so the ribbon is
+/// cropped just below centre.
+const Alignment _heroArtFocus = Alignment(0, 0.3);
 
 /// Driver registration — step 1 of 3 (basic details).
 ///
@@ -133,21 +138,23 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
     final l10n = context.l10n;
 
     return Scaffold(
-      backgroundColor: T.primary(context),
+      backgroundColor: AuthHero.backdrop,
       body: SingleChildScrollView(
         child: FadeTransition(
           opacity: _fadeAnimation,
           child: Column(
             children: [
-              _buildHero(),
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: T.surface(context),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(28),
-                    topRight: Radius.circular(28),
-                  ),
+              _buildTopBar(),
+              AuthHeroTitle(
+                icon: IconsaxPlusBold.driving,
+                title: l10n.driverSignupTitle,
+                subtitle: l10n.driverSignupSubtitle,
+              ),
+              AuthHeroSheet(
+                art: const AuthHeroArt(
+                  asset:
+                      'assets/illustrations/auth/auth_driver_step1_hero.webp',
+                  focus: _heroArtFocus,
                 ),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 22, 20, 28),
@@ -235,19 +242,8 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
                           },
                         ),
                         const SizedBox(height: 22),
-                        Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: Text(
-                            l10n.genderRequiredLabel,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: T.onSurface(context),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
                         GenderSelectCards(
+                          label: l10n.genderRequiredLabel,
                           value: _selectedGender,
                           onChanged: (g) => setState(() => _selectedGender = g),
                         ),
@@ -255,6 +251,7 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
                         AuthPrimaryButton(
                           label: l10n.continueLabel,
                           loading: _isLoading,
+                          pinnedArrow: true,
                           onPressed: _isLoading ? null : _signUp,
                         ),
                         const SizedBox(height: 12),
@@ -271,84 +268,35 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
     );
   }
 
-  Widget _buildHero() {
-    return Stack(
-      children: [
-        SizedBox(
-          height: 300,
-          width: double.infinity,
-          child: Image.asset(
-            'assets/illustrations/auth/auth_driver_step1_hero.png',
-            fit: BoxFit.cover,
-          ),
-        ),
-        Positioned.fill(
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 4, 16, 12),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          Directionality.of(context) == TextDirection.rtl
-                              ? Icons.chevron_right_rounded
-                              : Icons.chevron_left_rounded,
-                          color: T.onSurface(context),
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  const Spacer(),
-                  Container(
-                    width: 62,
-                    height: 62,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: T.primary(context),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.white, width: 3),
-                    ),
-                    child: const Icon(
-                      IconsaxPlusBold.driving,
-                      size: 30,
-                      color: AppColors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    context.l10n.driverSignupTitle,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                      color: T.onSurface(context),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    context.l10n.driverSignupSubtitle,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: T.onSurfaceVariant(context),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 24),
-                    child: SecurityNotice(),
-                  ),
-                  const SizedBox(height: 12),
-                ],
+  /// Back chevron and the language pill, on the hero's flat band.
+  Widget _buildTopBar() {
+    return ColoredBox(
+      color: AuthHero.backdrop,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 4, 16, 0),
+          // The mockup pins this bar physically in both locales: the back
+          // chevron on the left, the language pill on the right.
+          child: Row(
+            textDirection: TextDirection.ltr,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                // chevron_left_rounded carries matchTextDirection, so it needs
+                // an explicit LTR scope to keep pointing left under Arabic.
+                icon: const Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Icon(Icons.chevron_left_rounded, color: AuthHero.ink),
+                ),
+                onPressed: () => Navigator.pop(context),
+                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
               ),
-            ),
+              const AuthLanguageSwitcher(),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 

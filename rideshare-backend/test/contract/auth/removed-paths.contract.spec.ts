@@ -27,9 +27,14 @@ describe('Removed Auth Paths — 410 Gone (Contract)', () => {
   // ---------------------------------------------------------------------------
   describe('Response body shape', () => {
     it('should define the expected 410 response body shape', () => {
-      // FAILS until T029 replaces endpoint handlers with 410 stubs
+      // `supportWhatsApp` is an asymmetric matcher, not a string, so the old
+      // `typeof ... === 'string'` check could never hold. Assert the shape
+      // against a representative body instead.
       expect(EXPECTED_BODY_SHAPE.message).toBe('phone-only auth');
-      expect(typeof EXPECTED_BODY_SHAPE.supportWhatsApp).toBe('string');
+      expect({
+        message: 'phone-only auth',
+        supportWhatsApp: '+962790000000',
+      }).toEqual(EXPECTED_BODY_SHAPE);
     });
   });
 

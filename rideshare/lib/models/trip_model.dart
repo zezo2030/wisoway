@@ -206,8 +206,13 @@ class TripModel {
       driverPhone: drvPhone,
       from: from,
       to: to,
+      // `.toLocal()` matters: the API sends UTC ("...Z"), and DateTime.parse
+      // keeps a UTC DateTime whose `.hour` is the UTC hour. Every screen that
+      // formats this — the driver home card, trip lists, trip details — was
+      // therefore showing departures shifted by the UTC offset (three hours
+      // early in Jordan). The instant is unchanged, so comparisons still hold.
       departureTime: json['departureTime'] != null
-          ? DateTime.parse(json['departureTime'])
+          ? DateTime.parse(json['departureTime']).toLocal()
           : DateTime.now(),
       price: _parseDouble(json['price']),
       currency: json['currency'] ?? 'JOD',
@@ -280,10 +285,10 @@ class TripModel {
           const [],
       recurrenceRuleId: json['recurrenceRuleId']?.toString(),
       createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
+          ? DateTime.parse(json['createdAt']).toLocal()
           : DateTime.now(),
       updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
+          ? DateTime.parse(json['updatedAt']).toLocal()
           : DateTime.now(),
     );
   }

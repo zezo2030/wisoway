@@ -39,7 +39,7 @@ class ErrorLocalizations {
     'errorsNetworkOffline':
         'أنت غير متصل بالإنترنت. تحقق من الاتصال وحاول مرة أخرى.',
     'errorsNetworkTimeout': 'انتهت مهلة الاتصال. حاول مرة أخرى.',
-    'errorsServerGeneric': 'حدث خطأ في الخادم. حاول مرة أخرى لاحقًا.',
+    'errorsServerGeneric': 'حدث خطأ في الخادم. حاول مرة أخرى لاحقاً.',
     'errorsAuthSessionExpired':
         'انتهت صلاحية جلستك. يرجى تسجيل الدخول مرة أخرى.',
     'errorsAuthInvalidCredentials':
@@ -68,7 +68,11 @@ class ErrorLocalizations {
   };
 
   static String resolve(BuildContext context, String key) {
-    final isAr = Directionality.of(context) == TextDirection.rtl;
+    // Keyed off the app's locale, not the ambient text direction: a subtree
+    // that opts out of RTL for layout reasons (the vehicle cabin does) would
+    // otherwise show English errors inside an Arabic app.
+    final isAr =
+        Localizations.maybeLocaleOf(context)?.languageCode == 'ar';
     final map = isAr ? _ar : _en;
     return map[key] ?? _en[key] ?? key;
   }

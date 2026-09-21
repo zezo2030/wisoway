@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../constants/route_names.dart';
+import 'instant_counter_offer_actions.dart';
 import 'instant_offer_actions.dart';
 
 /// Service to handle navigation when user taps on notifications
@@ -67,10 +68,33 @@ class NotificationNavigationService {
         _handleInstantOfferNotification(data);
         break;
 
+      case 'instant_counter_offer':
+        _handleInstantCounterOfferNotification(data);
+        break;
+
+      case 'instant_matched':
+      case 'instant_counter_accepted':
+        _handleTripNotification(data);
+        break;
+
+      case 'driver_approved':
+      case 'driver_rejected':
+        // Driver account review outcome → open the driver account status screen
+        _navigateToRoute(RouteNames.driverPendingApproval);
+        break;
+
       default:
         // Navigate to notifications screen for unknown types
         _navigateToRoute(RouteNames.notifications);
     }
+  }
+
+  /// A driver bid on the passenger's fare — put the decision in front of them
+  /// rather than dropping them on the notifications list.
+  static void _handleInstantCounterOfferNotification(
+    Map<String, dynamic> data,
+  ) {
+    InstantCounterOfferActions.handle(data);
   }
 
   static void _handleInstantOfferNotification(Map<String, dynamic> data) {

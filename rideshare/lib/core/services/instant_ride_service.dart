@@ -68,11 +68,36 @@ class InstantRideService {
   // ── Passenger requests ──────────────────────────────────────────────────────
 
   Map<String, dynamic> _pointJson(LocationModel p) => {
-        'name': p.name,
-        'latitude': p.latitude,
-        'longitude': p.longitude,
-        if (p.address != null) 'address': p.address,
-      };
+    'name': p.name,
+    'latitude': p.latitude,
+    'longitude': p.longitude,
+    if (p.address != null) 'address': p.address,
+  };
+
+  /// Anonymous approximate pins of our online drivers near a point, shown as
+  /// car markers on the request map. Returns an empty list on any failure —
+  /// the pins are decorative and must never break the request flow.
+  Future<List<InstantNearbyDriverPin>> nearbyDriverPins({
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      final response = await _api.get(
+        ApiEndpoints.instantNearbyDrivers,
+        queryParameters: {'latitude': latitude, 'longitude': longitude},
+      );
+      dynamic data = response;
+      if (response is Map) data = response['data'] ?? response;
+      if (data is! List) return const [];
+      return [
+        for (final item in data)
+          if (item is Map)
+            InstantNearbyDriverPin.fromJson(Map<String, dynamic>.from(item)),
+      ];
+    } catch (_) {
+      return const [];
+    }
+  }
 
   /// Distance-based recommended fare + allowed bounds for this route.
   Future<InstantQuote> getQuote({
@@ -146,7 +171,9 @@ class InstantRideService {
   /// passenger to confirm a re-priced fare before the new attempt starts.
   Future<InstantRequest> retryRequest(String id) async {
     try {
-      final response = await _api.dio.post(ApiEndpoints.instantRequestRetry(id));
+      final response = await _api.dio.post(
+        ApiEndpoints.instantRequestRetry(id),
+      );
       return InstantRequest.fromJson(_unwrap(response.data));
     } on DioException catch (e) {
       final body = e.response?.data;
@@ -170,6 +197,19 @@ class InstantRideService {
   Future<InstantRequest> cancelRequest(String id) async {
     final response = await _api.delete(ApiEndpoints.instantRequestById(id));
     return InstantRequest.fromJson(_unwrap(response));
+  }
+
+  /// Start an in-app call on the matched booking; the backend allocates a
+  /// proxy number so neither side sees the other's real phone. Returns the
+  /// E.164 number to dial.
+  Future<String> initiateCall(String bookingId) async {
+    final response = await _api.post(
+      '/bookings/$bookingId/calls/initiate',
+      data: const <String, dynamic>{},
+    );
+    final number = _unwrap(response)['proxyNumberE164']?.toString() ?? '';
+    if (number.isEmpty) throw StateError('no proxy number');
+    return number;
   }
 
   // ── Driver offers ───────────────────────────────────────────────────────────

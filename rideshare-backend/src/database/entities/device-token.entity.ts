@@ -33,6 +33,10 @@ export class DeviceTokenEntity {
   @Column({ type: 'varchar', length: 255, nullable: true })
   userAgent: string | null;
 
+  /** App language ("ar" | "en") the device last registered with. */
+  @Column({ type: 'varchar', length: 8, nullable: true })
+  locale: string | null;
+
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 

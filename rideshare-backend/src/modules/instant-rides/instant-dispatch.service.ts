@@ -22,19 +22,27 @@ import {
   dispatchWaveJobId,
   EXPIRE_OFFER_JOB,
   INSTANT_OFFER_TIMEOUT_QUEUE,
+  INITIAL_RADIUS_KM,
   INSTANT_REQUEST_EXPIRY_QUEUE,
   MAX_RADIUS_KM,
   OFFER_TTL_SECONDS,
-  RADIUS_STEP_KM,
   offerTimeoutJobId,
 } from './instant-rides.constants';
-import { buildInstantOfferRouteMetrics } from './instant-offer-labels';
+import {
+  buildInstantOfferPushText,
+  buildInstantOfferRouteMetrics,
+} from './instant-offer-labels';
 
 /**
- * Sequential dispatch, inDrive style: start at a small radius and expand,
- * offering to the nearest available driver. When a full sweep up to the max
- * radius finds nobody, the request keeps searching — retry waves fire every
- * few seconds until the TTL — and the passenger is nudged to raise the fare.
+ * Sequential dispatch, inDrive style: offer to the nearest available driver,
+ * one at a time. The search reach is a function of how long the passenger has
+ * waited — [INITIAL_RADIUS_KM] at first, widening to [MAX_RADIUS_KM] by the
+ * end of the window — so nearby drivers always get the first chance and
+ * distant ones only come into play after the wait has stretched on.
+ *
+ * When a wave finds nobody the request stays alive: another wave fires a few
+ * seconds later with a wider reach, and the passenger is nudged once to raise
+ * the fare.
  */
 @Injectable()
 export class InstantDispatchService {
@@ -92,33 +100,60 @@ export class InstantDispatchService {
       ),
     ];
 
-    // Expand the radius until a lockable driver is found or the max is reached.
-    let radiusKm = request.radiusKm;
-    for (;;) {
-      const candidates =
-        await this.availabilityService.findNearbyAvailableDrivers(
-          fromLat,
-          fromLng,
-          radiusKm * 1000,
-          { excludeDriverIds },
-        );
+    // The reach grows with how long the passenger has been waiting, so a
+    // driver two streets away still wins the first seconds and a distant one
+    // is only considered once nothing closer has turned up.
+    const radiusKm = this.radiusForElapsed(request);
+    if (radiusKm !== request.radiusKm) {
+      await this.requestRepo.update({ id: requestId }, { radiusKm });
+      request.radiusKm = radiusKm;
+    }
 
-      for (const candidate of candidates) {
-        if (await this.tryLockDriver(candidate.driverId, requestId)) {
-          await this.makeOffer(request, candidate);
-          return;
-        }
-        // Lost the race for this driver — skip and try the next one.
-        excludeDriverIds.push(candidate.driverId);
-      }
+    // One lookup per wave: the query already orders by distance, so a wider
+    // circle never costs match quality — it only adds farther fallbacks after
+    // the nearest ones. Ring-by-ring stepping would just repeat this query.
+    const candidates =
+      await this.availabilityService.findNearbyAvailableDrivers(
+        fromLat,
+        fromLng,
+        radiusKm * 1000,
+        { excludeDriverIds },
+      );
 
-      if (radiusKm >= MAX_RADIUS_KM) {
-        await this.handleEmptySweep(request);
+    for (const candidate of candidates) {
+      if (await this.tryLockDriver(candidate.driverId, requestId)) {
+        await this.makeOffer(request, candidate);
         return;
       }
-      radiusKm = Math.min(radiusKm + RADIUS_STEP_KM, MAX_RADIUS_KM);
-      await this.requestRepo.update({ id: requestId }, { radiusKm });
+      // Lost the race for this driver — skip and try the next one.
+      excludeDriverIds.push(candidate.driverId);
     }
+
+    await this.handleEmptySweep(request);
+  }
+
+  /**
+   * How far this request may reach right now: [INITIAL_RADIUS_KM] at the
+   * moment it was created, widening linearly to [MAX_RADIUS_KM] by the time
+   * the search window closes.
+   *
+   * Tying the growth to the window rather than a fixed step means the reach
+   * always spreads over the whole wait, whatever the TTL is set to.
+   */
+  private radiusForElapsed(
+    request: InstantRideRequestEntity,
+    now: number = Date.now(),
+  ): number {
+    const start = request.createdAt?.getTime();
+    const end = request.expiresAt?.getTime();
+    if (start == null || end == null || end <= start) {
+      return Math.max(request.radiusKm ?? INITIAL_RADIUS_KM, INITIAL_RADIUS_KM);
+    }
+    const progress = Math.min(1, Math.max(0, (now - start) / (end - start)));
+    const grown =
+      INITIAL_RADIUS_KM + (MAX_RADIUS_KM - INITIAL_RADIUS_KM) * progress;
+    // Never shrink: a raise re-dispatches an already-widened request.
+    return Math.round(Math.max(grown, request.radiusKm ?? 0) * 100) / 100;
   }
 
   /**
@@ -211,6 +246,10 @@ export class InstantDispatchService {
       { status: InstantRequestStatus.OFFERED },
     );
 
+    // Labels follow the driver's app language (registered with the device).
+    const locale = await this.notifications.getPreferredLocale(
+      candidate.driverId,
+    );
     const routeMetrics = buildInstantOfferRouteMetrics({
       fromPoint: request.fromPoint,
       toPoint: request.toPoint,
@@ -218,16 +257,22 @@ export class InstantDispatchService {
       fareEstimate: request.fareEstimate,
       currency: request.currency,
       seatCount: request.seatCount,
+      locale,
+      // The sweep already measured this driver's distance to the pickup, so
+      // the offer card can show it without a second spatial query.
+      pickupDistanceMeters: candidate.distanceMeters,
+    });
+    const pushText = buildInstantOfferPushText({
+      fromName: request.fromName,
+      toName: request.toName,
+      earningsLabel: routeMetrics.earningsLabel,
+      locale,
     });
 
     await this.notifications
       .sendPush(candidate.driverId, {
-        title: 'طلب رحلة جديدة',
-        body: [
-          'رحلة مباشرة بدون توقف',
-          `من ${request.fromName} إلى ${request.toName}`,
-          routeMetrics.earningsLabel,
-        ].join('\n'),
+        title: pushText.title,
+        body: pushText.body,
         type: 'instant_offer',
         data: {
           offerId: offer.id,

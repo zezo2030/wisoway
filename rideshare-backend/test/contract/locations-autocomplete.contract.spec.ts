@@ -2,6 +2,7 @@ import { BadGatewayException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { LocationsService } from '../../src/modules/locations/locations.service';
+import { PlacesRateLimiter } from '../../src/modules/locations/places-rate-limiter';
 
 jest.mock('axios');
 
@@ -16,6 +17,14 @@ describe('GET /locations/autocomplete (Contract)', () => {
   const configService = {
     get: jest.fn(() => undefined),
   } as unknown as ConfigService;
+
+  // LocationsService gained a PlacesRateLimiter constructor argument; without
+  // it every call here died on `this.rateLimiter.consume` being undefined.
+  // These contract tests are about the response shape, so the limiter always
+  // allows.
+  const rateLimiter = {
+    consume: jest.fn(async () => ({ allowed: true, retryAfterSeconds: 0 })),
+  } as unknown as PlacesRateLimiter;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -32,7 +41,7 @@ describe('GET /locations/autocomplete (Contract)', () => {
   });
 
   it('returns an empty 200 response when q is shorter than 2 chars', async () => {
-    const service = new LocationsService(configService);
+    const service = new LocationsService(configService, rateLimiter);
 
     await expect(
       service.autocomplete({ q: 'a', sessionToken: 'abc' }, 'user-1'),
@@ -56,7 +65,7 @@ describe('GET /locations/autocomplete (Contract)', () => {
         ],
       },
     } as never);
-    const service = new LocationsService(configService);
+    const service = new LocationsService(configService, rateLimiter);
 
     const label = 'Queen Alia International Airport، Amman، Jordan';
     await expect(
@@ -72,6 +81,9 @@ describe('GET /locations/autocomplete (Contract)', () => {
           primaryText: 'Queen Alia International Airport',
           secondaryText: 'Amman، Jordan',
           description: label,
+          // Part of PlaceSuggestionDto; null when the caller sends no lat/lng
+          // to measure from.
+          distanceMeters: null,
         },
       ],
     });
@@ -79,7 +91,7 @@ describe('GET /locations/autocomplete (Contract)', () => {
 
   it('maps provider failures to 502', async () => {
     mockedAxios.get.mockRejectedValueOnce(new Error('network down'));
-    const service = new LocationsService(configService);
+    const service = new LocationsService(configService, rateLimiter);
 
     await expect(
       service.autocomplete({ q: 'amman', sessionToken: 'session-1' }, 'user-1'),

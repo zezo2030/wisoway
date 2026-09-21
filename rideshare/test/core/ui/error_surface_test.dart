@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rideshare/l10n/generated/app_localizations.dart';
 
 import 'package:rideshare/core/errors/failure.dart';
 import 'package:rideshare/core/ui/error_surface.dart';
@@ -12,6 +13,13 @@ void main() {
       TextDirection textDirection = TextDirection.rtl,
     }) {
       return MaterialApp(
+        // The locale, not the text direction, selects the error copy — so the
+        // harness has to set one the way the real app does.
+        locale: textDirection == TextDirection.rtl
+            ? const Locale('ar')
+            : const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Directionality(
           textDirection: textDirection,
           child: Scaffold(

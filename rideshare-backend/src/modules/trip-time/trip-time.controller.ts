@@ -89,7 +89,8 @@ export class TripTimeController {
 
   @Get('bookings/:id/presence-prompt')
   @ApiOperation({
-    summary: 'Passenger reads everything the "are you in the vehicle?" screen renders',
+    summary:
+      'Passenger reads everything the "are you in the vehicle?" screen renders',
   })
   async presencePrompt(
     @Param('id') bookingId: string,
