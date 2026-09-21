@@ -159,3 +159,13 @@ rideshare-backend/config/firebase-adminsdk.json
 
 # Runtime-uploaded files (not source)
 rideshare-backend/uploads/
+
+# QA fixtures holding live auth tokens — never commit
+rideshare-backend/qa/accounts.json
+
+# Personal/scratch media accidentally dropped into assets
+rideshare/assets/images/My Pictures.rar
+rideshare/assets/images/My Pictures/
+
+# Flutter golden-test failure artifacts
+**/test/**/failures/

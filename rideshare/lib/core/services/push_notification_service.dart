@@ -6,12 +6,15 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/notification_model.dart';
+import 'instant_counter_offer_actions.dart';
 import 'instant_offer_actions.dart';
 import 'notification_navigation_service.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
+import '../constants/app_constants.dart';
 
 class PushNotificationService {
   PushNotificationService._();
@@ -164,17 +167,36 @@ class PushNotificationService {
     );
   }
 
+  /// The language the app is currently using ('ar' | 'en'), as persisted by
+  /// LocalizationService. Sent with device registration so server-rendered
+  /// pushes (instant offers, iOS alerts) follow the app language.
+  static Future<String> appLanguage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final stored = prefs.getString(AppConstants.keyLanguage);
+      if (stored != null && stored.toLowerCase().startsWith('en')) {
+        return AppConstants.langEnglish;
+      }
+    } catch (_) {
+      // fall through to the default
+    }
+    return AppConstants.langArabic;
+  }
+
   static Future<bool> registerDevice({
     required String token,
     required String platform,
     String? appVersion,
+    String? locale,
   }) async {
     try {
+      final language = locale ?? await appLanguage();
       final response = await ApiClient().post(
         ApiEndpoints.notificationDevices,
         data: {
           'token': token,
           'platform': platform,
+          'locale': language,
           if (appVersion != null) 'appVersion': appVersion,
         },
       );
@@ -182,6 +204,25 @@ class PushNotificationService {
     } catch (e) {
       if (kDebugMode) print('Failed to register device token: $e');
       return false;
+    }
+  }
+
+  /// Re-register the current FCM token with a new app language. Best effort:
+  /// silently does nothing when there is no token or the user is signed out.
+  static Future<void> syncLanguage(String languageCode) async {
+    try {
+      final token = _currentToken ?? await FirebaseMessaging.instance.getToken();
+      if (token == null || token.isEmpty) return;
+      _currentToken = token;
+      final platform =
+          defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
+      await registerDevice(
+        token: token,
+        platform: platform,
+        locale: languageCode,
+      );
+    } catch (e) {
+      if (kDebugMode) print('Failed to sync device language: $e');
     }
   }
 
@@ -207,6 +248,19 @@ class PushNotificationService {
     if (type == NotificationType.bookingCreated && !kIsWeb) {
       final shown = await _showAndroidBookingNotification(data);
       if (shown) return;
+    }
+
+    if (type == NotificationType.instantCounterOffer) {
+      // A bid is a decision with a 30-second window: show the card itself, not
+      // a tray notification the passenger has to notice and then tap.
+      final offerId = data['offerId']?.toString();
+      if (offerId != null &&
+          InstantCounterOfferActions.isSheetOpen &&
+          InstantCounterOfferActions.openOfferId == offerId) {
+        return;
+      }
+      unawaited(InstantCounterOfferActions.handle(data));
+      return;
     }
 
     if (type == NotificationType.instantOffer && !kIsWeb) {

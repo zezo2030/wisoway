@@ -19,6 +19,18 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
+fun Project.forceCompileSdk36() {
+    val android = extensions.findByName("android") ?: return
+    android.javaClass.methods
+        .firstOrNull { it.name == "setCompileSdk" && it.parameterCount == 1 }
+        ?.invoke(android, 36)
+}
+
+subprojects {
+    if (name == "app") return@subprojects
+    afterEvaluate { forceCompileSdk36() }
+}
+
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }

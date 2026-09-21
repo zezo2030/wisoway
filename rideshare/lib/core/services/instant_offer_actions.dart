@@ -132,21 +132,14 @@ class InstantOfferActions {
       id: offerId,
       requestId: requestId,
       expiresAt: expiresAt,
-      request: InstantRequestSummary(
-        id: requestId,
-        fromName: seed['fromName']?.toString() ?? '—',
-        toName: seed['toName']?.toString() ?? '—',
-        currency: seed['currency']?.toString() ?? 'JOD',
-        seatCount: 1,
-        fareEstimate: seed['fareEstimate']?.toString(),
-        passengerFare: seed['passengerFare']?.toString(),
-        distanceKm: seed['distanceKm']?.toString(),
-        durationMinutes: seed['durationMinutes']?.toString(),
-        distanceLabel: seed['distanceLabel']?.toString(),
-        durationLabel: seed['durationLabel']?.toString(),
-        earningsLabel: seed['earningsLabel']?.toString(),
-        tripTypeLabel: seed['tripTypeLabel']?.toString(),
-      ),
+      request: InstantRequestSummary.fromJson({
+        ...seed,
+        'id': requestId,
+        // Defaulted rather than trusted: a malformed payload would otherwise
+        // render an offer with two blank endpoints.
+        'fromName': seed['fromName']?.toString() ?? '—',
+        'toName': seed['toName']?.toString() ?? '—',
+      }),
     );
   }
 }

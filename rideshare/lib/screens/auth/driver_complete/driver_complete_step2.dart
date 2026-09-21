@@ -72,9 +72,8 @@ class DriverCompleteStep2 extends StatelessWidget {
               Icons.keyboard_arrow_down_rounded,
               color: T.onSurfaceVariant(context),
             ),
-            validator: (_) => state.vehicleType == null
-                ? l10n.vehicleTypeValidation
-                : null,
+            validator: (_) =>
+                state.vehicleType == null ? l10n.vehicleTypeValidation : null,
           ),
           const SizedBox(height: 14),
           AuthTextField(
@@ -97,23 +96,7 @@ class DriverCompleteStep2 extends StatelessWidget {
                 : null,
           ),
           const SizedBox(height: 14),
-          AuthTextField(
-            controller: state.seatsController,
-            label: l10n.vehicleSeatsRequiredLabel,
-            helper: l10n.vehicleSeatsDocHint,
-            icon: IconsaxPlusLinear.people,
-            keyboardType: TextInputType.number,
-            // Seats always follow the vehicle-type template.
-            readOnly: true,
-            validator: (v) {
-              if (v == null || v.trim().isEmpty) {
-                return l10n.vehicleSeatsRequired;
-              }
-              final seats = int.tryParse(v.trim());
-              if (seats == null || seats < 1) return l10n.vehicleSeatsInvalid;
-              return null;
-            },
-          ),
+          _buildSeatsSummary(context),
           const SizedBox(height: 22),
           DocumentUploadBox(
             label: l10n.driverLicenseRequired,
@@ -125,6 +108,86 @@ class DriverCompleteStep2 extends StatelessWidget {
           const SizedBox(height: 26),
           AuthPrimaryButton(label: l10n.continueLabel, onPressed: onContinue),
         ],
+      ),
+    );
+  }
+
+  /// Seat capacity is a property of the vehicle type, never a driver input, so
+  /// it is rendered as a read-only summary that mirrors the field chrome.
+  Widget _buildSeatsSummary(BuildContext context) {
+    final l10n = context.l10n;
+    final seats = state.seatsController.text.trim();
+    final hasSeats = seats.isNotEmpty;
+
+    return Semantics(
+      readOnly: true,
+      label:
+          '${l10n.vehicleSeats}: ${hasSeats ? seats : l10n.vehicleSeatsPickTypeFirst}',
+      child: Container(
+        padding: const EdgeInsetsDirectional.only(
+          start: 10,
+          end: 14,
+          top: 12,
+          bottom: 12,
+        ),
+        decoration: BoxDecoration(
+          color: T.surfaceVariant(context).withValues(alpha: 0.4),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: T.outline(context)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: T.primary(context).withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                IconsaxPlusLinear.people,
+                size: 20,
+                color: T.primary(context),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    l10n.vehicleSeats,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: T.onSurface(context),
+                    ),
+                  ),
+                  Text(
+                    l10n.vehicleSeatsAutoHint,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: T.onSurfaceVariant(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              hasSeats ? seats : l10n.vehicleSeatsPickTypeFirst,
+              style: TextStyle(
+                fontSize: hasSeats ? 20 : 12,
+                fontWeight: hasSeats ? FontWeight.w800 : FontWeight.w500,
+                color: hasSeats
+                    ? T.primary(context)
+                    : T.onSurfaceVariant(context),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

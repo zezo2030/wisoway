@@ -8,9 +8,11 @@
 #   docker compose build
 #   docker compose up -d
 #
-# Edge entry: http://<host>/        -> dashboard
-#             http://<host>/api/    -> backend
-#             http://<host>/socket.io/ -> backend WS
+# Edge entry (HTTP; no Let's Encrypt certs required):
+#   http://<host>/            -> dashboard
+#   http://<host>/api/        -> backend
+#   http://<host>/socket.io/  -> backend WS
+# For production TLS, mount docker/nginx/nginx.ssl.conf after certs exist.
 
 services:
   postgres:
@@ -64,6 +66,8 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
+      # Skip Twilio SMS during development; OTP codes are printed in backend logs.
+      OTP_PROVIDER: ${OTP_PROVIDER:-local}
       # Absolute path inside the container (image has no ./config unless mounted below)
       FIREBASE_SERVICE_ACCOUNT_PATH: /app/config/firebase-adminsdk.json
       POSTGRES_HOST: postgres

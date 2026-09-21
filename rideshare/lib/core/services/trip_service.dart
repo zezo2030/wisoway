@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../models/trip_model.dart';
 import '../../models/location_model.dart';
 import '../../models/trip_fee_quote.dart';
+import '../../models/trip_price_suggestion.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
 
@@ -133,6 +134,38 @@ class TripService {
       return null;
     } catch (e) {
       debugPrint('❌ Error getting trip fee quote: $e');
+      return null;
+    }
+  }
+
+  /// Suggested per-seat price band for a route, plus the currency the trip
+  /// will be published in (derived server-side from the departure country).
+  ///
+  /// Returns null on failure; step 2 simply hides the hint line rather than
+  /// blocking the driver.
+  Future<TripPriceSuggestion?> getPriceSuggestion({
+    required double fromLat,
+    required double fromLng,
+    required double toLat,
+    required double toLng,
+  }) async {
+    try {
+      final response = await _api.get(
+        ApiEndpoints.priceSuggestion,
+        queryParameters: {
+          'fromLat': fromLat,
+          'fromLng': fromLng,
+          'toLat': toLat,
+          'toLng': toLng,
+        },
+      );
+      final data = response is Map ? (response['data'] ?? response) : response;
+      if (data is Map) {
+        return TripPriceSuggestion.fromJson(Map<String, dynamic>.from(data));
+      }
+      return null;
+    } catch (e) {
+      debugPrint('❌ Error getting price suggestion: $e');
       return null;
     }
   }

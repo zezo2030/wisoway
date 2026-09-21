@@ -170,7 +170,9 @@ export class AddPresenceConfirmation1746600000000 implements MigrationInterface 
       `ALTER TABLE "wallet_accounts" DROP COLUMN IF EXISTS "reservedBalance"`,
     );
 
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_trips_presence_unsettled"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_trips_presence_unsettled"`,
+    );
     await queryRunner.query(
       `ALTER TABLE "trips" DROP CONSTRAINT IF EXISTS "fk_trips_driver_fee_hold"`,
     );
@@ -183,8 +185,12 @@ export class AddPresenceConfirmation1746600000000 implements MigrationInterface 
         DROP COLUMN IF EXISTS "presenceReviewFlagged"
     `);
 
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_booking_seats_disputed"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_booking_seats_presence"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_booking_seats_disputed"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_booking_seats_presence"`,
+    );
     await queryRunner.query(
       `ALTER TABLE "booking_seats" DROP CONSTRAINT IF EXISTS "fk_booking_seats_presence_resolved_by"`,
     );

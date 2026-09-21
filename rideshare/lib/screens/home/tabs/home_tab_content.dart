@@ -10,10 +10,11 @@ import '../../../models/trip_model.dart';
 import '../../../models/user_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/trip_provider.dart';
-import '../../../core/services/location_service.dart';
 import '../../../widgets/notification_icon_button.dart';
 import '../widgets/default_avatar.dart';
-import '../widgets/nearby_trip_card.dart';
+import '../widgets/ride_mode_card.dart';
+import '../widgets/suggested_trips_carousel.dart';
+import '../widgets/trust_strip.dart';
 import '../../../widgets/common/empty_state.dart';
 import '../../passenger/instant_ride_request_screen.dart';
 
@@ -42,7 +43,9 @@ class HomeTabContent extends StatefulWidget {
 }
 
 class _HomeTabContentState extends State<HomeTabContent> {
-  final LocationService _locationService = LocationService();
+  /// How many suggested trips the carousel carries before "view all" takes over.
+  static const int _maxSuggestedTrips = 8;
+
   late final DateTime _activeTripsMinDepartureTime;
 
   @override
@@ -74,10 +77,16 @@ class _HomeTabContentState extends State<HomeTabContent> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(child: _buildHeader(context)),
+              SliverToBoxAdapter(child: _buildRideModes(context)),
               SliverToBoxAdapter(child: _buildSearchBar(context)),
-              SliverToBoxAdapter(child: _buildInstantRideCta(context)),
               SliverToBoxAdapter(child: _buildLocationSection(context)),
-              SliverToBoxAdapter(child: _buildNearbyTripsSection(context)),
+              SliverToBoxAdapter(child: _buildSuggestedTripsSection(context)),
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(20, 8, 20, 0),
+                  child: TrustStrip(),
+                ),
+              ),
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
@@ -86,145 +95,119 @@ class _HomeTabContentState extends State<HomeTabContent> {
     );
   }
 
-  /// "اطلب الآن" entry — opens the on-demand instant-ride request flow.
-  Widget _buildInstantRideCta(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
-      child: Material(
-        color: T.primary(context),
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => InstantRideRequestScreen(
-                initialFrom: widget.userLocation,
-              ),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: T.onPrimary(context).withValues(alpha: 0.18),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.electric_bolt,
-                    color: T.onPrimary(context),
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        context.l10n.instantRequestNowTitle,
-                        style: TextStyle(
-                          color: T.onPrimary(context),
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        context.l10n.instantRequestNowSubtitle,
-                        style: TextStyle(
-                          color: T.onPrimary(context).withValues(alpha: 0.85),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(
-                  IconsaxPlusBold.arrow_left_2,
-                  color: T.onPrimary(context),
-                  size: 22,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildHeader(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Builder(
-            builder: (context) => Semantics(
-              label: context.l10n.openMenu,
-              button: true,
-              child: IconButton(
-                icon: const Icon(IconsaxPlusLinear.menu_1, size: 28),
-                onPressed: widget.onOpenDrawer,
-                color: T.onSurface(context),
-                tooltip: context.l10n.sideMenu,
+          Row(
+            children: [
+              Builder(
+                builder: (context) => Semantics(
+                  label: context.l10n.openMenu,
+                  button: true,
+                  child: IconButton(
+                    icon: const Icon(IconsaxPlusLinear.menu_1, size: 28),
+                    onPressed: widget.onOpenDrawer,
+                    color: T.onSurface(context),
+                    tooltip: context.l10n.sideMenu,
+                  ),
+                ),
               ),
+              const Spacer(),
+              NotificationIconButton(
+                iconColor: T.onSurface(context),
+                backgroundColor: AppColors.transparent,
+                iconSize: 28,
+              ),
+              const SizedBox(width: 8),
+              _buildAvatar(context),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            context.l10n.whereDoYouWantToGo,
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: T.onSurface(context),
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              context.l10n.whereDoYouWantToGo,
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: T.onSurface(context),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: NotificationIconButton(
-              iconColor: T.onSurface(context),
-              backgroundColor: AppColors.transparent,
-              iconSize: 28,
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () {},
-            child: Container(
-              width: 45,
-              height: 45,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: T.primary(context),
-                border: Border.all(color: T.outline(context), width: 2),
-              ),
-              child:
-                  widget.user?.photoUrl != null &&
-                      widget.user!.photoUrl!.isNotEmpty
-                  ? ClipOval(
-                      child: CachedNetworkImage(
-                        imageUrl: widget.user!.photoUrl!,
-                        fit: BoxFit.cover,
-                        errorWidget: (context, url, error) =>
-                            const DefaultAvatar(),
-                      ),
-                    )
-                  : const DefaultAvatar(),
-            ),
+          const SizedBox(height: 4),
+          Text(
+            context.l10n.homeChooseModeSubtitle,
+            style: TextStyle(fontSize: 14, color: T.onSurfaceVariant(context)),
           ),
         ],
       ),
     );
   }
 
+  Widget _buildAvatar(BuildContext context) {
+    final photoUrl = widget.user?.photoUrl;
+
+    return GestureDetector(
+      onTap: widget.onOpenDrawer,
+      child: Container(
+        width: 45,
+        height: 45,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: T.primary(context),
+          border: Border.all(color: T.outline(context), width: 2),
+        ),
+        child: photoUrl != null && photoUrl.isNotEmpty
+            ? ClipOval(
+                child: CachedNetworkImage(
+                  imageUrl: photoUrl,
+                  fit: BoxFit.cover,
+                  errorWidget: (context, url, error) => const DefaultAvatar(),
+                ),
+              )
+            : const DefaultAvatar(),
+      ),
+    );
+  }
+
+  /// The two ways to travel: join a published trip, or hail a driver now.
+  Widget _buildRideModes(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: RideModeCard(
+                mode: RideMode.shared,
+                onPressed: () =>
+                    Navigator.pushNamed(context, RouteNames.tripsList),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: RideModeCard(
+                mode: RideMode.private,
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => InstantRideRequestScreen(
+                      initialFrom: widget.userLocation,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildSearchBar(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Container(
         decoration: BoxDecoration(
           color: T.surface(context),
@@ -255,7 +238,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                IconsaxPlusLinear.microphone,
+                IconsaxPlusLinear.gps,
                 color: T.primary(context),
                 size: 20,
               ),
@@ -280,97 +263,180 @@ class _HomeTabContentState extends State<HomeTabContent> {
   }
 
   Widget _buildLocationSection(BuildContext context) {
+    final l10n = context.l10n;
+    final hasLocation = widget.userLocation != null;
+
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(20, 8, 20, 16),
       decoration: BoxDecoration(
         color: T.surface(context),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: T.outlineVariant(context)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.black.withValues(alpha: 0.05),
+            color: AppColors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: T.primary(context).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              IconsaxPlusBold.location,
-              color: T.primary(context),
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  context.l10n.currentLocation,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: T.onSurfaceVariant(context),
-                  ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: T.primary(context).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        IconsaxPlusBold.location,
+                        color: T.primary(context),
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            l10n.currentLocation,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: T.onSurfaceVariant(context),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            widget.userLocation?.name ??
+                                l10n.determiningLocation,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: T.onSurface(context),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 3),
+                          Row(
+                            children: [
+                              if (widget.isLoadingLocation)
+                                const SizedBox(
+                                  width: 10,
+                                  height: 10,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 1.5,
+                                  ),
+                                )
+                              else
+                                Icon(
+                                  hasLocation
+                                      ? Icons.check_circle
+                                      : Icons.error_outline,
+                                  size: 12,
+                                  color: hasLocation
+                                      ? AppColors.success
+                                      : T.onSurfaceVariant(context),
+                                ),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  widget.isLoadingLocation
+                                      ? l10n.determiningLocation
+                                      : hasLocation
+                                      ? l10n.homeLocationAccurate
+                                      : l10n.homeLocationUnknown,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    color: hasLocation
+                                        ? AppColors.success
+                                        : T.onSurfaceVariant(context),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  widget.userLocation?.name ??
-                      context.l10n.determiningLocation,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: T.onSurface(context),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+              ),
             ),
-          ),
-          if (widget.isLoadingLocation)
-            const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          else
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: Icon(
-                    IconsaxPlusBold.gps,
-                    color: T.primary(context),
-                    size: 20,
-                  ),
-                  onPressed: widget.onRefreshLocation,
-                  tooltip: context.l10n.detectLocationAutomatically,
-                ),
-                IconButton(
-                  icon: Icon(
-                    IconsaxPlusBold.map,
-                    color: T.primary(context),
-                    size: 20,
-                  ),
-                  onPressed: widget.onChangeLocation,
-                  tooltip: context.l10n.chooseLocationManually,
-                ),
-              ],
+            _locationAction(
+              context,
+              icon: IconsaxPlusLinear.location,
+              label: l10n.changeLocation,
+              onTap: widget.onChangeLocation,
+              tooltip: l10n.chooseLocationManually,
             ),
-        ],
+            _locationAction(
+              context,
+              icon: IconsaxPlusLinear.gps,
+              label: l10n.homeDetectMyLocation,
+              onTap: widget.isLoadingLocation ? null : widget.onRefreshLocation,
+              tooltip: l10n.detectLocationAutomatically,
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildNearbyTripsSection(BuildContext context) {
+  /// One of the two labelled actions beside the current location.
+  Widget _locationAction(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback? onTap,
+    required String tooltip,
+  }) {
+    return Container(
+      width: 84,
+      decoration: BoxDecoration(
+        border: BorderDirectional(
+          start: BorderSide(color: T.outlineVariant(context)),
+        ),
+      ),
+      child: Tooltip(
+        message: tooltip,
+        child: InkWell(
+          onTap: onTap,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 20, color: T.primary(context)),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: T.onSurface(context),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSuggestedTripsSection(BuildContext context) {
     if (widget.userLocation == null) {
       return const SizedBox.shrink();
     }
@@ -384,9 +450,9 @@ class _HomeTabContentState extends State<HomeTabContent> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                context.l10n.nearbyTrips,
+                context.l10n.suggestedTripsTitle,
                 style: TextStyle(
-                  fontSize: 22,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: T.onSurface(context),
                 ),
@@ -398,7 +464,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
                 child: Text(
                   context.l10n.viewAll,
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 15,
                     color: T.primary(context),
                     fontWeight: FontWeight.w600,
                   ),
@@ -406,32 +472,9 @@ class _HomeTabContentState extends State<HomeTabContent> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           StreamBuilder<List<TripModel>>(
-            stream:
-                widget.userLocation != null &&
-                    Provider.of<AuthProvider>(
-                          context,
-                          listen: false,
-                        ).userModel !=
-                        null
-                ? Provider.of<TripProvider>(
-                    context,
-                    listen: false,
-                  ).getNearbyTripsStream(
-                    excludeDriverId: Provider.of<AuthProvider>(
-                      context,
-                      listen: false,
-                    ).userModel!.id,
-                    userLocation: widget.userLocation!,
-                    minDepartureTime: _activeTripsMinDepartureTime,
-                  )
-                : Provider.of<TripProvider>(
-                    context,
-                    listen: false,
-                  ).getActiveTripsStream(
-                    minDepartureTime: _activeTripsMinDepartureTime,
-                  ),
+            stream: _suggestedTripsStream(context),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(
@@ -485,52 +528,36 @@ class _HomeTabContentState extends State<HomeTabContent> {
                 );
               }
 
-              final displayedTrips = trips.take(5).toList();
-
-              return Column(
-                children: [
-                  ...displayedTrips.map((trip) {
-                    final distance = _locationService
-                        .calculateDistanceBetweenLocations(
-                          widget.userLocation!,
-                          trip.from,
-                        );
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: NearbyTripCard(
-                        trip: trip,
-                        distance: distance,
-                        onTap: () {
-                          Navigator.pushNamed(
-                            context,
-                            RouteNames.tripDetails,
-                            arguments: trip.id,
-                          );
-                        },
-                      ),
-                    );
-                  }),
-                  if (trips.length > 5)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton(
-                          onPressed: () {
-                            Navigator.pushNamed(context, RouteNames.tripsList);
-                          },
-                          child: Text(
-                            context.l10n.showMoreTrips(trips.length - 5),
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
+              return SuggestedTripsCarousel(
+                trips: trips.take(_maxSuggestedTrips).toList(),
+                onTripTap: (trip) => Navigator.pushNamed(
+                  context,
+                  RouteNames.tripDetails,
+                  arguments: trip.id,
+                ),
               );
             },
           ),
         ],
       ),
+    );
+  }
+
+  Stream<List<TripModel>> _suggestedTripsStream(BuildContext context) {
+    final tripProvider = Provider.of<TripProvider>(context, listen: false);
+    final user = Provider.of<AuthProvider>(context, listen: false).userModel;
+    final location = widget.userLocation;
+
+    if (location == null || user == null) {
+      return tripProvider.getActiveTripsStream(
+        minDepartureTime: _activeTripsMinDepartureTime,
+      );
+    }
+
+    return tripProvider.getNearbyTripsStream(
+      excludeDriverId: user.id,
+      userLocation: location,
+      minDepartureTime: _activeTripsMinDepartureTime,
     );
   }
 }

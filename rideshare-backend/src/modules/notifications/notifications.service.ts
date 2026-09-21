@@ -258,8 +258,7 @@ export class NotificationsService {
 
       const collapseKey = this.resolveCollapseKey(payload);
       const isAndroidCustomRich =
-        payload.type === 'booking_created' ||
-        payload.type === 'instant_offer';
+        payload.type === 'booking_created' || payload.type === 'instant_offer';
       const androidNotification: admin.messaging.AndroidNotification = {
         channelId: 'rideshare_notifications',
       };
@@ -288,23 +287,16 @@ export class NotificationsService {
       // booking_created / instant_offer: Android is data-only so
       // VisionWayMessagingService can render the rich custom layout.
       // iOS still gets a visible APNS alert.
-      const messageBase: Omit<
-        admin.messaging.Message,
-        'token' | 'tokens'
-      > = {
+      const messageBase: Omit<admin.messaging.Message, 'token' | 'tokens'> = {
         data,
         ...(webpush ? { webpush } : {}),
         android: {
           priority: 'high',
           ...(collapseKey ? { collapseKey } : {}),
-          ...(isAndroidCustomRich
-            ? {}
-            : { notification: androidNotification }),
+          ...(isAndroidCustomRich ? {} : { notification: androidNotification }),
         },
         apns: {
-          ...(Object.keys(apnsHeaders).length
-            ? { headers: apnsHeaders }
-            : {}),
+          ...(Object.keys(apnsHeaders).length ? { headers: apnsHeaders } : {}),
           payload: {
             aps: {
               alert: { title: payload.title, body: payload.body },
@@ -344,6 +336,22 @@ export class NotificationsService {
 
   // ─── Device Token Management (T025, T026) ───
 
+  /**
+   * App language ("ar" | "en") of the user's most recently seen active device.
+   * Falls back to Arabic when nothing has been registered yet.
+   */
+  async getPreferredLocale(userId: string): Promise<'ar' | 'en'> {
+    try {
+      const device = await this.deviceTokenRepo.findOne({
+        where: { userId, isActive: true },
+        order: { lastSeenAt: 'DESC' },
+      });
+      return device?.locale?.toLowerCase().startsWith('en') ? 'en' : 'ar';
+    } catch {
+      return 'ar';
+    }
+  }
+
   async registerDevice(
     userId: string,
     dto: RegisterDeviceDto,
@@ -365,6 +373,7 @@ export class NotificationsService {
       existing.platform = dto.platform;
       existing.isActive = true;
       existing.lastSeenAt = now;
+      if (dto.locale) existing.locale = dto.locale;
       await this.deviceTokenRepo.save(existing);
     } else {
       isNew = true;
@@ -374,6 +383,7 @@ export class NotificationsService {
         platform: dto.platform,
         isActive: true,
         lastSeenAt: now,
+        locale: dto.locale ?? null,
       });
       await this.deviceTokenRepo.save(existing);
     }
@@ -548,8 +558,7 @@ export class NotificationsService {
       const route = `${trip.fromName} - ${trip.toName}`;
       const departureLabel = this.formatDepartureLabelAr(trip.departureTime);
       const distanceKm = this.tripDistanceKm(trip);
-      const distanceLabel =
-        distanceKm != null ? `${distanceKm} كم` : undefined;
+      const distanceLabel = distanceKm != null ? `${distanceKm} كم` : undefined;
       const meetingPoint = (trip.fromAddress || trip.fromName || '').trim();
       const seatsLabel = `${trip.availableSeats} مقاعد`;
       const title = 'تم حجز مقعد في رحلتك المشتركة';
@@ -579,9 +588,7 @@ export class NotificationsService {
           seatsLabel,
           footerTitle,
           footerSubtitle,
-          ...(booking.user?.name
-            ? { passengerName: booking.user.name }
-            : {}),
+          ...(booking.user?.name ? { passengerName: booking.user.name } : {}),
         },
       });
 

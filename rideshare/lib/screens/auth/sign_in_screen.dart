@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
+
 import '../../providers/auth_provider.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/constants/countries.dart';
@@ -8,15 +9,27 @@ import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../widgets/auth/auth_language_switcher.dart';
 import '../../widgets/common/form_components.dart';
 import '../../widgets/country_code_picker.dart';
 
+/// Password sign-in, laid out to the VisionWay sign-in mockup: cityscape
+/// header, brand lockup, phone + password fields, and the three trust badges
+/// above the "new here?" bar.
+///
+/// Signing in is password-only. Phone verification still has its own entry
+/// points — after a sign-in with an unverified phone, and from the profile and
+/// security screens — so removing the OTP shortcut here does not strand anyone.
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
 
   @override
   State<SignInScreen> createState() => _SignInScreenState();
 }
+
+/// The trust badges keep their own accents, matching the mockup.
+const Color _trustedAccent = Color(0xFFE0A63C);
+const Color _fastAccent = Color(0xFF7C5CBF);
 
 class _SignInScreenState extends State<SignInScreen>
     with SingleTickerProviderStateMixin {
@@ -143,230 +156,151 @@ class _SignInScreenState extends State<SignInScreen>
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+
     return Scaffold(
       backgroundColor: T.surface(context),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(
-            IconsaxPlusLinear.arrow_right_3,
-            color: T.onSurface(context),
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      extendBodyBehindAppBar: true,
       body: Stack(
         children: [
-          // Background Decor
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    T.primary(context).withValues(alpha: 0.05),
+                    T.surface(context),
+                    T.primary(context).withValues(alpha: 0.02),
+                  ],
+                  stops: const [0.0, 0.4, 1.0],
+                ),
+              ),
+            ),
+          ),
+
+          // Pale halo behind the language pill.
           Positioned(
-            top: -50,
-            right: -100,
+            top: -110,
+            right: -80,
             child: Container(
               width: 300,
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: T.primary(context).withValues(alpha: 0.05),
+                color: T.primary(context).withValues(alpha: 0.06),
               ),
             ),
           ),
+
+          // Cityscape + car header bleeding off the leading edge.
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: ShaderMask(
+              shaderCallback: (rect) => const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.white, Colors.white, Colors.transparent],
+                stops: [0.0, 0.6, 1.0],
+              ).createShader(rect),
+              blendMode: BlendMode.dstIn,
+              child: Image.asset(
+                'assets/illustrations/auth/auth_signin_header.png',
+                width: screenWidth,
+                fit: BoxFit.fitWidth,
+                alignment: Alignment.topCenter,
+              ),
+            ),
+          ),
+
           SafeArea(
             child: FadeTransition(
               opacity: _fadeAnimation,
-              child: SlideTransition(
-                position: _slideAnimation,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24.0,
-                    vertical: 10.0,
-                  ),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Compact Header
-                        Center(
-                          child: Container(
-                            width: 70,
-                            height: 70,
-                            decoration: BoxDecoration(
-                              color: T.primary(context).withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              IconsaxPlusBold.login,
-                              size: 30,
-                              color: T.primary(context),
-                            ),
-                          ),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: const AuthLanguageSwitcher(),
+                      ),
+                      const SizedBox(height: 6),
+                      _buildBrandLockup(),
+                      const SizedBox(height: 20),
+                      Text(
+                        context.l10n.signInWelcomeBack,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.3,
+                          color: T.onSurface(context),
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          context.l10n.signIn,
-                          style: TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            color: T.onSurface(context),
-                            letterSpacing: -0.5,
-                          ),
-                          textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        context.l10n.signInSubtitle,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: T.textSecondary(context),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          context.l10n.signInSubtitle,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: T.textSecondary(context),
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Phone Input
-                        Container(
-                          decoration: BoxDecoration(
-                            color: T.surface(context),
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(
-                              color: T.outline(context).withValues(alpha: 0.5),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              CountryCodePicker(
-                                selectedCountry: _selectedCountry,
-                                onCountryChanged: (country) =>
-                                    setState(() => _selectedCountry = country),
-                                borderColor: Colors.transparent,
-                                width: 100,
-                              ),
-                              Container(
-                                width: 1,
-                                height: 30,
-                                color: T
-                                    .outline(context)
-                                    .withValues(alpha: 0.3),
-                              ),
-                              Expanded(
-                                child: TextFormField(
-                                  controller: _phoneController,
-                                  keyboardType: TextInputType.phone,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: T.onSurface(context),
-                                  ),
-                                  decoration: InputDecoration(
-                                    hintText: context.l10n.phoneNumber,
-                                    hintStyle: TextStyle(
-                                      color: T
-                                          .onSurfaceVariant(context)
-                                          .withValues(alpha: 0.4),
-                                      fontSize: 14,
-                                    ),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 16,
-                                    ),
-                                    border: InputBorder.none,
-                                    prefixIcon: Icon(
-                                      IconsaxPlusLinear.call,
-                                      color: T.primary(context),
-                                      size: 18,
-                                    ),
-                                  ),
-                                  validator: (v) =>
-                                      (v == null || v.isEmpty) ? context.l10n.required : null,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Password Field
-                        ModernInputField(
-                          controller: _passwordController,
-                          label: context.l10n.password,
-                          hint: '••••••••',
-                          icon: IconsaxPlusLinear.lock,
-                          obscureText: _obscurePassword,
-                          textDirection: TextDirection.ltr,
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword
-                                  ? IconsaxPlusLinear.eye_slash
-                                  : IconsaxPlusLinear.eye,
-                              size: 20,
-                              color: T.onSurfaceVariant(context),
-                            ),
-                            onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword,
-                            ),
-                          ),
-                          validator: (v) => (v == null || v.length < 6)
-                              ? context.l10n.passwordTooShort
-                              : null,
-                        ),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton(
-                            onPressed: _handleForgotPassword,
-                            child: Text(
-                              context.l10n.forgotPassword,
-                              style: TextStyle(
-                                color: T.primary(context),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Login Button
-                        PrimaryGradientButton(
-                          onPressed: _isLoading ? null : _handleSignIn,
-                          text: context.l10n.signIn,
-                          isLoading: _isLoading,
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // Sign Up Link
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                      ),
+                      const SizedBox(height: 24),
+                      SlideTransition(
+                        position: _slideAnimation,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Text(
-                              context.l10n.noAccountQuestion,
-                              style: TextStyle(
-                                color: T.textSecondary(context),
-                                fontSize: 14,
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pushReplacementNamed(
-                                context,
-                                RouteNames.accountTypeSelection,
-                              ),
-                              child: Text(
-                                context.l10n.createNewAccount,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: T.primary(context),
-                                  fontSize: 14,
+                            _buildPhoneField(),
+                            const SizedBox(height: 14),
+                            _buildPasswordField(),
+                            const SizedBox(height: 8),
+                            Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: GestureDetector(
+                                onTap: _isLoading
+                                    ? null
+                                    : _handleForgotPassword,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 4,
+                                  ),
+                                  child: Text(
+                                    context.l10n.forgotPassword,
+                                    style: TextStyle(
+                                      color: T.primary(context),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
+                            const SizedBox(height: 14),
+                            PrimaryGradientButton(
+                              onPressed: _isLoading ? null : _handleSignIn,
+                              text: context.l10n.signIn,
+                              isLoading: _isLoading,
+                              trailingIcon:
+                                  Directionality.of(context) ==
+                                      TextDirection.rtl
+                                  ? Icons.arrow_back_rounded
+                                  : Icons.arrow_forward_rounded,
+                            ),
+                            const SizedBox(height: 22),
+                            _buildTrustRow(),
+                            const SizedBox(height: 18),
+                            _buildSignUpBar(),
                           ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -374,6 +308,275 @@ class _SignInScreenState extends State<SignInScreen>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildBrandLockup() {
+    return Column(
+      children: [
+        Image.asset(
+          'assets/illustrations/auth/auth_visionway_logo.webp',
+          height: 62,
+          fit: BoxFit.contain,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'VisionWay',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.3,
+            color: T.onSurface(context),
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          context.l10n.welcomeBrandTagline,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: T.primary(context),
+          ),
+        ),
+      ],
+    );
+  }
+
+  BoxDecoration _fieldDecoration() {
+    return BoxDecoration(
+      color: T.surface(context),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: T.outline(context).withValues(alpha: 0.6)),
+      boxShadow: [
+        BoxShadow(
+          color: T.shadow(context).withValues(alpha: 0.05),
+          blurRadius: 18,
+          offset: const Offset(0, 6),
+        ),
+      ],
+    );
+  }
+
+  InputDecoration _fieldInputDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(
+        color: T.onSurfaceVariant(context).withValues(alpha: 0.55),
+        fontSize: 15,
+      ),
+      border: InputBorder.none,
+      enabledBorder: InputBorder.none,
+      focusedBorder: InputBorder.none,
+      errorBorder: InputBorder.none,
+      focusedErrorBorder: InputBorder.none,
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(vertical: 19),
+    );
+  }
+
+  Widget _buildPhoneField() {
+    return Container(
+      decoration: _fieldDecoration(),
+      child: Row(
+        children: [
+          const SizedBox(width: 16),
+          Icon(IconsaxPlusLinear.call, size: 20, color: T.primary(context)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextFormField(
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: T.onSurface(context),
+              ),
+              decoration: _fieldInputDecoration(context.l10n.phoneNumber),
+              validator: (v) =>
+                  (v == null || v.isEmpty) ? context.l10n.required : null,
+            ),
+          ),
+          Container(width: 1, height: 26, color: T.outline(context)),
+          CountryCodePicker(
+            selectedCountry: _selectedCountry,
+            onCountryChanged: (country) =>
+                setState(() => _selectedCountry = country),
+            borderColor: AppColors.transparent,
+            width: 124,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPasswordField() {
+    return Container(
+      decoration: _fieldDecoration(),
+      child: Row(
+        children: [
+          const SizedBox(width: 12),
+          InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () => setState(() => _obscurePassword = !_obscurePassword),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(
+                _obscurePassword
+                    ? IconsaxPlusLinear.lock
+                    : IconsaxPlusLinear.unlock,
+                size: 20,
+                color: T.primary(context),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextFormField(
+              controller: _passwordController,
+              obscureText: _obscurePassword,
+              textDirection: TextDirection.ltr,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: T.onSurface(context),
+              ),
+              decoration: _fieldInputDecoration(context.l10n.password),
+              validator: (v) => (v == null || v.length < 6)
+                  ? context.l10n.passwordTooShort
+                  : null,
+            ),
+          ),
+          const SizedBox(width: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrustRow() {
+    final l10n = context.l10n;
+    final separator = Container(
+      width: 1,
+      height: 40,
+      color: T.outline(context),
+    );
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: _TrustBadge(
+            icon: IconsaxPlusBold.medal_star,
+            color: _trustedAccent,
+            title: l10n.signInFeatureTrustedTitle,
+            body: l10n.signInFeatureTrustedBody,
+          ),
+        ),
+        separator,
+        Expanded(
+          child: _TrustBadge(
+            icon: IconsaxPlusBold.flash_circle,
+            color: _fastAccent,
+            title: l10n.signInFeatureFastTitle,
+            body: l10n.signInFeatureFastBody,
+          ),
+        ),
+        separator,
+        Expanded(
+          child: _TrustBadge(
+            icon: IconsaxPlusBold.shield_tick,
+            color: T.primary(context),
+            title: l10n.signInFeaturePrivacyTitle,
+            body: l10n.signInFeaturePrivacyBody,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSignUpBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+      decoration: BoxDecoration(
+        color: T.primary(context).withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            context.l10n.signInNewUserQuestion,
+            style: TextStyle(fontSize: 14, color: T.textSecondary(context)),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () => Navigator.pushReplacementNamed(
+              context,
+              RouteNames.accountTypeSelection,
+            ),
+            child: Text(
+              context.l10n.createNewAccount,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: T.primary(context),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One of the three accented badges above the sign-up bar.
+class _TrustBadge extends StatelessWidget {
+  const _TrustBadge({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.body,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: T.onSurface(context),
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                body,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  height: 1.4,
+                  color: T.textSecondary(context),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Icon(icon, size: 30, color: color),
+      ],
     );
   }
 }

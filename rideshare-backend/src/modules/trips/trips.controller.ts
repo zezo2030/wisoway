@@ -21,6 +21,7 @@ import { UpdateTripDto } from './dto/update-trip.dto';
 import { SearchTripsDto } from './dto/search-trips.dto';
 import { LocationBasedTripsDto } from './dto/location-based-trips.dto';
 import { SetSeatLockDto } from './dto/set-seat-lock.dto';
+import { PriceSuggestionQueryDto } from './dto/price-suggestion-query.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -106,6 +107,17 @@ export class TripsController {
       seatPrice: Number(seatPrice ?? 0),
       totalSeats: Number(totalSeats ?? 0),
     });
+  }
+
+  @Get('price-suggestion')
+  @UseGuards(RolesGuard)
+  @Roles('driver')
+  @ApiOperation({
+    summary: 'Suggested per-seat price band for a route, in its own currency',
+  })
+  @ApiResponse({ status: 200, description: 'Suggested price band' })
+  async priceSuggestion(@Query() query: PriceSuggestionQueryDto) {
+    return this.tripsService.getPriceSuggestion(query);
   }
 
   @Get(':id/pricing-preview')

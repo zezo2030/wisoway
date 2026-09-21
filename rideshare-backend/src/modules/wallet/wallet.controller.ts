@@ -64,6 +64,7 @@ export class WalletController {
   }
 
   @Post('driver/payout-requests')
+  @Roles('driver')
   @ApiOperation({ summary: 'Create manual payout request for driver earnings' })
   async createPayoutRequest(
     @CurrentUser('id') driverId: string,

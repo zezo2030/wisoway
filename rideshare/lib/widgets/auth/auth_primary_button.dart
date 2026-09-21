@@ -13,6 +13,7 @@ class AuthPrimaryButton extends StatelessWidget {
     required this.onPressed,
     this.loading = false,
     this.showArrow = true,
+    this.pinnedArrow = false,
     this.icon,
   });
 
@@ -21,6 +22,21 @@ class AuthPrimaryButton extends StatelessWidget {
   final bool loading;
   final bool showArrow;
 
+  /// Pins the arrow to the mockup's physical placement -- pointing right, drawn
+  /// to the left of the label -- instead of mirroring with the locale.
+  final bool pinnedArrow;
+
+  /// Material's directional arrows carry `matchTextDirection: true`, so the
+  /// glyph itself flips under an RTL [Directionality] no matter which IconData
+  /// is chosen. Rendering it under an explicit LTR scope is what actually pins
+  /// which way it points.
+  Widget _arrow(IconData data) => pinnedArrow
+      ? Directionality(
+          textDirection: TextDirection.ltr,
+          child: Icon(data, size: 20),
+        )
+      : Icon(data, size: 20);
+
   /// Replaces the directional arrow when set (e.g. a home icon).
   final IconData? icon;
 
@@ -28,7 +44,10 @@ class AuthPrimaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final isRtl = Directionality.of(context) == TextDirection.rtl;
     final trailing =
-        icon ?? (isRtl ? Icons.arrow_back_rounded : Icons.arrow_forward_rounded);
+        icon ??
+        (isRtl && !pinnedArrow
+            ? Icons.arrow_back_rounded
+            : Icons.arrow_forward_rounded);
 
     return Semantics(
       button: true,
@@ -62,7 +81,16 @@ class AuthPrimaryButton extends StatelessWidget {
                 )
               : Row(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  // An LTR row with the arrow first reproduces the mockup in
+                  // both locales: arrow on the physical left, label to its
+                  // right. Only the row's ordering is pinned -- the label still
+                  // renders RTL in Arabic.
+                  textDirection: pinnedArrow ? TextDirection.ltr : null,
                   children: [
+                    if (pinnedArrow && (showArrow || icon != null)) ...[
+                      _arrow(trailing),
+                      const SizedBox(width: 10),
+                    ],
                     Text(
                       label,
                       style: const TextStyle(
@@ -70,9 +98,9 @@ class AuthPrimaryButton extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    if (showArrow || icon != null) ...[
+                    if (!pinnedArrow && (showArrow || icon != null)) ...[
                       const SizedBox(width: 10),
-                      Icon(trailing, size: 20),
+                      _arrow(trailing),
                     ],
                   ],
                 ),

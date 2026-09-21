@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:rideshare/providers/auth_provider.dart';
+import '../../support/fake_auth_provider.dart';
 import 'package:rideshare/core/services/localization_service.dart';
 import 'package:rideshare/screens/settings/about_screen.dart';
 

@@ -22,6 +22,8 @@ object InstantOfferNotificationHelper {
     const val EXTRA_OFFER_ID = "instant_offer_id"
     const val EXTRA_PAYLOAD = "notification_payload"
 
+    private const val DEFAULT_OFFER_TTL_MS = 25_000L
+
     private val handler = Handler(Looper.getMainLooper())
     private val tickers = ConcurrentHashMap<String, Runnable>()
 
@@ -80,45 +82,67 @@ object InstantOfferNotificationHelper {
         secondsLeft: Int,
     ) {
         val offerId = data["offerId"] ?: return
+        // Follow the language the Flutter app is using, not the OS locale.
+        val s = NotificationLocale.strings(context)
         val fromName = data["fromName"]?.takeIf { it.isNotBlank() } ?: "—"
         val toName = data["toName"]?.takeIf { it.isNotBlank() } ?: "—"
+        // Prefer formatting the raw numbers locally so the units follow the
+        // app language; server-side labels are only a fallback.
         val distance =
-            data["distanceLabel"]?.takeIf { it.isNotBlank() }
-                ?: data["distanceKm"]?.let { "$it كم" }
+            data["distanceKm"]?.toDoubleOrNull()?.let { s.distanceLabel(it) }
+                ?: data["distanceLabel"]?.takeIf { it.isNotBlank() }
                 ?: "—"
         val duration =
-            data["durationLabel"]?.takeIf { it.isNotBlank() }
-                ?: data["durationMinutes"]?.let { "$it د" }
+            data["durationMinutes"]?.toDoubleOrNull()?.let { s.durationLabel(it.toInt()) }
+                ?: data["durationLabel"]?.takeIf { it.isNotBlank() }
                 ?: "—"
+        val fare = data["passengerFare"]?.takeIf { it.isNotBlank() } ?: data["fareEstimate"]
         val earnings =
-            data["earningsLabel"]?.takeIf { it.isNotBlank() }
-                ?: listOfNotNull(
-                        data["passengerFare"] ?: data["fareEstimate"],
-                        data["currency"],
-                    ).joinToString(" ")
-                    .ifBlank { "—" }
+            if (fare != null) {
+                s.earningsLabel(fare, data["currency"])
+            } else {
+                data["earningsLabel"]?.takeIf { it.isNotBlank() } ?: "—"
+            }
+        val tripType = s.tripTypeDirect
         val seats =
-            data["seatCountLabel"]?.takeIf { it.isNotBlank() }
-                ?: data["seatCount"]?.takeIf { it.isNotBlank() }?.let { "$it راكب" }
-                ?: "1 راكب"
+            data["seatCount"]?.toDoubleOrNull()?.let { s.passengers(it.toInt()) }
+                ?: data["seatCountLabel"]?.takeIf { it.isNotBlank() }
+                ?: s.passengers(1)
+
+        val collapsedLayout =
+            if (s.isRtl) R.layout.notification_instant_collapsed
+            else R.layout.notification_instant_collapsed_ltr
+        val expandedLayout =
+            if (s.isRtl) R.layout.notification_instant_expanded
+            else R.layout.notification_instant_expanded_ltr
 
         val collapsed =
-            RemoteViews(context.packageName, R.layout.notification_instant_collapsed).apply {
-                setTextViewText(R.id.instant_from_collapsed, "من $fromName")
-                setTextViewText(R.id.instant_to_collapsed, "إلى $toName")
+            RemoteViews(context.packageName, collapsedLayout).apply {
+                setTextViewText(R.id.instant_hdr_now_collapsed, s.now)
+                setTextViewText(R.id.instant_badge_collapsed, s.newInstantTrip)
+                setTextViewText(R.id.instant_from_collapsed, "${s.fromPrefix} $fromName")
+                setTextViewText(R.id.instant_to_collapsed, "${s.toPrefix} $toName")
                 setTextViewText(R.id.instant_earnings_collapsed, earnings)
             }
 
         val expanded =
-            RemoteViews(context.packageName, R.layout.notification_instant_expanded).apply {
+            RemoteViews(context.packageName, expandedLayout).apply {
+                setTextViewText(R.id.instant_hdr_now, s.now)
+                setTextViewText(R.id.instant_badge, s.newInstantTrip)
+                setTextViewText(R.id.instant_lbl_from, s.from)
+                setTextViewText(R.id.instant_lbl_to, s.to)
+                setTextViewText(R.id.instant_lbl_distance, s.distance)
+                setTextViewText(R.id.instant_lbl_duration, s.estimatedDuration)
+                setTextViewText(R.id.instant_lbl_earnings, s.earnings)
+                setTextViewText(R.id.instant_lbl_trip_type, s.tripType)
                 setTextViewText(R.id.instant_from, fromName)
                 setTextViewText(R.id.instant_to, toName)
                 setTextViewText(R.id.instant_distance, distance)
                 setTextViewText(R.id.instant_duration, duration)
                 setTextViewText(R.id.instant_earnings, earnings)
-                setTextViewText(R.id.instant_trip_type, seats)
-                setTextViewText(R.id.instant_btn_reject, "تجاهل")
-                setTextViewText(R.id.instant_btn_accept, "قبول الرحلة (${secondsLeft}ث)")
+                setTextViewText(R.id.instant_trip_type, tripType)
+                setTextViewText(R.id.instant_btn_reject, s.reject)
+                setTextViewText(R.id.instant_btn_accept, s.accept(secondsLeft))
                 setOnClickPendingIntent(
                     R.id.instant_btn_accept,
                     actionPendingIntent(context, offerId, ACTION_ACCEPT, data),
@@ -148,15 +172,15 @@ object InstantOfferNotificationHelper {
         val notification =
             NotificationCompat.Builder(context, BookingNotificationHelper.CHANNEL_ID)
                 .setSmallIcon(R.drawable.notification_icon)
-                .setColor(0xFF007D69.toInt())
-                .setContentTitle("طلب رحلة جديدة")
-                .setContentText("رحلة مباشرة بدون توقف")
+                .setColor(0xFF2DD4BF.toInt())
+                .setContentTitle(s.newInstantTrip)
+                .setContentText(s.routeLine(fromName, toName))
                 .setStyle(
                     NotificationCompat.BigTextStyle()
                         .bigText(
-                            "رحلة مباشرة بدون توقف\nمن $fromName إلى $toName\n$earnings · $seats",
+                            "${s.routeLine(fromName, toName)}\n$distance · $duration · $earnings · $tripType · $seats",
                         )
-                        .setBigContentTitle("طلب رحلة جديدة"),
+                        .setBigContentTitle(s.newInstantTrip),
                 )
                 .setCustomContentView(collapsed)
                 .setCustomBigContentView(expanded)
@@ -199,7 +223,7 @@ object InstantOfferNotificationHelper {
 
     private fun parseExpiresAtMs(raw: String?): Long {
         if (raw.isNullOrBlank()) {
-            return System.currentTimeMillis() + 12_000L
+            return System.currentTimeMillis() + DEFAULT_OFFER_TTL_MS
         }
         return try {
             val parser =
@@ -211,9 +235,9 @@ object InstantOfferNotificationHelper {
                     .apply { timeZone = TimeZone.getTimeZone("UTC") }
                     .parse(raw)
                     ?.time
-                ?: (System.currentTimeMillis() + 12_000L)
+                ?: (System.currentTimeMillis() + DEFAULT_OFFER_TTL_MS)
         } catch (_: Exception) {
-            System.currentTimeMillis() + 12_000L
+            System.currentTimeMillis() + DEFAULT_OFFER_TTL_MS
         }
     }
 }

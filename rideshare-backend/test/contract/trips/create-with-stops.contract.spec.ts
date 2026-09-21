@@ -54,8 +54,18 @@ describe('POST /trips with stops (Contract)', () => {
         notes: 'No smoking please.',
       };
 
-      expect(responseShape.stops).toHaveLength(2);
-      expect(responseShape.notes).toBe('No smoking please.');
+      // `responseShape.stops` is an asymmetric matcher, not an array, so the
+      // old `toHaveLength(2)` always threw. Apply the shape to a response
+      // echoing the request's stops, which is what the contract describes.
+      const response = {
+        id: '3b9c1f5e-7a2d-4c8b-9e1f-6d4a2b3c5d7e',
+        stops: request.stops,
+        notes: request.notes,
+      };
+      expect(response).toEqual(expect.objectContaining(responseShape));
+      expect(response.stops).toHaveLength(2);
+      expect(response.stops.map((s) => s.order)).toEqual([1, 2]);
+      expect(response.notes).toBe('No smoking please.');
     });
 
     it('should preserve stop order as submitted', () => {

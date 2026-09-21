@@ -755,7 +755,10 @@ class _TripManagementScreenState extends State<TripManagementScreen>
 
     return [
       // 1 — Header
-      _buildPreDepartureHeader(),
+      _buildPreDepartureHeader(
+        bookedSeats: entries.length,
+        totalSeats: trip.totalSeats,
+      ),
       const SizedBox(height: 20),
 
       // 2 + 3 — Route card with the facts strip inside the same surface
@@ -844,12 +847,38 @@ class _TripManagementScreenState extends State<TripManagementScreen>
   }
 
   /// Section 1 — circular back button at the start edge, centred title with a
-  /// filled check-circle, subtitle beneath.
+  /// state icon, subtitle beneath.
   ///
   /// The pre-departure state drops the AppBar so the screen reads like the
   /// mock, so the AppBar's trip actions move into the overflow menu at the end
   /// edge rather than being lost.
-  Widget _buildPreDepartureHeader() {
+  ///
+  /// The wording tracks the seats actually taken. It used to announce that
+  /// every seat was booked no matter what, so a driver opening the trip they
+  /// had just published was congratulated on a full car with nobody in it.
+  Widget _buildPreDepartureHeader({
+    required int bookedSeats,
+    required int totalSeats,
+  }) {
+    final isFull = totalSeats > 0 && bookedSeats >= totalSeats;
+    final hasBookings = bookedSeats > 0;
+
+    final String title;
+    final String subtitle;
+    if (!hasBookings) {
+      title = context.l10n.tripPublishedTitle;
+      subtitle = context.l10n.tripPublishedSubtitle;
+    } else if (isFull) {
+      title = context.l10n.tripBookedTitle;
+      subtitle = context.l10n.tripBookedSubtitle;
+    } else {
+      title = context.l10n.tripPartiallyBookedTitle;
+      subtitle = context.l10n.tripPartiallyBookedSubtitle(
+        bookedSeats,
+        totalSeats,
+      );
+    }
+
     return Row(
       children: [
         CircleIconButton(
@@ -863,11 +892,21 @@ class _TripManagementScreenState extends State<TripManagementScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.check_circle, size: 20, color: T.primary(context)),
+                  // A tick would claim something happened; an empty trip is
+                  // waiting, not done.
+                  Icon(
+                    hasBookings
+                        ? Icons.check_circle
+                        : Icons.schedule_rounded,
+                    size: 20,
+                    color: hasBookings
+                        ? T.primary(context)
+                        : T.onSurfaceVariant(context),
+                  ),
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(
-                      context.l10n.tripBookedTitle,
+                      title,
                       textAlign: TextAlign.center,
                       style: AppTextStyles.titleMedium.copyWith(
                         fontWeight: FontWeight.bold,
@@ -879,7 +918,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
               ),
               const SizedBox(height: 4),
               Text(
-                context.l10n.tripBookedSubtitle,
+                subtitle,
                 textAlign: TextAlign.center,
                 style: AppTextStyles.bodySmall.copyWith(
                   color: T.textSecondary(context),

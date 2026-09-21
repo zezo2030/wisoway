@@ -13,6 +13,10 @@ import 'step2_details.dart' show weekdayLabel;
 
 /// Wizard step 3 — read-only recap of everything the driver entered plus the
 /// publish notice. Publishing itself is triggered from the shell footer.
+///
+/// Laid out to the review mockup: the route runs left-to-right across the
+/// summary card rather than down it, and the facts underneath sit in one
+/// divided strip so the whole trip fits on a single screen.
 class Step3Review extends StatelessWidget {
   const Step3Review({
     super.key,
@@ -33,6 +37,8 @@ class Step3Review extends StatelessWidget {
   final TripFeeQuote? feeQuote;
   final bool isLoadingFeeQuote;
 
+  static const double _cardGap = 12;
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -45,21 +51,21 @@ class Step3Review extends StatelessWidget {
             title: context.l10n.reviewTripTitle,
             subtitle: context.l10n.reviewTripSubtitle,
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
           _buildSummaryCard(context),
           if (_feeNoticeContent(context) case final feeNotice?) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: _cardGap),
             feeNotice,
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: _cardGap),
           _buildExtrasCard(context),
-          const SizedBox(height: 16),
+          const SizedBox(height: _cardGap),
           _buildVehicleCard(context),
           if (wizard.notes.isNotEmpty) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: _cardGap),
             _buildNotesCard(context),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: _cardGap),
           _buildPublishNotice(context),
         ],
       ),
@@ -73,213 +79,217 @@ class Step3Review extends StatelessWidget {
     final departure = wizard.departureTime;
     final price = wizard.price;
 
-    return CreateTripCard(
+    return _sectionCard(
+      context,
+      icon: Icons.description_outlined,
+      title: context.l10n.tripSummarySection,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: T.primary(context).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  IconsaxPlusBroken.routing,
-                  size: 20,
-                  color: T.primary(context),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  context.l10n.tripSummaryTitle,
-                  style: AppTextStyles.titleMedium.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: T.onSurface(context),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          _verticalRoute(context),
+          _horizontalRoute(context),
           if (wizard.stops.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(
               '${context.l10n.stopsLabel}: '
               '${wizard.stops.map((s) => s.name).join(' • ')}',
               style: AppTextStyles.bodyMedium.copyWith(
+                fontSize: 12,
                 color: T.onSurfaceVariant(context),
               ),
             ),
           ],
-          const SizedBox(height: 20),
-          Divider(color: T.outline(context), height: 1),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _fact(
-                  context,
-                  icon: IconsaxPlusBroken.calendar_1,
-                  label: context.l10n.dateLabel,
-                  value: departure == null
-                      ? '—'
-                      : DateFormat.yMMMMEEEEd(locale).format(departure),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _fact(
-                  context,
-                  icon: IconsaxPlusBroken.clock,
-                  label: context.l10n.departureTimeLabel,
-                  value: departure == null
-                      ? '—'
-                      : DateFormat('hh:mm a', locale).format(departure),
-                ),
-              ),
-            ],
-          ),
+          Divider(color: T.outline(context), height: 1),
           const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _fact(
-                  context,
-                  icon: IconsaxPlusBroken.profile_2user,
-                  label: context.l10n.availableSeatsSection,
-                  value: context.l10n.seatsCount(wizard.availableSeatCount),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _fact(
-                  context,
-                  icon: IconsaxPlusBroken.wallet_1,
-                  label: context.l10n.pricePerSeat,
-                  value: price == null
-                      ? '—'
-                      : '${price.toStringAsFixed(2)} $currency',
-                ),
-              ),
-            ],
-          ),
+          _factStrip(context, [
+            _FactData(
+              icon: IconsaxPlusBroken.calendar_1,
+              label: context.l10n.dateLabel,
+              value: departure == null
+                  ? '—'
+                  : DateFormat.yMMMMEEEEd(locale).format(departure),
+            ),
+            _FactData(
+              icon: IconsaxPlusBroken.clock,
+              label: context.l10n.departureTimeLabel,
+              value: departure == null
+                  ? '—'
+                  : DateFormat('hh:mm a', locale).format(departure),
+            ),
+            _FactData(
+              icon: Icons.airline_seat_recline_normal_rounded,
+              label: context.l10n.availableSeatsSection,
+              value: context.l10n.seatsCount(wizard.availableSeatCount),
+            ),
+            _FactData(
+              icon: IconsaxPlusBroken.wallet_1,
+              label: context.l10n.pricePerSeat,
+              value: price == null
+                  ? '—'
+                  : '${price.toStringAsFixed(2)} $currency',
+            ),
+          ]),
         ],
       ),
     );
   }
 
-  Widget _verticalRoute(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  /// Origin on the leading side, destination on the trailing side, joined by a
+  /// dashed line with the car riding it — the mockup's route strip.
+  ///
+  /// Labels and values are two aligned rows sharing the same flex weights, so
+  /// the connector lines up with the place names at any text scale.
+  Widget _horizontalRoute(BuildContext context) {
+    final labelStyle = AppTextStyles.bodySmall.copyWith(
+      fontSize: 12,
+      fontWeight: FontWeight.bold,
+    );
+    final valueStyle = AppTextStyles.bodyLarge.copyWith(
+      fontSize: 14,
+      fontWeight: FontWeight.w700,
+      color: T.onSurface(context),
+    );
+
+    return Column(
       children: [
-        Column(
+        Row(
           children: [
-            Container(
-              width: 12,
-              height: 12,
-              decoration: BoxDecoration(
-                color: T.success(context),
-                shape: BoxShape.circle,
+            Expanded(
+              flex: 3,
+              child: Text(
+                context.l10n.fromLabel,
+                style: labelStyle.copyWith(color: T.success(context)),
               ),
             ),
-            Container(
-              width: 2,
-              height: 36,
-              margin: const EdgeInsets.symmetric(vertical: 4),
-              color: T.outlineVariant(context),
+            const Expanded(flex: 4, child: SizedBox.shrink()),
+            Expanded(
+              flex: 3,
+              child: Text(
+                context.l10n.toLabel,
+                textAlign: TextAlign.end,
+                style: labelStyle.copyWith(color: T.error(context)),
+              ),
             ),
-            Icon(IconsaxPlusBroken.car, size: 18, color: T.primary(context)),
-            Container(
-              width: 2,
-              height: 36,
-              margin: const EdgeInsets.symmetric(vertical: 4),
-              color: T.outlineVariant(context),
-            ),
-            Icon(Icons.location_on, size: 18, color: T.error(context)),
           ],
         ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                context.l10n.fromLabel,
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: T.success(context),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
+        const SizedBox(height: 6),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              flex: 3,
+              child: Text(
                 wizard.from?.name ?? '—',
-                style: AppTextStyles.bodyLarge.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: T.onSurface(context),
-                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: valueStyle,
               ),
-              const SizedBox(height: 28),
-              Text(
-                context.l10n.toLabel,
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: T.error(context),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
+            ),
+            Expanded(flex: 4, child: _routeConnector(context)),
+            Expanded(
+              flex: 3,
+              child: Text(
                 wizard.to?.name ?? '—',
-                style: AppTextStyles.bodyLarge.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: T.onSurface(context),
-                ),
+                textAlign: TextAlign.end,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: valueStyle,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  Widget _fact(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
+  Widget _routeConnector(BuildContext context) {
+    final line = T.outlineVariant(context);
+
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 18, color: T.primary(context)),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: T.success(context),
+            shape: BoxShape.circle,
+          ),
+        ),
+        Expanded(child: _DashedLine(color: line)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Icon(
+            IconsaxPlusBroken.car,
+            size: 20,
+            color: T.onSurfaceVariant(context),
+          ),
+        ),
+        Expanded(child: _DashedLine(color: line)),
+        Icon(Icons.location_on, size: 18, color: T.error(context)),
+      ],
+    );
+  }
+
+  /// The four trip facts as one divided strip, the way the mockup lines them
+  /// up under the route.
+  Widget _factStrip(BuildContext context, List<_FactData> facts) {
+    final children = <Widget>[];
+    for (var i = 0; i < facts.length; i++) {
+      if (i > 0) {
+        children.add(
+          Container(width: 1, height: 46, color: T.outline(context)),
+        );
+      }
+      children.add(Expanded(child: _fact(context, facts[i])));
+    }
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: children,
+      ),
+    );
+  }
+
+  Widget _fact(BuildContext context, _FactData fact) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                label,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  fontSize: 12,
-                  color: T.onSurfaceVariant(context),
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: AppTextStyles.bodyLarge.copyWith(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: T.onSurface(context),
+              Icon(fact.icon, size: 15, color: T.primary(context)),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  fact.label,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontSize: 11,
+                    color: T.onSurfaceVariant(context),
+                  ),
                 ),
               ),
             ],
           ),
-        ),
-      ],
+          const SizedBox(height: 6),
+          Text(
+            fact.value,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.bodyLarge.copyWith(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: T.onSurface(context),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -288,27 +298,22 @@ class Step3Review extends StatelessWidget {
   Widget _buildExtrasCard(BuildContext context) {
     return _sectionCard(
       context,
-      icon: Icons.more_horiz_rounded,
+      icon: Icons.more_vert_rounded,
       title: context.l10n.additionalDetailsTitle,
-      child: Column(
-        children: [
-          _row(
-            context,
-            icon: Icons.repeat_rounded,
-            label: context.l10n.tripRecurrence,
-            value: _recurrenceSummary(context),
-          ),
-          const SizedBox(height: 12),
-          _row(
-            context,
-            icon: IconsaxPlusBroken.shield_tick,
-            label: context.l10n.preventGenderMixing,
-            value: wizard.preventGenderMixing
-                ? context.l10n.yes
-                : context.l10n.no,
-          ),
-        ],
-      ),
+      child: _factStrip(context, [
+        _FactData(
+          icon: IconsaxPlusBroken.shield_tick,
+          label: context.l10n.preventGenderMixing,
+          value: wizard.preventGenderMixing
+              ? context.l10n.yes
+              : context.l10n.no,
+        ),
+        _FactData(
+          icon: Icons.repeat_rounded,
+          label: context.l10n.tripRecurrence,
+          value: _recurrenceSummary(context),
+        ),
+      ]),
     );
   }
 
@@ -335,40 +340,6 @@ class Step3Review extends StatelessWidget {
     return buffer.toString();
   }
 
-  Widget _row(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 18, color: T.primary(context)),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            label,
-            style: AppTextStyles.bodyLarge.copyWith(
-              color: T.onSurfaceVariant(context),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Flexible(
-          child: Text(
-            value,
-            textAlign: TextAlign.end,
-            style: AppTextStyles.bodyLarge.copyWith(
-              fontWeight: FontWeight.w600,
-              color: T.onSurface(context),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   // --- vehicle -------------------------------------------------------------
 
   Widget _buildVehicleCard(BuildContext context) {
@@ -386,14 +357,36 @@ class Step3Review extends StatelessWidget {
                 color: T.onSurfaceVariant(context),
               ),
             )
+          // Details lead, photo trails — the mockup puts the car on the far
+          // side of the card from its name.
           : Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        car.model.isNotEmpty ? car.model : '—',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.titleMedium.copyWith(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: T.onSurface(context),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _plateBadge(context, car.plateNumber),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(14),
                   child: SizedBox(
-                    width: 110,
-                    height: 78,
+                    width: 108,
+                    height: 72,
                     child: imageUrl != null && imageUrl.isNotEmpty
                         ? Image.network(
                             imageUrl,
@@ -402,23 +395,6 @@ class Step3Review extends StatelessWidget {
                                 _vehicleFallback(context),
                           )
                         : _vehicleFallback(context),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        car.model.isNotEmpty ? car.model : '—',
-                        style: AppTextStyles.titleMedium.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: T.onSurface(context),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      _plateBadge(context, car.plateNumber),
-                    ],
                   ),
                 ),
               ],
@@ -439,43 +415,47 @@ class Step3Review extends StatelessWidget {
     );
   }
 
+  /// Number plate as it looks on the car: the country strip, then the number.
   Widget _plateBadge(BuildContext context, String plate) {
+    const plateInk = Color(0xFF1B4D3E);
     final text = plate.isNotEmpty ? plate : '—';
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsetsDirectional.fromSTEB(4, 4, 12, 4),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF1B4D3E), width: 1.4),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: plateInk, width: 1.4),
       ),
-      child: Text(
-        text,
-        style: AppTextStyles.labelLarge.copyWith(
-          fontWeight: FontWeight.w800,
-          letterSpacing: 1.2,
-          color: const Color(0xFF1B4D3E),
-        ),
-      ),
-    );
-  }
-
-  // --- notes ---------------------------------------------------------------
-
-  Widget _buildNotesCard(BuildContext context) {
-    return _sectionCard(
-      context,
-      icon: Icons.chat_bubble_outline_rounded,
-      title: context.l10n.notesForPassengers,
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(IconsaxPlusBroken.message, size: 18, color: T.primary(context)),
-          const SizedBox(width: 10),
-          Expanded(
+          Container(
+            width: 22,
+            height: 26,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: plateInk,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Icon(
+              Icons.directions_car_rounded,
+              size: 13,
+              color: AppColors.white,
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Flexible so a long plate ellipsises instead of pushing the badge
+          // past the card on a narrow phone.
+          Flexible(
             child: Text(
-              wizard.notes,
-              style: AppTextStyles.bodyLarge.copyWith(
-                color: T.onSurface(context),
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.labelLarge.copyWith(
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.2,
+                color: plateInk,
               ),
             ),
           ),
@@ -484,49 +464,74 @@ class Step3Review extends StatelessWidget {
     );
   }
 
-  // --- fee notice ------------------------------------------------------------
+  // --- notes ---------------------------------------------------------------
+
+  Widget _buildNotesCard(BuildContext context) {
+    // The driver writes free text, so each line becomes its own bullet the way
+    // the mockup lists one instruction per row.
+    final lines = wizard.notes
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+
+    return _sectionCard(
+      context,
+      icon: Icons.chat_bubble_outline_rounded,
+      title: context.l10n.notesForPassengers,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < lines.length; i++) ...[
+            if (i > 0) const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 7),
+                  child: Icon(
+                    Icons.fiber_manual_record,
+                    size: 7,
+                    color: T.primary(context),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    lines[i],
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      fontSize: 14,
+                      color: T.onSurface(context),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // --- fee notice ----------------------------------------------------------
 
   /// The fee line for the review step. While the quote is loading, shows a
   /// neutral progress row; if it never loads, the row is omitted entirely —
   /// the backend still enforces the balance check at publish time, so this
   /// line is purely informational and must never block or misreport.
   Widget? _feeNoticeContent(BuildContext context) {
-    const feeBg = Color(0xFFE8F4FC);
-    const feeBorder = Color(0xFFB6D9F0);
-    const feeIcon = Color(0xFF2B6CB0);
-
-    Widget container(Widget child) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: feeBg,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: feeBorder),
-        ),
-        child: child,
-      );
-    }
-
     if (isLoadingFeeQuote) {
-      return container(
-        Row(
-          children: [
-            const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2, color: feeIcon),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                context.l10n.loading,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: T.onSurface(context),
-                ),
-              ),
-            ),
-          ],
+      return _noticeCard(
+        context,
+        leading: SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: T.primary(context),
+          ),
         ),
+        body: context.l10n.loading,
       );
     }
 
@@ -540,25 +545,17 @@ class Step3Review extends StatelessWidget {
     // literal (the deleted invoice dialogs both hardcoded '5%').
     final amount = price * wizard.availableSeatCount * quote.percent / 100;
 
-    return container(
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(IconsaxPlusBold.wallet_1, color: feeIcon),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              context.l10n.createTripFeeNotice(
-                _formatPercent(quote.percent),
-                amount.toStringAsFixed(2),
-                quote.currency,
-              ),
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: T.onSurface(context),
-              ),
-            ),
-          ),
-        ],
+    return _noticeCard(
+      context,
+      leading: Icon(
+        IconsaxPlusBold.wallet_1,
+        size: 20,
+        color: T.primary(context),
+      ),
+      body: context.l10n.createTripFeeNotice(
+        _formatPercent(quote.percent),
+        amount.toStringAsFixed(2),
+        quote.currency,
       ),
     );
   }
@@ -572,28 +569,71 @@ class Step3Review extends StatelessWidget {
   // --- publish notice ------------------------------------------------------
 
   Widget _buildPublishNotice(BuildContext context) {
-    const infoBlue = Color(0xFFE8F4FC);
-    const infoBlueBorder = Color(0xFFB6D9F0);
-    const infoIcon = Color(0xFF2B6CB0);
+    return _noticeCard(
+      context,
+      leading: Icon(
+        IconsaxPlusBold.shield_tick,
+        size: 20,
+        color: T.primary(context),
+      ),
+      title: context.l10n.publishTripNoticeTitle,
+      body: context.l10n.publishTripNotice,
+    );
+  }
 
+  /// Muted panel with a chipped icon: the mockup's closing notice, reused by
+  /// the fee line above it so the two read as one family.
+  Widget _noticeCard(
+    BuildContext context, {
+    required Widget leading,
+    required String body,
+    String? title,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: infoBlue,
+        color: T.surfaceVariant(context).withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: infoBlueBorder),
+        border: Border.all(color: T.outline(context)),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Icon(IconsaxPlusBold.shield_tick, color: infoIcon),
+          Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: T.surface(context),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: leading,
+          ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              context.l10n.publishTripNotice,
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: T.onSurface(context),
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (title != null) ...[
+                  Text(
+                    title,
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: T.onSurface(context),
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                ],
+                Text(
+                  body,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontSize: 12,
+                    color: T.onSurfaceVariant(context),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -616,18 +656,21 @@ class Step3Review extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: T.primary(context).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(11),
                 ),
-                child: Icon(icon, size: 20, color: T.primary(context)),
+                child: Icon(icon, size: 19, color: T.primary(context)),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   title,
                   style: AppTextStyles.titleMedium.copyWith(
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: T.onSurface(context),
                   ),
@@ -641,4 +684,59 @@ class Step3Review extends StatelessWidget {
       ),
     );
   }
+}
+
+/// One labelled fact in a [Step3Review] strip.
+class _FactData {
+  const _FactData({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+}
+
+/// The dashed rule the route strip is drawn on.
+class _DashedLine extends StatelessWidget {
+  const _DashedLine({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 2,
+      child: CustomPaint(painter: _DashedLinePainter(color)),
+    );
+  }
+}
+
+class _DashedLinePainter extends CustomPainter {
+  const _DashedLinePainter(this.color);
+
+  final Color color;
+
+  static const double _dash = 4;
+  static const double _gap = 4;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+
+    final y = size.height / 2;
+    for (var x = 0.0; x < size.width; x += _dash + _gap) {
+      final end = (x + _dash).clamp(0.0, size.width);
+      canvas.drawLine(Offset(x, y), Offset(end, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedLinePainter oldDelegate) =>
+      oldDelegate.color != color;
 }

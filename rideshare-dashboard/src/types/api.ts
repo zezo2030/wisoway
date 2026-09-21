@@ -52,6 +52,7 @@ export interface GetUsersParams extends PaginationParams {
   isActive?: boolean;
   registeredWithinDays?: number;
   isConfirmed?: boolean;
+  isDriverApproved?: boolean;
 }
 
 export interface ChangeUserRoleRequest {

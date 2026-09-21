@@ -9,8 +9,9 @@ import '../../models/location_model.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/services/location_service.dart';
 import '../../core/services/trip_service.dart';
-import '../../widgets/location_autocomplete_field.dart';
-import '../../widgets/location_picker_widget.dart';
+import '../../core/services/saved_places_scope.dart';
+import '../../widgets/route_fields_card.dart';
+import '../location/route_search_screen.dart';
 import '../../widgets/notification_icon_button.dart';
 import '../../core/theme/colors.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -96,17 +97,21 @@ class _TripsListScreenState extends State<TripsListScreen> {
   }
 
   Future<void> _changeLocation() async {
-    final location = await Navigator.push<LocationModel>(
+    // Search first, map second — the same path every other place in the app
+    // is chosen through.
+    final savedPlaces = savedPlacesFor(context);
+    final selection = await Navigator.push<RouteSelection>(
       context,
       MaterialPageRoute(
-        builder: (context) => LocationPickerWidget(
+        builder: (context) => RouteSearchScreen.singlePoint(
+          savedPlaces: savedPlaces,
           title: context.l10n.chooseYourLocation,
-          initialLocation: _userLocation,
-          onLocationSelected: (location) {},
+          initial: _userLocation,
         ),
       ),
     );
 
+    final location = selection?.from;
     if (location != null) {
       setState(() {
         _userLocation = location;
@@ -740,45 +745,23 @@ class _FilterSheetState extends State<_FilterSheet> {
               ),
             ),
             const SizedBox(height: 20),
-            // From location
-            Text(
-              ctx.l10n.fromLabel,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: T.onSurfaceVariant(ctx),
-              ),
-            ),
-            const SizedBox(height: 6),
-            LocationAutocompleteField(
-              controller: _fromController,
-              hint: ctx.l10n.chooseDeparturePoint,
-              mapPickerTitle: ctx.l10n.chooseDeparturePoint,
-              icon: Icons.trip_origin,
-              iconColor: AppColors.success,
-              initialLocation: _tmpFrom,
-              onLocationSelected: (location) {
-                setState(() => _tmpFrom = location);
-              },
-            ),
-            const SizedBox(height: 12),
-            // To location
-            Text(
-              ctx.l10n.toLabel,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: T.onSurfaceVariant(ctx),
-              ),
-            ),
-            const SizedBox(height: 6),
-            LocationAutocompleteField(
-              controller: _toController,
-              hint: ctx.l10n.chooseDestination,
-              mapPickerTitle: ctx.l10n.chooseDestination,
-              icon: Icons.location_on,
-              iconColor: T.error(ctx),
-              initialLocation: _tmpTo,
-              onLocationSelected: (location) {
-                setState(() => _tmpTo = location);
+            // Route filter — same picker as trip creation, so a place the user
+            // filters by resolves exactly as it would when booking.
+            RouteFieldsCard(
+              from: _tmpFrom,
+              to: _tmpTo,
+              originLabel: ctx.l10n.fromLabel,
+              destinationLabel: ctx.l10n.toLabel,
+              originHint: ctx.l10n.chooseDeparturePoint,
+              destinationHint: ctx.l10n.chooseDestination,
+              savedPlaces: savedPlacesFor(ctx),
+              onChanged: (from, to) {
+                setState(() {
+                  _tmpFrom = from;
+                  _tmpTo = to;
+                  _fromController.text = from?.name ?? '';
+                  _toController.text = to?.name ?? '';
+                });
               },
             ),
             const SizedBox(height: 12),

@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
-import 'package:provider/provider.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/route_names.dart';
-import '../../core/services/localization_service.dart';
 import '../../core/theme/colors.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../widgets/auth/auth_language_switcher.dart';
 
 /// Entry point of registration: pick passenger or driver.
 ///
@@ -62,123 +61,130 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
 
     return Scaffold(
       backgroundColor: T.surface(context),
-      body: Stack(
-        children: [
-          // Cityscape sits behind the header only; the cards cover the rest.
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Opacity(
-              opacity: 0.35,
-              child: Image.asset(
-                'assets/illustrations/auth/auth_account_type_cityscape.png',
-                height: 320,
-                fit: BoxFit.cover,
-              ),
-            ),
+      // The page scrolls as one piece, cityscape included, so the backdrop
+      // travels with the cards instead of staying pinned to the viewport.
+      body: SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: MediaQuery.sizeOf(context).height,
           ),
-          SafeArea(
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildTopBar(),
-                    const SizedBox(height: 24),
-                    _buildHeader(),
-                    const SizedBox(height: 24),
-                    SlideTransition(
-                      position: _slideAnimation,
-                      child: IntrinsicHeight(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              child: _AccountTypeCard(
-                                heroAsset:
-                                    'assets/illustrations/auth/auth_passenger_card_hero.png',
-                                badgeIcon: IconsaxPlusBold.profile_circle,
-                                accent: T.primary(context),
-                                title: l10n.accountTypePassenger,
-                                tagline: l10n.accountTypePassengerTagline,
-                                features: [
-                                  _CardFeature(
-                                    IconsaxPlusLinear.car,
-                                    l10n
-                                        .accountTypePassengerFeatureDirectTitle,
-                                    l10n.accountTypePassengerFeatureDirectBody,
-                                  ),
-                                  _CardFeature(
-                                    IconsaxPlusLinear.profile_2user,
-                                    l10n
-                                        .accountTypePassengerFeatureSharedTitle,
-                                    l10n.accountTypePassengerFeatureSharedBody,
-                                  ),
-                                  _CardFeature(
-                                    IconsaxPlusLinear.card,
-                                    l10n
-                                        .accountTypePassengerFeaturePaymentTitle,
-                                    l10n.accountTypePassengerFeaturePaymentBody,
-                                  ),
-                                ],
-                                onTap: () => Navigator.pushReplacementNamed(
-                                  context,
-                                  RouteNames.signUp,
-                                  arguments: {
-                                    'accountType': AppConstants.rolePassenger,
-                                  },
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _AccountTypeCard(
-                                heroAsset:
-                                    'assets/illustrations/auth/auth_driver_card_hero.png',
-                                badgeIcon: IconsaxPlusBold.car,
-                                accent: _driverAccent,
-                                title: l10n.accountTypeDriver,
-                                tagline: l10n.accountTypeDriverTagline,
-                                features: [
-                                  _CardFeature(
-                                    IconsaxPlusLinear.driving,
-                                    l10n.accountTypeDriverFeatureTripsTitle,
-                                    l10n.accountTypeDriverFeatureTripsBody,
-                                  ),
-                                  _CardFeature(
-                                    IconsaxPlusLinear.profile_2user,
-                                    l10n.accountTypeDriverFeatureBookingsTitle,
-                                    l10n.accountTypeDriverFeatureBookingsBody,
-                                  ),
-                                  _CardFeature(
-                                    IconsaxPlusLinear.wallet_money,
-                                    l10n.accountTypeDriverFeatureIncomeTitle,
-                                    l10n.accountTypeDriverFeatureIncomeBody,
-                                  ),
-                                ],
-                                onTap: () => Navigator.pushReplacementNamed(
-                                  context,
-                                  RouteNames.driverSignUp,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildSafetyBanner(),
-                    const SizedBox(height: 12),
-                    _buildSignInRow(),
-                  ],
+          child: Stack(
+            children: [
+              // Cityscape sits behind the header only; the cards cover the rest.
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Opacity(
+                  opacity: 0.35,
+                  child: Image.asset(
+                    'assets/illustrations/auth/auth_account_type_cityscape.webp',
+                    height: 320,
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
-            ),
+              SafeArea(
+                child: FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildTopBar(),
+                        const SizedBox(height: 24),
+                        _buildHeader(),
+                        const SizedBox(height: 24),
+                        SlideTransition(
+                          position: _slideAnimation,
+                          child: IntrinsicHeight(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Expanded(
+                                  child: _AccountTypeCard(
+                                    heroAsset:
+                                        'assets/illustrations/auth/auth_passenger_card_hero.webp',
+                                    badgeIcon: IconsaxPlusBold.profile_circle,
+                                    accent: T.primary(context),
+                                    title: l10n.accountTypePassenger,
+                                    tagline: l10n.accountTypePassengerTagline,
+                                    features: [
+                                      _CardFeature(
+                                        IconsaxPlusLinear.car,
+                                        l10n.accountTypePassengerFeatureDirectTitle,
+                                        l10n.accountTypePassengerFeatureDirectBody,
+                                      ),
+                                      _CardFeature(
+                                        IconsaxPlusLinear.profile_2user,
+                                        l10n.accountTypePassengerFeatureSharedTitle,
+                                        l10n.accountTypePassengerFeatureSharedBody,
+                                      ),
+                                      _CardFeature(
+                                        IconsaxPlusLinear.card,
+                                        l10n.accountTypePassengerFeaturePaymentTitle,
+                                        l10n.accountTypePassengerFeaturePaymentBody,
+                                      ),
+                                    ],
+                                    onTap: () => Navigator.pushReplacementNamed(
+                                      context,
+                                      RouteNames.signUp,
+                                      arguments: {
+                                        'accountType':
+                                            AppConstants.rolePassenger,
+                                      },
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _AccountTypeCard(
+                                    heroAsset:
+                                        'assets/illustrations/auth/auth_driver_card_hero.webp',
+                                    badgeIcon: IconsaxPlusBold.car,
+                                    accent: _driverAccent,
+                                    title: l10n.accountTypeDriver,
+                                    tagline: l10n.accountTypeDriverTagline,
+                                    features: [
+                                      _CardFeature(
+                                        IconsaxPlusLinear.driving,
+                                        l10n.accountTypeDriverFeatureTripsTitle,
+                                        l10n.accountTypeDriverFeatureTripsBody,
+                                      ),
+                                      _CardFeature(
+                                        IconsaxPlusLinear.profile_2user,
+                                        l10n.accountTypeDriverFeatureBookingsTitle,
+                                        l10n.accountTypeDriverFeatureBookingsBody,
+                                      ),
+                                      _CardFeature(
+                                        IconsaxPlusLinear.wallet_money,
+                                        l10n.accountTypeDriverFeatureIncomeTitle,
+                                        l10n.accountTypeDriverFeatureIncomeBody,
+                                      ),
+                                    ],
+                                    onTap: () => Navigator.pushReplacementNamed(
+                                      context,
+                                      RouteNames.driverSignUp,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildSafetyBanner(),
+                        const SizedBox(height: 12),
+                        _buildSignInRow(),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -188,11 +194,11 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Image.asset(
-          'assets/illustrations/auth/auth_visionway_logo.png',
+          'assets/illustrations/auth/auth_visionway_logo.webp',
           height: 44,
           fit: BoxFit.contain,
         ),
-        const _LanguageSwitcher(),
+        const AuthLanguageSwitcher(),
       ],
     );
   }
@@ -363,63 +369,6 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _LanguageSwitcher extends StatelessWidget {
-  const _LanguageSwitcher();
-
-  @override
-  Widget build(BuildContext context) {
-    final localization = context.watch<LocalizationService>();
-
-    return Semantics(
-      button: true,
-      label: context.l10n.language,
-      child: PopupMenuButton<String>(
-        onSelected: (code) => localization.setLanguage(code),
-        position: PopupMenuPosition.under,
-        itemBuilder: (context) => const [
-          PopupMenuItem(value: AppConstants.langArabic, child: Text('العربية')),
-          PopupMenuItem(value: AppConstants.langEnglish, child: Text('English')),
-        ],
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          decoration: BoxDecoration(
-            color: T.surface(context),
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: T.outline(context)),
-            boxShadow: [
-              BoxShadow(
-                color: T.shadow(context).withValues(alpha: 0.06),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(IconsaxPlusLinear.global, size: 18, color: T.primary(context)),
-              const SizedBox(width: 6),
-              Text(
-                localization.isArabic ? 'العربية' : 'English',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: T.onSurface(context),
-                ),
-              ),
-              Icon(
-                Icons.keyboard_arrow_down_rounded,
-                size: 18,
-                color: T.onSurfaceVariant(context),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

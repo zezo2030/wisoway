@@ -33,6 +33,7 @@ class CreateTripWizardState {
   int stepIndex = 0;
   LocationModel? from;
   LocationModel? to;
+
   final List<LocationModel> stops = <LocationModel>[];
   final TextEditingController fromController = TextEditingController();
   final TextEditingController toController = TextEditingController();

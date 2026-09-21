@@ -107,6 +107,7 @@ export class AdminDashboardController {
   @ApiQuery({ name: 'isActive', required: false, type: Boolean })
   @ApiQuery({ name: 'registeredWithinDays', required: false, type: Number })
   @ApiQuery({ name: 'isConfirmed', required: false, type: Boolean })
+  @ApiQuery({ name: 'isDriverApproved', required: false, type: Boolean })
   @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
   async getUsers(@Query() query: AdminUsersQueryDto) {
     return this.adminDashboardService.getUsers({
@@ -117,6 +118,7 @@ export class AdminDashboardController {
       isActive: query.isActive,
       registeredWithinDays: query.registeredWithinDays,
       isConfirmed: query.isConfirmed,
+      isDriverApproved: query.isDriverApproved,
     });
   }
 
@@ -145,6 +147,27 @@ export class AdminDashboardController {
       limit: query.limit,
       isVerified: query.isVerified,
       driverId: query.driverId,
+    });
+  }
+
+  /**
+   * GET /admin/drivers/pending
+   * Merged driver review queue: pending drivers with their vehicle
+   * and documents (a single approval covers both account and vehicle).
+   */
+  @Get('drivers/pending')
+  @ApiOperation({
+    summary: 'Get pending drivers with their vehicles and documents',
+  })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiResponse({ status: 200, description: 'Pending drivers retrieved' })
+  async getPendingDrivers(@Query() query: AdminUsersQueryDto) {
+    return this.adminDashboardService.getPendingDrivers({
+      page: query.page,
+      limit: query.limit,
+      search: query.search,
     });
   }
 

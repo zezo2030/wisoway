@@ -80,7 +80,11 @@ class AuthService {
     try {
       await _api.post(ApiEndpoints.sendOtp, data: {'phoneNumber': phoneNumber});
     } catch (e) {
-      throw Exception('فشل إرسال كود التحقق. الرجاء المحاولة مرة أخرى.');
+      // Rethrown, not replaced: callers run this through ApiClient.mapError,
+      // which can only tell "no connection" from "server refused" if the
+      // original error survives. Swallowing it here is what made every failure
+      // read as a generic "try again".
+      rethrow;
     }
   }
 
@@ -147,7 +151,11 @@ class AuthService {
         );
       }
     } catch (e) {
-      throw Exception('كود التحقق غير صحيح أو منتهي الصلاحية');
+      // Rethrown, not replaced: callers run this through ApiClient.mapError,
+      // which can only tell "no connection" from "server refused" if the
+      // original error survives. Swallowing it here is what made every failure
+      // read as a generic "try again".
+      rethrow;
     }
   }
 

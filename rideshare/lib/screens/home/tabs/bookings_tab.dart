@@ -203,18 +203,13 @@ class _BookingsTabState extends State<BookingsTab> {
           if (bookingsSnapshot.connectionState == ConnectionState.waiting) {
             return Center(
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  T.primary(context),
-                ),
+                valueColor: AlwaysStoppedAnimation<Color>(T.primary(context)),
               ),
             );
           }
 
           if (bookingsSnapshot.hasError) {
-            return _buildErrorState(
-              context,
-              bookingsSnapshot.error.toString(),
-            );
+            return _buildErrorState(context, bookingsSnapshot.error.toString());
           }
 
           final bookings = bookingsSnapshot.data ?? [];
@@ -368,8 +363,10 @@ class _BookingsTabState extends State<BookingsTab> {
             children: [
               Icon(IconsaxPlusBold.warning_2, color: AppColors.error, size: 22),
               const SizedBox(width: 8),
-              Text(context.l10n.cannotCancel,
-                  style: GoogleFonts.tajawal(fontWeight: FontWeight.bold)),
+              Text(
+                context.l10n.cannotCancel,
+                style: GoogleFonts.tajawal(fontWeight: FontWeight.bold),
+              ),
             ],
           ),
           content: Text(
@@ -383,8 +380,10 @@ class _BookingsTabState extends State<BookingsTab> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: Text(context.l10n.ok,
-                  style: GoogleFonts.tajawal(fontWeight: FontWeight.bold)),
+              child: Text(
+                context.l10n.ok,
+                style: GoogleFonts.tajawal(fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         ),
@@ -396,15 +395,15 @@ class _BookingsTabState extends State<BookingsTab> {
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
             Icon(IconsaxPlusBold.warning_2, color: AppColors.warning, size: 22),
             const SizedBox(width: 8),
-            Text(context.l10n.confirmCancelBooking,
-                style: GoogleFonts.tajawal(fontWeight: FontWeight.bold)),
+            Text(
+              context.l10n.confirmCancelBooking,
+              style: GoogleFonts.tajawal(fontWeight: FontWeight.bold),
+            ),
           ],
         ),
         content: Column(
@@ -424,8 +423,11 @@ class _BookingsTabState extends State<BookingsTab> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(IconsaxPlusBold.info_circle,
-                        color: AppColors.warningDark, size: 18),
+                    Icon(
+                      IconsaxPlusBold.info_circle,
+                      color: AppColors.warningDark,
+                      size: 18,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -450,8 +452,10 @@ class _BookingsTabState extends State<BookingsTab> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(context.l10n.goBack,
-                style: GoogleFonts.tajawal(color: T.onSurfaceVariant(context))),
+            child: Text(
+              context.l10n.goBack,
+              style: GoogleFonts.tajawal(color: T.onSurfaceVariant(context)),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(true),
@@ -462,8 +466,10 @@ class _BookingsTabState extends State<BookingsTab> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: Text(context.l10n.cancelBooking,
-                style: GoogleFonts.tajawal(fontWeight: FontWeight.bold)),
+            child: Text(
+              context.l10n.cancelBooking,
+              style: GoogleFonts.tajawal(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -476,8 +482,10 @@ class _BookingsTabState extends State<BookingsTab> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(context.l10n.bookingCancelledSuccess,
-              style: GoogleFonts.tajawal()),
+          content: Text(
+            context.l10n.bookingCancelledSuccess,
+            style: GoogleFonts.tajawal(),
+          ),
           backgroundColor: AppColors.success,
         ),
       );
@@ -490,8 +498,18 @@ class _BookingsTabState extends State<BookingsTab> {
 
   String _formatDeparture(DateTime dt) {
     final months = [
-      'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
+      'يناير',
+      'فبراير',
+      'مارس',
+      'أبريل',
+      'مايو',
+      'يونيو',
+      'يوليو',
+      'أغسطس',
+      'سبتمبر',
+      'أكتوبر',
+      'نوفمبر',
+      'ديسمبر',
     ];
     final h = dt.hour.toString().padLeft(2, '0');
     final m = dt.minute.toString().padLeft(2, '0');

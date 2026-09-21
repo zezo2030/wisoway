@@ -67,21 +67,11 @@ class Step2Details extends StatelessWidget {
           const SizedBox(height: 12),
           _buildGenderMixingCard(context),
           const SizedBox(height: 12),
-          _buildNotesAndRecurrenceRow(context),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNotesAndRecurrenceRow(BuildContext context) {
-    // Mockup shows notes + recurrence as sibling cards even on phone width.
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(child: _buildNotesCard(context)),
-          const SizedBox(width: 12),
-          Expanded(child: _buildRecurrenceCard(context)),
+          // Full width, one under the other: side by side left each card about
+          // 150dp, which truncated both titles and squeezed the notes box.
+          _buildNotesCard(context),
+          const SizedBox(height: 12),
+          _buildRecurrenceCard(context),
         ],
       ),
     );
@@ -471,12 +461,15 @@ class Step2Details extends StatelessWidget {
             icon: IconsaxPlusBroken.message,
             title: context.l10n.notesForPassengers,
             titleSuffix: '(${context.l10n.optionalLabel})',
+            subtitle: context.l10n.notesForPassengersSubtitle,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           TextFormField(
             controller: wizard.notesController,
-            maxLines: 3,
+            maxLines: 4,
+            minLines: 3,
             maxLength: 120,
+            textInputAction: TextInputAction.newline,
             style: AppTextStyles.bodyLarge.copyWith(
               fontSize: 14,
               color: T.onSurface(context),
@@ -523,6 +516,9 @@ class Step2Details extends StatelessWidget {
           CreateTripSectionHeader(
             icon: IconsaxPlusBroken.refresh,
             title: context.l10n.tripRecurrence,
+            subtitle: wizard.enableRecurrence
+                ? null
+                : context.l10n.recurrenceCollapsedHint,
             trailing: Semantics(
               label: context.l10n.enableTripRecurrenceSemantic(
                 wizard.enableRecurrence
@@ -539,10 +535,8 @@ class Step2Details extends StatelessWidget {
               ),
             ),
           ),
-          if (!wizard.enableRecurrence)
-            _buildRecurrenceCollapsedRow(context)
-          else ...[
-            const SizedBox(height: 20),
+          if (wizard.enableRecurrence) ...[
+            const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
@@ -642,42 +636,6 @@ class Step2Details extends StatelessWidget {
             ),
           ],
         ],
-      ),
-    );
-  }
-
-  /// Collapsed recurrence summary; tapping it turns recurrence on, which is
-  /// what the trailing chevron promises.
-  Widget _buildRecurrenceCollapsedRow(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 10),
-      child: Semantics(
-        button: true,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () {
-            wizard.enableRecurrence = true;
-            onChanged();
-          },
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  context.l10n.recurrenceCollapsedHint,
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    fontSize: 13,
-                    color: T.onSurfaceVariant(context),
-                  ),
-                ),
-              ),
-              Icon(
-                Icons.chevron_right_rounded,
-                size: 20,
-                color: T.outlineVariant(context),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

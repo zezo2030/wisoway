@@ -25,6 +25,7 @@ import {
   Gavel,
   AlertTriangle,
   FileText,
+  BadgeCheck,
 } from "lucide-react"
 import { useState } from "react"
 import { ROUTES } from "@/lib/constants"
@@ -43,6 +44,7 @@ const NAV_GROUPS: { labelKey: TranslationKey; items: { path: string; labelKey: T
     labelKey: "navGroupManagement",
     items: [
       { path: ROUTES.USERS, labelKey: "nav_users", icon: "Users" },
+      { path: ROUTES.PENDING_DRIVERS, labelKey: "nav_pendingDrivers", icon: "BadgeCheck" },
       { path: ROUTES.VEHICLES, labelKey: "nav_vehicles", icon: "Car" },
       { path: ROUTES.PAYMENTS, labelKey: "nav_payments", icon: "CreditCard" },
       { path: ROUTES.WALLETS, labelKey: "nav_wallets", icon: "Wallet" },
@@ -70,7 +72,7 @@ const NAV_GROUPS: { labelKey: TranslationKey; items: { path: string; labelKey: T
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard, Users, CreditCard, Wallet, Car, MapPin, BarChart3,
   BookOpen, Star, Bell, MessageSquare, Percent, ShieldAlert, Gavel,
-  AlertTriangle, FileText,
+  AlertTriangle, FileText, BadgeCheck,
 }
 
 interface SidebarProps {

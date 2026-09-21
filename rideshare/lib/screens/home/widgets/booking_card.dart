@@ -13,10 +13,13 @@ class BookingCard extends StatelessWidget {
   final TripModel? trip;
   final bool isPastTrip;
   final VoidCallback? onTap;
+
   /// Called when the user taps the Chat button (only shown once settled).
   final VoidCallback? onChat;
+
   /// Called when the user taps the Call button (only shown once settled).
   final VoidCallback? onCall;
+
   /// Called when the user taps the Cancel booking button.
   final VoidCallback? onCancel;
 
@@ -229,7 +232,9 @@ class BookingCard extends StatelessWidget {
                   ],
                 ),
                 // Cancel booking action — visible for cancellable bookings.
-                if (booking.canBeCancelled && !isPastTrip && onCancel != null) ...[
+                if (booking.canBeCancelled &&
+                    !isPastTrip &&
+                    onCancel != null) ...[
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
@@ -239,7 +244,9 @@ class BookingCard extends StatelessWidget {
                       label: Text(context.l10n.cancelBooking),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.error,
-                        side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
+                        side: BorderSide(
+                          color: AppColors.error.withValues(alpha: 0.5),
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),

@@ -67,8 +67,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     if (user.passwordChangedAt) {
-      const tokenIssuedAt = new Date(payload.iat * 1000);
-      if (tokenIssuedAt < user.passwordChangedAt) {
+      // `iat` is whole seconds (JWT truncates), while passwordChangedAt keeps
+      // milliseconds. Comparing them directly rejected every token minted in
+      // the same second as the password write — which is exactly what driver
+      // registration and finish-setup do, so a new account was signed out the
+      // instant it was created. Truncate both to seconds before comparing.
+      const tokenIssuedAtSec = Math.floor(Number(payload.iat));
+      const passwordChangedAtSec = Math.floor(
+        user.passwordChangedAt.getTime() / 1000,
+      );
+      if (tokenIssuedAtSec < passwordChangedAtSec) {
         throw new UnauthorizedException('Token expired due to password change');
       }
     }

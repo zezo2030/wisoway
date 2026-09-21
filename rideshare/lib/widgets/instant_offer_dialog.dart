@@ -9,9 +9,17 @@ import '../core/theme/colors.dart';
 import '../core/ui/error_surface.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/instant_ride_models.dart';
+import '../screens/driver/instant_offer_details_screen.dart';
+import '../screens/driver/widgets/instant_offer_parts.dart';
 import '../screens/passenger/trip_details_screen.dart';
 
-/// Rich instant-offer card shown in-app (matches VisionWay driver offer UI).
+/// The card that interrupts a driver with an incoming instant-ride request.
+///
+/// It is deliberately a summary, not the whole job: the fare, where the trip
+/// runs from and to, how far away the passenger is, and how long is left to
+/// decide. Anything more — full addresses, the map, the passenger, the fare
+/// composer — lives one tap away in [InstantOfferDetailsScreen], because a
+/// driver reading this has seconds and usually a road in front of them.
 class InstantOfferDialog extends StatefulWidget {
   final InstantOffer offer;
   final InstantRideService service;
@@ -27,34 +35,12 @@ class InstantOfferDialog extends StatefulWidget {
 }
 
 class _InstantOfferDialogState extends State<InstantOfferDialog> {
-  static const Color _brand = Color(0xFF007D69);
-  static const Color _brandSoft = Color(0xFFE6F4F1);
-
   late int _secondsLeft;
   late final int _totalSeconds;
   Timer? _ticker;
   bool _busy = false;
-  bool _countering = false;
-  double? _counterAmount;
 
   InstantRequestSummary? get _req => widget.offer.request;
-
-  double? get _passengerFare {
-    final req = _req;
-    return double.tryParse(req?.passengerFare ?? req?.fareEstimate ?? '');
-  }
-
-  double get _counterMax {
-    final fare = _passengerFare ?? 0;
-    return (fare * 1.5 * 100).floorToDouble() / 100;
-  }
-
-  double get _counterStep {
-    final fare = _passengerFare ?? 0;
-    if (fare >= 100) return 5;
-    if (fare >= 20) return 1;
-    return 0.25;
-  }
 
   @override
   void initState() {
@@ -62,7 +48,7 @@ class _InstantOfferDialogState extends State<InstantOfferDialog> {
     final expiresAt = widget.offer.expiresAt;
     final remaining = expiresAt != null
         ? expiresAt.difference(DateTime.now()).inSeconds
-        : 12;
+        : 25;
     _secondsLeft = remaining.clamp(1, 120);
     _totalSeconds = _secondsLeft;
     PushNotificationService.cancelAndroidInstantOfferNotification(
@@ -84,6 +70,46 @@ class _InstantOfferDialogState extends State<InstantOfferDialog> {
     super.dispose();
   }
 
+  /// Hands the decision to the details screen. The countdown keeps running
+  /// there, so pausing ours avoids two timers racing to dismiss the same offer.
+  Future<void> _openDetails({bool countering = false}) async {
+    if (_busy) return;
+    _ticker?.cancel();
+    final outcome = await Navigator.of(context).push<InstantOfferOutcome>(
+      MaterialPageRoute(
+        builder: (_) => InstantOfferDetailsScreen(
+          offer: widget.offer,
+          service: widget.service,
+          startCountering: countering,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (outcome != null) {
+      // Decided (or expired) over there — this card has nothing left to ask.
+      Navigator.of(context).pop();
+      return;
+    }
+    // Backed out without deciding: resume where the countdown actually is.
+    final expiresAt = widget.offer.expiresAt;
+    final remaining = expiresAt != null
+        ? expiresAt.difference(DateTime.now()).inSeconds
+        : _secondsLeft;
+    setState(() => _secondsLeft = remaining);
+    if (remaining <= 0) {
+      Navigator.of(context).maybePop();
+      return;
+    }
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() => _secondsLeft -= 1);
+      if (_secondsLeft <= 0) {
+        _ticker?.cancel();
+        Navigator.of(context).maybePop();
+      }
+    });
+  }
+
   Future<void> _accept() async {
     if (_busy) return;
     setState(() => _busy = true);
@@ -96,17 +122,12 @@ class _InstantOfferDialogState extends State<InstantOfferDialog> {
       final toast = context.l10n.instantRideAcceptedToast;
       navigator.pop();
       messenger.showSnackBar(
-        SnackBar(
-          content: Text(toast),
-          backgroundColor: AppColors.success,
-        ),
+        SnackBar(content: Text(toast), backgroundColor: AppColors.success),
       );
       final tripId = request.tripId;
       if (tripId != null && tripId.isNotEmpty) {
         navigator.push(
-          MaterialPageRoute(
-            builder: (_) => TripDetailsScreen(tripId: tripId),
-          ),
+          MaterialPageRoute(builder: (_) => TripDetailsScreen(tripId: tripId)),
         );
       }
     } catch (e) {
@@ -123,42 +144,10 @@ class _InstantOfferDialogState extends State<InstantOfferDialog> {
     try {
       await widget.service.declineOffer(widget.offer.id);
     } catch (_) {
-      // ignore
+      // The offer may already be gone; dismissing is right either way.
     }
     _ticker?.cancel();
     if (mounted) Navigator.of(context).pop();
-  }
-
-  void _bumpCounter(double direction) {
-    final fare = _passengerFare;
-    if (fare == null) return;
-    final min = fare + _counterStep;
-    final current = _counterAmount ?? min;
-    final next = (current + direction * _counterStep).clamp(min, _counterMax);
-    setState(() => _counterAmount = (next * 100).roundToDouble() / 100);
-  }
-
-  Future<void> _sendCounter() async {
-    final amount = _counterAmount;
-    if (_busy || amount == null) return;
-    setState(() => _busy = true);
-    try {
-      await widget.service.counterOffer(widget.offer.id, amount);
-      _ticker?.cancel();
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.l10n.instantCounterSentToast),
-          backgroundColor: AppColors.success,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _busy = false);
-      ErrorSurface.showFailure(context, ApiClient.mapError(e));
-      Navigator.of(context).maybePop();
-    }
   }
 
   @override
@@ -166,469 +155,237 @@ class _InstantOfferDialogState extends State<InstantOfferDialog> {
     final l10n = context.l10n;
     final req = _req;
     final fare = req?.passengerFare ?? req?.fareEstimate;
-    final currency = req?.currency ?? '';
-    final earnings = req?.earningsLabel ??
-        (fare != null
-            ? '$fare ${currency == 'JOD' ? 'د.أ' : currency == 'SAR' ? 'ر.س' : currency}'
-            : '—');
-    final distance = req?.distanceLabel ??
-        (req?.distanceKm != null ? '${req!.distanceKm} كم' : '—');
-    final duration = req?.durationLabel ??
-        (req?.durationMinutes != null ? '${req!.durationMinutes} د' : '—');
-    final seats = req?.seatCount ?? 1;
-    final passengers =
-        req?.seatCountLabel ?? l10n.instantOfferPassengerCount(seats);
+    final earnings =
+        req?.earningsLabel ??
+        (fare != null ? '$fare ${req?.currency ?? ''}' : '—');
+    final canCounter = req?.passengerFareValue != null;
 
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: T.surface(context),
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                decoration: BoxDecoration(
-                  color: _brandSoft,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  l10n.instantOfferBadge,
-                  style: const TextStyle(
-                    color: _brand,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              l10n.instantOfferCardTitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFF111827),
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                height: 1.2,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              l10n.instantOfferDirectSubtitle,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.black.withValues(alpha: 0.45),
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 18),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: _RouteBlock(
-                    from: req?.fromName ?? '—',
-                    to: req?.toName ?? '—',
-                    fromLabel: l10n.fromLabel,
-                    toLabel: l10n.toLabel,
-                    brand: _brand,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 2,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _header(context, req),
+              const SizedBox(height: 14),
+              // The whole body is the tap target for the details screen —
+              // matching how a driver expects to "open" an incoming job.
+              InkWell(
+                onTap: _busy ? null : () => _openDetails(),
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _MetricBlock(
-                        label: l10n.instantOfferDistance,
-                        value: distance,
+                      InstantFareHero(
+                        earnings: earnings,
+                        label: l10n.instantOfferExpectedEarnings,
+                        note: l10n.instantOfferCashNote,
                       ),
                       const SizedBox(height: 14),
-                      _MetricBlock(
-                        label: l10n.instantOfferDuration,
-                        value: duration,
+                      InstantRouteBlock(
+                        fromName: req?.fromName ?? '—',
+                        toName: req?.toName ?? '—',
+                        compact: true,
                       ),
+                      const SizedBox(height: 14),
+                      _metricsStrip(context, req),
+                      const SizedBox(height: 10),
+                      _detailsHint(context),
                     ],
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const Divider(height: 1, color: Color(0xFFE8EEF0)),
-            const SizedBox(height: 14),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.instantOfferExpectedEarnings,
-                        style: TextStyle(
-                          color: Colors.black.withValues(alpha: 0.45),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        earnings,
-                        style: const TextStyle(
-                          color: _brand,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        l10n.instantOfferIncludesFees,
-                        style: TextStyle(
-                          color: Colors.black.withValues(alpha: 0.4),
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      l10n.instantOfferPassengersLabel,
-                      style: TextStyle(
-                        color: Colors.black.withValues(alpha: 0.45),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.person_outline,
-                          size: 18,
-                          color: Colors.black.withValues(alpha: 0.55),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          passengers,
-                          style: const TextStyle(
-                            color: Color(0xFF111827),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            if (fare != null) ...[
-              const SizedBox(height: 10),
-              if (_countering)
-                _buildCounterSection(context, currency)
-              else
-                Align(
-                  alignment: Alignment.center,
-                  child: TextButton.icon(
-                    onPressed: _busy || _passengerFare == null
-                        ? null
-                        : () => setState(() {
-                              _countering = true;
-                              _counterAmount ??=
-                                  ((_passengerFare! + _counterStep) * 100)
-                                          .roundToDouble() /
-                                      100;
-                            }),
-                    icon: const Icon(Icons.trending_up, size: 18),
-                    label: Text(l10n.instantProposeFare),
-                    style: TextButton.styleFrom(foregroundColor: _brand),
-                  ),
-                ),
+              ),
+              const SizedBox(height: 14),
+              InstantCountdownBar(
+                secondsLeft: _secondsLeft,
+                totalSeconds: _totalSeconds,
+              ),
+              const SizedBox(height: 14),
+              _actions(context, canCounter),
             ],
-            const SizedBox(height: 12),
-            Text(
-              l10n.instantOfferCountdown(_secondsLeft),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.black.withValues(alpha: 0.5),
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: _totalSeconds == 0 ? 0 : _secondsLeft / _totalSeconds,
-                minHeight: 6,
-                backgroundColor: _brandSoft,
-                color: _brand,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 48,
-                    child: OutlinedButton(
-                      onPressed: _busy ? null : _decline,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: _brand,
-                        side: const BorderSide(color: _brand, width: 1.4),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: Text(
-                        l10n.instantOfferIgnore,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
-                  child: SizedBox(
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: _busy
-                          ? null
-                          : (_countering ? _sendCounter : _accept),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _brand,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: _busy
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
-                                ),
-                              ),
-                            )
-                          : Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    _countering
-                                        ? l10n.instantSendOffer
-                                        : l10n.instantOfferAcceptTrip,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                ),
-                                if (!_countering) ...[
-                                  const SizedBox(width: 6),
-                                  const Icon(Icons.chevron_right, size: 22),
-                                ],
-                              ],
-                            ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildCounterSection(BuildContext context, String currency) {
-    final fare = _passengerFare ?? 0;
-    final amount = _counterAmount ?? fare + _counterStep;
-    final canDecrease = amount - _counterStep >= fare + _counterStep - 0.001;
-    final canIncrease = amount + _counterStep <= _counterMax + 0.001;
-
-    return Column(
+  Widget _header(BuildContext context, InstantRequestSummary? req) {
+    final l10n = context.l10n;
+    return Row(
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
           decoration: BoxDecoration(
-            color: _brandSoft,
-            borderRadius: BorderRadius.circular(14),
+            color: T.primaryContainer(context),
+            borderRadius: BorderRadius.circular(20),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                onPressed:
-                    canDecrease && !_busy ? () => _bumpCounter(-1) : null,
-                icon: const Icon(Icons.remove, color: _brand),
-              ),
-              Text(
-                '${amount.toStringAsFixed(2)} $currency',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF111827),
-                ),
-              ),
-              IconButton(
-                onPressed:
-                    canIncrease && !_busy ? () => _bumpCounter(1) : null,
-                icon: const Icon(Icons.add, color: _brand),
-              ),
-            ],
+          child: Text(
+            req?.tripTypeLabel ?? l10n.instantOfferBadge,
+            style: TextStyle(
+              color: T.onPrimaryContainer(context),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          context.l10n.instantCounterMaxHint(
-            _counterMax.toStringAsFixed(2),
-            currency,
-          ),
-          style: TextStyle(
-            fontSize: 11,
-            color: Colors.black.withValues(alpha: 0.45),
+        const Spacer(),
+        Flexible(
+          child: Text(
+            l10n.instantOfferCardTitle,
+            textAlign: TextAlign.end,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: T.onSurface(context),
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
       ],
     );
   }
-}
 
-class _RouteBlock extends StatelessWidget {
-  final String from;
-  final String to;
-  final String fromLabel;
-  final String toLabel;
-  final Color brand;
+  /// Pickup leg, trip length and duration in one row — the three figures that
+  /// were missing from the old card, which showed the trip only.
+  Widget _metricsStrip(BuildContext context, InstantRequestSummary? req) {
+    final l10n = context.l10n;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: T.surfaceVariant(context),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: InstantMetricTile(
+              icon: Icons.my_location,
+              label: l10n.instantOfferPickupDistance,
+              value: req?.pickupDistanceLabel ?? '—',
+              emphasized: true,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: InstantMetricTile(
+              icon: Icons.route_outlined,
+              label: l10n.instantOfferTripDistance,
+              value: req?.distanceLabel ?? '—',
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: InstantMetricTile(
+              icon: Icons.schedule,
+              label: l10n.instantOfferDuration,
+              value: req?.durationLabel ?? '—',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-  const _RouteBlock({
-    required this.from,
-    required this.to,
-    required this.fromLabel,
-    required this.toLabel,
-    required this.brand,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _detailsHint(BuildContext context) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Column(
+        Text(
+          context.l10n.instantOfferOpenDetails,
+          style: TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
+            color: T.primary(context),
+          ),
+        ),
+        const SizedBox(width: 2),
+        Icon(Icons.chevron_left, size: 18, color: T.primary(context)),
+      ],
+    );
+  }
+
+  Widget _actions(BuildContext context, bool canCounter) {
+    final l10n = context.l10n;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
           children: [
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                color: brand,
-                shape: BoxShape.circle,
+            Expanded(
+              child: SizedBox(
+                height: 50,
+                child: OutlinedButton(
+                  onPressed: _busy ? null : _decline,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: T.onSurface(context),
+                    side: BorderSide(color: T.outlineVariant(context)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Text(
+                    l10n.instantOfferIgnore,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
               ),
             ),
-            Container(
-              width: 2,
-              height: 34,
-              margin: const EdgeInsets.symmetric(vertical: 3),
-              color: const Color(0xFFD7E4E0),
-            ),
-            const Icon(
-              Icons.location_on,
-              size: 16,
-              color: AppColors.error,
+            const SizedBox(width: 10),
+            Expanded(
+              flex: 2,
+              child: SizedBox(
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _busy ? null : _accept,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: T.primary(context),
+                    foregroundColor: T.onPrimary(context),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: _busy
+                      ? SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              T.onPrimary(context),
+                            ),
+                          ),
+                        )
+                      : Text(
+                          l10n.instantOfferAcceptTrip,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                          ),
+                        ),
+                ),
+              ),
             ),
           ],
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                fromLabel,
-                style: TextStyle(
-                  color: Colors.black.withValues(alpha: 0.4),
-                  fontSize: 11,
-                ),
-              ),
-              Text(
-                from,
-                style: const TextStyle(
-                  color: Color(0xFF111827),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                toLabel,
-                style: TextStyle(
-                  color: Colors.black.withValues(alpha: 0.4),
-                  fontSize: 11,
-                ),
-              ),
-              Text(
-                to,
-                style: const TextStyle(
-                  color: Color(0xFF111827),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
+        if (canCounter) ...[
+          const SizedBox(height: 4),
+          TextButton.icon(
+            onPressed: _busy ? null : () => _openDetails(countering: true),
+            icon: const Icon(Icons.trending_up, size: 19),
+            label: Text(l10n.instantProposeFare),
+            style: TextButton.styleFrom(foregroundColor: T.primary(context)),
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _MetricBlock extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _MetricBlock({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.black.withValues(alpha: 0.4),
-            fontSize: 11,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Color(0xFF111827),
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
+        ],
       ],
     );
   }

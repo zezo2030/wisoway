@@ -12,7 +12,7 @@ class ChatParticipant {
     return ChatParticipant(
       userId: userIdStr,
       joinedAt: json['joinedAt'] != null
-          ? DateTime.parse(json['joinedAt'])
+          ? DateTime.parse(json['joinedAt']).toLocal()
           : DateTime.now(),
     );
   }
@@ -69,15 +69,15 @@ class ChatModel {
       participants: pParticipants,
       lastMessage: json['lastMessage'],
       lastMessageTime: json['lastMessageTime'] != null
-          ? DateTime.parse(json['lastMessageTime'])
+          ? DateTime.parse(json['lastMessageTime']).toLocal()
           : null,
       lastMessageSenderId: json['lastMessageSenderId'],
       tripStatus: tripStatus,
       createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
+          ? DateTime.parse(json['createdAt']).toLocal()
           : DateTime.now(),
       updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
+          ? DateTime.parse(json['updatedAt']).toLocal()
           : DateTime.now(),
     );
   }
@@ -160,7 +160,7 @@ class MessageModel {
       senderName: json['senderName'] ?? '',
       text: json['text'] ?? '',
       createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
+          ? DateTime.parse(json['createdAt']).toLocal()
           : DateTime.now(),
     );
   }

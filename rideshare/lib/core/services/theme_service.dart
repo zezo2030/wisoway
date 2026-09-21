@@ -3,9 +3,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/app_constants.dart';
 
 class ThemeService extends ChangeNotifier {
+  /// Dark mode is switched off for now, so the app renders light whatever the
+  /// system setting or the saved preference says.
+  ///
+  /// The saved preference is still read and still written, and the appearance
+  /// controls in settings are hidden behind this same flag, so turning it back
+  /// to true restores the feature and the last choice the user made.
+  static const bool darkModeAvailable = false;
+
   ThemeMode _themeMode = ThemeMode.system;
 
-  ThemeMode get themeMode => _themeMode;
+  ThemeMode get themeMode => darkModeAvailable ? _themeMode : ThemeMode.light;
+
+  /// The stored preference, ignored while [darkModeAvailable] is false.
+  ThemeMode get savedThemeMode => _themeMode;
 
   ThemeService() {
     _loadSavedTheme();

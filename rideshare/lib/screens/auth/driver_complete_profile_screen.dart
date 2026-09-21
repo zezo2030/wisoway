@@ -16,11 +16,15 @@ import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/vehicle_type_template.dart';
+import '../../widgets/auth/auth_hero.dart';
 import '../../widgets/auth/auth_step_indicator.dart';
-import '../../widgets/auth/security_notice.dart';
 import 'driver_complete/driver_complete_step2.dart';
 import 'driver_complete/driver_complete_step3.dart';
 import 'driver_complete/driver_profile_wizard_state.dart';
+
+/// The step 2/3 illustration frames the driver in its upper half, so the ribbon
+/// is cropped above centre to keep his face and the wheel clear of the sheet.
+const Alignment _heroArtFocus = Alignment(0, -0.5);
 
 /// Shell for driver wizard steps 2 and 3.
 ///
@@ -48,13 +52,15 @@ class _DriverCompleteProfileScreenState
   /// Seat counts come from the backend catalog; the local map keeps the
   /// auto-fill working on the very first run without network.
   Map<String, VehicleTypeTemplate> _templatesByType = {};
+
+  /// Mirrors VEHICLE_TYPE_CATALOG in
+  /// `rideshare-backend/src/modules/vehicles/vehicle-types.ts` — passenger
+  /// seats only, the driver's seat is never bookable.
   static const Map<String, int> _fallbackSeatsByType = {
-    'sedan': 4,
-    'suv': 5,
-    'van': 7,
-    'truck': 2,
-    'bus': 20,
-    'motorcycle': 1,
+    AppConstants.vehicleTypeStandardCar: 4,
+    AppConstants.vehicleTypeFamilySuv: 6,
+    AppConstants.vehicleTypeMediumBus: 10,
+    AppConstants.vehicleTypeLargeBus: 22,
   };
 
   bool _isEditMode = false;
@@ -116,13 +122,14 @@ class _DriverCompleteProfileScreenState
         if (vehicle != null) {
           _state.plateController.text = vehicle.plateNumber;
           _state.modelController.text = vehicle.model;
-          _state.seatsController.text = '${vehicle.seats}';
           _state.setVehicleType(
             vehicle.vehicleType,
             label:
                 AppConstants.vehicleTypeLabels[vehicle.vehicleType] ??
                 vehicle.vehicleType,
-            seats: vehicle.seats,
+            // The catalog wins over the stored count so an updated template
+            // corrects an old vehicle row instead of carrying it forward.
+            seats: _seatsForType(vehicle.vehicleType) ?? vehicle.seats,
           );
           _state.existingLicenseUrl = vehicle.licenseImageUrl;
           _state.existingVehicleLicenseUrl = vehicle.vehicleLicenseImageUrl;
@@ -207,6 +214,13 @@ class _DriverCompleteProfileScreenState
     }
     if (!_state.hasLicense) {
       _showValidation('Driver license photo not uploaded');
+      return;
+    }
+    // Seats are derived, not typed, so the form can't guard them: an empty
+    // value means the picked type is missing from the catalog.
+    final seats = int.tryParse(_state.seatsController.text.trim());
+    if (seats == null || seats < 1) {
+      _showValidation('No seat count for vehicle type ${_state.vehicleType}');
       return;
     }
     _state.goToStep(3);
@@ -322,6 +336,7 @@ class _DriverCompleteProfileScreenState
       listenable: _state,
       builder: (context, _) {
         final step = _state.step;
+        final l10n = context.l10n;
 
         return PopScope(
           canPop: step == 2,
@@ -329,47 +344,69 @@ class _DriverCompleteProfileScreenState
             if (!didPop && step == 3) _state.goToStep(2);
           },
           child: Scaffold(
-            backgroundColor: T.primary(context),
+            backgroundColor: AuthHero.backdrop,
             body: SingleChildScrollView(
               child: Column(
                 children: [
-                  _buildHeader(step),
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: T.surface(context),
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(28),
-                        topRight: Radius.circular(28),
-                      ),
+                  _buildTopBar(step),
+                  AuthHeroTitle(
+                    icon: IconsaxPlusBold.personalcard,
+                    title: l10n.completeDriverProfileTitle,
+                    subtitle: step == 2
+                        ? l10n.driverStep2Badge
+                        : l10n.driverStep3Badge,
+                  ),
+                  AuthHeroSheet(
+                    art: const AuthHeroArt(
+                      asset:
+                          'assets/illustrations/auth/auth_driver_step2_header.webp',
+                      focus: _heroArtFocus,
+                      dark: true,
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
-                      child: step == 2
-                          ? DriverCompleteStep2(
-                              state: _state,
-                              formKey: _step2FormKey,
-                              onPickProfilePhoto: () => _pickFile(
-                                (f) => _state.profileImage = f,
-                              ),
-                              onPickLicense: () =>
-                                  _pickFile((f) => _state.licenseImage = f),
-                              onSelectVehicleType: _selectVehicleType,
-                              onContinue: _continueToStep3,
-                            )
-                          : DriverCompleteStep3(
-                              state: _state,
-                              onPickVehicleLicense: () => _pickFile(
-                                (f) => _state.vehicleLicenseImage = f,
-                              ),
-                              onPickInsurance: () =>
-                                  _pickFile((f) => _state.insuranceImage = f),
-                              onPickCarPhoto: () =>
-                                  _pickFile((f) => _state.carImage = f),
-                              onBack: () => _state.goToStep(2),
-                              onSubmit: _submit,
-                              isSubmitting: _isSubmitting,
-                            ),
+                      padding: const EdgeInsets.fromLTRB(20, 22, 20, 28),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // The captions need a solid surface to be readable;
+                          // over the illustration they were unusable.
+                          AuthStepIndicator(
+                            currentStep: step,
+                            totalSteps: 3,
+                            labels: [
+                              l10n.authStepperBasicInfo,
+                              l10n.authStepperIdDocs,
+                              l10n.authStepperVehicleInfo,
+                            ],
+                          ),
+                          const SizedBox(height: 22),
+                          step == 2
+                              ? DriverCompleteStep2(
+                                  state: _state,
+                                  formKey: _step2FormKey,
+                                  onPickProfilePhoto: () =>
+                                      _pickFile((f) => _state.profileImage = f),
+                                  onPickLicense: () =>
+                                      _pickFile((f) => _state.licenseImage = f),
+                                  onSelectVehicleType: _selectVehicleType,
+                                  onContinue: _continueToStep3,
+                                )
+                              : DriverCompleteStep3(
+                                  state: _state,
+                                  onPickVehicleLicense: () => _pickFile(
+                                    (f) => _state.vehicleLicenseImage = f,
+                                  ),
+                                  onPickInsurance: () => _pickFile(
+                                    (f) => _state.insuranceImage = f,
+                                  ),
+                                  onPickCarPhoto: () =>
+                                      _pickFile((f) => _state.carImage = f),
+                                  onBack: () => _state.goToStep(2),
+                                  onSubmit: _submit,
+                                  isSubmitting: _isSubmitting,
+                                ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -381,113 +418,67 @@ class _DriverCompleteProfileScreenState
     );
   }
 
-  Widget _buildHeader(int step) {
-    final l10n = context.l10n;
-
-    return Stack(
-      children: [
-        SizedBox(
-          height: 250,
-          width: double.infinity,
-          child: Image.asset(
-            'assets/illustrations/auth/auth_driver_step2_header.png',
-            fit: BoxFit.cover,
-          ),
-        ),
-        Positioned.fill(
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          Directionality.of(context) == TextDirection.rtl
-                              ? Icons.chevron_right_rounded
-                              : Icons.chevron_left_rounded,
-                          color: AppColors.white,
-                        ),
-                        onPressed: () {
-                          if (step == 3) {
-                            _state.goToStep(2);
-                          } else {
-                            Navigator.maybePop(context);
-                          }
-                        },
-                      ),
-                      Row(
-                        children: [
-                          Icon(
-                            IconsaxPlusLinear.message_question,
-                            size: 18,
-                            color: AppColors.white,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            l10n.authNeedHelp,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.white,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: AuthStepIndicator(
-                      currentStep: step,
-                      totalSteps: 3,
-                      labels: [
-                        l10n.authStepperBasicInfo,
-                        l10n.authStepperIdDocs,
-                        l10n.authStepperVehicleInfo,
-                      ],
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    l10n.completeDriverProfileTitle,
-                    style: const TextStyle(
-                      fontSize: 25,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.white.withValues(alpha: 0.22),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      step == 2 ? l10n.driverStep2Badge : l10n.driverStep3Badge,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.white,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  const SecurityNotice(onDark: true),
-                  const SizedBox(height: 10),
-                ],
+  /// Back chevron and the help affordance, on the hero's flat band.
+  Widget _buildTopBar(int step) {
+    return ColoredBox(
+      color: AuthHero.backdrop,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 4, 16, 0),
+          child: Row(
+            children: [
+              IconButton(
+                icon: Icon(
+                  Directionality.of(context) == TextDirection.rtl
+                      ? Icons.chevron_right_rounded
+                      : Icons.chevron_left_rounded,
+                  color: AuthHero.ink,
+                ),
+                onPressed: () {
+                  if (step == 3) {
+                    _state.goToStep(2);
+                  } else {
+                    Navigator.maybePop(context);
+                  }
+                },
+                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
               ),
-            ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AuthHero.chipFill,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AuthHero.chipBorder),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      IconsaxPlusLinear.message_question,
+                      size: 16,
+                      color: T.primary(context),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      context.l10n.authNeedHelp,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: T.primary(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 }

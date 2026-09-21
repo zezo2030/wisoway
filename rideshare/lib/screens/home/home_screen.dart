@@ -9,7 +9,8 @@ import '../../core/theme/colors.dart';
 import '../../core/services/location_service.dart';
 import '../../core/utils/responsive_layout.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../widgets/location_picker_widget.dart';
+import '../../core/services/saved_places_scope.dart';
+import '../location/route_search_screen.dart';
 import 'home_drawer.dart';
 import 'tabs/home_tab_content.dart';
 import 'tabs/driver_home_content.dart';
@@ -152,17 +153,21 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _changeLocation() async {
-    final location = await Navigator.push<LocationModel>(
+    // Search first, map second — the same path every other place in the app
+    // is chosen through.
+    final savedPlaces = savedPlacesFor(context);
+    final selection = await Navigator.push<RouteSelection>(
       context,
       MaterialPageRoute(
-        builder: (context) => LocationPickerWidget(
+        builder: (context) => RouteSearchScreen.singlePoint(
+          savedPlaces: savedPlaces,
           title: context.l10n.chooseYourLocation,
-          initialLocation: _userLocation,
-          onLocationSelected: (location) {},
+          initial: _userLocation,
         ),
       ),
     );
 
+    final location = selection?.from;
     if (location != null) {
       setState(() {
         _userLocation = location;
@@ -215,7 +220,11 @@ class _HomeScreenState extends State<HomeScreen> {
               onRefreshData: _refreshHomeData,
             ),
             BookingsTab(user: user),
-            ProfileTab(user: user),
+            ProfileTab(
+              user: user,
+              onOpenBookings: () =>
+                  setState(() => _currentIndex = isDriver ? 1 : 2),
+            ),
           ]
         : [
             HomeTabContent(
@@ -229,7 +238,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SearchTab(),
             BookingsTab(user: user),
-            ProfileTab(user: user),
+            ProfileTab(
+              user: user,
+              onOpenBookings: () => setState(() => _currentIndex = 2),
+            ),
           ];
 
     return Scaffold(
@@ -291,16 +303,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               NavigationRailDestination(
                 icon: Icon(
-                  isDriver
-                      ? IconsaxPlusLinear.car
-                      : IconsaxPlusLinear.bookmark,
+                  isDriver ? IconsaxPlusLinear.car : IconsaxPlusLinear.bookmark,
                 ),
                 selectedIcon: Icon(
                   isDriver ? IconsaxPlusBold.car : IconsaxPlusBold.bookmark,
                   color: T.primary(context),
                 ),
                 label: Text(
-                  isDriver ? context.l10n.myTripsTitle : context.l10n.myBookings,
+                  isDriver
+                      ? context.l10n.myTripsTitle
+                      : context.l10n.myBookings,
                 ),
               ),
               NavigationRailDestination(
@@ -340,7 +352,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     onRefreshData: _refreshHomeData,
                   ),
                   BookingsTab(user: user),
-                  ProfileTab(user: user),
+                  ProfileTab(
+                    user: user,
+                    onOpenBookings: () =>
+                        setState(() => _currentIndex = isDriver ? 1 : 2),
+                  ),
                 ]
               : [
                   HomeTabContent(
@@ -355,7 +371,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SearchTab(),
                   BookingsTab(user: user),
-                  ProfileTab(user: user),
+                  ProfileTab(
+                    user: user,
+                    onOpenBookings: () => setState(() => _currentIndex = 2),
+                  ),
                 ];
           return IndexedStack(index: safeIndex, children: pages);
         },
@@ -393,7 +412,7 @@ class _HomeScreenState extends State<HomeScreen> {
         activeIcon: isDriver
             ? Icon(IconsaxPlusBold.car, color: T.primary(context))
             : Icon(IconsaxPlusBold.bookmark, color: T.primary(context)),
-        label: isDriver ? context.l10n.myTripsTitle : context.l10n.myBookings,
+        label: context.l10n.myTripsTitle,
       ),
       BottomNavigationBarItem(
         icon: const Icon(IconsaxPlusLinear.profile),

@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
@@ -15,19 +16,26 @@ class PlaceSuggestion {
   final String secondaryText;
   final String description;
 
+  /// Straight-line metres from the search context the request carried, or null
+  /// when none was sent. Drives the trailing distance label on a result row.
+  final int? distanceMeters;
+
   const PlaceSuggestion({
     required this.placeId,
     required this.primaryText,
     required this.secondaryText,
     required this.description,
+    this.distanceMeters,
   });
 
   factory PlaceSuggestion.fromMap(Map<String, dynamic> map) {
+    final distance = map['distanceMeters'];
     return PlaceSuggestion(
       placeId: map['placeId']?.toString() ?? '',
       primaryText: map['primaryText']?.toString() ?? '',
       secondaryText: map['secondaryText']?.toString() ?? '',
       description: map['description']?.toString() ?? '',
+      distanceMeters: distance is num ? distance.round() : null,
     );
   }
 }
@@ -40,6 +48,37 @@ class LocationAutocompleteResult {
     required this.sessionToken,
     required this.suggestions,
   });
+}
+
+/// A resolved map point: the two address lines shown above the picker's pin.
+class ReverseGeocodeResult {
+  final String primaryText;
+  final String secondaryText;
+  final String label;
+  final double latitude;
+  final double longitude;
+
+  const ReverseGeocodeResult({
+    required this.primaryText,
+    required this.secondaryText,
+    required this.label,
+    required this.latitude,
+    required this.longitude,
+  });
+
+  /// True when the provider knew no address for the point. The point is still
+  /// confirmable; the app just shows "address unavailable" instead of a name.
+  bool get isEmpty => label.trim().isEmpty;
+
+  factory ReverseGeocodeResult.fromMap(Map<String, dynamic> map) {
+    return ReverseGeocodeResult(
+      primaryText: map['primaryText']?.toString() ?? '',
+      secondaryText: map['secondaryText']?.toString() ?? '',
+      label: map['label']?.toString() ?? '',
+      latitude: (map['lat'] as num?)?.toDouble() ?? 0,
+      longitude: (map['lng'] as num?)?.toDouble() ?? 0,
+    );
+  }
 }
 
 class LocationService {
@@ -143,32 +182,9 @@ class LocationService {
     }
   }
 
-  Future<LocationModel?> getCoordinatesFromAddress(String address) async {
-    try {
-      await _useArabicLocale();
-      final locations = await locationFromAddress(address);
-
-      if (locations.isEmpty) {
-        return null;
-      }
-
-      final location = locations.first;
-      final addressString = await getAddressFromCoordinates(
-        latitude: location.latitude,
-        longitude: location.longitude,
-      );
-
-      return LocationModel(
-        name: addressString,
-        latitude: location.latitude,
-        longitude: location.longitude,
-        address: addressString,
-      );
-    } catch (e) {
-      print('Error getting coordinates from address: $e');
-      return null;
-    }
-  }
+  // Text → coordinates deliberately has no on-device path. All place search
+  // goes through `autocomplete` + `placeDetail`, so a name can only ever
+  // resolve one way and the list and the resolved point cannot disagree.
 
   Future<LocationModel> getCurrentLocation() async {
     final position = await getCurrentPosition();
@@ -191,16 +207,20 @@ class LocationService {
     String? sessionToken,
     double? latitude,
     double? longitude,
+    CancelToken? cancelToken,
   }) async {
+    // The backend ignores a lone coordinate, so only send a complete pair.
+    final hasContext = latitude != null && longitude != null;
     final response = await _apiClient.get(
       ApiEndpoints.locationsAutocomplete,
+      cancelToken: cancelToken,
       queryParameters: {
         'q': query,
         'lang': lang ?? _languageCode,
         if (sessionToken != null && sessionToken.isNotEmpty)
           'sessionToken': sessionToken,
-        if (latitude != null) 'lat': latitude,
-        if (longitude != null) 'lng': longitude,
+        if (hasContext) 'lat': latitude,
+        if (hasContext) 'lng': longitude,
       },
     );
 
@@ -220,9 +240,11 @@ class LocationService {
   Future<LocationModel> placeDetail({
     required String placeId,
     String? sessionToken,
+    CancelToken? cancelToken,
   }) async {
     final response = await _apiClient.get(
       ApiEndpoints.locationsPlace(placeId),
+      cancelToken: cancelToken,
       queryParameters: {
         if (sessionToken != null && sessionToken.isNotEmpty)
           'sessionToken': sessionToken,
@@ -238,6 +260,68 @@ class LocationService {
       address: label,
     );
   }
+
+  /// Resolve a map point to a display address through the backend, so the map
+  /// picker labels a point the same way the search list would name it.
+  ///
+  /// Falls back to the on-device geocoder only when the backend is
+  /// unreachable, so moving the pin still shows something offline.
+  Future<ReverseGeocodeResult> reverseGeocode({
+    required double latitude,
+    required double longitude,
+    String? lang,
+    CancelToken? cancelToken,
+  }) async {
+    try {
+      final response = await _apiClient.get(
+        ApiEndpoints.locationsReverse,
+        cancelToken: cancelToken,
+        queryParameters: {
+          'lat': latitude,
+          'lng': longitude,
+          'lang': lang ?? _languageCode,
+        },
+      );
+
+      final data = _unwrapResponse(response);
+      final result = ReverseGeocodeResult.fromMap(data);
+      // Keep the caller's exact point: the backend echoes it, but a rounded
+      // echo must never move the pin the user placed.
+      return ReverseGeocodeResult(
+        primaryText: result.primaryText,
+        secondaryText: result.secondaryText,
+        label: result.label,
+        latitude: latitude,
+        longitude: longitude,
+      );
+    } on DioException catch (e) {
+      if (CancelToken.isCancel(e)) rethrow;
+      return _deviceReverseGeocode(latitude, longitude);
+    } catch (_) {
+      return _deviceReverseGeocode(latitude, longitude);
+    }
+  }
+
+  Future<ReverseGeocodeResult> _deviceReverseGeocode(
+    double latitude,
+    double longitude,
+  ) async {
+    final address = await getAddressFromCoordinates(
+      latitude: latitude,
+      longitude: longitude,
+    );
+    final resolved = address == _unknownLocationLabel ? '' : address;
+    return ReverseGeocodeResult(
+      primaryText: resolved,
+      secondaryText: '',
+      label: resolved,
+      latitude: latitude,
+      longitude: longitude,
+    );
+  }
+
+  /// True when the app is rendering Arabic, used to pick city display names.
+  bool get isArabic => _isArabicLocale;
 
   double calculateDistance({
     required double lat1,

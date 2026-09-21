@@ -75,7 +75,10 @@ function KpiCard({ label, value, icon: Icon, iconBg, iconColor, onClick, badge, 
         <ArrowUpRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-200" />
       </div>
       <div className="space-y-1">
-        <p className="text-2xl font-bold text-foreground tracking-tight leading-none">{value}</p>
+        {/* A div, not a p: `value` is a loading skeleton <div> until the stats
+            land, and a <div> inside a <p> is invalid HTML that React reports as
+            a nesting/hydration error on every dashboard load. */}
+        <div className="text-2xl font-bold text-foreground tracking-tight leading-none">{value}</div>
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</p>
       </div>
     </button>

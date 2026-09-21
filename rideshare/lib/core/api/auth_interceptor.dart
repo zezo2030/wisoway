@@ -3,6 +3,7 @@ import '../storage/token_storage.dart';
 import '../constants/route_names.dart';
 import '../services/notification_navigation_service.dart';
 import 'api_endpoints.dart';
+import '../services/push_notification_service.dart';
 
 class AuthInterceptor extends Interceptor {
   final TokenStorage _tokenStorage = TokenStorage();
@@ -32,6 +33,11 @@ class AuthInterceptor extends Interceptor {
         options.headers['Authorization'] = 'Bearer $token';
       }
     }
+
+    // Server-rendered labels (e.g. instant-offer summaries) follow the app
+    // language rather than the OS locale.
+    options.headers['Accept-Language'] =
+        await PushNotificationService.appLanguage();
 
     handler.next(options);
   }

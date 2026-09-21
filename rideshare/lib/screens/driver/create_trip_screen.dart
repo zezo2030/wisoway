@@ -4,11 +4,13 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/trip_provider.dart';
 import '../../core/constants/route_names.dart';
+import '../../core/services/saved_places_scope.dart';
 import '../../core/services/vehicle_service.dart';
 import '../../core/services/payment_service.dart';
 import '../../core/services/trip_service.dart';
 import '../../models/seat_layout_config.dart';
 import '../../models/trip_fee_quote.dart';
+import '../../models/trip_price_suggestion.dart';
 import '../../models/vehicle_type_template.dart';
 import '../../models/vehicle_model.dart';
 import '../../core/theme/text_styles.dart';
@@ -37,7 +39,9 @@ class CreateTripScreen extends StatefulWidget {
 
 class _CreateTripScreenState extends State<CreateTripScreen>
     with SingleTickerProviderStateMixin {
-  static const String _currency = 'JOD';
+  static const String _defaultCurrency = 'JOD';
+
+  String _currency = _defaultCurrency;
 
   final _formKey = GlobalKey<FormState>();
   final CreateTripWizardState _wizard = CreateTripWizardState();
@@ -50,6 +54,12 @@ class _CreateTripScreenState extends State<CreateTripScreen>
 
   TripFeeQuote? _feeQuote;
   bool _isLoadingFeeQuote = false;
+
+  TripPriceSuggestion? _priceSuggestion;
+
+  /// Route the loaded suggestion belongs to, so re-entering step 2 with the
+  /// same endpoints does not refetch.
+  String? _priceSuggestionRouteKey;
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -153,9 +163,45 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     if (index == _wizard.stepIndex) return;
     FocusScope.of(context).unfocus();
     setState(() => _wizard.goToStep(index));
+    if (index == 1) {
+      _loadPriceSuggestion();
+    }
     if (index == CreateTripWizardState.lastStepIndex) {
       _loadFeeQuote();
     }
+  }
+
+  /// Fetches the suggested per-seat band — and with it the currency the trip
+  /// will be published in — for the route picked in step 1.
+  ///
+  /// Failures are silent: step 2 just hides the hint and keeps the seeded
+  /// currency, since the backend resolves the real one on publish anyway.
+  Future<void> _loadPriceSuggestion() async {
+    final from = _wizard.from;
+    final to = _wizard.to;
+    if (from == null || to == null) return;
+
+    final routeKey =
+        '${from.latitude},${from.longitude}-${to.latitude},${to.longitude}';
+    if (routeKey == _priceSuggestionRouteKey) return;
+    _priceSuggestionRouteKey = routeKey;
+
+    final suggestion = await TripService().getPriceSuggestion(
+      fromLat: from.latitude,
+      fromLng: from.longitude,
+      toLat: to.latitude,
+      toLng: to.longitude,
+    );
+    if (!mounted) return;
+    if (suggestion == null) {
+      // Allow a retry the next time the driver walks back into step 2.
+      _priceSuggestionRouteKey = null;
+      return;
+    }
+    setState(() {
+      _priceSuggestion = suggestion;
+      _currency = suggestion.currency;
+    });
   }
 
   /// Fetches the driver's fee quote once, when the review step is reached
@@ -480,34 +526,10 @@ class _CreateTripScreenState extends State<CreateTripScreen>
 
     return Scaffold(
       backgroundColor: T.background(context),
-      appBar: AppBar(
-        backgroundColor: T.surface(context),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: true,
-        title: Text(
-          context.l10n.createNewTripTitle,
-          style: AppTextStyles.titleMedium.copyWith(
-            fontWeight: FontWeight.bold,
-            color: T.onSurface(context),
-          ),
-        ),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: T.onSurface(context)),
-          tooltip: context.l10n.backLabel,
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.close_rounded, color: T.onSurface(context)),
-            tooltip: context.l10n.close,
-            onPressed: () => Navigator.pop(context),
-          ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Divider(height: 1, color: T.outline(context)),
-        ),
+      appBar: CreateTripAppBar(
+        title: context.l10n.createNewTripTitle,
+        onBack: () => Navigator.pop(context),
+        onClose: () => Navigator.pop(context),
       ),
       body: SafeArea(
         child: Column(
@@ -533,10 +555,13 @@ class _CreateTripScreenState extends State<CreateTripScreen>
                           Step1Route(
                             wizard: _wizard,
                             onChanged: _onWizardChanged,
+                            savedPlaces: savedPlacesFor(context),
                           ),
                           Step2Details(
                             wizard: _wizard,
                             isLoadingVehicle: _isLoadingVehicle,
+                            currency: _currency,
+                            priceSuggestion: _priceSuggestion,
                             onChanged: _onWizardChanged,
                             onPickDate: _selectDepartureDate,
                             onPickTime: _selectDepartureTimeOfDay,
@@ -631,63 +656,24 @@ class _CreateTripScreenState extends State<CreateTripScreen>
   // --- footer --------------------------------------------------------------
 
   Widget _buildFooter(BuildContext context) {
-    final isRtl = Directionality.of(context) == TextDirection.rtl;
-    final forwardIcon = isRtl
-        ? Icons.arrow_back_rounded
-        : Icons.arrow_forward_rounded;
-    final backIcon = isRtl
-        ? Icons.arrow_forward_rounded
-        : Icons.arrow_back_rounded;
-
     final step = _wizard.stepIndex;
     final isReview = step == CreateTripWizardState.lastStepIndex;
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      decoration: BoxDecoration(
-        color: T.surface(context),
-        border: Border(top: BorderSide(color: T.outline(context))),
-      ),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: _maxContentWidth(context)),
-          child: Row(
-            children: [
-              if (step > 0) ...[
-                Expanded(
-                  child: _secondaryButton(
-                    label: isReview
-                        ? context.l10n.backToEdit
-                        : context.l10n.back,
-                    icon: backIcon,
-                    onPressed: _isLoading
-                        ? null
-                        : () => _goToStep(isReview ? 1 : step - 1),
-                  ),
-                ),
-                const SizedBox(width: 12),
-              ],
-              Expanded(
-                child: isReview
-                    ? _primaryButton(
-                        label: context.l10n.publishTrip,
-                        icon: IconsaxPlusBroken.send_2,
-                        onPressed: _isLoading || !_wizard.canPublish
-                            ? null
-                            : _createTrip,
-                        busy: _isLoading,
-                      )
-                    : _primaryButton(
-                        label: context.l10n.next,
-                        icon: forwardIcon,
-                        onPressed: _canGoNext ? _goNext : null,
-                        busy: false,
-                      ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return CreateTripFooter(
+      showBack: step > 0,
+      backLabel: isReview ? context.l10n.backToEdit : context.l10n.back,
+      forwardLabel: isReview ? context.l10n.publishTrip : context.l10n.next,
+      forwardIcon: isReview
+          ? IconsaxPlusBroken.send_2
+          : Icons.chevron_right_rounded,
+      busy: _isLoading,
+      maxContentWidth: _maxContentWidth(context),
+      onBack: _isLoading
+          ? null
+          : () => _goToStep(isReview ? 1 : step - 1),
+      onForward: isReview
+          ? (_isLoading || !_wizard.canPublish ? null : _createTrip)
+          : (_canGoNext ? _goNext : null),
     );
   }
 
@@ -696,84 +682,5 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     if (_wizard.stepIndex == 0) return _wizard.canGoStep2;
     if (_wizard.stepIndex == 1) return _wizard.canGoStep3;
     return false;
-  }
-
-  Widget _primaryButton({
-    required String label,
-    required IconData icon,
-    required VoidCallback? onPressed,
-    required bool busy,
-  }) {
-    return SizedBox(
-      height: 54,
-      child: Semantics(
-        button: true,
-        label: label,
-        child: ElevatedButton.icon(
-          onPressed: onPressed,
-          icon: busy
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    color: AppColors.white,
-                    strokeWidth: 2.5,
-                  ),
-                )
-              : Icon(icon, size: 20),
-          label: Text(
-            label,
-            style: AppTextStyles.titleMedium.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: T.primary(context),
-            foregroundColor: T.onPrimary(context),
-            disabledBackgroundColor: T.primary(
-              context,
-            ).withValues(alpha: 0.35),
-            disabledForegroundColor: T.onPrimary(
-              context,
-            ).withValues(alpha: 0.8),
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _secondaryButton({
-    required String label,
-    required IconData icon,
-    required VoidCallback? onPressed,
-  }) {
-    return SizedBox(
-      height: 54,
-      child: Semantics(
-        button: true,
-        label: label,
-        child: OutlinedButton.icon(
-          onPressed: onPressed,
-          icon: Icon(icon, size: 20, color: T.primary(context)),
-          label: Text(
-            label,
-            style: AppTextStyles.titleMedium.copyWith(
-              fontWeight: FontWeight.bold,
-              color: T.primary(context),
-            ),
-          ),
-          style: OutlinedButton.styleFrom(
-            side: BorderSide(color: T.primary(context)),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

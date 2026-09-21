@@ -39,7 +39,7 @@ class RatingModel {
       userRole: json['userRole'] ?? 'passenger',
       ratedRole: json['ratedRole'] ?? 'driver',
       createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
+          ? DateTime.parse(json['createdAt']).toLocal()
           : DateTime.now(),
     );
   }

@@ -1,14 +1,14 @@
-/// عنوان الباكند:
-/// - Docker (nginx): http://<IP>/api/v1  (منفذ 80)
-/// - تطوير محلي (nest start:dev): http://<IP>:3000/api/v1
-/// - محاكي أندرويد + Docker: http://10.0.2.2/api/v1
-/// - محاكي أندرويد + nest محلي: http://10.0.2.2:3000/api/v1
-/// للتخصيص: flutter run --dart-define=BASE_URL=http://IP/api/v1
+/// عنوان الباكند. الافتراضي هو خادم الإنتاج، فـ `flutter run` يكفي.
+///
+/// للتطوير على خادم محلي، مرّر العنوان وقت البناء بدل تعديل هذا الملف:
+///   flutter run --dart-define=API_BASE_URL=http://192.168.1.9/api/v1
+///
+/// كل شيء يشتق من هذه القيمة: نداءات الـ API، وعناوين الـ WebSocket
+/// (بعد حذف `/api/v1`)، وروابط الصور المرفوعة عبر `BackendUrlResolver`.
 class ApiEndpoints {
   static const String baseUrl = String.fromEnvironment(
-    'BASE_URL',
+    'API_BASE_URL',
     defaultValue: 'https://vision-way.tech/api/v1',
-    // defaultValue: 'http://192.168.1.2/api/v1',
   );
 
   // Auth
@@ -48,6 +48,7 @@ class ApiEndpoints {
   static String tripPricingPreview(String id) => '/trips/$id/pricing-preview';
   // Driver fee preview at publish time, before the trip exists.
   static const String feeQuote = '/trips/fee-quote';
+  static const String priceSuggestion = '/trips/price-suggestion';
   static String tripSeats(String id) => '/trips/$id/seats';
   static String tripSeatLock(String id) => '/trips/$id/seats/lock';
   static String hideTrip(String id) => '/trips/$id/hide';
@@ -150,6 +151,9 @@ class ApiEndpoints {
   static const String locationsAutocomplete = '/locations/autocomplete';
   static String locationsPlace(String placeId) =>
       '/locations/place/${Uri.encodeComponent(placeId)}';
+  /// Point → address for the map picker's centre pin.
+  static const String locationsReverse = '/locations/reverse';
+  /// City catalog behind the city-first route pickers.
 
   // Instant (on-demand) rides
   static const String instantAvailability = '/instant-rides/availability';
@@ -157,6 +161,7 @@ class ApiEndpoints {
       '/instant-rides/availability/heartbeat';
   static const String instantAvailabilityMe = '/instant-rides/availability/me';
   static const String instantQuotes = '/instant-rides/quotes';
+  static const String instantNearbyDrivers = '/instant-rides/nearby-drivers';
   static const String instantRequests = '/instant-rides/requests';
   static String instantRequestById(String id) => '/instant-rides/requests/$id';
   static String instantRequestFare(String id) =>

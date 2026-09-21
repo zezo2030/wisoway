@@ -164,7 +164,11 @@ class VehicleService {
       final response = await _api.post(ApiEndpoints.uploads, data: formData);
       return response['url'] ?? response['data']['url'];
     } catch (e) {
-      throw Exception('فشل في رفع صورة السيارة/الرخصة');
+      // Rethrown, not replaced: callers run this through ApiClient.mapError,
+      // which can only tell "no connection" from "server refused" if the
+      // original error survives. Swallowing it here is what made every failure
+      // read as a generic "try again".
+      rethrow;
     }
   }
 }

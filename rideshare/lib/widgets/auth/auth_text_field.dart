@@ -45,7 +45,12 @@ class AuthTextField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsetsDirectional.only(start: 10, end: 6, top: 6, bottom: 6),
+      padding: const EdgeInsetsDirectional.only(
+        start: 10,
+        end: 6,
+        top: 6,
+        bottom: 6,
+      ),
       decoration: BoxDecoration(
         color: enabled ? T.surface(context) : T.surfaceVariant(context),
         borderRadius: BorderRadius.circular(16),
@@ -114,7 +119,9 @@ class AuthTextField extends StatelessWidget {
                       hintText: hint,
                       hintStyle: TextStyle(
                         fontSize: 13,
-                        color: T.onSurfaceVariant(context).withValues(alpha: 0.6),
+                        color: T
+                            .onSurfaceVariant(context)
+                            .withValues(alpha: 0.6),
                       ),
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,

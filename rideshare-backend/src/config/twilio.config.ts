@@ -20,6 +20,13 @@ class TwilioConfig {
 
   @IsString()
   TWILIO_API_KEY_SECRET: string;
+
+  /**
+   * `local` stores the code and writes it to the app log (no SMS).
+   * `twilio` sends SMS via Twilio Verify. Defaults to local during development.
+   */
+  @IsString()
+  OTP_PROVIDER: string;
 }
 
 export const twilioConfig = registerAs('twilio', () => {
@@ -30,6 +37,7 @@ export const twilioConfig = registerAs('twilio', () => {
     TWILIO_VERIFY_SERVICE_SID: process.env.TWILIO_VERIFY_SERVICE_SID || '',
     TWILIO_API_KEY_SID: process.env.TWILIO_API_KEY_SID || '',
     TWILIO_API_KEY_SECRET: process.env.TWILIO_API_KEY_SECRET || '',
+    OTP_PROVIDER: (process.env.OTP_PROVIDER || 'local').toLowerCase(),
   });
 
   const errors = validateSync(config);

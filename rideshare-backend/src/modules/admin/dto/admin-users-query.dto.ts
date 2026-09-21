@@ -44,4 +44,13 @@ export class AdminUsersQueryDto extends PaginationDto {
   })
   @IsBoolean()
   isConfirmed?: boolean;
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
+  @IsBoolean()
+  isDriverApproved?: boolean;
 }

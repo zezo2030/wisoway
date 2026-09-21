@@ -6,6 +6,10 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/constants/route_names.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../core/services/booking_service.dart';
+import '../../core/services/instant_counter_offer_actions.dart';
 import '../../core/services/instant_ride_service.dart';
 import '../../core/services/location_service.dart';
 import '../../core/services/route_service.dart';
@@ -14,8 +18,13 @@ import '../../core/ui/error_surface.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/instant_ride_models.dart';
 import '../../models/location_model.dart';
-import '../../widgets/location_autocomplete_field.dart';
+import '../../core/services/saved_places_scope.dart';
+import '../../widgets/location/place_field_block.dart';
+import '../../widgets/trip/share_tracking_sheet.dart';
+import '../location/map_point_picker_screen.dart';
+import '../location/route_search_screen.dart';
 import 'trip_details_screen.dart';
+import 'widgets/instant_map_markers.dart';
 import 'widgets/no_driver_found_sheet.dart';
 import 'widgets/route_endpoint_label.dart';
 
@@ -46,23 +55,25 @@ class InstantRideRequestScreen extends StatefulWidget {
       _InstantRideRequestScreenState();
 }
 
-class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
+class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
+    with SingleTickerProviderStateMixin {
   static const LatLng _fallbackCenter = LatLng(31.9539, 35.9106); // Amman
 
   late final InstantRideService _service =
       widget.service ?? InstantRideService();
   final LocationService _locationService = LocationService();
+  final BookingService _bookingService = BookingService();
   final RouteService _routeService = RouteService();
   final TextEditingController _fromController = TextEditingController();
   final TextEditingController _toController = TextEditingController();
+  final TextEditingController _fareController = TextEditingController();
+  final FocusNode _fareFocus = FocusNode();
 
   GoogleMapController? _mapController;
   LatLng _mapCenter = _fallbackCenter;
   bool _locatingMe = false;
 
   List<LatLng> _routePoints = const [];
-  String _routeDistance = '';
-  String _routeDuration = '';
   int _routeRequestSeq = 0;
 
   LocationModel? _from;
@@ -72,6 +83,19 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
   Timer? _poll;
   Timer? _countdownTicker;
 
+  /// Real nearby online drivers of ours, drawn as car pins on the map.
+  List<InstantNearbyDriverPin> _nearbyDrivers = const [];
+  BitmapDescriptor? _carIcon;
+  BitmapDescriptor? _pickupIcon;
+  BitmapDescriptor? _destinationIcon;
+
+  /// Drives the expanding search ring around the pickup while searching.
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2200),
+  )..addListener(() => setState(() {}));
+  Timer? _nearbyRefresh;
+
   InstantQuote? _quote;
   double? _fare;
   bool _quoteLoading = false;
@@ -79,6 +103,8 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
   bool _counterBusy = false;
   bool _nudgeBusy = false;
   bool _retrying = false;
+  bool _callBusy = false;
+  bool _cancelBusy = false;
 
   /// Measured height of the bottom sheet, used to keep the route and the
   /// Google logo clear of it instead of guessing a fraction of the screen.
@@ -116,19 +142,65 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
       _request = resumed;
       if (resumed.isSearching) _startPolling();
     }
+    _loadMarkerIcons();
+    _refreshNearbyDrivers();
+    _nearbyRefresh = Timer.periodic(
+      const Duration(seconds: 20),
+      (_) => _refreshNearbyDrivers(),
+    );
   }
 
   @override
   void dispose() {
+    // Hand counter-offers back to the push handler on the way out.
+    InstantCounterOfferActions.setInlineHandler(null);
     _poll?.cancel();
     _countdownTicker?.cancel();
+    _nearbyRefresh?.cancel();
+    _pulse.dispose();
     _mapController?.dispose();
     _fromController.dispose();
     _toController.dispose();
+    _fareController.dispose();
+    _fareFocus.dispose();
     super.dispose();
   }
 
   // ── Map ─────────────────────────────────────────────────────────────────────
+
+  /// Marker sprites, drawn once: dark top-view cars for nearby drivers and
+  /// ring pins for the endpoints (see InstantMapMarkers).
+  Future<void> _loadMarkerIcons() async {
+    try {
+      final results = await Future.wait([
+        InstantMapMarkers.car(),
+        InstantMapMarkers.pickup(),
+        InstantMapMarkers.destination(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _carIcon = results[0];
+        _pickupIcon = results[1];
+        _destinationIcon = results[2];
+      });
+    } catch (_) {
+      // Fall back to the default pins; the driver cars are simply omitted.
+    }
+  }
+
+  /// Pull anonymous pins of our online drivers around the pickup (or the map
+  /// center before a pickup is chosen). Failures leave the last pins in place.
+  Future<void> _refreshNearbyDrivers() async {
+    final anchor = _from != null
+        ? LatLng(_from!.latitude, _from!.longitude)
+        : _mapCenter;
+    final pins = await _service.nearbyDriverPins(
+      latitude: anchor.latitude,
+      longitude: anchor.longitude,
+    );
+    if (!mounted) return;
+    setState(() => _nearbyDrivers = pins);
+  }
 
   Future<void> _resolveCurrentLocation() async {
     try {
@@ -136,7 +208,11 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
       if (!mounted) return;
       final target = LatLng(location.latitude, location.longitude);
       setState(() => _mapCenter = target);
-      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(target, 15));
+      if (_from == null && _request == null) {
+        _applyEndpoints(location, _to);
+      } else {
+        _mapController?.animateCamera(CameraUpdate.newLatLngZoom(target, 15));
+      }
     } catch (_) {
       // Keep the fallback center; the user can search or pick on the map.
     }
@@ -198,8 +274,6 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
       if (_routePoints.isNotEmpty) {
         setState(() {
           _routePoints = const [];
-          _routeDistance = '';
-          _routeDuration = '';
         });
       }
       return;
@@ -219,15 +293,50 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
     setState(() {
       if (result is RouteOk && result.polyline.length >= 2) {
         _routePoints = result.polyline;
-        _routeDistance = result.distance;
-        _routeDuration = result.duration;
       } else {
         _routePoints = [origin, destination];
-        _routeDistance = '';
-        _routeDuration = '';
       }
     });
     _focusCamera();
+  }
+
+  /// inDrive's expanding ring around the pickup while a request is out —
+  /// a soft disc that grows toward the dispatch radius and fades.
+  Set<Circle> _buildPulseCircles() {
+    final from = _from;
+    if (from == null || !_isSearching) return const {};
+    final t = _pulse.value;
+    final primary = T.primary(context);
+    return {
+      Circle(
+        circleId: const CircleId('search-pulse'),
+        center: LatLng(from.latitude, from.longitude),
+        radius: instantPulseRadiusMeters(t),
+        fillColor: primary.withValues(alpha: instantPulseAlpha(t)),
+        strokeColor: primary.withValues(alpha: instantPulseStrokeAlpha(t)),
+        strokeWidth: 2,
+      ),
+      Circle(
+        circleId: const CircleId('search-core'),
+        center: LatLng(from.latitude, from.longitude),
+        radius: 120,
+        fillColor: primary.withValues(alpha: 0.18),
+        strokeColor: primary.withValues(alpha: 0.5),
+        strokeWidth: 1,
+      ),
+    };
+  }
+
+  bool get _isSearching => _request?.isSearching ?? false;
+
+  /// Run the ring only while a search is live; called from build so every
+  /// state transition (submit, resume, cancel, match) is covered.
+  void _syncPulse() {
+    if (_isSearching) {
+      if (!_pulse.isAnimating) _pulse.repeat();
+    } else if (_pulse.isAnimating) {
+      _pulse.stop();
+    }
   }
 
   Set<Polyline> _buildPolylines() {
@@ -258,9 +367,10 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
         Marker(
           markerId: const MarkerId('from'),
           position: LatLng(_from!.latitude, _from!.longitude),
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            BitmapDescriptor.hueGreen,
-          ),
+          icon:
+              _pickupIcon ??
+              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+          anchor: const Offset(0.5, 1),
           infoWindow: InfoWindow(title: _from!.name),
         ),
       );
@@ -270,10 +380,33 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
         Marker(
           markerId: const MarkerId('to'),
           position: LatLng(_to!.latitude, _to!.longitude),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+          icon:
+              _destinationIcon ??
+              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+          anchor: const Offset(0.5, 1),
           infoWindow: InfoWindow(title: _to!.name),
         ),
       );
+    }
+    final carIcon = _carIcon;
+    if (carIcon != null) {
+      for (var i = 0; i < _nearbyDrivers.length; i++) {
+        final pin = _nearbyDrivers[i];
+        markers.add(
+          Marker(
+            markerId: MarkerId('nearby_driver_$i'),
+            position: LatLng(pin.latitude, pin.longitude),
+            icon: carIcon,
+            anchor: const Offset(0.5, 0.5),
+            flat: true,
+            // Varied deterministic headings so the cars read as live traffic,
+            // matching the reference art. The pins are anonymous — no tap.
+            rotation: instantCarHeading(i),
+            consumeTapEvents: true,
+            zIndexInt: -1,
+          ),
+        );
+      }
     }
     return markers;
   }
@@ -287,7 +420,7 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
       if (_quote != null || _quoteLoading) {
         setState(() {
           _quote = null;
-          _fare = null;
+          _setFare(null);
           _quoteLoading = false;
         });
       }
@@ -300,7 +433,7 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
       if (!mounted || seq != _quoteSeq) return;
       setState(() {
         _quote = quote;
-        _fare = quote.recommendedFare;
+        _setFare(quote.recommendedFare);
         _quoteLoading = false;
       });
     } catch (_) {
@@ -308,23 +441,6 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
       // Keep any previous quote; the server re-validates on submit anyway.
       setState(() => _quoteLoading = false);
     }
-  }
-
-  /// Stepper increment scaled to the fare magnitude (0.25 for JOD-level fares).
-  double get _fareStep {
-    final rec = _quote?.recommendedFare ?? 0;
-    if (rec >= 100) return 5;
-    if (rec >= 20) return 1;
-    return 0.25;
-  }
-
-  void _bumpFare(double direction) {
-    final quote = _quote;
-    if (quote == null) return;
-    final current = _fare ?? quote.recommendedFare;
-    final next = (current + direction * _fareStep)
-        .clamp(quote.minFare, quote.maxFare);
-    setState(() => _fare = (next * 100).roundToDouble() / 100);
   }
 
   // ── Request lifecycle ─────────────────────────────────────────────────────────
@@ -342,10 +458,13 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
       final request = await _service.createRequest(
         from: _from!,
         to: _to!,
-        passengerFare: _fare,
+        passengerFare: _typedFare ?? _fare,
       );
       if (!mounted) return;
       setState(() => _request = request);
+      // While this screen is up it owns counter-offers for the request, so the
+      // push handler must not stack a modal on top of the inline card.
+      InstantCounterOfferActions.setInlineHandler(request.id);
       _startPolling();
     } catch (e) {
       if (mounted) ErrorSurface.showFailure(context, ApiClient.mapError(e));
@@ -456,13 +575,21 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
         // ignore
       }
     }
-    if (mounted) setState(() => _request = null);
+    if (mounted) {
+      setState(() {
+        _request = null;
+        _pendingFare = null;
+      });
+    }
   }
 
   void _reset() {
     _poll?.cancel();
     _countdownTicker?.cancel();
-    setState(() => _request = null);
+    setState(() {
+      _request = null;
+      _pendingFare = null;
+    });
   }
 
   /// "Try again" on the no-driver sheet: server clones the finished request
@@ -484,7 +611,7 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
         _request = null;
         if (e.quote != null) {
           _quote = e.quote;
-          _fare = e.quote!.recommendedFare;
+          _setFare(e.quote!.recommendedFare);
         }
       });
       ScaffoldMessenger.of(context).showSnackBar(
@@ -502,18 +629,25 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
 
   /// True once the search has ended without a match — the state the
   /// no-driver sheet, endpoint labels and safety badge belong to.
+  /// Name cards float over the pins on the form and on the failure sheet.
+  bool get _isMatched => _request?.isMatched ?? false;
+
+  bool get _showEndpointLabels =>
+      _request == null || _isSearching || _isMatched || _showingNoDriverFound;
+
   bool get _showingNoDriverFound => _request?.isNoDriverFound ?? false;
 
   @override
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) => _measureSheet());
+    _syncPulse();
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           Positioned.fill(child: _buildMap()),
-          if (_showingNoDriverFound) ..._buildEndpointLabels(context),
+          if (_showEndpointLabels) ..._buildEndpointLabels(context),
           _buildTopBar(context),
           Align(
             alignment: Alignment.bottomCenter,
@@ -558,6 +692,7 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
       initialCameraPosition: CameraPosition(target: _mapCenter, zoom: 14),
       markers: _buildMarkers(),
       polylines: _buildPolylines(),
+      circles: _buildPulseCircles(),
       myLocationEnabled: true,
       myLocationButtonEnabled: false,
       zoomControlsEnabled: false,
@@ -578,7 +713,7 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
     // keeps the platform-channel traffic bounded.
     if (_labelLookupInFlight) return;
     final controller = _mapController;
-    if (controller == null || !_showingNoDriverFound) {
+    if (controller == null || !_showEndpointLabels) {
       if (_fromLabelAt != null || _toLabelAt != null) {
         setState(() {
           _fromLabelAt = null;
@@ -599,7 +734,8 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
         LatLng(point.latitude, point.longitude),
       );
       final offset = Offset(screen.x / ratio, screen.y / ratio);
-      final visible = offset.dy >= topLimit &&
+      final visible =
+          offset.dy >= topLimit &&
           offset.dy <= bottomLimit &&
           offset.dx >= 0 &&
           offset.dx <= size.width;
@@ -665,11 +801,11 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
           start: 12,
           child: _circleButton(
             context,
-            icon: Icons.arrow_back,
+            icon: _request == null ? Icons.keyboard_arrow_down : Icons.close,
             onTap: () => Navigator.of(context).maybePop(),
           ),
         ),
-        if (_showingNoDriverFound)
+        if (_showingNoDriverFound || _isSearching || _isMatched)
           PositionedDirectional(
             top: top,
             end: 12,
@@ -694,11 +830,7 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.shield_outlined,
-              size: 18,
-              color: T.primary(context),
-            ),
+            Icon(Icons.shield_outlined, size: 18, color: T.primary(context)),
             const SizedBox(width: 6),
             Text(
               context.l10n.instantRideSafety,
@@ -769,9 +901,58 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
 
   // ── Form sheet ─────────────────────────────────────────────────────────────────
 
+  /// Both endpoints as they stand after any picker closes.
+  void _applyEndpoints(LocationModel? from, LocationModel? to) {
+    setState(() {
+      _from = from;
+      _to = to;
+      _fromController.text = from?.name ?? '';
+      _toController.text = to?.name ?? '';
+    });
+    if (from != null || to != null) _focusCamera();
+    _updateRoute();
+    _updateQuote();
+    _refreshNearbyDrivers();
+  }
+
+  Future<void> _openSearch(RouteField field) async {
+    FocusScope.of(context).unfocus();
+    final selection = await Navigator.of(context).push<RouteSelection>(
+      MaterialPageRoute(
+        builder: (_) => RouteSearchScreen(
+          focusField: field,
+          savedPlaces: savedPlacesFor(context),
+          from: _from,
+          to: _to,
+        ),
+      ),
+    );
+    if (selection == null || !mounted) return;
+    _applyEndpoints(selection.from, selection.to);
+  }
+
+  /// "حدد على الخريطة" — drop the destination pin straight on a map.
+  Future<void> _pickDestinationOnMap() async {
+    FocusScope.of(context).unfocus();
+    final l10n = context.l10n;
+    final anchor = _from;
+    final location = await Navigator.of(context).push<LocationModel>(
+      MaterialPageRoute(
+        builder: (_) => MapPointPickerScreen(
+          confirmLabel: l10n.routeSearchConfirmDestination,
+          initialLocation: _to,
+          fallbackCenter: anchor != null
+              ? LatLng(anchor.latitude, anchor.longitude)
+              : _mapCenter,
+        ),
+      ),
+    );
+    if (location == null || !mounted) return;
+    _applyEndpoints(_from, location);
+  }
+
   Widget _buildFormSheet(BuildContext context) {
-    final maxSheetHeight = MediaQuery.of(context).size.height * 0.6;
-    final ready = _from != null && _to != null && !_submitting;
+    final maxSheetHeight = MediaQuery.of(context).size.height * 0.72;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -801,103 +982,44 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 _grabHandle(),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Text(
-                      context.l10n.instantRequestNowTitle,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: T.onSurface(context),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
                 Flexible(
                   child: ConstrainedBox(
                     constraints: BoxConstraints(maxHeight: maxSheetHeight),
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          LocationAutocompleteField(
-                            controller: _fromController,
-                            hint: context.l10n.instantFromHint,
-                            mapPickerTitle: context.l10n.instantFromPickerTitle,
-                            icon: Icons.trip_origin,
-                            iconColor: AppColors.success,
-                            initialLocation: _from,
-                            onLocationSelected: (loc) {
-                              setState(() => _from = loc);
-                              if (loc != null) _focusCamera();
-                              _updateRoute();
-                              _updateQuote();
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          LocationAutocompleteField(
-                            controller: _toController,
-                            hint: context.l10n.instantToHint,
-                            mapPickerTitle: context.l10n.instantToPickerTitle,
-                            icon: Icons.location_on,
-                            iconColor: AppColors.error,
-                            initialLocation: _to,
-                            onLocationSelected: (loc) {
-                              setState(() => _to = loc);
-                              if (loc != null) _focusCamera();
-                              _updateRoute();
-                              _updateQuote();
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                _buildRouteSummary(context),
-                _buildFareStepper(context),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 54,
-                    child: ElevatedButton.icon(
-                      onPressed: ready ? _submit : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: T.primary(context),
-                        disabledBackgroundColor: T
-                            .primary(context)
-                            .withValues(alpha: 0.4),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      icon: _submitting
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  AppColors.white,
-                                ),
-                              ),
-                            )
-                          : const Icon(
-                              Icons.electric_bolt,
-                              color: AppColors.white,
+                          Text(
+                            context.l10n.instantRequestNowTitle,
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: T.onSurface(context),
                             ),
-                      label: Text(
-                        context.l10n.instantRequestNow,
-                        style: const TextStyle(
-                          color: AppColors.white,
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                        ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            context.l10n.instantRequestNowSubtitle,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: T.onSurfaceVariant(context),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildEndpointRows(context),
+                          const SizedBox(height: 14),
+                          _buildMetricsCard(context),
+                          if (_quote != null || _quoteLoading) ...[
+                            const SizedBox(height: 14),
+                            _buildFareInput(context),
+                          ],
+                          const SizedBox(height: 16),
+                          _buildPrimaryCta(context),
+                          const SizedBox(height: 18),
+                          _buildTrustRow(context),
+                        ],
                       ),
                     ),
                   ),
@@ -910,35 +1032,357 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
     );
   }
 
-  /// Distance + estimated duration strip, shown once a route is available.
-  Widget _buildRouteSummary(BuildContext context) {
-    if (_routeDistance.isEmpty && _routeDuration.isEmpty) {
-      return const SizedBox.shrink();
+  /// "من" / "إلى" blocks with their side actions: change the pickup, or drop
+  /// the destination pin on the map.
+  Widget _buildEndpointRows(BuildContext context) {
+    final l10n = context.l10n;
+    return Column(
+      children: [
+        PlaceFieldBlock(
+          label: l10n.instantFormFromLabel,
+          value: _from?.name,
+          hint: l10n.instantFromHint,
+          indicator: RouteEndpointRing(color: T.success(context)),
+          busy: _locatingMe && _from == null,
+          trailing: _endpointAction(
+            context,
+            icon: Icons.edit_outlined,
+            label: l10n.instantFormChange,
+            onTap: () => _openSearch(RouteField.origin),
+          ),
+          onTap: () => _openSearch(RouteField.origin),
+        ),
+        Padding(
+          padding: const EdgeInsetsDirectional.only(
+            start: 22,
+            top: 4,
+            bottom: 4,
+          ),
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Column(
+              children: List.generate(
+                3,
+                (_) => Container(
+                  width: 3,
+                  height: 3,
+                  margin: const EdgeInsets.symmetric(vertical: 1.5),
+                  decoration: BoxDecoration(
+                    color: T.outline(context),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        PlaceFieldBlock(
+          label: l10n.instantFormToLabel,
+          value: _to?.name,
+          hint: l10n.instantFormToHint,
+          indicator: Icon(Icons.location_on, size: 20, color: T.error(context)),
+          trailing: _endpointAction(
+            context,
+            icon: Icons.map_outlined,
+            label: l10n.instantFormPickOnMap,
+            onTap: _pickDestinationOnMap,
+          ),
+          onTap: () => _openSearch(RouteField.destination),
+        ),
+      ],
+    );
+  }
+
+  Widget _endpointAction(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: T.surface(context),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: T.outlineVariant(context)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: T.onSurface(context)),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: T.onSurface(context),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Minutes until the nearest online driver could reach the pickup, from the
+  /// anonymous pins already on the map. Null until both are known.
+  int? get _driverEtaMinutes {
+    final from = _from;
+    if (from == null || _nearbyDrivers.isEmpty) return null;
+    var nearestKm = double.infinity;
+    for (final pin in _nearbyDrivers) {
+      final km = _haversineKm(
+        from.latitude,
+        from.longitude,
+        pin.latitude,
+        pin.longitude,
+      );
+      if (km < nearestKm) nearestKm = km;
     }
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+    if (!nearestKm.isFinite) return null;
+    // Same urban approach speed the backend uses for pickup ETAs.
+    return math.max(1, (nearestKm / 25 * 60).ceil());
+  }
+
+  static double _haversineKm(
+    double lat1,
+    double lng1,
+    double lat2,
+    double lng2,
+  ) {
+    const r = 6371.0;
+    double rad(double d) => d * math.pi / 180;
+    final dLat = rad(lat2 - lat1);
+    final dLng = rad(lng2 - lng1);
+    final a =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(rad(lat1)) *
+            math.cos(rad(lat2)) *
+            math.sin(dLng / 2) *
+            math.sin(dLng / 2);
+    return 2 * r * math.asin(math.sqrt(a));
+  }
+
+  /// Three-up strip: driver ETA / distance / trip duration, with a footer
+  /// explaining that the fare appears once the destination is set.
+  Widget _buildMetricsCard(BuildContext context) {
+    final l10n = context.l10n;
+    final quote = _quote;
+    final eta = _driverEtaMinutes;
+    final distance = quote?.distanceKm;
+    final duration = quote?.durationMinutes;
+
+    String fmt(num? v) {
+      if (v == null) return '--';
+      return v == v.roundToDouble()
+          ? v.round().toString()
+          : v.toStringAsFixed(1);
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: T.outlineVariant(context)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
         children: [
-          if (_routeDuration.isNotEmpty)
-            _routeMetric(context, Icons.schedule, _routeDuration),
-          if (_routeDuration.isNotEmpty && _routeDistance.isNotEmpty)
-            const SizedBox(width: 20),
-          if (_routeDistance.isNotEmpty)
-            _routeMetric(context, Icons.straighten, _routeDistance),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: IntrinsicHeight(
+              child: Row(
+                children: [
+                  _metricCell(
+                    context,
+                    icon: Icons.directions_car_outlined,
+                    label: l10n.instantFormDriverArrives,
+                    value: fmt(eta),
+                    unit: l10n.instantFormMinutesUnit,
+                  ),
+                  _metricDivider(context),
+                  _metricCell(
+                    context,
+                    icon: Icons.route_outlined,
+                    label: l10n.instantFormDistance,
+                    value: fmt(distance),
+                    unit: l10n.instantFormKmUnit,
+                  ),
+                  _metricDivider(context),
+                  _metricCell(
+                    context,
+                    icon: Icons.schedule,
+                    label: l10n.instantFormDuration,
+                    value: fmt(duration),
+                    unit: l10n.instantFormMinutesUnit,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (quote == null)
+            Container(
+              width: double.infinity,
+              color: T.surfaceVariant(context),
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: 16,
+                    color: T.onSurfaceVariant(context),
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      l10n.instantFormPriceAfterDestination,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: T.onSurfaceVariant(context),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
   }
 
-  /// inDrive-style fare row: − / + steppers around the passenger's fare,
-  /// seeded with the server's distance-based recommendation.
-  Widget _buildFareStepper(BuildContext context) {
+  Widget _metricDivider(BuildContext context) =>
+      VerticalDivider(width: 1, thickness: 1, color: T.outlineVariant(context));
+
+  Widget _metricCell(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String value,
+    required String unit,
+  }) {
+    return Expanded(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 16, color: T.onSurfaceVariant(context)),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: T.onSurfaceVariant(context),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: T.onSurface(context),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            unit,
+            style: TextStyle(
+              fontSize: 11.5,
+              color: T.onSurfaceVariant(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Fare input ───────────────────────────────────────────────────────────────
+
+  static String _formatFare(double v) =>
+      v == v.roundToDouble() ? v.round().toString() : v.toStringAsFixed(2);
+
+  /// Keep the model and the text field in step.
+  void _setFare(double? value) {
+    _fare = value;
+    final text = value == null ? '' : _formatFare(value);
+    if (_fareController.text != text) {
+      _fareController.value = TextEditingValue(
+        text: text,
+        selection: TextSelection.collapsed(offset: text.length),
+      );
+    }
+  }
+
+  /// The fare as typed, accepting Arabic-Indic digits and a comma decimal.
+  double? get _typedFare {
+    final text = _fareController.text.trim();
+    if (text.isEmpty) return null;
+    const arabic = '٠١٢٣٤٥٦٧٨٩';
+    final sb = StringBuffer();
+    for (final ch in text.characters) {
+      final i = arabic.indexOf(ch);
+      if (i >= 0) {
+        sb.write(i);
+      } else if (ch == '،' || ch == ',') {
+        sb.write('.');
+      } else {
+        sb.write(ch);
+      }
+    }
+    return double.tryParse(sb.toString());
+  }
+
+  bool get _fareValid {
     final quote = _quote;
+    if (quote == null) return true;
+    final fare = _typedFare;
+    return fare != null &&
+        fare >= quote.minFare - 0.001 &&
+        fare <= quote.maxFare + 0.001;
+  }
+
+  /// Stepper increment scaled to the fare magnitude (0.25 for JOD-level fares).
+  double get _fareStep {
+    final rec = _quote?.recommendedFare ?? 0;
+    if (rec >= 100) return 5;
+    if (rec >= 20) return 1;
+    return 0.25;
+  }
+
+  void _bumpFare(double direction) {
+    final quote = _quote;
+    if (quote == null) return;
+    final current = _typedFare ?? _fare ?? quote.recommendedFare;
+    final next = (current + direction * _fareStep).clamp(
+      quote.minFare,
+      quote.maxFare,
+    );
+    setState(() => _setFare((next * 100).roundToDouble() / 100));
+  }
+
+  /// The passenger writes their own fare, inDrive style, with − / + nudges
+  /// around it and the server's recommendation as a reference.
+  Widget _buildFareInput(BuildContext context) {
+    final quote = _quote;
+    final l10n = context.l10n;
     if (quote == null) {
-      if (!_quoteLoading) return const SizedBox.shrink();
-      return const Padding(
-        padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
+      return const Center(
         child: SizedBox(
           height: 24,
           width: 24,
@@ -947,59 +1391,148 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
       );
     }
 
-    final fare = _fare ?? quote.recommendedFare;
-    final canDecrease = fare - _fareStep >= quote.minFare - 0.001;
-    final canIncrease = fare + _fareStep <= quote.maxFare + 0.001;
+    final typed = _typedFare;
+    final valid = _fareValid;
+    final canDecrease =
+        (typed ?? quote.recommendedFare) - _fareStep >= quote.minFare - 0.001;
+    final canIncrease =
+        (typed ?? quote.recommendedFare) + _fareStep <= quote.maxFare + 0.001;
+    final borderColor = valid ? T.outlineVariant(context) : T.error(context);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: T.surfaceVariant(context),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            _fareStepButton(
-              context,
-              icon: Icons.remove,
-              enabled: canDecrease,
-              onTap: () => _bumpFare(-1),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: T.surfaceVariant(context),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            l10n.instantFormYourFareTitle,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: T.onSurfaceVariant(context),
             ),
-            Expanded(
-              child: Column(
-                children: [
-                  Text(
-                    '${fare.toStringAsFixed(2)} ${quote.currency}',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: T.onSurface(context),
-                    ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _fareStepButton(
+                context,
+                icon: Icons.remove,
+                enabled: canDecrease,
+                onTap: () => _bumpFare(-1),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextField(
+                  key: const ValueKey('instant-fare-field'),
+                  controller: _fareController,
+                  focusNode: _fareFocus,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    context.l10n.instantRecommendedFare(
-                      quote.recommendedFare.toStringAsFixed(2),
-                      quote.currency,
-                    ),
-                    style: TextStyle(
-                      fontSize: 12,
+                  textAlign: TextAlign.center,
+                  textInputAction: TextInputAction.done,
+                  onChanged: (_) => setState(() => _fare = _typedFare),
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: T.onSurface(context),
+                  ),
+                  decoration: InputDecoration(
+                    hintText: l10n.instantFormFareHint,
+                    hintStyle: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.normal,
                       color: T.onSurfaceVariant(context),
                     ),
+                    suffixText: quote.currency,
+                    suffixStyle: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: T.onSurfaceVariant(context),
+                    ),
+                    isDense: true,
+                    filled: true,
+                    fillColor: T.surface(context),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: valid ? T.primary(context) : T.error(context),
+                        width: 1.5,
+                      ),
+                    ),
                   ),
-                ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              _fareStepButton(
+                context,
+                icon: Icons.add,
+                enabled: canIncrease,
+                onTap: () => _bumpFare(1),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            valid
+                ? l10n.instantRecommendedFare(
+                    _formatFare(quote.recommendedFare),
+                    quote.currency,
+                  )
+                : l10n.instantFormFareOutOfRange(
+                    _formatFare(quote.minFare),
+                    _formatFare(quote.maxFare),
+                    quote.currency,
+                  ),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: valid ? FontWeight.normal : FontWeight.w600,
+              color: valid ? T.onSurfaceVariant(context) : T.error(context),
+            ),
+          ),
+          if (valid) ...[
+            const SizedBox(height: 2),
+            Text(
+              l10n.instantFormFareRange(
+                _formatFare(quote.minFare),
+                _formatFare(quote.maxFare),
+                quote.currency,
+              ),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11.5,
+                color: T.onSurfaceVariant(context),
               ),
             ),
-            _fareStepButton(
-              context,
-              icon: Icons.add,
-              enabled: canIncrease,
-              onTap: () => _bumpFare(1),
-            ),
           ],
-        ),
+          const SizedBox(height: 6),
+          Text(
+            l10n.instantFormFareNote,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 11.5,
+              color: T.onSurfaceVariant(context),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1031,20 +1564,138 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
     );
   }
 
-  Widget _routeMetric(BuildContext context, IconData icon, String text) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 18, color: T.primary(context)),
-        const SizedBox(width: 6),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: T.onSurface(context),
+  // ── CTA + trust row ───────────────────────────────────────────────────────────
+
+  Widget _buildPrimaryCta(BuildContext context) {
+    final l10n = context.l10n;
+    final needsDestination = _to == null;
+    final ready =
+        _from != null &&
+        _to != null &&
+        !_submitting &&
+        !_quoteLoading &&
+        _fareValid;
+
+    final label = needsDestination
+        ? l10n.instantFormChooseDestinationCta
+        : l10n.instantRequestNow;
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
+
+    return SizedBox(
+      width: double.infinity,
+      height: 54,
+      child: ElevatedButton(
+        onPressed: ready ? _submit : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: T.primary(context),
+          disabledBackgroundColor: needsDestination
+              ? T.primary(context).withValues(alpha: 0.85)
+              : T.primary(context).withValues(alpha: 0.4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
           ),
         ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (_submitting)
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
+                ),
+              )
+            else
+              Container(
+                width: 30,
+                height: 30,
+                decoration: const BoxDecoration(
+                  color: AppColors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  needsDestination
+                      ? (isRtl ? Icons.arrow_back : Icons.arrow_forward)
+                      : Icons.electric_bolt,
+                  size: 18,
+                  color: T.primary(context),
+                ),
+              ),
+            const SizedBox(width: 12),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTrustRow(BuildContext context) {
+    final l10n = context.l10n;
+    final items = [
+      (Icons.lock_outline, l10n.instantTrustCash, l10n.instantTrustCashSub),
+      (
+        Icons.map_outlined,
+        l10n.instantTrustTracking,
+        l10n.instantTrustTrackingSub,
+      ),
+      (
+        Icons.verified_user_outlined,
+        l10n.instantTrustSafe,
+        l10n.instantTrustSafeSub,
+      ),
+      (
+        Icons.headset_mic_outlined,
+        l10n.instantTrustSupport,
+        l10n.instantTrustSupportSub,
+      ),
+    ];
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final (icon, title, subtitle) in items)
+          Expanded(
+            child: Column(
+              children: [
+                Icon(icon, size: 24, color: T.primary(context)),
+                const SizedBox(height: 6),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: T.onSurface(context),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    color: T.onSurfaceVariant(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -1087,11 +1738,12 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
     } else if (request.isNoDriverFound) {
       content = NoDriverFoundSheet(
         retrying: _retrying,
+        terminalReason: request.terminalReason,
+        searchRadiusKm: request.searchRadiusKm,
         onRetry: _retry,
         // The request is already terminal, so this just leaves the flow.
         onClose: () => Navigator.of(context).maybePop(),
-        onSupport: () =>
-            Navigator.of(context).pushNamed(RouteNames.support),
+        onSupport: () => Navigator.of(context).pushNamed(RouteNames.support),
       );
     } else if (request.isFailed) {
       content = _statusView(
@@ -1128,59 +1780,539 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
     );
   }
 
+  // ── Fare while searching (inDrive: − / fare / + and "Raise fare") ─────────────
+
+  /// The fare the passenger is lining up to send, if they nudged it above
+  /// what drivers currently see. Null means "no pending raise".
+  double? _pendingFare;
+
+  double _searchStepFor(double base) {
+    if (base >= 100) return 5;
+    if (base >= 20) return 1;
+    return 0.25;
+  }
+
+  void _nudgeSearchFare(InstantRequest request, double direction) {
+    final current = request.currentFare;
+    final max = request.maxFare;
+    if (current == null) return;
+    final step = _searchStepFor(
+      request.recommendedFare != null
+          ? double.tryParse(request.recommendedFare!) ?? current
+          : current,
+    );
+    final from = _pendingFare ?? current;
+    var next = from + direction * step;
+    if (max != null && next > max) next = max;
+    if (next <= current) next = current;
+    next = (next * 100).roundToDouble() / 100;
+    setState(() => _pendingFare = next > current ? next : null);
+  }
+
+  Future<void> _submitPendingFare(InstantRequest request) async {
+    final pending = _pendingFare;
+    if (pending == null || _nudgeBusy) return;
+    setState(() => _nudgeBusy = true);
+    try {
+      final updated = await _service.updateFare(request.id, pending);
+      if (!mounted) return;
+      setState(() {
+        _request = updated;
+        _pendingFare = null;
+        _dismissedNudgeFare = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.instantFareRaisedToast)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ErrorSurface.showFailure(context, ApiClient.mapError(e));
+      await _refreshRequest(request.id);
+    } finally {
+      if (mounted) setState(() => _nudgeBusy = false);
+    }
+  }
+
+  /// inDrive's fare block on the waiting screen: the fare drivers see, − / +
+  /// to line up a higher one, and a "Raise fare" button that only lights up
+  /// once the pending fare is above the current one.
+  Widget _buildSearchFareCard(BuildContext context, InstantRequest request) {
+    final l10n = context.l10n;
+    final current = request.currentFare;
+    if (current == null) return const SizedBox.shrink();
+    final max = request.maxFare;
+    // The backend only takes a raise while no offer is outstanding.
+    final locked = request.status == 'offered';
+    final shown = _pendingFare ?? current;
+    final atMax = max != null && shown >= max - 0.001;
+    final canRaise = _pendingFare != null && !locked && !_nudgeBusy;
+
+    final String hint;
+    if (locked) {
+      hint = l10n.instantFareLockedWhileOffered;
+    } else if (atMax && _pendingFare == null) {
+      hint = l10n.instantFareMaxReached;
+    } else {
+      hint = l10n.instantFareRaiseHint;
+    }
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: T.surfaceVariant(context),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.payments_outlined,
+                size: 16,
+                color: T.primary(context),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                l10n.instantYourFareLabel,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: T.onSurfaceVariant(context),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _fareStepButton(
+                context,
+                icon: Icons.remove,
+                enabled: !locked && _pendingFare != null,
+                onTap: () => _nudgeSearchFare(request, -1),
+              ),
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      '${_formatFare(shown)} ${request.currency}',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: T.onSurface(context),
+                      ),
+                    ),
+                    if (_pendingFare != null)
+                      Text(
+                        l10n.instantYourFareValue(
+                          _formatFare(current),
+                          request.currency,
+                        ),
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: T.onSurfaceVariant(context),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              _fareStepButton(
+                context,
+                icon: Icons.add,
+                enabled: !locked && !atMax,
+                onTap: () => _nudgeSearchFare(request, 1),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 46,
+            child: ElevatedButton(
+              onPressed: canRaise ? () => _submitPendingFare(request) : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: T.primary(context),
+                disabledBackgroundColor: T
+                    .primary(context)
+                    .withValues(alpha: 0.3),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: _nudgeBusy
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppColors.white,
+                        ),
+                      ),
+                    )
+                  : Text(
+                      _pendingFare != null
+                          ? l10n.instantRaiseTo(
+                              _formatFare(_pendingFare!),
+                              request.currency,
+                            )
+                          : l10n.instantRaiseFare,
+                      style: const TextStyle(
+                        color: AppColors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            hint,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 11.5,
+              color: T.onSurfaceVariant(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSearchingView(BuildContext context, InstantRequest request) {
+    final l10n = context.l10n;
     final counter = request.counterOffer;
-    final yourFare = request.passengerFare ?? request.fareEstimate;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (counter != null)
-          _buildCounterOfferCard(context, request, counter)
-        else ...[
-          const SizedBox(height: 8),
-          const SizedBox(
-            width: 56,
-            height: 56,
-            child: CircularProgressIndicator(strokeWidth: 5),
+        if (counter != null) ...[
+          _buildCounterOfferCard(context, request, counter),
+          const SizedBox(height: 14),
+        ] else ...[
+          Row(
+            children: [
+              SizedBox(
+                width: 44,
+                height: 44,
+                child: CircularProgressIndicator(
+                  strokeWidth: 4,
+                  color: T.primary(context),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.instantSearching,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: T.onSurface(context),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      l10n.instantSearchingSubtitle,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        color: T.onSurfaceVariant(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+        ],
+        _buildSearchingMetrics(context, request),
+        const SizedBox(height: 12),
+        _buildSearchFareCard(context, request),
+        if (request.nudge != null &&
+            request.nudge!.suggestedFare != _dismissedNudgeFare) ...[
+          const SizedBox(height: 12),
+          _buildNudgeCard(context, request.nudge!),
+        ] else ...[
+          const SizedBox(height: 12),
+          _buildSearchingTip(context),
+        ],
+        const SizedBox(height: 14),
+        Divider(height: 1, color: T.outlineVariant(context)),
+        const SizedBox(height: 14),
+        _buildProgressSteps(context, request),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: OutlinedButton(
+            onPressed: _counterBusy || _nudgeBusy ? null : _cancel,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.error,
+              side: BorderSide(color: AppColors.error.withValues(alpha: 0.6)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: Text(
+              l10n.instantCancelRequest,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Expected pickup / distance / duration, each in its own outlined card.
+  /// Distance and duration come with the request from newer backends, else
+  /// from the quote taken just before it was sent.
+  Widget _buildSearchingMetrics(BuildContext context, InstantRequest request) {
+    final l10n = context.l10n;
+    final eta = _driverEtaMinutes;
+    final distance = request.distanceKm ?? _quote?.distanceKm;
+    final duration = request.durationMinutes ?? _quote?.durationMinutes;
+
+    String km(double? v) => v == null
+        ? '--'
+        : l10n.instantSearchingKm(
+            v == v.roundToDouble()
+                ? v.round().toString()
+                : v.toStringAsFixed(1),
+          );
+    String min(int? v) =>
+        v == null ? '--' : l10n.instantSearchingMinutes(v.toString());
+
+    return Row(
+      children: [
+        Expanded(
+          child: _searchingMetricCard(
+            context,
+            icon: Icons.schedule,
+            label: l10n.instantSearchingEta,
+            value: min(eta),
+            caption: l10n.instantSearchingApprox,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _searchingMetricCard(
+            context,
+            icon: Icons.route_outlined,
+            label: l10n.instantFormDistance,
+            value: km(distance),
+            caption: '',
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _searchingMetricCard(
+            context,
+            icon: Icons.timer_outlined,
+            label: l10n.instantFormDuration,
+            value: min(duration),
+            caption: l10n.instantSearchingApprox,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _searchingMetricCard(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String value,
+    required String caption,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: T.outlineVariant(context)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 15, color: T.primary(context)),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: T.onSurfaceVariant(context),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
           Text(
-            context.l10n.instantSearching,
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 17,
               fontWeight: FontWeight.bold,
               color: T.onSurface(context),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 2),
           Text(
-            '${request.fromName} ← ${request.toName}',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: T.onSurfaceVariant(context)),
+            caption.isEmpty ? ' ' : caption,
+            style: TextStyle(fontSize: 11, color: T.onSurfaceVariant(context)),
           ),
-          if (yourFare != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              context.l10n.instantYourFareValue(yourFare, request.currency),
-              style: TextStyle(color: T.onSurfaceVariant(context)),
-            ),
-          ],
-          if (request.nudge != null &&
-              request.nudge!.suggestedFare != _dismissedNudgeFare) ...[
-            const SizedBox(height: 12),
-            _buildNudgeCard(context, request.nudge!),
-          ],
         ],
-        const SizedBox(height: 16),
-        TextButton(
-          onPressed: _counterBusy || _nudgeBusy ? null : _cancel,
-          child: Text(
-            context.l10n.instantCancelRequest,
-            style: TextStyle(color: AppColors.error),
+      ),
+    );
+  }
+
+  Widget _buildSearchingTip(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: T.primary(context).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: T.primary(context).withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.lightbulb_outline, size: 20, color: T.primary(context)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              context.l10n.instantSearchingTip,
+              style: TextStyle(
+                fontSize: 12.5,
+                height: 1.4,
+                color: T.onSurface(context),
+              ),
+            ),
           ),
-        ),
+        ],
+      ),
+    );
+  }
+
+  /// Where the request stands: sent → finding a driver → driver offer →
+  /// driver on the way. Only stages this flow actually goes through.
+  Widget _buildProgressSteps(BuildContext context, InstantRequest request) {
+    final l10n = context.l10n;
+    final hasOffer = request.counterOffer != null;
+    final matched = request.isMatched;
+
+    final steps = [
+      (Icons.check, l10n.instantStepRequested, _StepState.done),
+      (
+        Icons.search,
+        l10n.instantStepSearching,
+        hasOffer || matched ? _StepState.done : _StepState.active,
+      ),
+      (
+        Icons.local_offer_outlined,
+        l10n.instantStepDriverOffer,
+        matched
+            ? _StepState.done
+            : hasOffer
+            ? _StepState.active
+            : _StepState.upcoming,
+      ),
+      (
+        Icons.directions_car_outlined,
+        l10n.instantStepDriverOnWay,
+        matched ? _StepState.active : _StepState.upcoming,
+      ),
+    ];
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < steps.length; i++) ...[
+          if (i > 0)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 18),
+                child: Container(
+                  height: 2,
+                  color: steps[i - 1].$3 == _StepState.done
+                      ? T.primary(context)
+                      : T.outlineVariant(context),
+                ),
+              ),
+            ),
+          _progressStep(context, steps[i].$1, steps[i].$2, steps[i].$3),
+        ],
       ],
+    );
+  }
+
+  Widget _progressStep(
+    BuildContext context,
+    IconData icon,
+    String label,
+    _StepState state,
+  ) {
+    final primary = T.primary(context);
+    final Color fill;
+    final Color ring;
+    final Color fg;
+    switch (state) {
+      case _StepState.done:
+        fill = primary;
+        ring = primary;
+        fg = AppColors.white;
+      case _StepState.active:
+        fill = primary.withValues(alpha: 0.12);
+        ring = primary;
+        fg = primary;
+      case _StepState.upcoming:
+        fill = T.surface(context);
+        ring = T.outlineVariant(context);
+        fg = T.onSurfaceVariant(context);
+    }
+    return SizedBox(
+      width: 68,
+      child: Column(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: fill,
+              shape: BoxShape.circle,
+              border: Border.all(color: ring, width: 2),
+            ),
+            child: Icon(
+              state == _StepState.done ? Icons.check : icon,
+              size: 18,
+              color: fg,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: state == _StepState.upcoming
+                  ? FontWeight.normal
+                  : FontWeight.w600,
+              color: state == _StepState.upcoming
+                  ? T.onSurfaceVariant(context)
+                  : T.onSurface(context),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1206,10 +2338,7 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
           Text(
             context.l10n.instantNudgeSubtitle,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
-              color: T.onSurfaceVariant(context),
-            ),
+            style: TextStyle(fontSize: 12, color: T.onSurfaceVariant(context)),
           ),
           const SizedBox(height: 12),
           SizedBox(
@@ -1252,9 +2381,8 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
           TextButton(
             onPressed: _nudgeBusy
                 ? null
-                : () => setState(
-                      () => _dismissedNudgeFare = nudge.suggestedFare,
-                    ),
+                : () =>
+                      setState(() => _dismissedNudgeFare = nudge.suggestedFare),
             child: Text(
               context.l10n.instantKeepFare(nudge.currentFare, nudge.currency),
               style: TextStyle(color: T.onSurfaceVariant(context)),
@@ -1462,153 +2590,544 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
     );
   }
 
-  /// inDrive-style matched sheet: "Driver is arriving in ~N min" + driver
-  /// card (rating, vehicle, plate) + agreed fare + track-ride CTA.
+  // ── Matched ──────────────────────────────────────────────────────────────────
+
+  String? _matchedTripId(InstantRequest request, InstantMatch match) {
+    final id = match.tripId ?? request.tripId;
+    return id == null || id.isEmpty ? null : id;
+  }
+
+  void _openChat(InstantRequest request, InstantMatch match) {
+    final tripId = _matchedTripId(request, match);
+    if (tripId == null) return;
+    Navigator.pushNamed(
+      context,
+      RouteNames.chat,
+      arguments: {
+        'tripId': tripId,
+        'driverId': match.driverId ?? request.matchedDriverId ?? '',
+        'driverName': match.driverName ?? '',
+      },
+    );
+  }
+
+  /// In-app call through the booking's proxy number, then hand off to the
+  /// phone dialler.
+  Future<void> _callDriver(InstantMatch match) async {
+    final bookingId = match.bookingId;
+    if (_callBusy) return;
+    if (bookingId == null || bookingId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.instantMatchedCallFailed)),
+      );
+      return;
+    }
+    setState(() => _callBusy = true);
+    try {
+      final number = await _service.initiateCall(bookingId);
+      final launched = await launchUrl(Uri(scheme: 'tel', path: number));
+      if (!launched) throw StateError('dialler unavailable');
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.instantMatchedCallFailed)),
+      );
+    } finally {
+      if (mounted) setState(() => _callBusy = false);
+    }
+  }
+
+  void _shareTrip(InstantRequest request, InstantMatch match) {
+    final tripId = _matchedTripId(request, match);
+    if (tripId == null) return;
+    ShareTrackingSheet.show(context, tripId);
+  }
+
+  void _trackTrip(InstantRequest request, InstantMatch match) {
+    final tripId = _matchedTripId(request, match);
+    if (tripId == null) {
+      Navigator.of(context).pop();
+      return;
+    }
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => TripDetailsScreen(tripId: tripId)),
+    );
+  }
+
+  /// After a match the request itself is final; cancelling means cancelling
+  /// the booking the accept created, which also frees the driver.
+  Future<void> _cancelMatched(InstantMatch match) async {
+    final bookingId = match.bookingId;
+    if (bookingId == null || bookingId.isEmpty || _cancelBusy) return;
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.instantMatchedCancelTitle),
+        content: Text(l10n.instantMatchedCancelBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.instantMatchedKeep),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(
+              l10n.cancelBooking,
+              style: const TextStyle(color: AppColors.error),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _cancelBusy = true);
+    try {
+      await _bookingService.cancelBooking(bookingId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.bookingCancelledSuccess)));
+      _reset();
+    } catch (e) {
+      if (mounted) ErrorSurface.showFailure(context, ApiClient.mapError(e));
+    } finally {
+      if (mounted) setState(() => _cancelBusy = false);
+    }
+  }
+
+  /// "تم العثور على سائق": check header, ETA / distance / duration strip,
+  /// driver card with chat + call, share-with-contact row, track CTA, cancel.
   Widget _buildMatchedView(
     BuildContext context,
     InstantRequest request,
     InstantMatch match,
   ) {
-    final tripId = match.tripId ?? request.tripId;
-    final hasTrip = tripId != null && tripId.isNotEmpty;
-    final etaMinutes = match.pickupEtaMinutes;
-    final vehicleLine = [
-      if (match.vehicleModel != null && match.vehicleModel!.isNotEmpty)
-        match.vehicleModel!,
-      if (match.plateNumber != null && match.plateNumber!.isNotEmpty)
-        match.plateNumber!,
-    ].join(' • ');
+    final l10n = context.l10n;
+    final canCancel = match.bookingId != null && match.bookingId!.isNotEmpty;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 8),
+        Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: T.primary(context),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check, color: AppColors.white, size: 28),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.instantDriverFound,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: T.onSurface(context),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    l10n.instantMatchedSubtitle,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      color: T.onSurfaceVariant(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _buildMatchedMetrics(context, request, match),
+        const SizedBox(height: 12),
+        _buildDriverCard(context, request, match),
+        const SizedBox(height: 12),
+        _buildShareRow(context, request, match),
+        const SizedBox(height: 14),
+        SizedBox(
+          height: 60,
+          child: ElevatedButton(
+            onPressed: () => _trackTrip(request, match),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: T.primary(context),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  l10n.instantTrackTrip,
+                  style: const TextStyle(
+                    color: AppColors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  l10n.instantMatchedTrackSubtitle,
+                  style: TextStyle(
+                    color: AppColors.white.withValues(alpha: 0.85),
+                    fontSize: 11.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (canCancel) ...[
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 52,
+            child: OutlinedButton(
+              onPressed: _cancelBusy ? null : () => _cancelMatched(match),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.error,
+                side: BorderSide(color: AppColors.error.withValues(alpha: 0.6)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: Text(
+                l10n.instantCancelRequest,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildMatchedMetrics(
+    BuildContext context,
+    InstantRequest request,
+    InstantMatch match,
+  ) {
+    final l10n = context.l10n;
+    final eta = match.pickupEtaMinutes ?? _driverEtaMinutes;
+    final distance = request.distanceKm ?? _quote?.distanceKm;
+    final duration = request.durationMinutes ?? _quote?.durationMinutes;
+
+    String km(double? v) => v == null
+        ? '--'
+        : l10n.instantSearchingKm(
+            v == v.roundToDouble()
+                ? v.round().toString()
+                : v.toStringAsFixed(1),
+          );
+    String min(int? v) =>
+        v == null ? '--' : l10n.instantSearchingMinutes(v.toString());
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: T.outlineVariant(context)),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            Expanded(
+              child: _matchedMetric(
+                context,
+                icon: Icons.schedule,
+                label: l10n.instantMatchedArrival,
+                value: min(eta),
+                caption: l10n.instantSearchingApprox,
+              ),
+            ),
+            _metricDivider(context),
+            Expanded(
+              child: _matchedMetric(
+                context,
+                icon: Icons.route_outlined,
+                label: l10n.instantFormDistance,
+                value: km(distance),
+                caption: '',
+              ),
+            ),
+            _metricDivider(context),
+            Expanded(
+              child: _matchedMetric(
+                context,
+                icon: Icons.timer_outlined,
+                label: l10n.instantFormDuration,
+                value: min(duration),
+                caption: l10n.instantSearchingApprox,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _matchedMetric(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String value,
+    required String caption,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 15, color: T.primary(context)),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: T.onSurfaceVariant(context),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
         Text(
-          etaMinutes != null
-              ? context.l10n.instantArrivingIn(etaMinutes)
-              : context.l10n.instantDriverFound,
-          textAlign: TextAlign.center,
+          value,
           style: TextStyle(
-            fontSize: 20,
+            fontSize: 17,
             fontWeight: FontWeight.bold,
             color: T.onSurface(context),
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         Text(
-          context.l10n.instantDriverOnTheWay,
-          textAlign: TextAlign.center,
-          style: TextStyle(color: T.onSurfaceVariant(context)),
+          caption.isEmpty ? ' ' : caption,
+          style: TextStyle(fontSize: 11, color: T.onSurfaceVariant(context)),
         ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: T.surfaceVariant(context),
-            borderRadius: BorderRadius.circular(16),
+      ],
+    );
+  }
+
+  Widget _buildDriverCard(
+    BuildContext context,
+    InstantRequest request,
+    InstantMatch match,
+  ) {
+    final l10n = context.l10n;
+    final photo = match.driverPhotoUrl;
+    final hasPhoto = photo != null && photo.isNotEmpty;
+    final plate = match.plateNumber;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: T.outlineVariant(context)),
+      ),
+      child: Row(
+        children: [
+          _driverAction(
+            context,
+            icon: Icons.phone_outlined,
+            label: l10n.call,
+            busy: _callBusy,
+            onTap: () => _callDriver(match),
           ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: T.primary(context).withValues(alpha: 0.12),
-                child: Icon(Icons.person, color: T.primary(context), size: 28),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      match.driverName ?? '—',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: T.onSurface(context),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        if (match.driverRating != null) ...[
-                          const Icon(
-                            Icons.star,
-                            size: 15,
-                            color: AppColors.warning,
-                          ),
-                          const SizedBox(width: 3),
-                          Text(
-                            match.driverRating!.toStringAsFixed(1) +
-                                (match.driverTotalRatings != null
-                                    ? ' (${match.driverTotalRatings})'
-                                    : ''),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: T.onSurfaceVariant(context),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    if (vehicleLine.isNotEmpty) ...[
-                      const SizedBox(height: 2),
+          const SizedBox(width: 10),
+          _driverAction(
+            context,
+            icon: Icons.chat_bubble_outline,
+            label: l10n.chat,
+            onTap: () => _openChat(request, match),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  match.driverName ?? '—',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: T.onSurface(context),
+                  ),
+                ),
+                if (match.driverRating != null) ...[
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Icon(Icons.star, size: 15, color: T.primary(context)),
+                      const SizedBox(width: 3),
                       Text(
-                        vehicleLine,
-                        overflow: TextOverflow.ellipsis,
+                        match.driverRating!.toStringAsFixed(1),
                         style: TextStyle(
-                          fontSize: 12,
-                          color: T.onSurfaceVariant(context),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: T.primary(context),
                         ),
                       ),
                     ],
-                  ],
-                ),
+                  ),
+                ],
+                if (match.vehicleModel != null &&
+                    match.vehicleModel!.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    match.vehicleModel!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: T.onSurfaceVariant(context),
+                    ),
+                  ),
+                ],
+                if (plate != null && plate.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: T.outline(context)),
+                    ),
+                    child: Text(
+                      plate,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                        color: T.onSurface(context),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            children: [
+              CircleAvatar(
+                radius: 30,
+                backgroundColor: T.primary(context).withValues(alpha: 0.12),
+                backgroundImage: hasPhoto ? NetworkImage(photo) : null,
+                child: hasPhoto
+                    ? null
+                    : Icon(Icons.person, color: T.primary(context), size: 30),
               ),
-              if (match.acceptedFare != null)
+              if (match.acceptedFare != null) ...[
+                const SizedBox(height: 6),
                 Text(
                   '${match.acceptedFare} ${match.currency}',
                   style: TextStyle(
-                    fontSize: 17,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: T.primary(context),
                   ),
                 ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _driverAction(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool busy = false,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Material(
+          color: T.primary(context).withValues(alpha: 0.1),
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: busy ? null : onTap,
+            child: SizedBox(
+              width: 50,
+              height: 50,
+              child: busy
+                  ? Padding(
+                      padding: const EdgeInsets.all(15),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: T.primary(context),
+                      ),
+                    )
+                  : Icon(icon, color: T.primary(context), size: 22),
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(fontSize: 11.5, color: T.onSurface(context)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildShareRow(
+    BuildContext context,
+    InstantRequest request,
+    InstantMatch match,
+  ) {
+    return Material(
+      color: T.primary(context).withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: () => _shareTrip(request, match),
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Icon(Icons.verified_user, color: T.primary(context), size: 24),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  context.l10n.instantMatchedShareTitle,
+                  style: TextStyle(fontSize: 12.5, color: T.onSurface(context)),
+                ),
+              ),
+              Icon(
+                Directionality.of(context) == TextDirection.rtl
+                    ? Icons.chevron_left
+                    : Icons.chevron_right,
+                color: T.onSurfaceVariant(context),
+              ),
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 50,
-          child: ElevatedButton.icon(
-            onPressed: () {
-              if (hasTrip) {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(
-                    builder: (_) => TripDetailsScreen(tripId: tripId),
-                  ),
-                );
-              } else {
-                Navigator.of(context).pop();
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: T.primary(context),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            icon: const Icon(Icons.near_me, color: AppColors.white),
-            label: Text(
-              hasTrip ? context.l10n.instantTrackTrip : context.l10n.instantDone,
-              style: const TextStyle(
-                color: AppColors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -1669,3 +3188,6 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen> {
     );
   }
 }
+
+/// Visual state of one stage in the searching sheet's progress row.
+enum _StepState { done, active, upcoming }

@@ -30,6 +30,7 @@ export const ROUTES = {
   REFUNDS: "/refunds",
   FINES: "/fines",
   NO_SHOW_REPORTS: "/no-show-reports",
+  PENDING_DRIVERS: "/drivers/pending",
 } as const
 
 // Navigation Items (for sidebar)
@@ -210,6 +211,9 @@ export const QUERY_KEYS = {
   NO_SHOW_REPORTS: {
     LIST: "no-show-reports",
     DETAIL: "no-show-reports-detail",
+  },
+  PENDING_DRIVERS: {
+    LIST: "pending-drivers",
   },
   SETTLEMENT: {
     AUDITS: "settlement-audits",

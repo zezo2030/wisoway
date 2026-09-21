@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rideshare/l10n/generated/app_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:rideshare/providers/auth_provider.dart';
+import '../../support/fake_auth_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:rideshare/core/services/theme_service.dart';
 import 'package:rideshare/core/services/localization_service.dart';
@@ -12,12 +15,18 @@ Widget _createTestWidget({
 }) {
   return MultiProvider(
     providers: [
+      // Settings reads AuthProvider while building; without it the screen dies
+      // on a ProviderNotFoundException before rendering anything.
+      ChangeNotifierProvider<AuthProvider>(create: (_) => FakeAuthProvider()),
       ChangeNotifierProvider.value(value: themeService ?? ThemeService()),
       ChangeNotifierProvider.value(
         value: localizationService ?? LocalizationService(),
       ),
     ],
     child: MaterialApp(
+    locale: const Locale('ar'),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
       home: Directionality(
         textDirection: TextDirection.rtl,
         child: const SettingsScreen(),

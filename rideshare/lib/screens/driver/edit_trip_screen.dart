@@ -5,10 +5,11 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../providers/trip_provider.dart';
+import '../../core/services/saved_places_scope.dart';
 import '../../core/services/storage_service.dart';
 import '../../models/location_model.dart';
 import '../../models/trip_model.dart';
-import '../../widgets/location_picker_widget.dart';
+import '../location/route_search_screen.dart';
 import '../../core/theme/text_styles.dart';
 import '../../core/theme/colors.dart';
 import '../../../widgets/common/section_card.dart';
@@ -109,44 +110,33 @@ class _EditTripScreenState extends State<EditTripScreen> {
     }
   }
 
-  Future<void> _selectFromLocation() async {
-    final location = await Navigator.push<LocationModel>(
+  Future<void> _selectFromLocation() => _openRouteSearch(RouteField.origin);
+
+  Future<void> _selectToLocation() =>
+      _openRouteSearch(RouteField.destination);
+
+  /// Open the shared route search focused on one endpoint. Editing uses the
+  /// same screen as creating, so both flows resolve places identically.
+  Future<void> _openRouteSearch(RouteField field) async {
+    final selection = await Navigator.push<RouteSelection>(
       context,
       MaterialPageRoute(
-        builder: (context) => LocationPickerWidget(
-          title: context.l10n.selectOriginPoint,
-          initialLocation: _fromLocation,
-          onLocationSelected: (location) {},
+        builder: (_) => RouteSearchScreen(
+          focusField: field,
+          savedPlaces: savedPlacesFor(context),
+          from: _fromLocation,
+          to: _toLocation,
         ),
       ),
     );
 
-    if (location != null) {
-      setState(() {
-        _fromLocation = location;
-        _fromController.text = location.name;
-      });
-    }
-  }
-
-  Future<void> _selectToLocation() async {
-    final location = await Navigator.push<LocationModel>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => LocationPickerWidget(
-          title: context.l10n.selectDestination,
-          initialLocation: _toLocation,
-          onLocationSelected: (location) {},
-        ),
-      ),
-    );
-
-    if (location != null) {
-      setState(() {
-        _toLocation = location;
-        _toController.text = location.name;
-      });
-    }
+    if (selection == null || !mounted) return;
+    setState(() {
+      _fromLocation = selection.from;
+      _toLocation = selection.to;
+      _fromController.text = selection.from?.name ?? '';
+      _toController.text = selection.to?.name ?? '';
+    });
   }
 
   Future<void> _selectDepartureTime() async {

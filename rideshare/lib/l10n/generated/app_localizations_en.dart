@@ -122,7 +122,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get darkMode => 'Dark Mode';
 
   @override
-  String get darkModeSubtitle => 'Enable dark theme for the app';
+  String get darkModeSubtitle => 'Turn on the dark theme';
 
   @override
   String get themeMode => 'App Theme';
@@ -707,7 +707,55 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get welcomeSubtitle =>
-      'Your journey starts here. Pick a destination and travel safely and comfortably.';
+      'Your journey starts here. Pick your destination and travel with us on direct or shared rides, safely and comfortably.';
+
+  @override
+  String get welcomeSubtitleHighlightDirect => 'direct';
+
+  @override
+  String get welcomeSubtitleHighlightShared => 'shared';
+
+  @override
+  String get welcomeBrandTagline => 'طريق الرؤية';
+
+  @override
+  String get welcomeDirectTitle => 'Direct rides';
+
+  @override
+  String get welcomeDirectBody => 'Your own ride: direct, fast and comfortable';
+
+  @override
+  String get welcomeSharedTitle => 'Shared rides';
+
+  @override
+  String get welcomeSharedBody => 'Share the ride, save more, greener travel';
+
+  @override
+  String get welcomeFeaturePricingTitle => 'Transparent pricing';
+
+  @override
+  String get welcomeFeaturePricingBody => 'Fair fares with no surprises';
+
+  @override
+  String get welcomeFeatureSpeedTitle => 'Fast and simple';
+
+  @override
+  String get welcomeFeatureSpeedBody => 'Book your ride in a few steps';
+
+  @override
+  String get welcomeFeatureSafetyTitle => 'Safe and reliable';
+
+  @override
+  String get welcomeFeatureSafetyBody => 'Trusted drivers and secure trips';
+
+  @override
+  String get welcomeTermsPrefix => 'By signing up, you agree to the';
+
+  @override
+  String get welcomeTermsLink => 'Terms & Conditions';
+
+  @override
+  String get welcomeTermsAnd => 'and';
 
   @override
   String get signIn => 'Sign in';
@@ -716,7 +764,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get createNewAccount => 'Create a new account';
 
   @override
-  String get signInSubtitle => 'Welcome back! Sign in to continue.';
+  String get signInSubtitle => 'Sign in to continue';
+
+  @override
+  String get signInWelcomeBack => 'Welcome back 👋';
+
+  @override
+  String get signInOrDivider => 'or';
+
+  @override
+  String get signInWithPhoneNumber => 'Sign in with your phone number';
+
+  @override
+  String get signInNewUserQuestion => 'New here?';
+
+  @override
+  String get signInFeatureTrustedTitle => 'Trusted and verified';
+
+  @override
+  String get signInFeatureTrustedBody => 'Vetted drivers and safe trips';
+
+  @override
+  String get signInFeatureFastTitle => 'Fast and simple';
+
+  @override
+  String get signInFeatureFastBody => 'Book your ride in a few steps';
+
+  @override
+  String get signInFeaturePrivacyTitle => 'Safety and privacy';
+
+  @override
+  String get signInFeaturePrivacyBody =>
+      'Your data is protected to the highest standard';
 
   @override
   String get password => 'Password';
@@ -1528,6 +1607,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get chooseLocationManually => 'Choose location manually';
+
+  @override
+  String get homeDetectMyLocation => 'Locate me';
+
+  @override
+  String get homeLocationAccurate => 'Location pinned precisely';
+
+  @override
+  String get homeLocationUnknown => 'Location not set yet';
 
   @override
   String get myActiveTrips => 'My active trips';
@@ -2426,6 +2514,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notesForPassengers => 'Notes for passengers';
+
+  @override
+  String get notesForPassengersSubtitle =>
+      'Shown to passengers with the trip details';
 
   @override
   String get tripNotesHint =>
@@ -3879,6 +3971,80 @@ class AppLocalizationsEn extends AppLocalizations {
   String get seatsUnitLabel => 'Seats';
 
   @override
+  String get timePeriodAm => 'AM';
+
+  @override
+  String get timePeriodPm => 'PM';
+
+  @override
+  String get scheduleSection => 'Schedule';
+
+  @override
+  String get seatsAndPriceSection => 'Seats and price';
+
+  @override
+  String get tripOptionsSection => 'Trip options';
+
+  @override
+  String get seatsQuestion => 'How many seats are you offering?';
+
+  @override
+  String vehicleCapacityHint(int count) {
+    return 'Your vehicle seats $count';
+  }
+
+  @override
+  String get tripTotalLabel => 'Trip total';
+
+  @override
+  String get availableSeatsSectionSubtitle =>
+      'Choose how many seats are open on this trip';
+
+  @override
+  String get recurrenceCollapsedHint => 'Weekly or daily repeat';
+
+  @override
+  String suggestedPriceForRoute(String min, String max, String currency) {
+    return 'Suggested price for this route: $min - $max $currency';
+  }
+
+  @override
+  String currencyShortName(String currency) {
+    String _temp0 = intl.Intl.selectLogic(currency, {'other': '$currency'});
+    return '$_temp0';
+  }
+
+  @override
+  String currencyFullName(String currency) {
+    String _temp0 = intl.Intl.selectLogic(currency, {
+      'JOD': 'Jordanian Dinar',
+      'SAR': 'Saudi Riyal',
+      'AED': 'UAE Dirham',
+      'KWD': 'Kuwaiti Dinar',
+      'BHD': 'Bahraini Dinar',
+      'OMR': 'Omani Rial',
+      'QAR': 'Qatari Riyal',
+      'EGP': 'Egyptian Pound',
+      'ILS': 'Israeli Shekel',
+      'IQD': 'Iraqi Dinar',
+      'LBP': 'Lebanese Pound',
+      'SYP': 'Syrian Pound',
+      'YER': 'Yemeni Rial',
+      'LYD': 'Libyan Dinar',
+      'SDG': 'Sudanese Pound',
+      'DZD': 'Algerian Dinar',
+      'MAD': 'Moroccan Dirham',
+      'TND': 'Tunisian Dinar',
+      'MRU': 'Mauritanian Ouguiya',
+      'USD': 'US Dollar',
+      'GBP': 'British Pound',
+      'TRY': 'Turkish Lira',
+      'other': '$currency',
+    });
+    return '$_temp0';
+  }
+
+  @override
   String get jordanianDinarLabel => 'Jordanian Dinar';
 
   @override
@@ -3886,6 +4052,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get additionalDetailsTitle => 'Additional details';
+
+  @override
+  String get publishTripNoticeTitle => 'The trip goes live after review';
+
+  @override
+  String get tripSummarySection => 'Trip summary';
 
   @override
   String get seatLegendAvailable => 'Available';
@@ -3915,7 +4087,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get publishTripNotice =>
-      'The trip will be published after review and passengers will be able to book it.';
+      'Once the trip is published, passengers can book the available seats';
 
   @override
   String createTripFeeNotice(String percent, String amount, String currency) {
@@ -4127,6 +4299,88 @@ class AppLocalizationsEn extends AppLocalizations {
       'A nearby driver comes straight to you';
 
   @override
+  String get instantFormFromLabel => 'From';
+
+  @override
+  String get instantFormToLabel => 'To';
+
+  @override
+  String get instantFormToHint => 'Choose your destination';
+
+  @override
+  String get instantFormChange => 'Change';
+
+  @override
+  String get instantFormPickOnMap => 'Pick on map';
+
+  @override
+  String get instantFormDriverArrives => 'Driver arrives in';
+
+  @override
+  String get instantFormDistance => 'Distance';
+
+  @override
+  String get instantFormDuration => 'Trip duration';
+
+  @override
+  String get instantFormMinutesUnit => 'min';
+
+  @override
+  String get instantFormKmUnit => 'km';
+
+  @override
+  String get instantFormPriceAfterDestination =>
+      'The fare is calculated after you choose a destination';
+
+  @override
+  String get instantFormChooseDestinationCta =>
+      'Choose a destination to see the fare';
+
+  @override
+  String get instantFormYourFareTitle => 'Your fare for the ride';
+
+  @override
+  String get instantFormFareHint => 'Enter a fare';
+
+  @override
+  String instantFormFareRange(String min, String max, String currency) {
+    return 'Allowed range: $min – $max $currency';
+  }
+
+  @override
+  String instantFormFareOutOfRange(String min, String max, String currency) {
+    return 'The fare must be between $min and $max $currency';
+  }
+
+  @override
+  String get instantFormFareNote =>
+      'The driver may accept your fare or propose a higher one. Pay the driver in cash.';
+
+  @override
+  String get instantTrustSupport => '24/7 support';
+
+  @override
+  String get instantTrustSupportSub => 'We are here to help';
+
+  @override
+  String get instantTrustSafe => 'Safe and trusted';
+
+  @override
+  String get instantTrustSafeSub => 'Your ride is in safe hands';
+
+  @override
+  String get instantTrustTracking => 'Trip tracking';
+
+  @override
+  String get instantTrustTrackingSub => 'Share your ride with loved ones';
+
+  @override
+  String get instantTrustCash => 'Cash payment';
+
+  @override
+  String get instantTrustCashSub => 'Pay the driver directly';
+
+  @override
   String get instantSelectFromTo => 'Choose pickup and destination.';
 
   @override
@@ -4143,6 +4397,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get instantDriverFound => 'Driver found!';
+
+  @override
+  String get instantMatchedSubtitle => 'Your driver is on the way';
+
+  @override
+  String get instantMatchedArrival => 'Arrives in';
+
+  @override
+  String get instantMatchedShareTitle =>
+      'Share your trip details with a trusted contact';
+
+  @override
+  String get instantMatchedTrackSubtitle =>
+      'You can share your location with the driver';
+
+  @override
+  String get instantMatchedCancelTitle => 'Cancel the ride?';
+
+  @override
+  String get instantMatchedCancelBody =>
+      'A driver has accepted your ride. The booking will be cancelled and the driver notified.';
+
+  @override
+  String get instantMatchedKeep => 'Keep the ride';
+
+  @override
+  String get instantMatchedCallFailed =>
+      'Could not start the call right now. Please try again.';
 
   @override
   String get instantDriverOnTheWay =>
@@ -4165,8 +4447,27 @@ class AppLocalizationsEn extends AppLocalizations {
       'All nearby drivers may be busy, or none may be close to you.';
 
   @override
-  String get instantNoDriversTip =>
-      'Tip: Try again in a few minutes; a nearby driver may become available.';
+  String instantNoDriversWithinRadius(String km) {
+    return 'No driver is available within $km km of your pickup point.';
+  }
+
+  @override
+  String get instantNoDriversAllDeclined =>
+      'Nearby drivers did not accept your fare. Try raising it a little.';
+
+  @override
+  String get instantNoDriversTimedOut =>
+      'The search window ended before any driver responded.';
+
+  @override
+  String get instantNoDriversCheckPickup =>
+      'Check that the pickup point really is where you are now.';
+
+  @override
+  String get instantNoDriversTip => 'Tip: You can try again in a few minutes.';
+
+  @override
+  String get instantNoDriversTipKeepSearching => 'We\'ll keep looking for you.';
 
   @override
   String get instantNoDriversIllustrationLabel => 'No driver found';
@@ -4197,6 +4498,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String get instantSearching => 'Finding the nearest driver...';
 
   @override
+  String get instantSearchingSubtitle => 'Reaching out to drivers near you';
+
+  @override
+  String get instantSearchingEta => 'Expected pickup';
+
+  @override
+  String get instantSearchingApprox => 'approx.';
+
+  @override
+  String instantSearchingMinutes(String minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String instantSearchingKm(String km) {
+    return '$km km';
+  }
+
+  @override
+  String get instantSearchingTip =>
+      'Finding a driver can take longer at peak times. Thanks for your patience';
+
+  @override
+  String get instantStepRequested => 'Request sent';
+
+  @override
+  String get instantStepSearching => 'Finding a driver';
+
+  @override
+  String get instantStepDriverOffer => 'Driver offer';
+
+  @override
+  String get instantStepDriverOnWay => 'Driver on the way';
+
+  @override
   String instantFareEstimate(String fare, String currency) {
     return 'Estimated fare: $fare $currency';
   }
@@ -4208,6 +4544,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get instantYourFareLabel => 'Your fare';
 
   @override
+  String get instantRaiseFare => 'Raise fare';
+
+  @override
+  String get instantFareRaiseHint =>
+      'Raise your fare to attract drivers faster';
+
+  @override
+  String get instantFareLockedWhileOffered =>
+      'Waiting for a driver to answer your current fare';
+
+  @override
+  String get instantFareMaxReached => 'You have reached the maximum fare';
+
+  @override
+  String get instantFareRaisedToast =>
+      'Your fare was raised and nearby drivers notified';
+
+  @override
   String instantRecommendedFare(String fare, String currency) {
     return 'Recommended fare: $fare $currency';
   }
@@ -4215,6 +4569,36 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String instantYourFareValue(String fare, String currency) {
     return 'Your fare: $fare $currency';
+  }
+
+  @override
+  String get instantOfferDetailsTitle => 'Request details';
+
+  @override
+  String get instantOfferOpenDetails => 'View request details';
+
+  @override
+  String get instantOfferCashNote =>
+      'Cash to the driver · platform fees included';
+
+  @override
+  String get instantOfferPickupDistance => 'Distance to pickup';
+
+  @override
+  String get instantOfferPickupEta => 'Time to pickup';
+
+  @override
+  String get instantOfferTripDistance => 'Trip distance';
+
+  @override
+  String get instantCounterBadge => 'Fare offer';
+
+  @override
+  String get instantCounterProposedLabel => 'Driver\'s price';
+
+  @override
+  String instantCounterRangeHint(String min, String max, String currency) {
+    return 'Between $min and $max $currency';
   }
 
   @override
@@ -4520,6 +4904,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vehicleSeatsDocHint => 'Number of seats available to passengers';
 
   @override
+  String get vehicleSeatsAutoHint =>
+      'Calculated automatically from the vehicle type';
+
+  @override
+  String get vehicleSeatsPickTypeFirst => 'Select the vehicle type first';
+
+  @override
   String get driverLicenseUploadHint => 'Tap to upload the license photo';
 
   @override
@@ -4591,6 +4982,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tripBookedSubtitle => 'All seats were booked successfully';
 
   @override
+  String get tripPublishedTitle => 'Your trip is published';
+
+  @override
+  String get tripPublishedSubtitle => 'Waiting for passengers to book';
+
+  @override
+  String get tripPartiallyBookedTitle => 'Seats booked on your trip';
+
+  @override
+  String tripPartiallyBookedSubtitle(int booked, int total) {
+    return '$booked of $total seats booked';
+  }
+
+  @override
   String get tripDayLabel => 'Trip day';
 
   @override
@@ -4649,4 +5054,372 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get confirmYourPresenceCta =>
       'Please be present at the specified time and place';
+
+  @override
+  String get driverHomeReadyTitle => 'Ready to pick up riders?';
+
+  @override
+  String get driverHomeReadySubtitle =>
+      'Publish a trip or go online to receive instant requests.';
+
+  @override
+  String get driverStatusLabel => 'Status';
+
+  @override
+  String get instantOfflineHint => 'You won\'t receive instant requests';
+
+  @override
+  String get instantOnlineHint => 'Nearby riders can request you now';
+
+  @override
+  String get instantGoOnlineHint =>
+      'Go online so riders in your area can see you for instant rides';
+
+  @override
+  String get publishSharedTrip => 'Publish a new shared trip';
+
+  @override
+  String get publishSharedTripSubtitle =>
+      'Set your route and trip details, then take rider bookings';
+
+  @override
+  String get locationUpdatedJustNow => 'Updated just now';
+
+  @override
+  String locationUpdatedMinutesAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Updated $count minutes ago',
+      one: 'Updated a minute ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get showOnMapAction => 'Show on map';
+
+  @override
+  String get updateLocationAction => 'Update location';
+
+  @override
+  String get todaySummary => 'Today\'s summary';
+
+  @override
+  String get statNewRequests => 'New requests';
+
+  @override
+  String get statNewRequestsHint => 'Awaiting your reply';
+
+  @override
+  String get statTodayTrips => 'Trips today';
+
+  @override
+  String get statTodayTripsHint => 'Published';
+
+  @override
+  String get statBookings => 'Bookings';
+
+  @override
+  String get statBookingsHint => 'Total bookings';
+
+  @override
+  String get viewAllStats => 'View all stats';
+
+  @override
+  String get driverCurrentTripsTitle => 'Your active trips';
+
+  @override
+  String get noPublishedTripsTitle => 'No published trips';
+
+  @override
+  String get noPublishedTripsSubtitle =>
+      'Create and publish your first trip so riders can start booking.';
+
+  @override
+  String get publishTripNow => 'Publish a trip now';
+
+  @override
+  String get instantOnline => 'Online';
+
+  @override
+  String get driverApprovedReviewTitle => 'Your driver account is approved';
+
+  @override
+  String get driverApprovedReviewBody =>
+      'Your details and documents were approved. You can now publish trips and take rider bookings.';
+
+  @override
+  String get driverApprovedBadge => 'Approved';
+
+  @override
+  String get driverApprovedRestrictionTitle => 'Your account is active';
+
+  @override
+  String get driverApprovedRestrictionBody =>
+      'You can now use the app as a driver and publish trips.';
+
+  @override
+  String get driverStatusRefreshing => 'Refreshing your request status…';
+
+  @override
+  String get profileAccountSection => 'Account';
+
+  @override
+  String get profileAppSection => 'App';
+
+  @override
+  String get profileTrustedAccount => 'Verified account';
+
+  @override
+  String get profileUntrustedAccount => 'Unverified account';
+
+  @override
+  String get editProfileSubtitle => 'Update your details and profile photo';
+
+  @override
+  String get paymentMethods => 'Payment methods';
+
+  @override
+  String get paymentMethodsSubtitle => 'Manage your cards and payment methods';
+
+  @override
+  String get savedAddresses => 'Saved addresses';
+
+  @override
+  String get savedAddressesSubtitle => 'Manage your pickup and drop-off places';
+
+  @override
+  String get pastTrips => 'Past trips';
+
+  @override
+  String get pastTripsSubtitle => 'View all your past trips';
+
+  @override
+  String get cancelledTrips => 'Cancelled trips';
+
+  @override
+  String get cancelledTripsSubtitle => 'View trips that were cancelled';
+
+  @override
+  String get settingsSubtitle => 'Customize your app experience';
+
+  @override
+  String get notificationsSubtitle => 'Manage your notification preferences';
+
+  @override
+  String get languageSubtitle => 'Change the app language';
+
+  @override
+  String get helpSupportSubtitle => 'FAQs and ways to get help';
+
+  @override
+  String get contactUsSubtitle => 'Need a hand? We are here for you';
+
+  @override
+  String get aboutAppSubtitle => 'Version, terms and policies';
+
+  @override
+  String get walletTopUpBalance => 'Add funds';
+
+  @override
+  String get walletTrialBalanceHint =>
+      'Welcome balance – deducted automatically from your upcoming trips';
+
+  @override
+  String get homeChooseModeSubtitle => 'Pick the way that suits you today';
+
+  @override
+  String get rideModeSharedBadge => 'Cheaper';
+
+  @override
+  String get rideModeSharedTitle => 'Shared ride';
+
+  @override
+  String get rideModeSharedSubtitle =>
+      'Share the ride with other passengers and travel for less';
+
+  @override
+  String get rideModeSharedPerkSeats => 'Fellow riders';
+
+  @override
+  String get rideModeSharedPerkPrice => 'Lower fares';
+
+  @override
+  String get rideModeSharedPerkEco => 'Eco friendly';
+
+  @override
+  String get rideModeSharedCta => 'Find a ride';
+
+  @override
+  String get rideModePrivateBadge => 'Faster';
+
+  @override
+  String get rideModePrivateTitle => 'Ride with a driver';
+
+  @override
+  String get rideModePrivateSubtitle =>
+      'A driver comes straight to you and you set off right away';
+
+  @override
+  String get rideModePrivatePerkFast => 'Fastest';
+
+  @override
+  String get rideModePrivatePerkPrivacy => 'Full privacy';
+
+  @override
+  String get rideModePrivatePerkDirect => 'Direct';
+
+  @override
+  String get rideModePrivateCta => 'Request now';
+
+  @override
+  String get suggestedTripsTitle => 'Trips suggested for you';
+
+  @override
+  String get tripDepartsToday => 'Today';
+
+  @override
+  String tripSeatsLeft(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count seats left',
+      one: '1 seat left',
+      zero: 'No seats left',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String morePassengersCount(int count) {
+    return '+$count';
+  }
+
+  @override
+  String get trustSafeRideTitle => 'Safe ride';
+
+  @override
+  String get trustSafeRideSubtitle => 'Trusted drivers and genuine ratings';
+
+  @override
+  String get trustSupportTitle => '24/7 support';
+
+  @override
+  String get trustSupportSubtitle => 'We are here to help you any time';
+
+  @override
+  String get trustPaymentsTitle => 'Multiple payment options';
+
+  @override
+  String get trustPaymentsSubtitle => 'Pay the way you prefer';
+
+  @override
+  String get trustOnTimeTitle => 'On time';
+
+  @override
+  String get trustOnTimeSubtitle => 'We get you there on schedule';
+
+  @override
+  String get routeSearchTitle => 'Set route';
+
+  @override
+  String get routeSearchSwap => 'Swap origin and destination';
+
+  @override
+  String get routeSearchFromHint => 'From where?';
+
+  @override
+  String get routeSearchToHint => 'Where to?';
+
+  @override
+  String get routeSearchPickOnMap => 'Choose on map';
+
+  @override
+  String get routeSearchHome => 'Home';
+
+  @override
+  String get routeSearchWork => 'Work';
+
+  @override
+  String get routeSearchAddHome => 'Add home';
+
+  @override
+  String get routeSearchAddWork => 'Add work';
+
+  @override
+  String get routeSearchRecents => 'Recent places';
+
+  @override
+  String get routeSearchSaved => 'Saved';
+
+  @override
+  String get routeSearchClearRecents => 'Clear history';
+
+  @override
+  String get routeSearchNoResults =>
+      'No results. Try adding the city name or choose the place on the map.';
+
+  @override
+  String get routeSearchFailed => 'Search failed';
+
+  @override
+  String get routeSearchRetry => 'Retry';
+
+  @override
+  String get routeSearchTooManyRequests =>
+      'Too many requests. Wait a moment and try again.';
+
+  @override
+  String get routeSearchCurrentLocation => 'My current location';
+
+  @override
+  String get routeSearchAddressUnavailable => 'Address unavailable';
+
+  @override
+  String get routeSearchConfirmPoint => 'Confirm point';
+
+  @override
+  String get routeSearchConfirmOrigin => 'Confirm pickup point';
+
+  @override
+  String get routeSearchConfirmDestination => 'Confirm drop-off point';
+
+  @override
+  String get routeSearchMyLocation => 'My location';
+
+  @override
+  String get routeSearchLoadingAddress => 'Finding address…';
+
+  @override
+  String get routeSearchClearField => 'Clear';
+
+  @override
+  String get routeSearchStopHint => 'Search for a stop';
+
+  @override
+  String distanceMetersShort(String meters) {
+    return '$meters m';
+  }
+
+  @override
+  String distanceKmShort(String km) {
+    return '$km km';
+  }
+
+  @override
+  String instantOfferDistanceFallback(String km) {
+    return '$km km';
+  }
+
+  @override
+  String instantOfferDurationFallback(String minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get instantOfferCurrencyJod => 'JOD';
+
+  @override
+  String get instantOfferCurrencySar => 'SAR';
 }

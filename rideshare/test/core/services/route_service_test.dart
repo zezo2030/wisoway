@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -94,13 +95,20 @@ void main() {
         expect(unavailable.failure.messageKey, 'errorsRouteUnavailable');
       });
 
-      test('returns RouteUnavailable when route fetcher throws', () async {
+      // The real fetcher talks over dio, so an unreachable backend arrives as a
+      // DioException. Keeping its category means the map can say "you're
+      // offline" instead of a shrug.
+      test('keeps the network category when the backend is unreachable',
+          () async {
         final service = RouteService(
           routeFetcher: ({
             required LatLng origin,
             required LatLng destination,
           }) async {
-            throw Exception('Connection refused');
+            throw DioException(
+              type: DioExceptionType.connectionError,
+              requestOptions: RequestOptions(path: '/routes'),
+            );
           },
         );
 
@@ -111,7 +119,32 @@ void main() {
 
         expect(result, isA<RouteUnavailable>());
         final unavailable = result as RouteUnavailable;
-        expect(unavailable.failure.category, FailureCategory.server);
+        expect(unavailable.failure.category, FailureCategory.network);
+        expect(unavailable.failure.messageKey, 'errorsRouteUnavailable');
+        expect(unavailable.failure.severity, FailureSeverity.warning);
+      });
+
+      test('reports an unrecognised throw as unknown rather than guessing',
+          () async {
+        final service = RouteService(
+          routeFetcher: ({
+            required LatLng origin,
+            required LatLng destination,
+          }) async {
+            throw Exception('something nobody classified');
+          },
+        );
+
+        final result = await service.fetchRoute(
+          origin: origin,
+          destination: destination,
+        );
+
+        expect(result, isA<RouteUnavailable>());
+        expect(
+          (result as RouteUnavailable).failure.category,
+          FailureCategory.unknown,
+        );
       });
     });
 

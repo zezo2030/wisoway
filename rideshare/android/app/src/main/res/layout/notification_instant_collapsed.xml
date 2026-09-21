@@ -2,10 +2,13 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/bg_booking_notification"
+    android:background="@drawable/bg_instant_notification"
     android:layoutDirection="rtl"
     android:orientation="vertical"
-    android:padding="12dp">
+    android:paddingStart="14dp"
+    android:paddingTop="10dp"
+    android:paddingEnd="14dp"
+    android:paddingBottom="12dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -13,32 +16,63 @@
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
-        <LinearLayout
+        <ImageView
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_notif_app_mark_teal" />
+
+        <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/bg_green_badge"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingStart="8dp"
-            android:paddingTop="3dp"
-            android:paddingEnd="8dp"
-            android:paddingBottom="3dp">
+            android:layout_marginStart="8dp"
+            android:text="VisionWay"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:textStyle="bold" />
 
-            <ImageView
-                android:layout_width="12dp"
-                android:layout_height="12dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_notif_bolt" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:text="|"
+            android:textColor="#4B5B6E"
+            android:textSize="11sp" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="4dp"
-                android:text="رحلة مباشرة"
-                android:textColor="#007D69"
-                android:textSize="10sp"
-                android:textStyle="bold" />
-        </LinearLayout>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:id="@+id/instant_hdr_now_collapsed"
+            android:text="الآن"
+            android:textColor="#8A98AA"
+            android:textSize="11sp" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_instant_badge"
+            android:paddingStart="10dp"
+            android:paddingTop="4dp"
+            android:paddingEnd="10dp"
+            android:paddingBottom="4dp"
+            android:id="@+id/instant_badge_collapsed"
+            android:text="رحلة مباشرة جديدة"
+            android:textColor="#2DD4BF"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginStart="6dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_notif_bolt_teal" />
     </LinearLayout>
 
     <TextView
@@ -61,7 +95,7 @@
         android:ellipsize="end"
         android:maxLines="1"
         android:text="إلى —"
-        android:textColor="#FFFFFF"
+        android:textColor="#B8C4D3"
         android:textSize="12sp" />
 
     <TextView
@@ -72,7 +106,7 @@
         android:ellipsize="end"
         android:maxLines="1"
         android:text="—"
-        android:textColor="#007D69"
+        android:textColor="#2DD4BF"
         android:textSize="12sp"
         android:textStyle="bold" />
 </LinearLayout>

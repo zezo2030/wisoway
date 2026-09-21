@@ -270,32 +270,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                SettingsSection(
-                  title: context.l10n.appearance,
-                  children: [
-                    SettingsSwitchTile(
-                      icon: IconsaxPlusBroken.moon,
-                      title: context.l10n.darkMode,
-                      value: themeService.themeMode == ThemeMode.dark,
-                      onChanged: (value) {
-                        themeService.setThemeMode(
-                          value ? ThemeMode.dark : ThemeMode.light,
-                        );
-                      },
-                    ),
-                    SettingsTile(
-                      icon: IconsaxPlusBroken.color_swatch,
-                      title: context.l10n.themeMode,
-                      subtitle: themeService.themeMode == ThemeMode.system
-                          ? context.l10n.themeSystem
-                          : themeService.themeMode == ThemeMode.light
-                          ? context.l10n.themeLight
-                          : context.l10n.themeDark,
-                      trailing: const Icon(IconsaxPlusBroken.arrow_down_1),
-                      onTap: () => _showThemeBottomSheet(context),
-                    ),
-                  ],
-                ),
+                // Hidden while ThemeService.darkModeAvailable is false: with
+                // the app pinned to the light theme both controls would be
+                // switches that change nothing.
+                if (ThemeService.darkModeAvailable)
+                  SettingsSection(
+                    title: context.l10n.appearance,
+                    children: [
+                      SettingsSwitchTile(
+                        icon: IconsaxPlusBroken.moon,
+                        title: context.l10n.darkMode,
+                        value: themeService.savedThemeMode == ThemeMode.dark,
+                        onChanged: (value) {
+                          themeService.setThemeMode(
+                            value ? ThemeMode.dark : ThemeMode.light,
+                          );
+                        },
+                      ),
+                      SettingsTile(
+                        icon: IconsaxPlusBroken.color_swatch,
+                        title: context.l10n.themeMode,
+                        subtitle:
+                            themeService.savedThemeMode == ThemeMode.system
+                            ? context.l10n.themeSystem
+                            : themeService.savedThemeMode == ThemeMode.light
+                            ? context.l10n.themeLight
+                            : context.l10n.themeDark,
+                        trailing: const Icon(IconsaxPlusBroken.arrow_down_1),
+                        onTap: () => _showThemeBottomSheet(context),
+                      ),
+                    ],
+                  ),
                 SettingsSection(
                   title: context.l10n.language,
                   children: [
@@ -347,6 +352,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             }
                           : null,
                     ),
+                    SettingsTile(
+                      icon: IconsaxPlusBroken.setting_2,
+                      title: context.l10n.notificationSettings,
+                      trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
+                      onTap: () {
+                        Navigator.pushNamed(
+                          context,
+                          RouteNames.notificationSettings,
+                        );
+                      },
+                    ),
                   ],
                 ),
                 SettingsSection(
@@ -371,6 +387,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
                       onTap: () {
                         Navigator.pushNamed(context, RouteNames.changePassword);
+                      },
+                    ),
+                  ],
+                ),
+                SettingsSection(
+                  title: context.l10n.privacy,
+                  children: [
+                    SettingsTile(
+                      icon: IconsaxPlusBroken.shield_tick,
+                      title: context.l10n.privacySettings,
+                      trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
+                      onTap: () {
+                        Navigator.pushNamed(
+                          context,
+                          RouteNames.privacySettings,
+                        );
                       },
                     ),
                   ],

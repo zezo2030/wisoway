@@ -47,7 +47,7 @@ class SeatData {
       gender: json['gender'],
       status: json['status'] ?? 'available',
       bookedAt: json['bookedAt'] != null
-          ? DateTime.parse(json['bookedAt'])
+          ? DateTime.parse(json['bookedAt']).toLocal()
           : null,
     );
   }

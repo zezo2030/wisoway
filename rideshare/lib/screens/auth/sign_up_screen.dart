@@ -10,11 +10,16 @@ import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../widgets/auth/auth_hero.dart';
 import '../../widgets/auth/auth_phone_field.dart';
 import '../../widgets/auth/auth_primary_button.dart';
 import '../../widgets/auth/auth_step_indicator.dart';
 import '../../widgets/auth/auth_text_field.dart';
 import '../../widgets/auth/gender_select_cards.dart';
+
+/// The passenger illustration parks its car low in the frame, so the ribbon is
+/// cropped well below centre to keep the whole car clear of the sheet's lip.
+const Alignment _heroArtFocus = Alignment(0, 0.75);
 
 /// Passenger registration — step 1 of 3 (basic details).
 ///
@@ -127,23 +132,34 @@ class _SignUpScreenState extends State<SignUpScreen>
     final l10n = context.l10n;
 
     return Scaffold(
-      backgroundColor: T.surface(context),
-      body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: SingleChildScrollView(
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildTopBar(),
-                  _buildHero(),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+      backgroundColor: AuthHero.backdrop,
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildTopBar(),
+                AuthHeroTitle(
+                  icon: IconsaxPlusBold.profile_circle,
+                  title: l10n.passengerSignupTitle,
+                  subtitle: l10n.passengerSignupSubtitle,
+                ),
+                AuthHeroSheet(
+                  art: const AuthHeroArt(
+                    asset:
+                        'assets/illustrations/auth/auth_passenger_signup_hero.webp',
+                    focus: _heroArtFocus,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 22, 20, 28),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        const AuthStepIndicator(currentStep: 1, totalSteps: 3),
+                        const SizedBox(height: 22),
                         AuthTextField(
                           controller: _nameController,
                           label: l10n.fullName,
@@ -212,19 +228,8 @@ class _SignUpScreenState extends State<SignUpScreen>
                           },
                         ),
                         const SizedBox(height: 22),
-                        Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: Text(
-                            l10n.genderRequiredLabel,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: T.onSurface(context),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
                         GenderSelectCards(
+                          label: l10n.genderRequiredLabel,
                           value: _selectedGender,
                           onChanged: (g) => setState(() => _selectedGender = g),
                         ),
@@ -239,8 +244,8 @@ class _SignUpScreenState extends State<SignUpScreen>
                       ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
@@ -248,79 +253,50 @@ class _SignUpScreenState extends State<SignUpScreen>
     );
   }
 
+  /// Back chevron and the step counter, on the hero's flat band.
   Widget _buildTopBar() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 4, 16, 0),
-      child: Row(
-        children: [
-          IconButton(
-            icon: Icon(
-              Directionality.of(context) == TextDirection.rtl
-                  ? Icons.chevron_right_rounded
-                  : Icons.chevron_left_rounded,
-              color: T.onSurface(context),
-            ),
-            onPressed: () => Navigator.pop(context),
-          ),
-          const Expanded(
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 12),
-              child: AuthStepIndicator(currentStep: 1, totalSteps: 3),
-            ),
-          ),
-          Text(
-            context.l10n.authStepOf(1, 3),
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: T.primary(context),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHero() {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Opacity(
-          opacity: 0.9,
-          child: Image.asset(
-            'assets/illustrations/auth/auth_passenger_signup_hero.png',
-            height: 190,
-            width: double.infinity,
-            fit: BoxFit.cover,
-          ),
-        ),
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              context.l10n.passengerSignupTitle,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 27,
-                fontWeight: FontWeight.w800,
-                color: T.onSurface(context),
+    return ColoredBox(
+      color: AuthHero.backdrop,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 4, 16, 0),
+          child: Row(
+            children: [
+              IconButton(
+                icon: Icon(
+                  Directionality.of(context) == TextDirection.rtl
+                      ? Icons.chevron_right_rounded
+                      : Icons.chevron_left_rounded,
+                  color: AuthHero.ink,
+                ),
+                onPressed: () => Navigator.pop(context),
+                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
               ),
-            ),
-            const SizedBox(height: 6),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                context.l10n.passengerSignupSubtitle,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: T.onSurfaceVariant(context),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AuthHero.chipFill,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AuthHero.chipBorder),
+                ),
+                child: Text(
+                  context.l10n.authStepOf(1, 3),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: T.primary(context),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ],
+      ),
     );
   }
 

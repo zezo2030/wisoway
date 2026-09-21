@@ -48,8 +48,6 @@ class InstantQuote {
       minFare: parse(json['minFare']),
       maxFare: parse(json['maxFare']),
       currency: (json['currency'] ?? 'JOD').toString(),
-      distanceKm: double.tryParse(json['distanceKm']?.toString() ?? ''),
-      durationMinutes: (json['durationMinutes'] as num?)?.toInt(),
     );
   }
 }
@@ -66,6 +64,14 @@ class InstantCounterOffer {
   final String currency;
   final DateTime? expiresAt;
 
+  /// The fare the passenger originally asked for, shown struck through next to
+  /// the driver's price so the difference is immediately readable.
+  final String? passengerFare;
+  final String? driverPhotoUrl;
+  final String? carImageUrl;
+  final String? fromName;
+  final String? toName;
+
   const InstantCounterOffer({
     required this.id,
     required this.proposedFare,
@@ -76,22 +82,50 @@ class InstantCounterOffer {
     this.vehicleModel,
     this.plateNumber,
     this.expiresAt,
+    this.passengerFare,
+    this.driverPhotoUrl,
+    this.carImageUrl,
+    this.fromName,
+    this.toName,
   });
+
+  /// Seconds the passenger still has to decide, floored at zero.
+  int secondsLeft([DateTime? now]) {
+    final deadline = expiresAt;
+    if (deadline == null) return 0;
+    final left = deadline.difference(now ?? DateTime.now()).inSeconds;
+    return left < 0 ? 0 : left;
+  }
 
   factory InstantCounterOffer.fromJson(Map<String, dynamic> json) {
     return InstantCounterOffer(
       id: json['id']?.toString() ?? '',
       driverName: json['driverName']?.toString(),
-      driverRating: (json['driverRating'] as num?)?.toDouble(),
-      driverTotalRatings: (json['driverTotalRatings'] as num?)?.toInt(),
-      vehicleModel: json['vehicleModel']?.toString(),
-      plateNumber: json['plateNumber']?.toString(),
+      driverRating: json['driverRating'] is num
+          ? (json['driverRating'] as num).toDouble()
+          : double.tryParse(json['driverRating']?.toString() ?? ''),
+      driverTotalRatings: json['driverTotalRatings'] is num
+          ? (json['driverTotalRatings'] as num).toInt()
+          : int.tryParse(json['driverTotalRatings']?.toString() ?? ''),
+      vehicleModel: _text(json['vehicleModel']),
+      plateNumber: _text(json['plateNumber']),
       proposedFare: json['proposedFare']?.toString() ?? '',
       currency: (json['currency'] ?? 'JOD').toString(),
       expiresAt: json['expiresAt'] != null
           ? DateTime.tryParse(json['expiresAt'].toString())
           : null,
+      passengerFare: _text(json['passengerFare']),
+      driverPhotoUrl: _text(json['driverPhotoUrl']),
+      carImageUrl: _text(json['carImageUrl']),
+      fromName: _text(json['fromName']),
+      toName: _text(json['toName']),
     );
+  }
+
+  /// Push data arrives as strings, and absent values as empty ones.
+  static String? _text(dynamic value) {
+    final text = value?.toString().trim();
+    return text == null || text.isEmpty ? null : text;
   }
 }
 
@@ -122,6 +156,9 @@ class InstantNudge {
 /// Matched driver/vehicle details + pickup ETA (inDrive matched state).
 class InstantMatch {
   final String? tripId;
+  final String? bookingId;
+  final String? driverId;
+  final String? driverPhotoUrl;
   final String? acceptedFare;
   final String currency;
   final int? pickupEtaSeconds;
@@ -135,6 +172,9 @@ class InstantMatch {
   const InstantMatch({
     required this.currency,
     this.tripId,
+    this.bookingId,
+    this.driverId,
+    this.driverPhotoUrl,
     this.acceptedFare,
     this.pickupEtaSeconds,
     this.driverName,
@@ -160,6 +200,9 @@ class InstantMatch {
       vehicleModel: json['vehicleModel']?.toString(),
       plateNumber: json['plateNumber']?.toString(),
       carImageUrl: json['carImageUrl']?.toString(),
+      bookingId: json['bookingId']?.toString(),
+      driverId: json['driverId']?.toString(),
+      driverPhotoUrl: json['driverPhotoUrl']?.toString(),
     );
   }
 }
@@ -167,7 +210,8 @@ class InstantMatch {
 /// A passenger's instant ride request, as seen by the passenger.
 class InstantRequest {
   final String id;
-  final String status; // searching | offered | accepted | no_drivers | expired | cancelled
+  final String
+  status; // searching | offered | accepted | no_drivers | expired | cancelled
   /// no_eligible_drivers | all_declined | ttl_expired | passenger_cancelled.
   /// Null on older backends that don't send it yet.
   final String? terminalReason;
@@ -187,6 +231,18 @@ class InstantRequest {
   final InstantCounterOffer? counterOffer;
   final InstantNudge? nudge;
   final InstantMatch? match;
+
+  /// Straight-line route metrics for the searching sheet (newer backends).
+  final double? distanceKm;
+  final int? durationMinutes;
+
+  /// Highest fare the passenger may raise to while searching.
+  final double? maxFare;
+
+  /// How wide the dispatch search actually reached, in km, and the ceiling it
+  /// may grow to. Both come from the server so the UI never hardcodes them.
+  final double? searchRadiusKm;
+  final double? maxSearchRadiusKm;
 
   const InstantRequest({
     required this.id,
@@ -208,7 +264,16 @@ class InstantRequest {
     this.counterOffer,
     this.nudge,
     this.match,
+    this.distanceKm,
+    this.durationMinutes,
+    this.maxFare,
+    this.searchRadiusKm,
+    this.maxSearchRadiusKm,
   });
+
+  /// The fare currently offered to drivers, as a number.
+  double? get currentFare =>
+      double.tryParse(passengerFare ?? fareEstimate ?? '');
 
   bool get isSearching => status == 'searching' || status == 'offered';
   bool get isMatched => status == 'accepted';
@@ -241,6 +306,13 @@ class InstantRequest {
       currency: (json['currency'] ?? 'JOD').toString(),
       seatCount: (json['seatCount'] as num?)?.toInt() ?? 1,
       matchedDriverId: json['matchedDriverId']?.toString(),
+      distanceKm: double.tryParse(json['distanceKm']?.toString() ?? ''),
+      durationMinutes: (json['durationMinutes'] as num?)?.toInt(),
+      maxFare: double.tryParse(json['maxFare']?.toString() ?? ''),
+      searchRadiusKm: double.tryParse(json['searchRadiusKm']?.toString() ?? ''),
+      maxSearchRadiusKm: double.tryParse(
+        json['maxSearchRadiusKm']?.toString() ?? '',
+      ),
       tripId: json['tripId']?.toString(),
       expiresAt: json['expiresAt'] != null
           ? DateTime.tryParse(json['expiresAt'].toString())
@@ -283,6 +355,24 @@ class InstantRequestSummary {
   final String? tripTypeLabel;
   final String? seatCountLabel;
 
+  /// Street lines under each place name, when the geocoder had them.
+  final String? fromAddress;
+  final String? toAddress;
+  final double? dropoffLat;
+  final double? dropoffLng;
+
+  /// The driver's own leg to the pickup — distinct from the trip distance and
+  /// the number that decides whether the job is worth taking.
+  final String? pickupDistanceKm;
+  final String? pickupDistanceLabel;
+  final int? pickupEtaMinutes;
+
+  /// Who is asking for the ride.
+  final String? passengerName;
+  final double? passengerRating;
+  final int? passengerTotalRatings;
+  final String? passengerPhotoUrl;
+
   const InstantRequestSummary({
     required this.id,
     required this.fromName,
@@ -300,11 +390,39 @@ class InstantRequestSummary {
     this.earningsLabel,
     this.tripTypeLabel,
     this.seatCountLabel,
+    this.fromAddress,
+    this.toAddress,
+    this.dropoffLat,
+    this.dropoffLng,
+    this.pickupDistanceKm,
+    this.pickupDistanceLabel,
+    this.pickupEtaMinutes,
+    this.passengerName,
+    this.passengerRating,
+    this.passengerTotalRatings,
+    this.passengerPhotoUrl,
   });
+
+  /// The fare the passenger is offering, as a number.
+  double? get passengerFareValue =>
+      double.tryParse(passengerFare ?? fareEstimate ?? '');
 
   factory InstantRequestSummary.fromJson(Map<String, dynamic> json) {
     final pickup = json['pickup'] is Map ? json['pickup'] as Map : const {};
-    final seats = (json['seatCount'] as num?)?.toInt() ??
+    final dropoff = json['dropoff'] is Map ? json['dropoff'] as Map : const {};
+    // Push payloads carry everything as strings, the REST body as numbers —
+    // one parser so both shapes land in the same fields.
+    double? asDouble(dynamic v) => v is num
+        ? v.toDouble()
+        : double.tryParse(v?.toString() ?? '');
+    int? asInt(dynamic v) =>
+        v is num ? v.toInt() : int.tryParse(v?.toString() ?? '');
+    String? asText(dynamic v) {
+      final text = v?.toString().trim();
+      return text == null || text.isEmpty ? null : text;
+    }
+    final seats =
+        (json['seatCount'] as num?)?.toInt() ??
         int.tryParse(json['seatCount']?.toString() ?? '') ??
         1;
     return InstantRequestSummary(
@@ -312,8 +430,8 @@ class InstantRequestSummary {
       fromName: (json['fromName'] ?? '').toString(),
       toName: (json['toName'] ?? '').toString(),
       fareEstimate: json['fareEstimate']?.toString(),
-      passengerFare:
-          (json['passengerFare'] ?? json['fareEstimate'])?.toString(),
+      passengerFare: (json['passengerFare'] ?? json['fareEstimate'])
+          ?.toString(),
       currency: (json['currency'] ?? 'JOD').toString(),
       seatCount: seats,
       pickupLat: (pickup['latitude'] as num?)?.toDouble(),
@@ -325,6 +443,17 @@ class InstantRequestSummary {
       earningsLabel: json['earningsLabel']?.toString(),
       tripTypeLabel: json['tripTypeLabel']?.toString(),
       seatCountLabel: json['seatCountLabel']?.toString(),
+      fromAddress: asText(json['fromAddress']),
+      toAddress: asText(json['toAddress']),
+      dropoffLat: asDouble(dropoff['latitude']),
+      dropoffLng: asDouble(dropoff['longitude']),
+      pickupDistanceKm: asText(json['pickupDistanceKm']),
+      pickupDistanceLabel: asText(json['pickupDistanceLabel']),
+      pickupEtaMinutes: asInt(json['pickupEtaMinutes']),
+      passengerName: asText(json['passengerName']),
+      passengerRating: asDouble(json['passengerRating']),
+      passengerTotalRatings: asInt(json['passengerTotalRatings']),
+      passengerPhotoUrl: asText(json['passengerPhotoUrl']),
     );
   }
 }
@@ -356,9 +485,27 @@ class InstantOffer {
       expiresAt: offer['expiresAt'] != null
           ? DateTime.tryParse(offer['expiresAt'].toString())
           : null,
-      request: request != null
-          ? InstantRequestSummary.fromJson(request)
-          : null,
+      request: request != null ? InstantRequestSummary.fromJson(request) : null,
+    );
+  }
+}
+
+/// Anonymous, approximate position of one of our online drivers, shown as a
+/// car pin on the passenger's instant-ride map. Carries no identity on
+/// purpose — the backend only returns coarse coordinates.
+class InstantNearbyDriverPin {
+  final double latitude;
+  final double longitude;
+
+  const InstantNearbyDriverPin({
+    required this.latitude,
+    required this.longitude,
+  });
+
+  factory InstantNearbyDriverPin.fromJson(Map<String, dynamic> json) {
+    return InstantNearbyDriverPin(
+      latitude: (json['latitude'] as num?)?.toDouble() ?? 0,
+      longitude: (json['longitude'] as num?)?.toDouble() ?? 0,
     );
   }
 }

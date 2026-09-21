@@ -9,7 +9,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
-import { In, Repository } from 'typeorm';
+import { EntityManager, In, Repository } from 'typeorm';
 import {
   BookingEntity,
   BookingStatus,
@@ -49,6 +49,7 @@ import {
   FARE_PER_KM,
   FARE_PER_MIN,
   INITIAL_RADIUS_KM,
+  MAX_RADIUS_KM,
   INSTANT_OFFER_TIMEOUT_QUEUE,
   INSTANT_REQUEST_EXPIRY_QUEUE,
   NUDGE_FARE_BUMP_FACTOR,
@@ -62,6 +63,7 @@ import {
 import {
   buildInstantOfferRouteMetrics,
   haversineKm,
+  OfferLocale,
 } from './instant-offer-labels';
 
 type LatLng = { latitude: number; longitude: number };
@@ -105,17 +107,51 @@ export class InstantRidesService {
     };
   }
 
+  /**
+   * The passenger's live instant request, or null.
+   *
+   * ACCEPTED is not a terminal status and nothing ever moves a request out of
+   * it — completing the trip only updates the trip. So a request whose trip has
+   * already finished would otherwise count as "live" forever, and the passenger
+   * could never order a second instant ride ("لديك طلب رحلة نشط بالفعل").
+   * An accepted request is therefore only live while its trip still is.
+   */
+  private async findLiveRequest(
+    passengerId: string,
+    manager?: EntityManager,
+  ): Promise<InstantRideRequestEntity | null> {
+    const where = {
+      passengerId,
+      status: In([
+        InstantRequestStatus.SEARCHING,
+        InstantRequestStatus.OFFERED,
+        InstantRequestStatus.ACCEPTED,
+      ]),
+    };
+    // Newest first: this guard is what stops a second live request existing, so
+    // the most recent row is the only one that can still be live.
+    const order = { createdAt: 'DESC' as const };
+    const request = manager
+      ? await manager.findOne(InstantRideRequestEntity, { where, order })
+      : await this.requestRepo.findOne({ where, order });
+
+    if (!request) return null;
+    if (request.status !== InstantRequestStatus.ACCEPTED) return request;
+    if (!request.tripId) return request;
+
+    const trip = manager
+      ? await manager.findOne(TripEntity, { where: { id: request.tripId } })
+      : await this.tripRepo.findOne({ where: { id: request.tripId } });
+    if (!trip) return request;
+
+    const tripFinished =
+      trip.status === TripStatus.COMPLETED ||
+      trip.status === TripStatus.CANCELLED;
+    return tripFinished ? null : request;
+  }
+
   async createRequest(passengerId: string, dto: CreateInstantRequestDto) {
-    const active = await this.requestRepo.findOne({
-      where: {
-        passengerId,
-        status: In([
-          InstantRequestStatus.SEARCHING,
-          InstantRequestStatus.OFFERED,
-          InstantRequestStatus.ACCEPTED,
-        ]),
-      },
-    });
+    const active = await this.findLiveRequest(passengerId);
     if (active) {
       throw new ConflictException('لديك طلب رحلة نشط بالفعل.');
     }
@@ -219,9 +255,7 @@ export class InstantRidesService {
     }
 
     const current = Number(request.passengerFare ?? request.fareEstimate ?? 0);
-    const recommended = Number(request.recommendedFare ?? current);
-    const maxFare =
-      Math.round(recommended * PASSENGER_FARE_MAX_FACTOR * 100) / 100;
+    const maxFare = this.maxFareFor(request);
     const amount = Math.round(dto.passengerFare * 100) / 100;
     if (amount <= current || amount > maxFare) {
       throw new BadRequestException(
@@ -393,16 +427,7 @@ export class InstantRidesService {
         return;
       }
 
-      const active = await m.findOne(InstantRideRequestEntity, {
-        where: {
-          passengerId,
-          status: In([
-            InstantRequestStatus.SEARCHING,
-            InstantRequestStatus.OFFERED,
-            InstantRequestStatus.ACCEPTED,
-          ]),
-        },
-      });
+      const active = await this.findLiveRequest(passengerId, m);
       if (active) {
         this.logger.log(
           `instant_retry_rejected ${JSON.stringify({
@@ -503,7 +528,7 @@ export class InstantRidesService {
 
   // ── Driver ───────────────────────────────────────────────────────────────
 
-  async getPendingOffer(driverId: string) {
+  async getPendingOffer(driverId: string, locale: OfferLocale = 'ar') {
     const offer = await this.offerRepo.findOne({
       where: { driverId, status: InstantOfferStatus.OFFERED },
       order: { offeredAt: 'DESC' },
@@ -514,14 +539,45 @@ export class InstantRidesService {
     const request = await this.requestRepo.findOne({
       where: { id: offer.requestId },
     });
+    if (!request) {
+      return { offer: null };
+    }
+    // The details screen names the passenger and says how far the pickup is;
+    // both are read here so the card never has to call back for them.
+    const [availability, passenger] = await Promise.all([
+      this.availabilityRepo.findOne({ where: { driverId } }).catch(() => null),
+      this.usersService.findById(request.passengerId).catch(() => null),
+    ]);
     return {
       offer: {
         id: offer.id,
         requestId: offer.requestId,
         expiresAt: offer.expiresAt,
       },
-      request: request ? this.toRequestSummary(request) : null,
+      request: this.toRequestSummary(request, locale, {
+        pickupDistanceMeters: this.pickupDistanceMeters(availability, request),
+        passengerName: passenger?.name ?? null,
+        passengerRating: passenger?.rating ?? null,
+        passengerTotalRatings: passenger?.totalRatings ?? null,
+        passengerPhotoUrl: passenger?.photoUrl ?? null,
+      }),
     };
+  }
+
+  /** Straight-line metres from a driver's last known point to the pickup. */
+  private pickupDistanceMeters(
+    availability: { point?: { coordinates: [number, number] } | null } | null,
+    request: InstantRideRequestEntity,
+  ): number | null {
+    const coords = availability?.point?.coordinates;
+    if (!coords) return null;
+    const [fromLng, fromLat] = request.fromPoint.coordinates;
+    return Math.round(
+      haversineKm(
+        { latitude: coords[1], longitude: coords[0] },
+        { latitude: fromLat, longitude: fromLng },
+      ) * 1000,
+    );
   }
 
   /**
@@ -644,17 +700,37 @@ export class InstantRidesService {
         this.logger.warn(`Failed to enqueue counter timeout: ${err.message}`),
       );
 
+    const [driver, vehicle] = await Promise.all([
+      this.usersService.findById(driverId).catch(() => null),
+      (offer.vehicleId
+        ? this.vehiclesService.findById(offer.vehicleId)
+        : this.vehiclesService.findByDriver(driverId)
+      ).catch(() => null),
+    ]);
+    const driverName = driver?.name ?? 'سائق';
+
     this.notifications
       .sendPush(request.passengerId, {
         title: 'عرض سعر من سائق',
-        body: `عرض السائق ${proposed.toFixed(2)} ${request.currency} لرحلتك.`,
+        body: `عرض ${driverName}: ${proposed.toFixed(2)} ${request.currency} لرحلتك.`,
         type: 'instant_counter_offer',
         data: {
           requestId: request.id,
           offerId,
           proposedFare: proposed.toFixed(2),
+          passengerFare: passengerFare.toFixed(2),
           currency: request.currency,
           expiresAt: expiresAt.toISOString(),
+          driverName,
+          driverRating: driver?.rating != null ? String(driver.rating) : '',
+          driverTotalRatings:
+            driver?.totalRatings != null ? String(driver.totalRatings) : '',
+          driverPhotoUrl: driver?.photoUrl ?? '',
+          vehicleModel: vehicle?.model ?? '',
+          plateNumber: vehicle?.plateNumber ?? '',
+          carImageUrl: vehicle?.carImageUrl ?? '',
+          fromName: request.fromName,
+          toName: request.toName,
         },
       })
       .catch(() => undefined);
@@ -1022,10 +1098,49 @@ export class InstantRidesService {
       matchedDriverId: request.matchedDriverId,
       tripId: request.tripId,
       expiresAt: request.expiresAt,
+      // Ceiling for "raise your fare" while searching (same rule as updateFare).
+      maxFare: this.maxFareFor(request).toFixed(2),
+      // How far the search actually reached, so the passenger can be told
+      // "no driver within N km" instead of a generic failure.
+      searchRadiusKm: request.radiusKm ?? INITIAL_RADIUS_KM,
+      maxSearchRadiusKm: MAX_RADIUS_KM,
+      ...this.routeMetricsFor(request),
       counterOffer: await this.getActiveCounterOffer(request),
       nudge: this.getNudge(request),
       match: await this.getMatchView(request),
     };
+  }
+
+  /**
+   * Straight-line distance + duration for the searching sheet. The request
+   * stores no route, so this mirrors the quote fallback (haversine at the
+   * urban approach speed) — good enough for the "~ km / ~ min" strip.
+   */
+  private routeMetricsFor(request: InstantRideRequestEntity) {
+    const fromCoords = request.fromPoint?.coordinates;
+    const toCoords = request.toPoint?.coordinates;
+    if (!fromCoords || !toCoords) {
+      return { distanceKm: null, durationMinutes: null };
+    }
+    const [fromLng, fromLat] = fromCoords;
+    const [toLng, toLat] = toCoords;
+    const distanceKm = haversineKm(
+      { latitude: fromLat, longitude: fromLng },
+      { latitude: toLat, longitude: toLng },
+    );
+    return {
+      distanceKm: Math.round(distanceKm * 10) / 10,
+      durationMinutes: Math.max(
+        1,
+        Math.round((distanceKm / PICKUP_ETA_SPEED_KMH) * 60),
+      ),
+    };
+  }
+
+  private maxFareFor(request: InstantRideRequestEntity) {
+    const current = Number(request.passengerFare ?? request.fareEstimate ?? 0);
+    const recommended = Number(request.recommendedFare ?? current);
+    return Math.round(recommended * PASSENGER_FARE_MAX_FACTOR * 100) / 100;
   }
 
   /** A search that ended without a match can be started again as-is. */
@@ -1077,12 +1192,25 @@ export class InstantRidesService {
     const vehicle = await this.vehiclesService
       .findByDriver(request.matchedDriverId)
       .catch(() => null);
+    // The passenger's booking on the instant trip — what chat, in-app calls
+    // and a post-match cancellation key off.
+    const booking = request.tripId
+      ? await this.tripRepo.manager
+          .findOne(BookingEntity, {
+            where: { tripId: request.tripId, userId: request.passengerId },
+            select: ['id'],
+          })
+          .catch(() => null)
+      : null;
     return {
       tripId: request.tripId,
+      bookingId: booking?.id ?? null,
       acceptedFare: request.acceptedFare,
       currency: request.currency,
       pickupEtaSeconds: request.pickupEtaSeconds,
+      driverId: request.matchedDriverId,
       driverName: driver?.name ?? null,
+      driverPhotoUrl: driver?.photoUrl ?? null,
       driverRating: driver?.rating ?? null,
       driverTotalRatings: driver?.totalRatings ?? null,
       vehicleModel: vehicle?.model ?? null,
@@ -1127,8 +1255,19 @@ export class InstantRidesService {
     };
   }
 
-  private toRequestSummary(request: InstantRideRequestEntity) {
+  private toRequestSummary(
+    request: InstantRideRequestEntity,
+    locale: OfferLocale = 'ar',
+    extra?: {
+      pickupDistanceMeters?: number | null;
+      passengerName?: string | null;
+      passengerRating?: number | null;
+      passengerTotalRatings?: number | null;
+      passengerPhotoUrl?: string | null;
+    },
+  ) {
     const [fromLng, fromLat] = request.fromPoint.coordinates;
+    const [toLng, toLat] = request.toPoint.coordinates;
     const routeMetrics = buildInstantOfferRouteMetrics({
       fromPoint: request.fromPoint,
       toPoint: request.toPoint,
@@ -1136,23 +1275,41 @@ export class InstantRidesService {
       fareEstimate: request.fareEstimate,
       currency: request.currency,
       seatCount: request.seatCount,
+      locale,
+      pickupDistanceMeters: extra?.pickupDistanceMeters,
     });
+    const pickupKm = Number(routeMetrics.pickupDistanceKm);
     return {
       id: request.id,
       fromName: request.fromName,
       toName: request.toName,
+      // Full addresses so the details screen can show the street line under
+      // each place name instead of the short label on its own.
+      fromAddress: request.fromAddress,
+      toAddress: request.toAddress,
       fareEstimate: request.fareEstimate,
       passengerFare: request.passengerFare ?? request.fareEstimate,
       currency: request.currency,
       seatCount: request.seatCount,
       seatCountLabel: routeMetrics.seatCountLabel,
       pickup: { latitude: fromLat, longitude: fromLng },
+      dropoff: { latitude: toLat, longitude: toLng },
       distanceKm: routeMetrics.distanceKm,
       durationMinutes: routeMetrics.durationMinutes,
       distanceLabel: routeMetrics.distanceLabel,
       durationLabel: routeMetrics.durationLabel,
+      pickupDistanceKm: routeMetrics.pickupDistanceKm || null,
+      pickupDistanceLabel: routeMetrics.pickupDistanceLabel || null,
+      pickupEtaMinutes: Number.isFinite(pickupKm)
+        ? Math.max(1, Math.round((pickupKm / PICKUP_ETA_SPEED_KMH) * 60))
+        : null,
       earningsLabel: routeMetrics.earningsLabel,
+      tripType: routeMetrics.tripType,
       tripTypeLabel: routeMetrics.tripTypeLabel,
+      passengerName: extra?.passengerName ?? null,
+      passengerRating: extra?.passengerRating ?? null,
+      passengerTotalRatings: extra?.passengerTotalRatings ?? null,
+      passengerPhotoUrl: extra?.passengerPhotoUrl ?? null,
     };
   }
 }

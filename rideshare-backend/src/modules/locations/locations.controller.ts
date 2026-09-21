@@ -8,6 +8,8 @@ import {
 import { LocationsService } from './locations.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { LocationAutocompleteQueryDto } from './dto/location-autocomplete.dto';
+import { ReverseGeocodeQueryDto } from './dto/reverse-geocode.dto';
+import { CitiesQueryDto } from './dto/cities.dto';
 
 @ApiTags('locations')
 @Controller('locations')
@@ -40,6 +42,30 @@ export class LocationsController {
   async placeDetail(@Param('id') placeId: string) {
     // Coordinates are encoded in the placeId, so no sessionToken is needed.
     return this.locationsService.placeDetail(placeId);
+  }
+
+  @Get('reverse')
+  @ApiOperation({
+    summary: 'Resolve a map point to a display address (map picker pin)',
+  })
+  @ApiResponse({ status: 200, description: 'Address resolved' })
+  @ApiResponse({ status: 400, description: 'Invalid coordinates' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 502, description: 'Places provider failed' })
+  async reverse(
+    @Query() query: ReverseGeocodeQueryDto,
+    @Req() req: { user?: { id?: string; sub?: string } },
+  ) {
+    const userId = req.user?.id ?? req.user?.sub ?? 'unknown';
+    return this.locationsService.reverse(query, userId);
+  }
+
+  @Get('cities')
+  @ApiOperation({ summary: 'City catalog for the city-first route picker' })
+  @ApiResponse({ status: 200, description: 'Cities loaded' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  cities(@Query() query: CitiesQueryDto) {
+    return this.locationsService.cities(query);
   }
 
   @Get('geocode')

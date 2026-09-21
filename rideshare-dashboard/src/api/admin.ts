@@ -839,3 +839,21 @@ export async function updateRefundRequest(
   )
   return response.data.data
 }
+
+// ─── Pending Drivers (driver account review queue) ─────────────────────────────
+
+export interface GetPendingDriversParams {
+  page?: number
+  limit?: number
+  search?: string
+}
+
+export async function getPendingDrivers(
+  params: GetPendingDriversParams = {},
+): Promise<PaginatedResult<User>> {
+  const response = await apiClient.get<ApiResponse<PaginatedResult<User>>>(
+    "/admin/users",
+    { params: { ...params, role: "driver", isDriverApproved: false } },
+  )
+  return response.data.data
+}
