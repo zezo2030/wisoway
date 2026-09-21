@@ -5,9 +5,6 @@ import '../../providers/auth_provider.dart';
 import '../../providers/trip_provider.dart';
 import '../../models/trip_model.dart';
 import '../../core/constants/route_names.dart';
-import '../../core/services/payment_service.dart';
-import '../../core/api/api_client.dart';
-import '../../core/ui/error_surface.dart';
 import '../../widgets/notification_icon_button.dart';
 import '../../core/theme/colors.dart';
 import '../../widgets/common/empty_state.dart';
@@ -208,7 +205,7 @@ class _MyTripsScreenState extends State<MyTripsScreen>
               itemCount: trips.length,
               itemBuilder: (context, index) {
                 final trip = trips[index];
-                return _TripCard(trip: trip, onPaid: _refreshTrips);
+                return _TripCard(trip: trip);
               },
             ),
           );
@@ -239,112 +236,15 @@ class _MyTripsScreenState extends State<MyTripsScreen>
 
 class _TripCard extends StatefulWidget {
   final TripModel trip;
-  final Future<void> Function() onPaid;
 
-  const _TripCard({required this.trip, required this.onPaid});
+  const _TripCard({required this.trip});
 
   @override
   State<_TripCard> createState() => _TripCardState();
 }
 
 class _TripCardState extends State<_TripCard> {
-  final PaymentService _paymentService = PaymentService();
-  bool _isPaying = false;
-
   TripModel get trip => widget.trip;
-
-  double get _tripFeeAmount =>
-      ((trip.price * trip.totalSeats * 0.05) * 100).round() / 100;
-
-  Future<void> _showFeeInvoice() async {
-    final amount = _tripFeeAmount;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.l10n.tripFeeInvoiceTitle),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _invoiceRow(
-              context.l10n.seatPrice,
-              '${trip.price} ${trip.currency}',
-            ),
-            _invoiceRow(context.l10n.seatsCountLabel, '${trip.totalSeats}'),
-            _invoiceRow(context.l10n.feePercentage, '5%'),
-            const Divider(height: 24),
-            _invoiceRow(
-              context.l10n.totalLabel,
-              '${amount.toStringAsFixed(2)} ${trip.currency}',
-              isTotal: true,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              context.l10n.tripFeeDeductExplanation,
-              style: TextStyle(
-                color: T.onSurfaceVariant(context),
-                fontSize: 13,
-                height: 1.4,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(context.l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(context.l10n.payFees),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      await _payTripFee();
-    }
-  }
-
-  Widget _invoiceRow(String label, String value, {bool isTotal = false}) {
-    final style = TextStyle(
-      fontWeight: isTotal ? FontWeight.w800 : FontWeight.w600,
-      fontSize: isTotal ? 16 : 14,
-    );
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Expanded(child: Text(label, style: style)),
-          Text(value, style: style),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _payTripFee() async {
-    setState(() => _isPaying = true);
-    try {
-      await _paymentService.chargeDriverTrip(
-        tripId: trip.id,
-        idempotencyKey:
-            'driver-trip-fee:${trip.id}:${DateTime.now().millisecondsSinceEpoch}',
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.l10n.tripFeePaidSuccess),
-          backgroundColor: AppColors.success,
-        ),
-      );
-      await widget.onPaid();
-    } catch (e) {
-      if (!mounted) return;
-      ErrorSurface.showFailure(context, ApiClient.mapError(e));
-    } finally {
-      if (mounted) setState(() => _isPaying = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -677,64 +577,6 @@ class _TripCardState extends State<_TripCard> {
                     ],
                   ),
                 ),
-
-                if (trip.communicationFeeStatus != 'paid')
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: _isPaying ? null : _showFeeInvoice,
-                        icon: _isPaying
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.white,
-                                ),
-                              )
-                            : const Icon(IconsaxPlusBold.receipt_2),
-                        label: Text(
-                          _isPaying
-                              ? context.l10n.payingInProgress
-                              : context.l10n.payFees,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.success,
-                          foregroundColor: AppColors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                      ),
-                    ),
-                  )
-                else if (trip.communicationFeeStatus == 'paid')
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          IconsaxPlusBold.tick_circle,
-                          size: 18,
-                          color: AppColors.success,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          context.l10n.tripFeePaidLabel,
-                          style: const TextStyle(
-                            color: AppColors.success,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
               ],
             ),
           ),

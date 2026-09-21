@@ -22,6 +22,7 @@ import { QUERY_KEYS } from "@/lib/constants"
 import { formatSeatDisplay } from "@/lib/seat-format"
 import { layoutSummaryText } from "@/lib/seat-layout"
 import { formatDateTime, formatCurrency, cn, getTripLocationName } from "@/lib/utils"
+import { useLanguage } from "@/providers/language-provider"
 import type { UserSummary, Trip } from "@/types/models"
 import { ArrowLeft, MapPin, User, Calendar, DollarSign, Car, Users, ArrowLeftRight, Activity, CreditCard, ShieldCheck, Route, StickyNote, RefreshCw } from "lucide-react"
 
@@ -33,6 +34,7 @@ function isPopulatedDriver(driverId: string | UserSummary): driverId is UserSumm
 export default function TripDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { t } = useLanguage()
 
   // Fetch trip data
   const { data: trip, isLoading: isLoadingTrip } = useQuery({
@@ -374,11 +376,11 @@ export default function TripDetailPage() {
                         <TableCell className="text-right">
                           {booking.hasDriverPaidToContact ? (
                             <span className="inline-flex items-center text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-1 rounded border border-emerald-200 dark:border-emerald-800 shadow-sm">
-                              Paid
+                              {t("bookingFeeProcessed")}
                             </span>
                           ) : (
                             <span className="inline-flex items-center text-xs font-bold text-amber-600 bg-amber-50 dark:bg-amber-950/40 px-2 py-1 rounded border border-amber-200 dark:border-amber-800 shadow-sm">
-                              Pending
+                              {t("bookingFeeNotProcessed")}
                             </span>
                           )}
                         </TableCell>

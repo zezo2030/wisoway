@@ -97,6 +97,35 @@ export const ErrorCodes = {
    * another account was submitted for linking.
    */
   CONTACT_ALREADY_USED_BY_OTHER: 'CONTACT_ALREADY_USED_BY_OTHER',
+
+  // ── Presence confirmation (012-passenger-presence-confirmation) ─────────────
+
+  /**
+   * Presence confirmation attempted outside its window (driver: departure − 30m
+   * until settlement; passenger: departure − 60m until departure + 30m).
+   */
+  PRESENCE_WINDOW_CLOSED: 'PRESENCE_WINDOW_CLOSED',
+
+  /** The trip's fee has already been settled — the roster is now immutable. */
+  PRESENCE_ALREADY_SETTLED: 'PRESENCE_ALREADY_SETTLED',
+
+  /** A submitted seat number does not belong to the referenced booking. */
+  PRESENCE_SEAT_NOT_FOUND: 'PRESENCE_SEAT_NOT_FOUND',
+
+  /**
+   * Wallet balance minus funds reserved by active holds is not enough to place
+   * a new hold.
+   */
+  INSUFFICIENT_AVAILABLE_BALANCE: 'INSUFFICIENT_AVAILABLE_BALANCE',
+
+  /** Settlement or release referenced a hold that does not exist or is closed. */
+  HOLD_NOT_FOUND: 'HOLD_NOT_FOUND',
+
+  /** Driver wallet balance is negative — blocked from publishing / going online. */
+  NEGATIVE_WALLET_BALANCE: 'NEGATIVE_WALLET_BALANCE',
+
+  /** Driver wallet cannot cover the platform fee for the trip being published. */
+  INSUFFICIENT_BALANCE_FOR_TRIP_FEE: 'INSUFFICIENT_BALANCE_FOR_TRIP_FEE',
 } as const;
 
 /** Union type of all error code strings. */

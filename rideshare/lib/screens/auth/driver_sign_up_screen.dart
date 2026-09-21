@@ -1,17 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
+
 import '../../providers/auth_provider.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/countries.dart';
 import '../../core/theme/colors.dart';
-import '../../widgets/country_code_picker.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
-import '../../widgets/common/form_components.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../widgets/auth/auth_phone_field.dart';
+import '../../widgets/auth/auth_primary_button.dart';
+import '../../widgets/auth/auth_step_indicator.dart';
+import '../../widgets/auth/auth_text_field.dart';
+import '../../widgets/auth/gender_select_cards.dart';
+import '../../widgets/auth/security_notice.dart';
 
+/// Driver registration — step 1 of 3 (basic details).
+///
+/// The OTP screen that follows is *not* one of the three wizard steps: it only
+/// verifies the phone and hands back a registration token. Steps 2 and 3 live
+/// in [RouteNames.driverCompleteProfile].
 class DriverSignUpScreen extends StatefulWidget {
   const DriverSignUpScreen({super.key});
 
@@ -22,8 +32,7 @@ class DriverSignUpScreen extends StatefulWidget {
 class _DriverSignUpScreenState extends State<DriverSignUpScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _firstNameController = TextEditingController();
-  final _lastNameController = TextEditingController();
+  final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -52,8 +61,7 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
 
   @override
   void dispose() {
-    _firstNameController.dispose();
-    _lastNameController.dispose();
+    _nameController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -67,20 +75,23 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
       _showSnackBar(context.l10n.selectGenderError, T.error(context));
       return;
     }
-    if (_passwordController.text != _confirmPasswordController.text) {
-      _showSnackBar(context.l10n.passwordsDoNotMatch, T.error(context));
-      return;
-    }
 
     setState(() => _isLoading = true);
 
     try {
-      final phoneNumber =
-          '${_selectedCountry.dialCode}${_phoneController.text.trim()}';
+      final phoneNumber = AuthPhoneField.composeE164(
+        _selectedCountry,
+        _phoneController.text,
+      );
 
       await context.read<AuthProvider>().sendOTP(phoneNumber);
 
       if (mounted) {
+        // Downstream (pending registration + register call) still works with a
+        // first/last pair, so the single field is split on the first space.
+        final fullName = _nameController.text.trim();
+        final spaceIndex = fullName.indexOf(' ');
+
         Navigator.pushReplacementNamed(
           context,
           RouteNames.otpVerification,
@@ -88,8 +99,13 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
             'phoneNumber': phoneNumber,
             'isRegistration': true,
             'role': AppConstants.roleDriver,
-            'firstName': _firstNameController.text.trim(),
-            'lastName': _lastNameController.text.trim(),
+            'name': fullName,
+            'firstName': spaceIndex == -1
+                ? fullName
+                : fullName.substring(0, spaceIndex),
+            'lastName': spaceIndex == -1
+                ? ''
+                : fullName.substring(spaceIndex + 1).trim(),
             'gender': _selectedGender,
             'password': _passwordController.text,
             'afterVerifyRoute': RouteNames.driverCompleteProfile,
@@ -114,153 +130,137 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
     return Scaffold(
-      backgroundColor: T.surface(context),
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: SingleChildScrollView(
+      backgroundColor: T.primary(context),
+      body: SingleChildScrollView(
+        child: FadeTransition(
+          opacity: _fadeAnimation,
           child: Column(
             children: [
-              _buildHeader(),
-              Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ModernInputField(
-                              controller: _firstNameController,
-                              label: context.l10n.firstName,
-                              hint: context.l10n.firstNameHint,
-                              icon: IconsaxPlusLinear.user,
-                              validator: (v) => (v == null || v.isEmpty)
-                                  ? context.l10n.required
-                                  : null,
+              _buildHero(),
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: T.surface(context),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(28),
+                    topRight: Radius.circular(28),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 22, 20, 28),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        AuthStepIndicator(
+                          currentStep: 1,
+                          totalSteps: 3,
+                          labels: [
+                            l10n.authStepperBasicInfo,
+                            l10n.authStepperIdDocs,
+                            l10n.authStepperVehicleInfo,
+                          ],
+                        ),
+                        const SizedBox(height: 22),
+                        AuthTextField(
+                          controller: _nameController,
+                          label: l10n.fullName,
+                          helper: l10n.fullNameIdHint,
+                          icon: IconsaxPlusLinear.user,
+                          validator: (v) => (v == null || v.trim().length < 3)
+                              ? l10n.validNameRequired
+                              : null,
+                        ),
+                        const SizedBox(height: 14),
+                        AuthPhoneField(
+                          controller: _phoneController,
+                          country: _selectedCountry,
+                          onCountryChanged: (c) =>
+                              setState(() => _selectedCountry = c),
+                          helper: l10n.phoneConfirmCallHint,
+                        ),
+                        const SizedBox(height: 14),
+                        AuthTextField(
+                          controller: _passwordController,
+                          label: l10n.password,
+                          helper: l10n.passwordMinLengthHint,
+                          icon: IconsaxPlusLinear.lock,
+                          obscureText: _obscurePassword,
+                          textDirection: TextDirection.ltr,
+                          suffix: _visibilityToggle(
+                            obscured: _obscurePassword,
+                            onTap: () => setState(
+                              () => _obscurePassword = !_obscurePassword,
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: ModernInputField(
-                              controller: _lastNameController,
-                              label: context.l10n.lastName,
-                              hint: context.l10n.lastNameHint,
-                              icon: IconsaxPlusLinear.user,
-                              validator: (v) => (v == null || v.isEmpty)
-                                  ? context.l10n.required
-                                  : null,
+                          validator: (v) {
+                            if (v == null || v.isEmpty) {
+                              return l10n.passwordRequired;
+                            }
+                            if (!RegExp(
+                              r'^(?=.*[A-Za-z])(?=.*\d).{8,}$',
+                            ).hasMatch(v)) {
+                              return l10n.passwordPolicyError;
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        AuthTextField(
+                          controller: _confirmPasswordController,
+                          label: l10n.confirmPassword,
+                          helper: l10n.confirmPasswordReenterHint,
+                          icon: IconsaxPlusLinear.lock,
+                          obscureText: _obscureConfirmPassword,
+                          textDirection: TextDirection.ltr,
+                          suffix: _visibilityToggle(
+                            obscured: _obscureConfirmPassword,
+                            onTap: () => setState(
+                              () => _obscureConfirmPassword =
+                                  !_obscureConfirmPassword,
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          CountryCodePicker(
-                            selectedCountry: _selectedCountry,
-                            onCountryChanged: (country) =>
-                                setState(() => _selectedCountry = country),
-                            borderColor: T
-                                .secondary(context)
-                                .withValues(alpha: 0.3),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: ModernInputField(
-                              controller: _phoneController,
-                              label: context.l10n.phoneNumber,
-                              hint: '1234567890',
-                              icon: IconsaxPlusLinear.call,
-                              keyboardType: TextInputType.phone,
-                              validator: (v) {
-                                if (v == null || v.isEmpty) {
-                                  return context.l10n.phoneNumberRequired;
-                                }
-                                if (!RegExp(r'^\d{7,15}$').hasMatch(v)) {
-                                  return context.l10n.invalidPhoneNumber;
-                                }
-                                return null;
-                              },
+                          validator: (v) {
+                            if (v == null || v.isEmpty) {
+                              return l10n.confirmPasswordRequired;
+                            }
+                            if (v != _passwordController.text) {
+                              return l10n.passwordsDoNotMatch;
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 22),
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            l10n.genderRequiredLabel,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: T.onSurface(context),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      ModernInputField(
-                        controller: _passwordController,
-                        label: context.l10n.password,
-                        hint: context.l10n.passwordHint,
-                        icon: IconsaxPlusLinear.password_check,
-                        obscureText: _obscurePassword,
-                        textDirection: TextDirection.ltr,
-                        suffixIcon: IconButton(
-                          onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword,
-                          ),
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
                           ),
                         ),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) {
-                            return context.l10n.passwordRequired;
-                          }
-                          if (!RegExp(
-                            r'^(?=.*[A-Za-z])(?=.*\d).{8,}$',
-                          ).hasMatch(v)) {
-                            return context.l10n.passwordPolicyError;
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      ModernInputField(
-                        controller: _confirmPasswordController,
-                        label: context.l10n.confirmPassword,
-                        hint: context.l10n.confirmPasswordHint,
-                        icon: IconsaxPlusLinear.password_check,
-                        obscureText: _obscureConfirmPassword,
-                        textDirection: TextDirection.ltr,
-                        suffixIcon: IconButton(
-                          onPressed: () => setState(
-                            () => _obscureConfirmPassword =
-                                !_obscureConfirmPassword,
-                          ),
-                          icon: Icon(
-                            _obscureConfirmPassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                          ),
+                        const SizedBox(height: 10),
+                        GenderSelectCards(
+                          value: _selectedGender,
+                          onChanged: (g) => setState(() => _selectedGender = g),
                         ),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) {
-                            return context.l10n.confirmPasswordRequired;
-                          }
-                          if (v != _passwordController.text) {
-                            return context.l10n.passwordsDoNotMatch;
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 24),
-                      SectionTitle(title: context.l10n.gender, isRequired: true),
-                      const SizedBox(height: 12),
-                      _buildGenderSelection(),
-                      const SizedBox(height: 32),
-                      PrimaryGradientButton(
-                        onPressed: _isLoading ? null : _signUp,
-                        text: context.l10n.driverSignUpVerifyButton,
-                        isLoading: _isLoading,
-                        color: T.secondary(context),
-                      ),
-                      const SizedBox(height: 24),
-                      _buildFooter(),
-                    ],
+                        const SizedBox(height: 26),
+                        AuthPrimaryButton(
+                          label: l10n.continueLabel,
+                          loading: _isLoading,
+                          onPressed: _isLoading ? null : _signUp,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildSignInRow(),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -271,85 +271,108 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 60, 24, 30),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [T.secondary(context), AppColors.teal700],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(40),
-          bottomRight: Radius.circular(40),
-        ),
-      ),
-      child: Column(
-        children: [
-          const Icon(IconsaxPlusBold.driver, size: 60, color: AppColors.white),
-          const SizedBox(height: 16),
-          Text(
-            context.l10n.driverSignUpTitle,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: AppColors.white,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              context.l10n.driverSignUpStep1,
-              style: const TextStyle(color: AppColors.white, fontSize: 13),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGenderSelection() {
-    return Row(
+  Widget _buildHero() {
+    return Stack(
       children: [
-        Expanded(
-          child: ModernSelectionCard(
-            icon: IconsaxPlusLinear.man,
-            title: context.l10n.male,
-            isSelected: _selectedGender == AppConstants.genderMale,
-            onTap: () =>
-                setState(() => _selectedGender = AppConstants.genderMale),
-            color: T.secondary(context),
+        SizedBox(
+          height: 300,
+          width: double.infinity,
+          child: Image.asset(
+            'assets/illustrations/auth/auth_driver_step1_hero.png',
+            fit: BoxFit.cover,
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: ModernSelectionCard(
-            icon: IconsaxPlusLinear.woman,
-            title: context.l10n.female,
-            isSelected: _selectedGender == AppConstants.genderFemale,
-            onTap: () =>
-                setState(() => _selectedGender = AppConstants.genderFemale),
-            color: T.error(context),
+        Positioned.fill(
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 4, 16, 12),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          Directionality.of(context) == TextDirection.rtl
+                              ? Icons.chevron_right_rounded
+                              : Icons.chevron_left_rounded,
+                          color: T.onSurface(context),
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  Container(
+                    width: 62,
+                    height: 62,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: T.primary(context),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.white, width: 3),
+                    ),
+                    child: const Icon(
+                      IconsaxPlusBold.driving,
+                      size: 30,
+                      color: AppColors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    context.l10n.driverSignupTitle,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      color: T.onSurface(context),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    context.l10n.driverSignupSubtitle,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: T.onSurfaceVariant(context),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24),
+                    child: SecurityNotice(),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildFooter() {
+  Widget _visibilityToggle({
+    required bool obscured,
+    required VoidCallback onTap,
+  }) {
+    return IconButton(
+      onPressed: onTap,
+      icon: Icon(
+        obscured ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+        size: 20,
+        color: T.onSurfaceVariant(context),
+      ),
+    );
+  }
+
+  Widget _buildSignInRow() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
           context.l10n.alreadyHaveAccount,
-          style: TextStyle(color: T.onSurfaceVariant(context)),
+          style: TextStyle(color: T.onSurfaceVariant(context), fontSize: 14),
         ),
         Semantics(
           button: true,
@@ -357,11 +380,15 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
           child: TextButton(
             onPressed: () =>
                 Navigator.pushReplacementNamed(context, RouteNames.signIn),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+            ),
             child: Text(
               context.l10n.signIn,
               style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: T.secondary(context),
+                fontWeight: FontWeight.w700,
+                color: T.primary(context),
+                fontSize: 14,
               ),
             ),
           ),

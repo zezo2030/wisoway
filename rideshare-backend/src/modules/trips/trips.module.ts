@@ -17,12 +17,13 @@ import { WsRateLimitGuard } from '../../common/guards/ws-rate-limit.guard';
 import { TripTimeModule } from '../trip-time/trip-time.module';
 import { RecurrenceModule } from '../recurrence/recurrence.module';
 import { PendingChargesModule } from '../pending-charges/pending-charges.module';
+import { LocationsModule } from '../locations/locations.module';
+import { DriverTripFeeModule } from '../driver-trip-fee/driver-trip-fee.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([TripEntity]),
     BullModule.registerQueue(
-      { name: 'no-show-detector' },
       { name: 'trip-auto-start' },
       { name: 'trip-auto-complete' },
     ),
@@ -44,6 +45,8 @@ import { PendingChargesModule } from '../pending-charges/pending-charges.module'
     VehiclesModule,
     UsersModule,
     PendingChargesModule,
+    LocationsModule,
+    DriverTripFeeModule,
   ],
   controllers: [TripsController],
   providers: [TripsService, TripsGateway, WsAuthGuard, WsRateLimitGuard],

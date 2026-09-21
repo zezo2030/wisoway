@@ -21,12 +21,16 @@ import { PassengerConfirmDto } from './dto/passenger-confirm.dto';
 import { DriverConfirmDto } from './dto/driver-confirm.dto';
 import { CompleteTripDto } from './dto/complete-trip.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PresenceService } from './presence.service';
 import { TripShareLinkEntity } from '../../database/entities/trip-share-link.entity';
 import { ErrorCodes } from '../../common/errors/error-codes';
 import {
   TRIP_AUTO_START_JOB_ID_PREFIX,
   TRIP_AUTO_COMPLETE_JOB_ID_PREFIX,
 } from '../trips/trip-auto-start.util';
+import { AdminAlertsService } from '../admin/admin-alerts.service';
+import { TripEmergencyDto } from './dto/trip-emergency.dto';
+import { DriverTripFeeService } from '../driver-trip-fee/driver-trip-fee.service';
 
 @Injectable()
 export class TripTimeService {
@@ -42,10 +46,15 @@ export class TripTimeService {
     @InjectRepository(TripShareLinkEntity)
     private shareLinkRepo: Repository<TripShareLinkEntity>,
     private notificationsService: NotificationsService,
+    private readonly presenceService: PresenceService,
+    private readonly adminAlertsService: AdminAlertsService,
     @InjectQueue('trip-auto-start')
     private readonly tripAutoStartQueue: Queue,
     @InjectQueue('trip-auto-complete')
     private readonly tripAutoCompleteQueue: Queue,
+    @InjectRepository(UserEntity)
+    private readonly userRepo: Repository<UserEntity>,
+    private readonly driverTripFee: DriverTripFeeService,
   ) {}
 
   async passengerConfirm(
@@ -238,6 +247,52 @@ export class TripTimeService {
     trip.tripCompletedAt = now;
     const savedTrip = await this.tripRepo.save(trip);
 
+    // Net for a debit that failed at trip start (Task 5 deliberately swallows
+    // that failure so a ledger problem can never block a trip from starting).
+    // chargeAtTripStart is itself idempotent; this guard just avoids a
+    // pointless round-trip. Mirrors the identical sweep in
+    // trip-auto-complete.processor.ts (the 24h fallback completion path) so a
+    // trip is reconciled regardless of which of the two completion paths it
+    // takes.
+    //
+    // Runs BEFORE any booking status is touched, and that ordering is
+    // load-bearing. chargeAtTripStart decides whether a fee is owed by counting
+    // bookings In([CONFIRMED, IN_PROGRESS]); the no-show pass and the
+    // IN_PROGRESS -> COMPLETED pass below both move bookings out of that set. A
+    // sweep placed after them therefore sees zero bookings, takes the
+    // 'no-bookings' branch, writes a 0.00 audit row and stamps the trip — which
+    // also hides it from the reconciliation cron, whose query is
+    // driverWalletChargeApplied IS NOT TRUE. The rescue path would permanently
+    // zero the fee it exists to recover. (The earlier "after booking statuses
+    // are final" rationale came from the presence-based model, where the
+    // billable seat count set the amount. The fee is on totalSeats now, so only
+    // the existence of bookings matters and nothing here needs final statuses.)
+    if (!trip.driverWalletChargeApplied) {
+      try {
+        const result = await this.driverTripFee.chargeAtTripStart(trip);
+        // applied === false means chargeAtTripStart short-circuited on its own
+        // idempotency (already charged elsewhere) — nothing was recovered here.
+        // charged/pendingRemainder both 0 with applied === true means a real,
+        // legitimate no-op (free trip, no bookings) rather than a recovery.
+        if (
+          result.applied &&
+          (result.charged > 0 || result.pendingRemainder > 0)
+        ) {
+          this.logger.log(
+            `trip-auto-complete: RECOVERED fee for trip ${tripId} — charged ${result.charged.toFixed(2)} ${result.currency}` +
+              (result.pendingRemainder > 0
+                ? `, ${result.pendingRemainder.toFixed(2)} recorded as pending charge`
+                : '') +
+              ` that trip-start missed`,
+          );
+        }
+      } catch (err) {
+        this.logger.error(
+          `trip-auto-complete: fee reconciliation failed for trip ${tripId}: ${(err as Error).message}`,
+        );
+      }
+    }
+
     const noShowMap = new Map<string, Set<string>>();
     if (dto.noShowSeats?.length) {
       for (const entry of dto.noShowSeats) {
@@ -282,6 +337,11 @@ export class TripTimeService {
       await this.bookingRepo.save(booking);
     }
 
+    // Bookkeeping only — no money moves here. Task 7 removed the wallet hold
+    // this used to settle, and Task 3 moved the one platform-fee debit to
+    // trip start (reconciled above when it failed there).
+    const settlement = await this.presenceService.settleTripPresence(tripId);
+
     // Driver no-show is tracked via passengerReportedDriverAbsentAt for admin
     // review. Fines are no longer auto-applied; admin creates them manually via
     // POST /admin/fines after investigating.
@@ -312,9 +372,17 @@ export class TripTimeService {
       .where('tripId = :tripId', { tripId })
       .execute();
 
-    this.logger.log(`Trip ${tripId} marked arrived by driver ${driverId}`);
+    this.logger.log(
+      `Trip ${tripId} marked arrived by driver ${driverId} — ` +
+        `${settlement.billableSeats}/${settlement.bookedSeats} seats billable, ` +
+        `captured ${settlement.captured} ${settlement.currency}`,
+    );
     await this.cancelTripLifecycleJobs(tripId);
-    return savedTrip;
+
+    // Re-read so the response carries the settlement columns written above.
+    const finalTrip =
+      (await this.tripRepo.findOne({ where: { id: tripId } })) ?? savedTrip;
+    return Object.assign(finalTrip, { settlement });
   }
 
   private async cancelTripLifecycleJobs(tripId: string): Promise<void> {
@@ -338,5 +406,81 @@ export class TripTimeService {
         `cancel trip-auto-complete ${tripId}: ${(err as Error).message}`,
       );
     }
+  }
+
+  async reportEmergency(tripId: string, userId: string, dto: TripEmergencyDto) {
+    const trip = await this.tripRepo.findOne({ where: { id: tripId } });
+    if (!trip) {
+      throw new NotFoundException('Trip not found');
+    }
+
+    const isDriver = trip.driverId === userId;
+    let isConfirmedPassenger = false;
+    if (!isDriver) {
+      const booking = await this.bookingRepo.findOne({
+        where: {
+          tripId,
+          userId,
+          status: BookingStatus.CONFIRMED,
+        },
+      });
+      const inProgressBooking = await this.bookingRepo.findOne({
+        where: {
+          tripId,
+          userId,
+          status: BookingStatus.IN_PROGRESS,
+        },
+      });
+      isConfirmedPassenger = !!booking || !!inProgressBooking;
+    }
+
+    if (!isDriver && !isConfirmedPassenger) {
+      throw new ForbiddenException(
+        'Only the driver or a confirmed passenger can trigger emergency',
+      );
+    }
+
+    if (
+      trip.status !== TripStatus.IN_PROGRESS &&
+      trip.status !== TripStatus.PUBLISHED
+    ) {
+      throw new BadRequestException(
+        'Emergency is only available for active trips',
+      );
+    }
+
+    const reporter = await this.userRepo.findOne({
+      where: { id: userId },
+      select: ['id', 'name'],
+    });
+
+    const latitude = dto.latitude ?? trip.lastDriverLocationLat ?? null;
+    const longitude = dto.longitude ?? trip.lastDriverLocationLng ?? null;
+
+    await this.adminAlertsService.notifyTripEmergency({
+      tripId: trip.id,
+      reporterUserId: userId,
+      reporterName: reporter?.name?.trim() || 'User',
+      fromName: trip.fromName,
+      toName: trip.toName,
+      latitude,
+      longitude,
+    });
+
+    this.logger.warn(
+      JSON.stringify({
+        event: 'trip.emergency',
+        tripId,
+        userId,
+        latitude,
+        longitude,
+      }),
+    );
+
+    return {
+      ok: true,
+      tripId,
+      notifiedAt: new Date().toISOString(),
+    };
   }
 }

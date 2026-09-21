@@ -60,6 +60,12 @@ export class UploadsService {
     key: string,
   ): Promise<{ url: string; key: string }> {
     try {
+      if (!file.buffer) {
+        throw new Error(
+          'File buffer is empty — Multer must use memory storage for local uploads',
+        );
+      }
+
       const folderPath = path.join(this.localUploadPath, folder);
       if (!fs.existsSync(folderPath)) {
         fs.mkdirSync(folderPath, { recursive: true });
@@ -74,8 +80,9 @@ export class UploadsService {
 
       return { url, key };
     } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
       console.error('Local upload error:', error);
-      throw new BadRequestException('Failed to save file locally');
+      throw new BadRequestException(`Failed to save file locally: ${reason}`);
     }
   }
 

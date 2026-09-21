@@ -1,7 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, Not } from 'typeorm';
-import { BookingEntity, BookingStatus } from '../../database/entities/booking.entity';
+import {
+  BookingEntity,
+  BookingStatus,
+} from '../../database/entities/booking.entity';
 import { TripEntity } from '../../database/entities/trip.entity';
 import { UserEntity } from '../../database/entities/user.entity';
 import {
@@ -78,7 +81,9 @@ export class AdminNoShowService {
     }
 
     const tripIds = slice.map((r) => r.tripId);
-    const trips = await this.tripRepo.find({ where: tripIds.map((id) => ({ id })) });
+    const trips = await this.tripRepo.find({
+      where: tripIds.map((id) => ({ id })),
+    });
     const tripMap = new Map(trips.map((t) => [t.id, t]));
 
     const allBookings = await this.bookingRepo.find({
@@ -104,7 +109,9 @@ export class AdminNoShowService {
         const trip = tripMap.get(entry.tripId);
         if (!trip) return null;
         const driver = driverMap.get(trip.driverId);
-        const tripBookings = allBookings.filter((b) => b.tripId === entry.tripId);
+        const tripBookings = allBookings.filter(
+          (b) => b.tripId === entry.tripId,
+        );
         const reporters = tripBookings.filter(
           (b) => b.passengerReportedDriverAbsentAt != null,
         );
@@ -126,8 +133,12 @@ export class AdminNoShowService {
           .map((b) => b.passengerReportedDriverAbsentAt as Date)
           .filter(Boolean)
           .map((d) => new Date(d).getTime());
-        const earliest = reportTimes.length ? new Date(Math.min(...reportTimes)) : null;
-        const latest = reportTimes.length ? new Date(Math.max(...reportTimes)) : null;
+        const earliest = reportTimes.length
+          ? new Date(Math.min(...reportTimes))
+          : null;
+        const latest = reportTimes.length
+          ? new Date(Math.max(...reportTimes))
+          : null;
 
         return {
           tripId: trip.id,

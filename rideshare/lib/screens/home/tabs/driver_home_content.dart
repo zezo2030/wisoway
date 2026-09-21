@@ -11,6 +11,7 @@ import '../../../models/user_model.dart';
 import '../../../providers/trip_provider.dart';
 import '../../../widgets/notification_icon_button.dart';
 import '../widgets/default_avatar.dart';
+import '../widgets/driver_availability_card.dart';
 import '../widgets/trip_card.dart';
 import '../../../widgets/common/empty_state.dart';
 
@@ -68,6 +69,7 @@ class _DriverHomeContentState extends State<DriverHomeContent> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(child: _buildHeader(context)),
+              const SliverToBoxAdapter(child: DriverAvailabilityCard()),
               SliverToBoxAdapter(child: _buildCreateTripCta(context)),
               SliverToBoxAdapter(child: _buildLocationSection(context)),
               SliverToBoxAdapter(child: _buildMyTripsSection(context)),

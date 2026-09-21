@@ -15,6 +15,7 @@ import '../../../widgets/notification_icon_button.dart';
 import '../widgets/default_avatar.dart';
 import '../widgets/nearby_trip_card.dart';
 import '../../../widgets/common/empty_state.dart';
+import '../../passenger/instant_ride_request_screen.dart';
 
 class HomeTabContent extends StatefulWidget {
   final UserModel? user;
@@ -74,10 +75,81 @@ class _HomeTabContentState extends State<HomeTabContent> {
             slivers: [
               SliverToBoxAdapter(child: _buildHeader(context)),
               SliverToBoxAdapter(child: _buildSearchBar(context)),
+              SliverToBoxAdapter(child: _buildInstantRideCta(context)),
               SliverToBoxAdapter(child: _buildLocationSection(context)),
               SliverToBoxAdapter(child: _buildNearbyTripsSection(context)),
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// "اطلب الآن" entry — opens the on-demand instant-ride request flow.
+  Widget _buildInstantRideCta(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+      child: Material(
+        color: T.primary(context),
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => InstantRideRequestScreen(
+                initialFrom: widget.userLocation,
+              ),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: T.onPrimary(context).withValues(alpha: 0.18),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.electric_bolt,
+                    color: T.onPrimary(context),
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.l10n.instantRequestNowTitle,
+                        style: TextStyle(
+                          color: T.onPrimary(context),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        context.l10n.instantRequestNowSubtitle,
+                        style: TextStyle(
+                          color: T.onPrimary(context).withValues(alpha: 0.85),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  IconsaxPlusBold.arrow_left_2,
+                  color: T.onPrimary(context),
+                  size: 22,
+                ),
+              ],
+            ),
           ),
         ),
       ),

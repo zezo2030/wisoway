@@ -22,14 +22,17 @@ class RouteNames {
   static const String editTrip = '/edit-trip';
   static const String myTrips = '/my-trips';
   static const String tripManagement = '/trip-management';
+  static const String tripSummary = '/trip-summary';
   static const String passengerDetails = '/passenger-details';
   static const String vehicleSettings = '/vehicle-settings';
 
   // Passenger Routes
   static const String tripsList = '/trips-list';
   static const String tripDetails = '/trip-details';
+  static const String tripInProgress = '/trip-in-progress';
   static const String seatSelection = '/seat-selection';
   static const String tripRouteMap = '/trip-route-map';
+  static const String presenceConfirmation = '/presence-confirmation';
 
   // Payment Routes
   static const String manualPayment = '/manual-payment';

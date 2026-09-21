@@ -7,6 +7,7 @@ import { Trip, TripDocument } from '../trips/schemas/trip.schema';
 import { Booking, BookingDocument } from '../bookings/schemas/booking.schema';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { PaymentsService } from '../payments/payments.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 
 describe('ChatService', () => {
@@ -17,6 +18,7 @@ describe('ChatService', () => {
   let bookingModel: any;
   let userModel: any;
   let paymentsService: any;
+  let notificationsService: any;
 
   const validObjectId = '507f1f77bcf86cd799439011';
   const userId = validObjectId;
@@ -133,6 +135,10 @@ describe('ChatService', () => {
     hasUserPaidCommunicationFee: jest.fn(),
   };
 
+  const mockNotificationsService = {
+    create: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -161,6 +167,10 @@ describe('ChatService', () => {
           provide: PaymentsService,
           useValue: mockPaymentsService,
         },
+        {
+          provide: NotificationsService,
+          useValue: mockNotificationsService,
+        },
       ],
     }).compile();
 
@@ -171,6 +181,8 @@ describe('ChatService', () => {
     bookingModel = module.get<any>(getModelToken(Booking.name));
     userModel = module.get<any>(getModelToken(User.name));
     paymentsService = module.get<PaymentsService>(PaymentsService);
+    notificationsService =
+      module.get<NotificationsService>(NotificationsService);
   });
 
   afterEach(() => {
@@ -228,7 +240,7 @@ describe('ChatService', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('should throw ForbiddenException if communication fee not paid', async () => {
+    it('should create the room even when the communication fee is not paid — chat is no longer gated on payment', async () => {
       mockChatRoomModel.findOne.mockReturnValue({
         exec: jest.fn().mockResolvedValue(null),
       });
@@ -237,15 +249,18 @@ describe('ChatService', () => {
         exec: jest.fn().mockResolvedValue(mockTrip),
       });
 
-      mockBookingModel.find.mockReturnValue({
-        exec: jest.fn().mockResolvedValue([mockBooking]),
+      mockBookingModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(mockBooking),
       });
 
       mockPaymentsService.hasUserPaidCommunicationFee.mockResolvedValue(false);
 
-      await expect(service.getOrCreateRoom(tripId, userId)).rejects.toThrow(
-        ForbiddenException,
-      );
+      const result = await service.getOrCreateRoom(tripId, userId);
+
+      expect(result._id).toBe(roomId);
+      expect(
+        mockPaymentsService.hasUserPaidCommunicationFee,
+      ).not.toHaveBeenCalled();
     });
   });
 

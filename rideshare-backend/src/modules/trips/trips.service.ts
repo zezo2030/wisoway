@@ -10,11 +10,12 @@ import { Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 import { TripEntity } from '../../database/entities/trip.entity';
-import { TripStatus } from '../../database/entities/shared.enums';
+import { TripStatus, TripType } from '../../database/entities/shared.enums';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { SearchTripsDto } from './dto/search-trips.dto';
 import { LocationBasedTripsDto } from './dto/location-based-trips.dto';
+import { PriceSuggestionQueryDto } from './dto/price-suggestion-query.dto';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BookingsService } from '../bookings/bookings.service';
@@ -26,11 +27,44 @@ import { ErrorCodes } from '../../common/errors/error-codes';
 import { RecurrenceService } from '../recurrence/recurrence.service';
 import { RecurrenceFrequency } from '../../database/entities/trip-recurrence-rule.entity';
 import { PendingChargesService } from '../pending-charges/pending-charges.service';
+import { LocationsService } from '../locations/locations.service';
+import { DriverTripFeeService } from '../driver-trip-fee/driver-trip-fee.service';
+import {
+  TripPassengerSummary,
+  TripPassengerSummaryService,
+} from '../bookings/trip-passenger-summary.service';
+import {
+  currencyForCountry,
+  DEFAULT_CURRENCY,
+} from '../../common/currency/country-currency';
 import {
   computeTripAutoStartDelayMs,
   TRIP_AUTO_START_JOB_ID_PREFIX,
   TRIP_AUTO_COMPLETE_JOB_ID_PREFIX,
 } from './trip-auto-start.util';
+import {
+  resolveVehicleTypeTemplate,
+  type SeatLayout,
+} from '../vehicles/vehicle-types';
+import {
+  PRICE_SUGGESTION_LOOKBACK_DAYS,
+  PRICE_SUGGESTION_MIN_SAMPLE,
+  PRICE_SUGGESTION_RADIUS_M,
+  SEAT_PRICE_BAND,
+  SEAT_PRICE_BASE,
+  SEAT_PRICE_MINIMUM,
+  SEAT_PRICE_PER_KM,
+} from './trip-price.constants';
+
+/** Per-seat price band offered to a driver while publishing a trip. */
+export interface TripPriceSuggestion {
+  /** Currency the trip will be stored in — derived, never driver-picked. */
+  currency: string;
+  min: number;
+  max: number;
+  /** Where the band came from, so the UI can word the hint honestly. */
+  basis: 'history' | 'distance';
+}
 
 function getFromLatLng(trip: TripEntity): { lat: number; lng: number } {
   const c = trip.fromPoint?.coordinates;
@@ -41,6 +75,9 @@ function getToLatLng(trip: TripEntity): { lat: number; lng: number } {
   const c = trip.toPoint?.coordinates;
   return c ? { lat: c[1], lng: c[0] } : { lat: 0, lng: 0 };
 }
+
+/** A trip as returned by the list endpoints, with its passenger summary. */
+export type TripListItem = TripEntity & TripPassengerSummary;
 
 @Injectable()
 export class TripsService {
@@ -54,14 +91,191 @@ export class TripsService {
     private usersService: UsersService,
     private platformPricing: PlatformPricingService,
     private tripsGateway: TripsGateway,
-    @InjectQueue('no-show-detector') private noShowQueue: Queue,
     @InjectQueue('trip-auto-start')
     private tripAutoStartQueue: Queue,
     @InjectQueue('trip-auto-complete')
     private tripAutoCompleteQueue: Queue,
     private recurrenceService: RecurrenceService,
     private pendingChargesService: PendingChargesService,
+    private locationsService: LocationsService,
+    private driverTripFee: DriverTripFeeService,
+    private tripPassengerSummary: TripPassengerSummaryService,
   ) {}
+
+  /**
+   * Resolve the currency for a trip from its departure point's country, so
+   * fares are shown in the local currency of where the ride starts. Falls back
+   * to a client-supplied currency, then the platform default, if the country
+   * can't be determined (e.g. geocoding is unavailable).
+   */
+  private async resolveTripCurrency(
+    from: { latitude: number; longitude: number },
+    fallbackCurrency?: string,
+  ): Promise<string> {
+    try {
+      const { countryCode } = await this.locationsService.reverseGeocode(
+        from.latitude,
+        from.longitude,
+      );
+      if (countryCode) {
+        return currencyForCountry(countryCode);
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Could not resolve trip currency from departure point: ${
+          error instanceof Error ? error.message : 'unknown error'
+        }`,
+      );
+    }
+    return fallbackCurrency ?? DEFAULT_CURRENCY;
+  }
+
+  /**
+   * Per-seat price band suggested to a driver publishing this route.
+   *
+   * Prefers what drivers actually charged on comparable recent trips, and
+   * falls back to a distance estimate when that sample is too thin. The
+   * currency is resolved the same way {@link create} resolves it, so the hint
+   * is always quoted in the currency the trip will really be stored in.
+   */
+  async getPriceSuggestion(
+    query: PriceSuggestionQueryDto,
+  ): Promise<TripPriceSuggestion> {
+    const currency = await this.resolveTripCurrency({
+      latitude: query.fromLat,
+      longitude: query.fromLng,
+    });
+
+    const historical = await this.historicalPriceBand(query);
+    if (historical) {
+      return { currency, ...historical };
+    }
+
+    return { currency, ...(await this.distancePriceBand(query)) };
+  }
+
+  /**
+   * Interquartile price range of recent scheduled trips whose endpoints both
+   * sit within {@link PRICE_SUGGESTION_RADIUS_M} of the requested route.
+   * Returns null when the sample is too small to be representative.
+   */
+  private async historicalPriceBand(
+    query: PriceSuggestionQueryDto,
+  ): Promise<{ min: number; max: number; basis: 'history' } | null> {
+    const since = new Date(
+      Date.now() - PRICE_SUGGESTION_LOOKBACK_DAYS * 24 * 3600 * 1000,
+    );
+
+    let row:
+      | {
+          sampleSize?: string | number;
+          p25?: string | null;
+          p75?: string | null;
+        }
+      | undefined;
+    try {
+      row = await this.tripRepo
+        .createQueryBuilder('trip')
+        .select('COUNT(*)', 'sampleSize')
+        .addSelect(
+          'percentile_cont(0.25) WITHIN GROUP (ORDER BY trip.price)',
+          'p25',
+        )
+        .addSelect(
+          'percentile_cont(0.75) WITHIN GROUP (ORDER BY trip.price)',
+          'p75',
+        )
+        .where('trip.tripType = :tripType', { tripType: TripType.SCHEDULED })
+        .andWhere('trip.price > 0')
+        .andWhere('trip.departureTime >= :since', { since })
+        .andWhere(
+          'ST_DWithin(trip.fromPoint, ST_SetSRID(ST_MakePoint(:fromLng, :fromLat), 4326)::geography, :radiusM)',
+          {
+            fromLng: query.fromLng,
+            fromLat: query.fromLat,
+            radiusM: PRICE_SUGGESTION_RADIUS_M,
+          },
+        )
+        .andWhere(
+          'ST_DWithin(trip.toPoint, ST_SetSRID(ST_MakePoint(:toLng, :toLat), 4326)::geography, :radiusM)',
+          {
+            toLng: query.toLng,
+            toLat: query.toLat,
+            radiusM: PRICE_SUGGESTION_RADIUS_M,
+          },
+        )
+        .getRawOne();
+    } catch (error) {
+      this.logger.warn(
+        `Historical price sample failed, falling back to distance: ${
+          error instanceof Error ? error.message : 'unknown error'
+        }`,
+      );
+      return null;
+    }
+
+    const sampleSize = Number(row?.sampleSize ?? 0);
+    const p25 = Number(row?.p25);
+    const p75 = Number(row?.p75);
+    if (
+      sampleSize < PRICE_SUGGESTION_MIN_SAMPLE ||
+      !Number.isFinite(p25) ||
+      !Number.isFinite(p75)
+    ) {
+      return null;
+    }
+
+    return { ...this.roundPriceBand(p25, p75), basis: 'history' };
+  }
+
+  /** Distance-based band used when no comparable trips have been published. */
+  private async distancePriceBand(
+    query: PriceSuggestionQueryDto,
+  ): Promise<{ min: number; max: number; basis: 'distance' }> {
+    let distanceKm: number;
+    try {
+      const distance = await this.locationsService.getDistance(
+        query.fromLat,
+        query.fromLng,
+        query.toLat,
+        query.toLng,
+      );
+      distanceKm = distance.distanceKm;
+    } catch {
+      distanceKm = this.calculateDistanceKm(
+        query.fromLat,
+        query.fromLng,
+        query.toLat,
+        query.toLng,
+      );
+    }
+
+    const estimate = Math.max(
+      SEAT_PRICE_MINIMUM,
+      SEAT_PRICE_BASE + distanceKm * SEAT_PRICE_PER_KM,
+    );
+
+    return {
+      ...this.roundPriceBand(
+        estimate * (1 - SEAT_PRICE_BAND),
+        estimate * (1 + SEAT_PRICE_BAND),
+      ),
+      basis: 'distance',
+    };
+  }
+
+  /**
+   * Whole-unit band: never below the seat-price minimum, and never collapsed
+   * to a single value (a "14 - 14" hint reads like a fixed fare).
+   */
+  private roundPriceBand(
+    low: number,
+    high: number,
+  ): { min: number; max: number } {
+    const min = Math.max(SEAT_PRICE_MINIMUM, Math.round(low));
+    const max = Math.round(high);
+    return { min, max: max > min ? max : min + 1 };
+  }
 
   async getPricingPreview(tripId: string, countryCode: string = 'JO') {
     const trip = await this.findById(tripId);
@@ -111,14 +325,63 @@ export class TripsService {
       });
     }
 
+    // Local form validation runs before any network call: departure time,
+    // then the seat-count range, then (below) the geocode behind
+    // resolveTripCurrency and the fee guard. That way an obviously invalid
+    // request never pays for a geocode round-trip, and the fee guard — the
+    // most expensive check, and the least likely to be the driver's actual
+    // mistake — runs last.
     const departureTime = new Date(createTripDto.departureTime);
     if (departureTime <= new Date()) {
       throw new BadRequestException('Departure time must be in the future');
     }
 
-    const seatLayout = this.resolveVehicleSeatLayout(vehicle);
-    const seats = this.generateSeatsFromLayout(seatLayout);
+    // The trip carries its own copy of the layout so a per-trip
+    // preventGenderMixing choice never mutates the vehicle's settings.
+    const baseLayout = this.resolveVehicleSeatLayout(vehicle);
+    const seatLayout = {
+      ...baseLayout,
+      seatsPerRowList: baseLayout.seatsPerRowList
+        ? [...baseLayout.seatsPerRowList]
+        : undefined,
+      preventGenderMixing:
+        createTripDto.preventGenderMixing ??
+        baseLayout.preventGenderMixing ??
+        false,
+    };
+
+    // Range check first: it only needs requested/maxSeats and is pure/local,
+    // so it belongs with the other local validation above the guard.
+    const fullSeats = this.generateSeatsFromLayout(seatLayout);
+    const maxSeats = fullSeats.length;
+    const requested = createTripDto.availableSeats ?? maxSeats;
+    if (requested < 1 || requested > maxSeats) {
+      throw new BadRequestException(
+        `availableSeats must be between 1 and ${maxSeats}`,
+      );
+    }
+    // totalSeats, by contrast, exists only to feed the fee guard below.
+    const seats = fullSeats.slice(0, requested);
     const totalSeats = seats.length;
+
+    // Currency follows the country of the trip's departure point. Resolved
+    // here (rather than down where the trip row is built) so the fee guard
+    // below checks the driver's balance against the same currency the trip
+    // is created — and later charged — in.
+    const currency = await this.resolveTripCurrency(
+      createTripDto.from,
+      createTripDto.currency,
+    );
+
+    // Nothing is reserved between publish and start, so the driver must be able
+    // to cover the whole fee up front or the trip does not go live. Deliberately
+    // last: it is the most expensive check (a wallet read after the geocode
+    // above) and the least likely to be the driver's actual mistake.
+    await this.driverTripFee.assertDriverCanCoverTripFee(driverId, {
+      seatPrice: Number(createTripDto.price ?? 0),
+      totalSeats,
+      currency,
+    });
 
     const trip = this.tripRepo.create({
       driverId,
@@ -143,7 +406,7 @@ export class TripsService {
       },
       departureTime,
       price: String(createTripDto.price),
-      currency: createTripDto.currency ?? 'JOD',
+      currency,
       totalSeats,
       availableSeats: totalSeats,
       seatLayout,
@@ -178,7 +441,7 @@ export class TripsService {
           lng: createTripDto.to.longitude,
         },
         price: String(createTripDto.price),
-        currency: createTripDto.currency ?? 'JOD',
+        currency,
         totalSeats,
         seatLayout,
         stops: createTripDto.stops ?? [],
@@ -217,9 +480,16 @@ export class TripsService {
     return savedTrip;
   }
 
-  async findById(
-    tripId: string,
-  ): Promise<TripEntity & { distanceKm?: number }> {
+  async findById(tripId: string): Promise<
+    TripEntity & {
+      distanceKm?: number;
+      driverPhotoUrl?: string | null;
+      driverRating?: number | null;
+      vehicleType?: string | null;
+      vehicleModel?: string | null;
+      vehiclePlateNumber?: string | null;
+    }
+  > {
     const result = await this.tripRepo
       .createQueryBuilder('trip')
       .where('trip.id = :id', { id: tripId })
@@ -235,9 +505,20 @@ export class TripsService {
     }
 
     const distanceKm = result.raw[0]?.distance_km;
+    const driver = await this.usersService.findById(trip.driverId);
+    const vehicle = await this.vehiclesService.findByDriver(trip.driverId);
+
     return {
       ...trip,
       distanceKm: distanceKm != null ? Number(distanceKm) : undefined,
+      driverPhotoUrl: driver?.photoUrl ?? null,
+      driverRating: driver?.rating != null ? Number(driver.rating) : null,
+      // Clients choose the cabin artwork by type; two types can share a seat
+      // layout, so the layout alone cannot identify the vehicle.
+      vehicleType: vehicle?.vehicleType ?? null,
+      vehicleModel: vehicle ? `${vehicle.model}`.trim() || null : null,
+      vehiclePlateNumber: vehicle?.plateNumber ?? null,
+      carImageUrl: trip.carImageUrl ?? vehicle?.carImageUrl ?? null,
     };
   }
 
@@ -500,6 +781,25 @@ export class TripsService {
       });
     }
 
+    // The publish guard in create() only ever saw the price the trip went live
+    // with. `price` is updatable, and the fee is seatPrice * totalSeats, so a
+    // PATCH can raise the fee well past the balance that cleared the guard —
+    // publish 4 seats at 1.00 with 0.50 in the wallet (fee 0.40, passes), then
+    // PATCH the price to 20.00 and the fee is 8.00 against that same 0.50.
+    // Re-run the guard on the new price, but only while the trip is still
+    // unbilled: once driverWalletChargeApplied is stamped the amount is final
+    // by design and is never recomputed, so a later edit must not re-guard it.
+    if (
+      updateTripDto.price != null &&
+      trip.driverWalletChargeApplied !== true
+    ) {
+      await this.driverTripFee.assertDriverCanCoverTripFee(driverId, {
+        seatPrice: Number(updateTripDto.price),
+        totalSeats: trip.totalSeats ?? 0,
+        currency: trip.currency,
+      });
+    }
+
     if (updateTripDto.from) {
       trip.fromName = updateTripDto.from.name;
       trip.fromAddress = updateTripDto.from.address ?? trip.fromAddress;
@@ -532,10 +832,7 @@ export class TripsService {
     if (updateTripDto.stops !== undefined) trip.stops = updateTripDto.stops;
 
     const saved = await this.tripRepo.save(trip);
-    await this.rescheduleTripAutoStart(
-      saved.id,
-      new Date(saved.departureTime),
-    );
+    await this.rescheduleTripAutoStart(saved.id, new Date(saved.departureTime));
     return saved;
   }
 
@@ -559,56 +856,12 @@ export class TripsService {
     return this.tripRepo.save(trip);
   }
 
-  async complete(tripId: string, driverId: string): Promise<TripEntity> {
-    const trip = await this.findById(tripId);
-    if (trip.driverId !== driverId) {
-      throw new ForbiddenException('You are not the owner of this trip');
-    }
-    if (trip.status === TripStatus.COMPLETED) {
-      throw new BadRequestException('Trip is already completed');
-    }
-    trip.status = TripStatus.COMPLETED;
-    const savedTrip = await this.tripRepo.save(trip);
-
-    await this.removeTripLifecycleJobs(tripId);
-
-    await this.bookingsService.markAsCompleted(tripId);
-    const bookings = await this.bookingsService.findByTripInternal(tripId);
-    for (const booking of bookings) {
-      await this.notificationsService.create({
-        userId: booking.userId,
-        type: 'trip_completed',
-        title: 'Trip Completed',
-        body: `The trip to ${trip.toName} has been completed`,
-        data: { tripId },
-      });
-    }
-
-    // T080: Enqueue no-show detection after the grace window
-    const graceSeconds = process.env.NO_SHOW_GRACE_OVERRIDE_SECONDS
-      ? Number(process.env.NO_SHOW_GRACE_OVERRIDE_SECONDS)
-      : 30 * 60; // 30 minutes default
-    this.noShowQueue
-      .add(
-        'detect-no-shows',
-        { tripId },
-        {
-          delay: graceSeconds * 1000,
-          attempts: 2,
-          backoff: { type: 'exponential', delay: 10000 },
-          jobId: `no-show-${tripId}`,
-          removeOnComplete: true,
-        },
-      )
-      .catch((err) =>
-        this.logger.warn(
-          `Failed to enqueue no-show detector for trip ${tripId}: ${(err as Error).message}`,
-        ),
-      );
-
-    this.logger.log(`Trip ${tripId} completed`);
-    return savedTrip;
-  }
+  // `complete()` (PATCH :id/legacy-complete) was deleted here. It set COMPLETED
+  // with no status precondition and removed the queued lifecycle jobs — including
+  // the auto-start job that charges the platform fee — without ever running the
+  // fee sweep the two live completion paths (TripTimeService.completeTrip and
+  // TripAutoCompleteProcessor) run. No client called it. Completion goes through
+  // TripTimeService.completeTrip only.
 
   async cancel(tripId: string, driverId: string): Promise<TripEntity> {
     const trip = await this.findById(tripId);
@@ -676,7 +929,7 @@ export class TripsService {
 
   async getNearbyTrips(
     query: LocationBasedTripsDto,
-  ): Promise<PaginatedResult<TripEntity>> {
+  ): Promise<PaginatedResult<TripListItem>> {
     const { page = 1, limit = 20, latitude, longitude } = query;
     const radiusKm = query.radiusKm ?? 50;
     const skip = (page - 1) * limit;
@@ -707,9 +960,9 @@ export class TripsService {
       .sort((a, b) => a.distanceKm - b.distanceKm);
 
     const total = withDistance.length;
-    const data = withDistance
-      .slice(skip, skip + limit)
-      .map((item) => item.trip);
+    const data = await this.withPassengerSummary(
+      withDistance.slice(skip, skip + limit).map((item) => item.trip),
+    );
 
     return {
       data,
@@ -724,7 +977,7 @@ export class TripsService {
 
   async getPreferredTrips(
     query: LocationBasedTripsDto,
-  ): Promise<PaginatedResult<TripEntity>> {
+  ): Promise<PaginatedResult<TripListItem>> {
     const { page = 1, limit = 20, latitude, longitude } = query;
     const radiusKm = query.radiusKm ?? 80;
     const skip = (page - 1) * limit;
@@ -786,7 +1039,9 @@ export class TripsService {
     );
 
     const total = scoredTrips.length;
-    const data = scoredTrips.slice(skip, skip + limit).map((item) => item.trip);
+    const data = await this.withPassengerSummary(
+      scoredTrips.slice(skip, skip + limit).map((item) => item.trip),
+    );
 
     return {
       data,
@@ -797,6 +1052,26 @@ export class TripsService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  /**
+   * Decorates a page of trips with "who is already on board" so list cards can
+   * show the taken seats and passenger avatars. One aggregate query per page.
+   */
+  private async withPassengerSummary(
+    trips: TripEntity[],
+  ): Promise<TripListItem[]> {
+    const summaries = await this.tripPassengerSummary.forTrips(
+      trips.map((trip) => trip.id),
+    );
+
+    return trips.map((trip) => {
+      const summary = summaries.get(trip.id);
+      return Object.assign(trip, {
+        bookedSeats: summary?.bookedSeats ?? 0,
+        passengerAvatars: summary?.passengerAvatars ?? [],
+      });
+    });
   }
 
   private calculateDistanceKm(
@@ -866,25 +1141,22 @@ export class TripsService {
 
   private resolveVehicleSeatLayout(vehicle: {
     seats: number;
+    vehicleType?: string;
     seatLayout: {
       rows: number;
       seatsPerRow: number;
       seatsPerRowList?: number[];
       preventGenderMixing?: boolean;
     } | null;
-  }): {
-    rows: number;
-    seatsPerRow: number;
-    seatsPerRowList?: number[];
-    preventGenderMixing?: boolean;
-  } {
+  }): SeatLayout {
     if (vehicle.seatLayout) {
       return vehicle.seatLayout;
     }
-    const total = Math.max(1, Math.min(50, vehicle.seats));
-    const seatsPerRow = Math.max(1, Math.ceil(total / 2));
-    const rows = Math.max(1, Math.ceil(total / seatsPerRow));
-    return { rows, seatsPerRow, preventGenderMixing: false };
+    const template = resolveVehicleTypeTemplate(
+      vehicle.vehicleType,
+      this.logger,
+    );
+    return template.layout;
   }
 
   private generateSeatsFromLayout(layout: {

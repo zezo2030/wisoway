@@ -326,6 +326,47 @@ export async function broadcastNotification(data: BroadcastNotificationRequest):
   return response.data.data
 }
 
+export type AdminAlertType = "driver_registration" | "fee_payment"
+
+export interface AlertPreference {
+  alertType: AdminAlertType
+  enabled: boolean
+}
+
+export async function registerWebPushToken(token: string): Promise<{ ok: true }> {
+  const response = await apiClient.post<ApiResponse<{ ok: true }> | { ok: true }>("/notifications/web-token", {
+    token,
+    userAgent: navigator.userAgent,
+  })
+  return "data" in response.data ? response.data.data : response.data
+}
+
+export async function unregisterWebPushToken(token: string): Promise<{ ok: true }> {
+  const response = await apiClient.delete<ApiResponse<{ ok: true }> | { ok: true }>("/notifications/web-token", {
+    data: { token },
+  })
+  return "data" in response.data ? response.data.data : response.data
+}
+
+export async function getAlertPreferences(): Promise<AlertPreference[]> {
+  const response = await apiClient.get<
+    ApiResponse<{ preferences: AlertPreference[] }> | { preferences: AlertPreference[] }
+  >("/admin/alert-preferences")
+  const payload = "data" in response.data ? response.data.data : response.data
+  return payload.preferences
+}
+
+export async function updateAlertPreference(
+  alertType: AdminAlertType,
+  enabled: boolean,
+): Promise<AlertPreference> {
+  const response = await apiClient.patch<ApiResponse<AlertPreference> | AlertPreference>("/admin/alert-preferences", {
+    alertType,
+    enabled,
+  })
+  return "data" in response.data ? response.data.data : response.data
+}
+
 // ============= CHAT MONITORING =============
 
 /**

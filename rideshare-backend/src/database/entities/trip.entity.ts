@@ -10,7 +10,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { UserEntity } from './user.entity';
-import { TripStatus } from './shared.enums';
+import { TripStatus, TripType } from './shared.enums';
 import { TripShareLinkEntity } from './trip-share-link.entity';
 import { TripRecurrenceRuleEntity } from './trip-recurrence-rule.entity';
 
@@ -98,6 +98,13 @@ export class TripEntity {
   @Column({ type: 'enum', enum: TripStatus, default: TripStatus.PUBLISHED })
   status: TripStatus;
 
+  /**
+   * Scheduled (driver-published carpool) vs instant (on-demand). Instant trips
+   * are created on instant-ride acceptance and are excluded from public search.
+   */
+  @Column({ type: 'varchar', length: 16, default: TripType.SCHEDULED })
+  tripType: TripType;
+
   /** When the driver pressed "Start Trip". */
   @Column({ type: 'timestamptz', nullable: true })
   tripStartedAt: Date | null;
@@ -119,6 +126,23 @@ export class TripEntity {
 
   @Column({ type: 'timestamptz', nullable: true })
   lastDriverLocationAt: Date | null;
+
+  /** Live ETA snapshot (recomputed from Directions/OSRM while in progress). */
+  @Column({ type: 'float', nullable: true })
+  remainingDistanceKm: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  remainingDurationSeconds: number | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  etaAt: Date | null;
+
+  /** 0–100 progress along the planned origin→destination great-circle. */
+  @Column({ type: 'float', nullable: true })
+  routeProgressPercent: number | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  etaComputedAt: Date | null;
 
   /** Pre-trip confirmation push sent timestamp (idempotency guard). */
   @Column({ type: 'timestamptz', nullable: true })
@@ -151,6 +175,28 @@ export class TripEntity {
 
   @Column({ type: 'timestamp', nullable: true })
   driverWalletChargeAt: Date | null;
+
+  // ── Presence settlement (012-passenger-presence-confirmation) ─────────────
+
+  /** Idempotency guard — settlement runs exactly once per trip. */
+  @Column({ type: 'timestamptz', nullable: true })
+  presenceSettledAt: Date | null;
+
+  /** Seats actually charged for, frozen at settlement. */
+  @Column({ type: 'int', nullable: true })
+  billableSeatCount: number | null;
+
+  /** Fee captured from the hold at settlement. */
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  capturedFeeAmount: string | null;
+
+  /** The wallet hold placed at contact-unlock and settled at trip end. */
+  @Column({ type: 'uuid', nullable: true })
+  driverFeeHoldId: string | null;
+
+  /** Driver marked every seat absent, or a presence dispute exists. */
+  @Column({ type: 'boolean', default: false })
+  presenceReviewFlagged: boolean;
 
   @CreateDateColumn()
   createdAt: Date;

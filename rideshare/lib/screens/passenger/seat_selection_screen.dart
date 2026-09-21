@@ -33,6 +33,11 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   bool _isLoading = true;
   bool _isBooking = false;
 
+  /// Family bookings are exempt from the trip's gender-mixing rules. Opted in
+  /// here so the passenger can pick seats the adjacency rule would block, and
+  /// carried forward to [CompanionPickerScreen].
+  bool _isFamilyBooking = false;
+
   @override
   void initState() {
     super.initState();
@@ -84,6 +89,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       trip: _trip!,
       seatNumber: seatNumber,
       userGender: userModel.gender,
+      isFamilyBooking: _isFamilyBooking,
     )) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -102,6 +108,38 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
         _selectedSeats.sort();
       }
     });
+  }
+
+  /// Turning the exemption off re-applies the gender rules to the current
+  /// selection, dropping any seat that is no longer allowed so an invalid
+  /// selection can never reach the API.
+  void _onFamilyBookingChanged(bool value) {
+    final user = Provider.of<AuthProvider>(context, listen: false).userModel;
+    var droppedSeats = false;
+
+    setState(() {
+      _isFamilyBooking = value;
+      if (!value && _trip != null && user != null) {
+        final seatCountBefore = _selectedSeats.length;
+        _selectedSeats.removeWhere(
+          (seatNumber) => !SeatValidation.canSelectSeat(
+            trip: _trip!,
+            seatNumber: seatNumber,
+            userGender: user.gender,
+          ),
+        );
+        droppedSeats = _selectedSeats.length != seatCountBefore;
+      }
+    });
+
+    if (droppedSeats) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.seatNotSelectable),
+          backgroundColor: AppColors.warning,
+        ),
+      );
+    }
   }
 
   Future<void> _continueToPassengerDetails() async {
@@ -153,6 +191,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
         trip: _trip!,
         seatNumber: seatNumber,
         userGender: user.gender,
+        isFamilyBooking: _isFamilyBooking,
       ),
     );
 
@@ -188,6 +227,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
             trip: _trip!,
             lockedSeatNumbers: backendSeatNumbers,
             autoPick: false,
+            initialIsFamilyBooking: _isFamilyBooking,
           ),
         ),
       );
@@ -277,6 +317,21 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                 ),
               ),
             ),
+            // ── Family booking toggle ────────────────────────────────────
+            // Shown for every trip that prevents gender mixing, before the
+            // seat grid, so the passenger can opt in ahead of tapping a seat
+            // the adjacency rule would otherwise block.
+            if (_trip!.seatLayout.preventGenderMixing) ...[
+              const SizedBox(height: 16),
+              Card(
+                child: SwitchListTile(
+                  title: Text(context.l10n.familyBookingLabel),
+                  subtitle: Text(context.l10n.familyBookingHint),
+                  value: _isFamilyBooking,
+                  onChanged: _onFamilyBookingChanged,
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
             Text(
               context.l10n.selectSeats,
@@ -288,6 +343,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
               selectedSeats: _selectedSeats,
               userGender: userModel.gender,
               onSeatTap: _onSeatTap,
+              isFamilyBooking: _isFamilyBooking,
             ),
             const SizedBox(height: 24),
             if (_pricingPreview != null &&

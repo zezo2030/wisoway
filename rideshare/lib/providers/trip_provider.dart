@@ -98,6 +98,8 @@ class TripProvider extends ChangeNotifier {
     List<LocationModel>? stops,
     String? notes,
     Map<String, dynamic>? recurrence,
+    int? availableSeats,
+    bool? preventGenderMixing,
   }) async {
     try {
       _setLoading(true);
@@ -113,6 +115,8 @@ class TripProvider extends ChangeNotifier {
         stops: stops,
         notes: notes,
         recurrence: recurrence,
+        availableSeats: availableSeats,
+        preventGenderMixing: preventGenderMixing,
       );
 
       await fetchDriverTrips();
@@ -122,7 +126,11 @@ class TripProvider extends ChangeNotifier {
     } catch (e) {
       _setError(e.toString());
       _setLoading(false);
-      return null;
+      // Propagate the original error (typically a mapped Failure) so callers
+      // can react to specific backend codes — e.g. the create-trip screen's
+      // insufficient-balance-for-trip-fee dialog. Previously this swallowed
+      // every failure into a null return, losing that information.
+      rethrow;
     }
   }
 

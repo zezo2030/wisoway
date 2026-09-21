@@ -483,7 +483,7 @@
   "@errorsAuthSessionExpired": {
     "description": "رسالة انتهاء صلاحية الجلسة"
   },
-  "errorsAuthInvalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+  "errorsAuthInvalidCredentials": "رقم الهاتف أو كلمة المرور غير صحيحة.",
   "@errorsAuthInvalidCredentials": {
     "description": "رسالة بيانات الدخول غير الصحيحة"
   },
@@ -515,11 +515,11 @@
   "@errorsRouteUnavailable": {
     "description": "رسالة تعذر تحميل المسار"
   },
-  "notificationsBookingCreatedTitle": "حجز جديد",
+  "notificationsBookingCreatedTitle": "تم حجز مقعد في رحلتك المشتركة",
   "@notificationsBookingCreatedTitle": {
     "description": "Title for booking created notification"
   },
-  "notificationsBookingCreatedBody": "تم حجز مقعد جديد في رحلتك",
+  "notificationsBookingCreatedBody": "انضم راكب جديد إلى رحلتك المشتركة",
   "@notificationsBookingCreatedBody": {
     "description": "Body for booking created notification"
   },
@@ -788,6 +788,30 @@
       }
     }
   },
+  "presenceScreenTitle": "تأكيد التواجد في السيارة",
+  "presenceScreenSubtitle": "يرجى تأكيد تواجدك لبدء الرحلة",
+  "presenceHelp": "مساعدة",
+  "presenceDriverStartsAfter": "سيبدأ السائق الرحلة بعد",
+  "presenceMinutes": "دقائق",
+  "presencePickupTitle": "نقطة بدء الرحلة",
+  "presenceQuestionTitle": "هل أنت داخل السيارة؟",
+  "presenceQuestionSubtitle": "يرجى تأكيد تواجدك لتوثيق الرحلة وبدئها بشكل صحيح",
+  "presenceInfoBody": "يساعد تأكيد تواجدك داخل السيارة على توثيق الرحلة واحتسابها ضمن سجل رحلاتك وتقييم موثوقية حسابك.\nلن يتم خصم أي رسوم من محفظة السائق في حال عدم التأكيد.",
+  "presenceInVehicleTitle": "نعم، أنا داخل السيارة",
+  "presenceInVehicleSubtitle": "تأكيد التواجد",
+  "presenceOnMyWayTitle": "أنا في طريقي لمقابلة السائق",
+  "presenceOnMyWaySubtitle": "سأصل خلال دقائق",
+  "presenceNotRidingTitle": "لست داخل السيارة",
+  "presenceNotRidingSubtitle": "لن أستقل هذه الرحلة",
+  "presencePrivacyLine": "بياناتك آمنة ويتم استخدامها فقط لتحسين تجربة الرحلة",
+  "presenceRequestEndsAfter": "سينتهي طلب التأكيد تلقائيًا بعد",
+  "presenceConfirmedTitle": "تم تأكيد تواجدك",
+  "presenceConfirmedBody": "شكرًا لك، تم تسجيل اختيارك لهذه الرحلة.",
+  "presenceEdit": "تعديل",
+  "presenceWindowClosedTitle": "انتهى وقت التأكيد",
+  "presenceWindowClosedBody": "لم يعد بإمكانك تعديل حالة تواجدك لهذه الرحلة.",
+  "presenceLoadFailed": "تعذر تحميل بيانات تأكيد التواجد",
+  "presenceSubmitFailed": "تعذر حفظ اختيارك. حاول مرة أخرى.",
   "arrivedAtDestinationButton": "تم الوصول للوجهة",
   "@arrivedAtDestinationButton": {
     "description": "Driver button to mark trip as arrived (completes the trip)"
@@ -1648,14 +1672,10 @@
   "createTripShort": "إنشاء رحلة",
   "newTrip": "رحلة جديدة",
   "createNewTripSemantic": "إنشاء رحلة جديدة",
-  "tripFeeInvoiceTitle": "فاتورة رسوم الرحلة",
   "seatPrice": "سعر المقعد",
   "seatsCountLabel": "عدد المقاعد",
-  "feePercentage": "نسبة الرسوم",
   "totalLabel": "الإجمالي",
   "tripFeeDeductExplanation": "سيتم خصم الرسوم من محفظتك وفتح بيانات ركاب هذه الرحلة. لا يتم تغيير عدد المقاعد أو الحجوزات.",
-  "payFees": "دفع الرسوم",
-  "tripFeePaidSuccess": "تم دفع رسوم الرحلة بنجاح",
   "payingInProgress": "جاري الدفع...",
   "unknownLocation": "موقع غير معروف",
   "tripFromToSemantic": "رحلة من {from} إلى {to}",
@@ -1681,7 +1701,6 @@
   "toShort": "إلى",
   "perSeatSuffix": "/ مقعد",
   "seatsWord": "مقاعد",
-  "tripFeePaidLabel": "رسوم الرحلة مدفوعة",
   "passengerDetailsTitle": "تفاصيل الراكب",
   "seatLabelWithValue": "مقعد {seat}",
   "@seatLabelWithValue": {
@@ -1845,7 +1864,7 @@
   "lockSeat": "قفل",
   "seatLockedSuccess": "تم قفل المقعد",
   "enableLocationRequired": "تفعيل الموقع مطلوب",
-  "enableLocationBody": "لا يمكن متابعة الرحلة بدون تشغيل خدمات الموقع. يرجى تفعيل GPS الآن.",
+  "enableLocationBody": "لازم تشغّل GPS وتسمح للتطبيق بالموقع عشان الركاب يشوفوك على الخريطة أثناء تأكيد التواجد والرحلة. مش هتقدر تكمّل من غير التتبع.",
   "openLocationSettings": "فتح إعدادات الموقع",
   "checkAgain": "تحقق مجددًا",
   "tripManagementTitle": "إدارة الرحلة",
@@ -1862,7 +1881,6 @@
     }
   },
   "freeTripAvailableExplanation": "لديك رحلة مجانية متاحة. سيتم تطبيق خصم 100% ليصبح الإجمالي 0.",
-  "tripFeeFullExplanation": "الدفع يخص رسوم الرحلة كاملة ولا يغير عدد المقاعد أو الحجوزات.",
   "hideTripTitle": "إخفاء الرحلة",
   "hideTripConfirm": "هل أنت متأكد من إخفاء هذه الرحلة؟",
   "hideAction": "إخفاء",
@@ -1889,41 +1907,6 @@
   "freeTripAvailableShort": "رحلة مجانية متاحة",
   "balanceFromPlatformWallet": "الرصيد من محفظة المنصة (المحفظة الموحدة)",
   "tripFeeLabel": "رسوم الرحلة",
-  "tripFeeReady": "فاتورة رسوم الرحلة جاهزة",
-  "tripFeeBreakdownWithFreeTrip": "الرسوم: 5% × {seats} مقاعد × {price} {currency}، خصم رحلة مجانية 100% = {amount} {currency}",
-  "@tripFeeBreakdownWithFreeTrip": {
-    "placeholders": {
-      "seats": {
-        "type": "int"
-      },
-      "price": {
-        "type": "String"
-      },
-      "currency": {
-        "type": "String"
-      },
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
-  "tripFeeBreakdown": "5% × {seats} مقاعد × {price} {currency} = {amount} {currency}",
-  "@tripFeeBreakdown": {
-    "placeholders": {
-      "seats": {
-        "type": "int"
-      },
-      "price": {
-        "type": "String"
-      },
-      "currency": {
-        "type": "String"
-      },
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
   "applyFreeTrip": "تطبيق الرحلة المجانية",
   "pendingBookingsCard": "حجوزات قيد التأكيد ({count})",
   "@pendingBookingsCard": {
@@ -1933,7 +1916,6 @@
       }
     }
   },
-  "confirmBookingUnlocksDetails": "تأكيد الحجز يفتح بيانات الراكب (رحلة مجانية أو خصم من المحفظة مرة واحدة للرحلة)",
   "passengerFallback": "راكب",
   "seatLabelShort": "مقعد {seat}",
   "@seatLabelShort": {
@@ -1943,7 +1925,6 @@
       }
     }
   },
-  "chatAvailableAfterFee": "المحادثة والتواصل متاحان بعد دفع رسوم الرحلة",
   "awaitingConfirmation": "بانتظار التأكيد",
   "seatsWithValue": "المقاعد: {seat}",
   "@seatsWithValue": {
@@ -2405,6 +2386,71 @@
   },
   "seatLegendSelected": "محدد",
   "seatLegendLockedExternal": "مقفل (خارج التطبيق)",
+  "createTripStepRoute": "المسار",
+  "createTripStepDetails": "تفاصيل الرحلة",
+  "createTripStepReview": "مراجعة ونشر",
+  "createTripRouteTitle": "أين ستبدأ رحلتك؟",
+  "createTripRouteSubtitle": "حدد نقطة الانطلاق والوجهة ويمكنك إضافة محطات توقف (اختياري)",
+  "addStopSubtitle": "يمكنك إضافة حتى 5 محطات",
+  "approxDistanceLabel": "المسافة التقريبية: {distance}",
+  "@approxDistanceLabel": {
+    "placeholders": {
+      "distance": { "type": "String" }
+    }
+  },
+  "approxDurationLabel": "الوقت التقريبي: {duration}",
+  "@approxDurationLabel": {
+    "placeholders": {
+      "duration": { "type": "String" }
+    }
+  },
+  "approxDurationHoursMinutes": "{hours} س {minutes} د",
+  "@approxDurationHoursMinutes": {
+    "placeholders": {
+      "hours": { "type": "int" },
+      "minutes": { "type": "int" }
+    }
+  },
+  "approxDurationMinutesOnly": "{minutes} د",
+  "@approxDurationMinutesOnly": {
+    "placeholders": {
+      "minutes": { "type": "int" }
+    }
+  },
+  "createTripWhenAndHow": "متى وكيف؟",
+  "createTripWhenAndHowSubtitle": "حدد تفاصيل رحلتك ومقاعد الركاب والسعر",
+  "availableSeatsSection": "المقاعد المتاحة",
+  "availableSeatsCountTitle": "عدد المقاعد المتاحة",
+  "seatsUnitLabel": "مقاعد",
+  "jordanianDinarLabel": "دينار أردني",
+  "tripSummaryTitle": "ملخص الرحلة",
+  "additionalDetailsTitle": "تفاصيل إضافية",
+  "seatLegendAvailable": "متاح",
+  "seatLegendDriver": "غير متاح (السائق)",
+  "seatLegendInactive": "مقعد خامل",
+  "preventGenderMixingHint": "يستثنى من ذلك حجز العائلة. يمكن تعطيل هذا الخيار والسماح بالاختلاط.",
+  "reviewTripTitle": "مراجعة الرحلة",
+  "reviewTripSubtitle": "تحقق من تفاصيل رحلتك قبل نشرها للركاب",
+  "publishTrip": "نشر الرحلة",
+  "backToEdit": "العودة للتعديل",
+  "publishTripNotice": "سيتم نشر الرحلة بعد المراجعة وسيتمكن الركاب من الحجز.",
+  "createTripFeeNotice": "رسوم الرحلة ({percent}%): {amount} {currency} — تُخصم من محفظتك عند انطلاق الرحلة.",
+  "@createTripFeeNotice": {
+    "placeholders": {
+      "percent": { "type": "String" },
+      "amount": { "type": "String" },
+      "currency": { "type": "String" }
+    }
+  },
+  "insufficientBalanceForTripFee": "رصيد محفظتك ({balance}) لا يغطي رسوم الرحلة ({required}). اشحن محفظتك قبل نشر الرحلة.",
+  "@insufficientBalanceForTripFee": {
+    "placeholders": {
+      "balance": { "type": "String" },
+      "required": { "type": "String" }
+    }
+  },
+  "familyBookingLabel": "حجز عائلة",
+  "familyBookingHint": "يُستثنى حجز العائلة من قواعد منع الاختلاط على هذه الرحلة.",
   "seatColorGuide": "دليل الألوان: {label}",
   "@seatColorGuide": {
     "placeholders": {
@@ -2461,5 +2507,313 @@
       }
     }
   },
-  "shareTripTrackingError": "تعذّر إنشاء رابط المشاركة"
+  "shareTripTrackingError": "تعذّر إنشاء رابط المشاركة",
+  "tripInProgressTitle": "الرحلة جارية",
+  "tripInProgressOnTheWay": "أنت في الطريق",
+  "tripInProgressHelp": "مساعدة",
+  "tripInProgressEtaLabel": "وقت الوصول المتوقع",
+  "tripInProgressRemainingDistance": "المسافة المتبقية",
+  "tripInProgressRemainingTime": "تبقى للوصول",
+  "tripInProgressTripDetails": "تفاصيل الرحلة",
+  "tripInProgressShareTracking": "مشاركة التتبع",
+  "tripInProgressEmergency": "الطوارئ",
+  "tripInProgressLayers": "طبقات",
+  "tripInProgressRecenter": "تمركز",
+  "tripInProgressEmergencySent": "تم إرسال تنبيه الطوارئ للدعم",
+  "tripInProgressEmergencyError": "تعذّر إرسال تنبيه الطوارئ",
+  "tripInProgressEmergencyConfirmTitle": "تنبيه الطوارئ",
+  "tripInProgressEmergencyConfirmMessage": "سيتم إشعار فريق الدعم بموقعك الحالي. هل تريد المتابعة؟",
+  "tripInProgressEmergencyConfirmAction": "إرسال التنبيه",
+  "tripInProgressEmergencyCancel": "إلغاء",
+  "locationAutocompleteSuggestions": "اقتراحات الأماكن",
+  "locationAutocompleteNoResults": "لا توجد أماكن مطابقة. حدد الموقع على الخريطة بدلا من ذلك.",
+  "instantRidesTitle": "الرحلات المباشرة",
+  "instantOnlineReady": "متصل — جاهز لاستقبال الطلبات",
+  "instantOffline": "غير متصل",
+  "instantOfferTitle": "طلب رحلة مباشرة",
+  "instantOfferCardTitle": "طلب رحلة جديدة",
+  "instantOfferBadge": "رحلة مباشرة",
+  "instantOfferDirectSubtitle": "رحلة مباشرة بدون توقف",
+  "instantRideAcceptedToast": "تم قبول الرحلة. توجّه إلى نقطة الانطلاق.",
+  "instantOfferCountdown": "ينتهي خلال {seconds} ثانية",
+  "@instantOfferCountdown": {
+    "placeholders": { "seconds": { "type": "int" } }
+  },
+  "instantDecline": "رفض",
+  "instantOfferIgnore": "تجاهل",
+  "instantAccept": "قبول",
+  "instantOfferAcceptTrip": "قبول الرحلة",
+  "instantOfferExpectedEarnings": "الأرباح المتوقعة",
+  "instantOfferIncludesFees": "يشمل رسوم المنصة",
+  "instantOfferPassengerCount": "{count} راكب",
+  "@instantOfferPassengerCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "instantOfferDistance": "المسافة",
+  "instantOfferDuration": "المدة التقديرية",
+  "instantOfferPassengersLabel": "عدد الركاب",
+  "instantRequestNow": "اطلب الآن",
+  "instantRequestNowTitle": "اطلب رحلة الآن",
+  "instantRequestNowSubtitle": "سائق قريب يصل إليك مباشرة",
+  "instantSelectFromTo": "اختر نقطة الانطلاق والوصول.",
+  "instantFromHint": "مكان الانطلاق",
+  "instantFromPickerTitle": "اختر نقطة الانطلاق",
+  "instantToHint": "مكان الوصول",
+  "instantToPickerTitle": "اختر نقطة الوصول",
+  "instantDriverFound": "تم العثور على سائق!",
+  "instantDriverOnTheWay": "السائق في طريقه إلى نقطة الانطلاق.",
+  "instantTrackTrip": "تتبّع الرحلة",
+  "instantDone": "تم",
+  "instantRequestCancelled": "أُلغي الطلب",
+  "instantNoDrivers": "لم نتمكن من العثور على سائق حاليًا",
+  "instantNoDriversSubtitle": "قد يكون جميع السائقين مشغولين أو لا يوجد سائق قريب منك.",
+  "instantNoDriversTip": "نصيحة: أعد المحاولة بعد بضع دقائق؛ قد يتوفر سائق قريب منك.",
+  "instantNoDriversIllustrationLabel": "لم يتم العثور على سائق",
+  "instantNeedHelp": "تحتاج مساعدة؟",
+  "instantContactSupport": "تواصل مع الدعم",
+  "instantRideSafety": "أمان الرحلة",
+  "instantPickupPoint": "نقطة الانطلاق",
+  "instantDropoffPoint": "نقطة الوصول",
+  "instantRetryFareChanged": "تغيّر نطاق السعر؛ راجع السعر ثم أعد الطلب.",
+  "instantTryAgain": "إعادة المحاولة",
+  "instantSearching": "نبحث عن أقرب سائق...",
+  "instantFareEstimate": "الأجرة التقديرية: {fare} {currency}",
+  "@instantFareEstimate": {
+    "placeholders": { "fare": { "type": "String" }, "currency": { "type": "String" } }
+  },
+  "instantCancelRequest": "إلغاء الطلب",
+  "instantYourFareLabel": "سعرك",
+  "instantRecommendedFare": "السعر المقترح: {fare} {currency}",
+  "@instantRecommendedFare": {
+    "placeholders": { "fare": { "type": "String" }, "currency": { "type": "String" } }
+  },
+  "instantYourFareValue": "سعرك: {fare} {currency}",
+  "@instantYourFareValue": {
+    "placeholders": { "fare": { "type": "String" }, "currency": { "type": "String" } }
+  },
+  "instantDriverOfferTitle": "عرض من السائق",
+  "instantProposeFare": "اقترح سعرًا أعلى",
+  "instantSendOffer": "إرسال العرض",
+  "instantCounterSentToast": "أُرسل عرضك للراكب. بانتظار موافقته...",
+  "instantCounterMaxHint": "الحد الأقصى: {fare} {currency}",
+  "@instantCounterMaxHint": {
+    "placeholders": { "fare": { "type": "String" }, "currency": { "type": "String" } }
+  },
+  "instantNudgeTitle": "لا يوجد سائق قريب حتى الآن",
+  "instantNudgeSubtitle": "جرّب رفع سعرك لجذب سائق أسرع",
+  "instantRaiseTo": "ارفع إلى {fare} {currency}",
+  "@instantRaiseTo": {
+    "placeholders": { "fare": { "type": "String" }, "currency": { "type": "String" } }
+  },
+  "instantKeepFare": "استمر بـ {fare} {currency}",
+  "@instantKeepFare": {
+    "placeholders": { "fare": { "type": "String" }, "currency": { "type": "String" } }
+  },
+  "instantArrivingIn": "يصل خلال ~{minutes} دقيقة",
+  "@instantArrivingIn": {
+    "placeholders": { "minutes": { "type": "int" } }
+  },
+  "instantAgreedFare": "الأجرة المتفق عليها: {fare} {currency}",
+  "@instantAgreedFare": {
+    "placeholders": { "fare": { "type": "String" }, "currency": { "type": "String" } }
+  },
+
+  "tripSummaryTitle": "انتهت الرحلة بنجاح",
+  "tripSummaryThanks": "شكراً لك على رحلتك",
+  "tripSummaryHelp": "مساعدة",
+  "tripSummaryArrivalPlace": "مكان الوصول",
+  "tripSummaryDistance": "المسافة",
+  "tripSummaryDuration": "مدة الرحلة",
+  "tripSummaryStartTime": "وقت البدء",
+  "tripSummaryEndTime": "وقت الانتهاء",
+  "tripSummaryHoursMinutes": "{hours} ساعة {minutes} دقيقة",
+  "@tripSummaryHoursMinutes": {
+    "placeholders": {
+      "hours": { "type": "int" },
+      "minutes": { "type": "int" }
+    }
+  },
+  "tripSummaryHoursOnly": "{hours} ساعة",
+  "@tripSummaryHoursOnly": {
+    "placeholders": { "hours": { "type": "int" } }
+  },
+  "tripSummaryMinutesOnly": "{minutes} دقيقة",
+  "@tripSummaryMinutesOnly": {
+    "placeholders": { "minutes": { "type": "int" } }
+  },
+  "tripSummaryConfirmedPassengers": "الركاب الذين أكدوا تواجدهم ({count})",
+  "@tripSummaryConfirmedPassengers": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "tripSummaryNoPassengers": "لا يوجد ركاب لهذه الرحلة.",
+  "tripSummaryPassengerFare": "أجرة الراكب",
+  "tripSummaryConfirmed": "تم التأكيد",
+  "tripSummaryNotConfirmed": "لم يؤكد التواجد",
+  "tripSummaryPassengerFares": "أجرة الركاب ({count} ركاب)",
+  "@tripSummaryPassengerFares": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "tripSummaryTripFeePercent": "رسوم الرحلة (%{percent})",
+  "@tripSummaryTripFeePercent": {
+    "placeholders": { "percent": { "type": "int" } }
+  },
+  "tripSummaryNetAmount": "المبلغ الصافي الذي ستحصل عليه",
+  "tripSummaryFeeDeducted": "تم خصم رسوم الرحلة ({amount}) من محفظتك عند انطلاق الرحلة. تأكد من وجود رصيد كافٍ في محفظتك لإنشاء رحلات جديدة.",
+  "@tripSummaryFeeDeducted": {
+    "placeholders": { "amount": { "type": "String" } }
+  },
+  "tripSummaryPayFeePrompt": "الرصيد غير كافٍ لخصم رسوم الرحلة ({amount}). ادفع الآن لتسوية حسابك.",
+  "@tripSummaryPayFeePrompt": {
+    "placeholders": { "amount": { "type": "String" } }
+  },
+  "tripSummaryPaymentRequired": "تعذر خصم رسوم الرحلة ({fee}) بالكامل. رصيد محفظتك سالب بمقدار {debt}. ادفع الآن لتسوية الحساب.",
+  "@tripSummaryPaymentRequired": {
+    "placeholders": {
+      "fee": { "type": "String" },
+      "debt": { "type": "String" }
+    }
+  },
+  "tripSummaryNegativeBalanceRestriction": "لا يمكنك إنشاء رحلات مشتركة أو تلقي رحلات مباشرة حتى تسوية الرصيد السالب.",
+  "tripSummaryPayNow": "ادفع الآن",
+  "tripSummaryChatTitle": "الدردشة مع الركاب",
+  "tripSummaryChatSubtitle": "تواصل مع ركاب هذه الرحلة",
+  "tripSummaryBackHome": "العودة إلى الصفحة الرئيسية",
+  "currencyJodShort": "د.أ",
+  "negativeWalletBalanceBlocked": "رصيد محفظتك سالب. سدد المستحقات قبل إنشاء رحلات مشتركة أو تلقي رحلات مباشرة.",
+  "negativeWalletGoOnlineBlocked": "رصيد محفظتك سالب. سدد المستحقات قبل تلقي الرحلات المباشرة.",
+  "authStepOf": "خطوة {current} من {total}",
+  "@authStepOf": {
+    "description": "Step counter shown on the auth wizard screens",
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "authSecurityNotice": "جميع بياناتك محفوظة بأمان ولن تتم مشاركتها مع أي جهة",
+  "authNeedHelp": "مساعدة",
+  "authStepperBasicInfo": "المعلومات الأساسية",
+  "authStepperIdDocs": "الهوية والمستندات",
+  "authStepperVehicleInfo": "معلومات السيارة",
+  "genderRequiredLabel": "الجنس *",
+  "documentFormatsHint": "الصيغ المدعومة: JPG، PNG، PDF (الحد الأقصى 5 ميجابايت)",
+  "accountTypePassengerTagline": "احجز رحلات مباشرة أو مشتركة",
+  "accountTypeDriverTagline": "أنشئ رحلات واستقبل الركاب",
+  "accountTypePassengerFeatureDirectTitle": "رحلات مباشرة",
+  "accountTypePassengerFeatureDirectBody": "احجز رحلة خاصة تصلك مباشرة",
+  "accountTypePassengerFeatureSharedTitle": "رحلات مشتركة",
+  "accountTypePassengerFeatureSharedBody": "انضم لرحلة وشارك في التوفير",
+  "accountTypePassengerFeaturePaymentTitle": "دفع آمن وسهل",
+  "accountTypePassengerFeaturePaymentBody": "خيارات دفع متعددة وآمنة",
+  "accountTypeDriverFeatureTripsTitle": "أنشئ رحلات",
+  "accountTypeDriverFeatureTripsBody": "حدد وجهتك والانطلاق",
+  "accountTypeDriverFeatureBookingsTitle": "استقبل الحجوزات",
+  "accountTypeDriverFeatureBookingsBody": "احصل على طلبات الركاب",
+  "accountTypeDriverFeatureIncomeTitle": "حقق دخلاً إضافيا",
+  "accountTypeDriverFeatureIncomeBody": "زد دخلك في أوقات فراغك",
+  "accountTypeSafetyTitle": "أمانك هو أولويتنا",
+  "accountTypeSafetyBody": "نتحقق من جميع المستخدمين لضمان تجربة آمنة وموثوقة للجميع.",
+  "passengerSignupTitle": "إنشاء حساب جديد",
+  "passengerSignupSubtitle": "سجل الآن كراكب لبدء رحلتك معنا",
+  "driverSignupTitle": "إنشاء حساب سائق",
+  "driverSignupSubtitle": "ابدأ باستقبال الركاب وتحقيق دخل إضافي",
+  "fullNameIdHint": "اكتب اسمك كما هو في الهوية",
+  "phoneConfirmCallHint": "سنتصل بك لتأكيد حسابك",
+  "passwordMinLengthHint": "يجب أن تحتوي على 8 أحرف على الأقل",
+  "confirmPasswordReenterHint": "أعد إدخال كلمة المرور",
+  "passengerProfileStepTitle": "أكمل ملفك الشخصي",
+  "passengerProfileStepSubtitle": "أضف صورتك ومدينتك ليتعرف عليك السائقون",
+  "profileCityLabel": "المدينة *",
+  "profileCityHint": "أدخل اسم مدينتك",
+  "profileCityRequired": "المدينة مطلوبة",
+  "completeDriverProfileTitle": "أكمل ملف السائق",
+  "driverStep2Badge": "الخطوة 2 من 3: المعلومات الإضافية",
+  "driverStep3Badge": "الخطوة 3 من 3: مستندات السيارة",
+  "profilePhotoClearHint": "صورة واضحة لوجهك",
+  "vehicleTypeSelectHint": "اختر نوع المركبة",
+  "vehiclePlateDocHint": "أدخل رقم اللوحة كما في الرخصة",
+  "vehicleModelDocHint": "أدخل موديل السيارة",
+  "vehicleSeatsDocHint": "عدد المقاعد المتاحة للركاب",
+  "driverLicenseUploadHint": "اضغط لرفع صورة الرخصة",
+  "vehicleRegistrationFormRequired": "الاستمارة *",
+  "insuranceDocumentLabel": "التأمين *",
+  "insuranceImageRequired": "وثيقة التأمين مطلوبة",
+  "registrationUpdatedSuccess": "تم تحديث بياناتك بنجاح",
+  "driverAlreadyApprovedError": "تمت الموافقة على حسابك بالفعل",
+  "driverPendingReviewTitle": "طلب تسجيلك قيد المراجعة",
+  "driverPendingReviewBody": "نقوم حاليًا بمراجعة بياناتك ومستنداتك، وسنرسل لك إشعارًا فور الانتهاء من المراجعة.",
+  "driverPendingStatusLabel": "حالة الطلب",
+  "driverPendingBadge": "قيد المراجعة",
+  "driverSubmittedDocs": "المستندات المرسلة",
+  "driverDocLicense": "الرخصة",
+  "driverDocRegistration": "الاستمارة",
+  "driverDocInsurance": "التأمين",
+  "driverDocCarPhoto": "صورة السيارة",
+  "driverPendingRestrictionTitle": "حسابك قيد المراجعة",
+  "driverPendingRestrictionBody": "لن تتمكن من استخدام التطبيق حتى يتم تفعيل حسابك كسائق.",
+  "driverEditRegistrationTitle": "تحتاج لتعديل بياناتك؟",
+  "driverEditRegistrationSubtitle": "يمكنك تحديث بياناتك أو المستندات المرسلة.",
+  "driverReturnHome": "العودة إلى الرئيسية",
+  "tripBookedTitle": "تم حجز رحلتك المشتركة",
+  "tripBookedSubtitle": "تم حجز جميع المقاعد بنجاح",
+  "tripDayLabel": "يوم الرحلة",
+  "tripTimeLabel": "موعد الرحلة",
+  "tripMeetingPointLabel": "مكان التجمع",
+  "tripDistanceShortLabel": "المسافة",
+  "tripSeatsLabel": "عدد المقاعد",
+  "tripSeatsComplete": "مكتملة",
+  "tripSeatsBookedOf": "{booked} من {total}",
+  "@tripSeatsBookedOf": {
+    "placeholders": {
+      "booked": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "bookedPassengersTitle": "الركاب المحجوزون ({count})",
+  "@bookedPassengersTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "seatChipLabel": "مقعد {number}",
+  "@seatChipLabel": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "passengerFareLabel": "أجرة الراكب",
+  "passengersTotalLabel": "المجموع من الركاب ({count}) ركاب",
+  "@passengersTotalLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tripFeeOfSeatsLabel": "رسوم الرحلة ({percent}% من {seats} مقاعد)",
+  "@tripFeeOfSeatsLabel": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      },
+      "seats": {
+        "type": "int"
+      }
+    }
+  },
+  "tripFeeChargedAtStartNotice": "سيتم خصم رسوم الرحلة من محفظتك عند انطلاق الرحلة. حافظ على وجود رصيد في محفظتك لضمان قدرتك على إنشاء رحلات جديدة.",
+  "contactPassengersTitle": "التواصل مع الركاب",
+  "contactPassengersSubtitle": "اتصال أو دردشة حية",
+  "confirmYourPresenceCta": "قم بتأكيد تواجدك في الوقت والمكان المحدد"
 }

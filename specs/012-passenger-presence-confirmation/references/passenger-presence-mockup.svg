@@ -1,0 +1,297 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 820 844">
+  <defs>
+    <filter id="card-shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dy="2" stdDeviation="6" flood-color="#0F172A" flood-opacity="0.06"/>
+    </filter>
+    <clipPath id="light-map-clip">
+      <rect x="16" y="284" width="210" height="126" rx="16"/>
+    </clipPath>
+    <clipPath id="dark-map-clip">
+      <rect x="16" y="284" width="210" height="126" rx="16"/>
+    </clipPath>
+  </defs>
+
+  <!-- Light caption -->
+  <text id="light-caption" x="195" y="15" fill="#64748B" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="10" font-weight="700" letter-spacing="2" text-anchor="middle">LIGHT</text>
+
+  <g id="light">
+    <!-- Phone surface -->
+    <rect id="light-phone-frame" x="0.5" y="22.5" width="389" height="821" rx="32" fill="#F8FAFC" stroke="#E2E8F0"/>
+
+    <!-- Status bar -->
+    <g id="light-status-bar" fill="#1E293B">
+      <text x="24" y="48" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="700">9:41</text>
+      <path d="M328 45h3v3h-3zM333 42h3v6h-3zM338 39h3v9h-3z"/>
+      <path d="M347 42c4-4 10-4 14 0l-2 2c-3-3-7-3-10 0zM351 46c2-2 4-2 6 0l-3 3z"/>
+      <rect x="365" y="39" width="17" height="10" rx="2" fill="none" stroke="#1E293B"/>
+      <rect x="367" y="41" width="11" height="6" rx="1"/>
+      <path d="M383 42h2v4h-2z"/>
+    </g>
+
+    <!-- Header -->
+    <g id="light-header">
+      <circle cx="36" cy="91" r="19" fill="#FFFFFF" stroke="#E2E8F0"/>
+      <path d="M29 87l7 7 7-7" fill="none" stroke="#1E293B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="195" y="84" fill="#1E293B" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="20" font-weight="700" text-anchor="middle">تأكيد التواجد في السيارة</text>
+      <text x="195" y="105" fill="#64748B" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" text-anchor="middle">يرجى تأكيد تواجدك لبدء الرحلة</text>
+      <rect x="306" y="74" width="68" height="34" rx="17" fill="#F0FDFA" stroke="#99F6E4"/>
+      <path d="M354 88a7 7 0 0 1 14 0v7h-4v-7a3 3 0 0 0-6 0v7h-4z" fill="none" stroke="#0D9488" stroke-width="1.7" stroke-linecap="round"/>
+      <path d="M364 96c0 3-2 4-5 4" fill="none" stroke="#0D9488" stroke-width="1.7" stroke-linecap="round"/>
+      <text x="349" y="96" fill="#0D9488" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="11" font-weight="700" text-anchor="end">مساعدة</text>
+    </g>
+
+    <!-- Driver card -->
+    <g id="light-driver-card">
+      <rect x="16" y="132" width="358" height="143" rx="16" fill="#FFFFFF" filter="url(#card-shadow)"/>
+      <circle cx="341" cy="163" r="21" fill="#E2E8F0"/>
+      <circle cx="341" cy="157" r="7" fill="#94A3B8"/>
+      <path d="M328 177c2-9 7-13 13-13s11 4 13 13z" fill="#94A3B8"/>
+      <text x="311" y="153" fill="#1E293B" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="15" font-weight="700" text-anchor="end">أحمد محمود</text>
+      <path d="M303 164l2 4 5 .7-3.6 3.4.9 4.9-4.3-2.3-4.3 2.3.9-4.9-3.6-3.4 5-.7z" fill="#F59E0B"/>
+      <text x="294" y="175" fill="#64748B" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="11" text-anchor="end">4.9 (128)</text>
+      <text x="311" y="198" fill="#64748B" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="11.5" text-anchor="end">أبيض • تويوتا كورولا</text>
+      <rect x="239" y="207" width="72" height="25" rx="7" fill="#F8FAFC" stroke="#E2E8F0"/>
+      <text x="275" y="224" fill="#1E293B" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="11" font-weight="700" text-anchor="middle">22-12345</text>
+      <g id="light-driver-car">
+        <path d="M142 213c5-14 14-23 28-26h23c9 4 16 12 21 25l8 3v16h-84v-12z" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.7" stroke-linejoin="round"/>
+        <path d="M164 190h27c7 4 12 10 15 18h-51c2-8 5-14 9-18z" fill="#CCFBF1" stroke="#94A3B8" stroke-width="1.4"/>
+        <path d="M181 190v18" stroke="#94A3B8" stroke-width="1.4"/>
+        <circle cx="154" cy="231" r="8" fill="#334155"/>
+        <circle cx="154" cy="231" r="3" fill="#CBD5E1"/>
+        <circle cx="207" cy="231" r="8" fill="#334155"/>
+        <circle cx="207" cy="231" r="3" fill="#CBD5E1"/>
+      </g>
+      <rect x="25" y="146" width="105" height="113" rx="12" fill="#F8FAFC" stroke="#E2E8F0"/>
+      <text x="77.5" y="167" fill="#64748B" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="11" text-anchor="middle">سيبدأ السائق الرحلة بعد</text>
+      <text x="77.5" y="207" fill="#0D9488" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="27" font-weight="700" text-anchor="middle">05:00</text>
+      <circle cx="60" cy="230" r="7" fill="none" stroke="#0D9488" stroke-width="1.5"/>
+      <path d="M60 226v4l3 2" fill="none" stroke="#0D9488" stroke-width="1.5" stroke-linecap="round"/>
+      <text x="70" y="234" fill="#64748B" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="11">دقائق</text>
+    </g>
+
+    <!-- Map and pickup -->
+    <g id="light-map-card">
+      <rect x="16" y="284" width="358" height="126" rx="16" fill="#FFFFFF" filter="url(#card-shadow)"/>
+      <g clip-path="url(#light-map-clip)">
+        <rect x="16" y="284" width="210" height="126" fill="#F1F5F9"/>
+        <rect x="31" y="295" width="54" height="34" rx="8" fill="#DCFCE7"/>
+        <rect x="153" y="362" width="55" height="37" rx="8" fill="#DCFCE7"/>
+        <path d="M8 349c53-5 91 10 135 9 37-1 59-15 94-24" fill="none" stroke="#FFFFFF" stroke-width="11" stroke-linecap="round"/>
+        <path d="M108 275c-6 41 8 67 1 145" fill="none" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round"/>
+        <path d="M21 390c49-35 92-56 160-96" fill="none" stroke="#E2E8F0" stroke-width="5" stroke-linecap="round"/>
+        <circle cx="115" cy="346" r="48" fill="#14B8A6" opacity="0.16"/>
+        <path d="M115 319c-12 0-21 9-21 21 0 17 21 35 21 35s21-18 21-35c0-12-9-21-21-21z" fill="#0D9488"/>
+        <circle cx="115" cy="340" r="7" fill="#FFFFFF"/>
+        <circle cx="161" cy="356" r="14" fill="#FFFFFF" stroke="#E2E8F0"/>
+        <path d="M151 357l3-6h12l5 6v6h-20z" fill="#0D9488"/>
+        <circle cx="155" cy="363" r="2.5" fill="#334155"/>
+        <circle cx="167" cy="363" r="2.5" fill="#334155"/>
+      </g>
+      <path d="M226 284h132a16 16 0 0 1 16 16v94a16 16 0 0 1-16 16H226z" fill="#FFFFFF"/>
+      <circle cx="348" cy="310" r="13" fill="#F0FDFA"/>
+      <path d="M348 301c-5 0-9 4-9 9 0 7 9 15 9 15s9-8 9-15c0-5-4-9-9-9z" fill="#0D9488"/>
+      <circle cx="348" cy="310" r="3" fill="#FFFFFF"/>
+      <text x="328" y="312" fill="#0D9488" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12" font-weight="700" text-anchor="end">نقطة بدء الرحلة</text>
+      <text x="354" y="344" fill="#1E293B" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="15" font-weight="700" text-anchor="end" textLength="118" lengthAdjust="spacingAndGlyphs">دوار المدينة الرياضية</text>
+      <text x="354" y="368" fill="#64748B" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12" text-anchor="end">(أمام بوابة 2)</text>
+    </g>
+
+    <!-- Presence question -->
+    <g id="light-question-card">
+      <rect x="16" y="419" width="358" height="91" rx="16" fill="#FFFFFF" filter="url(#card-shadow)"/>
+      <circle cx="195" cy="442" r="17" fill="#DCFCE7"/>
+      <path d="M189 446h12l-2-3v-5a4 4 0 0 0-8 0v5z" fill="none" stroke="#0D9488" stroke-width="1.7" stroke-linejoin="round"/>
+      <path d="M193 448c1 2 3 2 4 0" fill="none" stroke="#0D9488" stroke-width="1.7" stroke-linecap="round"/>
+      <text x="195" y="475" fill="#1E293B" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="19" font-weight="700" text-anchor="middle">هل أنت داخل السيارة؟</text>
+      <text x="195" y="497" fill="#64748B" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" text-anchor="middle" textLength="330" lengthAdjust="spacingAndGlyphs">يرجى تأكيد تواجدك لتوثيق الرحلة وبدئها بشكل صحيح</text>
+    </g>
+
+    <!-- Information note -->
+    <g id="light-info-card">
+      <rect x="16" y="519" width="358" height="80" rx="12" fill="#F1F5F9"/>
+      <circle cx="349" cy="541" r="12" fill="#0D9488"/>
+      <text x="349" y="546" fill="#FFFFFF" font-family="Georgia, serif" font-size="14" font-weight="700" text-anchor="middle">i</text>
+      <text x="326" y="541" fill="#1E293B" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12.5" text-anchor="end" textLength="292" lengthAdjust="spacingAndGlyphs">تأكيدك يساعد السائق على بدء الرحلة وتوثيق حضورك.</text>
+      <text x="354" y="561" fill="#64748B" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12.5" text-anchor="end" textLength="326" lengthAdjust="spacingAndGlyphs">لا تُخصم منك أي رسوم — التطبيق لا يجمع أجرة الرحلة،</text>
+      <text x="354" y="581" fill="#64748B" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12.5" text-anchor="end">وتُدفع نقدًا للسائق.</text>
+    </g>
+
+    <!-- Actions -->
+    <g id="light-actions">
+      <rect x="16" y="608" width="112" height="108" rx="14" fill="#FFFFFF" stroke="#E2E8F0"/>
+      <circle cx="72" cy="636" r="15" fill="#FCE7F3"/>
+      <path d="M67 631l10 10M77 631l-10 10" stroke="#E91E63" stroke-width="2.3" stroke-linecap="round"/>
+      <text x="72" y="670" fill="#1E293B" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="700" text-anchor="middle">لست داخل السيارة</text>
+      <text x="72" y="696" fill="#64748B" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="11" text-anchor="middle" textLength="92" lengthAdjust="spacingAndGlyphs">لن أستقل هذه الرحلة</text>
+      <rect x="136" y="608" width="112" height="108" rx="14" fill="#FFFFFF" stroke="#E2E8F0"/>
+      <circle cx="192" cy="636" r="15" fill="#FEF3C7"/>
+      <circle cx="192" cy="628" r="3" fill="#F59E0B"/>
+      <path d="M191 632l-4 8 5 3 4 7M191 634l7 5M187 640l-5 7" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="192" y="668" fill="#1E293B" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="700" text-anchor="middle" textLength="98" lengthAdjust="spacingAndGlyphs">أنا في طريقي لمقابلة السائق</text>
+      <text x="192" y="696" fill="#64748B" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="11" text-anchor="middle">سأصل خلال دقائق</text>
+      <rect x="256" y="608" width="118" height="108" rx="14" fill="#0D9488"/>
+      <circle cx="315" cy="636" r="15" fill="none" stroke="#FFFFFF" stroke-width="1.8"/>
+      <path d="M308 636l5 5 9-10" fill="none" stroke="#FFFFFF" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="315" y="670" fill="#FFFFFF" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="14" font-weight="700" text-anchor="middle" textLength="104" lengthAdjust="spacingAndGlyphs">نعم، أنا داخل السيارة</text>
+      <text x="315" y="696" fill="#FFFFFF" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="11" text-anchor="middle">تأكيد التواجد</text>
+    </g>
+
+    <!-- Privacy footer -->
+    <g id="light-privacy-footer">
+      <path d="M352 727l8 3v6c0 6-3 10-8 12-5-2-8-6-8-12v-6z" fill="none" stroke="#94A3B8" stroke-width="1.4"/>
+      <path d="M348 736l3 3 5-6" fill="none" stroke="#94A3B8" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="336" y="740" fill="#94A3B8" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="11" text-anchor="end" textLength="296" lengthAdjust="spacingAndGlyphs">بياناتك آمنة ويتم استخدامها فقط لتحسين تجربة الرحلة</text>
+    </g>
+
+    <!-- Auto-cancel bar -->
+    <g id="light-bottom-bar">
+      <rect x="16" y="756" width="358" height="60" rx="16" fill="#F1F5F9"/>
+      <circle cx="348" cy="786" r="9" fill="none" stroke="#64748B" stroke-width="1.6"/>
+      <path d="M348 781v5l4 2" fill="none" stroke="#64748B" stroke-width="1.6" stroke-linecap="round"/>
+      <text x="329" y="790" fill="#64748B" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12" text-anchor="end">سيتم إلغاء الطلب تلقائيًا بعد</text>
+      <text x="52" y="790" fill="#0D9488" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="14" font-weight="700">02:30</text>
+    </g>
+  </g>
+
+  <!-- Dark caption -->
+  <text id="dark-caption" x="625" y="15" fill="#94A3B8" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="10" font-weight="700" letter-spacing="2" text-anchor="middle">DARK</text>
+
+  <g id="dark" transform="translate(430 0)">
+    <!-- Phone surface -->
+    <rect id="dark-phone-frame" x="0.5" y="22.5" width="389" height="821" rx="32" fill="#0F172A" stroke="#334155"/>
+
+    <!-- Status bar -->
+    <g id="dark-status-bar" fill="#F1F5F9">
+      <text x="24" y="48" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="700">9:41</text>
+      <path d="M328 45h3v3h-3zM333 42h3v6h-3zM338 39h3v9h-3z"/>
+      <path d="M347 42c4-4 10-4 14 0l-2 2c-3-3-7-3-10 0zM351 46c2-2 4-2 6 0l-3 3z"/>
+      <rect x="365" y="39" width="17" height="10" rx="2" fill="none" stroke="#F1F5F9"/>
+      <rect x="367" y="41" width="11" height="6" rx="1"/>
+      <path d="M383 42h2v4h-2z"/>
+    </g>
+
+    <!-- Header -->
+    <g id="dark-header">
+      <circle cx="36" cy="91" r="19" fill="#1E293B" stroke="#334155"/>
+      <path d="M29 87l7 7 7-7" fill="none" stroke="#F1F5F9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="195" y="84" fill="#F1F5F9" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="20" font-weight="700" text-anchor="middle">تأكيد التواجد في السيارة</text>
+      <text x="195" y="105" fill="#94A3B8" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" text-anchor="middle">يرجى تأكيد تواجدك لبدء الرحلة</text>
+      <rect x="306" y="74" width="68" height="34" rx="17" fill="#134E4A" stroke="#0F766E"/>
+      <path d="M354 88a7 7 0 0 1 14 0v7h-4v-7a3 3 0 0 0-6 0v7h-4z" fill="none" stroke="#14B8A6" stroke-width="1.7" stroke-linecap="round"/>
+      <path d="M364 96c0 3-2 4-5 4" fill="none" stroke="#14B8A6" stroke-width="1.7" stroke-linecap="round"/>
+      <text x="349" y="96" fill="#14B8A6" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="11" font-weight="700" text-anchor="end">مساعدة</text>
+    </g>
+
+    <!-- Driver card -->
+    <g id="dark-driver-card">
+      <rect x="16" y="132" width="358" height="143" rx="16" fill="#1E293B" filter="url(#card-shadow)"/>
+      <circle cx="341" cy="163" r="21" fill="#334155"/>
+      <circle cx="341" cy="157" r="7" fill="#94A3B8"/>
+      <path d="M328 177c2-9 7-13 13-13s11 4 13 13z" fill="#94A3B8"/>
+      <text x="311" y="153" fill="#F1F5F9" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="15" font-weight="700" text-anchor="end">أحمد محمود</text>
+      <path d="M303 164l2 4 5 .7-3.6 3.4.9 4.9-4.3-2.3-4.3 2.3.9-4.9-3.6-3.4 5-.7z" fill="#F59E0B"/>
+      <text x="294" y="175" fill="#94A3B8" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="11" text-anchor="end">4.9 (128)</text>
+      <text x="311" y="198" fill="#94A3B8" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="11.5" text-anchor="end">أبيض • تويوتا كورولا</text>
+      <rect x="239" y="207" width="72" height="25" rx="7" fill="#0F172A" stroke="#334155"/>
+      <text x="275" y="224" fill="#F1F5F9" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="11" font-weight="700" text-anchor="middle">22-12345</text>
+      <g id="dark-driver-car">
+        <path d="M142 213c5-14 14-23 28-26h23c9 4 16 12 21 25l8 3v16h-84v-12z" fill="#F8FAFC" stroke="#94A3B8" stroke-width="1.7" stroke-linejoin="round"/>
+        <path d="M164 190h27c7 4 12 10 15 18h-51c2-8 5-14 9-18z" fill="#99F6E4" stroke="#64748B" stroke-width="1.4"/>
+        <path d="M181 190v18" stroke="#64748B" stroke-width="1.4"/>
+        <circle cx="154" cy="231" r="8" fill="#020617"/>
+        <circle cx="154" cy="231" r="3" fill="#94A3B8"/>
+        <circle cx="207" cy="231" r="8" fill="#020617"/>
+        <circle cx="207" cy="231" r="3" fill="#94A3B8"/>
+      </g>
+      <rect x="25" y="146" width="105" height="113" rx="12" fill="#0F172A" stroke="#334155"/>
+      <text x="77.5" y="167" fill="#94A3B8" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="11" text-anchor="middle">سيبدأ السائق الرحلة بعد</text>
+      <text x="77.5" y="207" fill="#14B8A6" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="27" font-weight="700" text-anchor="middle">05:00</text>
+      <circle cx="60" cy="230" r="7" fill="none" stroke="#14B8A6" stroke-width="1.5"/>
+      <path d="M60 226v4l3 2" fill="none" stroke="#14B8A6" stroke-width="1.5" stroke-linecap="round"/>
+      <text x="70" y="234" fill="#94A3B8" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="11">دقائق</text>
+    </g>
+
+    <!-- Map and pickup -->
+    <g id="dark-map-card">
+      <rect x="16" y="284" width="358" height="126" rx="16" fill="#1E293B" filter="url(#card-shadow)"/>
+      <g clip-path="url(#dark-map-clip)">
+        <rect x="16" y="284" width="210" height="126" fill="#172033"/>
+        <rect x="31" y="295" width="54" height="34" rx="8" fill="#14532D"/>
+        <rect x="153" y="362" width="55" height="37" rx="8" fill="#14532D"/>
+        <path d="M8 349c53-5 91 10 135 9 37-1 59-15 94-24" fill="none" stroke="#334155" stroke-width="11" stroke-linecap="round"/>
+        <path d="M108 275c-6 41 8 67 1 145" fill="none" stroke="#334155" stroke-width="9" stroke-linecap="round"/>
+        <path d="M21 390c49-35 92-56 160-96" fill="none" stroke="#475569" stroke-width="5" stroke-linecap="round"/>
+        <circle cx="115" cy="346" r="48" fill="#14B8A6" opacity="0.2"/>
+        <path d="M115 319c-12 0-21 9-21 21 0 17 21 35 21 35s21-18 21-35c0-12-9-21-21-21z" fill="#14B8A6"/>
+        <circle cx="115" cy="340" r="7" fill="#FFFFFF"/>
+        <circle cx="161" cy="356" r="14" fill="#F8FAFC" stroke="#334155"/>
+        <path d="M151 357l3-6h12l5 6v6h-20z" fill="#14B8A6"/>
+        <circle cx="155" cy="363" r="2.5" fill="#334155"/>
+        <circle cx="167" cy="363" r="2.5" fill="#334155"/>
+      </g>
+      <path d="M226 284h132a16 16 0 0 1 16 16v94a16 16 0 0 1-16 16H226z" fill="#1E293B"/>
+      <circle cx="348" cy="310" r="13" fill="#134E4A"/>
+      <path d="M348 301c-5 0-9 4-9 9 0 7 9 15 9 15s9-8 9-15c0-5-4-9-9-9z" fill="#14B8A6"/>
+      <circle cx="348" cy="310" r="3" fill="#FFFFFF"/>
+      <text x="328" y="312" fill="#14B8A6" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12" font-weight="700" text-anchor="end">نقطة بدء الرحلة</text>
+      <text x="354" y="344" fill="#F1F5F9" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="15" font-weight="700" text-anchor="end" textLength="118" lengthAdjust="spacingAndGlyphs">دوار المدينة الرياضية</text>
+      <text x="354" y="368" fill="#94A3B8" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12" text-anchor="end">(أمام بوابة 2)</text>
+    </g>
+
+    <!-- Presence question -->
+    <g id="dark-question-card">
+      <rect x="16" y="419" width="358" height="91" rx="16" fill="#1E293B" filter="url(#card-shadow)"/>
+      <circle cx="195" cy="442" r="17" fill="#134E4A"/>
+      <path d="M189 446h12l-2-3v-5a4 4 0 0 0-8 0v5z" fill="none" stroke="#14B8A6" stroke-width="1.7" stroke-linejoin="round"/>
+      <path d="M193 448c1 2 3 2 4 0" fill="none" stroke="#14B8A6" stroke-width="1.7" stroke-linecap="round"/>
+      <text x="195" y="475" fill="#F1F5F9" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="19" font-weight="700" text-anchor="middle">هل أنت داخل السيارة؟</text>
+      <text x="195" y="497" fill="#94A3B8" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" text-anchor="middle" textLength="330" lengthAdjust="spacingAndGlyphs">يرجى تأكيد تواجدك لتوثيق الرحلة وبدئها بشكل صحيح</text>
+    </g>
+
+    <!-- Information note -->
+    <g id="dark-info-card">
+      <rect x="16" y="519" width="358" height="80" rx="12" fill="#1E293B"/>
+      <circle cx="349" cy="541" r="12" fill="#14B8A6"/>
+      <text x="349" y="546" fill="#FFFFFF" font-family="Georgia, serif" font-size="14" font-weight="700" text-anchor="middle">i</text>
+      <text x="326" y="541" fill="#F1F5F9" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12.5" text-anchor="end" textLength="292" lengthAdjust="spacingAndGlyphs">تأكيدك يساعد السائق على بدء الرحلة وتوثيق حضورك.</text>
+      <text x="354" y="561" fill="#94A3B8" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12.5" text-anchor="end" textLength="326" lengthAdjust="spacingAndGlyphs">لا تُخصم منك أي رسوم — التطبيق لا يجمع أجرة الرحلة،</text>
+      <text x="354" y="581" fill="#94A3B8" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12.5" text-anchor="end">وتُدفع نقدًا للسائق.</text>
+    </g>
+
+    <!-- Actions -->
+    <g id="dark-actions">
+      <rect x="16" y="608" width="112" height="108" rx="14" fill="#1E293B" stroke="#334155"/>
+      <circle cx="72" cy="636" r="15" fill="#4A1830"/>
+      <path d="M67 631l10 10M77 631l-10 10" stroke="#E91E63" stroke-width="2.3" stroke-linecap="round"/>
+      <text x="72" y="670" fill="#F1F5F9" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="700" text-anchor="middle">لست داخل السيارة</text>
+      <text x="72" y="696" fill="#94A3B8" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="11" text-anchor="middle" textLength="92" lengthAdjust="spacingAndGlyphs">لن أستقل هذه الرحلة</text>
+      <rect x="136" y="608" width="112" height="108" rx="14" fill="#1E293B" stroke="#334155"/>
+      <circle cx="192" cy="636" r="15" fill="#4A3511"/>
+      <circle cx="192" cy="628" r="3" fill="#F59E0B"/>
+      <path d="M191 632l-4 8 5 3 4 7M191 634l7 5M187 640l-5 7" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="192" y="668" fill="#F1F5F9" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="700" text-anchor="middle" textLength="98" lengthAdjust="spacingAndGlyphs">أنا في طريقي لمقابلة السائق</text>
+      <text x="192" y="696" fill="#94A3B8" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="11" text-anchor="middle">سأصل خلال دقائق</text>
+      <rect x="256" y="608" width="118" height="108" rx="14" fill="#14B8A6"/>
+      <circle cx="315" cy="636" r="15" fill="none" stroke="#FFFFFF" stroke-width="1.8"/>
+      <path d="M308 636l5 5 9-10" fill="none" stroke="#FFFFFF" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="315" y="670" fill="#FFFFFF" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="14" font-weight="700" text-anchor="middle" textLength="104" lengthAdjust="spacingAndGlyphs">نعم، أنا داخل السيارة</text>
+      <text x="315" y="696" fill="#FFFFFF" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="11" text-anchor="middle">تأكيد التواجد</text>
+    </g>
+
+    <!-- Privacy footer -->
+    <g id="dark-privacy-footer">
+      <path d="M352 727l8 3v6c0 6-3 10-8 12-5-2-8-6-8-12v-6z" fill="none" stroke="#94A3B8" stroke-width="1.4"/>
+      <path d="M348 736l3 3 5-6" fill="none" stroke="#94A3B8" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="336" y="740" fill="#94A3B8" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="11" text-anchor="end" textLength="296" lengthAdjust="spacingAndGlyphs">بياناتك آمنة ويتم استخدامها فقط لتحسين تجربة الرحلة</text>
+    </g>
+
+    <!-- Auto-cancel bar -->
+    <g id="dark-bottom-bar">
+      <rect x="16" y="756" width="358" height="60" rx="16" fill="#1E293B"/>
+      <circle cx="348" cy="786" r="9" fill="none" stroke="#94A3B8" stroke-width="1.6"/>
+      <path d="M348 781v5l4 2" fill="none" stroke="#94A3B8" stroke-width="1.6" stroke-linecap="round"/>
+      <text x="329" y="790" fill="#94A3B8" direction="rtl" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12" text-anchor="end">سيتم إلغاء الطلب تلقائيًا بعد</text>
+      <text x="52" y="790" fill="#14B8A6" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="14" font-weight="700">02:30</text>
+    </g>
+  </g>
+</svg>

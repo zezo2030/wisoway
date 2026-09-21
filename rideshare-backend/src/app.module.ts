@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -19,6 +20,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { RestrictedAccountInterceptor } from './common/interceptors/restricted.interceptor';
+import { UploadUrlInterceptor } from './common/interceptors/upload-url.interceptor';
 import { ValidationPipe } from './common/pipes/validation.pipe';
 import { HealthModule } from './modules/health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -47,6 +49,7 @@ import { CallsModule } from './modules/calls/calls.module';
 import { ComplaintsModule } from './modules/complaints/complaints.module';
 import { RefundsModule } from './modules/refunds/refunds.module';
 import { SupportModule } from './modules/support/support.module';
+import { InstantRidesModule } from './modules/instant-rides/instant-rides.module';
 
 @Module({
   imports: [
@@ -65,6 +68,10 @@ import { SupportModule } from './modules/support/support.module';
       envFilePath: '.env',
     }),
     PostgresModule,
+    // Nothing registered @nestjs/schedule before, so every @Cron in the repo was
+    // inert. DriverTripFeeReconciliationJob — the net under a lost trip-auto-start
+    // job — depends on it actually running.
+    ScheduleModule.forRoot(),
     // Single limit: multiple forRoot entries all apply to every route, so the old
     // 20/min bucket capped *all* traffic (including /bookings/my), not only public APIs.
     ThrottlerModule.forRoot([
@@ -99,6 +106,7 @@ import { SupportModule } from './modules/support/support.module';
     ComplaintsModule,
     RefundsModule,
     SupportModule,
+    InstantRidesModule,
   ],
   controllers: [AppController],
   providers: [
@@ -128,6 +136,12 @@ import { SupportModule } from './modules/support/support.module';
     {
       provide: APP_INTERCEPTOR,
       useClass: TransformInterceptor,
+    },
+    {
+      // Normalises stored /uploads URLs to the client's actual host so images
+      // stay reachable across port/host/device changes.
+      provide: APP_INTERCEPTOR,
+      useClass: UploadUrlInterceptor,
     },
     {
       provide: APP_INTERCEPTOR,

@@ -34,6 +34,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
         tripId: event.tripId,
         seats: event.seats,
         sharePhoneWithDriver: event.sharePhoneWithDriver,
+        isFamilyBooking: event.isFamilyBooking,
       );
       emit(BookingCreated(booking));
     } catch (e) {
@@ -52,6 +53,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
         seatCount: event.seatCount,
         passengers: event.passengers,
         sharePhoneWithDriver: event.sharePhoneWithDriver,
+        isFamilyBooking: event.isFamilyBooking,
       );
       emit(BookingCreated(booking));
     } catch (e) {

@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddSeatLayoutToVehicles1745920000000
-  implements MigrationInterface
-{
+export class AddSeatLayoutToVehicles1745920000000 implements MigrationInterface {
   name = 'AddSeatLayoutToVehicles1745920000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

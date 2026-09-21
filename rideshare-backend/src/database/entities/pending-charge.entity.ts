@@ -5,10 +5,12 @@
  * wallet immediately (status='applied') or is being carried forward to the
  * next booking confirmation (status='pending').
  *
- * Three kinds:
+ * Kinds:
  *  - passenger_cancellation  5% of booking totalAmount (FR-015 / FR-025)
  *  - driver_no_show         10% of sum(confirmed bookings totalAmount) (FR-027)
  *  - passenger_no_show       5% of booking totalAmount (FR-028)
+ *  - driver_trip_fee        Platform fee owed by a driver whose wallet
+ *                           could not cover it at trip start.
  *
  * Phase 4 / T059 — 008-platform-completion, US2 / 010-booking-lifecycle.
  */
@@ -30,6 +32,8 @@ export enum PendingChargeKind {
   PASSENGER_CANCELLATION = 'passenger_cancellation',
   DRIVER_NO_SHOW = 'driver_no_show',
   PASSENGER_NO_SHOW = 'passenger_no_show',
+  /** Platform fee owed by a driver whose wallet could not cover it at trip start. */
+  DRIVER_TRIP_FEE = 'driver_trip_fee',
 }
 
 export enum PendingChargeStatus {

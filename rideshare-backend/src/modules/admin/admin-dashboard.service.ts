@@ -408,7 +408,7 @@ export class AdminDashboardService {
         ...new Set(
           entities
             .filter((p) => !p.user && typeof p.userId === 'string' && p.userId)
-            .map((p) => p.userId as string),
+            .map((p) => p.userId),
         ),
       ];
       const payerById = new Map<string, UserEntity>();
@@ -622,7 +622,7 @@ export class AdminDashboardService {
         ...new Set(
           entities
             .filter((b) => !b.user && typeof b.userId === 'string' && b.userId)
-            .map((b) => b.userId as string),
+            .map((b) => b.userId),
         ),
       ];
       const passengerById = new Map<string, UserEntity>();
@@ -642,57 +642,57 @@ export class AdminDashboardService {
             ? passengerById.get(b.userId)
             : undefined);
         return {
-        _id: b.id,
-        id: b.id,
-        status: b.status,
-        seatNumber: null,
-        seatCount: b.seatCount,
-        totalAmount: Number(b.totalAmount ?? 0),
-        seats: (b.seats ?? []).map((seat) => ({
-          id: seat.id,
-          bookingId: seat.bookingId,
-          seatNumber: seat.seatNumber,
-          displayName: seat.displayName,
-          gender: seat.gender,
-          isMainBooker: seat.isMainBooker,
-          markedAbsentAt: seat.markedAbsentAt,
-          createdAt: seat.createdAt,
-        })),
-        hasDriverPaidToContact: b.hasDriverPaidToContact,
-        sharePhoneWithDriver: b.sharePhoneWithDriver,
-        cancellationReason: b.cancellationReason,
-        cancelledAt: b.cancelledAt,
-        cancelledBy: b.cancelledBy,
-        createdAt: b.createdAt,
-        updatedAt: b.updatedAt,
-        userId: passenger
-          ? {
-              _id: passenger.id,
-              name: passenger.name,
-              email: passenger.email ?? '',
-              phoneNumber: passenger.phoneNumber ?? undefined,
-            }
-          : typeof b.userId === 'string'
+          _id: b.id,
+          id: b.id,
+          status: b.status,
+          seatNumber: null,
+          seatCount: b.seatCount,
+          totalAmount: Number(b.totalAmount ?? 0),
+          seats: (b.seats ?? []).map((seat) => ({
+            id: seat.id,
+            bookingId: seat.bookingId,
+            seatNumber: seat.seatNumber,
+            displayName: seat.displayName,
+            gender: seat.gender,
+            isMainBooker: seat.isMainBooker,
+            markedAbsentAt: seat.markedAbsentAt,
+            createdAt: seat.createdAt,
+          })),
+          hasDriverPaidToContact: b.hasDriverPaidToContact,
+          sharePhoneWithDriver: b.sharePhoneWithDriver,
+          cancellationReason: b.cancellationReason,
+          cancelledAt: b.cancelledAt,
+          cancelledBy: b.cancelledBy,
+          createdAt: b.createdAt,
+          updatedAt: b.updatedAt,
+          userId: passenger
             ? {
-                _id: b.userId,
-                name: 'User not found',
-                email: '',
+                _id: passenger.id,
+                name: passenger.name,
+                email: passenger.email ?? '',
+                phoneNumber: passenger.phoneNumber ?? undefined,
               }
-            : b.userId,
-        tripId: b.trip
-          ? {
-              _id: b.trip.id,
-              id: b.trip.id,
-              fromName: b.trip.fromName,
-              toName: b.trip.toName,
-              from: { name: b.trip.fromName },
-              to: { name: b.trip.toName },
-              departureTime: b.trip.departureTime,
-              price: b.trip.price,
-              currency: b.trip.currency,
-              seatLayout: b.trip.seatLayout ?? undefined,
-            }
-          : b.tripId,
+            : typeof b.userId === 'string'
+              ? {
+                  _id: b.userId,
+                  name: 'User not found',
+                  email: '',
+                }
+              : b.userId,
+          tripId: b.trip
+            ? {
+                _id: b.trip.id,
+                id: b.trip.id,
+                fromName: b.trip.fromName,
+                toName: b.trip.toName,
+                from: { name: b.trip.fromName },
+                to: { name: b.trip.toName },
+                departureTime: b.trip.departureTime,
+                price: b.trip.price,
+                currency: b.trip.currency,
+                seatLayout: b.trip.seatLayout ?? undefined,
+              }
+            : b.tripId,
         };
       });
       return {
@@ -829,7 +829,7 @@ export class AdminDashboardService {
         ...new Set(
           entities
             .filter((n) => !n.user && typeof n.userId === 'string' && n.userId)
-            .map((n) => n.userId as string),
+            .map((n) => n.userId),
         ),
       ];
       const userById = new Map<string, UserEntity>();
@@ -1200,8 +1200,10 @@ export class AdminDashboardService {
     const missingOwnerIds = [
       ...new Set(
         entities
-          .filter((wa) => !wa.user && typeof wa.userId === 'string' && wa.userId)
-          .map((wa) => wa.userId as string),
+          .filter(
+            (wa) => !wa.user && typeof wa.userId === 'string' && wa.userId,
+          )
+          .map((wa) => wa.userId),
       ),
     ];
     const ownerById = new Map<string, UserEntity>();

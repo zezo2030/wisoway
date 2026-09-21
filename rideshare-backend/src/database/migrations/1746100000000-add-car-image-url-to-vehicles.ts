@@ -6,9 +6,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * detail page. The trips table already carries its own carImageUrl, populated
  * at trip creation from this column.
  */
-export class AddCarImageUrlToVehicles1746100000000
-  implements MigrationInterface
-{
+export class AddCarImageUrlToVehicles1746100000000 implements MigrationInterface {
   name = 'AddCarImageUrlToVehicles1746100000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

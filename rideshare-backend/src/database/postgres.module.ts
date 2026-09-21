@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import {
   AccountFlagEntity,
+  AdminAlertPreferenceEntity,
   BookingEntity,
   BookingSeatEntity,
   CallSessionEntity,
@@ -10,7 +11,10 @@ import {
   CommunicationFeeEntity,
   ComplaintEntity,
   DeviceTokenEntity,
+  DriverAvailabilityEntity,
   DriverLocationEntity,
+  InstantRideOfferEntity,
+  InstantRideRequestEntity,
   MessageEntity,
   NotificationEntity,
   OtpCodeEntity,
@@ -52,6 +56,7 @@ import {
             : false,
         entities: [
           AccountFlagEntity,
+          AdminAlertPreferenceEntity,
           BookingEntity,
           BookingSeatEntity,
           CallSessionEntity,
@@ -59,7 +64,10 @@ import {
           CommunicationFeeEntity,
           ComplaintEntity,
           DeviceTokenEntity,
+          DriverAvailabilityEntity,
           DriverLocationEntity,
+          InstantRideOfferEntity,
+          InstantRideRequestEntity,
           MessageEntity,
           NotificationEntity,
           OtpCodeEntity,

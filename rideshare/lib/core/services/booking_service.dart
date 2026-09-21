@@ -98,16 +98,21 @@ class BookingService {
   // ── v2 multi-seat ──────────────────────────────────────────────────────────
 
   /// Create a multi-seat booking via POST /v2/bookings.
+  ///
+  /// [isFamilyBooking] exempts the booking from the trip's gender-mixing rules.
+  /// The API rejects it with 400 when fewer than 2 seats are requested.
   Future<BookingModel> createMultiSeat({
     required String tripId,
     required List<BookingSeatRequest> seats,
     bool sharePhoneWithDriver = false,
+    bool isFamilyBooking = false,
   }) async {
     try {
       final payload = <String, dynamic>{
         'tripId': tripId,
         'seats': seats.map((s) => s.toJson()).toList(),
         'sharePhoneWithDriver': sharePhoneWithDriver,
+        'isFamilyBooking': isFamilyBooking,
       };
       final response = await _api.post(ApiEndpoints.bookingsV2, data: payload);
       return _bookingFromResponse(
@@ -123,11 +128,15 @@ class BookingService {
   }
 
   /// Auto-pick seats via POST /v2/bookings/auto-pick.
+  ///
+  /// [isFamilyBooking] exempts the booking from the trip's gender-mixing rules.
+  /// The API rejects it with 400 when fewer than 2 seats are requested.
   Future<BookingModel> autoPick({
     required String tripId,
     required int seatCount,
     required List<BookingSeatRequest> passengers,
     bool sharePhoneWithDriver = false,
+    bool isFamilyBooking = false,
   }) async {
     try {
       final payload = <String, dynamic>{
@@ -135,6 +144,7 @@ class BookingService {
         'seatCount': seatCount,
         'passengers': passengers.map((p) => p.toJson()).toList(),
         'sharePhoneWithDriver': sharePhoneWithDriver,
+        'isFamilyBooking': isFamilyBooking,
       };
       final response =
           await _api.post(ApiEndpoints.bookingsV2AutoPick, data: payload);

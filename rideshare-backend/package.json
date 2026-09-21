@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.991.0",
+    "@googlemaps/google-maps-services-js": "^3.4.2",
     "@nestjs/bull": "^11.0.4",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.3",
@@ -104,7 +105,8 @@
     "rootDir": ".",
     "testMatch": [
       "<rootDir>/src/**/*.spec.ts",
-      "<rootDir>/test/unit/**/*.spec.ts"
+      "<rootDir>/test/unit/**/*.spec.ts",
+      "<rootDir>/test/contract/**/*.spec.ts"
     ],
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"

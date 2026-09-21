@@ -8,6 +8,7 @@ import '../models/notification_model.dart';
 import '../core/constants/app_spacing.dart';
 import '../core/theme/colors.dart';
 import '../l10n/l10n_extensions.dart';
+import 'shared_trip_booking_notification_card.dart';
 
 class NotificationCard extends StatelessWidget {
   final NotificationModel notification;
@@ -23,6 +24,14 @@ class NotificationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (notification.type == NotificationType.bookingCreated) {
+      return SharedTripBookingNotificationCard(
+        notification: notification,
+        onTap: onTap,
+        onDelete: onDelete,
+      );
+    }
+
     final isDriver = context.select<AuthProvider, bool>(
       (provider) => provider.userModel?.isDriver ?? false,
     );

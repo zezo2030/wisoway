@@ -10,6 +10,7 @@ class TokenStorage {
   static const _accessTokenKey = 'access_token';
   static const _refreshTokenKey = 'refresh_token';
   static const _userIdKey = 'user_id';
+  static const _pendingDriverRegistrationKey = 'pending_driver_registration';
 
   Future<void> saveTokens({
     required String accessToken,
@@ -25,6 +26,18 @@ class TokenStorage {
 
   Future<void> saveUserId(String userId) async {
     await _storage.write(key: _userIdKey, value: userId);
+  }
+
+  // ── Pending driver registration (pre-account onboarding state) ───────────
+  Future<void> savePendingDriverRegistration(String json) async {
+    await _storage.write(key: _pendingDriverRegistrationKey, value: json);
+  }
+
+  Future<String?> getPendingDriverRegistration() =>
+      _storage.read(key: _pendingDriverRegistrationKey);
+
+  Future<void> clearPendingDriverRegistration() async {
+    await _storage.delete(key: _pendingDriverRegistrationKey);
   }
 
   Future<void> clearAll() async {

@@ -1,4 +1,10 @@
-import { IsEmail, IsString, Matches, MinLength, ValidateIf } from 'class-validator';
+import {
+  IsEmail,
+  IsString,
+  Matches,
+  MinLength,
+  ValidateIf,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class SignInDto {

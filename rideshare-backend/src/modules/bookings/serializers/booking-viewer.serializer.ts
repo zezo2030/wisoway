@@ -1,29 +1,18 @@
 /**
- * BookingViewerSerializer — Phase 7 (US5 / 013-settle-and-call) implementation.
+ * BookingViewerSerializer
  *
- * Masking contract:
- *  - LOCKED (hasDriverPaidToContact is false):
- *      • otherParty.displayName  → '***'
- *      • otherParty.phone        → '***'
- *      • otherParty.phoneNumber  → '***'
- *      • otherParty.photoUrl     → '***'
- *      • chatEnabled             → false
- *      • callEnabled             → false
- *  - UNLOCKED (hasDriverPaidToContact is true): full reveal; chatEnabled/callEnabled = true.
- *  - ADMIN viewer: always sees raw values regardless of settlement state.
+ * Contact details are no longer gated behind a driver payment — the platform
+ * fee is charged at trip start and unlocks nothing. This serializer is kept as
+ * the single seam where a future access rule would live; today it only asserts
+ * that chat and call are enabled for every viewer.
  */
 
 export type ViewerRole = 'passenger' | 'driver' | 'admin';
 
-const MASK = '***';
-
-/** Minimum shape the serializer needs to make masking decisions. */
+/** Minimum shape the serializer touches. */
 export interface MaskableBookingView {
-  settledAt?: Date | string | null;
-  hasDriverPaidToContact?: boolean;
   chatEnabled?: boolean;
   callEnabled?: boolean;
-  /** Driver-side: the passenger's contact details. */
   otherParty?: {
     displayName?: string | null;
     phone?: string | null;
@@ -34,56 +23,14 @@ export interface MaskableBookingView {
 }
 
 export class BookingViewerSerializer {
-  /**
-   * Apply settlement-based masking to a booking response object.
-   *
-   * @param data    Raw booking data to be returned to the client.
-   * @param viewer  Role of the requesting user.
-   * @returns       Data with PII fields masked when the booking is unsettled.
-   */
   static serialize<T extends MaskableBookingView>(
     data: T,
-    viewer?: ViewerRole,
+    _viewer?: ViewerRole,
   ): T {
-    // Admins always see raw values.
-    if (viewer === 'admin') return data;
-
-    const unlocked = data.hasDriverPaidToContact === true;
-
-    if (unlocked) {
-      return {
-        ...data,
-        chatEnabled: true,
-        callEnabled: true,
-      };
-    }
-
-    // Unsettled — mask PII and disable contact channels.
-    const masked: T = {
+    return {
       ...data,
-      chatEnabled: false,
-      callEnabled: false,
+      chatEnabled: true,
+      callEnabled: true,
     };
-
-    if (masked.otherParty) {
-      masked.otherParty = {
-        ...masked.otherParty,
-        displayName:
-          masked.otherParty.displayName != null
-            ? MASK
-            : masked.otherParty.displayName,
-        phone: masked.otherParty.phone != null ? MASK : masked.otherParty.phone,
-        phoneNumber:
-          masked.otherParty.phoneNumber != null
-            ? MASK
-            : masked.otherParty.phoneNumber,
-        photoUrl:
-          masked.otherParty.photoUrl != null
-            ? MASK
-            : masked.otherParty.photoUrl,
-      };
-    }
-
-    return masked;
   }
 }

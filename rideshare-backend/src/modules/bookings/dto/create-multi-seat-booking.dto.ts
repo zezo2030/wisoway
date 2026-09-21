@@ -55,6 +55,15 @@ export class CreateMultiSeatBookingDto {
   @IsBoolean()
   @IsOptional()
   sharePhoneWithDriver?: boolean;
+
+  /**
+   * Family booking — exempts this request from the trip's prevent-gender-mixing
+   * rules. Requires at least 2 seats.
+   */
+  @ApiPropertyOptional({ example: false })
+  @IsBoolean()
+  @IsOptional()
+  isFamilyBooking?: boolean;
 }
 
 export class AutoPickBookingDto {
@@ -80,4 +89,14 @@ export class AutoPickBookingDto {
   @IsBoolean()
   @IsOptional()
   sharePhoneWithDriver?: boolean;
+
+  /**
+   * Family booking — exempts this request from the trip's prevent-gender-mixing
+   * rules (both during auto-selection and on the resulting booking).
+   * Requires at least 2 seats.
+   */
+  @ApiPropertyOptional({ example: false })
+  @IsBoolean()
+  @IsOptional()
+  isFamilyBooking?: boolean;
 }

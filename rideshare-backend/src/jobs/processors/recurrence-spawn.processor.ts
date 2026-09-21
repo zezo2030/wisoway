@@ -145,6 +145,16 @@ export class RecurrenceSpawnProcessor {
   ): Promise<TripEntity> {
     const tpl = rule.templateJson;
 
+    // The template layout describes the full vehicle shape, but the driver may
+    // have published fewer seats than the layout allows (CreateTripDto.availableSeats).
+    // Clamp so seats.length always matches totalSeats on spawned instances.
+    const layoutSeats = this.generateSeatsFromLayout(tpl.seatLayout);
+    const seats =
+      tpl.totalSeats > 0 && tpl.totalSeats < layoutSeats.length
+        ? layoutSeats.slice(0, tpl.totalSeats)
+        : layoutSeats;
+    const totalSeats = seats.length || tpl.totalSeats;
+
     const trip = this.tripRepo.create({
       driverId: rule.driverId,
       driverName: null,
@@ -163,10 +173,10 @@ export class RecurrenceSpawnProcessor {
       departureTime,
       price: tpl.price,
       currency: tpl.currency ?? 'JOD',
-      totalSeats: tpl.totalSeats,
-      availableSeats: tpl.totalSeats,
+      totalSeats,
+      availableSeats: totalSeats,
       seatLayout: tpl.seatLayout,
-      seats: this.generateSeatsFromLayout(tpl.seatLayout),
+      seats,
       stops: tpl.stops ?? [],
       notes: tpl.notes ?? null,
       status: TripStatus.PUBLISHED,

@@ -23,6 +23,10 @@ import {
   TRIP_AUTO_COMPLETE_JOB_ID_PREFIX,
 } from '../../trips/trip-auto-start.util';
 import { NotificationsService } from '../../notifications/notifications.service';
+import {
+  DriverTripFeeService,
+  TripFeeChargeResult,
+} from '../../driver-trip-fee/driver-trip-fee.service';
 
 const TERMINAL_TRIP_STATUSES: TripStatus[] = [
   TripStatus.COMPLETED,
@@ -40,6 +44,7 @@ export class TripAutoStartProcessor {
     @InjectQueue('trip-auto-complete')
     private readonly autoCompleteQueue: Queue,
     private notificationsService: NotificationsService,
+    private readonly driverTripFee: DriverTripFeeService,
   ) {}
 
   @Process('enforce')
@@ -87,12 +92,21 @@ export class TripAutoStartProcessor {
       `trip-auto-start: trip ${tripId} auto-started at ${now.toISOString()}`,
     );
 
+    // The one debit for this trip. A failure here must not stop the trip: the
+    // reconciliation sweep re-runs any trip left with driverWalletChargeApplied
+    // still false.
+    let feeCharge: TripFeeChargeResult | undefined;
+    try {
+      feeCharge = await this.driverTripFee.chargeAtTripStart(trip);
+    } catch (err) {
+      this.logger.error(
+        `trip-auto-start: fee charge failed for trip ${tripId}: ${(err as Error).message}`,
+      );
+    }
+
     // Notify the driver and every confirmed passenger that the trip started,
     // prompting them to share live trip tracking with someone.
-    const recipientIds = [
-      trip.driverId,
-      ...bookings.map((b) => b.userId),
-    ];
+    const recipientIds = [trip.driverId, ...bookings.map((b) => b.userId)];
     for (const recipientId of recipientIds) {
       this.notificationsService
         .create({
@@ -109,13 +123,30 @@ export class TripAutoStartProcessor {
         );
     }
 
+    // Let the driver know their wallet was debited for this trip's platform
+    // fee. Nothing to say when the charge was a no-op (free trip, no
+    // bookings, or already charged by another path).
+    if (feeCharge && feeCharge.charged > 0) {
+      this.notificationsService
+        .create({
+          userId: trip.driverId,
+          type: 'trip_fee_charged',
+          title: 'رسوم الرحلة',
+          body: `تم خصم ${feeCharge.charged.toFixed(2)} ${feeCharge.currency} من محفظتك كرسوم هذه الرحلة.`,
+          data: { tripId },
+        })
+        .catch((err: Error) =>
+          this.logger.warn(
+            `trip-fee-charged notify ${trip.driverId}: ${err.message}`,
+          ),
+        );
+    }
+
     await this.scheduleAutoCompleteFallback(trip);
   }
 
   private async scheduleAutoCompleteFallback(trip: TripEntity): Promise<void> {
-    const delay = computeTripAutoCompleteDelayMs(
-      new Date(trip.departureTime),
-    );
+    const delay = computeTripAutoCompleteDelayMs(new Date(trip.departureTime));
     try {
       await this.autoCompleteQueue.add(
         'enforce',

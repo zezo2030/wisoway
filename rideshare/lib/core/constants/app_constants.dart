@@ -27,32 +27,29 @@ class AppConstants {
   static const String genderMale = 'male';
   static const String genderFemale = 'female';
 
-  // Vehicle Types
-  static const String vehicleTypeSedan = 'sedan';
-  static const String vehicleTypeSUV = 'suv';
-  static const String vehicleTypeVan = 'van';
-  static const String vehicleTypeTruck = 'truck';
-  static const String vehicleTypeMotorcycle = 'motorcycle';
-  static const String vehicleTypeBus = 'bus';
+  // Vehicle Types — must match SUPPORTED_VEHICLE_TYPES in the backend catalog
+  // (rideshare-backend/src/modules/vehicles/vehicle-types.ts). These are only a
+  // fallback for when /vehicles/types is unreachable and nothing is cached; the
+  // server response is always preferred.
+  static const String vehicleTypeStandardCar = 'standard_car';
+  static const String vehicleTypeFamilySuv = 'family_suv';
+  static const String vehicleTypeMediumBus = 'medium_bus';
+  static const String vehicleTypeLargeBus = 'large_bus';
 
   // Vehicle Type Labels (Arabic)
   static const Map<String, String> vehicleTypeLabels = {
-    vehicleTypeSedan: 'سيارة سيدان',
-    vehicleTypeSUV: 'سيارة دفع رباعي',
-    vehicleTypeVan: 'فان',
-    vehicleTypeTruck: 'شاحنة',
-    vehicleTypeMotorcycle: 'دراجة نارية',
-    vehicleTypeBus: 'حافلة',
+    vehicleTypeStandardCar: 'سيارة عادية',
+    vehicleTypeFamilySuv: 'SUV عائلية',
+    vehicleTypeMediumBus: 'باص متوسط',
+    vehicleTypeLargeBus: 'باص كبير',
   };
 
   // Get all vehicle types
   static List<String> get vehicleTypes => [
-    vehicleTypeSedan,
-    vehicleTypeSUV,
-    vehicleTypeVan,
-    vehicleTypeTruck,
-    vehicleTypeMotorcycle,
-    vehicleTypeBus,
+    vehicleTypeStandardCar,
+    vehicleTypeFamilySuv,
+    vehicleTypeMediumBus,
+    vehicleTypeLargeBus,
   ];
 
   // Firestore Collections

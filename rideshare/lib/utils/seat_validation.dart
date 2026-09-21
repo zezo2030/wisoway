@@ -12,10 +12,16 @@ class SeatValidation {
 
   // Check if a seat can be selected by a user
   // Returns true if seat can be selected, false otherwise
+  //
+  // [isFamilyBooking] mirrors the API's family exemption: family bookings are
+  // not subject to the trip's gender-mixing rules, so the client must not
+  // pre-block those seats ahead of the API. Availability (booked / locked /
+  // out of range) is still enforced.
   static bool canSelectSeat({
     required TripModel trip,
     required int seatNumber,
     required String userGender,
+    bool isFamilyBooking = false,
   }) {
     if (seatNumber < 1 || seatNumber > trip.totalSeats) {
       return false;
@@ -26,8 +32,9 @@ class SeatValidation {
       return false;
     }
 
-    // If gender mixing is not prevented, allow selection
-    if (!trip.seatLayout.preventGenderMixing) {
+    // If gender mixing is not prevented — or this is a family booking, which
+    // is exempt from those rules — allow selection.
+    if (!trip.seatLayout.preventGenderMixing || isFamilyBooking) {
       return true;
     }
 
@@ -111,6 +118,7 @@ class SeatValidation {
   static List<int> getAvailableSeats({
     required TripModel trip,
     required String userGender,
+    bool isFamilyBooking = false,
   }) {
     final availableSeats = <int>[];
 
@@ -119,6 +127,7 @@ class SeatValidation {
         trip: trip,
         seatNumber: i,
         userGender: userGender,
+        isFamilyBooking: isFamilyBooking,
       )) {
         availableSeats.add(i);
       }
@@ -132,6 +141,7 @@ class SeatValidation {
     required TripModel trip,
     required int seatNumber,
     String? userGender,
+    bool isFamilyBooking = false,
   }) {
     if (seatNumber < 1 || seatNumber > trip.totalSeats) {
       return SeatStatus.invalid;
@@ -154,6 +164,7 @@ class SeatValidation {
         trip: trip,
         seatNumber: seatNumber,
         userGender: userGender,
+        isFamilyBooking: isFamilyBooking,
       )) {
         return SeatStatus.available;
       } else {

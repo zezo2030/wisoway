@@ -21,6 +21,11 @@ import { AuthService } from './auth.service';
 import { DeviceFingerprintService } from './device-fingerprint.service';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import {
+  DriverVerifyPhoneDto,
+  RegisterDriverDto,
+} from './dto/register-driver.dto';
+import { UpdatePendingDriverRegistrationDto } from './dto/update-pending-driver-registration.dto';
 import { SignInDto } from './dto/sign-in.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { VerifyResetOtpDto } from './dto/verify-reset-otp.dto';
@@ -62,6 +67,63 @@ export class AuthController {
   })
   async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
     return this.authService.verifyOtp(verifyOtpDto);
+  }
+
+  @Post('driver/verify-phone')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Verify a driver phone via OTP without creating an account — returns a short-lived registration token',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Phone verified, registration token issued',
+  })
+  @ApiResponse({
+    status: HttpStatus.CONFLICT,
+    description: 'Phone number is already registered',
+  })
+  async driverVerifyPhone(@Body() dto: DriverVerifyPhoneDto) {
+    return this.authService.driverVerifyPhone(dto);
+  }
+
+  @Post('driver/register')
+  @Public()
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary:
+      'Create the driver account and vehicle atomically (final registration step)',
+  })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Driver account created, tokens issued',
+  })
+  async registerDriver(@Body() dto: RegisterDriverDto) {
+    return this.authService.registerDriver(dto);
+  }
+
+  @Patch('driver/registration')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Update the submitted driver details/documents while the account is pending approval',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Registration updated; account stays pending',
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Not a driver, or the driver is already approved',
+  })
+  async updatePendingDriverRegistration(
+    @CurrentUser('id') userId: string,
+    @Body() dto: UpdatePendingDriverRegistrationDto,
+  ) {
+    return this.authService.updatePendingRegistration(userId, dto);
   }
 
   @Post('refresh')
@@ -178,7 +240,10 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.GONE)
   @ApiOperation({ summary: '[UNUSED] Registration happens through OTP verify' })
-  @ApiResponse({ status: HttpStatus.GONE, description: 'Use send-otp/verify-otp' })
+  @ApiResponse({
+    status: HttpStatus.GONE,
+    description: 'Use send-otp/verify-otp',
+  })
   register() {
     throw new HttpException(
       {
@@ -193,7 +258,9 @@ export class AuthController {
   @Post('login')
   @Public()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Login with phone number for users or email for admins' })
+  @ApiOperation({
+    summary: 'Login with phone number for users or email for admins',
+  })
   login(@Body() signInDto: SignInDto) {
     return this.authService.login(signInDto);
   }

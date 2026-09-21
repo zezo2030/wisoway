@@ -140,6 +140,56 @@ class SeatLayoutHelpers {
     return sum + col + 1;
   }
 
+  /// Visible cabin rows for [availableSeatCount], filling front → back.
+  ///
+  /// Rows after the last one holding a selected seat are omitted entirely, so
+  /// the cabin preview grows/shrinks with the count. Unused slots inside the
+  /// last visible row stay in the list flagged as unavailable.
+  ///
+  /// Clamps the count to `1..max`; returns an empty list when [rowCounts] is
+  /// empty or holds no seats.
+  static List<ProgressiveCabinRow> progressiveCabinRows({
+    required List<int> rowCounts,
+    required int availableSeatCount,
+  }) {
+    if (rowCounts.isEmpty) return const [];
+
+    final maxSeats = rowCounts.fold<int>(0, (sum, n) => sum + n);
+    if (maxSeats <= 0) return const [];
+
+    var selected = availableSeatCount;
+    if (selected < 1) selected = 1;
+    if (selected > maxSeats) selected = maxSeats;
+
+    // Last layout row index that contains a selected passenger seat.
+    var covered = 0;
+    var lastVisibleRow = 0;
+    for (var i = 0; i < rowCounts.length; i++) {
+      covered += rowCounts[i];
+      lastVisibleRow = i;
+      if (covered >= selected) break;
+    }
+
+    var seatIndex = 0;
+    final rows = <ProgressiveCabinRow>[];
+    for (var row = 0; row <= lastVisibleRow; row++) {
+      final count = rowCounts[row];
+      final passengers = <ProgressiveCabinSeat>[];
+      for (var col = 0; col < count; col++) {
+        passengers.add(ProgressiveCabinSeat(isAvailable: seatIndex < selected));
+        seatIndex++;
+      }
+      rows.add(
+        ProgressiveCabinRow(
+          layoutRowIndex: row,
+          showDriver: row == 0,
+          passengerSeats: passengers,
+        ),
+      );
+    }
+    return rows;
+  }
+
   /// Parse `row-col` from API; returns null if invalid.
   static SeatLayoutCoords? parseBackendSeatId(String id) {
     final parts = id.split('-');
@@ -156,4 +206,30 @@ class SeatLayoutCoords {
   final int col;
 
   const SeatLayoutCoords(this.row, this.col);
+}
+
+/// One passenger slot in a visible cabin row.
+class ProgressiveCabinSeat {
+  const ProgressiveCabinSeat({required this.isAvailable});
+
+  /// False for slots the driver did not publish (drawn as an inactive outline).
+  final bool isAvailable;
+}
+
+/// A cabin row that should be drawn for the current seat count.
+class ProgressiveCabinRow {
+  const ProgressiveCabinRow({
+    required this.layoutRowIndex,
+    required this.showDriver,
+    required this.passengerSeats,
+  });
+
+  /// Index into the full vehicle `rowCounts` list.
+  final int layoutRowIndex;
+
+  /// True only when [layoutRowIndex] == 0; the placeholder is never counted.
+  final bool showDriver;
+
+  /// Full width of this layout row, including inactive trailing slots.
+  final List<ProgressiveCabinSeat> passengerSeats;
 }

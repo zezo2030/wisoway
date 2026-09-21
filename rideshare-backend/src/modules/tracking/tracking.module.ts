@@ -14,6 +14,7 @@ import { TrackingService } from './tracking.service';
 import { WsAuthGuard } from '../../common/guards/ws-auth.guard';
 import { WsRateLimitGuard } from '../../common/guards/ws-rate-limit.guard';
 import { LocationGuardInterceptor } from '../../common/interceptors/location-guard.interceptor';
+import { LocationsModule } from '../locations/locations.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { LocationGuardInterceptor } from '../../common/interceptors/location-gua
       AccountFlagEntity,
     ]),
     ConfigModule,
+    LocationsModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

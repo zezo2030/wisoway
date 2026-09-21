@@ -1,5 +1,8 @@
+import 'package:flutter/foundation.dart';
+
 import '../../models/trip_model.dart';
 import '../../models/location_model.dart';
+import '../../models/trip_fee_quote.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
 
@@ -49,6 +52,8 @@ class TripService {
     List<LocationModel>? stops,
     String? notes,
     Map<String, dynamic>? recurrence,
+    int? availableSeats,
+    bool? preventGenderMixing,
   }) async {
     try {
       final body = <String, dynamic>{
@@ -66,6 +71,9 @@ class TripService {
               .toList(),
         if (notes != null && notes.isNotEmpty) 'notes': notes,
         if (recurrence != null) 'recurrence': recurrence,
+        if (availableSeats != null) 'availableSeats': availableSeats,
+        if (preventGenderMixing != null)
+          'preventGenderMixing': preventGenderMixing,
       };
 
       final response = await _api.post(ApiEndpoints.trips, data: body);
@@ -100,6 +108,31 @@ class TripService {
       return null;
     } catch (e) {
       print('❌ Error getting pricing preview: $e');
+      return null;
+    }
+  }
+
+  /// Driver-side fee preview at publish time (before the trip exists), used
+  /// on the create-trip review step. `percent` mirrors the backend's
+  /// configured `driverUnlockPercent` — never hardcode it client-side.
+  /// Returns null on failure; the caller keeps the fee line in a neutral
+  /// unavailable state rather than blocking publish.
+  Future<TripFeeQuote?> getTripFeeQuote({
+    required double seatPrice,
+    required int totalSeats,
+  }) async {
+    try {
+      final response = await _api.get(
+        ApiEndpoints.feeQuote,
+        queryParameters: {'seatPrice': seatPrice, 'totalSeats': totalSeats},
+      );
+      final data = response is Map ? (response['data'] ?? response) : response;
+      if (data is Map) {
+        return TripFeeQuote.fromJson(Map<String, dynamic>.from(data));
+      }
+      return null;
+    } catch (e) {
+      debugPrint('❌ Error getting trip fee quote: $e');
       return null;
     }
   }
@@ -268,8 +301,14 @@ class TripService {
   /// Driver presses "تم الوصول للوجهة" — marks the trip as completed.
   /// The trip auto-transitions to IN_PROGRESS at departureTime server-side, so
   /// there is no longer a manual "Start Trip" action.
-  Future<void> markTripArrived(String tripId) async {
-    await _api.post(ApiEndpoints.arriveTrip(tripId));
+  /// Returns the completed trip payload including optional `settlement`.
+  Future<Map<String, dynamic>> markTripArrived(String tripId) async {
+    final response = await _api.post(ApiEndpoints.arriveTrip(tripId));
+    final raw = response is Map ? (response['data'] ?? response) : response;
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
+    return {'id': tripId};
   }
 
   /// Driver: lock seat (external booking) or unlock back to available.

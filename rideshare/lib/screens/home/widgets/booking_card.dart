@@ -248,7 +248,7 @@ class BookingCard extends StatelessWidget {
                     ),
                   ),
                 ],
-                if (booking.hasDriverPaidToContact && !isPastTrip) ...[
+                if (!isPastTrip) ...[
                   const SizedBox(height: 16),
                   Row(
                     children: [

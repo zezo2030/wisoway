@@ -20,8 +20,11 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
+import { AdminAlertsService } from './admin-alerts.service';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserRole } from '../users/schemas/user.schema';
+import { UpdateAlertPreferenceDto } from './dto/alert-preferences.dto';
 import {
   AdminUserQueryDto,
   AdminTripQueryDto,
@@ -44,7 +47,10 @@ import {
 @Controller('admin')
 @Roles(UserRole.ADMIN)
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly adminAlertsService: AdminAlertsService,
+  ) {}
 
   /**
    * GET /admin/dashboard/stats
@@ -515,6 +521,27 @@ export class AdminController {
   })
   async broadcastNotification(@Body() dto: BroadcastNotificationDto) {
     return this.adminService.broadcastNotification(dto);
+  }
+
+  @Get('alert-preferences')
+  @ApiOperation({ summary: 'Get admin alert preferences' })
+  async getAlertPreferences(@CurrentUser('id') userId: string) {
+    return {
+      preferences: await this.adminAlertsService.getPreferences(userId),
+    };
+  }
+
+  @Patch('alert-preferences')
+  @ApiOperation({ summary: 'Update one admin alert preference' })
+  async updateAlertPreference(
+    @CurrentUser('id') userId: string,
+    @Body() dto: UpdateAlertPreferenceDto,
+  ) {
+    return this.adminAlertsService.setPreference(
+      userId,
+      dto.alertType,
+      dto.enabled,
+    );
   }
 
   // ============= CHAT MONITORING =============

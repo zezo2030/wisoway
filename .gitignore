@@ -156,3 +156,6 @@ rideshare-backend/config/firebase-adminsdk.json
 *.db
 *.sqlite
 *.sqlite3
+
+# Runtime-uploaded files (not source)
+rideshare-backend/uploads/

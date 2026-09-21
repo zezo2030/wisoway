@@ -1,63 +1,67 @@
 /**
- * T135 — Contract test: chat gating (REST + WebSocket)
+ * T135 — Contract test: chat is ungated (REST + WebSocket)
  *
- * Covers:
+ * The driver-payment contact gate was removed: the platform fee is charged
+ * once at trip start (Tasks 1-5) and unlocks nothing. Covers the same five
+ * cases this contract has always swept, inverted:
  *  1. REST: POST /chat/rooms/trip/:tripId/passenger/:passengerId returns
- *     403 BOOKING_NOT_SETTLED when the booking is not settled.
- *  2. REST: POST /chat/rooms/:id/messages returns 403 BOOKING_NOT_SETTLED
- *     when the underlying booking is not settled.
- *  3. REST: same endpoints return 200 / 201 when the booking IS settled.
- *  4. WebSocket: new connection to /chat namespace is closed with code 4403
- *     when the underlying booking is not settled.
- *  5. WebSocket: connection stays open when booking is settled.
- *
- * Intentionally FAILS before T148 (chat gating) lands.
+ *     200 for a confirmed booking regardless of payment.
+ *  2. REST: POST /chat/rooms/:id/messages returns 201 regardless of payment.
+ *  3. REST: same endpoints still return 200 / 201 once the driver has been
+ *     charged — charging changes nothing about access.
+ *  4. WebSocket: a new connection to the /chat namespace stays open for a
+ *     confirmed booking regardless of payment.
+ *  5. WebSocket: connection also stays open once the driver has been charged.
  */
 
-describe('Chat gating — REST + WebSocket (Contract)', () => {
-  describe('REST endpoints — unsettled booking', () => {
-    it('should return 403 BOOKING_NOT_SETTLED on GET room for driver-passenger when unsettled', () => {
-      const errorShape = {
-        statusCode: 403,
-        code: 'BOOKING_NOT_SETTLED',
-        message: expect.any(String),
-      };
-
-      expect(errorShape.code).toBe('BOOKING_NOT_SETTLED');
-    });
-
-    it('should return 403 BOOKING_NOT_SETTLED on POST /chat/rooms/:id/messages when unsettled', () => {
-      const errorShape = {
-        statusCode: 403,
-        code: 'BOOKING_NOT_SETTLED',
-      };
-
-      expect(errorShape.code).toBe('BOOKING_NOT_SETTLED');
-    });
-  });
-
-  describe('REST endpoints — settled booking', () => {
-    it('should return 200 on GET room when booking is settled', () => {
+describe('Chat gating — ungated REST + WebSocket (Contract)', () => {
+  describe('REST endpoints — driver not yet charged', () => {
+    it('should return 200 on GET room for driver-passenger regardless of payment', () => {
       const response = { statusCode: 200 };
       expect(response.statusCode).toBe(200);
     });
 
-    it('should return 201 on POST /chat/rooms/:id/messages when booking is settled', () => {
+    it('should return 201 on POST /chat/rooms/:id/messages regardless of payment', () => {
+      const response = { statusCode: 201 };
+      expect(response.statusCode).toBe(201);
+    });
+  });
+
+  describe('REST endpoints — driver already charged', () => {
+    it('should still return 200 on GET room once the driver has been charged', () => {
+      const response = { statusCode: 200 };
+      expect(response.statusCode).toBe(200);
+    });
+
+    it('should still return 201 on POST /chat/rooms/:id/messages once the driver has been charged', () => {
       const response = { statusCode: 201 };
       expect(response.statusCode).toBe(201);
     });
   });
 
   describe('WebSocket gateway', () => {
-    it('should close the WS connection with code 4403 when joining an unsettled chat room', () => {
-      // WS 4403 is the custom code per settlement-and-calls.contract.md.
-      const closeCode = 4403;
-      expect(closeCode).toBe(4403);
-    });
-
-    it('should keep the WS connection open when the booking is settled', () => {
+    it('should keep the WS connection open when joining a confirmed-booking chat room, regardless of payment', () => {
       const connectionOpen = true;
       expect(connectionOpen).toBe(true);
+    });
+
+    it('should keep the WS connection open once the driver has been charged', () => {
+      const connectionOpen = true;
+      expect(connectionOpen).toBe(true);
+    });
+  });
+
+  describe('BOOKING_NOT_SETTLED is never returned for chat access', () => {
+    it('does not appear in any chat error shape', () => {
+      // Chat gating no longer inspects payment state at all, so neither the
+      // old BOOKING_NOT_SETTLED code nor its COMMUNICATION_FEE_REQUIRED
+      // sibling can be thrown for an otherwise-valid participant.
+      const errorCodesChatCanReturnForPaymentState: string[] = [];
+
+      expect(errorCodesChatCanReturnForPaymentState).not.toContain(
+        'BOOKING_NOT_SETTLED',
+      );
+      expect(errorCodesChatCanReturnForPaymentState).toHaveLength(0);
     });
   });
 });

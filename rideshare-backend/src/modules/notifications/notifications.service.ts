@@ -222,29 +222,44 @@ export class NotificationsService {
       body?: string;
       type: string;
       data?: Record<string, unknown>;
+      targetPlatforms?: string[];
     },
-  ): Promise<void> {
+  ): Promise<{ successCount: number; failureCount: number }> {
     this.ensureFirebase();
     if (!this.firebaseReady) {
-      return;
+      return { successCount: 0, failureCount: 0 };
     }
 
     try {
+      const targetPlatforms = payload.targetPlatforms;
       const tokens = await this.deviceTokenRepo.find({
         where: { userId, isActive: true },
       });
+      const targetTokens = targetPlatforms?.length
+        ? tokens.filter((token) => targetPlatforms.includes(token.platform))
+        : tokens;
 
-      if (tokens.length === 0) {
+      if (targetTokens.length === 0) {
         this.logger.debug(
           `User ${userId} has no active device tokens, skipping push`,
         );
-        return;
+        return { successCount: 0, failureCount: 0 };
       }
 
-      const tokenStrings = tokens.map((t) => t.token);
-      const data = this.buildFcmData(userId, payload);
+      const tokenStrings = targetTokens.map((t) => t.token);
+      const data = this.buildFcmData(userId, {
+        ...payload,
+        data: {
+          ...(payload.data ?? {}),
+          title: payload.title,
+          ...(payload.body ? { body: payload.body } : {}),
+        },
+      });
 
       const collapseKey = this.resolveCollapseKey(payload);
+      const isAndroidCustomRich =
+        payload.type === 'booking_created' ||
+        payload.type === 'instant_offer';
       const androidNotification: admin.messaging.AndroidNotification = {
         channelId: 'rideshare_notifications',
       };
@@ -256,40 +271,74 @@ export class NotificationsService {
         apnsHeaders['apns-collapse-id'] = collapseKey;
       }
 
+      const webpush: admin.messaging.WebpushConfig | undefined =
+        targetPlatforms?.includes('web')
+          ? {
+              fcmOptions:
+                typeof payload.data?.link === 'string'
+                  ? { link: payload.data.link }
+                  : undefined,
+              notification: {
+                title: payload.title,
+                body: payload.body,
+              },
+            }
+          : undefined;
+
+      // booking_created / instant_offer: Android is data-only so
+      // VisionWayMessagingService can render the rich custom layout.
+      // iOS still gets a visible APNS alert.
+      const messageBase: Omit<
+        admin.messaging.Message,
+        'token' | 'tokens'
+      > = {
+        data,
+        ...(webpush ? { webpush } : {}),
+        android: {
+          priority: 'high',
+          ...(collapseKey ? { collapseKey } : {}),
+          ...(isAndroidCustomRich
+            ? {}
+            : { notification: androidNotification }),
+        },
+        apns: {
+          ...(Object.keys(apnsHeaders).length
+            ? { headers: apnsHeaders }
+            : {}),
+          payload: {
+            aps: {
+              alert: { title: payload.title, body: payload.body },
+              sound: 'default',
+            },
+          },
+        },
+        ...(isAndroidCustomRich
+          ? {}
+          : {
+              notification: { title: payload.title, body: payload.body },
+            }),
+      };
+
       if (tokenStrings.length === 1) {
         await admin.messaging().send({
           token: tokenStrings[0],
-          notification: { title: payload.title, body: payload.body },
-          data,
-          android: {
-            priority: 'high',
-            ...(collapseKey ? { collapseKey } : {}),
-            notification: androidNotification,
-          },
-          apns: {
-            ...(Object.keys(apnsHeaders).length ? { headers: apnsHeaders } : {}),
-            payload: { aps: { sound: 'default' } },
-          },
+          ...messageBase,
         });
+        return { successCount: 1, failureCount: 0 };
       } else {
-        await admin.messaging().sendEachForMulticast({
+        const response = await admin.messaging().sendEachForMulticast({
           tokens: tokenStrings,
-          notification: { title: payload.title, body: payload.body },
-          data,
-          android: {
-            priority: 'high',
-            ...(collapseKey ? { collapseKey } : {}),
-            notification: androidNotification,
-          },
-          apns: {
-            ...(Object.keys(apnsHeaders).length ? { headers: apnsHeaders } : {}),
-            payload: { aps: { sound: 'default' } },
-          },
+          ...messageBase,
         });
+        return {
+          successCount: response.successCount,
+          failureCount: response.failureCount,
+        };
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Failed to send push notification: ${message}`);
+      return { successCount: 0, failureCount: 1 };
     }
   }
 
@@ -357,6 +406,47 @@ export class NotificationsService {
     };
   }
 
+  async registerWebToken(
+    userId: string,
+    dto: { token: string; userAgent?: string },
+  ): Promise<{ ok: true }> {
+    const now = new Date();
+    let existing = await this.deviceTokenRepo.findOne({
+      where: { token: dto.token },
+    });
+
+    if (existing) {
+      existing.userId = userId;
+      existing.platform = 'web';
+      existing.userAgent = dto.userAgent ?? existing.userAgent ?? null;
+      existing.isActive = true;
+      existing.lastSeenAt = now;
+    } else {
+      existing = this.deviceTokenRepo.create({
+        userId,
+        token: dto.token,
+        platform: 'web',
+        userAgent: dto.userAgent ?? null,
+        isActive: true,
+        lastSeenAt: now,
+      });
+    }
+
+    await this.deviceTokenRepo.save(existing);
+    return { ok: true };
+  }
+
+  async deregisterWebToken(
+    userId: string,
+    token: string,
+  ): Promise<{ ok: true }> {
+    await this.deviceTokenRepo.update(
+      { userId, token, platform: 'web' },
+      { isActive: false },
+    );
+    return { ok: true };
+  }
+
   async deregisterDevice(userId: string, token: string): Promise<void> {
     const device = await this.deviceTokenRepo.findOne({
       where: { token },
@@ -391,28 +481,107 @@ export class NotificationsService {
 
   // ─── Booking Trigger Methods (T031-T033) ───
 
+  private formatDepartureLabelAr(departureTime: Date): string {
+    const departure = new Date(departureTime);
+    const hours = departure.getHours().toString().padStart(2, '0');
+    const minutes = departure.getMinutes().toString().padStart(2, '0');
+    const time = `${hours}:${minutes}`;
+
+    const now = new Date();
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const startOfDeparture = new Date(
+      departure.getFullYear(),
+      departure.getMonth(),
+      departure.getDate(),
+    );
+    const dayDiff = Math.round(
+      (startOfDeparture.getTime() - startOfToday.getTime()) / 86_400_000,
+    );
+
+    if (dayDiff === 0) return `اليوم ${time}`;
+    if (dayDiff === 1) return `غداً ${time}`;
+
+    const day = departure.getDate().toString().padStart(2, '0');
+    const month = (departure.getMonth() + 1).toString().padStart(2, '0');
+    return `${day}/${month} ${time}`;
+  }
+
+  private tripDistanceKm(trip: TripEntity): number | null {
+    const from = trip.fromPoint?.coordinates;
+    const to = trip.toPoint?.coordinates;
+    if (!from || !to || from.length < 2 || to.length < 2) {
+      return null;
+    }
+    const [lng1, lat1] = from;
+    const [lng2, lat2] = to;
+    const toRad = (value: number) => (value * Math.PI) / 180;
+    const earthRadiusKm = 6371;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lng2 - lng1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) *
+        Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return Math.round(earthRadiusKm * c);
+  }
+
   async notifyDriverOfNewBooking(bookingId: string): Promise<void> {
     try {
       const bookingRepo =
         this.notificationRepo.manager.getRepository(BookingEntity);
       const booking = await bookingRepo.findOne({
         where: { id: bookingId },
-        relations: ['trip'],
+        relations: ['trip', 'user'],
       });
       if (!booking) return;
 
       const trip = booking.trip;
       if (!trip) return;
 
-      await this.sendPush(trip.driverId, {
-        title: 'New Booking',
-        body: `A new booking was made on your trip to ${trip.toName}`,
+      const route = `${trip.fromName} - ${trip.toName}`;
+      const departureLabel = this.formatDepartureLabelAr(trip.departureTime);
+      const distanceKm = this.tripDistanceKm(trip);
+      const distanceLabel =
+        distanceKm != null ? `${distanceKm} كم` : undefined;
+      const meetingPoint = (trip.fromAddress || trip.fromName || '').trim();
+      const seatsLabel = `${trip.availableSeats} مقاعد`;
+      const title = 'تم حجز مقعد في رحلتك المشتركة';
+      const footerTitle = 'انضم راكب جديد إلى رحلتك المشتركة';
+      const footerSubtitle = 'سيتم إعلامك عند انضمام أي راكب آخر';
+
+      await this.create({
+        userId: trip.driverId,
+        title,
+        body: route,
         type: 'booking_created',
         data: {
           type: 'booking_created',
           screen: 'trip_details',
           entityId: trip.id,
+          tripId: trip.id,
           bookingId,
+          title,
+          route,
+          fromName: trip.fromName,
+          toName: trip.toName,
+          departureLabel,
+          ...(distanceKm != null ? { distanceKm: String(distanceKm) } : {}),
+          ...(distanceLabel ? { distanceLabel } : {}),
+          meetingPoint,
+          availableSeats: String(trip.availableSeats),
+          seatsLabel,
+          footerTitle,
+          footerSubtitle,
+          ...(booking.user?.name
+            ? { passengerName: booking.user.name }
+            : {}),
         },
       });
 

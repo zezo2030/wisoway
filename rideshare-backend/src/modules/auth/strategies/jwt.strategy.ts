@@ -59,10 +59,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     if (did) {
-      const activeDevice = await this.deviceFingerprintService.findActiveDeviceById(
-        user.id,
-        did,
-      );
+      const activeDevice =
+        await this.deviceFingerprintService.findActiveDeviceById(user.id, did);
       if (!activeDevice) {
         throw new UnauthorizedException('Device session is no longer active');
       }

@@ -63,9 +63,9 @@ export class PreTripConfirmProcessor {
       await this.notificationsService
         .create({
           userId: booking.userId,
-          type: 'pre_trip_confirm',
-          title: 'Is the driver here?',
-          body: `Your trip to ${trip.toName} departs soon. Please confirm the driver is present.`,
+          type: 'presence_prompt',
+          title: 'تأكيد التواجد في السيارة',
+          body: `رحلتك إلى ${trip.toName} ستبدأ قريبًا. يرجى تأكيد تواجدك داخل السيارة.`,
           data: { tripId, bookingId: booking.id },
         })
         .catch((err: Error) =>
@@ -78,9 +78,9 @@ export class PreTripConfirmProcessor {
     await this.notificationsService
       .create({
         userId: trip.driverId,
-        type: 'pre_trip_driver_prompt',
-        title: 'Confirm passenger presence',
-        body: `Your trip to ${trip.toName} departs soon. Please confirm each passenger is present.`,
+        type: 'presence_driver_prompt',
+        title: 'تأكيد تواجد الركاب',
+        body: `رحلتك إلى ${trip.toName} ستبدأ قريبًا. يرجى مراجعة تواجد الركاب.`,
         data: { tripId },
       })
       .catch((err: Error) =>

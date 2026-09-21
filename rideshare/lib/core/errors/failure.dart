@@ -22,6 +22,7 @@ enum FailureAction {
   reauthenticate,
   openSettings,
   viewPendingCharges,
+  topUpWallet,
 }
 
 class Failure extends Equatable {
@@ -41,6 +42,12 @@ class Failure extends Equatable {
   final int? outstandingCount;
   final double? outstandingTotal;
 
+  /// Only populated when messageKey == 'errorsInsufficientBalanceForTripFee'
+  /// (publishing a trip returned 403 INSUFFICIENT_BALANCE_FOR_TRIP_FEE).
+  final double? insufficientFeeBalance;
+  final double? insufficientFeeRequiredAmount;
+  final String? insufficientFeeCurrency;
+
   const Failure({
     required this.category,
     required this.messageKey,
@@ -53,6 +60,9 @@ class Failure extends Equatable {
     this.supportWhatsApp,
     this.outstandingCount,
     this.outstandingTotal,
+    this.insufficientFeeBalance,
+    this.insufficientFeeRequiredAmount,
+    this.insufficientFeeCurrency,
   });
 
   @override
@@ -68,5 +78,8 @@ class Failure extends Equatable {
         supportWhatsApp,
         outstandingCount,
         outstandingTotal,
+        insufficientFeeBalance,
+        insufficientFeeRequiredAmount,
+        insufficientFeeCurrency,
       ];
 }

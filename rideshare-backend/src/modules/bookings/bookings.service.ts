@@ -492,10 +492,27 @@ export class BookingsService {
     }
 
     const countQb = qb.clone();
-    const [data, total] = await Promise.all([
+    const [rawData, total] = await Promise.all([
       qb.skip(skip).take(limit).getMany(),
       countQb.getCount(),
     ]);
+
+    // BACKWARD COMPATIBILITY — DO NOT "CLEAN THIS UP".
+    // Same reason as the identical coercion in findByTrip below, for the
+    // passenger side: GET /bookings/my feeds booking_card.dart, and app builds
+    // that predate the ungating gate their chat and call buttons on
+    // hasDriverPaidToContact. The column is now only an audit stamp of when the
+    // platform fee was charged, and it stays false until trip start, so
+    // returning the stored value would strip contact from every passenger who
+    // has not updated yet — the opposite of what this branch is for.
+    // Coerced on a shallow copy, never on the loaded entity, so nothing can
+    // persist the forced value back to the row. The admin dashboard reads the
+    // real stored flag through a different path (admin-dashboard.service.ts).
+    // Remove only once the pre-ungating app builds are out of circulation.
+    const data = rawData.map((b) => ({
+      ...b,
+      hasDriverPaidToContact: true,
+    }));
 
     return {
       data,
@@ -536,32 +553,27 @@ export class BookingsService {
       this.bookingRepo.count({ where: { tripId } }),
     ]);
 
-    // Reveal passenger info + enable chat/call once the driver has paid the
-    // trip fee — for any booking on the trip, regardless of status. The
-    // mirror flag (`hasDriverPaidToContact`) is normally kept in sync at
-    // booking-create / accept / confirm and at trip-fee-payment time; the
-    // `trip.driverWalletChargeApplied` fallback guards against a stale
-    // mirror.
-    const data = rawData.map((b) => {
-      const unlocked =
-        b.hasDriverPaidToContact === true ||
-        b.trip?.driverWalletChargeApplied === true;
-      if (unlocked) {
-        return {
-          ...b,
-          hasDriverPaidToContact: true,
-          chatEnabled: true,
-          callEnabled: true,
-        };
-      }
-      return {
-        ...b,
-        user: null as unknown as BookingEntity['user'],
-        hasDriverPaidToContact: false,
-        chatEnabled: false,
-        callEnabled: false,
-      };
-    });
+    // Passenger identity and chat/call are always open to the trip's driver
+    // for every booking on the trip, regardless of status — the platform fee
+    // is charged once at trip start and does not gate contact access.
+    //
+    // BACKWARD COMPATIBILITY — DO NOT "CLEAN THIS UP".
+    // `hasDriverPaidToContact` is now only an audit stamp of when the fee was
+    // charged, and it stays false on every trip until trip start. App builds
+    // that predate the ungating still branch their roster on this flag, so
+    // returning the stored value here would mask passenger names and hide the
+    // call/chat buttons for every driver who has not updated yet — a *more*
+    // locked roster after deploy than before it. Forcing it true on this
+    // driver-facing response keeps those builds working. The admin dashboard's
+    // audit view reads the real stored flag through a different path
+    // (admin-dashboard.service.ts) and is unaffected.
+    // Remove only once the pre-ungating app builds are out of circulation.
+    const data = rawData.map((b) => ({
+      ...b,
+      hasDriverPaidToContact: true,
+      chatEnabled: true,
+      callEnabled: true,
+    }));
 
     return {
       data,
@@ -651,6 +663,13 @@ export class BookingsService {
   ): Promise<BookingEntity> {
     const { tripId, seats: seatDtos, sharePhoneWithDriver = false } = dto;
 
+    // Family bookings are exempt from prevent-gender-mixing rules, but the
+    // exemption only makes sense for a group travelling together.
+    const isFamilyBooking = dto.isFamilyBooking === true;
+    if (isFamilyBooking && seatDtos.length < 2) {
+      throw new BadRequestException('Family booking requires at least 2 seats');
+    }
+
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
     if (!trip) throw new NotFoundException('Trip not found');
     if (trip.driverId === userId)
@@ -676,8 +695,8 @@ export class BookingsService {
         throw new BadRequestException(`Seat ${sd.seatNumber} is not available`);
     }
 
-    // Gender-adjacency check (if enabled on the trip)
-    if (trip.seatLayout?.preventGenderMixing) {
+    // Gender-adjacency check (if enabled on the trip, and not a family booking)
+    if (trip.seatLayout?.preventGenderMixing && !isFamilyBooking) {
       const proposed = seatDtos.map((sd) => ({
         seatNumber: sd.seatNumber,
         gender: sd.gender,
@@ -754,6 +773,7 @@ export class BookingsService {
         status: BookingStatus.PENDING,
         hasDriverPaidToContact: !!tripInTx.driverWalletChargeApplied,
         sharePhoneWithDriver,
+        isFamilyBooking,
         seatCount,
         totalAmount,
         seatPriceAtBooking: String(seatPricing.seatPrice),
@@ -836,6 +856,7 @@ export class BookingsService {
     userId: string,
   ): Promise<BookingEntity> {
     const { tripId, seatCount, passengers, sharePhoneWithDriver } = dto;
+    const isFamilyBooking = dto.isFamilyBooking === true;
 
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
     if (!trip) throw new NotFoundException('Trip not found');
@@ -851,15 +872,21 @@ export class BookingsService {
     const tripSeats: any[] = trip.seats || [];
 
     const proposedGenders = passengers.map((p) => p.gender);
-    const validPositions = findValidStartPositions(
-      tripSeats,
-      proposedGenders,
-      seatLayout,
-    );
+    // Family groups are exempt from gender-adjacency rules, so they only need a
+    // contiguous run of free seats.
+    const validPositions = isFamilyBooking
+      ? this.findContiguousAvailablePositions(
+          tripSeats,
+          seatLayout,
+          passengers.length,
+        )
+      : findValidStartPositions(tripSeats, proposedGenders, seatLayout);
 
     if (validPositions.length === 0) {
       throw new BadRequestException(
-        'لا توجد مقاعد متاحة تلبي قواعد الفصل بين الجنسين.',
+        isFamilyBooking
+          ? 'لا توجد مقاعد متجاورة متاحة تكفي المجموعة.'
+          : 'لا توجد مقاعد متاحة تلبي قواعد الفصل بين الجنسين.',
       );
     }
 
@@ -873,9 +900,39 @@ export class BookingsService {
     }));
 
     return this.createMultiSeat(
-      { tripId, seats, sharePhoneWithDriver },
+      { tripId, seats, sharePhoneWithDriver, isFamilyBooking },
       userId,
     );
+  }
+
+  /**
+   * Contiguous-run search used by `autoPick` for family bookings: identical to
+   * `findValidStartPositions` minus the gender-adjacency filter.
+   */
+  private findContiguousAvailablePositions(
+    tripSeats: any[],
+    seatLayout: any,
+    count: number,
+  ): Array<{ row: number; startCol: number }> {
+    const rowSeatCounts = this.getRowSeatCounts(seatLayout, tripSeats);
+    const results: Array<{ row: number; startCol: number }> = [];
+
+    for (let row = 0; row < rowSeatCounts.length; row++) {
+      const rowSize = rowSeatCounts[row] ?? 0;
+      if (rowSize < count) continue;
+
+      for (let startCol = 0; startCol <= rowSize - count; startCol++) {
+        const allAvailable = Array.from({ length: count }).every(
+          (_, offset) => {
+            const seat = this.findSeat(tripSeats, row, startCol + offset);
+            return !seat || seat.status === 'available';
+          },
+        );
+        if (allAvailable) results.push({ row, startCol });
+      }
+    }
+
+    return results;
   }
 
   // ── T070: accept ──────────────────────────────────────────────────────────

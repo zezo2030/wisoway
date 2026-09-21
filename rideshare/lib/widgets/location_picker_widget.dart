@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:uuid/uuid.dart';
 import '../models/location_model.dart';
 import '../core/services/location_service.dart';
 import '../core/theme/colors.dart';
@@ -32,6 +35,11 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
   bool _isGettingAddress = false;
   bool _isSearching = false;
   String? _mapError;
+
+  final String _sessionToken = const Uuid().v4();
+  Timer? _suggestionsDebounce;
+  List<PlaceSuggestion> _suggestions = const [];
+  bool _isLoadingSuggestions = false;
 
   @override
   void initState() {
@@ -142,9 +150,13 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
   }
 
   void _onMapTap(LatLng position) async {
+    _suggestionsDebounce?.cancel();
+    _searchFocusNode.unfocus();
     setState(() {
       _selectedLocation = position;
       _isGettingAddress = true;
+      _suggestions = const [];
+      _isLoadingSuggestions = false;
     });
 
     try {
@@ -234,11 +246,93 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
     }
   }
 
+  void _onSearchChanged(String value) {
+    _suggestionsDebounce?.cancel();
+
+    final query = value.trim();
+    if (query.length < 2) {
+      setState(() {
+        _suggestions = const [];
+        _isLoadingSuggestions = false;
+      });
+      return;
+    }
+
+    _suggestionsDebounce = Timer(const Duration(milliseconds: 280), () {
+      _loadSuggestions(query);
+    });
+  }
+
+  Future<void> _loadSuggestions(String query) async {
+    setState(() => _isLoadingSuggestions = true);
+    try {
+      final result = await _locationService.autocomplete(
+        query: query,
+        sessionToken: _sessionToken,
+        latitude: _selectedLocation?.latitude,
+        longitude: _selectedLocation?.longitude,
+      );
+      if (!mounted) return;
+      // Ignore stale responses arriving after the field was cleared
+      if (_searchController.text.trim().length < 2) return;
+      setState(() {
+        _suggestions = result.suggestions;
+        _isLoadingSuggestions = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _suggestions = const [];
+        _isLoadingSuggestions = false;
+      });
+    }
+  }
+
+  Future<void> _selectSuggestion(PlaceSuggestion suggestion) async {
+    _suggestionsDebounce?.cancel();
+    _searchFocusNode.unfocus();
+    setState(() {
+      _suggestions = const [];
+      _isLoadingSuggestions = false;
+      _isSearching = true;
+    });
+
+    try {
+      final location = await _locationService.placeDetail(
+        placeId: suggestion.placeId,
+        sessionToken: _sessionToken,
+      );
+      if (!mounted) return;
+      final position = LatLng(location.latitude, location.longitude);
+      setState(() {
+        _selectedLocation = position;
+        _selectedAddress = location.address ?? location.name;
+        _isSearching = false;
+      });
+      _searchController.text = location.name;
+      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(position, 15));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSearching = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.locationSearchError(e.toString())),
+          backgroundColor: T.error(context),
+        ),
+      );
+    }
+  }
+
   Future<void> _searchByAddress() async {
     final query = _searchController.text.trim();
     if (query.isEmpty) return;
 
-    setState(() => _isSearching = true);
+    _suggestionsDebounce?.cancel();
+    setState(() {
+      _isSearching = true;
+      _suggestions = const [];
+      _isLoadingSuggestions = false;
+    });
     try {
       final location = await _locationService.getCoordinatesFromAddress(query);
       if (!mounted) return;
@@ -315,6 +409,7 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                           ),
                         ),
                         textDirection: TextDirection.rtl,
+                        onChanged: _onSearchChanged,
                         onSubmitted: (_) => _searchByAddress(),
                       ),
                     ),
@@ -417,6 +512,14 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
                           // Optional: Handle camera movement
                         },
                       ),
+                      // Live search suggestions
+                      if (_isLoadingSuggestions || _suggestions.isNotEmpty)
+                        Positioned(
+                          top: 4,
+                          left: 12,
+                          right: 12,
+                          child: _buildSuggestionsOverlay(),
+                        ),
                       // Address Card
                       Positioned(
                         bottom: 0,
@@ -469,8 +572,56 @@ class _LocationPickerWidgetState extends State<LocationPickerWidget> {
     );
   }
 
+  Widget _buildSuggestionsOverlay() {
+    return Material(
+      color: T.surface(context),
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      elevation: 4,
+      child: _isLoadingSuggestions && _suggestions.isEmpty
+          ? const Padding(
+              padding: EdgeInsets.all(12),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            )
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: _suggestions.take(5).map((suggestion) {
+                return ListTile(
+                  dense: true,
+                  leading: Icon(
+                    Icons.place_outlined,
+                    color: T.primary(context),
+                  ),
+                  title: Text(
+                    suggestion.primaryText.isNotEmpty
+                        ? suggestion.primaryText
+                        : suggestion.description,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: suggestion.secondaryText.isEmpty
+                      ? null
+                      : Text(
+                          suggestion.secondaryText,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                  onTap: () => _selectSuggestion(suggestion),
+                );
+              }).toList(),
+            ),
+    );
+  }
+
   @override
   void dispose() {
+    _suggestionsDebounce?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();
     _mapController?.dispose();

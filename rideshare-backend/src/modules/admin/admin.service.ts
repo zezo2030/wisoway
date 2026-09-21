@@ -3,9 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   Logger,
-  OnModuleInit,
 } from '@nestjs/common';
-import { seedAdminUser } from './seeds/admin.seed';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { User, UserDocument, UserRole } from '../users/schemas/user.schema';
@@ -42,7 +40,7 @@ import {
 } from './dto/admin-query.dto';
 
 @Injectable()
-export class AdminService implements OnModuleInit {
+export class AdminService {
   private readonly logger = new Logger(AdminService.name);
 
   constructor(
@@ -59,16 +57,6 @@ export class AdminService implements OnModuleInit {
     private notificationModel: Model<NotificationDocument>,
     private notificationsService: NotificationsService,
   ) {}
-
-  async onModuleInit() {
-    this.logger.log('Checking for admin user...');
-    try {
-      const result = await seedAdminUser(this.userModel);
-      this.logger.log(result.message);
-    } catch (error) {
-      this.logger.error('Failed to seed admin user', error.stack);
-    }
-  }
 
   /**
    * Get dashboard statistics
@@ -484,7 +472,9 @@ export class AdminService implements OnModuleInit {
   }
 
   /**
-   * Verify or reject vehicle
+   * Verify or reject vehicle.
+   * Kept for backwards compatibility: the decision also applies to the
+   * owning driver account (single merged driver review).
    */
   async verifyVehicle(
     vehicleId: string,
@@ -492,33 +482,50 @@ export class AdminService implements OnModuleInit {
   ): Promise<Vehicle> {
     const vehicle = await this.vehicleModel
       .findByIdAndUpdate(vehicleId, { isVerified }, { new: true })
-      .populate('driverId', 'name email phoneNumber')
+      .populate('driverId', 'name email phoneNumber role isDriverApproved photoUrl')
       .exec();
 
     if (!vehicle) {
       throw new NotFoundException('Vehicle not found');
     }
 
+    // Keep the driver account in sync (merged review: one decision covers
+    // both the account and the vehicle).
+    const driver = await this.userModel.findById(
+      (vehicle.driverId as any)._id.toString(),
+    );
+    if (driver && driver.role === UserRole.DRIVER) {
+      if (isVerified && !driver.photoUrl) {
+        throw new BadRequestException(
+          'Driver profile photo is required before approval',
+        );
+      }
+      driver.isDriverApproved = isVerified;
+      await driver.save();
+    }
+
     // Notify driver of verification result
     await this.notificationsService.create({
       userId: (vehicle.driverId as any)._id.toString(),
-      type: isVerified ? 'vehicle_verified' : 'vehicle_rejected',
-      title: isVerified ? 'Vehicle Verified' : 'Vehicle Rejected',
+      type: isVerified ? 'driver_approved' : 'driver_rejected',
+      title: isVerified ? 'Driver Approved' : 'Driver Rejected',
       body: isVerified
-        ? 'Your vehicle has been verified. You can now create trips.'
-        : 'Your vehicle verification was rejected. Please check details and resubmit.',
+        ? 'Congratulations! Your driver account and vehicle have been approved. You can now create trips.'
+        : 'Your driver registration has been rejected. Please contact support for more information.',
       data: { vehicleId, isVerified },
     });
 
     this.logger.log(
-      `Vehicle ${vehicleId} verification status changed to ${isVerified}`,
+      `Vehicle ${vehicleId} and its driver verification status changed to ${isVerified}`,
     );
 
     return vehicle;
   }
 
   /**
-   * Approve or reject driver
+   * Approve or reject driver.
+   * The decision covers both the driver account and the vehicle:
+   * approving sets `isDriverApproved` and the vehicle's `isVerified`.
    */
   async approveDriver(userId: string, approved: boolean): Promise<User> {
     const user = await this.userModel.findById(userId).exec();
@@ -532,15 +539,18 @@ export class AdminService implements OnModuleInit {
       throw new BadRequestException('User is not a driver');
     }
 
-      if (approved && !user.photoUrl) {
-        throw new BadRequestException(
-          'Driver profile photo is required before approval',
-        );
-      }
+    if (approved && !user.photoUrl) {
+      throw new BadRequestException(
+        'Driver profile photo is required before approval',
+      );
+    }
 
     // Update driver approval status
     user.isDriverApproved = approved;
     await user.save();
+
+    // Keep the vehicle in sync (merged review)
+    await this.vehicleModel.updateMany({ driverId: userId }, { isVerified: approved });
 
     // Notify driver of approval result
     await this.notificationsService.create({
@@ -548,7 +558,7 @@ export class AdminService implements OnModuleInit {
       type: approved ? 'driver_approved' : 'driver_rejected',
       title: approved ? 'Driver Approved' : 'Driver Rejected',
       body: approved
-        ? 'Congratulations! Your driver account has been approved. You can now create trips.'
+        ? 'Congratulations! Your driver account and vehicle have been approved. You can now create trips.'
         : 'Your driver account has been rejected. Please contact support for more information.',
       data: { approved },
     });

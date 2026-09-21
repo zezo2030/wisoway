@@ -4,10 +4,12 @@ import { DataSource, Repository } from 'typeorm';
 import {
   PayoutRequestEntity,
   TripEntity,
+  UserEntity,
   WalletAccountEntity,
   WalletTransactionEntity,
 } from '../../database/entities';
 import { WalletService } from './wallet.service';
+import { PlatformPricingService } from '../payments/platform-pricing.service';
 
 describe('WalletService', () => {
   let service: WalletService;
@@ -52,6 +54,19 @@ describe('WalletService', () => {
             findOne: jest.fn(),
           },
         },
+        {
+          provide: getRepositoryToken(UserEntity),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
+        {
+          provide: PlatformPricingService,
+          useValue: {
+            getActiveFeeRow: jest.fn().mockResolvedValue(null),
+            driverUnlockPricing: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -76,6 +91,26 @@ describe('WalletService', () => {
     expect(summary.accountId).toBe('w1');
     expect(summary.balance).toBe(20);
     expect(summary.accountType).toBe('driver');
+  });
+
+  it('reports available balance net of funds reserved by active trip holds', async () => {
+    walletAccountRepo.find.mockResolvedValue([
+      {
+        id: 'w1',
+        userId: 'u1',
+        accountType: 'driver',
+        currency: 'JOD',
+        balance: '20.00',
+        reservedBalance: '0.80',
+        isActive: true,
+      },
+    ] as any);
+
+    const summary = await service.getWalletSummary('u1', 'driver');
+
+    expect(summary.balance).toBe(20);
+    expect(summary.reservedBalance).toBe(0.8);
+    expect(summary.availableBalance).toBe(19.2);
   });
 
   it('prefers non-zero JOD account over empty legacy currency when both exist', async () => {

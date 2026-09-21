@@ -8,10 +8,14 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  UnauthorizedException,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ConfigService } from '@nestjs/config';
+import * as jwt from 'jsonwebtoken';
+import { DRIVER_REGISTRATION_TOKEN_PURPOSE } from '../auth/dto/register-driver.dto';
 import {
   ApiTags,
   ApiOperation,
@@ -30,7 +34,67 @@ import { UserRole } from '../users/schemas/user.schema';
 @ApiTags('Uploads')
 @Controller('uploads')
 export class UploadsController {
-  constructor(private readonly uploadsService: UploadsService) {}
+  constructor(
+    private readonly uploadsService: UploadsService,
+    private readonly configService: ConfigService,
+  ) {}
+
+  /**
+   * Upload an image during deferred driver registration, before any account
+   * exists. Authorized by the short-lived registration token (from
+   * /auth/driver/verify-phone) instead of a session access token.
+   */
+  @Post('registration')
+  @Public()
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload a driver-registration image (pre-account)' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'File uploaded' })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Missing or invalid registration token',
+  })
+  async uploadRegistrationImage(
+    @Body('registrationToken') registrationToken: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    this.assertValidRegistrationToken(registrationToken);
+
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    return this.uploadsService.uploadFile(
+      file,
+      'driver-registration',
+      ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
+      10 * 1024 * 1024, // 10MB
+    );
+  }
+
+  private assertValidRegistrationToken(token: string): void {
+    if (!token) {
+      throw new UnauthorizedException('Registration token is required');
+    }
+    const secret = this.configService.get<string>('JWT_ACCESS_SECRET');
+    if (!secret) {
+      throw new UnauthorizedException('Server auth is not configured');
+    }
+    let decoded: jwt.JwtPayload | string;
+    try {
+      decoded = jwt.verify(token, secret);
+    } catch {
+      throw new UnauthorizedException(
+        'Registration session expired. Please verify your phone again.',
+      );
+    }
+    if (
+      typeof decoded !== 'object' ||
+      decoded.purpose !== DRIVER_REGISTRATION_TOKEN_PURPOSE
+    ) {
+      throw new UnauthorizedException('Invalid registration token');
+    }
+  }
 
   @Post()
   @UseGuards(JwtAuthGuard)

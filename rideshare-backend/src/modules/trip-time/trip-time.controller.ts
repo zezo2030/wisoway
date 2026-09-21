@@ -1,5 +1,6 @@
 import {
   Controller,
+  Get,
   Post,
   Param,
   Body,
@@ -12,8 +13,14 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { TripTimeService } from './trip-time.service';
+import { PresenceService } from './presence.service';
 import { PassengerConfirmDto } from './dto/passenger-confirm.dto';
 import { DriverConfirmDto } from './dto/driver-confirm.dto';
+import {
+  DriverPresenceConfirmDto,
+  PassengerDeclareDto,
+} from './dto/presence.dto';
+import { TripEmergencyDto } from './dto/trip-emergency.dto';
 
 @ApiTags('trip-time')
 @ApiBearerAuth()
@@ -22,7 +29,10 @@ import { DriverConfirmDto } from './dto/driver-confirm.dto';
 export class TripTimeController {
   private readonly logger = new Logger(TripTimeController.name);
 
-  constructor(private readonly tripTimeService: TripTimeService) {}
+  constructor(
+    private readonly tripTimeService: TripTimeService,
+    private readonly presenceService: PresenceService,
+  ) {}
 
   @Post('bookings/:id/passenger-confirm')
   @ApiOperation({ summary: 'Passenger confirms whether driver is present' })
@@ -36,12 +46,80 @@ export class TripTimeController {
 
   @Post('bookings/:id/driver-confirm')
   @Roles('driver')
-  @ApiOperation({ summary: 'Driver confirms per-seat passenger presence' })
+  @ApiOperation({
+    summary:
+      'Driver confirms one seat (legacy single-seat alias for /trips/:id/presence-confirm)',
+  })
   async driverConfirm(
     @Param('id') bookingId: string,
     @CurrentUser('id') driverId: string,
     @Body() dto: DriverConfirmDto,
   ) {
     return this.tripTimeService.driverConfirm(bookingId, driverId, dto);
+  }
+
+  // ── Presence confirmation (012-passenger-presence-confirmation) ───────────
+
+  @Get('trips/:id/presence-roster')
+  @Roles('driver')
+  @ApiOperation({
+    summary:
+      'Driver reads the seat roster with each occupant’s declared presence and a live fee preview',
+  })
+  async presenceRoster(
+    @Param('id') tripId: string,
+    @CurrentUser('id') driverId: string,
+  ) {
+    return this.presenceService.getRoster(tripId, driverId);
+  }
+
+  @Post('trips/:id/presence-confirm')
+  @Roles('driver')
+  @ApiOperation({
+    summary:
+      'Driver records a corroborating present/absent decision. Billing still requires passenger self-confirmation.',
+  })
+  async presenceConfirm(
+    @Param('id') tripId: string,
+    @CurrentUser('id') driverId: string,
+    @Body() dto: DriverPresenceConfirmDto,
+  ) {
+    return this.presenceService.driverConfirm(tripId, driverId, dto);
+  }
+
+  @Get('bookings/:id/presence-prompt')
+  @ApiOperation({
+    summary: 'Passenger reads everything the "are you in the vehicle?" screen renders',
+  })
+  async presencePrompt(
+    @Param('id') bookingId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.presenceService.getPresencePrompt(bookingId, userId);
+  }
+
+  @Post('bookings/:id/presence-declare')
+  @ApiOperation({
+    summary: 'Passenger declares whether they are in the vehicle',
+  })
+  async presenceDeclare(
+    @Param('id') bookingId: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: PassengerDeclareDto,
+  ) {
+    return this.presenceService.passengerDeclare(bookingId, userId, dto);
+  }
+
+  @Post('trips/:id/emergency')
+  @ApiOperation({
+    summary:
+      'Driver or confirmed passenger triggers an emergency alert to admins with current location',
+  })
+  async reportEmergency(
+    @Param('id') tripId: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: TripEmergencyDto,
+  ) {
+    return this.tripTimeService.reportEmergency(tripId, userId, dto);
   }
 }

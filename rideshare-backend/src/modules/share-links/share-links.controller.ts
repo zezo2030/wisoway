@@ -111,7 +111,14 @@ export class ShareLinksController {
       fromName: trip.fromName,
       toName: trip.toName,
       departureTime: trip.departureTime,
-      etaMinutes: null,
+      etaMinutes:
+        trip.remainingDurationSeconds != null
+          ? Math.ceil(trip.remainingDurationSeconds / 60)
+          : null,
+      remainingDistanceKm: trip.remainingDistanceKm ?? null,
+      remainingDurationSeconds: trip.remainingDurationSeconds ?? null,
+      etaAt: trip.etaAt ?? null,
+      routeProgressPercent: trip.routeProgressPercent ?? null,
       driverLocation: null,
     };
 

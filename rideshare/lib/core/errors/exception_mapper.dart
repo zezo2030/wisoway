@@ -111,6 +111,20 @@ class ExceptionMapper {
     final data = error.response?.data;
 
     if (statusCode == 401) {
+      // A 401 on a request that carried no Authorization header (login and
+      // other public endpoints) means the submitted credentials were wrong —
+      // NOT an expired session. Showing "session expired / log in again" or
+      // triggering reauth there is misleading, so map it to invalid creds.
+      final isAuthenticatedRequest = error.requestOptions.headers.keys
+          .any((key) => key.toLowerCase() == 'authorization');
+      if (!isAuthenticatedRequest) {
+        return Failure(
+          category: FailureCategory.auth,
+          messageKey: 'errorsAuthInvalidCredentials',
+          severity: FailureSeverity.warning,
+          developerDetail: detail,
+        );
+      }
       return Failure(
         category: FailureCategory.auth,
         messageKey: 'errorsAuthSessionExpired',
@@ -148,6 +162,41 @@ class ExceptionMapper {
           developerDetail: detail,
           outstandingCount: count,
           outstandingTotal: total,
+        );
+      }
+      if (code == 'NEGATIVE_WALLET_BALANCE') {
+        final message = data is Map
+            ? (data['message'] as String?)
+            : null;
+        return Failure(
+          category: FailureCategory.permission,
+          messageKey: 'errorsNegativeWalletBalance',
+          displayMessage: message,
+          severity: FailureSeverity.error,
+          nextAction: FailureAction.topUpWallet,
+          developerDetail: detail,
+        );
+      }
+      if (code == 'INSUFFICIENT_BALANCE_FOR_TRIP_FEE') {
+        final balance = data is Map ? (data['balance'] as num?)?.toDouble() : null;
+        final requiredAmount =
+            data is Map ? (data['requiredAmount'] as num?)?.toDouble() : null;
+        final currency = data is Map ? data['currency'] as String? : null;
+        return Failure(
+          category: FailureCategory.permission,
+          // The create-trip screen intercepts this messageKey before it
+          // reaches the generic ErrorSurface dialog and renders it via the
+          // ARB-based `insufficientBalanceForTripFee` string instead (which
+          // carries the exact balance/required numbers). A static fallback
+          // entry still exists in ErrorLocalizations so a stray path through
+          // ErrorSurface never shows the raw key.
+          messageKey: 'errorsInsufficientBalanceForTripFee',
+          severity: FailureSeverity.error,
+          nextAction: FailureAction.topUpWallet,
+          developerDetail: detail,
+          insufficientFeeBalance: balance,
+          insufficientFeeRequiredAmount: requiredAmount,
+          insufficientFeeCurrency: currency,
         );
       }
     }

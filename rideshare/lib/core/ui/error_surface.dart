@@ -131,6 +131,8 @@ class ErrorSurface {
           context,
           'errorsActionViewPendingCharges',
         );
+      case FailureAction.topUpWallet:
+        return ErrorLocalizations.resolve(context, 'errorsActionTopUpWallet');
     }
   }
 
@@ -152,6 +154,9 @@ class ErrorSurface {
         break;
       case FailureAction.viewPendingCharges:
         Navigator.of(context).pushNamed(RouteNames.pendingCharges);
+        break;
+      case FailureAction.topUpWallet:
+        Navigator.of(context).pushNamed(RouteNames.driverWalletTopup);
         break;
     }
   }

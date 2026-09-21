@@ -815,7 +815,7 @@ abstract class AppLocalizations {
   /// رسالة بيانات الدخول غير الصحيحة
   ///
   /// In ar, this message translates to:
-  /// **'البريد الإلكتروني أو كلمة المرور غير صحيحة.'**
+  /// **'رقم الهاتف أو كلمة المرور غير صحيحة.'**
   String get errorsAuthInvalidCredentials;
 
   /// رسالة رفض الإذن
@@ -863,13 +863,13 @@ abstract class AppLocalizations {
   /// Title for booking created notification
   ///
   /// In ar, this message translates to:
-  /// **'حجز جديد'**
+  /// **'تم حجز مقعد في رحلتك المشتركة'**
   String get notificationsBookingCreatedTitle;
 
   /// Body for booking created notification
   ///
   /// In ar, this message translates to:
-  /// **'تم حجز مقعد جديد في رحلتك'**
+  /// **'انضم راكب جديد إلى رحلتك المشتركة'**
   String get notificationsBookingCreatedBody;
 
   /// Title for booking confirmed notification
@@ -1231,6 +1231,150 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'هل الراكب {name} موجود؟'**
   String preTripPromptDriverBody(String name);
+
+  /// No description provided for @presenceScreenTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تأكيد التواجد في السيارة'**
+  String get presenceScreenTitle;
+
+  /// No description provided for @presenceScreenSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'يرجى تأكيد تواجدك لبدء الرحلة'**
+  String get presenceScreenSubtitle;
+
+  /// No description provided for @presenceHelp.
+  ///
+  /// In ar, this message translates to:
+  /// **'مساعدة'**
+  String get presenceHelp;
+
+  /// No description provided for @presenceDriverStartsAfter.
+  ///
+  /// In ar, this message translates to:
+  /// **'سيبدأ السائق الرحلة بعد'**
+  String get presenceDriverStartsAfter;
+
+  /// No description provided for @presenceMinutes.
+  ///
+  /// In ar, this message translates to:
+  /// **'دقائق'**
+  String get presenceMinutes;
+
+  /// No description provided for @presencePickupTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'نقطة بدء الرحلة'**
+  String get presencePickupTitle;
+
+  /// No description provided for @presenceQuestionTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'هل أنت داخل السيارة؟'**
+  String get presenceQuestionTitle;
+
+  /// No description provided for @presenceQuestionSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'يرجى تأكيد تواجدك لتوثيق الرحلة وبدئها بشكل صحيح'**
+  String get presenceQuestionSubtitle;
+
+  /// No description provided for @presenceInfoBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'يساعد تأكيد تواجدك داخل السيارة على توثيق الرحلة واحتسابها ضمن سجل رحلاتك وتقييم موثوقية حسابك.\nلن يتم خصم أي رسوم من محفظة السائق في حال عدم التأكيد.'**
+  String get presenceInfoBody;
+
+  /// No description provided for @presenceInVehicleTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'نعم، أنا داخل السيارة'**
+  String get presenceInVehicleTitle;
+
+  /// No description provided for @presenceInVehicleSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تأكيد التواجد'**
+  String get presenceInVehicleSubtitle;
+
+  /// No description provided for @presenceOnMyWayTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'أنا في طريقي لمقابلة السائق'**
+  String get presenceOnMyWayTitle;
+
+  /// No description provided for @presenceOnMyWaySubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'سأصل خلال دقائق'**
+  String get presenceOnMyWaySubtitle;
+
+  /// No description provided for @presenceNotRidingTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'لست داخل السيارة'**
+  String get presenceNotRidingTitle;
+
+  /// No description provided for @presenceNotRidingSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'لن أستقل هذه الرحلة'**
+  String get presenceNotRidingSubtitle;
+
+  /// No description provided for @presencePrivacyLine.
+  ///
+  /// In ar, this message translates to:
+  /// **'بياناتك آمنة ويتم استخدامها فقط لتحسين تجربة الرحلة'**
+  String get presencePrivacyLine;
+
+  /// No description provided for @presenceRequestEndsAfter.
+  ///
+  /// In ar, this message translates to:
+  /// **'سينتهي طلب التأكيد تلقائيًا بعد'**
+  String get presenceRequestEndsAfter;
+
+  /// No description provided for @presenceConfirmedTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم تأكيد تواجدك'**
+  String get presenceConfirmedTitle;
+
+  /// No description provided for @presenceConfirmedBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'شكرًا لك، تم تسجيل اختيارك لهذه الرحلة.'**
+  String get presenceConfirmedBody;
+
+  /// No description provided for @presenceEdit.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعديل'**
+  String get presenceEdit;
+
+  /// No description provided for @presenceWindowClosedTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'انتهى وقت التأكيد'**
+  String get presenceWindowClosedTitle;
+
+  /// No description provided for @presenceWindowClosedBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم يعد بإمكانك تعديل حالة تواجدك لهذه الرحلة.'**
+  String get presenceWindowClosedBody;
+
+  /// No description provided for @presenceLoadFailed.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذر تحميل بيانات تأكيد التواجد'**
+  String get presenceLoadFailed;
+
+  /// No description provided for @presenceSubmitFailed.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذر حفظ اختيارك. حاول مرة أخرى.'**
+  String get presenceSubmitFailed;
 
   /// Driver button to mark trip as arrived (completes the trip)
   ///
@@ -4748,12 +4892,6 @@ abstract class AppLocalizations {
   /// **'إنشاء رحلة جديدة'**
   String get createNewTripSemantic;
 
-  /// No description provided for @tripFeeInvoiceTitle.
-  ///
-  /// In ar, this message translates to:
-  /// **'فاتورة رسوم الرحلة'**
-  String get tripFeeInvoiceTitle;
-
   /// No description provided for @seatPrice.
   ///
   /// In ar, this message translates to:
@@ -4766,12 +4904,6 @@ abstract class AppLocalizations {
   /// **'عدد المقاعد'**
   String get seatsCountLabel;
 
-  /// No description provided for @feePercentage.
-  ///
-  /// In ar, this message translates to:
-  /// **'نسبة الرسوم'**
-  String get feePercentage;
-
   /// No description provided for @totalLabel.
   ///
   /// In ar, this message translates to:
@@ -4783,18 +4915,6 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'سيتم خصم الرسوم من محفظتك وفتح بيانات ركاب هذه الرحلة. لا يتم تغيير عدد المقاعد أو الحجوزات.'**
   String get tripFeeDeductExplanation;
-
-  /// No description provided for @payFees.
-  ///
-  /// In ar, this message translates to:
-  /// **'دفع الرسوم'**
-  String get payFees;
-
-  /// No description provided for @tripFeePaidSuccess.
-  ///
-  /// In ar, this message translates to:
-  /// **'تم دفع رسوم الرحلة بنجاح'**
-  String get tripFeePaidSuccess;
 
   /// No description provided for @payingInProgress.
   ///
@@ -4885,12 +5005,6 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'مقاعد'**
   String get seatsWord;
-
-  /// No description provided for @tripFeePaidLabel.
-  ///
-  /// In ar, this message translates to:
-  /// **'رسوم الرحلة مدفوعة'**
-  String get tripFeePaidLabel;
 
   /// No description provided for @passengerDetailsTitle.
   ///
@@ -5369,7 +5483,7 @@ abstract class AppLocalizations {
   /// No description provided for @enableLocationBody.
   ///
   /// In ar, this message translates to:
-  /// **'لا يمكن متابعة الرحلة بدون تشغيل خدمات الموقع. يرجى تفعيل GPS الآن.'**
+  /// **'لازم تشغّل GPS وتسمح للتطبيق بالموقع عشان الركاب يشوفوك على الخريطة أثناء تأكيد التواجد والرحلة. مش هتقدر تكمّل من غير التتبع.'**
   String get enableLocationBody;
 
   /// No description provided for @openLocationSettings.
@@ -5407,12 +5521,6 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'لديك رحلة مجانية متاحة. سيتم تطبيق خصم 100% ليصبح الإجمالي 0.'**
   String get freeTripAvailableExplanation;
-
-  /// No description provided for @tripFeeFullExplanation.
-  ///
-  /// In ar, this message translates to:
-  /// **'الدفع يخص رسوم الرحلة كاملة ولا يغير عدد المقاعد أو الحجوزات.'**
-  String get tripFeeFullExplanation;
 
   /// No description provided for @hideTripTitle.
   ///
@@ -5510,34 +5618,6 @@ abstract class AppLocalizations {
   /// **'رسوم الرحلة'**
   String get tripFeeLabel;
 
-  /// No description provided for @tripFeeReady.
-  ///
-  /// In ar, this message translates to:
-  /// **'فاتورة رسوم الرحلة جاهزة'**
-  String get tripFeeReady;
-
-  /// No description provided for @tripFeeBreakdownWithFreeTrip.
-  ///
-  /// In ar, this message translates to:
-  /// **'الرسوم: 5% × {seats} مقاعد × {price} {currency}، خصم رحلة مجانية 100% = {amount} {currency}'**
-  String tripFeeBreakdownWithFreeTrip(
-    int seats,
-    String price,
-    String currency,
-    String amount,
-  );
-
-  /// No description provided for @tripFeeBreakdown.
-  ///
-  /// In ar, this message translates to:
-  /// **'5% × {seats} مقاعد × {price} {currency} = {amount} {currency}'**
-  String tripFeeBreakdown(
-    int seats,
-    String price,
-    String currency,
-    String amount,
-  );
-
   /// No description provided for @applyFreeTrip.
   ///
   /// In ar, this message translates to:
@@ -5550,12 +5630,6 @@ abstract class AppLocalizations {
   /// **'حجوزات قيد التأكيد ({count})'**
   String pendingBookingsCard(int count);
 
-  /// No description provided for @confirmBookingUnlocksDetails.
-  ///
-  /// In ar, this message translates to:
-  /// **'تأكيد الحجز يفتح بيانات الراكب (رحلة مجانية أو خصم من المحفظة مرة واحدة للرحلة)'**
-  String get confirmBookingUnlocksDetails;
-
   /// No description provided for @passengerFallback.
   ///
   /// In ar, this message translates to:
@@ -5567,12 +5641,6 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'مقعد {seat}'**
   String seatLabelShort(String seat);
-
-  /// No description provided for @chatAvailableAfterFee.
-  ///
-  /// In ar, this message translates to:
-  /// **'المحادثة والتواصل متاحان بعد دفع رسوم الرحلة'**
-  String get chatAvailableAfterFee;
 
   /// No description provided for @awaitingConfirmation.
   ///
@@ -6990,6 +7058,192 @@ abstract class AppLocalizations {
   /// **'مقفل (خارج التطبيق)'**
   String get seatLegendLockedExternal;
 
+  /// No description provided for @createTripStepRoute.
+  ///
+  /// In ar, this message translates to:
+  /// **'المسار'**
+  String get createTripStepRoute;
+
+  /// No description provided for @createTripStepDetails.
+  ///
+  /// In ar, this message translates to:
+  /// **'تفاصيل الرحلة'**
+  String get createTripStepDetails;
+
+  /// No description provided for @createTripStepReview.
+  ///
+  /// In ar, this message translates to:
+  /// **'مراجعة ونشر'**
+  String get createTripStepReview;
+
+  /// No description provided for @createTripRouteTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'أين ستبدأ رحلتك؟'**
+  String get createTripRouteTitle;
+
+  /// No description provided for @createTripRouteSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'حدد نقطة الانطلاق والوجهة ويمكنك إضافة محطات توقف (اختياري)'**
+  String get createTripRouteSubtitle;
+
+  /// No description provided for @addStopSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'يمكنك إضافة حتى 5 محطات'**
+  String get addStopSubtitle;
+
+  /// No description provided for @approxDistanceLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'المسافة التقريبية: {distance}'**
+  String approxDistanceLabel(String distance);
+
+  /// No description provided for @approxDurationLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'الوقت التقريبي: {duration}'**
+  String approxDurationLabel(String duration);
+
+  /// No description provided for @approxDurationHoursMinutes.
+  ///
+  /// In ar, this message translates to:
+  /// **'{hours} س {minutes} د'**
+  String approxDurationHoursMinutes(int hours, int minutes);
+
+  /// No description provided for @approxDurationMinutesOnly.
+  ///
+  /// In ar, this message translates to:
+  /// **'{minutes} د'**
+  String approxDurationMinutesOnly(int minutes);
+
+  /// No description provided for @createTripWhenAndHow.
+  ///
+  /// In ar, this message translates to:
+  /// **'متى وكيف؟'**
+  String get createTripWhenAndHow;
+
+  /// No description provided for @createTripWhenAndHowSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'حدد تفاصيل رحلتك ومقاعد الركاب والسعر'**
+  String get createTripWhenAndHowSubtitle;
+
+  /// No description provided for @availableSeatsSection.
+  ///
+  /// In ar, this message translates to:
+  /// **'المقاعد المتاحة'**
+  String get availableSeatsSection;
+
+  /// No description provided for @availableSeatsCountTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'عدد المقاعد المتاحة'**
+  String get availableSeatsCountTitle;
+
+  /// No description provided for @seatsUnitLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'مقاعد'**
+  String get seatsUnitLabel;
+
+  /// No description provided for @jordanianDinarLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'دينار أردني'**
+  String get jordanianDinarLabel;
+
+  /// No description provided for @tripSummaryTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'انتهت الرحلة بنجاح'**
+  String get tripSummaryTitle;
+
+  /// No description provided for @additionalDetailsTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تفاصيل إضافية'**
+  String get additionalDetailsTitle;
+
+  /// No description provided for @seatLegendAvailable.
+  ///
+  /// In ar, this message translates to:
+  /// **'متاح'**
+  String get seatLegendAvailable;
+
+  /// No description provided for @seatLegendDriver.
+  ///
+  /// In ar, this message translates to:
+  /// **'غير متاح (السائق)'**
+  String get seatLegendDriver;
+
+  /// No description provided for @seatLegendInactive.
+  ///
+  /// In ar, this message translates to:
+  /// **'مقعد خامل'**
+  String get seatLegendInactive;
+
+  /// No description provided for @preventGenderMixingHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'يستثنى من ذلك حجز العائلة. يمكن تعطيل هذا الخيار والسماح بالاختلاط.'**
+  String get preventGenderMixingHint;
+
+  /// No description provided for @reviewTripTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'مراجعة الرحلة'**
+  String get reviewTripTitle;
+
+  /// No description provided for @reviewTripSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تحقق من تفاصيل رحلتك قبل نشرها للركاب'**
+  String get reviewTripSubtitle;
+
+  /// No description provided for @publishTrip.
+  ///
+  /// In ar, this message translates to:
+  /// **'نشر الرحلة'**
+  String get publishTrip;
+
+  /// No description provided for @backToEdit.
+  ///
+  /// In ar, this message translates to:
+  /// **'العودة للتعديل'**
+  String get backToEdit;
+
+  /// No description provided for @publishTripNotice.
+  ///
+  /// In ar, this message translates to:
+  /// **'سيتم نشر الرحلة بعد المراجعة وسيتمكن الركاب من الحجز.'**
+  String get publishTripNotice;
+
+  /// No description provided for @createTripFeeNotice.
+  ///
+  /// In ar, this message translates to:
+  /// **'رسوم الرحلة ({percent}%): {amount} {currency} — تُخصم من محفظتك عند انطلاق الرحلة.'**
+  String createTripFeeNotice(String percent, String amount, String currency);
+
+  /// No description provided for @insufficientBalanceForTripFee.
+  ///
+  /// In ar, this message translates to:
+  /// **'رصيد محفظتك ({balance}) لا يغطي رسوم الرحلة ({required}). اشحن محفظتك قبل نشر الرحلة.'**
+  String insufficientBalanceForTripFee(String balance, String required);
+
+  /// No description provided for @familyBookingLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'حجز عائلة'**
+  String get familyBookingLabel;
+
+  /// No description provided for @familyBookingHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'يُستثنى حجز العائلة من قواعد منع الاختلاط على هذه الرحلة.'**
+  String get familyBookingHint;
+
   /// No description provided for @seatColorGuide.
   ///
   /// In ar, this message translates to:
@@ -7085,6 +7339,1152 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'تعذّر إنشاء رابط المشاركة'**
   String get shareTripTrackingError;
+
+  /// No description provided for @tripInProgressTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'الرحلة جارية'**
+  String get tripInProgressTitle;
+
+  /// No description provided for @tripInProgressOnTheWay.
+  ///
+  /// In ar, this message translates to:
+  /// **'أنت في الطريق'**
+  String get tripInProgressOnTheWay;
+
+  /// No description provided for @tripInProgressHelp.
+  ///
+  /// In ar, this message translates to:
+  /// **'مساعدة'**
+  String get tripInProgressHelp;
+
+  /// No description provided for @tripInProgressEtaLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'وقت الوصول المتوقع'**
+  String get tripInProgressEtaLabel;
+
+  /// No description provided for @tripInProgressRemainingDistance.
+  ///
+  /// In ar, this message translates to:
+  /// **'المسافة المتبقية'**
+  String get tripInProgressRemainingDistance;
+
+  /// No description provided for @tripInProgressRemainingTime.
+  ///
+  /// In ar, this message translates to:
+  /// **'تبقى للوصول'**
+  String get tripInProgressRemainingTime;
+
+  /// No description provided for @tripInProgressTripDetails.
+  ///
+  /// In ar, this message translates to:
+  /// **'تفاصيل الرحلة'**
+  String get tripInProgressTripDetails;
+
+  /// No description provided for @tripInProgressShareTracking.
+  ///
+  /// In ar, this message translates to:
+  /// **'مشاركة التتبع'**
+  String get tripInProgressShareTracking;
+
+  /// No description provided for @tripInProgressEmergency.
+  ///
+  /// In ar, this message translates to:
+  /// **'الطوارئ'**
+  String get tripInProgressEmergency;
+
+  /// No description provided for @tripInProgressLayers.
+  ///
+  /// In ar, this message translates to:
+  /// **'طبقات'**
+  String get tripInProgressLayers;
+
+  /// No description provided for @tripInProgressRecenter.
+  ///
+  /// In ar, this message translates to:
+  /// **'تمركز'**
+  String get tripInProgressRecenter;
+
+  /// No description provided for @tripInProgressEmergencySent.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم إرسال تنبيه الطوارئ للدعم'**
+  String get tripInProgressEmergencySent;
+
+  /// No description provided for @tripInProgressEmergencyError.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذّر إرسال تنبيه الطوارئ'**
+  String get tripInProgressEmergencyError;
+
+  /// No description provided for @tripInProgressEmergencyConfirmTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تنبيه الطوارئ'**
+  String get tripInProgressEmergencyConfirmTitle;
+
+  /// No description provided for @tripInProgressEmergencyConfirmMessage.
+  ///
+  /// In ar, this message translates to:
+  /// **'سيتم إشعار فريق الدعم بموقعك الحالي. هل تريد المتابعة؟'**
+  String get tripInProgressEmergencyConfirmMessage;
+
+  /// No description provided for @tripInProgressEmergencyConfirmAction.
+  ///
+  /// In ar, this message translates to:
+  /// **'إرسال التنبيه'**
+  String get tripInProgressEmergencyConfirmAction;
+
+  /// No description provided for @tripInProgressEmergencyCancel.
+  ///
+  /// In ar, this message translates to:
+  /// **'إلغاء'**
+  String get tripInProgressEmergencyCancel;
+
+  /// No description provided for @locationAutocompleteSuggestions.
+  ///
+  /// In ar, this message translates to:
+  /// **'اقتراحات الأماكن'**
+  String get locationAutocompleteSuggestions;
+
+  /// No description provided for @locationAutocompleteNoResults.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا توجد أماكن مطابقة. حدد الموقع على الخريطة بدلا من ذلك.'**
+  String get locationAutocompleteNoResults;
+
+  /// No description provided for @instantRidesTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'الرحلات المباشرة'**
+  String get instantRidesTitle;
+
+  /// No description provided for @instantOnlineReady.
+  ///
+  /// In ar, this message translates to:
+  /// **'متصل — جاهز لاستقبال الطلبات'**
+  String get instantOnlineReady;
+
+  /// No description provided for @instantOffline.
+  ///
+  /// In ar, this message translates to:
+  /// **'غير متصل'**
+  String get instantOffline;
+
+  /// No description provided for @instantOfferTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'طلب رحلة مباشرة'**
+  String get instantOfferTitle;
+
+  /// No description provided for @instantOfferCardTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'طلب رحلة جديدة'**
+  String get instantOfferCardTitle;
+
+  /// No description provided for @instantOfferBadge.
+  ///
+  /// In ar, this message translates to:
+  /// **'رحلة مباشرة'**
+  String get instantOfferBadge;
+
+  /// No description provided for @instantOfferDirectSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'رحلة مباشرة بدون توقف'**
+  String get instantOfferDirectSubtitle;
+
+  /// No description provided for @instantRideAcceptedToast.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم قبول الرحلة. توجّه إلى نقطة الانطلاق.'**
+  String get instantRideAcceptedToast;
+
+  /// No description provided for @instantOfferCountdown.
+  ///
+  /// In ar, this message translates to:
+  /// **'ينتهي خلال {seconds} ثانية'**
+  String instantOfferCountdown(int seconds);
+
+  /// No description provided for @instantDecline.
+  ///
+  /// In ar, this message translates to:
+  /// **'رفض'**
+  String get instantDecline;
+
+  /// No description provided for @instantOfferIgnore.
+  ///
+  /// In ar, this message translates to:
+  /// **'تجاهل'**
+  String get instantOfferIgnore;
+
+  /// No description provided for @instantAccept.
+  ///
+  /// In ar, this message translates to:
+  /// **'قبول'**
+  String get instantAccept;
+
+  /// No description provided for @instantOfferAcceptTrip.
+  ///
+  /// In ar, this message translates to:
+  /// **'قبول الرحلة'**
+  String get instantOfferAcceptTrip;
+
+  /// No description provided for @instantOfferExpectedEarnings.
+  ///
+  /// In ar, this message translates to:
+  /// **'الأرباح المتوقعة'**
+  String get instantOfferExpectedEarnings;
+
+  /// No description provided for @instantOfferIncludesFees.
+  ///
+  /// In ar, this message translates to:
+  /// **'يشمل رسوم المنصة'**
+  String get instantOfferIncludesFees;
+
+  /// No description provided for @instantOfferPassengerCount.
+  ///
+  /// In ar, this message translates to:
+  /// **'{count} راكب'**
+  String instantOfferPassengerCount(int count);
+
+  /// No description provided for @instantOfferDistance.
+  ///
+  /// In ar, this message translates to:
+  /// **'المسافة'**
+  String get instantOfferDistance;
+
+  /// No description provided for @instantOfferDuration.
+  ///
+  /// In ar, this message translates to:
+  /// **'المدة التقديرية'**
+  String get instantOfferDuration;
+
+  /// No description provided for @instantOfferPassengersLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'عدد الركاب'**
+  String get instantOfferPassengersLabel;
+
+  /// No description provided for @instantRequestNow.
+  ///
+  /// In ar, this message translates to:
+  /// **'اطلب الآن'**
+  String get instantRequestNow;
+
+  /// No description provided for @instantRequestNowTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'اطلب رحلة الآن'**
+  String get instantRequestNowTitle;
+
+  /// No description provided for @instantRequestNowSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'سائق قريب يصل إليك مباشرة'**
+  String get instantRequestNowSubtitle;
+
+  /// No description provided for @instantSelectFromTo.
+  ///
+  /// In ar, this message translates to:
+  /// **'اختر نقطة الانطلاق والوصول.'**
+  String get instantSelectFromTo;
+
+  /// No description provided for @instantFromHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'مكان الانطلاق'**
+  String get instantFromHint;
+
+  /// No description provided for @instantFromPickerTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'اختر نقطة الانطلاق'**
+  String get instantFromPickerTitle;
+
+  /// No description provided for @instantToHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'مكان الوصول'**
+  String get instantToHint;
+
+  /// No description provided for @instantToPickerTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'اختر نقطة الوصول'**
+  String get instantToPickerTitle;
+
+  /// No description provided for @instantDriverFound.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم العثور على سائق!'**
+  String get instantDriverFound;
+
+  /// No description provided for @instantDriverOnTheWay.
+  ///
+  /// In ar, this message translates to:
+  /// **'السائق في طريقه إلى نقطة الانطلاق.'**
+  String get instantDriverOnTheWay;
+
+  /// No description provided for @instantTrackTrip.
+  ///
+  /// In ar, this message translates to:
+  /// **'تتبّع الرحلة'**
+  String get instantTrackTrip;
+
+  /// No description provided for @instantDone.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم'**
+  String get instantDone;
+
+  /// No description provided for @instantRequestCancelled.
+  ///
+  /// In ar, this message translates to:
+  /// **'أُلغي الطلب'**
+  String get instantRequestCancelled;
+
+  /// No description provided for @instantNoDrivers.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم نتمكن من العثور على سائق حاليًا'**
+  String get instantNoDrivers;
+
+  /// No description provided for @instantNoDriversSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'قد يكون جميع السائقين مشغولين أو لا يوجد سائق قريب منك.'**
+  String get instantNoDriversSubtitle;
+
+  /// No description provided for @instantNoDriversTip.
+  ///
+  /// In ar, this message translates to:
+  /// **'نصيحة: أعد المحاولة بعد بضع دقائق؛ قد يتوفر سائق قريب منك.'**
+  String get instantNoDriversTip;
+
+  /// No description provided for @instantNoDriversIllustrationLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم يتم العثور على سائق'**
+  String get instantNoDriversIllustrationLabel;
+
+  /// No description provided for @instantNeedHelp.
+  ///
+  /// In ar, this message translates to:
+  /// **'تحتاج مساعدة؟'**
+  String get instantNeedHelp;
+
+  /// No description provided for @instantContactSupport.
+  ///
+  /// In ar, this message translates to:
+  /// **'تواصل مع الدعم'**
+  String get instantContactSupport;
+
+  /// No description provided for @instantRideSafety.
+  ///
+  /// In ar, this message translates to:
+  /// **'أمان الرحلة'**
+  String get instantRideSafety;
+
+  /// No description provided for @instantPickupPoint.
+  ///
+  /// In ar, this message translates to:
+  /// **'نقطة الانطلاق'**
+  String get instantPickupPoint;
+
+  /// No description provided for @instantDropoffPoint.
+  ///
+  /// In ar, this message translates to:
+  /// **'نقطة الوصول'**
+  String get instantDropoffPoint;
+
+  /// No description provided for @instantRetryFareChanged.
+  ///
+  /// In ar, this message translates to:
+  /// **'تغيّر نطاق السعر؛ راجع السعر ثم أعد الطلب.'**
+  String get instantRetryFareChanged;
+
+  /// No description provided for @instantTryAgain.
+  ///
+  /// In ar, this message translates to:
+  /// **'إعادة المحاولة'**
+  String get instantTryAgain;
+
+  /// No description provided for @instantSearching.
+  ///
+  /// In ar, this message translates to:
+  /// **'نبحث عن أقرب سائق...'**
+  String get instantSearching;
+
+  /// No description provided for @instantFareEstimate.
+  ///
+  /// In ar, this message translates to:
+  /// **'الأجرة التقديرية: {fare} {currency}'**
+  String instantFareEstimate(String fare, String currency);
+
+  /// No description provided for @instantCancelRequest.
+  ///
+  /// In ar, this message translates to:
+  /// **'إلغاء الطلب'**
+  String get instantCancelRequest;
+
+  /// No description provided for @instantYourFareLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'سعرك'**
+  String get instantYourFareLabel;
+
+  /// No description provided for @instantRecommendedFare.
+  ///
+  /// In ar, this message translates to:
+  /// **'السعر المقترح: {fare} {currency}'**
+  String instantRecommendedFare(String fare, String currency);
+
+  /// No description provided for @instantYourFareValue.
+  ///
+  /// In ar, this message translates to:
+  /// **'سعرك: {fare} {currency}'**
+  String instantYourFareValue(String fare, String currency);
+
+  /// No description provided for @instantDriverOfferTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'عرض من السائق'**
+  String get instantDriverOfferTitle;
+
+  /// No description provided for @instantProposeFare.
+  ///
+  /// In ar, this message translates to:
+  /// **'اقترح سعرًا أعلى'**
+  String get instantProposeFare;
+
+  /// No description provided for @instantSendOffer.
+  ///
+  /// In ar, this message translates to:
+  /// **'إرسال العرض'**
+  String get instantSendOffer;
+
+  /// No description provided for @instantCounterSentToast.
+  ///
+  /// In ar, this message translates to:
+  /// **'أُرسل عرضك للراكب. بانتظار موافقته...'**
+  String get instantCounterSentToast;
+
+  /// No description provided for @instantCounterMaxHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'الحد الأقصى: {fare} {currency}'**
+  String instantCounterMaxHint(String fare, String currency);
+
+  /// No description provided for @instantNudgeTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا يوجد سائق قريب حتى الآن'**
+  String get instantNudgeTitle;
+
+  /// No description provided for @instantNudgeSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'جرّب رفع سعرك لجذب سائق أسرع'**
+  String get instantNudgeSubtitle;
+
+  /// No description provided for @instantRaiseTo.
+  ///
+  /// In ar, this message translates to:
+  /// **'ارفع إلى {fare} {currency}'**
+  String instantRaiseTo(String fare, String currency);
+
+  /// No description provided for @instantKeepFare.
+  ///
+  /// In ar, this message translates to:
+  /// **'استمر بـ {fare} {currency}'**
+  String instantKeepFare(String fare, String currency);
+
+  /// No description provided for @instantArrivingIn.
+  ///
+  /// In ar, this message translates to:
+  /// **'يصل خلال ~{minutes} دقيقة'**
+  String instantArrivingIn(int minutes);
+
+  /// No description provided for @instantAgreedFare.
+  ///
+  /// In ar, this message translates to:
+  /// **'الأجرة المتفق عليها: {fare} {currency}'**
+  String instantAgreedFare(String fare, String currency);
+
+  /// No description provided for @tripSummaryThanks.
+  ///
+  /// In ar, this message translates to:
+  /// **'شكراً لك على رحلتك'**
+  String get tripSummaryThanks;
+
+  /// No description provided for @tripSummaryHelp.
+  ///
+  /// In ar, this message translates to:
+  /// **'مساعدة'**
+  String get tripSummaryHelp;
+
+  /// No description provided for @tripSummaryArrivalPlace.
+  ///
+  /// In ar, this message translates to:
+  /// **'مكان الوصول'**
+  String get tripSummaryArrivalPlace;
+
+  /// No description provided for @tripSummaryDistance.
+  ///
+  /// In ar, this message translates to:
+  /// **'المسافة'**
+  String get tripSummaryDistance;
+
+  /// No description provided for @tripSummaryDuration.
+  ///
+  /// In ar, this message translates to:
+  /// **'مدة الرحلة'**
+  String get tripSummaryDuration;
+
+  /// No description provided for @tripSummaryStartTime.
+  ///
+  /// In ar, this message translates to:
+  /// **'وقت البدء'**
+  String get tripSummaryStartTime;
+
+  /// No description provided for @tripSummaryEndTime.
+  ///
+  /// In ar, this message translates to:
+  /// **'وقت الانتهاء'**
+  String get tripSummaryEndTime;
+
+  /// No description provided for @tripSummaryHoursMinutes.
+  ///
+  /// In ar, this message translates to:
+  /// **'{hours} ساعة {minutes} دقيقة'**
+  String tripSummaryHoursMinutes(int hours, int minutes);
+
+  /// No description provided for @tripSummaryHoursOnly.
+  ///
+  /// In ar, this message translates to:
+  /// **'{hours} ساعة'**
+  String tripSummaryHoursOnly(int hours);
+
+  /// No description provided for @tripSummaryMinutesOnly.
+  ///
+  /// In ar, this message translates to:
+  /// **'{minutes} دقيقة'**
+  String tripSummaryMinutesOnly(int minutes);
+
+  /// No description provided for @tripSummaryConfirmedPassengers.
+  ///
+  /// In ar, this message translates to:
+  /// **'الركاب الذين أكدوا تواجدهم ({count})'**
+  String tripSummaryConfirmedPassengers(int count);
+
+  /// No description provided for @tripSummaryNoPassengers.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا يوجد ركاب لهذه الرحلة.'**
+  String get tripSummaryNoPassengers;
+
+  /// No description provided for @tripSummaryPassengerFare.
+  ///
+  /// In ar, this message translates to:
+  /// **'أجرة الراكب'**
+  String get tripSummaryPassengerFare;
+
+  /// No description provided for @tripSummaryConfirmed.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم التأكيد'**
+  String get tripSummaryConfirmed;
+
+  /// No description provided for @tripSummaryNotConfirmed.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم يؤكد التواجد'**
+  String get tripSummaryNotConfirmed;
+
+  /// No description provided for @tripSummaryPassengerFares.
+  ///
+  /// In ar, this message translates to:
+  /// **'أجرة الركاب ({count} ركاب)'**
+  String tripSummaryPassengerFares(int count);
+
+  /// No description provided for @tripSummaryTripFeePercent.
+  ///
+  /// In ar, this message translates to:
+  /// **'رسوم الرحلة (%{percent})'**
+  String tripSummaryTripFeePercent(int percent);
+
+  /// No description provided for @tripSummaryNetAmount.
+  ///
+  /// In ar, this message translates to:
+  /// **'المبلغ الصافي الذي ستحصل عليه'**
+  String get tripSummaryNetAmount;
+
+  /// No description provided for @tripSummaryFeeDeducted.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم خصم رسوم الرحلة ({amount}) من محفظتك عند انطلاق الرحلة. تأكد من وجود رصيد كافٍ في محفظتك لإنشاء رحلات جديدة.'**
+  String tripSummaryFeeDeducted(String amount);
+
+  /// No description provided for @tripSummaryPayFeePrompt.
+  ///
+  /// In ar, this message translates to:
+  /// **'الرصيد غير كافٍ لخصم رسوم الرحلة ({amount}). ادفع الآن لتسوية حسابك.'**
+  String tripSummaryPayFeePrompt(String amount);
+
+  /// No description provided for @tripSummaryPaymentRequired.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذر خصم رسوم الرحلة ({fee}) بالكامل. رصيد محفظتك سالب بمقدار {debt}. ادفع الآن لتسوية الحساب.'**
+  String tripSummaryPaymentRequired(String fee, String debt);
+
+  /// No description provided for @tripSummaryNegativeBalanceRestriction.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا يمكنك إنشاء رحلات مشتركة أو تلقي رحلات مباشرة حتى تسوية الرصيد السالب.'**
+  String get tripSummaryNegativeBalanceRestriction;
+
+  /// No description provided for @tripSummaryPayNow.
+  ///
+  /// In ar, this message translates to:
+  /// **'ادفع الآن'**
+  String get tripSummaryPayNow;
+
+  /// No description provided for @tripSummaryChatTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'الدردشة مع الركاب'**
+  String get tripSummaryChatTitle;
+
+  /// No description provided for @tripSummaryChatSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تواصل مع ركاب هذه الرحلة'**
+  String get tripSummaryChatSubtitle;
+
+  /// No description provided for @tripSummaryBackHome.
+  ///
+  /// In ar, this message translates to:
+  /// **'العودة إلى الصفحة الرئيسية'**
+  String get tripSummaryBackHome;
+
+  /// No description provided for @currencyJodShort.
+  ///
+  /// In ar, this message translates to:
+  /// **'د.أ'**
+  String get currencyJodShort;
+
+  /// No description provided for @negativeWalletBalanceBlocked.
+  ///
+  /// In ar, this message translates to:
+  /// **'رصيد محفظتك سالب. سدد المستحقات قبل إنشاء رحلات مشتركة أو تلقي رحلات مباشرة.'**
+  String get negativeWalletBalanceBlocked;
+
+  /// No description provided for @negativeWalletGoOnlineBlocked.
+  ///
+  /// In ar, this message translates to:
+  /// **'رصيد محفظتك سالب. سدد المستحقات قبل تلقي الرحلات المباشرة.'**
+  String get negativeWalletGoOnlineBlocked;
+
+  /// Step counter shown on the auth wizard screens
+  ///
+  /// In ar, this message translates to:
+  /// **'خطوة {current} من {total}'**
+  String authStepOf(int current, int total);
+
+  /// No description provided for @authSecurityNotice.
+  ///
+  /// In ar, this message translates to:
+  /// **'جميع بياناتك محفوظة بأمان ولن تتم مشاركتها مع أي جهة'**
+  String get authSecurityNotice;
+
+  /// No description provided for @authNeedHelp.
+  ///
+  /// In ar, this message translates to:
+  /// **'مساعدة'**
+  String get authNeedHelp;
+
+  /// No description provided for @authStepperBasicInfo.
+  ///
+  /// In ar, this message translates to:
+  /// **'المعلومات الأساسية'**
+  String get authStepperBasicInfo;
+
+  /// No description provided for @authStepperIdDocs.
+  ///
+  /// In ar, this message translates to:
+  /// **'الهوية والمستندات'**
+  String get authStepperIdDocs;
+
+  /// No description provided for @authStepperVehicleInfo.
+  ///
+  /// In ar, this message translates to:
+  /// **'معلومات السيارة'**
+  String get authStepperVehicleInfo;
+
+  /// No description provided for @genderRequiredLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'الجنس *'**
+  String get genderRequiredLabel;
+
+  /// No description provided for @documentFormatsHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'الصيغ المدعومة: JPG، PNG، PDF (الحد الأقصى 5 ميجابايت)'**
+  String get documentFormatsHint;
+
+  /// No description provided for @accountTypePassengerTagline.
+  ///
+  /// In ar, this message translates to:
+  /// **'احجز رحلات مباشرة أو مشتركة'**
+  String get accountTypePassengerTagline;
+
+  /// No description provided for @accountTypeDriverTagline.
+  ///
+  /// In ar, this message translates to:
+  /// **'أنشئ رحلات واستقبل الركاب'**
+  String get accountTypeDriverTagline;
+
+  /// No description provided for @accountTypePassengerFeatureDirectTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'رحلات مباشرة'**
+  String get accountTypePassengerFeatureDirectTitle;
+
+  /// No description provided for @accountTypePassengerFeatureDirectBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'احجز رحلة خاصة تصلك مباشرة'**
+  String get accountTypePassengerFeatureDirectBody;
+
+  /// No description provided for @accountTypePassengerFeatureSharedTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'رحلات مشتركة'**
+  String get accountTypePassengerFeatureSharedTitle;
+
+  /// No description provided for @accountTypePassengerFeatureSharedBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'انضم لرحلة وشارك في التوفير'**
+  String get accountTypePassengerFeatureSharedBody;
+
+  /// No description provided for @accountTypePassengerFeaturePaymentTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'دفع آمن وسهل'**
+  String get accountTypePassengerFeaturePaymentTitle;
+
+  /// No description provided for @accountTypePassengerFeaturePaymentBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'خيارات دفع متعددة وآمنة'**
+  String get accountTypePassengerFeaturePaymentBody;
+
+  /// No description provided for @accountTypeDriverFeatureTripsTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'أنشئ رحلات'**
+  String get accountTypeDriverFeatureTripsTitle;
+
+  /// No description provided for @accountTypeDriverFeatureTripsBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'حدد وجهتك والانطلاق'**
+  String get accountTypeDriverFeatureTripsBody;
+
+  /// No description provided for @accountTypeDriverFeatureBookingsTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'استقبل الحجوزات'**
+  String get accountTypeDriverFeatureBookingsTitle;
+
+  /// No description provided for @accountTypeDriverFeatureBookingsBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'احصل على طلبات الركاب'**
+  String get accountTypeDriverFeatureBookingsBody;
+
+  /// No description provided for @accountTypeDriverFeatureIncomeTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'حقق دخلاً إضافيا'**
+  String get accountTypeDriverFeatureIncomeTitle;
+
+  /// No description provided for @accountTypeDriverFeatureIncomeBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'زد دخلك في أوقات فراغك'**
+  String get accountTypeDriverFeatureIncomeBody;
+
+  /// No description provided for @accountTypeSafetyTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'أمانك هو أولويتنا'**
+  String get accountTypeSafetyTitle;
+
+  /// No description provided for @accountTypeSafetyBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'نتحقق من جميع المستخدمين لضمان تجربة آمنة وموثوقة للجميع.'**
+  String get accountTypeSafetyBody;
+
+  /// No description provided for @passengerSignupTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'إنشاء حساب جديد'**
+  String get passengerSignupTitle;
+
+  /// No description provided for @passengerSignupSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'سجل الآن كراكب لبدء رحلتك معنا'**
+  String get passengerSignupSubtitle;
+
+  /// No description provided for @driverSignupTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'إنشاء حساب سائق'**
+  String get driverSignupTitle;
+
+  /// No description provided for @driverSignupSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'ابدأ باستقبال الركاب وتحقيق دخل إضافي'**
+  String get driverSignupSubtitle;
+
+  /// No description provided for @fullNameIdHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'اكتب اسمك كما هو في الهوية'**
+  String get fullNameIdHint;
+
+  /// No description provided for @phoneConfirmCallHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'سنتصل بك لتأكيد حسابك'**
+  String get phoneConfirmCallHint;
+
+  /// No description provided for @passwordMinLengthHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'يجب أن تحتوي على 8 أحرف على الأقل'**
+  String get passwordMinLengthHint;
+
+  /// No description provided for @confirmPasswordReenterHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'أعد إدخال كلمة المرور'**
+  String get confirmPasswordReenterHint;
+
+  /// No description provided for @passengerProfileStepTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'أكمل ملفك الشخصي'**
+  String get passengerProfileStepTitle;
+
+  /// No description provided for @passengerProfileStepSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'أضف صورتك ومدينتك ليتعرف عليك السائقون'**
+  String get passengerProfileStepSubtitle;
+
+  /// No description provided for @profileCityLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'المدينة *'**
+  String get profileCityLabel;
+
+  /// No description provided for @profileCityHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'أدخل اسم مدينتك'**
+  String get profileCityHint;
+
+  /// No description provided for @profileCityRequired.
+  ///
+  /// In ar, this message translates to:
+  /// **'المدينة مطلوبة'**
+  String get profileCityRequired;
+
+  /// No description provided for @completeDriverProfileTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'أكمل ملف السائق'**
+  String get completeDriverProfileTitle;
+
+  /// No description provided for @driverStep2Badge.
+  ///
+  /// In ar, this message translates to:
+  /// **'الخطوة 2 من 3: المعلومات الإضافية'**
+  String get driverStep2Badge;
+
+  /// No description provided for @driverStep3Badge.
+  ///
+  /// In ar, this message translates to:
+  /// **'الخطوة 3 من 3: مستندات السيارة'**
+  String get driverStep3Badge;
+
+  /// No description provided for @profilePhotoClearHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'صورة واضحة لوجهك'**
+  String get profilePhotoClearHint;
+
+  /// No description provided for @vehicleTypeSelectHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'اختر نوع المركبة'**
+  String get vehicleTypeSelectHint;
+
+  /// No description provided for @vehiclePlateDocHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'أدخل رقم اللوحة كما في الرخصة'**
+  String get vehiclePlateDocHint;
+
+  /// No description provided for @vehicleModelDocHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'أدخل موديل السيارة'**
+  String get vehicleModelDocHint;
+
+  /// No description provided for @vehicleSeatsDocHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'عدد المقاعد المتاحة للركاب'**
+  String get vehicleSeatsDocHint;
+
+  /// No description provided for @driverLicenseUploadHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'اضغط لرفع صورة الرخصة'**
+  String get driverLicenseUploadHint;
+
+  /// No description provided for @vehicleRegistrationFormRequired.
+  ///
+  /// In ar, this message translates to:
+  /// **'الاستمارة *'**
+  String get vehicleRegistrationFormRequired;
+
+  /// No description provided for @insuranceDocumentLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'التأمين *'**
+  String get insuranceDocumentLabel;
+
+  /// No description provided for @insuranceImageRequired.
+  ///
+  /// In ar, this message translates to:
+  /// **'وثيقة التأمين مطلوبة'**
+  String get insuranceImageRequired;
+
+  /// No description provided for @registrationUpdatedSuccess.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم تحديث بياناتك بنجاح'**
+  String get registrationUpdatedSuccess;
+
+  /// No description provided for @driverAlreadyApprovedError.
+  ///
+  /// In ar, this message translates to:
+  /// **'تمت الموافقة على حسابك بالفعل'**
+  String get driverAlreadyApprovedError;
+
+  /// No description provided for @driverPendingReviewTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'طلب تسجيلك قيد المراجعة'**
+  String get driverPendingReviewTitle;
+
+  /// No description provided for @driverPendingReviewBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'نقوم حاليًا بمراجعة بياناتك ومستنداتك، وسنرسل لك إشعارًا فور الانتهاء من المراجعة.'**
+  String get driverPendingReviewBody;
+
+  /// No description provided for @driverPendingStatusLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'حالة الطلب'**
+  String get driverPendingStatusLabel;
+
+  /// No description provided for @driverPendingBadge.
+  ///
+  /// In ar, this message translates to:
+  /// **'قيد المراجعة'**
+  String get driverPendingBadge;
+
+  /// No description provided for @driverSubmittedDocs.
+  ///
+  /// In ar, this message translates to:
+  /// **'المستندات المرسلة'**
+  String get driverSubmittedDocs;
+
+  /// No description provided for @driverDocLicense.
+  ///
+  /// In ar, this message translates to:
+  /// **'الرخصة'**
+  String get driverDocLicense;
+
+  /// No description provided for @driverDocRegistration.
+  ///
+  /// In ar, this message translates to:
+  /// **'الاستمارة'**
+  String get driverDocRegistration;
+
+  /// No description provided for @driverDocInsurance.
+  ///
+  /// In ar, this message translates to:
+  /// **'التأمين'**
+  String get driverDocInsurance;
+
+  /// No description provided for @driverDocCarPhoto.
+  ///
+  /// In ar, this message translates to:
+  /// **'صورة السيارة'**
+  String get driverDocCarPhoto;
+
+  /// No description provided for @driverPendingRestrictionTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'حسابك قيد المراجعة'**
+  String get driverPendingRestrictionTitle;
+
+  /// No description provided for @driverPendingRestrictionBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'لن تتمكن من استخدام التطبيق حتى يتم تفعيل حسابك كسائق.'**
+  String get driverPendingRestrictionBody;
+
+  /// No description provided for @driverEditRegistrationTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تحتاج لتعديل بياناتك؟'**
+  String get driverEditRegistrationTitle;
+
+  /// No description provided for @driverEditRegistrationSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'يمكنك تحديث بياناتك أو المستندات المرسلة.'**
+  String get driverEditRegistrationSubtitle;
+
+  /// No description provided for @driverReturnHome.
+  ///
+  /// In ar, this message translates to:
+  /// **'العودة إلى الرئيسية'**
+  String get driverReturnHome;
+
+  /// No description provided for @tripBookedTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم حجز رحلتك المشتركة'**
+  String get tripBookedTitle;
+
+  /// No description provided for @tripBookedSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم حجز جميع المقاعد بنجاح'**
+  String get tripBookedSubtitle;
+
+  /// No description provided for @tripDayLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'يوم الرحلة'**
+  String get tripDayLabel;
+
+  /// No description provided for @tripTimeLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'موعد الرحلة'**
+  String get tripTimeLabel;
+
+  /// No description provided for @tripMeetingPointLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'مكان التجمع'**
+  String get tripMeetingPointLabel;
+
+  /// No description provided for @tripDistanceShortLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'المسافة'**
+  String get tripDistanceShortLabel;
+
+  /// No description provided for @tripSeatsLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'عدد المقاعد'**
+  String get tripSeatsLabel;
+
+  /// No description provided for @tripSeatsComplete.
+  ///
+  /// In ar, this message translates to:
+  /// **'مكتملة'**
+  String get tripSeatsComplete;
+
+  /// No description provided for @tripSeatsBookedOf.
+  ///
+  /// In ar, this message translates to:
+  /// **'{booked} من {total}'**
+  String tripSeatsBookedOf(String booked, String total);
+
+  /// No description provided for @bookedPassengersTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'الركاب المحجوزون ({count})'**
+  String bookedPassengersTitle(int count);
+
+  /// No description provided for @seatChipLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'مقعد {number}'**
+  String seatChipLabel(String number);
+
+  /// No description provided for @passengerFareLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'أجرة الراكب'**
+  String get passengerFareLabel;
+
+  /// No description provided for @passengersTotalLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'المجموع من الركاب ({count}) ركاب'**
+  String passengersTotalLabel(int count);
+
+  /// No description provided for @tripFeeOfSeatsLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'رسوم الرحلة ({percent}% من {seats} مقاعد)'**
+  String tripFeeOfSeatsLabel(String percent, int seats);
+
+  /// No description provided for @tripFeeChargedAtStartNotice.
+  ///
+  /// In ar, this message translates to:
+  /// **'سيتم خصم رسوم الرحلة من محفظتك عند انطلاق الرحلة. حافظ على وجود رصيد في محفظتك لضمان قدرتك على إنشاء رحلات جديدة.'**
+  String get tripFeeChargedAtStartNotice;
+
+  /// No description provided for @contactPassengersTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'التواصل مع الركاب'**
+  String get contactPassengersTitle;
+
+  /// No description provided for @contactPassengersSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'اتصال أو دردشة حية'**
+  String get contactPassengersSubtitle;
+
+  /// No description provided for @confirmYourPresenceCta.
+  ///
+  /// In ar, this message translates to:
+  /// **'قم بتأكيد تواجدك في الوقت والمكان المحدد'**
+  String get confirmYourPresenceCta;
 }
 
 class _AppLocalizationsDelegate

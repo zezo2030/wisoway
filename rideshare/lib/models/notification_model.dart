@@ -12,6 +12,11 @@ class NotificationType {
   static const String communicationActivated = 'communication_activated';
   static const String chatMessage = 'chat_message';
   static const String walletCredited = 'wallet_credited';
+  static const String presencePrompt = 'presence_prompt';
+  static const String presenceMarkedAbsent = 'presence_marked_absent';
+  static const String presenceDriverPrompt = 'presence_driver_prompt';
+  static const String instantOffer = 'instant_offer';
+  static const String instantOfferCancelled = 'instant_offer_cancelled';
 }
 
 class NotificationModel {
@@ -138,7 +143,9 @@ class NotificationModel {
 
     switch (type) {
       case NotificationType.bookingCreated:
-        return isDriver == true ? 'حجز جديد على رحلتك' : 'تم إنشاء حجز جديد';
+        return isDriver == true
+            ? 'تم حجز مقعد في رحلتك المشتركة'
+            : 'تم إنشاء حجز جديد';
       case NotificationType.bookingConfirmed:
         return isDriver == true ? 'تم تأكيد الحجز' : 'تم تأكيد حجزك';
       case NotificationType.bookingCancelled:
@@ -163,6 +170,8 @@ class NotificationModel {
         return 'رسالة جديدة';
       case NotificationType.walletCredited:
         return 'تم إضافة رصيد إلى محفظتك';
+      case NotificationType.instantOffer:
+        return 'رحلة مباشرة جديدة';
       default:
         return _sanitizeFallback(fallbackTitle, defaultValue: 'إشعار جديد');
     }
@@ -191,9 +200,16 @@ class NotificationModel {
     switch (type) {
       case NotificationType.bookingCreated:
         if (isDriver == true) {
+          final route = _stringFromData(data, ['route', 'routeLabel']);
+          if (route != null) return route;
+          final fromName = _stringFromData(data, ['fromName']);
+          final toName = _stringFromData(data, ['toName']);
+          if (fromName != null && toName != null) {
+            return '$fromName - $toName';
+          }
           return passengerName != null
               ? 'لديك حجز جديد من $passengerName على رحلتك.'
-              : 'تم إنشاء حجز جديد على رحلتك.';
+              : 'انضم راكب جديد إلى رحلتك المشتركة';
         }
         return 'تم إنشاء حجز جديد بنجاح.';
       case NotificationType.bookingConfirmed:
@@ -253,6 +269,14 @@ class NotificationModel {
           return 'تمت إضافة $amount $currency إلى محفظتك بنجاح.';
         }
         return 'تمت إضافة رصيد جديد إلى محفظتك.';
+      case NotificationType.instantOffer:
+        final fromName = _stringFromData(data, ['fromName']) ?? '—';
+        final toName = _stringFromData(data, ['toName']) ?? '—';
+        return [
+          'رحلة مباشرة بدون توقف متاحة الآن',
+          'من $fromName إلى $toName',
+          'افتح التطبيق لعرض التفاصيل',
+        ].join('\n');
       default:
         return _sanitizeFallback(
           fallbackBody,

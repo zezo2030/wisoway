@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -7,6 +7,7 @@ import {
 } from '@nestjs/swagger';
 import { LocationsService } from './locations.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { LocationAutocompleteQueryDto } from './dto/location-autocomplete.dto';
 
 @ApiTags('locations')
 @Controller('locations')
@@ -14,6 +15,32 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 @ApiBearerAuth()
 export class LocationsController {
   constructor(private readonly locationsService: LocationsService) {}
+
+  @Get('autocomplete')
+  @ApiOperation({
+    summary: 'Autocomplete places through the server-side Places proxy',
+  })
+  @ApiResponse({ status: 200, description: 'Place suggestions loaded' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 502, description: 'Places provider failed' })
+  async autocomplete(
+    @Query() query: LocationAutocompleteQueryDto,
+    @Req() req: { user?: { id?: string; sub?: string } },
+  ) {
+    const userId = req.user?.id ?? req.user?.sub ?? 'unknown';
+    return this.locationsService.autocomplete(query, userId);
+  }
+
+  @Get('place/:id')
+  @ApiOperation({ summary: 'Resolve a place suggestion to coordinates' })
+  @ApiResponse({ status: 200, description: 'Place details loaded' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Place not found' })
+  @ApiResponse({ status: 502, description: 'Places provider failed' })
+  async placeDetail(@Param('id') placeId: string) {
+    // Coordinates are encoded in the placeId, so no sessionToken is needed.
+    return this.locationsService.placeDetail(placeId);
+  }
 
   @Get('geocode')
   @ApiOperation({ summary: 'Geocode address to coordinates' })

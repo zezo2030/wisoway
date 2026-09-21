@@ -29,6 +29,13 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 export class VehiclesController {
   constructor(private readonly vehiclesService: VehiclesService) {}
 
+  @Get('types')
+  @ApiOperation({ summary: 'Get supported vehicle types and seat layouts' })
+  @ApiResponse({ status: 200, description: 'Vehicle type catalog returned' })
+  async getVehicleTypes() {
+    return this.vehiclesService.getVehicleTypes();
+  }
+
   @Post()
   @Roles('driver')
   @ApiOperation({ summary: 'Create a new vehicle' })

@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import '../../core/api/api_client.dart';
+import '../../core/constants/app_constants.dart';
 import '../../core/services/vehicle_service.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/text_styles.dart';
 import '../../core/ui/error_surface.dart';
 import '../../models/seat_layout_config.dart';
+import '../../models/vehicle_type_template.dart';
 import '../../models/vehicle_model.dart';
 import '../../l10n/l10n_extensions.dart';
 
@@ -21,6 +23,8 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
   final VehicleService _vehicleService = VehicleService();
 
   VehicleModel? _vehicle;
+  List<VehicleTypeTemplate> _vehicleTypes = const [];
+  String? _selectedVehicleType;
   bool _isLoading = true;
   bool _isSaving = false;
 
@@ -40,9 +44,17 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
   Future<void> _loadVehicle() async {
     try {
       final vehicle = await _vehicleService.getMyVehicle();
+      var vehicleTypes = <VehicleTypeTemplate>[];
+      try {
+        vehicleTypes = await _vehicleService.getVehicleTypes();
+      } catch (_) {
+        vehicleTypes = await _vehicleService.getCachedVehicleTypes();
+      }
       if (!mounted) return;
       setState(() {
         _vehicle = vehicle;
+        _vehicleTypes = vehicleTypes;
+        _selectedVehicleType = vehicle?.vehicleType;
         if (vehicle?.seatLayout != null) {
           final layout = vehicle!.seatLayout!;
           _rows = layout.rows;
@@ -54,10 +66,12 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
             _customRowConfigs = List<int>.from(layout.seatsPerRowList!);
           }
         } else if (vehicle != null) {
-          // Default suggestion based on the vehicle's total seat count.
-          final total = vehicle.seats.clamp(1, 50);
-          _seatsPerRow = (total / 2).ceil().clamp(1, 10);
-          _rows = (total / _seatsPerRow).ceil().clamp(1, 10);
+          final template = _templateForType(vehicle.vehicleType);
+          if (template != null) {
+            _applySeatLayoutTemplate(template.layout);
+          } else {
+            _applySeatLayoutTemplate(_fallbackLayoutForSeats(vehicle.seats));
+          }
         }
         _isLoading = false;
       });
@@ -83,6 +97,8 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
     try {
       final updated = await _vehicleService.updateVehicle(
         vehicle.id,
+        vehicleType: _selectedVehicleType,
+        seats: _currentTemplate?.seats,
         seatLayout: layout,
       );
       if (!mounted) return;
@@ -196,9 +212,124 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
           ),
           const SizedBox(height: 12),
           _summaryRow(context.l10n.vehicleModelLabel, vehicle.model),
-          _summaryRow(context.l10n.vehicleTypeLabel, vehicle.vehicleType),
+          _buildVehicleTypeDropdown(),
           _summaryRow(context.l10n.vehiclePlateNumberLabel, vehicle.plateNumber),
-          _summaryRow(context.l10n.registeredSeatsCount, '${vehicle.seats}'),
+          _summaryRow(
+            context.l10n.registeredSeatsCount,
+            '${_currentTemplate?.seats ?? vehicle.seats}',
+          ),
+        ],
+      ),
+    );
+  }
+
+  VehicleTypeTemplate? get _currentTemplate =>
+      _templateForType(_selectedVehicleType ?? _vehicle?.vehicleType);
+
+  VehicleTypeTemplate? _templateForType(String? type) {
+    if (type == null || type.isEmpty) return null;
+    for (final template in _vehicleTypes) {
+      if (template.type == type) return template;
+    }
+    return null;
+  }
+
+  SeatLayoutConfig _fallbackLayoutForSeats(int seats) {
+    final total = seats.clamp(1, 50);
+    final seatsPerRow = (total / 2).ceil().clamp(1, 10);
+    final rows = (total / seatsPerRow).ceil().clamp(1, 10);
+    return SeatLayoutConfig(
+      rows: rows,
+      seatsPerRow: seatsPerRow,
+      preventGenderMixing: _preventGenderMixing,
+    );
+  }
+
+  void _applySeatLayoutTemplate(SeatLayoutConfig layout) {
+    _rows = layout.rows;
+    _seatsPerRow = layout.seatsPerRow;
+    _preventGenderMixing = layout.preventGenderMixing;
+    if (layout.seatsPerRowList != null && layout.seatsPerRowList!.isNotEmpty) {
+      _isCustomLayout = true;
+      _customRowConfigs = List<int>.from(layout.seatsPerRowList!);
+    } else {
+      _isCustomLayout = false;
+      _customRowConfigs = List<int>.filled(layout.rows, layout.seatsPerRow);
+    }
+  }
+
+  void _onVehicleTypeChanged(String? type) {
+    if (type == null || type == _selectedVehicleType) return;
+    final template = _templateForType(type);
+    setState(() {
+      _selectedVehicleType = type;
+      if (template != null) {
+        _applySeatLayoutTemplate(template.layout);
+      }
+    });
+  }
+
+  String _vehicleTypeLabel(VehicleTypeTemplate template) {
+    return template.localizedLabel(Localizations.localeOf(context).languageCode);
+  }
+
+  Widget _buildVehicleTypeDropdown() {
+    final availableTypes = _vehicleTypes.isNotEmpty
+        ? _vehicleTypes.map((template) => template.type).toList()
+        : AppConstants.vehicleTypes;
+    final selectedType = availableTypes.contains(_selectedVehicleType)
+        ? _selectedVehicleType
+        : null;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              context.l10n.vehicleTypeLabel,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: T.onSurfaceVariant(context),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              initialValue: selectedType,
+              isExpanded: true,
+              decoration: InputDecoration(
+                isDense: true,
+                filled: true,
+                fillColor: T.surface(context),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: T.outline(context)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: T.outline(context)),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+              ),
+              items: availableTypes.map((type) {
+                final template = _templateForType(type);
+                return DropdownMenuItem<String>(
+                  value: type,
+                  child: Text(
+                    template != null
+                        ? _vehicleTypeLabel(template)
+                        : AppConstants.vehicleTypeLabels[type] ?? type,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              }).toList(),
+              onChanged: _onVehicleTypeChanged,
+            ),
+          ),
         ],
       ),
     );

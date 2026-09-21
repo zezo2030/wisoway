@@ -268,6 +268,8 @@ export const translations = {
     trip: "Trip",
     seatsColumn: "Seat(s)",
     no_show: "No-Show",
+    bookingFeeProcessed: "Fee processed",
+    bookingFeeNotProcessed: "Fee not processed",
     pending: "Pending",
     confirmed: "Confirmed",
     seatsBooked: "Seats Booked",
@@ -393,6 +395,13 @@ export const translations = {
     body: "Body",
     targetRole: "Target Role",
     sendToAll: "Send to All",
+    adminAlertPreferences: "Admin Alert Preferences",
+    driverRegistrationAlerts: "Driver registration alerts",
+    driverRegistrationAlertsDesc: "Send web-push alerts when a new driver registers for review.",
+    feePaymentAlerts: "Communication fee payment alerts",
+    feePaymentAlertsDesc: "Send web-push alerts when an in-app communication fee payment succeeds.",
+    alertPreferenceSaved: "Alert preference saved",
+    alertPreferenceSaveFailed: "Failed to save alert preference",
 
     // Chat
     chatTitle: "Chat Rooms",
@@ -660,7 +669,19 @@ export const translations = {
     navGroupMain: "Overview",
     navGroupManagement: "Management",
     navGroupInsights: "Analytics",
+    navGroupLegal: "Legal",
+    nav_privacyPolicy: "Privacy policy",
     collapse: "Collapse",
+
+    // Public privacy page (/privacy — use this URL on Google Play)
+    privacyPageTitle: "Privacy policy",
+    privacyPageSubtitle: "How we handle personal data for VisionWay ridesharing services.",
+    privacyLastUpdated: "Last updated",
+    privacyCopyLink: "Copy link",
+    privacyLinkCopied: "Public link copied to clipboard.",
+    privacyCopyFailed: "Could not copy link.",
+    privacyBackToLogin: "Back to sign in",
+    privacyLoginFooter: "Privacy policy",
 
     // Pagination
     paginationShowing: "Showing",
@@ -950,6 +971,8 @@ export const translations = {
     trip: "الرحلة",
     seatsColumn: "المقعد(المقاعد)",
     no_show: "عدم الحضور",
+    bookingFeeProcessed: "تمت معالجة الرسوم",
+    bookingFeeNotProcessed: "لم تتم معالجة الرسوم",
     pending: "قيد الانتظار",
     confirmed: "مؤكد",
     seatsBooked: "المقاعد المحجوزة",
@@ -1035,6 +1058,15 @@ export const translations = {
 
     // Ratings
     ratingsTitle: "التقييمات",
+    ratingsReviews: "التقييمات والمراجعات",
+    ratingsSubtitle: "راقب تقييمات المستخدمين وأدرها. أزل المراجعات المسيئة أو غير المناسبة.",
+    allRatings: "جميع التقييمات",
+    ratingDeletedSuccess: "تم حذف التقييم بنجاح",
+    ratingDeleteFailed: "فشل حذف التقييم",
+    failedToLoadRatings: "فشل تحميل التقييمات. يرجى المحاولة مرة أخرى.",
+    deleteRatingTitle: "حذف التقييم",
+    deleteRatingDesc: "هل أنت متأكد من حذف هذا التقييم؟ لا يمكن التراجع عن هذا الإجراء.",
+    noComment: "لا يوجد تعليق",
     comment: "التعليق",
     reviewer: "المقيِّم",
     reviewedUser: "المستخدم المُقيَّم",
@@ -1066,6 +1098,13 @@ export const translations = {
     body: "المحتوى",
     targetRole: "الدور المستهدف",
     sendToAll: "إرسال للجميع",
+    adminAlertPreferences: "تفضيلات تنبيهات الإدارة",
+    driverRegistrationAlerts: "تنبيهات تسجيل السائقين",
+    driverRegistrationAlertsDesc: "إرسال تنبيهات ويب عند تسجيل سائق جديد للمراجعة.",
+    feePaymentAlerts: "تنبيهات دفع رسوم التواصل",
+    feePaymentAlertsDesc: "إرسال تنبيهات ويب عند نجاح دفع رسوم التواصل داخل التطبيق.",
+    alertPreferenceSaved: "تم حفظ تفضيل التنبيه",
+    alertPreferenceSaveFailed: "تعذر حفظ تفضيل التنبيه",
 
     // Chat
     chatTitle: "غرف الدردشة",
@@ -1333,7 +1372,19 @@ export const translations = {
     navGroupMain: "الرئيسية",
     navGroupManagement: "الإدارة",
     navGroupInsights: "التحليلات",
+    navGroupLegal: "قانوني",
+    nav_privacyPolicy: "سياسة الخصوصية",
     collapse: "طي",
+
+    // صفحة الخصوصية العامة (/privacy — للرابط في Google Play)
+    privacyPageTitle: "سياسة الخصوصية",
+    privacyPageSubtitle: "كيف نتعامل مع البيانات الشخصية في خدمات VisionWay لمشاركة الرحلات.",
+    privacyLastUpdated: "آخر تحديث",
+    privacyCopyLink: "نسخ الرابط",
+    privacyLinkCopied: "تم نسخ الرابط العام إلى الحافظة.",
+    privacyCopyFailed: "تعذر نسخ الرابط.",
+    privacyBackToLogin: "العودة لتسجيل الدخول",
+    privacyLoginFooter: "سياسة الخصوصية",
 
     // Pagination
     paginationShowing: "عرض",

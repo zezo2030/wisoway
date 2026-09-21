@@ -28,6 +28,7 @@ import ComplaintsPage from "@/pages/complaints/complaints"
 import RefundsPage from "@/pages/refunds/refunds"
 import FinesPage from "@/pages/fines/fines-list"
 import NoShowReportsPage from "@/pages/no-show-reports/no-show-reports-list"
+import PrivacyPolicyPage from "@/pages/privacy-policy"
 
 // Placeholder pages (will be implemented in later phases)
 
@@ -58,6 +59,10 @@ export function AppRoutes() {
     {
       path: "/login",
       element: <LoginPage />,
+    },
+    {
+      path: "/privacy",
+      element: <PrivacyPolicyPage />,
     },
     {
       path: "/",

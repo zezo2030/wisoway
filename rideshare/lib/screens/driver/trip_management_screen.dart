@@ -16,6 +16,12 @@ import '../../core/services/payment_service.dart';
 import '../../core/constants/route_names.dart';
 import '../../models/wallet_model.dart';
 import '../../models/wallet_account_model.dart';
+import '../../models/trip_fee_quote.dart';
+import 'widgets/trip_route_card.dart';
+import 'widgets/trip_facts_strip.dart';
+import 'widgets/trip_fare_breakdown_card.dart';
+import 'widgets/trip_passenger_seat_row.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../widgets/notification_icon_button.dart';
 import '../../utils/seat_layout_helpers.dart';
 import '../../../widgets/common/section_card.dart';
@@ -26,17 +32,35 @@ import '../../core/services/location_service.dart';
 import '../../core/api/websocket_service.dart';
 import '../../core/services/trip_service.dart';
 import '../../l10n/l10n_extensions.dart';
+import 'package:geolocator/geolocator.dart';
 
 class TripManagementScreen extends StatefulWidget {
   final String tripId;
 
-  const TripManagementScreen({super.key, required this.tripId});
+  /// Test seam. When set, the screen renders this trip directly instead of
+  /// fetching it, and skips the socket / location / wallet side effects that
+  /// `_loadTrip` kicks off. Never set from production code.
+  @visibleForTesting
+  final TripModel? previewTrip;
+
+  /// Test seam companion to [previewTrip] — the bookings the body composes
+  /// from, instead of a live `getTripBookings` call.
+  @visibleForTesting
+  final List<BookingModel>? previewBookings;
+
+  const TripManagementScreen({
+    super.key,
+    required this.tripId,
+    this.previewTrip,
+    this.previewBookings,
+  });
 
   @override
   State<TripManagementScreen> createState() => _TripManagementScreenState();
 }
 
-class _TripManagementScreenState extends State<TripManagementScreen> {
+class _TripManagementScreenState extends State<TripManagementScreen>
+    with WidgetsBindingObserver {
   final BookingService _bookingService = BookingService();
   final TripService _tripService = TripService();
   final PaymentService _paymentService = PaymentService();
@@ -45,39 +69,64 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
   TripModel? _trip;
   bool _isLoading = true;
   WalletModel? _wallet;
+
   /// Postgres ledger (`/wallet/me`); real balance used for trip charges.
   WalletAccountModel? _walletAccount;
   String _confirmingBookingId = '';
   String _rejectingBookingId = '';
-  bool _isPayingTripFee = false;
   Timer? _locationTrackingTimer;
   bool _locationDialogOpen = false;
   bool _markingArrived = false;
+  bool _liveTrackingActive = false;
+
+  /// Fee preview for the pre-departure fare card. `percent` and `amount` both
+  /// come from `GET /trips/fee-quote` — never a client-side literal.
+  TripFeeQuote? _feeQuote;
+
+  /// Set only by the [TripManagementScreen.previewBookings] test seam.
+  Future<List<BookingModel>>? _previewBookingsFuture;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    final preview = widget.previewTrip;
+    if (preview != null) {
+      _trip = preview;
+      _isLoading = false;
+      final bookings = widget.previewBookings;
+      if (bookings != null) {
+        _previewBookingsFuture = Future.value(bookings);
+      }
+      return;
+    }
     _loadTrip();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _locationTrackingTimer?.cancel();
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _syncLiveTrackingState();
+    }
+  }
+
   void _syncLiveTrackingState() {
     final trip = _trip;
-    if (trip == null) {
+    if (trip == null || !trip.isDriverLiveTrackingRequired) {
       _locationTrackingTimer?.cancel();
       _locationTrackingTimer = null;
-      return;
-    }
-
-    final isInProgress = trip.status == 'in_progress';
-    if (!isInProgress) {
-      _locationTrackingTimer?.cancel();
-      _locationTrackingTimer = null;
+      if (_liveTrackingActive && mounted) {
+        setState(() => _liveTrackingActive = false);
+      } else {
+        _liveTrackingActive = false;
+      }
       return;
     }
 
@@ -90,36 +139,59 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
 
     _pushDriverLocationTick();
     _locationTrackingTimer = Timer.periodic(
-      const Duration(seconds: 10),
+      const Duration(seconds: 8),
       (_) => _pushDriverLocationTick(),
     );
   }
 
   Future<void> _pushDriverLocationTick() async {
     final trip = _trip;
-    if (!mounted || trip == null || trip.status != 'in_progress') {
+    if (!mounted || trip == null || !trip.isDriverLiveTrackingRequired) {
       return;
     }
 
-    final serviceEnabled = await _locationService.isLocationServiceEnabled();
-    if (!serviceEnabled) {
+    final ready = await _ensureTrackingReady();
+    if (!ready) {
       await _showEnableLocationDialog();
+      if (mounted && _liveTrackingActive) {
+        setState(() => _liveTrackingActive = false);
+      }
       return;
     }
 
     try {
-      final position = await _locationService.getCurrentPosition();
+      final position = await _locationService.getCurrentPosition(
+        checkPrivacyPreference: false,
+      );
       _webSocketService.updateDriverLocation(
         tripId: trip.id,
         latitude: position.latitude,
         longitude: position.longitude,
         speedKph: position.speed > 0 ? position.speed * 3.6 : null,
-        heading: position.heading,
+        heading: position.heading >= 0 ? position.heading : null,
         accuracyMeters: position.accuracy,
       );
+      if (mounted && !_liveTrackingActive) {
+        setState(() => _liveTrackingActive = true);
+      }
     } catch (_) {
+      if (mounted && _liveTrackingActive) {
+        setState(() => _liveTrackingActive = false);
+      }
       await _showEnableLocationDialog();
     }
+  }
+
+  Future<bool> _ensureTrackingReady() async {
+    final serviceEnabled = await _locationService.isLocationServiceEnabled();
+    if (!serviceEnabled) return false;
+
+    var permission = await _locationService.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await _locationService.requestPermission();
+    }
+    return permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse;
   }
 
   Future<void> _showEnableLocationDialog() async {
@@ -129,27 +201,35 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.l10n.enableLocationRequired),
-        content: Text(context.l10n.enableLocationBody),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              await _locationService.openLocationSettings();
-            },
-            child: Text(context.l10n.openLocationSettings),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final enabled = await _locationService.isLocationServiceEnabled();
-              if (!ctx.mounted) return;
-              if (enabled) {
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          title: Text(context.l10n.enableLocationRequired),
+          content: Text(context.l10n.enableLocationBody),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                final permission = await _locationService.checkPermission();
+                if (permission == LocationPermission.deniedForever) {
+                  await _locationService.openAppSettings();
+                } else {
+                  await _locationService.openLocationSettings();
+                }
+              },
+              child: Text(context.l10n.openLocationSettings),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final ready = await _ensureTrackingReady();
+                if (!ready) return;
+                if (!ctx.mounted) return;
                 Navigator.of(ctx).pop();
-              }
-            },
-            child: Text(context.l10n.checkAgain),
-          ),
-        ],
+                _pushDriverLocationTick();
+              },
+              child: Text(context.l10n.checkAgain),
+            ),
+          ],
+        ),
       ),
     );
 
@@ -167,6 +247,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         });
         _syncLiveTrackingState();
         _loadWallet();
+        _loadFeeQuote();
       }
     } catch (e) {
       if (mounted) {
@@ -174,6 +255,20 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         ErrorSurface.showFailure(context, ApiClient.mapError(e));
       }
     }
+  }
+
+  /// Fetches the platform fee for this trip. `TripService.getTripFeeQuote`
+  /// returns null on failure, in which case the fare card renders a neutral
+  /// unavailable state rather than guessing a percentage.
+  Future<void> _loadFeeQuote() async {
+    final trip = _trip;
+    if (trip == null) return;
+    final quote = await _tripService.getTripFeeQuote(
+      seatPrice: trip.price,
+      totalSeats: trip.totalSeats,
+    );
+    if (!mounted) return;
+    setState(() => _feeQuote = quote);
   }
 
   Future<void> _reloadTrip() async {
@@ -204,9 +299,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     if (seatData.isBooked) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.l10n.bookedSeatsManagedByBookings),
-        ),
+        SnackBar(content: Text(context.l10n.bookedSeatsManagedByBookings)),
       );
       return;
     }
@@ -218,9 +311,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         context: context,
         builder: (ctx) => AlertDialog(
           title: Text(context.l10n.openSeatTitle),
-          content: Text(
-            context.l10n.openSeatBody(displaySeatNumber),
-          ),
+          content: Text(context.l10n.openSeatBody(displaySeatNumber)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -268,9 +359,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(context.l10n.lockSeatTitle),
-        content: Text(
-          context.l10n.lockSeatBody(displaySeatNumber),
-        ),
+        content: Text(context.l10n.lockSeatBody(displaySeatNumber)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -332,129 +421,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
   String get _walletDisplayCurrency =>
       _walletAccount?.currency ?? _wallet?.currency ?? 'JOD';
 
-  bool get _hasWalletSummary =>
-      _wallet != null || _walletAccount != null;
-
-  double _baseTripFeeAmount(TripModel trip) {
-    return ((trip.price * trip.totalSeats * 0.05) * 100).round() / 100;
-  }
-
-  bool get _hasAvailableFreeTrip =>
-      _wallet != null && !_wallet!.hasUsedLifetimeFreeTrip;
-
-  double _tripFeeAmount(TripModel trip) {
-    if (_hasAvailableFreeTrip) return 0;
-    return _baseTripFeeAmount(trip);
-  }
-
-  Future<void> _showTripFeeInvoice(TripModel trip) async {
-    final baseAmount = _baseTripFeeAmount(trip);
-    final hasFreeTrip = _hasAvailableFreeTrip;
-    final amount = _tripFeeAmount(trip);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.l10n.tripFeeInvoiceTitle),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _invoiceRow(
-              context.l10n.seatPrice,
-              '${trip.price} ${trip.currency}',
-            ),
-            _invoiceRow(context.l10n.seatsCountLabel, '${trip.totalSeats}'),
-            _invoiceRow(context.l10n.feePercentage, '5%'),
-            if (hasFreeTrip)
-              _invoiceRow(
-                context.l10n.freeTripDiscountLabel,
-                context.l10n.freeTripDiscountValue(
-                  baseAmount.toStringAsFixed(2),
-                  trip.currency,
-                ),
-              ),
-            const Divider(height: 24),
-            _invoiceRow(
-              context.l10n.totalLabel,
-              '${amount.toStringAsFixed(2)} ${trip.currency}',
-              isTotal: true,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              hasFreeTrip
-                  ? context.l10n.freeTripAvailableExplanation
-                  : context.l10n.tripFeeFullExplanation,
-              style: AppTextStyles.bodySmall.copyWith(
-                color: T.textSecondary(context),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(context.l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(context.l10n.payFees),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      await _payTripFee(trip);
-    }
-  }
-
-  Widget _invoiceRow(String label, String value, {bool isTotal = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: AppTextStyles.bodyMedium.copyWith(
-                fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
-              ),
-            ),
-          ),
-          Text(
-            value,
-            style: AppTextStyles.bodyMedium.copyWith(
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _payTripFee(TripModel trip) async {
-    setState(() => _isPayingTripFee = true);
-    try {
-      await _paymentService.chargeDriverTrip(
-        tripId: trip.id,
-        idempotencyKey:
-            'driver-trip-fee:${trip.id}:${DateTime.now().millisecondsSinceEpoch}',
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.l10n.tripFeePaidSuccess),
-          backgroundColor: AppColors.success,
-        ),
-      );
-      await _loadTrip();
-      await _loadWallet();
-    } catch (e) {
-      if (!mounted) return;
-      ErrorSurface.showFailure(context, ApiClient.mapError(e));
-    } finally {
-      if (mounted) setState(() => _isPayingTripFee = false);
-    }
-  }
+  bool get _hasWalletSummary => _wallet != null || _walletAccount != null;
 
   Future<void> _hideTrip() async {
     final confirmed = await showDialog<bool>(
@@ -620,57 +587,65 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     final bookedSeats = _getBookedSeatsCount();
     final totalRevenue = _getTotalRevenue();
 
+    // Pre-departure renders the design mock's composition; once the trip has
+    // started the original live-tracking / "وصلت" body returns unchanged.
+    final isPreDeparture = _trip!.tripStartedAt == null;
+
     return Scaffold(
       backgroundColor: T.background(context),
-      appBar: AppBar(
-        elevation: 0,
-        title: Text(
-          context.l10n.tripManagementTitle,
-          style: AppTextStyles.titleMedium.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: NotificationIconButton(
-              backgroundColor: AppColors.transparent,
-              iconColor: T.onSurface(context).withValues(alpha: 0.87),
+      appBar: isPreDeparture
+          ? null
+          : AppBar(
+              elevation: 0,
+              title: Text(
+                context.l10n.tripManagementTitle,
+                style: AppTextStyles.titleMedium.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: NotificationIconButton(
+                    backgroundColor: AppColors.transparent,
+                    iconColor: T.onSurface(context).withValues(alpha: 0.87),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.forum_outlined),
+                  tooltip: context.l10n.tripGroupChat,
+                  onPressed: () {
+                    Navigator.pushNamed(
+                      context,
+                      RouteNames.groupChat,
+                      arguments: {'tripId': widget.tripId, 'trip': _trip},
+                    );
+                  },
+                ),
+                if (_trip!.isActive)
+                  IconButton(
+                    icon: const Icon(IconsaxPlusLinear.eye_slash),
+                    onPressed: _hideTrip,
+                    tooltip: context.l10n.hideTripTooltip,
+                  )
+                else if (_trip!.isHidden)
+                  IconButton(
+                    icon: const Icon(IconsaxPlusLinear.eye),
+                    onPressed: _showTrip,
+                    tooltip: context.l10n.showTripTooltip,
+                  ),
+                IconButton(
+                  icon: const Icon(IconsaxPlusLinear.trash),
+                  onPressed: _deleteTrip,
+                  tooltip: context.l10n.deleteTripTooltip,
+                  color: AppColors.error,
+                ),
+              ],
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.forum_outlined),
-            tooltip: context.l10n.tripGroupChat,
-            onPressed: () {
-              Navigator.pushNamed(
-                context,
-                RouteNames.groupChat,
-                arguments: {'tripId': widget.tripId, 'trip': _trip},
-              );
-            },
-          ),
-          if (_trip!.isActive)
-            IconButton(
-              icon: const Icon(IconsaxPlusLinear.eye_slash),
-              onPressed: _hideTrip,
-              tooltip: context.l10n.hideTripTooltip,
-            )
-          else if (_trip!.isHidden)
-            IconButton(
-              icon: const Icon(IconsaxPlusLinear.eye),
-              onPressed: _showTrip,
-              tooltip: context.l10n.showTripTooltip,
-            ),
-          IconButton(
-            icon: const Icon(IconsaxPlusLinear.trash),
-            onPressed: _deleteTrip,
-            tooltip: context.l10n.deleteTripTooltip,
-            color: AppColors.error,
-          ),
-        ],
-      ),
       body: FutureBuilder<List<BookingModel>>(
-        future: _bookingService.getTripBookings(widget.tripId),
+        future:
+            _previewBookingsFuture ??
+            _bookingService.getTripBookings(widget.tripId),
         builder: (context, bookingsSnapshot) {
           final bookings = bookingsSnapshot.data ?? [];
           final pendingBookings = bookings.where((b) => b.isPending).toList();
@@ -680,71 +655,425 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
 
           return RefreshIndicator(
             onRefresh: _loadTrip,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header Card with Route
-                  _buildHeaderCard(_trip!, dateFormat, timeFormat),
-                  const SizedBox(height: 16),
+            child: SafeArea(
+              bottom: false,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: isPreDeparture
+                      ? _buildPreDepartureBody(
+                          _trip!,
+                          pendingBookings,
+                          confirmedBookings,
+                        )
+                      : [
+                          // Header Card with Route
+                          _buildHeaderCard(_trip!, dateFormat, timeFormat),
+                          const SizedBox(height: 16),
 
-                  // Statistics Cards
-                  _buildStatisticsRow(_trip!, bookedSeats, totalRevenue),
-                  const SizedBox(height: 16),
+                          // Statistics Cards
+                          _buildStatisticsRow(
+                            _trip!,
+                            bookedSeats,
+                            totalRevenue,
+                          ),
+                          const SizedBox(height: 16),
 
-                  // Wallet summary (driver)
-                  if (_hasWalletSummary) ...[
-                    _buildWalletCard(),
-                    const SizedBox(height: 16),
-                  ],
+                          // Wallet summary (driver)
+                          if (_hasWalletSummary) ...[
+                            _buildWalletCard(),
+                            const SizedBox(height: 16),
+                          ],
 
-                  // Status Card
-                  _buildStatusCard(_trip!),
-                  const SizedBox(height: 16),
+                          // Status Card
+                          _buildStatusCard(_trip!),
+                          const SizedBox(height: 16),
 
-                  _buildArrivedCard(_trip!),
-                  const SizedBox(height: 16),
+                          _buildLiveTrackingCard(_trip!),
+                          const SizedBox(height: 16),
 
-                  // Trip fee payment
-                  _buildTripFeePaymentCard(_trip!),
-                  const SizedBox(height: 16),
+                          _buildArrivedCard(_trip!),
+                          const SizedBox(height: 16),
 
-                  // Trip Details Card
-                  _buildTripDetailsCard(_trip!, dateFormat, timeFormat),
-                  const SizedBox(height: 16),
+                          // Trip Details Card
+                          _buildTripDetailsCard(_trip!, dateFormat, timeFormat),
+                          const SizedBox(height: 16),
 
-                  // Seat Layout Visualization
-                  _buildSeatLayoutCard(_trip!),
-                  const SizedBox(height: 16),
+                          // Seat Layout Visualization
+                          _buildSeatLayoutCard(_trip!),
+                          const SizedBox(height: 16),
 
-                  // Pending bookings (confirm to unlock passenger data / use free trip or wallet)
-                  if (pendingBookings.isNotEmpty) ...[
-                    _buildPendingBookingsCard(pendingBookings),
-                    const SizedBox(height: 16),
-                  ],
+                          // Pending bookings (confirm to unlock passenger data / use free trip or wallet)
+                          if (pendingBookings.isNotEmpty) ...[
+                            _buildPendingBookingsCard(pendingBookings),
+                            const SizedBox(height: 16),
+                          ],
 
-                  // Passengers List (confirmed)
-                  if (confirmedBookings.isNotEmpty) ...[
-                    _buildPassengersCard(confirmedBookings),
-                    const SizedBox(height: 16),
-                  ],
+                          // Passengers List (confirmed)
+                          if (confirmedBookings.isNotEmpty) ...[
+                            _buildPassengersCard(confirmedBookings),
+                            const SizedBox(height: 16),
+                          ],
 
-                  // Car Image
-                  if (_trip!.carImageUrl != null) ...[
-                    _buildCarImageCard(_trip!),
-                    const SizedBox(height: 16),
-                  ],
+                          // Car Image
+                          if (_trip!.carImageUrl != null) ...[
+                            _buildCarImageCard(_trip!),
+                            const SizedBox(height: 16),
+                          ],
 
-                  // Quick Actions
-                  _buildQuickActionsCard(_trip!),
-                  const SizedBox(height: 24),
-                ],
+                          // Quick Actions
+                          _buildQuickActionsCard(_trip!),
+                          const SizedBox(height: 24),
+                        ],
+                ),
               ),
             ),
           );
         },
+      ),
+    );
+  }
+
+  // ───────────────────────── Pre-departure body ─────────────────────────
+  // Sections 1–9 of the design mock, in the mock's order. Rendered only while
+  // `trip.tripStartedAt == null`; none of the post-departure builders
+  // (_buildWalletCard, _buildLiveTrackingCard, _buildArrivedCard,
+  // _buildStatisticsRow, _buildSeatLayoutCard, _buildCarImageCard,
+  // _buildQuickActionsCard) run in this branch.
+
+  List<Widget> _buildPreDepartureBody(
+    TripModel trip,
+    List<BookingModel> pendingBookings,
+    List<BookingModel> confirmedBookings,
+  ) {
+    final entries = passengerSeatEntries(
+      confirmedBookings,
+      fallbackName: context.l10n.passengerFallback,
+    );
+
+    return [
+      // 1 — Header
+      _buildPreDepartureHeader(),
+      const SizedBox(height: 20),
+
+      // 2 + 3 — Route card with the facts strip inside the same surface
+      TripRouteCard(
+        fromName: trip.from.name,
+        toName: trip.to.name,
+        footer: TripFactsStrip(
+          departureTime: trip.departureTime,
+          // The mock's «مكان التجمع» has no dedicated column; `from.address`
+          // is the closest match and the strip falls back to the origin name.
+          meetingPoint: trip.from.address,
+          originName: trip.from.name,
+          distanceKm: trip.distanceKm,
+          // Numerator counts seats on *confirmed* bookings. `availableSeats`
+          // is decremented the moment a booking is created, while it is still
+          // PENDING, so it would otherwise report seats the driver has not
+          // accepted yet. The «مكتملة» badge still tracks availability, since
+          // a car with no free seats cannot take more requests.
+          bookedSeats: entries.length,
+          totalSeats: trip.totalSeats,
+          isFull: trip.availableSeats == 0,
+        ),
+      ),
+      const SizedBox(height: 16),
+
+      // Live tracking — its window opens *before* departure, so it belongs in
+      // this branch too; hiding it here would hide it in exactly the window it
+      // was built for.
+      if (trip.isDriverLiveTrackingRequired) ...[
+        _buildLiveTrackingCard(trip),
+        const SizedBox(height: 16),
+      ],
+
+      // Pending booking requests. Bookings expire unanswered after 3 hours and
+      // this screen is the driver's only accept/reject surface, so it must
+      // render before departure — above the confirmed roster.
+      if (pendingBookings.isNotEmpty) ...[
+        _buildPendingBookingsCard(pendingBookings),
+        const SizedBox(height: 16),
+      ],
+
+      // Tops the gap above the roster header back up to the design's 24 when
+      // neither interstitial card above is showing.
+      const SizedBox(height: 8),
+
+      // 4 — Section header
+      Text(
+        context.l10n.bookedPassengersTitle(entries.length),
+        style: AppTextStyles.titleSmall.copyWith(
+          fontWeight: FontWeight.bold,
+          color: T.onSurface(context),
+        ),
+      ),
+      const SizedBox(height: 12),
+
+      // 5 — One row per seat (a 2-seat booking renders 2 rows)
+      ...entries.map(_buildPassengerSeatRow),
+      if (entries.isNotEmpty) const SizedBox(height: 12),
+
+      // 6 — Fare breakdown
+      TripFareBreakdownCard(
+        seatPrice: trip.price,
+        bookedSeats: entries.length,
+        feeAmount: _feeQuote?.amount,
+        feePercent: _feeQuote?.percent,
+        // The fee is charged on the whole car, not on the passengers listed
+        // above, so the row names its own basis rather than leaving the
+        // driver to divide the fee by a total it does not match.
+        feeSeats: trip.totalSeats,
+        currency: _feeQuote?.currency ?? trip.currency,
+      ),
+      const SizedBox(height: 16),
+
+      // 7 — Fee notice (says "at trip start", superseding the mock's copy)
+      const TripFeeNotice(),
+      const SizedBox(height: 16),
+
+      // 8 — Contact bar
+      _buildContactBar(trip),
+      const SizedBox(height: 20),
+
+      // 9 — Presence reminder
+      _buildPresenceReminder(),
+      const SizedBox(height: 24),
+    ];
+  }
+
+  /// Section 1 — circular back button at the start edge, centred title with a
+  /// filled check-circle, subtitle beneath.
+  ///
+  /// The pre-departure state drops the AppBar so the screen reads like the
+  /// mock, so the AppBar's trip actions move into the overflow menu at the end
+  /// edge rather than being lost.
+  Widget _buildPreDepartureHeader() {
+    return Row(
+      children: [
+        CircleIconButton(
+          icon: const BackButtonIcon(),
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
+        Expanded(
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.check_circle, size: 20, color: T.primary(context)),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      context.l10n.tripBookedTitle,
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.titleMedium.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: T.onSurface(context),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                context.l10n.tripBookedSubtitle,
+                textAlign: TextAlign.center,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: T.textSecondary(context),
+                ),
+              ),
+            ],
+          ),
+        ),
+        NotificationIconButton(
+          backgroundColor: AppColors.transparent,
+          iconColor: T.onSurface(context).withValues(alpha: 0.87),
+        ),
+        _buildTripActionsMenu(),
+      ],
+    );
+  }
+
+  /// The AppBar's trip actions, preserved for the pre-departure state where
+  /// there is no AppBar.
+  Widget _buildTripActionsMenu() {
+    return PopupMenuButton<String>(
+      icon: Icon(
+        IconsaxPlusLinear.more,
+        color: T.onSurface(context).withValues(alpha: 0.87),
+      ),
+      onSelected: (value) {
+        switch (value) {
+          case 'chat':
+            Navigator.pushNamed(
+              context,
+              RouteNames.groupChat,
+              arguments: {'tripId': widget.tripId, 'trip': _trip},
+            );
+          case 'hide':
+            _hideTrip();
+          case 'show':
+            _showTrip();
+          case 'delete':
+            _deleteTrip();
+        }
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem(value: 'chat', child: Text(context.l10n.tripGroupChat)),
+        if (_trip!.isActive)
+          PopupMenuItem(
+            value: 'hide',
+            child: Text(context.l10n.hideTripTooltip),
+          )
+        else if (_trip!.isHidden)
+          PopupMenuItem(
+            value: 'show',
+            child: Text(context.l10n.showTripTooltip),
+          ),
+        PopupMenuItem(
+          value: 'delete',
+          child: Text(
+            context.l10n.deleteTripTooltip,
+            style: const TextStyle(color: AppColors.error),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Section 5 — maps one expanded seat entry onto the roster row widget.
+  /// The per-seat expansion itself lives in `passengerSeatEntries`.
+  Widget _buildPassengerSeatRow(PassengerSeatEntry entry) {
+    return TripPassengerSeatRow(
+      displayName: entry.displayName,
+      seatNumber: entry.seatNumber,
+      rating: entry.rating,
+      photoUrl: entry.photoUrl,
+      onChat: () => Navigator.pushNamed(
+        context,
+        RouteNames.driverChat,
+        arguments: {
+          'tripId': widget.tripId,
+          'passengerId': entry.userId,
+          'passengerName': entry.displayName,
+        },
+      ),
+      onCall: entry.phoneNumber.isEmpty
+          ? null
+          : () => _launchCall(entry.phoneNumber),
+    );
+  }
+
+  Future<void> _launchCall(String phone) async {
+    final uri = Uri.parse('tel:$phone');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+
+  /// Section 8 — chat icon at the start edge, a primary-tinted label/subtitle
+  /// action at the end edge.
+  Widget _buildContactBar(TripModel trip) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: T.surface(context),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: T.shadow(context).withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => Navigator.pushNamed(
+          context,
+          RouteNames.groupChat,
+          arguments: {'tripId': widget.tripId, 'trip': trip},
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: T.primaryContainer(context),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                IconsaxPlusBold.message,
+                size: 20,
+                color: T.primary(context),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    context.l10n.contactPassengersTitle,
+                    textAlign: TextAlign.end,
+                    style: AppTextStyles.titleSmall.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: T.primary(context),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    context.l10n.contactPassengersSubtitle,
+                    textAlign: TextAlign.end,
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: T.textSecondary(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Section 9 — a reminder, not an action.
+  ///
+  /// The mock styles this as a filled primary button, but there is no driver
+  /// presence-confirmation call in the app to wire it to: `presenceConfirm` is
+  /// referenced nowhere, `PresenceService` is passenger-side and keyed by
+  /// booking, and the backend route is a per-seat driver confirm — a different
+  /// action from copy about the driver's own attendance. Rather than ship a
+  /// button that does nothing when tapped, it reads as the reminder it is,
+  /// using section 7's treatment.
+  Widget _buildPresenceReminder() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: T.primaryContainer(context),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(IconsaxPlusLinear.clock, size: 20, color: T.primary(context)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              context.l10n.confirmYourPresenceCta,
+              style: AppTextStyles.bodySmall.copyWith(
+                fontWeight: FontWeight.bold,
+                color: T.onPrimaryContainer(context),
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1002,123 +1331,12 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     );
   }
 
-  Widget _buildTripFeePaymentCard(TripModel trip) {
-    final isPaid = trip.communicationFeeStatus == 'paid';
-    final hasFreeTrip = _hasAvailableFreeTrip;
-    final amount = _tripFeeAmount(trip);
-    return SectionCard(
-      title: context.l10n.tripFeeLabel,
-      icon: Icons.receipt_long_outlined,
-      iconColor: isPaid ? AppColors.success : AppColors.warning,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: (isPaid ? AppColors.success : AppColors.warning)
-                    .withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                isPaid ? IconsaxPlusBold.tick_circle : IconsaxPlusBold.wallet_1,
-                color: isPaid ? AppColors.success : AppColors.warning,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isPaid
-                        ? context.l10n.tripFeePaidLabel
-                        : context.l10n.tripFeeReady,
-                    style: AppTextStyles.bodyLarge.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: T.onSurface(context),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    hasFreeTrip
-                        ? context.l10n.tripFeeBreakdownWithFreeTrip(
-                            trip.totalSeats,
-                            '${trip.price}',
-                            trip.currency,
-                            amount.toStringAsFixed(2),
-                          )
-                        : context.l10n.tripFeeBreakdown(
-                            trip.totalSeats,
-                            '${trip.price}',
-                            trip.currency,
-                            amount.toStringAsFixed(2),
-                          ),
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: T.textSecondary(context),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        if (!isPaid) ...[
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _isPayingTripFee
-                  ? null
-                  : () => _showTripFeeInvoice(trip),
-              icon: _isPayingTripFee
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.white,
-                      ),
-                    )
-                  : const Icon(IconsaxPlusBold.wallet_1),
-              label: Text(
-                _isPayingTripFee
-                    ? context.l10n.payingInProgress
-                    : hasFreeTrip
-                    ? context.l10n.applyFreeTrip
-                    : context.l10n.payFees,
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.success,
-                foregroundColor: AppColors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
   Widget _buildPendingBookingsCard(List<BookingModel> pendingBookings) {
     return SectionCard(
       title: context.l10n.pendingBookingsCard(pendingBookings.length),
       icon: IconsaxPlusBold.clock,
       iconColor: AppColors.warning,
-      children: [
-        Text(
-          context.l10n.confirmBookingUnlocksDetails,
-          style: AppTextStyles.bodySmall.copyWith(
-            color: T.textSecondary(context),
-          ),
-        ),
-        const SizedBox(height: 16),
-        ...pendingBookings.map((b) => _buildPendingBookingItem(b)),
-      ],
+      children: [...pendingBookings.map((b) => _buildPendingBookingItem(b))],
     );
   }
 
@@ -1126,14 +1344,11 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
     final isConfirming = _confirmingBookingId == booking.id;
     final isRejecting = _rejectingBookingId == booking.id;
     final seatText = booking.seatSummary.isNotEmpty ? booking.seatSummary : '-';
-    final canOpenPassengerDetails =
-        booking.hasDriverPaidToContact && booking.userPopulated != null;
+    final canOpenPassengerDetails = booking.userPopulated != null;
     final titleText = canOpenPassengerDetails
         ? (booking.userPopulated?.name ?? context.l10n.passengerFallback)
         : context.l10n.seatLabelShort(seatText);
-    final subtitleText = canOpenPassengerDetails
-        ? context.l10n.chatAvailableAfterFee
-        : context.l10n.awaitingConfirmation;
+    final subtitleText = context.l10n.awaitingConfirmation;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1472,21 +1687,70 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
 
     setState(() => _markingArrived = true);
     try {
-      await _tripService.markTripArrived(trip.id);
+      final result = await _tripService.markTripArrived(trip.id);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.l10n.tripEndedSuccess),
-          backgroundColor: AppColors.success,
-        ),
+      final settlement = result['settlement'] is Map
+          ? Map<String, dynamic>.from(result['settlement'] as Map)
+          : null;
+      await Navigator.pushNamedAndRemoveUntil(
+        context,
+        RouteNames.tripSummary,
+        (route) =>
+            route.settings.name == RouteNames.home ||
+            route.settings.name == RouteNames.main ||
+            route.isFirst,
+        arguments: {
+          'tripId': trip.id,
+          if (settlement != null) 'settlement': settlement,
+        },
       );
-      await _reloadTrip();
     } catch (e) {
       if (!mounted) return;
       ErrorSurface.showFailure(context, ApiClient.mapError(e));
     } finally {
       if (mounted) setState(() => _markingArrived = false);
     }
+  }
+
+  Widget _buildLiveTrackingCard(TripModel trip) {
+    if (!trip.isDriverLiveTrackingRequired) {
+      return const SizedBox.shrink();
+    }
+
+    final active = _liveTrackingActive;
+    return SectionCard(
+      title: active ? 'التتبع اللحظي مفعّل' : 'التتبع اللحظي مطلوب',
+      icon: active ? IconsaxPlusBold.location : IconsaxPlusLinear.location,
+      iconColor: active ? AppColors.success : AppColors.warning,
+      children: [
+        Text(
+          active
+              ? 'موقعك يظهر للركاب الآن. أبقِ GPS مفعّلاً حتى نهاية الرحلة.'
+              : 'يجب تفعيل الموقع الآن حتى يظهر مكانك للركاب في شاشة تأكيد التواجد.',
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: T.textSecondary(context),
+          ),
+        ),
+        if (!active) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () async {
+                final ready = await _ensureTrackingReady();
+                if (!ready) {
+                  await _showEnableLocationDialog();
+                  return;
+                }
+                await _pushDriverLocationTick();
+              },
+              icon: const Icon(IconsaxPlusBold.location),
+              label: const Text('تفعيل التتبع الآن'),
+            ),
+          ),
+        ],
+      ],
+    );
   }
 
   /// Shown while the trip is IN_PROGRESS. The trip transitions to IN_PROGRESS
@@ -1547,9 +1811,23 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
         const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                RouteNames.tripInProgress,
+                arguments: trip.id,
+              );
+            },
+            icon: const Icon(IconsaxPlusLinear.map),
+            label: Text(context.l10n.tripInProgressTitle),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
           child: ElevatedButton.icon(
-            onPressed:
-                _markingArrived ? null : () => _onPressArrived(trip),
+            onPressed: _markingArrived ? null : () => _onPressArrived(trip),
             icon: _markingArrived
                 ? SizedBox(
                     width: 20,
@@ -1718,9 +1996,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
           _buildDetailRow(
             icon: IconsaxPlusBold.routing_2,
             label: context.l10n.tripDistanceLabel,
-            value: context.l10n.distanceKm(
-              trip.distanceKm!.toStringAsFixed(1),
-            ),
+            value: context.l10n.distanceKm(trip.distanceKm!.toStringAsFixed(1)),
             color: T.primary(context),
           ),
           const Divider(height: 32),
@@ -2064,17 +2340,12 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Show passenger name only if driver has paid to contact
                   Text(
-                    booking.hasDriverPaidToContact
-                        ? (booking.userPopulated?.name ??
-                            context.l10n.passengerFallback)
-                        : context.l10n.anonymousPassenger,
+                    booking.userPopulated?.name ??
+                        context.l10n.passengerFallback,
                     style: AppTextStyles.titleSmall.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: booking.hasDriverPaidToContact
-                          ? T.onSurface(context).withValues(alpha: 0.87)
-                          : T.textSecondary(context),
+                      color: T.onSurface(context).withValues(alpha: 0.87),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -2098,8 +2369,7 @@ class _TripManagementScreenState extends State<TripManagementScreen> {
                       ),
                     ],
                   ),
-                  if (booking.hasDriverPaidToContact &&
-                      booking.sharePhoneWithDriver) ...[
+                  if (booking.sharePhoneWithDriver) ...[
                     const SizedBox(height: 4),
                     Row(
                       children: [

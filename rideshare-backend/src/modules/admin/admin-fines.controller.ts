@@ -104,10 +104,7 @@ export class AdminFinesController {
   @Post()
   @ApiOperation({ summary: 'Issue a manual fine to a driver' })
   @ApiResponse({ status: 201, description: 'Fine created' })
-  create(
-    @Body() dto: CreateFineDto,
-    @CurrentUser() admin: { id: string },
-  ) {
+  create(@Body() dto: CreateFineDto, @CurrentUser() admin: { id: string }) {
     return this.service.create(admin.id, dto);
   }
 

@@ -1,0 +1,137 @@
+"""Regenerate the seat rectangles in lib/models/vehicle_art_catalog.dart.
+
+Run this whenever a vehicle asset in assets/vehicles/ is replaced. It reads each
+PNG, crops to the vehicle's alpha bounding box, and normalizes the hand-measured
+seat rectangles below to that crop — which is exactly the box VehicleCabinView
+draws the asset into.
+
+    python scripts/calibrate_vehicle_art.py <output-dir>
+
+Writes seat_art.json plus a v2_<type>.png overlay per vehicle with every seat
+boxed and numbered. ALWAYS eyeball those overlays: a seat drawn over the wrong
+cushion means passengers book a seat they do not sit in.
+
+SEATS below is measured by hand against each asset's alpha bounding box, in
+front-to-back / left-to-right order — the same order the backend flattens
+seatsPerRowList into `row-col` seat ids. That order is the contract; do not
+reshuffle it.
+
+The driver's seat is deliberately absent: it is part of the artwork, is never
+bookable, and so carries no state worth overlaying.
+"""
+from PIL import Image, ImageDraw
+import numpy as np, json, sys, pathlib, math
+
+# Resolved from this file, so the script runs from any working directory.
+ASSETS = pathlib.Path(__file__).resolve().parent.parent / 'assets' / 'vehicles'
+out = sys.argv[1]
+
+# (row, x0, x1, y0, y1) per seat, in crop coordinates, front-to-back / left-to-right
+SEATS = {
+ 'standard_car': [
+   (0,281,423,239,384),
+   (1,101,208,425,579),(1,208,315,425,579),(1,315,422,425,579),
+ ],
+ 'family_suv': [
+   (0,291,429,264,422),
+   (1,93,209,451,594),(1,209,325,451,594),(1,325,441,451,594),
+   (2,119,231,619,740),(2,302,413,619,740),
+ ],
+ 'medium_bus': [
+   (0,159,211,129,191),
+   (1,63,105,200,260),(1,105,147,200,260),(1,169,215,200,260),
+   (2,63,105,274,334),(2,105,147,274,334),(2,170,216,274,334),
+   (3,67,115,351,413),(3,117,163,351,413),(3,165,213,351,413),
+ ],
+ 'large_bus': [
+   (0,224,284,77,124),
+   (1,72,122,160,228),(1,126,177,160,228),(1,230,281,168,237),
+   (2,71,123,242,309),(2,126,178,242,309),(2,235,288,270,339),
+   (3,71,123,327,394),(3,126,178,327,394),(3,236,290,360,429),
+   (4,70,123,406,473),(4,126,178,406,473),(4,237,292,450,520),
+   (5,70,122,486,552),(5,126,178,486,552),(5,238,294,538,606),
+   (6,69,122,565,629),(6,125,178,565,629),
+   (7,67,123,646,726),(7,124,180,646,726),(7,181,237,646,726),(7,238,294,646,726),
+ ],
+}
+
+def crop_box(name):
+    im = Image.open(ASSETS / f'{name}.png').convert('RGBA')
+    al = np.array(im)[:, :, 3]
+    ys, xs = np.nonzero(al > 16)
+    return im, int(xs.min()), int(xs.max()), int(ys.min()), int(ys.max())
+
+result = {}
+for name, seats in SEATS.items():
+    im, x0, x1, y0, y1 = crop_box(name)
+    w, h = x1-x0+1, y1-y0+1
+    crop = im.crop((x0, y0, x1+1, y1+1))
+
+    def norm(a, bx, by, bh): return dict(l=round(a/w,4), t=round(by/h,4), w=round((bx-a+1)/w,4), h=round((bh-by+1)/h,4))
+
+    entries, counters = [], {}
+    for (row, sx0, sx1, sy0, sy1) in seats:
+        col = counters.get(row, 0); counters[row] = col + 1
+        entries.append(dict(row=row, col=col, **norm(sx0, sx1, sy0, sy1)))
+
+    # Seats split evenly off one bench can end up sharing a pixel column, and a
+    # shared column means a tap there lands on whichever seat the Stack drew
+    # last. Pull each seat's right edge back behind its neighbour's left edge,
+    # flooring so the 4-decimal rounding can never push it forward again.
+    by_row = {}
+    for i, e in enumerate(entries):
+        by_row.setdefault(e['row'], []).append(i)
+    for idxs in by_row.values():
+        idxs.sort(key=lambda i: entries[i]['l'])
+        for a, b in zip(idxs, idxs[1:]):
+            if entries[a]['l'] + entries[a]['w'] >= entries[b]['l']:
+                gap = (entries[b]['l'] - entries[a]['l']) * 10000 - 1
+                entries[a]['w'] = math.floor(gap) / 10000
+    result[name] = dict(seats=entries, crop=[w, h])
+
+    ov = crop.copy(); dr = ImageDraw.Draw(ov, 'RGBA')
+    for i, s in enumerate(entries, 1):
+        bx = [s['l']*w, s['t']*h, (s['l']+s['w'])*w, (s['t']+s['h'])*h]
+        dr.rectangle(bx, outline=(255,0,0,255), width=3)
+        dr.text((bx[0]+4, bx[1]+2), str(i), fill=(220,0,0,255))
+    sc = min(3.0, 1500/h)
+    big = ov.resize((int(w*sc), int(h*sc)), Image.LANCZOS)
+    bg = Image.new('RGBA', big.size, (255,255,255,255)); bg.alpha_composite(big)
+    bg.convert('RGB').save(f'{out}/v2_{name}.png')
+    print(f'{name}: crop {w}x{h}, {len(entries)} seats')
+
+json.dump(result, open(f'{out}/seat_art.json', 'w'), indent=1)
+
+ORDER = ['standard_car', 'family_suv', 'medium_bus', 'large_bus']
+HEADER = """import 'vehicle_art.dart';
+
+/// Seat rectangles measured against each vehicle asset, normalized to the
+/// image so they hold at any render size.
+///
+/// Order matches the backend's `seatsPerRowList` flattening exactly - the nth
+/// entry here is display seat n and backend seat id `row-col`.
+///
+/// The driver's seat is part of the artwork and is never overlaid: it is not
+/// bookable, so it carries no state worth drawing.
+///
+/// GENERATED by scripts/calibrate_vehicle_art.py - do not hand-edit.
+const Map<String, VehicleArt> kVehicleArtCatalog = {"""
+
+lines = [HEADER]
+for key in ORDER:
+    e = result[key]; w, h = e['crop']
+    lines += [f"  '{key}': VehicleArt(",
+              f"    asset: 'assets/vehicles/{key}.png',",
+              f"    aspectRatio: {round(w / h, 4)}, // {w}x{h}",
+              "    seats: ["]
+    for st in e['seats']:
+        lines.append(f"      SeatSlot(row: {st['row']}, col: {st['col']}, "
+                     f"left: {st['l']}, top: {st['t']}, "
+                     f"width: {st['w']}, height: {st['h']}),")
+    lines += ["    ],", "  ),"]
+lines.append("};")
+
+target = pathlib.Path(__file__).resolve().parent.parent / 'lib' / 'models' / 'vehicle_art_catalog.dart'
+target.write_text(chr(10).join(lines) + chr(10), encoding='utf-8')
+print()
+print('wrote', target.name, 'and seat_art.json')

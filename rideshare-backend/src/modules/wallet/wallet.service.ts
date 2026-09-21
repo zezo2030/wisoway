@@ -16,6 +16,8 @@ import {
   WalletAccountEntity,
   WalletAccountType,
   WalletEntryDirection,
+  WalletHoldEntity,
+  WalletHoldStatus,
   PayoutStatus,
   WalletTransactionEntity,
   WalletTransactionStatus,
@@ -23,7 +25,8 @@ import {
 } from '../../database/entities';
 import { CreateTopupDto } from './dto/create-topup.dto';
 import { CreatePayoutRequestDto } from './dto/create-payout-request.dto';
-import { DriverTripChargeDto } from './dto/driver-trip-charge.dto';
+import { PlatformPricingService } from '../payments/platform-pricing.service';
+import { ErrorCodes } from '../../common/errors/error-codes';
 
 /** Primary ledger row for a (user, bucket): highest positive balance, else JOD, else first. */
 export function pickPrimaryWalletLedgerAccount(
@@ -52,6 +55,7 @@ export class WalletService {
     private readonly tripRepo: Repository<TripEntity>,
     @InjectRepository(UserEntity)
     private readonly userRepo: Repository<UserEntity>,
+    private readonly platformPricing: PlatformPricingService,
   ) {}
 
   private async getOrCreateAccount(
@@ -89,10 +93,14 @@ export class WalletService {
     });
     const primary = pickPrimaryWalletLedgerAccount(accounts);
     if (!primary) return;
-    await manager.update(UserEntity, { id: userId }, {
-      walletBalance: Number(primary.balance),
-      walletCurrency: primary.currency,
-    });
+    await manager.update(
+      UserEntity,
+      { id: userId },
+      {
+        walletBalance: Number(primary.balance),
+        walletCurrency: primary.currency,
+      },
+    );
   }
 
   /**
@@ -110,26 +118,75 @@ export class WalletService {
       order: { updatedAt: 'DESC' },
     });
 
-    if (accounts.length === 0) {
-      const account = await this.getOrCreateAccount(userId, accountType);
-      return {
-        accountId: account.id,
-        accountType: account.accountType,
-        currency: account.currency,
-        balance: Number(account.balance),
-        isActive: account.isActive,
-      };
-    }
+    const account =
+      accounts.length === 0
+        ? await this.getOrCreateAccount(userId, accountType)
+        : pickPrimaryWalletLedgerAccount(accounts)!;
 
-    const account = pickPrimaryWalletLedgerAccount(accounts)!;
+    // `balance` is what the account owns; `reserved` is the part promised to
+    // active trip holds. Drivers spend against `available`.
+    const balance = Number(account.balance);
+    const reserved = Number(account.reservedBalance ?? 0);
 
     return {
       accountId: account.id,
       accountType: account.accountType,
       currency: account.currency,
-      balance: Number(account.balance),
+      balance,
+      reservedBalance: reserved,
+      availableBalance: Math.round((balance - reserved) * 100) / 100,
       isActive: account.isActive,
     };
+  }
+
+  /**
+   * Blocks drivers with a negative ledger balance from creating shared trips
+   * or going online for instant rides until they top up / settle.
+   */
+  async assertNonNegativeDriverBalance(driverId: string): Promise<void> {
+    const summary = await this.getWalletSummary(
+      driverId,
+      WalletAccountType.DRIVER,
+    );
+    if (summary.balance < 0) {
+      throw new ForbiddenException({
+        code: ErrorCodes.NEGATIVE_WALLET_BALANCE,
+        message:
+          'رصيد محفظتك سالب. سدد المستحقات قبل إنشاء رحلات مشتركة أو تلقي رحلات مباشرة.',
+        balance: summary.balance,
+        currency: summary.currency,
+      });
+    }
+  }
+
+  /** Active holds for a user — surfaced in the driver wallet screen. */
+  async getActiveHolds(userId: string, role: string) {
+    const accountType =
+      role === WalletAccountType.DRIVER
+        ? WalletAccountType.DRIVER
+        : WalletAccountType.RIDER;
+
+    const accounts = await this.walletAccountRepo.find({
+      where: { userId, accountType },
+    });
+    if (accounts.length === 0) return [];
+
+    const holds = await this.dataSource.getRepository(WalletHoldEntity).find({
+      where: {
+        accountId: In(accounts.map((a) => a.id)),
+        status: WalletHoldStatus.ACTIVE,
+      },
+      order: { createdAt: 'DESC' },
+    });
+
+    return holds.map((h) => ({
+      id: h.id,
+      amount: Number(h.amount),
+      currency: h.currency,
+      referenceType: h.referenceType,
+      referenceId: h.referenceId,
+      createdAt: h.createdAt,
+    }));
   }
 
   /**
@@ -271,157 +328,6 @@ export class WalletService {
         },
       });
       return manager.save(tx);
-    });
-  }
-
-  async chargeDriverForTrip(driverId: string, dto: DriverTripChargeDto) {
-    const trip = await this.tripRepo.findOne({
-      where: { id: dto.tripId, driverId },
-    });
-    if (!trip) {
-      throw new NotFoundException('Trip not found for this driver');
-    }
-    if (trip.driverWalletChargeApplied) {
-      const existingTripCharge = await this.walletTxRepo.findOne({
-        where: {
-          referenceType: 'trip',
-          referenceId: dto.tripId,
-          type: WalletTransactionType.TRIP_DEBIT,
-        },
-        order: { createdAt: 'DESC' },
-      });
-      if (existingTripCharge) return existingTripCharge;
-      throw new BadRequestException('Trip fee has already been paid');
-    }
-
-    const account = await this.getOrCreateAccount(
-      driverId,
-      WalletAccountType.DRIVER,
-      trip.currency || 'JOD',
-    );
-    const seatPrice = Number(trip.price ?? 0);
-    const totalSeats = Number(trip.totalSeats ?? 0);
-    const fee = Math.round(seatPrice * totalSeats * 0.1 * 100) / 100;
-
-    const existing = dto.idempotencyKey
-      ? await this.walletTxRepo.findOne({
-          where: { idempotencyKey: dto.idempotencyKey },
-        })
-      : null;
-    if (existing) {
-      return existing;
-    }
-
-    return this.dataSource.transaction(async (manager) => {
-      const driver = await manager.findOne(UserEntity, {
-        where: { id: driverId },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!driver) {
-        throw new NotFoundException('User not found');
-      }
-
-      const locked = await manager.findOne(WalletAccountEntity, {
-        where: { id: account.id },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!locked) {
-        throw new NotFoundException('Wallet account not found');
-      }
-
-      if (!driver.hasUsedLifetimeFreeTrip) {
-        driver.hasUsedLifetimeFreeTrip = true;
-        await manager.save(driver);
-
-        const freeTripTx = manager.create(WalletTransactionEntity, {
-          accountId: locked.id,
-          type: WalletTransactionType.TRIP_DEBIT,
-          direction: WalletEntryDirection.DEBIT,
-          status: WalletTransactionStatus.POSTED,
-          amount: '0.00',
-          currency: locked.currency,
-          referenceType: 'trip',
-          referenceId: dto.tripId,
-          idempotencyKey: dto.idempotencyKey ?? null,
-          metadata: {
-            seatPrice,
-            totalSeats,
-            percent: 10,
-            formula: 'seatPrice * totalSeats * 10%',
-            freeTripApplied: true,
-            discountPercent: 100,
-          },
-        });
-        const savedFreeTripTx = await manager.save(freeTripTx);
-
-        await manager.update(
-          TripEntity,
-          { id: dto.tripId },
-          {
-            driverWalletChargeApplied: true,
-            driverWalletChargeAt: new Date(),
-            communicationFeeStatus: 'paid',
-          },
-        );
-        await manager.update(
-          BookingEntity,
-          {
-            tripId: dto.tripId,
-            status: In([BookingStatus.PENDING, BookingStatus.CONFIRMED]),
-          },
-          { hasDriverPaidToContact: true },
-        );
-
-        return savedFreeTripTx;
-      }
-
-      const current = Number(locked.balance);
-      if (current < fee) {
-        throw new BadRequestException(
-          'Insufficient wallet balance to activate trip',
-        );
-      }
-      locked.balance = (current - fee).toFixed(2);
-      await manager.save(locked);
-
-      const tx = manager.create(WalletTransactionEntity, {
-        accountId: locked.id,
-        type: WalletTransactionType.TRIP_DEBIT,
-        direction: WalletEntryDirection.DEBIT,
-        status: WalletTransactionStatus.POSTED,
-        amount: fee.toFixed(2),
-        currency: locked.currency,
-        referenceType: 'trip',
-        referenceId: dto.tripId,
-        idempotencyKey: dto.idempotencyKey ?? null,
-        metadata: {
-          seatPrice,
-          totalSeats,
-          percent: 10,
-          formula: 'seatPrice * totalSeats * 10%',
-        },
-      });
-      const savedTx = await manager.save(tx);
-
-      await manager.update(
-        TripEntity,
-        { id: dto.tripId },
-        {
-          driverWalletChargeApplied: true,
-          driverWalletChargeAt: new Date(),
-          communicationFeeStatus: 'paid',
-        },
-      );
-      await manager.update(
-        BookingEntity,
-        {
-          tripId: dto.tripId,
-          status: In([BookingStatus.PENDING, BookingStatus.CONFIRMED]),
-        },
-        { hasDriverPaidToContact: true },
-      );
-
-      return savedTx;
     });
   }
 

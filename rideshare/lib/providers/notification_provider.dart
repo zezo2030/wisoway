@@ -100,6 +100,9 @@ class NotificationProvider with ChangeNotifier {
 
       _isInitialized = true;
       notifyListeners();
+
+      // Retry pending instant-offer action once auth/nav are ready.
+      await PushNotificationService.consumePendingInstantOfferAction();
     } catch (e) {
       debugPrint('Error initializing NotificationProvider: $e');
     }

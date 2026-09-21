@@ -41,14 +41,47 @@ class TripModel {
   // Communication Fee Status
   final String communicationFeeStatus; // 'not_paid', 'paid'
 
+  // Trip lifecycle timestamps
+  final DateTime? tripStartedAt;
+  final DateTime? tripCompletedAt;
+
+  // Presence settlement (012)
+  final DateTime? presenceSettledAt;
+  final int? billableSeatCount;
+  final double? capturedFeeAmount;
+
   // Distance (km, from PostGIS)
   final double? distanceKm;
+
+  // Live tracking ETA (in-progress)
+  final double? remainingDistanceKm;
+  final int? remainingDurationSeconds;
+  final DateTime? etaAt;
+  final double? routeProgressPercent;
+  final double? lastDriverLocationLat;
+  final double? lastDriverLocationLng;
+
+  // Driver / vehicle (enriched on GET /trips/:id)
+  final String? driverPhotoUrl;
+  final double? driverRating;
+  /// Backend vehicle type key (`standard_car`, `large_bus`, ...). Drives which
+  /// cabin artwork the seat map draws; null for trips whose driver has no
+  /// vehicle on file, which fall back to the plain seat grid.
+  final String? vehicleType;
+  final String? vehicleModel;
+  final String? vehiclePlateNumber;
 
   // Stops (up to 5 intermediate waypoints)
   final List<LocationModel> stops;
 
   // Driver notes visible to passengers
   final String? notes;
+
+  // Passenger summary attached by the trip list endpoints
+  /// Seats already taken by live bookings — powers the "N seats left" line.
+  final int bookedSeats;
+  /// Photos of passengers already on board (max 3, oldest booking first).
+  final List<String> passengerAvatars;
 
   // Recurrence rule that spawned this trip (if any)
   final String? recurrenceRuleId;
@@ -75,9 +108,27 @@ class TripModel {
     this.status = 'active',
     this.isVisible = true,
     this.communicationFeeStatus = 'not_paid',
+    this.tripStartedAt,
+    this.tripCompletedAt,
+    this.presenceSettledAt,
+    this.billableSeatCount,
+    this.capturedFeeAmount,
     this.distanceKm,
+    this.remainingDistanceKm,
+    this.remainingDurationSeconds,
+    this.etaAt,
+    this.routeProgressPercent,
+    this.lastDriverLocationLat,
+    this.lastDriverLocationLng,
+    this.driverPhotoUrl,
+    this.driverRating,
+    this.vehicleType,
+    this.vehicleModel,
+    this.vehiclePlateNumber,
     this.stops = const [],
     this.notes,
+    this.bookedSeats = 0,
+    this.passengerAvatars = const [],
     this.recurrenceRuleId,
     required this.createdAt,
     required this.updatedAt,
@@ -170,15 +221,63 @@ class TripModel {
       status: json['status'] ?? 'active',
       isVisible: json['isVisible'] ?? true,
       communicationFeeStatus: json['communicationFeeStatus'] ?? 'not_paid',
+      tripStartedAt: json['tripStartedAt'] != null
+          ? DateTime.tryParse(json['tripStartedAt'].toString())
+          : null,
+      tripCompletedAt: json['tripCompletedAt'] != null
+          ? DateTime.tryParse(json['tripCompletedAt'].toString())
+          : null,
+      presenceSettledAt: json['presenceSettledAt'] != null
+          ? DateTime.tryParse(json['presenceSettledAt'].toString())
+          : null,
+      billableSeatCount: json['billableSeatCount'] != null
+          ? _parseInt(json['billableSeatCount'])
+          : null,
+      capturedFeeAmount: json['capturedFeeAmount'] != null
+          ? _parseDouble(json['capturedFeeAmount'])
+          : null,
       distanceKm: json['distanceKm'] != null
           ? _parseDouble(json['distanceKm'])
           : null,
+      remainingDistanceKm: json['remainingDistanceKm'] != null
+          ? _parseDouble(json['remainingDistanceKm'])
+          : null,
+      remainingDurationSeconds: json['remainingDurationSeconds'] != null
+          ? _parseInt(json['remainingDurationSeconds'])
+          : null,
+      etaAt: json['etaAt'] != null
+          ? DateTime.tryParse(json['etaAt'].toString())
+          : null,
+      routeProgressPercent: json['routeProgressPercent'] != null
+          ? _parseDouble(json['routeProgressPercent'])
+          : null,
+      lastDriverLocationLat: json['lastDriverLocationLat'] != null
+          ? _parseDouble(json['lastDriverLocationLat'])
+          : null,
+      lastDriverLocationLng: json['lastDriverLocationLng'] != null
+          ? _parseDouble(json['lastDriverLocationLng'])
+          : null,
+      driverPhotoUrl: BackendUrlResolver.normalize(
+        json['driverPhotoUrl']?.toString(),
+      ),
+      driverRating: json['driverRating'] != null
+          ? _parseDouble(json['driverRating'])
+          : null,
+      vehicleType: json['vehicleType']?.toString(),
+      vehicleModel: json['vehicleModel']?.toString(),
+      vehiclePlateNumber: json['vehiclePlateNumber']?.toString(),
       stops: (json['stops'] as List?)
               ?.whereType<Map<String, dynamic>>()
               .map((s) => LocationModel.fromStopMap(s))
               .toList() ??
           [],
       notes: json['notes'] as String?,
+      bookedSeats: _parseInt(json['bookedSeats']),
+      passengerAvatars: (json['passengerAvatars'] as List?)
+              ?.map((e) => BackendUrlResolver.normalize(e?.toString()))
+              .whereType<String>()
+              .toList() ??
+          const [],
       recurrenceRuleId: json['recurrenceRuleId']?.toString(),
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
@@ -207,12 +306,39 @@ class TripModel {
       'status': status,
       'isVisible': isVisible,
       'communicationFeeStatus': communicationFeeStatus,
+      if (tripStartedAt != null)
+        'tripStartedAt': tripStartedAt!.toIso8601String(),
+      if (tripCompletedAt != null)
+        'tripCompletedAt': tripCompletedAt!.toIso8601String(),
+      if (presenceSettledAt != null)
+        'presenceSettledAt': presenceSettledAt!.toIso8601String(),
+      if (billableSeatCount != null) 'billableSeatCount': billableSeatCount,
+      if (capturedFeeAmount != null) 'capturedFeeAmount': capturedFeeAmount,
       if (distanceKm != null) 'distanceKm': distanceKm,
+      if (remainingDistanceKm != null)
+        'remainingDistanceKm': remainingDistanceKm,
+      if (remainingDurationSeconds != null)
+        'remainingDurationSeconds': remainingDurationSeconds,
+      if (etaAt != null) 'etaAt': etaAt!.toIso8601String(),
+      if (routeProgressPercent != null)
+        'routeProgressPercent': routeProgressPercent,
+      if (lastDriverLocationLat != null)
+        'lastDriverLocationLat': lastDriverLocationLat,
+      if (lastDriverLocationLng != null)
+        'lastDriverLocationLng': lastDriverLocationLng,
+      if (driverPhotoUrl != null) 'driverPhotoUrl': driverPhotoUrl,
+      if (driverRating != null) 'driverRating': driverRating,
+      if (vehicleType != null) 'vehicleType': vehicleType,
+      if (vehicleModel != null) 'vehicleModel': vehicleModel,
+      if (vehiclePlateNumber != null)
+        'vehiclePlateNumber': vehiclePlateNumber,
       if (stops.isNotEmpty)
         'stops': stops.asMap().entries
             .map((e) => e.value.toStopMap(order: e.key + 1))
             .toList(),
       if (notes != null) 'notes': notes,
+      'bookedSeats': bookedSeats,
+      'passengerAvatars': passengerAvatars,
       if (recurrenceRuleId != null) 'recurrenceRuleId': recurrenceRuleId,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
@@ -238,9 +364,27 @@ class TripModel {
     String? status,
     bool? isVisible,
     String? communicationFeeStatus,
+    DateTime? tripStartedAt,
+    DateTime? tripCompletedAt,
+    DateTime? presenceSettledAt,
+    int? billableSeatCount,
+    double? capturedFeeAmount,
     double? distanceKm,
+    double? remainingDistanceKm,
+    int? remainingDurationSeconds,
+    DateTime? etaAt,
+    double? routeProgressPercent,
+    double? lastDriverLocationLat,
+    double? lastDriverLocationLng,
+    String? driverPhotoUrl,
+    double? driverRating,
+    String? vehicleType,
+    String? vehicleModel,
+    String? vehiclePlateNumber,
     List<LocationModel>? stops,
     String? notes,
+    int? bookedSeats,
+    List<String>? passengerAvatars,
     String? recurrenceRuleId,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -263,9 +407,30 @@ class TripModel {
       isVisible: isVisible ?? this.isVisible,
       communicationFeeStatus:
           communicationFeeStatus ?? this.communicationFeeStatus,
+      tripStartedAt: tripStartedAt ?? this.tripStartedAt,
+      tripCompletedAt: tripCompletedAt ?? this.tripCompletedAt,
+      presenceSettledAt: presenceSettledAt ?? this.presenceSettledAt,
+      billableSeatCount: billableSeatCount ?? this.billableSeatCount,
+      capturedFeeAmount: capturedFeeAmount ?? this.capturedFeeAmount,
       distanceKm: distanceKm ?? this.distanceKm,
+      remainingDistanceKm: remainingDistanceKm ?? this.remainingDistanceKm,
+      remainingDurationSeconds:
+          remainingDurationSeconds ?? this.remainingDurationSeconds,
+      etaAt: etaAt ?? this.etaAt,
+      routeProgressPercent: routeProgressPercent ?? this.routeProgressPercent,
+      lastDriverLocationLat:
+          lastDriverLocationLat ?? this.lastDriverLocationLat,
+      lastDriverLocationLng:
+          lastDriverLocationLng ?? this.lastDriverLocationLng,
+      driverPhotoUrl: driverPhotoUrl ?? this.driverPhotoUrl,
+      driverRating: driverRating ?? this.driverRating,
+      vehicleType: vehicleType ?? this.vehicleType,
+      vehicleModel: vehicleModel ?? this.vehicleModel,
+      vehiclePlateNumber: vehiclePlateNumber ?? this.vehiclePlateNumber,
       stops: stops ?? this.stops,
       notes: notes ?? this.notes,
+      bookedSeats: bookedSeats ?? this.bookedSeats,
+      passengerAvatars: passengerAvatars ?? this.passengerAvatars,
       recurrenceRuleId: recurrenceRuleId ?? this.recurrenceRuleId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -291,6 +456,9 @@ class TripModel {
   static const int driverStartTripEarlyMinutes = 15;
   static const int driverStartTripLateMinutes = 30;
 
+  /// Live GPS sharing must be on from presence window until trip ends.
+  static const int driverTrackingEarlyMinutes = 60;
+
   DateTime get driverStartWindowOpens => departureTime.subtract(
         const Duration(minutes: driverStartTripEarlyMinutes),
       );
@@ -298,6 +466,25 @@ class TripModel {
   DateTime get driverStartWindowCloses => departureTime.add(
         const Duration(minutes: driverStartTripLateMinutes),
       );
+
+  DateTime get driverTrackingWindowOpens => departureTime.subtract(
+        const Duration(minutes: driverTrackingEarlyMinutes),
+      );
+
+  bool get isDriverLiveTrackingRequired {
+    if (status == 'completed' ||
+        status == 'cancelled' ||
+        status == 'expired') {
+      return false;
+    }
+    if (status == 'in_progress') return true;
+    if (!(status == 'published' ||
+        status == 'fully_booked' ||
+        status == 'active')) {
+      return false;
+    }
+    return !DateTime.now().isBefore(driverTrackingWindowOpens);
+  }
 
   bool get _canDriverAttemptStartStatus =>
       status == 'published' ||

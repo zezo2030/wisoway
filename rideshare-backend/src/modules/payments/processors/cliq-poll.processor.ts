@@ -18,12 +18,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PaymentEntity } from '../../../database/entities/payment.entity';
 import { UserEntity } from '../../../database/entities/user.entity';
-import {
-  PgUserRole,
-  WalletAccountType,
-} from '../../../database/entities';
+import { PgUserRole, WalletAccountType } from '../../../database/entities';
 import { A2aCliqService } from '../a2a-cliq.service';
 import { WalletService } from '../../wallet/wallet.service';
+import { AdminAlertsService } from '../../admin/admin-alerts.service';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 
@@ -49,6 +47,7 @@ export class CliqPollProcessor {
     private userRepo: Repository<UserEntity>,
     private a2aCliqService: A2aCliqService,
     private walletService: WalletService,
+    private adminAlertsService: AdminAlertsService,
     @InjectQueue(CLIQ_POLL_QUEUE) private cliqPollQueue: Queue<CliqPollJobData>,
   ) {}
 
@@ -81,11 +80,7 @@ export class CliqPollProcessor {
         `Inquiry failed (attempt ${attempt}/${maxAttempts}) for payment ${paymentId}: ${err instanceof Error ? err.message : String(err)}`,
       );
       // لو الـ inquiry فشل (network/auth)، نجدول محاولة جديدة لو فيه محاولات متبقية
-      await this.scheduleNextOrFail(
-        payment,
-        job.data,
-        'inquiry-error',
-      );
+      await this.scheduleNextOrFail(payment, job.data, 'inquiry-error');
       return;
     }
 
@@ -193,6 +188,7 @@ export class CliqPollProcessor {
       });
       payment.status = 'approved';
       await this.paymentRepo.save(payment);
+      await this.adminAlertsService.notifyFeePayment(payment);
     } catch (creditErr) {
       this.logger.error(
         `Wallet credit failed for payment ${payment.id} after CliQ success: ${creditErr instanceof Error ? creditErr.message : String(creditErr)}`,

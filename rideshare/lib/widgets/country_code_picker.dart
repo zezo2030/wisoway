@@ -50,10 +50,7 @@ class CountryCodePicker extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                _flagEmoji(selectedCountry.iso2),
-                style: const TextStyle(fontSize: 20),
-              ),
+              _flag(selectedCountry.iso2, 20),
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
@@ -77,13 +74,6 @@ class CountryCodePicker extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _flagEmoji(String iso2) {
-    if (iso2.length != 2) return '🌐';
-    final chars = iso2.toUpperCase().codeUnits;
-    if (chars.any((c) => c < 65 || c > 90)) return '🌐';
-    return String.fromCharCodes(chars.map((c) => 0x1F1E6 + (c - 65)));
   }
 
   void _showCountryPicker(BuildContext context) {
@@ -154,112 +144,125 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
     final sheetHeight = MediaQuery.of(context).size.height * 0.6;
 
-    return Container(
+    return SizedBox(
       height: sheetHeight + bottomPadding,
-      decoration: BoxDecoration(
+      child: Material(
         color: T.surface(context),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        children: [
-          Container(
-            margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: T.outline(context),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              context.l10n.selectCountry,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: T.onSurface(context),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: T.outline(context),
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-              controller: _searchController,
-              focusNode: _searchFocus,
-              onChanged: _filterCountries,
-              decoration: InputDecoration(
-                hintText: context.l10n.searchCountryHint,
-                prefixIcon: Icon(
-                  IconsaxPlusLinear.search_normal_1,
-                  color: T.onSurfaceVariant(context),
-                ),
-                filled: true,
-                fillColor: T.surface(context),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                context.l10n.selectCountry,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: T.onSurface(context),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.only(bottom: 24),
-              itemCount: _filteredCountries.length,
-              itemBuilder: (context, index) {
-                final country = _filteredCountries[index];
-                final isSelected =
-                    country.dialCode == widget.selectedCountry.dialCode;
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: TextField(
+                controller: _searchController,
+                focusNode: _searchFocus,
+                onChanged: _filterCountries,
+                decoration: InputDecoration(
+                  hintText: context.l10n.searchCountryHint,
+                  prefixIcon: Icon(
+                    IconsaxPlusLinear.search_normal_1,
+                    color: T.onSurfaceVariant(context),
+                  ),
+                  filled: true,
+                  fillColor: T.surface(context),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.only(bottom: 24),
+                itemCount: _filteredCountries.length,
+                itemBuilder: (context, index) {
+                  final country = _filteredCountries[index];
+                  final isSelected =
+                      country.dialCode == widget.selectedCountry.dialCode;
 
-                return ListTile(
-                  leading: Text(
-                    _flagEmoji(country.iso2),
-                    style: const TextStyle(fontSize: 24),
-                  ),
-                  title: Text(
-                    country.nameAr,
-                    style: TextStyle(
-                      fontWeight: isSelected
-                          ? FontWeight.bold
-                          : FontWeight.w500,
-                      color: isSelected
-                          ? T.primary(context)
-                          : T.onSurface(context),
+                  return ListTile(
+                    leading: _flag(country.iso2, 24),
+                    title: Text(
+                      country.nameAr,
+                      style: TextStyle(
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.w500,
+                        color: isSelected
+                            ? T.primary(context)
+                            : T.onSurface(context),
+                      ),
                     ),
-                  ),
-                  subtitle: Text(
-                    '${country.nameEn} ${country.dialCode}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: T.onSurfaceVariant(context),
+                    subtitle: Text(
+                      '${country.nameEn} ${country.dialCode}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: T.onSurfaceVariant(context),
+                      ),
                     ),
-                  ),
-                  trailing: isSelected
-                      ? Icon(
-                          IconsaxPlusBold.tick_circle,
-                          color: T.primary(context),
-                        )
-                      : null,
-                  onTap: () => widget.onCountrySelected(country),
-                );
-              },
+                    trailing: isSelected
+                        ? Icon(
+                            IconsaxPlusBold.tick_circle,
+                            color: T.primary(context),
+                          )
+                        : null,
+                    onTap: () => widget.onCountrySelected(country),
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  String _flagEmoji(String iso2) {
-    if (iso2.length != 2) return '🌐';
-    final chars = iso2.toUpperCase().codeUnits;
-    if (chars.any((c) => c < 65 || c > 90)) return '🌐';
-    return String.fromCharCodes(chars.map((c) => 0x1F1E6 + (c - 65)));
+}
+
+/// Jordan ships as a designed asset (used across the auth redesign); every
+/// other country falls back to the regional-indicator flag emoji.
+Widget _flag(String iso2, double size) {
+  if (iso2.toUpperCase() == 'JO') {
+    return Image.asset(
+      'assets/images/auth/auth_flag_jo.png',
+      width: size * 1.35,
+      height: size,
+      fit: BoxFit.contain,
+    );
   }
+  return Text(_flagEmoji(iso2), style: TextStyle(fontSize: size));
+}
+
+String _flagEmoji(String iso2) {
+  if (iso2.length != 2) return '🌐';
+  final chars = iso2.toUpperCase().codeUnits;
+  if (chars.any((c) => c < 65 || c > 90)) return '🌐';
+  return String.fromCharCodes(chars.map((c) => 0x1F1E6 + (c - 65)));
 }

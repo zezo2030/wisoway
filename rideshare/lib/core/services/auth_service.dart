@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../../models/user_model.dart';
 import '../api/api_client.dart';
@@ -149,6 +151,116 @@ class AuthService {
     }
   }
 
+  // ===== Deferred driver registration =====
+
+  /// Step 1: verify the driver's phone via OTP WITHOUT creating an account.
+  /// Returns a short-lived registration token used by the final register call.
+  Future<({String registrationToken, int expiresIn})> verifyDriverPhone(
+    String phoneNumber,
+    String code,
+  ) async {
+    final response = await _api.post(
+      ApiEndpoints.driverVerifyPhone,
+      data: {'phoneNumber': phoneNumber, 'code': code.trim()},
+    );
+    final data = response['data'] ?? response;
+    final token = data['registrationToken'] as String?;
+    if (token == null || token.isEmpty) {
+      throw Exception('Failed to start driver registration');
+    }
+    return (
+      registrationToken: token,
+      expiresIn: (data['expiresIn'] as int?) ?? 1800,
+    );
+  }
+
+  /// Upload a registration image before the account exists, authorized by the
+  /// registration token instead of a session access token.
+  Future<String> uploadRegistrationFile(
+    File file,
+    String registrationToken,
+  ) async {
+    final fileName = file.path.split('/').last;
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(file.path, filename: fileName),
+      'registrationToken': registrationToken,
+    });
+    final response = await _api.post(
+      ApiEndpoints.uploadsRegistration,
+      data: formData,
+    );
+    final url = response['url'] ?? response['data']?['url'];
+    if (url == null) {
+      throw Exception('Failed to upload registration image');
+    }
+    return url as String;
+  }
+
+  /// Step 2 (final): create the driver account AND vehicle atomically. The
+  /// account only exists once this succeeds.
+  Future<VerifyOtpResult> registerDriver({
+    required String registrationToken,
+    required String name,
+    required String password,
+    required String vehicleType,
+    required String plateNumber,
+    required String model,
+    required int seats,
+    required String carImageUrl,
+    required String insuranceImageUrl,
+    String? gender,
+    String? photoUrl,
+    String? licenseImageUrl,
+    String? vehicleLicenseImageUrl,
+    DevicePayload? device,
+  }) async {
+    final body = <String, dynamic>{
+      'registrationToken': registrationToken,
+      'name': name,
+      'password': password,
+      'vehicleType': vehicleType,
+      'plateNumber': plateNumber,
+      'model': model,
+      'seats': seats,
+      'carImageUrl': carImageUrl,
+      'insuranceImageUrl': insuranceImageUrl,
+    };
+    if (gender != null && gender.isNotEmpty) body['gender'] = gender;
+    if (photoUrl != null) body['photoUrl'] = photoUrl;
+    if (licenseImageUrl != null) body['licenseImageUrl'] = licenseImageUrl;
+    if (vehicleLicenseImageUrl != null) {
+      body['vehicleLicenseImageUrl'] = vehicleLicenseImageUrl;
+    }
+    if (device != null) body['device'] = device.toJson();
+
+    final response = await _api.post(ApiEndpoints.driverRegister, data: body);
+    final data = response['data'] ?? response;
+
+    await _tokenStorage.saveTokens(
+      accessToken: data['accessToken'],
+      refreshToken: data['refreshToken'],
+    );
+    await _tokenStorage.saveUserId(data['user']['_id'] ?? data['user']['id']);
+    _currentUser = UserModel.fromJson(data['user']);
+
+    return VerifyOtpResult(
+      user: _currentUser,
+      accountState: (data['accountState'] as String?) ?? 'active',
+      deviceState: (data['deviceState'] as String?) ?? 'new',
+      pendingPhoneLinkRequired:
+          (data['pendingPhoneLinkRequired'] as bool?) ?? false,
+    );
+  }
+
+  /// Update the submitted driver details/documents while the account is still
+  /// awaiting approval. The backend rejects this once the driver is approved.
+  Future<void> updatePendingDriverRegistration(
+    Map<String, dynamic> data,
+  ) async {
+    await _api.patch(ApiEndpoints.driverPendingRegistration, data: data);
+    _currentUser = await getProfile();
+  }
+
   // ===== Profile Operations =====
   Future<UserModel> getProfile() async {
     final response = await _api.get(ApiEndpoints.me);
@@ -167,6 +279,7 @@ class AuthService {
     String? email,
     String? gender,
     String? profileImageUrl,
+    String? city,
     bool? hidePhoneNumber,
   }) async {
     final Map<String, dynamic> data = {};
@@ -175,6 +288,9 @@ class AuthService {
     }
     if (gender != null) {
       data['gender'] = gender;
+    }
+    if (city != null) {
+      data['city'] = city;
     }
     if (profileImageUrl != null) {
       data['photoUrl'] = profileImageUrl; // backend expects 'photoUrl'

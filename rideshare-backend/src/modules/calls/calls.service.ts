@@ -6,16 +6,35 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { BookingEntity } from '../../database/entities/booking.entity';
+import {
+  BookingEntity,
+  BookingStatus,
+} from '../../database/entities/booking.entity';
 import {
   CallSessionEntity,
   CallSessionStatus,
 } from '../../database/entities/call-session.entity';
 import { UserEntity } from '../../database/entities/user.entity';
 import { ProxyPoolService } from './proxy-pool.service';
-import { ErrorCodes } from '../../common/errors/error-codes';
 
 const SESSION_EXPIRY_MINUTES = 60;
+
+/**
+ * Booking states in which the two sides may still reach each other by phone.
+ *
+ * The platform fee no longer gates contact, so participation alone used to be
+ * the only bound here — which let either side of a cancelled or rejected
+ * booking allocate a proxy number and call. Chat guards on
+ * `In(['pending', 'confirmed'])` at every site; this mirrors that set and adds
+ * IN_PROGRESS, because the auto-start job flips confirmed bookings to
+ * IN_PROGRESS at departureTime and pickup — the moment a driver most needs to
+ * phone a passenger — happens after that flip.
+ */
+const CALLABLE_BOOKING_STATUSES: readonly BookingStatus[] = [
+  BookingStatus.PENDING,
+  BookingStatus.CONFIRMED,
+  BookingStatus.IN_PROGRESS,
+];
 
 @Injectable()
 export class CallsService {
@@ -45,20 +64,17 @@ export class CallsService {
     });
     if (!booking) throw new NotFoundException('Booking not found');
 
-    // Calls require the driver to have paid the contact-unlock fee.
-    if (!booking.hasDriverPaidToContact) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: ErrorCodes.BOOKING_NOT_SETTLED,
-        message: 'Calls are only available after the driver unlocks contact',
-      });
-    }
-
     // Must be a participant (passenger or driver)
     const isPassenger = booking.userId === callerId;
     const isDriver = booking.trip.driverId === callerId;
     if (!isPassenger && !isDriver) {
       throw new ForbiddenException('You are not a participant in this booking');
+    }
+
+    if (!CALLABLE_BOOKING_STATUSES.includes(booking.status)) {
+      throw new ForbiddenException(
+        'This booking is no longer active, so calls are closed for it',
+      );
     }
 
     const calleeId = isDriver ? booking.userId : booking.trip.driverId;

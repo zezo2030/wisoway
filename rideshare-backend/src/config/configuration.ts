@@ -87,6 +87,28 @@ class PlatformConfig {
   @IsString()
   @IsOptional()
   MIN_APP_VERSION?: string;
+
+  /**
+   * Server-side Google Places key used by the backend autocomplete proxy.
+   * Default: undefined -> locations autocomplete is unavailable until configured.
+   */
+  @IsString()
+  @IsOptional()
+  @Transform(({ value }) =>
+    value !== undefined && value !== '' ? String(value) : undefined,
+  )
+  GOOGLE_PLACES_API_KEY?: string;
+
+  /**
+   * Firebase Web sender id used to document/verify the dashboard FCM web setup.
+   * Push delivery still uses the existing Firebase Admin credentials.
+   */
+  @IsString()
+  @IsOptional()
+  @Transform(({ value }) =>
+    value !== undefined && value !== '' ? String(value) : undefined,
+  )
+  FIREBASE_WEB_MESSAGING_SENDER_ID?: string;
 }
 
 export const platformConfig = registerAs('platform', () => {
@@ -99,6 +121,9 @@ export const platformConfig = registerAs('platform', () => {
     OTP_DEV_BYPASS: process.env.OTP_DEV_BYPASS,
     SETTLEMENT_GRACE_SECONDS: process.env.SETTLEMENT_GRACE_SECONDS,
     MIN_APP_VERSION: process.env.MIN_APP_VERSION,
+    GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY,
+    FIREBASE_WEB_MESSAGING_SENDER_ID:
+      process.env.FIREBASE_WEB_MESSAGING_SENDER_ID,
   });
 
   const errors = validateSync(config, { skipMissingProperties: true });

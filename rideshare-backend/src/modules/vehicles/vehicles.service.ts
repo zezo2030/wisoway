@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   ForbiddenException,
   ConflictException,
@@ -9,9 +10,16 @@ import { Repository } from 'typeorm';
 import { VehicleEntity } from '../../database/entities/vehicle.entity';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
+import {
+  countSeatsInLayout,
+  listVehicleTypeTemplates,
+  resolveVehicleTypeTemplate,
+} from './vehicle-types';
 
 @Injectable()
 export class VehiclesService {
+  private readonly logger = new Logger(VehiclesService.name);
+
   constructor(
     @InjectRepository(VehicleEntity)
     private vehicleRepo: Repository<VehicleEntity>,
@@ -28,11 +36,31 @@ export class VehiclesService {
       throw new ConflictException('Driver already has a vehicle');
     }
 
+    // When the client doesn't send a custom seat layout, derive it
+    // automatically from the selected vehicle type so drivers never have to
+    // lay out seats by hand. Seat count always follows the resolved layout.
+    let { seatLayout, seats } = createVehicleDto;
+    if (!seatLayout) {
+      seatLayout = resolveVehicleTypeTemplate(
+        createVehicleDto.vehicleType,
+        this.logger,
+      ).layout;
+    }
+    if (seats == null) {
+      seats = countSeatsInLayout(seatLayout);
+    }
+
     const vehicle = this.vehicleRepo.create({
       ...createVehicleDto,
+      seatLayout,
+      seats,
       driverId,
     });
     return this.vehicleRepo.save(vehicle);
+  }
+
+  getVehicleTypes() {
+    return { types: listVehicleTypeTemplates() };
   }
 
   async findByDriver(driverId: string): Promise<VehicleEntity | null> {

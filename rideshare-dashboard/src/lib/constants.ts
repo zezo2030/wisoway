@@ -4,6 +4,8 @@
 export const ROUTES = {
   // Public
   LOGIN: "/login",
+  /** Public privacy policy URL (e.g. for Google Play listing). */
+  PRIVACY: "/privacy",
 
   // Protected
   DASHBOARD: "/dashboard",

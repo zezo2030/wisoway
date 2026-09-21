@@ -1,0 +1,6 @@
+[mcp_servers.TestSprite]
+command = "npx"
+args = ["@testsprite/testsprite-mcp@latest"]
+
+[mcp_servers.TestSprite.env]
+API_KEY = "sk-user-uSVh5A5wI_KDHV-PP38t_yhFpfQU95RlVFJohJNpBd_FyKB8s_g30U7NBgLbiyL3uVoxbilWGYyJCSVtWP9YKjcsVR6sG4p7HPcfur7huFsaXsg9osSLxnGCgbvy3j4hO0o"

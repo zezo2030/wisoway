@@ -376,7 +376,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get errorsAuthInvalidCredentials =>
-      'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
+      'رقم الهاتف أو كلمة المرور غير صحيحة.';
 
   @override
   String get errorsPermissionDenied => 'تم رفض الإذن. تحقق من إعدادات التطبيق.';
@@ -402,10 +402,12 @@ class AppLocalizationsAr extends AppLocalizations {
       'تعذّر تحميل المسار. نعرض نقاط الانطلاق والوصول.';
 
   @override
-  String get notificationsBookingCreatedTitle => 'حجز جديد';
+  String get notificationsBookingCreatedTitle =>
+      'تم حجز مقعد في رحلتك المشتركة';
 
   @override
-  String get notificationsBookingCreatedBody => 'تم حجز مقعد جديد في رحلتك';
+  String get notificationsBookingCreatedBody =>
+      'انضم راكب جديد إلى رحلتك المشتركة';
 
   @override
   String get notificationsBookingConfirmedTitle => 'تم تأكيد الحجز';
@@ -601,6 +603,82 @@ class AppLocalizationsAr extends AppLocalizations {
   String preTripPromptDriverBody(String name) {
     return 'هل الراكب $name موجود؟';
   }
+
+  @override
+  String get presenceScreenTitle => 'تأكيد التواجد في السيارة';
+
+  @override
+  String get presenceScreenSubtitle => 'يرجى تأكيد تواجدك لبدء الرحلة';
+
+  @override
+  String get presenceHelp => 'مساعدة';
+
+  @override
+  String get presenceDriverStartsAfter => 'سيبدأ السائق الرحلة بعد';
+
+  @override
+  String get presenceMinutes => 'دقائق';
+
+  @override
+  String get presencePickupTitle => 'نقطة بدء الرحلة';
+
+  @override
+  String get presenceQuestionTitle => 'هل أنت داخل السيارة؟';
+
+  @override
+  String get presenceQuestionSubtitle =>
+      'يرجى تأكيد تواجدك لتوثيق الرحلة وبدئها بشكل صحيح';
+
+  @override
+  String get presenceInfoBody =>
+      'يساعد تأكيد تواجدك داخل السيارة على توثيق الرحلة واحتسابها ضمن سجل رحلاتك وتقييم موثوقية حسابك.\nلن يتم خصم أي رسوم من محفظة السائق في حال عدم التأكيد.';
+
+  @override
+  String get presenceInVehicleTitle => 'نعم، أنا داخل السيارة';
+
+  @override
+  String get presenceInVehicleSubtitle => 'تأكيد التواجد';
+
+  @override
+  String get presenceOnMyWayTitle => 'أنا في طريقي لمقابلة السائق';
+
+  @override
+  String get presenceOnMyWaySubtitle => 'سأصل خلال دقائق';
+
+  @override
+  String get presenceNotRidingTitle => 'لست داخل السيارة';
+
+  @override
+  String get presenceNotRidingSubtitle => 'لن أستقل هذه الرحلة';
+
+  @override
+  String get presencePrivacyLine =>
+      'بياناتك آمنة ويتم استخدامها فقط لتحسين تجربة الرحلة';
+
+  @override
+  String get presenceRequestEndsAfter => 'سينتهي طلب التأكيد تلقائيًا بعد';
+
+  @override
+  String get presenceConfirmedTitle => 'تم تأكيد تواجدك';
+
+  @override
+  String get presenceConfirmedBody => 'شكرًا لك، تم تسجيل اختيارك لهذه الرحلة.';
+
+  @override
+  String get presenceEdit => 'تعديل';
+
+  @override
+  String get presenceWindowClosedTitle => 'انتهى وقت التأكيد';
+
+  @override
+  String get presenceWindowClosedBody =>
+      'لم يعد بإمكانك تعديل حالة تواجدك لهذه الرحلة.';
+
+  @override
+  String get presenceLoadFailed => 'تعذر تحميل بيانات تأكيد التواجد';
+
+  @override
+  String get presenceSubmitFailed => 'تعذر حفظ اختيارك. حاول مرة أخرى.';
 
   @override
   String get arrivedAtDestinationButton => 'تم الوصول للوجهة';
@@ -2479,16 +2557,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get createNewTripSemantic => 'إنشاء رحلة جديدة';
 
   @override
-  String get tripFeeInvoiceTitle => 'فاتورة رسوم الرحلة';
-
-  @override
   String get seatPrice => 'سعر المقعد';
 
   @override
   String get seatsCountLabel => 'عدد المقاعد';
-
-  @override
-  String get feePercentage => 'نسبة الرسوم';
 
   @override
   String get totalLabel => 'الإجمالي';
@@ -2496,12 +2568,6 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get tripFeeDeductExplanation =>
       'سيتم خصم الرسوم من محفظتك وفتح بيانات ركاب هذه الرحلة. لا يتم تغيير عدد المقاعد أو الحجوزات.';
-
-  @override
-  String get payFees => 'دفع الرسوم';
-
-  @override
-  String get tripFeePaidSuccess => 'تم دفع رسوم الرحلة بنجاح';
 
   @override
   String get payingInProgress => 'جاري الدفع...';
@@ -2549,9 +2615,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get seatsWord => 'مقاعد';
-
-  @override
-  String get tripFeePaidLabel => 'رسوم الرحلة مدفوعة';
 
   @override
   String get passengerDetailsTitle => 'تفاصيل الراكب';
@@ -2823,7 +2886,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get enableLocationBody =>
-      'لا يمكن متابعة الرحلة بدون تشغيل خدمات الموقع. يرجى تفعيل GPS الآن.';
+      'لازم تشغّل GPS وتسمح للتطبيق بالموقع عشان الركاب يشوفوك على الخريطة أثناء تأكيد التواجد والرحلة. مش هتقدر تكمّل من غير التتبع.';
 
   @override
   String get openLocationSettings => 'فتح إعدادات الموقع';
@@ -2845,10 +2908,6 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get freeTripAvailableExplanation =>
       'لديك رحلة مجانية متاحة. سيتم تطبيق خصم 100% ليصبح الإجمالي 0.';
-
-  @override
-  String get tripFeeFullExplanation =>
-      'الدفع يخص رسوم الرحلة كاملة ولا يغير عدد المقاعد أو الحجوزات.';
 
   @override
   String get hideTripTitle => 'إخفاء الرحلة';
@@ -2903,29 +2962,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get tripFeeLabel => 'رسوم الرحلة';
 
   @override
-  String get tripFeeReady => 'فاتورة رسوم الرحلة جاهزة';
-
-  @override
-  String tripFeeBreakdownWithFreeTrip(
-    int seats,
-    String price,
-    String currency,
-    String amount,
-  ) {
-    return 'الرسوم: 5% × $seats مقاعد × $price $currency، خصم رحلة مجانية 100% = $amount $currency';
-  }
-
-  @override
-  String tripFeeBreakdown(
-    int seats,
-    String price,
-    String currency,
-    String amount,
-  ) {
-    return '5% × $seats مقاعد × $price $currency = $amount $currency';
-  }
-
-  @override
   String get applyFreeTrip => 'تطبيق الرحلة المجانية';
 
   @override
@@ -2934,20 +2970,12 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get confirmBookingUnlocksDetails =>
-      'تأكيد الحجز يفتح بيانات الراكب (رحلة مجانية أو خصم من المحفظة مرة واحدة للرحلة)';
-
-  @override
   String get passengerFallback => 'راكب';
 
   @override
   String seatLabelShort(String seat) {
     return 'مقعد $seat';
   }
-
-  @override
-  String get chatAvailableAfterFee =>
-      'المحادثة والتواصل متاحان بعد دفع رسوم الرحلة';
 
   @override
   String get awaitingConfirmation => 'بانتظار التأكيد';
@@ -3744,6 +3772,116 @@ class AppLocalizationsAr extends AppLocalizations {
   String get seatLegendLockedExternal => 'مقفل (خارج التطبيق)';
 
   @override
+  String get createTripStepRoute => 'المسار';
+
+  @override
+  String get createTripStepDetails => 'تفاصيل الرحلة';
+
+  @override
+  String get createTripStepReview => 'مراجعة ونشر';
+
+  @override
+  String get createTripRouteTitle => 'أين ستبدأ رحلتك؟';
+
+  @override
+  String get createTripRouteSubtitle =>
+      'حدد نقطة الانطلاق والوجهة ويمكنك إضافة محطات توقف (اختياري)';
+
+  @override
+  String get addStopSubtitle => 'يمكنك إضافة حتى 5 محطات';
+
+  @override
+  String approxDistanceLabel(String distance) {
+    return 'المسافة التقريبية: $distance';
+  }
+
+  @override
+  String approxDurationLabel(String duration) {
+    return 'الوقت التقريبي: $duration';
+  }
+
+  @override
+  String approxDurationHoursMinutes(int hours, int minutes) {
+    return '$hours س $minutes د';
+  }
+
+  @override
+  String approxDurationMinutesOnly(int minutes) {
+    return '$minutes د';
+  }
+
+  @override
+  String get createTripWhenAndHow => 'متى وكيف؟';
+
+  @override
+  String get createTripWhenAndHowSubtitle =>
+      'حدد تفاصيل رحلتك ومقاعد الركاب والسعر';
+
+  @override
+  String get availableSeatsSection => 'المقاعد المتاحة';
+
+  @override
+  String get availableSeatsCountTitle => 'عدد المقاعد المتاحة';
+
+  @override
+  String get seatsUnitLabel => 'مقاعد';
+
+  @override
+  String get jordanianDinarLabel => 'دينار أردني';
+
+  @override
+  String get tripSummaryTitle => 'انتهت الرحلة بنجاح';
+
+  @override
+  String get additionalDetailsTitle => 'تفاصيل إضافية';
+
+  @override
+  String get seatLegendAvailable => 'متاح';
+
+  @override
+  String get seatLegendDriver => 'غير متاح (السائق)';
+
+  @override
+  String get seatLegendInactive => 'مقعد خامل';
+
+  @override
+  String get preventGenderMixingHint =>
+      'يستثنى من ذلك حجز العائلة. يمكن تعطيل هذا الخيار والسماح بالاختلاط.';
+
+  @override
+  String get reviewTripTitle => 'مراجعة الرحلة';
+
+  @override
+  String get reviewTripSubtitle => 'تحقق من تفاصيل رحلتك قبل نشرها للركاب';
+
+  @override
+  String get publishTrip => 'نشر الرحلة';
+
+  @override
+  String get backToEdit => 'العودة للتعديل';
+
+  @override
+  String get publishTripNotice =>
+      'سيتم نشر الرحلة بعد المراجعة وسيتمكن الركاب من الحجز.';
+
+  @override
+  String createTripFeeNotice(String percent, String amount, String currency) {
+    return 'رسوم الرحلة ($percent%): $amount $currency — تُخصم من محفظتك عند انطلاق الرحلة.';
+  }
+
+  @override
+  String insufficientBalanceForTripFee(String balance, String required) {
+    return 'رصيد محفظتك ($balance) لا يغطي رسوم الرحلة ($required). اشحن محفظتك قبل نشر الرحلة.';
+  }
+
+  @override
+  String get familyBookingLabel => 'حجز عائلة';
+
+  @override
+  String get familyBookingHint =>
+      'يُستثنى حجز العائلة من قواعد منع الاختلاط على هذه الرحلة.';
+
+  @override
   String seatColorGuide(String label) {
     return 'دليل الألوان: $label';
   }
@@ -3803,4 +3941,648 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get shareTripTrackingError => 'تعذّر إنشاء رابط المشاركة';
+
+  @override
+  String get tripInProgressTitle => 'الرحلة جارية';
+
+  @override
+  String get tripInProgressOnTheWay => 'أنت في الطريق';
+
+  @override
+  String get tripInProgressHelp => 'مساعدة';
+
+  @override
+  String get tripInProgressEtaLabel => 'وقت الوصول المتوقع';
+
+  @override
+  String get tripInProgressRemainingDistance => 'المسافة المتبقية';
+
+  @override
+  String get tripInProgressRemainingTime => 'تبقى للوصول';
+
+  @override
+  String get tripInProgressTripDetails => 'تفاصيل الرحلة';
+
+  @override
+  String get tripInProgressShareTracking => 'مشاركة التتبع';
+
+  @override
+  String get tripInProgressEmergency => 'الطوارئ';
+
+  @override
+  String get tripInProgressLayers => 'طبقات';
+
+  @override
+  String get tripInProgressRecenter => 'تمركز';
+
+  @override
+  String get tripInProgressEmergencySent => 'تم إرسال تنبيه الطوارئ للدعم';
+
+  @override
+  String get tripInProgressEmergencyError => 'تعذّر إرسال تنبيه الطوارئ';
+
+  @override
+  String get tripInProgressEmergencyConfirmTitle => 'تنبيه الطوارئ';
+
+  @override
+  String get tripInProgressEmergencyConfirmMessage =>
+      'سيتم إشعار فريق الدعم بموقعك الحالي. هل تريد المتابعة؟';
+
+  @override
+  String get tripInProgressEmergencyConfirmAction => 'إرسال التنبيه';
+
+  @override
+  String get tripInProgressEmergencyCancel => 'إلغاء';
+
+  @override
+  String get locationAutocompleteSuggestions => 'اقتراحات الأماكن';
+
+  @override
+  String get locationAutocompleteNoResults =>
+      'لا توجد أماكن مطابقة. حدد الموقع على الخريطة بدلا من ذلك.';
+
+  @override
+  String get instantRidesTitle => 'الرحلات المباشرة';
+
+  @override
+  String get instantOnlineReady => 'متصل — جاهز لاستقبال الطلبات';
+
+  @override
+  String get instantOffline => 'غير متصل';
+
+  @override
+  String get instantOfferTitle => 'طلب رحلة مباشرة';
+
+  @override
+  String get instantOfferCardTitle => 'طلب رحلة جديدة';
+
+  @override
+  String get instantOfferBadge => 'رحلة مباشرة';
+
+  @override
+  String get instantOfferDirectSubtitle => 'رحلة مباشرة بدون توقف';
+
+  @override
+  String get instantRideAcceptedToast =>
+      'تم قبول الرحلة. توجّه إلى نقطة الانطلاق.';
+
+  @override
+  String instantOfferCountdown(int seconds) {
+    return 'ينتهي خلال $seconds ثانية';
+  }
+
+  @override
+  String get instantDecline => 'رفض';
+
+  @override
+  String get instantOfferIgnore => 'تجاهل';
+
+  @override
+  String get instantAccept => 'قبول';
+
+  @override
+  String get instantOfferAcceptTrip => 'قبول الرحلة';
+
+  @override
+  String get instantOfferExpectedEarnings => 'الأرباح المتوقعة';
+
+  @override
+  String get instantOfferIncludesFees => 'يشمل رسوم المنصة';
+
+  @override
+  String instantOfferPassengerCount(int count) {
+    return '$count راكب';
+  }
+
+  @override
+  String get instantOfferDistance => 'المسافة';
+
+  @override
+  String get instantOfferDuration => 'المدة التقديرية';
+
+  @override
+  String get instantOfferPassengersLabel => 'عدد الركاب';
+
+  @override
+  String get instantRequestNow => 'اطلب الآن';
+
+  @override
+  String get instantRequestNowTitle => 'اطلب رحلة الآن';
+
+  @override
+  String get instantRequestNowSubtitle => 'سائق قريب يصل إليك مباشرة';
+
+  @override
+  String get instantSelectFromTo => 'اختر نقطة الانطلاق والوصول.';
+
+  @override
+  String get instantFromHint => 'مكان الانطلاق';
+
+  @override
+  String get instantFromPickerTitle => 'اختر نقطة الانطلاق';
+
+  @override
+  String get instantToHint => 'مكان الوصول';
+
+  @override
+  String get instantToPickerTitle => 'اختر نقطة الوصول';
+
+  @override
+  String get instantDriverFound => 'تم العثور على سائق!';
+
+  @override
+  String get instantDriverOnTheWay => 'السائق في طريقه إلى نقطة الانطلاق.';
+
+  @override
+  String get instantTrackTrip => 'تتبّع الرحلة';
+
+  @override
+  String get instantDone => 'تم';
+
+  @override
+  String get instantRequestCancelled => 'أُلغي الطلب';
+
+  @override
+  String get instantNoDrivers => 'لم نتمكن من العثور على سائق حاليًا';
+
+  @override
+  String get instantNoDriversSubtitle =>
+      'قد يكون جميع السائقين مشغولين أو لا يوجد سائق قريب منك.';
+
+  @override
+  String get instantNoDriversTip =>
+      'نصيحة: أعد المحاولة بعد بضع دقائق؛ قد يتوفر سائق قريب منك.';
+
+  @override
+  String get instantNoDriversIllustrationLabel => 'لم يتم العثور على سائق';
+
+  @override
+  String get instantNeedHelp => 'تحتاج مساعدة؟';
+
+  @override
+  String get instantContactSupport => 'تواصل مع الدعم';
+
+  @override
+  String get instantRideSafety => 'أمان الرحلة';
+
+  @override
+  String get instantPickupPoint => 'نقطة الانطلاق';
+
+  @override
+  String get instantDropoffPoint => 'نقطة الوصول';
+
+  @override
+  String get instantRetryFareChanged =>
+      'تغيّر نطاق السعر؛ راجع السعر ثم أعد الطلب.';
+
+  @override
+  String get instantTryAgain => 'إعادة المحاولة';
+
+  @override
+  String get instantSearching => 'نبحث عن أقرب سائق...';
+
+  @override
+  String instantFareEstimate(String fare, String currency) {
+    return 'الأجرة التقديرية: $fare $currency';
+  }
+
+  @override
+  String get instantCancelRequest => 'إلغاء الطلب';
+
+  @override
+  String get instantYourFareLabel => 'سعرك';
+
+  @override
+  String instantRecommendedFare(String fare, String currency) {
+    return 'السعر المقترح: $fare $currency';
+  }
+
+  @override
+  String instantYourFareValue(String fare, String currency) {
+    return 'سعرك: $fare $currency';
+  }
+
+  @override
+  String get instantDriverOfferTitle => 'عرض من السائق';
+
+  @override
+  String get instantProposeFare => 'اقترح سعرًا أعلى';
+
+  @override
+  String get instantSendOffer => 'إرسال العرض';
+
+  @override
+  String get instantCounterSentToast => 'أُرسل عرضك للراكب. بانتظار موافقته...';
+
+  @override
+  String instantCounterMaxHint(String fare, String currency) {
+    return 'الحد الأقصى: $fare $currency';
+  }
+
+  @override
+  String get instantNudgeTitle => 'لا يوجد سائق قريب حتى الآن';
+
+  @override
+  String get instantNudgeSubtitle => 'جرّب رفع سعرك لجذب سائق أسرع';
+
+  @override
+  String instantRaiseTo(String fare, String currency) {
+    return 'ارفع إلى $fare $currency';
+  }
+
+  @override
+  String instantKeepFare(String fare, String currency) {
+    return 'استمر بـ $fare $currency';
+  }
+
+  @override
+  String instantArrivingIn(int minutes) {
+    return 'يصل خلال ~$minutes دقيقة';
+  }
+
+  @override
+  String instantAgreedFare(String fare, String currency) {
+    return 'الأجرة المتفق عليها: $fare $currency';
+  }
+
+  @override
+  String get tripSummaryThanks => 'شكراً لك على رحلتك';
+
+  @override
+  String get tripSummaryHelp => 'مساعدة';
+
+  @override
+  String get tripSummaryArrivalPlace => 'مكان الوصول';
+
+  @override
+  String get tripSummaryDistance => 'المسافة';
+
+  @override
+  String get tripSummaryDuration => 'مدة الرحلة';
+
+  @override
+  String get tripSummaryStartTime => 'وقت البدء';
+
+  @override
+  String get tripSummaryEndTime => 'وقت الانتهاء';
+
+  @override
+  String tripSummaryHoursMinutes(int hours, int minutes) {
+    return '$hours ساعة $minutes دقيقة';
+  }
+
+  @override
+  String tripSummaryHoursOnly(int hours) {
+    return '$hours ساعة';
+  }
+
+  @override
+  String tripSummaryMinutesOnly(int minutes) {
+    return '$minutes دقيقة';
+  }
+
+  @override
+  String tripSummaryConfirmedPassengers(int count) {
+    return 'الركاب الذين أكدوا تواجدهم ($count)';
+  }
+
+  @override
+  String get tripSummaryNoPassengers => 'لا يوجد ركاب لهذه الرحلة.';
+
+  @override
+  String get tripSummaryPassengerFare => 'أجرة الراكب';
+
+  @override
+  String get tripSummaryConfirmed => 'تم التأكيد';
+
+  @override
+  String get tripSummaryNotConfirmed => 'لم يؤكد التواجد';
+
+  @override
+  String tripSummaryPassengerFares(int count) {
+    return 'أجرة الركاب ($count ركاب)';
+  }
+
+  @override
+  String tripSummaryTripFeePercent(int percent) {
+    return 'رسوم الرحلة (%$percent)';
+  }
+
+  @override
+  String get tripSummaryNetAmount => 'المبلغ الصافي الذي ستحصل عليه';
+
+  @override
+  String tripSummaryFeeDeducted(String amount) {
+    return 'تم خصم رسوم الرحلة ($amount) من محفظتك عند انطلاق الرحلة. تأكد من وجود رصيد كافٍ في محفظتك لإنشاء رحلات جديدة.';
+  }
+
+  @override
+  String tripSummaryPayFeePrompt(String amount) {
+    return 'الرصيد غير كافٍ لخصم رسوم الرحلة ($amount). ادفع الآن لتسوية حسابك.';
+  }
+
+  @override
+  String tripSummaryPaymentRequired(String fee, String debt) {
+    return 'تعذر خصم رسوم الرحلة ($fee) بالكامل. رصيد محفظتك سالب بمقدار $debt. ادفع الآن لتسوية الحساب.';
+  }
+
+  @override
+  String get tripSummaryNegativeBalanceRestriction =>
+      'لا يمكنك إنشاء رحلات مشتركة أو تلقي رحلات مباشرة حتى تسوية الرصيد السالب.';
+
+  @override
+  String get tripSummaryPayNow => 'ادفع الآن';
+
+  @override
+  String get tripSummaryChatTitle => 'الدردشة مع الركاب';
+
+  @override
+  String get tripSummaryChatSubtitle => 'تواصل مع ركاب هذه الرحلة';
+
+  @override
+  String get tripSummaryBackHome => 'العودة إلى الصفحة الرئيسية';
+
+  @override
+  String get currencyJodShort => 'د.أ';
+
+  @override
+  String get negativeWalletBalanceBlocked =>
+      'رصيد محفظتك سالب. سدد المستحقات قبل إنشاء رحلات مشتركة أو تلقي رحلات مباشرة.';
+
+  @override
+  String get negativeWalletGoOnlineBlocked =>
+      'رصيد محفظتك سالب. سدد المستحقات قبل تلقي الرحلات المباشرة.';
+
+  @override
+  String authStepOf(int current, int total) {
+    return 'خطوة $current من $total';
+  }
+
+  @override
+  String get authSecurityNotice =>
+      'جميع بياناتك محفوظة بأمان ولن تتم مشاركتها مع أي جهة';
+
+  @override
+  String get authNeedHelp => 'مساعدة';
+
+  @override
+  String get authStepperBasicInfo => 'المعلومات الأساسية';
+
+  @override
+  String get authStepperIdDocs => 'الهوية والمستندات';
+
+  @override
+  String get authStepperVehicleInfo => 'معلومات السيارة';
+
+  @override
+  String get genderRequiredLabel => 'الجنس *';
+
+  @override
+  String get documentFormatsHint =>
+      'الصيغ المدعومة: JPG، PNG، PDF (الحد الأقصى 5 ميجابايت)';
+
+  @override
+  String get accountTypePassengerTagline => 'احجز رحلات مباشرة أو مشتركة';
+
+  @override
+  String get accountTypeDriverTagline => 'أنشئ رحلات واستقبل الركاب';
+
+  @override
+  String get accountTypePassengerFeatureDirectTitle => 'رحلات مباشرة';
+
+  @override
+  String get accountTypePassengerFeatureDirectBody =>
+      'احجز رحلة خاصة تصلك مباشرة';
+
+  @override
+  String get accountTypePassengerFeatureSharedTitle => 'رحلات مشتركة';
+
+  @override
+  String get accountTypePassengerFeatureSharedBody =>
+      'انضم لرحلة وشارك في التوفير';
+
+  @override
+  String get accountTypePassengerFeaturePaymentTitle => 'دفع آمن وسهل';
+
+  @override
+  String get accountTypePassengerFeaturePaymentBody =>
+      'خيارات دفع متعددة وآمنة';
+
+  @override
+  String get accountTypeDriverFeatureTripsTitle => 'أنشئ رحلات';
+
+  @override
+  String get accountTypeDriverFeatureTripsBody => 'حدد وجهتك والانطلاق';
+
+  @override
+  String get accountTypeDriverFeatureBookingsTitle => 'استقبل الحجوزات';
+
+  @override
+  String get accountTypeDriverFeatureBookingsBody => 'احصل على طلبات الركاب';
+
+  @override
+  String get accountTypeDriverFeatureIncomeTitle => 'حقق دخلاً إضافيا';
+
+  @override
+  String get accountTypeDriverFeatureIncomeBody => 'زد دخلك في أوقات فراغك';
+
+  @override
+  String get accountTypeSafetyTitle => 'أمانك هو أولويتنا';
+
+  @override
+  String get accountTypeSafetyBody =>
+      'نتحقق من جميع المستخدمين لضمان تجربة آمنة وموثوقة للجميع.';
+
+  @override
+  String get passengerSignupTitle => 'إنشاء حساب جديد';
+
+  @override
+  String get passengerSignupSubtitle => 'سجل الآن كراكب لبدء رحلتك معنا';
+
+  @override
+  String get driverSignupTitle => 'إنشاء حساب سائق';
+
+  @override
+  String get driverSignupSubtitle => 'ابدأ باستقبال الركاب وتحقيق دخل إضافي';
+
+  @override
+  String get fullNameIdHint => 'اكتب اسمك كما هو في الهوية';
+
+  @override
+  String get phoneConfirmCallHint => 'سنتصل بك لتأكيد حسابك';
+
+  @override
+  String get passwordMinLengthHint => 'يجب أن تحتوي على 8 أحرف على الأقل';
+
+  @override
+  String get confirmPasswordReenterHint => 'أعد إدخال كلمة المرور';
+
+  @override
+  String get passengerProfileStepTitle => 'أكمل ملفك الشخصي';
+
+  @override
+  String get passengerProfileStepSubtitle =>
+      'أضف صورتك ومدينتك ليتعرف عليك السائقون';
+
+  @override
+  String get profileCityLabel => 'المدينة *';
+
+  @override
+  String get profileCityHint => 'أدخل اسم مدينتك';
+
+  @override
+  String get profileCityRequired => 'المدينة مطلوبة';
+
+  @override
+  String get completeDriverProfileTitle => 'أكمل ملف السائق';
+
+  @override
+  String get driverStep2Badge => 'الخطوة 2 من 3: المعلومات الإضافية';
+
+  @override
+  String get driverStep3Badge => 'الخطوة 3 من 3: مستندات السيارة';
+
+  @override
+  String get profilePhotoClearHint => 'صورة واضحة لوجهك';
+
+  @override
+  String get vehicleTypeSelectHint => 'اختر نوع المركبة';
+
+  @override
+  String get vehiclePlateDocHint => 'أدخل رقم اللوحة كما في الرخصة';
+
+  @override
+  String get vehicleModelDocHint => 'أدخل موديل السيارة';
+
+  @override
+  String get vehicleSeatsDocHint => 'عدد المقاعد المتاحة للركاب';
+
+  @override
+  String get driverLicenseUploadHint => 'اضغط لرفع صورة الرخصة';
+
+  @override
+  String get vehicleRegistrationFormRequired => 'الاستمارة *';
+
+  @override
+  String get insuranceDocumentLabel => 'التأمين *';
+
+  @override
+  String get insuranceImageRequired => 'وثيقة التأمين مطلوبة';
+
+  @override
+  String get registrationUpdatedSuccess => 'تم تحديث بياناتك بنجاح';
+
+  @override
+  String get driverAlreadyApprovedError => 'تمت الموافقة على حسابك بالفعل';
+
+  @override
+  String get driverPendingReviewTitle => 'طلب تسجيلك قيد المراجعة';
+
+  @override
+  String get driverPendingReviewBody =>
+      'نقوم حاليًا بمراجعة بياناتك ومستنداتك، وسنرسل لك إشعارًا فور الانتهاء من المراجعة.';
+
+  @override
+  String get driverPendingStatusLabel => 'حالة الطلب';
+
+  @override
+  String get driverPendingBadge => 'قيد المراجعة';
+
+  @override
+  String get driverSubmittedDocs => 'المستندات المرسلة';
+
+  @override
+  String get driverDocLicense => 'الرخصة';
+
+  @override
+  String get driverDocRegistration => 'الاستمارة';
+
+  @override
+  String get driverDocInsurance => 'التأمين';
+
+  @override
+  String get driverDocCarPhoto => 'صورة السيارة';
+
+  @override
+  String get driverPendingRestrictionTitle => 'حسابك قيد المراجعة';
+
+  @override
+  String get driverPendingRestrictionBody =>
+      'لن تتمكن من استخدام التطبيق حتى يتم تفعيل حسابك كسائق.';
+
+  @override
+  String get driverEditRegistrationTitle => 'تحتاج لتعديل بياناتك؟';
+
+  @override
+  String get driverEditRegistrationSubtitle =>
+      'يمكنك تحديث بياناتك أو المستندات المرسلة.';
+
+  @override
+  String get driverReturnHome => 'العودة إلى الرئيسية';
+
+  @override
+  String get tripBookedTitle => 'تم حجز رحلتك المشتركة';
+
+  @override
+  String get tripBookedSubtitle => 'تم حجز جميع المقاعد بنجاح';
+
+  @override
+  String get tripDayLabel => 'يوم الرحلة';
+
+  @override
+  String get tripTimeLabel => 'موعد الرحلة';
+
+  @override
+  String get tripMeetingPointLabel => 'مكان التجمع';
+
+  @override
+  String get tripDistanceShortLabel => 'المسافة';
+
+  @override
+  String get tripSeatsLabel => 'عدد المقاعد';
+
+  @override
+  String get tripSeatsComplete => 'مكتملة';
+
+  @override
+  String tripSeatsBookedOf(String booked, String total) {
+    return '$booked من $total';
+  }
+
+  @override
+  String bookedPassengersTitle(int count) {
+    return 'الركاب المحجوزون ($count)';
+  }
+
+  @override
+  String seatChipLabel(String number) {
+    return 'مقعد $number';
+  }
+
+  @override
+  String get passengerFareLabel => 'أجرة الراكب';
+
+  @override
+  String passengersTotalLabel(int count) {
+    return 'المجموع من الركاب ($count) ركاب';
+  }
+
+  @override
+  String tripFeeOfSeatsLabel(String percent, int seats) {
+    return 'رسوم الرحلة ($percent% من $seats مقاعد)';
+  }
+
+  @override
+  String get tripFeeChargedAtStartNotice =>
+      'سيتم خصم رسوم الرحلة من محفظتك عند انطلاق الرحلة. حافظ على وجود رصيد في محفظتك لضمان قدرتك على إنشاء رحلات جديدة.';
+
+  @override
+  String get contactPassengersTitle => 'التواصل مع الركاب';
+
+  @override
+  String get contactPassengersSubtitle => 'اتصال أو دردشة حية';
+
+  @override
+  String get confirmYourPresenceCta =>
+      'قم بتأكيد تواجدك في الوقت والمكان المحدد';
 }

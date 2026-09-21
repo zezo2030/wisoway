@@ -483,7 +483,7 @@
   "@errorsAuthSessionExpired": {
     "description": "Session expired error message"
   },
-  "errorsAuthInvalidCredentials": "Invalid email or password.",
+  "errorsAuthInvalidCredentials": "Invalid phone number or password.",
   "@errorsAuthInvalidCredentials": {
     "description": "Invalid credentials error message"
   },
@@ -515,11 +515,11 @@
   "@errorsRouteUnavailable": {
     "description": "Route unavailable error message"
   },
-  "notificationsBookingCreatedTitle": "New Booking",
+  "notificationsBookingCreatedTitle": "A seat was booked on your shared trip",
   "@notificationsBookingCreatedTitle": {
     "description": "Title for booking created notification"
   },
-  "notificationsBookingCreatedBody": "A new seat was booked on your trip",
+  "notificationsBookingCreatedBody": "A new passenger joined your shared trip",
   "@notificationsBookingCreatedBody": {
     "description": "Body for booking created notification"
   },
@@ -788,6 +788,30 @@
       }
     }
   },
+  "presenceScreenTitle": "Confirm presence in the vehicle",
+  "presenceScreenSubtitle": "Please confirm your presence to start the trip",
+  "presenceHelp": "Help",
+  "presenceDriverStartsAfter": "The driver starts the trip after",
+  "presenceMinutes": "minutes",
+  "presencePickupTitle": "Trip pickup point",
+  "presenceQuestionTitle": "Are you inside the vehicle?",
+  "presenceQuestionSubtitle": "Confirm your presence so the trip can be recorded and started correctly",
+  "presenceInfoBody": "Confirming that you are in the vehicle documents the trip and includes it in your trip history and account reliability.\nNo fee is deducted from the driver's wallet when presence is not confirmed.",
+  "presenceInVehicleTitle": "Yes, I am in the vehicle",
+  "presenceInVehicleSubtitle": "Confirm presence",
+  "presenceOnMyWayTitle": "I am on my way to the driver",
+  "presenceOnMyWaySubtitle": "I will arrive in a few minutes",
+  "presenceNotRidingTitle": "I am not in the vehicle",
+  "presenceNotRidingSubtitle": "I will not take this trip",
+  "presencePrivacyLine": "Your data is safe and used only to improve the trip experience",
+  "presenceRequestEndsAfter": "The confirmation request ends automatically after",
+  "presenceConfirmedTitle": "Presence confirmed",
+  "presenceConfirmedBody": "Thank you. Your choice has been recorded for this trip.",
+  "presenceEdit": "Edit",
+  "presenceWindowClosedTitle": "Confirmation time ended",
+  "presenceWindowClosedBody": "You can no longer change your presence for this trip.",
+  "presenceLoadFailed": "Unable to load presence confirmation details",
+  "presenceSubmitFailed": "Unable to save your choice. Please try again.",
   "arrivedAtDestinationButton": "Arrived at destination",
   "@arrivedAtDestinationButton": {
     "description": "Driver button to mark trip as arrived (completes the trip)"
@@ -1648,14 +1672,10 @@
   "createTripShort": "Create trip",
   "newTrip": "New trip",
   "createNewTripSemantic": "Create new trip",
-  "tripFeeInvoiceTitle": "Trip Fee Invoice",
   "seatPrice": "Seat price",
   "seatsCountLabel": "Number of seats",
-  "feePercentage": "Fee percentage",
   "totalLabel": "Total",
   "tripFeeDeductExplanation": "The fee will be deducted from your wallet and the passenger details of this trip will be unlocked. The number of seats or bookings is not changed.",
-  "payFees": "Pay fees",
-  "tripFeePaidSuccess": "Trip fee paid successfully",
   "payingInProgress": "Paying...",
   "unknownLocation": "Unknown location",
   "tripFromToSemantic": "Trip from {from} to {to}",
@@ -1681,7 +1701,6 @@
   "toShort": "To",
   "perSeatSuffix": "/ seat",
   "seatsWord": "seats",
-  "tripFeePaidLabel": "Trip fee paid",
   "passengerDetailsTitle": "Passenger Details",
   "seatLabelWithValue": "Seat {seat}",
   "@seatLabelWithValue": {
@@ -1845,7 +1864,7 @@
   "lockSeat": "Lock",
   "seatLockedSuccess": "Seat locked",
   "enableLocationRequired": "Location enable required",
-  "enableLocationBody": "The trip cannot continue without location services enabled. Please enable GPS now.",
+  "enableLocationBody": "Turn on GPS and allow location access so passengers can see you on the map during presence confirmation and the trip. Tracking is required to continue.",
   "openLocationSettings": "Open location settings",
   "checkAgain": "Check again",
   "tripManagementTitle": "Trip Management",
@@ -1862,7 +1881,6 @@
     }
   },
   "freeTripAvailableExplanation": "You have a free trip available. A 100% discount will be applied to make the total 0.",
-  "tripFeeFullExplanation": "The payment covers the full trip fee and does not change the number of seats or bookings.",
   "hideTripTitle": "Hide Trip",
   "hideTripConfirm": "Are you sure you want to hide this trip?",
   "hideAction": "Hide",
@@ -1889,41 +1907,6 @@
   "freeTripAvailableShort": "Free trip available",
   "balanceFromPlatformWallet": "Balance from the platform wallet (unified wallet)",
   "tripFeeLabel": "Trip fee",
-  "tripFeeReady": "Trip fee invoice is ready",
-  "tripFeeBreakdownWithFreeTrip": "Fee: 5% × {seats} seats × {price} {currency}, free trip discount 100% = {amount} {currency}",
-  "@tripFeeBreakdownWithFreeTrip": {
-    "placeholders": {
-      "seats": {
-        "type": "int"
-      },
-      "price": {
-        "type": "String"
-      },
-      "currency": {
-        "type": "String"
-      },
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
-  "tripFeeBreakdown": "5% × {seats} seats × {price} {currency} = {amount} {currency}",
-  "@tripFeeBreakdown": {
-    "placeholders": {
-      "seats": {
-        "type": "int"
-      },
-      "price": {
-        "type": "String"
-      },
-      "currency": {
-        "type": "String"
-      },
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
   "applyFreeTrip": "Apply free trip",
   "pendingBookingsCard": "Pending bookings ({count})",
   "@pendingBookingsCard": {
@@ -1933,7 +1916,6 @@
       }
     }
   },
-  "confirmBookingUnlocksDetails": "Confirming the booking unlocks passenger details (free trip or one-time wallet deduction per trip)",
   "passengerFallback": "Passenger",
   "seatLabelShort": "Seat {seat}",
   "@seatLabelShort": {
@@ -1943,7 +1925,6 @@
       }
     }
   },
-  "chatAvailableAfterFee": "Chat and contact are available after paying the trip fee",
   "awaitingConfirmation": "Awaiting confirmation",
   "seatsWithValue": "Seats: {seat}",
   "@seatsWithValue": {
@@ -2405,6 +2386,71 @@
   },
   "seatLegendSelected": "Selected",
   "seatLegendLockedExternal": "Locked (outside the app)",
+  "createTripStepRoute": "Route",
+  "createTripStepDetails": "Trip details",
+  "createTripStepReview": "Review and publish",
+  "createTripRouteTitle": "Where will your trip start?",
+  "createTripRouteSubtitle": "Set the departure and destination; you can add stops (optional)",
+  "addStopSubtitle": "You can add up to 5 stops",
+  "approxDistanceLabel": "Approx. distance: {distance}",
+  "@approxDistanceLabel": {
+    "placeholders": {
+      "distance": { "type": "String" }
+    }
+  },
+  "approxDurationLabel": "Approx. time: {duration}",
+  "@approxDurationLabel": {
+    "placeholders": {
+      "duration": { "type": "String" }
+    }
+  },
+  "approxDurationHoursMinutes": "{hours} h {minutes} m",
+  "@approxDurationHoursMinutes": {
+    "placeholders": {
+      "hours": { "type": "int" },
+      "minutes": { "type": "int" }
+    }
+  },
+  "approxDurationMinutesOnly": "{minutes} m",
+  "@approxDurationMinutesOnly": {
+    "placeholders": {
+      "minutes": { "type": "int" }
+    }
+  },
+  "createTripWhenAndHow": "When and how?",
+  "createTripWhenAndHowSubtitle": "Set your trip details, passenger seats, and price",
+  "availableSeatsSection": "Available seats",
+  "availableSeatsCountTitle": "Available seats count",
+  "seatsUnitLabel": "Seats",
+  "jordanianDinarLabel": "Jordanian Dinar",
+  "tripSummaryTitle": "Trip summary",
+  "additionalDetailsTitle": "Additional details",
+  "seatLegendAvailable": "Available",
+  "seatLegendDriver": "Unavailable (driver)",
+  "seatLegendInactive": "Inactive seat",
+  "preventGenderMixingHint": "Family bookings are exempt. You can turn this off to allow mixing.",
+  "reviewTripTitle": "Review trip",
+  "reviewTripSubtitle": "Check your trip details before publishing it to passengers",
+  "publishTrip": "Publish trip",
+  "backToEdit": "Back to edit",
+  "publishTripNotice": "The trip will be published after review and passengers will be able to book it.",
+  "createTripFeeNotice": "Trip fee ({percent}%): {amount} {currency} — deducted from your wallet when the trip starts.",
+  "@createTripFeeNotice": {
+    "placeholders": {
+      "percent": { "type": "String" },
+      "amount": { "type": "String" },
+      "currency": { "type": "String" }
+    }
+  },
+  "insufficientBalanceForTripFee": "Your wallet balance ({balance}) does not cover the trip fee ({required}). Top up before publishing.",
+  "@insufficientBalanceForTripFee": {
+    "placeholders": {
+      "balance": { "type": "String" },
+      "required": { "type": "String" }
+    }
+  },
+  "familyBookingLabel": "Family booking",
+  "familyBookingHint": "Family bookings are exempt from the gender mixing rules on this trip.",
   "seatColorGuide": "Color guide: {label}",
   "@seatColorGuide": {
     "placeholders": {
@@ -2447,5 +2493,234 @@
   "shareTripTrackingAction": "Share",
   "shareTripTrackingLater": "Later",
   "shareTripTrackingText": "Follow my live trip here: {url}",
-  "shareTripTrackingError": "Could not create the share link"
+  "shareTripTrackingError": "Could not create the share link",
+  "tripInProgressTitle": "Trip in progress",
+  "tripInProgressOnTheWay": "You are on the way",
+  "tripInProgressHelp": "Help",
+  "tripInProgressEtaLabel": "Expected arrival",
+  "tripInProgressRemainingDistance": "Remaining distance",
+  "tripInProgressRemainingTime": "Time remaining",
+  "tripInProgressTripDetails": "Trip details",
+  "tripInProgressShareTracking": "Share tracking",
+  "tripInProgressEmergency": "Emergency",
+  "tripInProgressLayers": "Layers",
+  "tripInProgressRecenter": "Recenter",
+  "tripInProgressEmergencySent": "Emergency alert sent to support",
+  "tripInProgressEmergencyError": "Could not send emergency alert",
+  "tripInProgressEmergencyConfirmTitle": "Emergency alert",
+  "tripInProgressEmergencyConfirmMessage": "Support will be notified with your current location. Continue?",
+  "tripInProgressEmergencyConfirmAction": "Send alert",
+  "tripInProgressEmergencyCancel": "Cancel",
+  "locationAutocompleteSuggestions": "Place suggestions",
+  "locationAutocompleteNoResults": "No matching places. Pick the location on the map instead.",
+  "instantRidesTitle": "Instant rides",
+  "instantOnlineReady": "Online — ready for requests",
+  "instantOffline": "Offline",
+  "instantOfferTitle": "Instant ride request",
+  "instantOfferCardTitle": "New ride request",
+  "instantOfferBadge": "Direct trip",
+  "instantOfferDirectSubtitle": "Direct trip with no stops",
+  "instantRideAcceptedToast": "Ride accepted. Head to the pickup point.",
+  "instantOfferCountdown": "Expires in {seconds}s",
+  "instantDecline": "Decline",
+  "instantOfferIgnore": "Ignore",
+  "instantAccept": "Accept",
+  "instantOfferAcceptTrip": "Accept trip",
+  "instantOfferExpectedEarnings": "Expected earnings",
+  "instantOfferIncludesFees": "Includes platform fees",
+  "instantOfferPassengerCount": "{count} passengers",
+  "@instantOfferPassengerCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "instantOfferDistance": "Distance",
+  "instantOfferDuration": "Est. duration",
+  "instantOfferPassengersLabel": "Passengers",
+  "instantRequestNow": "Request now",
+  "instantRequestNowTitle": "Request a ride now",
+  "instantRequestNowSubtitle": "A nearby driver comes straight to you",
+  "instantSelectFromTo": "Choose pickup and destination.",
+  "instantFromHint": "Pickup location",
+  "instantFromPickerTitle": "Choose pickup point",
+  "instantToHint": "Destination",
+  "instantToPickerTitle": "Choose destination",
+  "instantDriverFound": "Driver found!",
+  "instantDriverOnTheWay": "The driver is on the way to the pickup point.",
+  "instantTrackTrip": "Track ride",
+  "instantDone": "Done",
+  "instantRequestCancelled": "Request cancelled",
+  "instantNoDrivers": "We couldn't find a driver right now",
+  "instantNoDriversSubtitle": "All nearby drivers may be busy, or none may be close to you.",
+  "instantNoDriversTip": "Tip: Try again in a few minutes; a nearby driver may become available.",
+  "instantNoDriversIllustrationLabel": "No driver found",
+  "instantNeedHelp": "Need help?",
+  "instantContactSupport": "Contact support",
+  "instantRideSafety": "Ride safety",
+  "instantPickupPoint": "Pickup point",
+  "instantDropoffPoint": "Drop-off point",
+  "instantRetryFareChanged": "The fare range changed. Review the fare before trying again.",
+  "instantTryAgain": "Try again",
+  "instantSearching": "Finding the nearest driver...",
+  "instantFareEstimate": "Estimated fare: {fare} {currency}",
+  "instantCancelRequest": "Cancel request",
+  "instantYourFareLabel": "Your fare",
+  "instantRecommendedFare": "Recommended fare: {fare} {currency}",
+  "instantYourFareValue": "Your fare: {fare} {currency}",
+  "instantDriverOfferTitle": "Driver's offer",
+  "instantProposeFare": "Offer a higher fare",
+  "instantSendOffer": "Send offer",
+  "instantCounterSentToast": "Your offer was sent to the passenger. Waiting for approval...",
+  "instantCounterMaxHint": "Max: {fare} {currency}",
+  "instantNudgeTitle": "No nearby driver yet",
+  "instantNudgeSubtitle": "Try raising your fare to attract a driver faster",
+  "instantRaiseTo": "Raise to {fare} {currency}",
+  "instantKeepFare": "Keep {fare} {currency}",
+  "instantArrivingIn": "Arriving in ~{minutes} min",
+  "instantAgreedFare": "Agreed fare: {fare} {currency}",
+
+  "tripSummaryTitle": "Trip ended successfully",
+  "tripSummaryThanks": "Thank you for your trip",
+  "tripSummaryHelp": "Help",
+  "tripSummaryArrivalPlace": "Arrival place",
+  "tripSummaryDistance": "Distance",
+  "tripSummaryDuration": "Trip duration",
+  "tripSummaryStartTime": "Start time",
+  "tripSummaryEndTime": "End time",
+  "tripSummaryHoursMinutes": "{hours}h {minutes}m",
+  "@tripSummaryHoursMinutes": {
+    "placeholders": {
+      "hours": { "type": "int" },
+      "minutes": { "type": "int" }
+    }
+  },
+  "tripSummaryHoursOnly": "{hours}h",
+  "@tripSummaryHoursOnly": {
+    "placeholders": { "hours": { "type": "int" } }
+  },
+  "tripSummaryMinutesOnly": "{minutes}m",
+  "@tripSummaryMinutesOnly": {
+    "placeholders": { "minutes": { "type": "int" } }
+  },
+  "tripSummaryConfirmedPassengers": "Passengers who confirmed presence ({count})",
+  "@tripSummaryConfirmedPassengers": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "tripSummaryNoPassengers": "No passengers for this trip.",
+  "tripSummaryPassengerFare": "Passenger fare",
+  "tripSummaryConfirmed": "Confirmed",
+  "tripSummaryNotConfirmed": "Did not confirm",
+  "tripSummaryPassengerFares": "Passenger fares ({count} passengers)",
+  "@tripSummaryPassengerFares": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "tripSummaryTripFeePercent": "Trip fee ({percent}%)",
+  "@tripSummaryTripFeePercent": {
+    "placeholders": { "percent": { "type": "int" } }
+  },
+  "tripSummaryNetAmount": "Net amount you will receive",
+  "tripSummaryFeeDeducted": "Trip fees ({amount}) were deducted from your wallet when the trip started. Keep enough balance to create new trips.",
+  "@tripSummaryFeeDeducted": {
+    "placeholders": { "amount": { "type": "String" } }
+  },
+  "tripSummaryPayFeePrompt": "Insufficient balance to deduct trip fees ({amount}). Pay now to settle your account.",
+  "@tripSummaryPayFeePrompt": {
+    "placeholders": { "amount": { "type": "String" } }
+  },
+  "tripSummaryPaymentRequired": "Trip fees ({fee}) could not be fully deducted. Your wallet is negative by {debt}. Pay now to settle.",
+  "@tripSummaryPaymentRequired": {
+    "placeholders": {
+      "fee": { "type": "String" },
+      "debt": { "type": "String" }
+    }
+  },
+  "tripSummaryNegativeBalanceRestriction": "You cannot create shared trips or receive instant rides until the negative balance is settled.",
+  "tripSummaryPayNow": "Pay now",
+  "tripSummaryChatTitle": "Chat with passengers",
+  "tripSummaryChatSubtitle": "Message the passengers of this trip",
+  "tripSummaryBackHome": "Return to home",
+  "currencyJodShort": "JOD",
+  "negativeWalletBalanceBlocked": "Your wallet balance is negative. Settle it before creating shared trips or receiving instant rides.",
+  "negativeWalletGoOnlineBlocked": "Your wallet balance is negative. Settle it before receiving instant rides.",
+  "authStepOf": "Step {current} of {total}",
+  "authSecurityNotice": "All your data is kept secure and will not be shared with any party",
+  "authNeedHelp": "Help",
+  "authStepperBasicInfo": "Basic information",
+  "authStepperIdDocs": "ID & documents",
+  "authStepperVehicleInfo": "Vehicle information",
+  "genderRequiredLabel": "Gender *",
+  "documentFormatsHint": "Supported: JPG, PNG, PDF (max 5 MB)",
+  "accountTypePassengerTagline": "Book direct or shared rides",
+  "accountTypeDriverTagline": "Create trips and pick up passengers",
+  "accountTypePassengerFeatureDirectTitle": "Direct rides",
+  "accountTypePassengerFeatureDirectBody": "Book a private ride that comes to you",
+  "accountTypePassengerFeatureSharedTitle": "Shared rides",
+  "accountTypePassengerFeatureSharedBody": "Join a trip and share the savings",
+  "accountTypePassengerFeaturePaymentTitle": "Safe and easy payment",
+  "accountTypePassengerFeaturePaymentBody": "Multiple secure payment options",
+  "accountTypeDriverFeatureTripsTitle": "Create trips",
+  "accountTypeDriverFeatureTripsBody": "Set your destination and departure",
+  "accountTypeDriverFeatureBookingsTitle": "Receive bookings",
+  "accountTypeDriverFeatureBookingsBody": "Get booking requests from passengers",
+  "accountTypeDriverFeatureIncomeTitle": "Earn extra income",
+  "accountTypeDriverFeatureIncomeBody": "Boost your income in your free time",
+  "accountTypeSafetyTitle": "Your safety is our priority",
+  "accountTypeSafetyBody": "We verify every user to keep the experience safe and trusted for everyone.",
+  "passengerSignupTitle": "Create a new account",
+  "passengerSignupSubtitle": "Register now as a passenger to start your journey with us",
+  "driverSignupTitle": "Create driver account",
+  "driverSignupSubtitle": "Start receiving passengers and earning extra income",
+  "fullNameIdHint": "Write your name as it appears on your ID",
+  "phoneConfirmCallHint": "We'll contact you to confirm your account",
+  "passwordMinLengthHint": "Must contain at least 8 characters",
+  "confirmPasswordReenterHint": "Re-enter the password",
+  "passengerProfileStepTitle": "Complete your profile",
+  "passengerProfileStepSubtitle": "Add your photo and city so drivers recognise you",
+  "profileCityLabel": "City *",
+  "profileCityHint": "Enter your city",
+  "profileCityRequired": "City is required",
+  "completeDriverProfileTitle": "Complete driver profile",
+  "driverStep2Badge": "Step 2 of 3: Additional information",
+  "driverStep3Badge": "Step 3 of 3: Vehicle documents",
+  "profilePhotoClearHint": "A clear photo of your face",
+  "vehicleTypeSelectHint": "Choose the vehicle type",
+  "vehiclePlateDocHint": "Enter the plate number as on the license",
+  "vehicleModelDocHint": "Enter the car model",
+  "vehicleSeatsDocHint": "Number of seats available to passengers",
+  "driverLicenseUploadHint": "Tap to upload the license photo",
+  "vehicleRegistrationFormRequired": "Registration form *",
+  "insuranceDocumentLabel": "Insurance *",
+  "insuranceImageRequired": "The insurance document is required",
+  "registrationUpdatedSuccess": "Your details were updated successfully",
+  "driverAlreadyApprovedError": "Your account has already been approved",
+  "driverPendingReviewTitle": "Your registration is under review",
+  "driverPendingReviewBody": "We're reviewing your details and documents, and we'll notify you as soon as the review is complete.",
+  "driverPendingStatusLabel": "Application status",
+  "driverPendingBadge": "Under review",
+  "driverSubmittedDocs": "Submitted documents",
+  "driverDocLicense": "License",
+  "driverDocRegistration": "Registration form",
+  "driverDocInsurance": "Insurance",
+  "driverDocCarPhoto": "Car photo",
+  "driverPendingRestrictionTitle": "Your account is under review",
+  "driverPendingRestrictionBody": "You will not be able to use the app as a driver until your account is activated.",
+  "driverEditRegistrationTitle": "Need to edit your details?",
+  "driverEditRegistrationSubtitle": "You can update your details or the submitted documents.",
+  "driverReturnHome": "Return to Home",
+  "tripBookedTitle": "Your shared trip is booked",
+  "tripBookedSubtitle": "All seats were booked successfully",
+  "tripDayLabel": "Trip day",
+  "tripTimeLabel": "Trip time",
+  "tripMeetingPointLabel": "Meeting point",
+  "tripDistanceShortLabel": "Distance",
+  "tripSeatsLabel": "Seats",
+  "tripSeatsComplete": "Full",
+  "tripSeatsBookedOf": "{booked} of {total}",
+  "bookedPassengersTitle": "Booked passengers ({count})",
+  "seatChipLabel": "Seat {number}",
+  "passengerFareLabel": "Passenger fare",
+  "passengersTotalLabel": "Total from passengers ({count})",
+  "tripFeeOfSeatsLabel": "Trip fee ({percent}% of {seats} seats)",
+  "tripFeeChargedAtStartNotice": "The trip fee will be deducted from your wallet when the trip starts. Keep a balance in your wallet so you can keep creating new trips.",
+  "contactPassengersTitle": "Contact passengers",
+  "contactPassengersSubtitle": "Call or live chat",
+  "confirmYourPresenceCta": "Please be present at the specified time and place"
 }

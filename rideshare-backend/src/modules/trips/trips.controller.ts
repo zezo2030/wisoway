@@ -27,6 +27,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { TripTimeService } from '../trip-time/trip-time.service';
 import { CompleteTripDto } from '../trip-time/dto/complete-trip.dto';
+import { DriverTripFeeService } from '../driver-trip-fee/driver-trip-fee.service';
 
 @ApiTags('trips')
 @Controller('trips')
@@ -36,6 +37,7 @@ export class TripsController {
   constructor(
     private readonly tripsService: TripsService,
     private readonly tripTimeService: TripTimeService,
+    private readonly driverTripFee: DriverTripFeeService,
   ) {}
 
   @Post()
@@ -88,6 +90,21 @@ export class TripsController {
     return this.tripsService.findByDriver(driverId, {
       page: page || 1,
       limit: limit || 20,
+    });
+  }
+
+  @Get('fee-quote')
+  @ApiOperation({
+    summary: 'Platform fee a driver will be charged for a trip of this shape',
+  })
+  @ApiResponse({ status: 200, description: 'Fee quote' })
+  async feeQuote(
+    @Query('seatPrice') seatPrice: string,
+    @Query('totalSeats') totalSeats: string,
+  ) {
+    return this.driverTripFee.computeExpectedFee({
+      seatPrice: Number(seatPrice ?? 0),
+      totalSeats: Number(totalSeats ?? 0),
     });
   }
 
@@ -197,17 +214,12 @@ export class TripsController {
     return this.tripTimeService.completeTrip(id, driverId, dto);
   }
 
-  @Patch(':id/legacy-complete')
-  @UseGuards(RolesGuard)
-  @Roles('driver')
-  @ApiOperation({ summary: 'Legacy complete trip (kept for backward compat)' })
-  @ApiResponse({ status: 200, description: 'Trip completed successfully' })
-  @ApiResponse({ status: 400, description: 'Bad request' })
-  @ApiResponse({ status: 403, description: 'Not the owner' })
-  @ApiResponse({ status: 404, description: 'Trip not found' })
-  async complete(@Param('id') id: string, @CurrentUser('id') driverId: string) {
-    return this.tripsService.complete(id, driverId);
-  }
+  // PATCH :id/legacy-complete and TripsService.complete were deleted: no client
+  // ever called them, and they completed a trip without the platform-fee sweep
+  // the other two completion paths run, while also removing the queued
+  // auto-start job. Because they had no status precondition, a driver could
+  // call them on a still-PUBLISHED trip before departure and ride for free.
+  // Completion now goes through POST :id/arrived / :id/complete only.
 
   @Patch(':id/show')
   @UseGuards(RolesGuard)

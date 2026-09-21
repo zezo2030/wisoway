@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../constants/route_names.dart';
+import 'instant_offer_actions.dart';
 
 /// Service to handle navigation when user taps on notifications
 class NotificationNavigationService {
@@ -45,6 +46,15 @@ class NotificationNavigationService {
         _handleTripStartedNotification(data);
         break;
 
+      case 'presence_prompt':
+      case 'presence_marked_absent':
+        _navigateToPresenceConfirmation(data);
+        break;
+
+      case 'presence_driver_prompt':
+        _navigateToPresenceRoster(data);
+        break;
+
       case 'communication_activated':
         _handleCommunicationNotification(data);
         break;
@@ -53,10 +63,21 @@ class NotificationNavigationService {
         _handleChatMessageNotification(data);
         break;
 
+      case 'instant_offer':
+        _handleInstantOfferNotification(data);
+        break;
+
       default:
         // Navigate to notifications screen for unknown types
         _navigateToRoute(RouteNames.notifications);
     }
+  }
+
+  static void _handleInstantOfferNotification(Map<String, dynamic> data) {
+    InstantOfferActions.handle({
+      ...data,
+      'action': data['action'] ?? 'open',
+    });
   }
 
   /// Handle booking-related notifications
@@ -96,19 +117,40 @@ class NotificationNavigationService {
     }
   }
 
-  /// Handle trip-started notification — opens trip details and prompts the user
+  /// Handle trip-started notification — opens live trip screen and prompts the user
   /// to share live trip tracking with someone.
   static void _handleTripStartedNotification(Map<String, dynamic> data) {
     final tripId = data['tripId'] as String?;
 
     if (tripId != null) {
       _navigateToRoute(
-        RouteNames.tripDetails,
+        RouteNames.tripInProgress,
         arguments: {'tripId': tripId, 'showTrackingShare': true},
       );
     } else {
       _navigateToRoute(RouteNames.notifications);
     }
+  }
+
+  static void _navigateToPresenceConfirmation(Map<String, dynamic> data) {
+    final bookingId = data['bookingId'] as String?;
+    if (bookingId == null) {
+      _navigateToRoute(RouteNames.notifications);
+      return;
+    }
+    _navigateToRoute(
+      RouteNames.presenceConfirmation,
+      arguments: {'bookingId': bookingId},
+    );
+  }
+
+  static void _navigateToPresenceRoster(Map<String, dynamic> data) {
+    final tripId = data['tripId'] as String?;
+    if (tripId == null) {
+      _navigateToRoute(RouteNames.notifications);
+      return;
+    }
+    _navigateToRoute(RouteNames.tripManagement, arguments: tripId);
   }
 
   /// Handle communication activation notification
@@ -164,20 +206,26 @@ class NotificationNavigationService {
   }
 
   /// Navigate to a specific route
-  static void _navigateToRoute(String routeName, {Object? arguments}) {
+  static Future<void> _navigateToRoute(
+    String routeName, {
+    Object? arguments,
+  }) async {
     final navigator = navigatorKey.currentState;
     if (navigator == null) {
       debugPrint('Navigator is not available yet');
       return;
     }
 
-    // Use pushNamed for navigation
-    navigator.pushNamed(routeName, arguments: arguments).catchError((error) {
+    try {
+      await navigator.pushNamed(routeName, arguments: arguments);
+    } catch (error) {
       debugPrint('Navigation error: $error');
-      // Fallback: navigate to notifications screen
-      navigator.pushNamed(RouteNames.notifications);
-      return null;
-    });
+      try {
+        await navigator.pushNamed(RouteNames.notifications);
+      } catch (fallbackError) {
+        debugPrint('Fallback navigation error: $fallbackError');
+      }
+    }
   }
 
   /// Handle notification tap from local notification
