@@ -1,7 +1,7 @@
 /* QA 06 — the admin dashboard surface: listings, stats, moderation,
    fines, wallets, pricing, broadcasts, settlement. */
 const L = require('./lib');
-const { req, data, errMsg } = L;
+const { req, data, errMsg, config } = L;
 const A = require('./accounts.json');
 const T = require('./trip-context.json');
 
@@ -142,7 +142,7 @@ async function main() {
 
     const driverSees = await req('GET', '/me/pending-charges', {
       token: (await req('POST', '/auth/login', {
-        body: { phoneNumber: D1.phone, password: 'Driver@12345' },
+        body: { phoneNumber: D1.phone, password: config.driver.password },
       }).then((r) => data(r).accessToken)),
     });
     if (driverSees.status === 200) {
@@ -175,10 +175,10 @@ async function main() {
   if (L.expectStatus('POST /admin/users/:id/ban', ban, [200, 201])) {
     // A banned user must be refused on their next authenticated call.
     const li = await req('POST', '/auth/login', {
-      body: { phoneNumber: P2.phone, password: 'Passenger@12345' },
+      body: { phoneNumber: P2.phone, password: config.passenger.password },
     });
     const li2 = li.status === 200 || li.status === 201 ? li : await req('POST', '/auth/login', {
-      body: { phoneNumber: P2.phone, password: 'Passenger@54321' },
+      body: { phoneNumber: P2.phone, password: config.passenger.altPassword },
     });
     const tok = data(li2)?.accessToken;
     if (tok) {
@@ -192,10 +192,10 @@ async function main() {
   const unban = await req('POST', `/admin/users/${P2.id}/unban`, { token: t, body: {} });
   if (L.expectStatus('POST /admin/users/:id/unban', unban, [200, 201])) {
     const li = await req('POST', '/auth/login', {
-      body: { phoneNumber: P2.phone, password: 'Passenger@12345' },
+      body: { phoneNumber: P2.phone, password: config.passenger.password },
     });
     const li2 = li.status === 200 || li.status === 201 ? li : await req('POST', '/auth/login', {
-      body: { phoneNumber: P2.phone, password: 'Passenger@54321' },
+      body: { phoneNumber: P2.phone, password: config.passenger.altPassword },
     });
     if (li2.status === 200 || li2.status === 201) {
       const ok = await req('GET', '/users/me', { token: data(li2).accessToken });

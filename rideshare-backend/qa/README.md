@@ -15,6 +15,9 @@ pick them up.
 3. The API running on `localhost:3003`: `npm run start:dev`.
 4. `OTP_PROVIDER=local` in `.env` — the suites read OTP codes straight out of
    the `otp_codes` table, so no SMS is sent.
+5. Credentials in place: copy `qa/.env.qa.example` to `qa/.env.qa` and fill it
+   in. Nothing is hard-coded, so the scripts refuse to start without it, and
+   `.env.qa` is gitignored. Real environment variables override the file.
 
 ## Running
 

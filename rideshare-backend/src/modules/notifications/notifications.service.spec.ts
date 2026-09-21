@@ -1,276 +1,244 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getModelToken } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { getQueueToken } from '@nestjs/bull';
 import { NotificationsService } from './notifications.service';
-import {
-  Notification,
-  NotificationDocument,
-} from './schemas/notification.schema';
 import { NotificationsGateway } from './notifications.gateway';
-import { NotFoundException } from '@nestjs/common';
+import { UsersService } from '../users/users.service';
+import { AuditService } from '../../common/audit/audit.service';
+import { NotificationEntity } from '../../database/entities/notification.entity';
+import { DeviceTokenEntity } from '../../database/entities/device-token.entity';
+import { NotificationChannel } from '../../database/entities/shared.enums';
 
 describe('NotificationsService', () => {
   let service: NotificationsService;
-  let notificationModel: Model<NotificationDocument>;
+  let notificationRepo: {
+    create: jest.Mock;
+    save: jest.Mock;
+    findOne: jest.Mock;
+    count: jest.Mock;
+    update: jest.Mock;
+    remove: jest.Mock;
+    createQueryBuilder: jest.Mock;
+  };
+  let deviceTokenRepo: { find: jest.Mock };
+  let gateway: { emitToUser: jest.Mock };
+  let qb: Record<string, jest.Mock>;
 
-  const mockNotification = {
-    _id: 'notification-id',
-    userId: 'user-id',
-    type: 'booking_new',
-    title: 'New Booking',
-    body: 'A passenger booked seat 0-1',
-    data: { tripId: 'trip-id', bookingId: 'booking-id' },
+  const userId = 'user-1';
+  const notificationId = 'notif-1';
+
+  const mockNotification = () => ({
+    id: notificationId,
+    userId,
+    type: 'booking_request',
+    title: 'New booking',
+    body: 'Someone booked your trip',
     isRead: false,
-    createdAt: new Date(),
-    save: jest.fn().mockResolvedValue(this),
-  };
-
-  const MockNotificationModel = jest.fn().mockImplementation((dto) => ({
-    ...dto,
-    _id: 'new-notification-id',
-    save: jest.fn().mockResolvedValue({ _id: 'new-notification-id', ...dto }),
-  }));
-
-  MockNotificationModel.find = jest.fn().mockReturnThis();
-  MockNotificationModel.findOne = jest.fn().mockReturnThis();
-  MockNotificationModel.findById = jest.fn().mockReturnThis();
-  MockNotificationModel.exec = jest.fn();
-  MockNotificationModel.create = jest.fn();
-  MockNotificationModel.countDocuments = jest.fn();
-  MockNotificationModel.updateOne = jest.fn();
-  MockNotificationModel.updateMany = jest.fn();
-  MockNotificationModel.populate = jest.fn().mockReturnThis();
-  MockNotificationModel.skip = jest.fn().mockReturnThis();
-  MockNotificationModel.limit = jest.fn().mockReturnThis();
-  MockNotificationModel.sort = jest.fn().mockReturnThis();
-
-  const mockNotificationModel = MockNotificationModel;
-
-  const mockUserModel = {
-    findById: jest.fn(),
-  };
-
-  const mockNotificationsGateway = {
-    emitToUser: jest.fn().mockResolvedValue(undefined),
-  };
+  });
 
   beforeEach(async () => {
+    qb = {
+      where: jest.fn(() => qb),
+      andWhere: jest.fn(() => qb),
+      orderBy: jest.fn(() => qb),
+      skip: jest.fn(() => qb),
+      take: jest.fn(() => qb),
+      getMany: jest.fn().mockResolvedValue([mockNotification()]),
+      getCount: jest.fn().mockResolvedValue(1),
+    };
+
+    notificationRepo = {
+      create: jest.fn((data) => ({ id: notificationId, ...data })),
+      save: jest.fn(async (entity) => entity),
+      findOne: jest.fn(),
+      count: jest.fn().mockResolvedValue(3),
+      update: jest.fn().mockResolvedValue({ affected: 5 }),
+      remove: jest.fn(async (entity) => entity),
+      createQueryBuilder: jest.fn(() => qb),
+    };
+    deviceTokenRepo = { find: jest.fn().mockResolvedValue([]) };
+    gateway = { emitToUser: jest.fn() };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NotificationsService,
         {
-          provide: getModelToken(Notification.name),
-          useValue: mockNotificationModel,
+          provide: getRepositoryToken(NotificationEntity),
+          useValue: notificationRepo,
         },
         {
-          provide: getModelToken('User'),
-          useValue: mockUserModel,
+          provide: getRepositoryToken(DeviceTokenEntity),
+          useValue: deviceTokenRepo,
         },
-        {
-          provide: NotificationsGateway,
-          useValue: mockNotificationsGateway,
-        },
+        { provide: UsersService, useValue: { findById: jest.fn() } },
+        { provide: NotificationsGateway, useValue: gateway },
+        { provide: AuditService, useValue: { record: jest.fn() } },
+        { provide: getQueueToken('new-trip-fanout'), useValue: { add: jest.fn() } },
       ],
     }).compile();
 
     service = module.get<NotificationsService>(NotificationsService);
-    notificationModel = module.get<Model<NotificationDocument>>(
-      getModelToken(Notification.name),
-    );
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
+  it('should be defined', () => {
+    expect(service).toBeDefined();
   });
 
   describe('create', () => {
-    it('should create a notification', async () => {
-      const createNotificationDto = {
-        userId: 'user-id',
-        type: 'booking_new',
-        title: 'New Booking',
-        body: 'A passenger booked seat 0-1',
-        data: { tripId: 'trip-id' },
+    it('persists the notification on the in-app channel', async () => {
+      const dto = {
+        userId,
+        type: 'booking_request',
+        title: 'New booking',
+        body: 'Someone booked your trip',
       };
 
-      mockNotificationModel.create.mockResolvedValue({
-        _id: 'new-notification-id',
-        ...createNotificationDto,
-        isRead: false,
-      });
+      const result = await service.create(dto as never);
 
-      const result = await service.create(createNotificationDto);
+      expect(notificationRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId,
+          channel: NotificationChannel.IN_APP,
+        }),
+      );
+      expect(notificationRepo.save).toHaveBeenCalledTimes(1);
+      expect(result.id).toBe(notificationId);
+    });
 
-      expect(result).toBeDefined();
-      expect(mockNotificationModel.create).toHaveBeenCalled();
+    it('pushes the saved notification down the socket', async () => {
+      const dto = {
+        userId,
+        type: 'booking_request',
+        title: 'New booking',
+        body: 'Someone booked your trip',
+      };
+
+      await service.create(dto as never);
+
+      expect(gateway.emitToUser).toHaveBeenCalledWith(
+        userId,
+        'newNotification',
+        expect.objectContaining({ id: notificationId }),
+      );
     });
   });
 
   describe('sendPush', () => {
-    it('should send push notification to user with FCM token', async () => {
-      const mockUser = {
-        _id: 'user-id',
-        fcmToken: 'fcm-token',
-      };
-
-      mockUserModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockUser),
+    // Firebase is not configured under test, so the service short-circuits
+    // rather than reaching for device tokens.
+    it('reports no deliveries when Firebase is unavailable', async () => {
+      const result = await service.sendPush(userId, {
+        title: 'Hi',
+        type: 'generic',
       });
 
-      await service.sendPush('user-id', {
-        title: 'Test Notification',
-        body: 'Test body',
-        type: 'booking_created',
-      });
-
-      expect(mockUserModel.findById).toHaveBeenCalledWith('user-id');
-    });
-
-    it('should not fail if user not found', async () => {
-      mockUserModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null),
-      });
-
-      await expect(
-        service.sendPush('non-existent', {
-          title: 'Test',
-          body: 'Test',
-          type: 'booking_created',
-        }),
-      ).resolves.not.toThrow();
+      expect(result).toEqual({ successCount: 0, failureCount: 0 });
     });
   });
 
   describe('findByUser', () => {
-    it('should return paginated notifications', async () => {
-      const notifications = [mockNotification];
+    it('returns a paginated envelope scoped to the user', async () => {
+      const result = await service.findByUser(userId, { page: 1, limit: 20 });
 
-      mockNotificationModel.find.mockReturnValue({
-        skip: jest.fn().mockReturnValue({
-          limit: jest.fn().mockReturnValue({
-            sort: jest.fn().mockReturnValue({
-              exec: jest.fn().mockResolvedValue(notifications),
-            }),
-          }),
-        }),
-      });
-
-      mockNotificationModel.countDocuments.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(1),
-      });
-
-      const result = await service.findByUser('user-id', {
+      expect(qb.where).toHaveBeenCalledWith('n.userId = :userId', { userId });
+      expect(qb.skip).toHaveBeenCalledWith(0);
+      expect(qb.take).toHaveBeenCalledWith(20);
+      expect(result.data).toHaveLength(1);
+      expect(result.meta).toEqual({
         page: 1,
         limit: 20,
+        total: 1,
+        totalPages: 1,
       });
-
-      expect(result.data).toHaveLength(1);
-      expect(result.meta.total).toBe(1);
     });
 
-    it('should filter by isRead when provided', async () => {
-      mockNotificationModel.find.mockReturnValue({
-        skip: jest.fn().mockReturnValue({
-          limit: jest.fn().mockReturnValue({
-            sort: jest.fn().mockReturnValue({
-              exec: jest.fn().mockResolvedValue([]),
-            }),
-          }),
-        }),
-      });
+    it('filters by isRead when asked', async () => {
+      await service.findByUser(userId, { page: 2, limit: 10, isRead: false });
 
-      mockNotificationModel.countDocuments.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(0),
+      expect(qb.andWhere).toHaveBeenCalledWith('n.isRead = :isRead', {
+        isRead: false,
       });
-
-      await service.findByUser('user-id', {
-        page: 1,
-        limit: 20,
-        isRead: true,
-      });
-
-      expect(mockNotificationModel.find).toHaveBeenCalledWith({
-        userId: 'user-id',
-        isRead: true,
-      });
+      expect(qb.skip).toHaveBeenCalledWith(10);
     });
   });
 
   describe('getUnreadCount', () => {
-    it('should return unread count', async () => {
-      mockNotificationModel.countDocuments.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(5),
+    it('counts only the unread rows', async () => {
+      await expect(service.getUnreadCount(userId)).resolves.toBe(3);
+      expect(notificationRepo.count).toHaveBeenCalledWith({
+        where: { userId, isRead: false },
       });
-
-      const result = await service.getUnreadCount('user-id');
-
-      expect(result).toBe(5);
     });
   });
 
   describe('markRead', () => {
-    it('should mark notification as read', async () => {
-      mockNotificationModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({
-          ...mockNotification,
-          isRead: false,
-          save: jest
-            .fn()
-            .mockResolvedValue({ ...mockNotification, isRead: true }),
-        }),
-      });
+    it('flips isRead for the owner', async () => {
+      notificationRepo.findOne.mockResolvedValue(mockNotification());
 
-      const result = await service.markRead('notification-id', 'user-id');
+      const result = await service.markRead(notificationId, userId);
 
       expect(result.isRead).toBe(true);
+      expect(notificationRepo.save).toHaveBeenCalled();
     });
 
-    it('should throw NotFoundException if notification not found', async () => {
-      mockNotificationModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null),
+    it('throws when the notification is missing', async () => {
+      notificationRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.markRead(notificationId, userId)).rejects.toThrow(
+        'Notification not found',
+      );
+    });
+
+    it('refuses a notification belonging to someone else', async () => {
+      notificationRepo.findOne.mockResolvedValue({
+        ...mockNotification(),
+        userId: 'someone-else',
       });
 
-      await expect(service.markRead('non-existent', 'user-id')).rejects.toThrow(
-        NotFoundException,
+      await expect(service.markRead(notificationId, userId)).rejects.toThrow(
+        'Unauthorized',
       );
     });
   });
 
   describe('markAllRead', () => {
-    it('should mark all user notifications as read', async () => {
-      mockNotificationModel.updateMany.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ modifiedCount: 5 }),
-      });
-
-      const result = await service.markAllRead('user-id');
-
-      expect(result).toBe(5);
+    it('returns how many rows were touched', async () => {
+      await expect(service.markAllRead(userId)).resolves.toBe(5);
+      expect(notificationRepo.update).toHaveBeenCalledWith(
+        { userId, isRead: false },
+        { isRead: true },
+      );
     });
   });
 
   describe('delete', () => {
-    it('should delete notification', async () => {
-      mockNotificationModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockNotification),
-      });
+    it('removes the notification for its owner', async () => {
+      const notification = mockNotification();
+      notificationRepo.findOne.mockResolvedValue(notification);
 
-      mockNotificationModel.deleteOne = jest
-        .fn()
-        .mockResolvedValue({ deletedCount: 1 });
+      await service.delete(notificationId, userId);
 
-      await expect(
-        service.delete('notification-id', 'user-id'),
-      ).resolves.not.toThrow();
+      expect(notificationRepo.remove).toHaveBeenCalledWith(notification);
     });
 
-    it('should throw NotFoundException if notification not found', async () => {
-      mockNotificationModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null),
+    it('throws when the notification is missing', async () => {
+      notificationRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.delete(notificationId, userId)).rejects.toThrow(
+        'Notification not found',
+      );
+    });
+
+    it('refuses a notification belonging to someone else', async () => {
+      notificationRepo.findOne.mockResolvedValue({
+        ...mockNotification(),
+        userId: 'someone-else',
       });
 
-      await expect(service.delete('non-existent', 'user-id')).rejects.toThrow(
-        NotFoundException,
+      await expect(service.delete(notificationId, userId)).rejects.toThrow(
+        'Unauthorized',
       );
+      expect(notificationRepo.remove).not.toHaveBeenCalled();
     });
   });
 });

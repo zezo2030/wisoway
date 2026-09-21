@@ -1,15 +1,10 @@
 /* Shared helpers for the manual QA harness (not part of the app build). */
 const { Client } = require('pg');
+const config = require('./config');
 
-const BASE = process.env.QA_BASE || 'http://localhost:3003/api/v1';
+const BASE = config.base;
 
-const db = new Client({
-  host: 'localhost',
-  port: 5433,
-  user: 'postgres',
-  password: '203050',
-  database: 'rideshare',
-});
+const db = new Client({ ...config.db });
 let dbReady = false;
 async function sql(text, params = []) {
   if (!dbReady) {
@@ -152,7 +147,7 @@ async function createPassenger(phone, name, gender = 'male') {
       name,
       gender,
       role: 'passenger',
-      password: 'Passenger@12345',
+      password: config.passenger.password,
       device: device(name),
     },
   });
@@ -179,7 +174,7 @@ async function createDriver(phone, name, extra = {}) {
       name,
       gender: 'male',
       photoUrl: 'https://example.com/driver.jpg',
-      password: 'Driver@12345',
+      password: config.driver.password,
       vehicleType: extra.vehicleType || 'sedan',
       plateNumber: extra.plateNumber || `QA${Math.floor(Math.random() * 90000 + 10000)}`,
       model: extra.model || 'Toyota Corolla 2022',
@@ -200,7 +195,7 @@ async function createDriver(phone, name, extra = {}) {
 
 async function loginAdmin() {
   const r = await req('POST', '/auth/login', {
-    body: { email: 'admin@rideshare.com', password: 'Admin@123456' },
+    body: { email: config.admin.email, password: config.admin.password },
   });
   if (r.status !== 200 && r.status !== 201) throw new Error(`admin login ${r.status} ${errMsg(r)}`);
   const d = data(r);
@@ -208,7 +203,7 @@ async function loginAdmin() {
 }
 
 module.exports = {
-  BASE, req, data, list, errMsg, sql, closeDb,
+  BASE, config, req, data, list, errMsg, sql, closeDb,
   setSection, pass, fail, skip, expectStatus, summary, results,
   latestOtp, device, createPassenger, createDriver, loginAdmin,
 };

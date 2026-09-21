@@ -10,7 +10,7 @@ const fs = require('fs');
 const PHONE_LOCAL = '79' + String(Date.now()).slice(-7);
 const PHONE = '+962' + PHONE_LOCAL;
 const NAME = 'Omar UI Driver';
-const PASSWORD = 'Driver@12345';
+const PASSWORD = L.config.driver.password;
 
 async function main() {
   L.setSection('Driver sign-up — start');

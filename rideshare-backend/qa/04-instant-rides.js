@@ -1,7 +1,7 @@
 /* QA 04 — instant rides: driver availability, quote, request, dispatch,
    fare negotiation, accept, and the resulting trip. */
 const L = require('./lib');
-const { req, data, errMsg } = L;
+const { req, data, errMsg, config } = L;
 const A = require('./accounts.json');
 
 const P1 = A.accounts.passenger1;
@@ -16,12 +16,12 @@ const DRIVER_AT = { latitude: 31.9500, longitude: 35.8700 };
 
 async function freshTokens() {
   const p = await req('POST', '/auth/login', {
-    body: { phoneNumber: P1.phone, password: 'Passenger@99999' },
+    body: { phoneNumber: P1.phone, password: config.passenger.resetPassword },
   });
   if (p.status === 200 || p.status === 201) P1.token = data(p).accessToken;
   for (const d of [D1, D2]) {
     const r = await req('POST', '/auth/login', {
-      body: { phoneNumber: d.phone, password: 'Driver@12345' },
+      body: { phoneNumber: d.phone, password: config.driver.password },
     });
     if (r.status === 200 || r.status === 201) d.token = data(r).accessToken;
   }

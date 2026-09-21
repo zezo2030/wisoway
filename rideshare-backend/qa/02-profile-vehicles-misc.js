@@ -1,6 +1,6 @@
 /* QA 02 — profile, vehicles, locations, notifications, support, devices. */
 const L = require('./lib');
-const { req, data, errMsg } = L;
+const { req, data, errMsg, config } = L;
 const A = require('./accounts.json');
 
 const P1 = A.accounts.passenger1;
@@ -152,9 +152,9 @@ async function main() {
 
   // Change password on passenger 2, then confirm login with the new one.
   // Re-runs of this suite start from the rotated password, so try both.
-  let p2Pw = 'Passenger@12345';
+  let p2Pw = config.passenger.password;
   let p2Token = P2.token;
-  for (const cand of ['Passenger@12345', 'Passenger@54321']) {
+  for (const cand of [config.passenger.password, config.passenger.altPassword]) {
     const li = await req('POST', '/auth/login', {
       body: { phoneNumber: P2.phone, password: cand },
     });
@@ -164,7 +164,10 @@ async function main() {
       break;
     }
   }
-  const nextPw = p2Pw === 'Passenger@12345' ? 'Passenger@54321' : 'Passenger@12345';
+  const nextPw =
+    p2Pw === config.passenger.password
+      ? config.passenger.altPassword
+      : config.passenger.password;
   const cp = await req('POST', '/auth/change-password', {
     token: p2Token,
     body: { currentPassword: p2Pw, newPassword: nextPw },
@@ -190,11 +193,11 @@ async function main() {
     if (L.expectStatus('POST /auth/verify-reset-otp', vr, [200, 201])) {
       const resetToken = data(vr).resetToken || data(vr).token;
       const rp = await req('POST', '/auth/reset-password', {
-        body: { resetToken, newPassword: 'Passenger@99999' },
+        body: { resetToken, newPassword: config.passenger.resetPassword },
       });
       if (L.expectStatus('POST /auth/reset-password', rp, [200, 201])) {
         const li = await req('POST', '/auth/login', {
-          body: { phoneNumber: P1.phone, password: 'Passenger@99999' },
+          body: { phoneNumber: P1.phone, password: config.passenger.resetPassword },
         });
         L.expectStatus('login with the reset password', li, [200, 201]);
         if (li.status === 200 || li.status === 201) {

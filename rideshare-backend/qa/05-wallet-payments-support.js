@@ -1,6 +1,6 @@
 /* QA 05 — wallet, payments, pending charges, complaints, refunds, calls. */
 const L = require('./lib');
-const { req, data, errMsg } = L;
+const { req, data, errMsg, config } = L;
 const A = require('./accounts.json');
 const T = require('./trip-context.json');
 
@@ -11,15 +11,15 @@ const AD = A.accounts.admin;
 
 async function freshTokens() {
   const p = await req('POST', '/auth/login', {
-    body: { phoneNumber: P1.phone, password: 'Passenger@99999' },
+    body: { phoneNumber: P1.phone, password: config.passenger.resetPassword },
   });
   if (p.status === 200 || p.status === 201) P1.token = data(p).accessToken;
   const d = await req('POST', '/auth/login', {
-    body: { phoneNumber: D1.phone, password: 'Driver@12345' },
+    body: { phoneNumber: D1.phone, password: config.driver.password },
   });
   if (d.status === 200 || d.status === 201) D1.token = data(d).accessToken;
   // P2's password is rotated by suite 02, so try both known values.
-  for (const cand of ['Passenger@12345', 'Passenger@54321']) {
+  for (const cand of [config.passenger.password, config.passenger.altPassword]) {
     const r = await req('POST', '/auth/login', {
       body: { phoneNumber: P2.phone, password: cand },
     });
