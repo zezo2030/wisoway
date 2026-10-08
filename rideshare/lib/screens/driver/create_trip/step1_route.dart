@@ -11,6 +11,8 @@ import '../../../widgets/route_fields_card.dart';
 import '../../location/route_search_screen.dart';
 import 'create_trip_stepper.dart';
 import 'create_trip_wizard_state.dart';
+import 'meeting_point_picker_screen.dart';
+import '../../../models/trip_meeting_point.dart';
 
 /// Wizard step 1 — pick the route: origin, destination and optional stops.
 ///
@@ -49,6 +51,10 @@ class Step1Route extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           _buildLocationsCard(context),
+          if (wizard.from != null) ...[
+            const SizedBox(height: 12),
+            _buildMeetingPointCard(context),
+          ],
           const SizedBox(height: 12),
           _buildAddStopButton(context),
           if (wizard.stops.isNotEmpty) ...[
@@ -74,6 +80,15 @@ class Step1Route extends StatelessWidget {
       destinationHint: context.l10n.arrivalPointTitle,
       savedPlaces: savedPlaces,
       onChanged: (from, to) {
+        // A pin placed for another origin no longer marks where this trip
+        // gathers.
+        final previous = wizard.from;
+        if (from == null ||
+            previous == null ||
+            from.latitude != previous.latitude ||
+            from.longitude != previous.longitude) {
+          wizard.meetingPin = null;
+        }
         wizard.from = from;
         wizard.to = to;
         wizard.fromController.text = from?.name ?? '';
@@ -81,6 +96,136 @@ class Step1Route extends StatelessWidget {
         onChanged();
       },
     );
+  }
+
+  /// The exact spot passengers gather at: a map pin plus a description in the
+  /// driver's words. Both are required before the route step can continue.
+  Widget _buildMeetingPointCard(BuildContext context) {
+    final l10n = context.l10n;
+    final pin = wizard.meetingPin;
+
+    return CreateTripCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.place_outlined, color: T.primary(context)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l10n.meetingPointCardTitle,
+                  style: AppTextStyles.titleSmall.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: T.onSurface(context),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            l10n.meetingPointCardSubtitle,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: T.textSecondary(context),
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (pin == null)
+            OutlinedButton.icon(
+              onPressed: () => _pickMeetingPoint(context),
+              icon: const Icon(Icons.add_location_alt_outlined),
+              label: Text(l10n.meetingPointPickOnMap),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: T.primary(context),
+                side: BorderSide(color: T.primary(context)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            )
+          else ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                height: 140,
+                child: GoogleMap(
+                  key: ValueKey('${pin.latitude},${pin.longitude}'),
+                  initialCameraPosition: CameraPosition(
+                    target: LatLng(pin.latitude, pin.longitude),
+                    zoom: 16,
+                  ),
+                  markers: {
+                    Marker(
+                      markerId: const MarkerId('meeting'),
+                      position: LatLng(pin.latitude, pin.longitude),
+                    ),
+                  },
+                  liteModeEnabled: true,
+                  zoomControlsEnabled: false,
+                  myLocationButtonEnabled: false,
+                  mapToolbarEnabled: false,
+                  onTap: (_) => _pickMeetingPoint(context),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    pin.address ?? '—',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: T.onSurface(context),
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => _pickMeetingPoint(context),
+                  child: Text(l10n.meetingPointChange),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 12),
+          TextField(
+            controller: wizard.meetingNoteController,
+            onChanged: (_) => onChanged(),
+            maxLength: 300,
+            minLines: 1,
+            maxLines: 3,
+            textInputAction: TextInputAction.done,
+            decoration: InputDecoration(
+              labelText: l10n.meetingPointNoteLabel,
+              hintText: l10n.meetingPointNoteHint,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickMeetingPoint(BuildContext context) async {
+    final start = wizard.meetingPin;
+    final from = wizard.from;
+    final target = start != null
+        ? LatLng(start.latitude, start.longitude)
+        : LatLng(from!.latitude, from.longitude);
+    final picked = await Navigator.push<TripMeetingPoint>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MeetingPointPickerScreen(initialTarget: target),
+      ),
+    );
+    if (picked == null) return;
+    wizard.meetingPin = picked;
+    onChanged();
   }
 
   Widget _buildAddStopButton(BuildContext context) {

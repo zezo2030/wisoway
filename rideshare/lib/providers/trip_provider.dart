@@ -6,6 +6,7 @@ import '../core/api/websocket_service.dart';
 import '../models/trip_model.dart';
 import 'dart:async';
 import '../models/location_model.dart';
+import '../models/trip_meeting_point.dart';
 
 class TripProvider extends ChangeNotifier {
   final TripService _tripService = TripService();
@@ -97,8 +98,10 @@ class TripProvider extends ChangeNotifier {
     File? carImage,
     List<LocationModel>? stops,
     String? notes,
+    TripMeetingPoint? meetingPoint,
     Map<String, dynamic>? recurrence,
     int? availableSeats,
+    List<String>? closedSeatNumbers,
     bool? preventGenderMixing,
   }) async {
     try {
@@ -114,8 +117,10 @@ class TripProvider extends ChangeNotifier {
         carImageUrl: null,
         stops: stops,
         notes: notes,
+        meetingPoint: meetingPoint,
         recurrence: recurrence,
         availableSeats: availableSeats,
+        closedSeatNumbers: closedSeatNumbers,
         preventGenderMixing: preventGenderMixing,
       );
 

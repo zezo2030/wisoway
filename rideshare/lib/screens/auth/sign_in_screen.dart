@@ -13,9 +13,8 @@ import '../../widgets/auth/auth_language_switcher.dart';
 import '../../widgets/common/form_components.dart';
 import '../../widgets/country_code_picker.dart';
 
-/// Password sign-in, laid out to the VisionWay sign-in mockup: cityscape
-/// header, brand lockup, phone + password fields, and the three trust badges
-/// above the "new here?" bar.
+/// Password sign-in with a cityscape header, brand lockup, phone and password
+/// fields, and a sign-up link beneath the sign-in button.
 ///
 /// Signing in is password-only. Phone verification still has its own entry
 /// points — after a sign-in with an unverified phone, and from the profile and
@@ -26,10 +25,6 @@ class SignInScreen extends StatefulWidget {
   @override
   State<SignInScreen> createState() => _SignInScreenState();
 }
-
-/// The trust badges keep their own accents, matching the mockup.
-const Color _trustedAccent = Color(0xFFE0A63C);
-const Color _fastAccent = Color(0xFF7C5CBF);
 
 class _SignInScreenState extends State<SignInScreen>
     with SingleTickerProviderStateMixin {
@@ -293,9 +288,7 @@ class _SignInScreenState extends State<SignInScreen>
                                   ? Icons.arrow_back_rounded
                                   : Icons.arrow_forward_rounded,
                             ),
-                            const SizedBox(height: 22),
-                            _buildTrustRow(),
-                            const SizedBox(height: 18),
+                            const SizedBox(height: 12),
                             _buildSignUpBar(),
                           ],
                         ),
@@ -454,47 +447,6 @@ class _SignInScreenState extends State<SignInScreen>
     );
   }
 
-  Widget _buildTrustRow() {
-    final l10n = context.l10n;
-    final separator = Container(
-      width: 1,
-      height: 40,
-      color: T.outline(context),
-    );
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          child: _TrustBadge(
-            icon: IconsaxPlusBold.medal_star,
-            color: _trustedAccent,
-            title: l10n.signInFeatureTrustedTitle,
-            body: l10n.signInFeatureTrustedBody,
-          ),
-        ),
-        separator,
-        Expanded(
-          child: _TrustBadge(
-            icon: IconsaxPlusBold.flash_circle,
-            color: _fastAccent,
-            title: l10n.signInFeatureFastTitle,
-            body: l10n.signInFeatureFastBody,
-          ),
-        ),
-        separator,
-        Expanded(
-          child: _TrustBadge(
-            icon: IconsaxPlusBold.shield_tick,
-            color: T.primary(context),
-            title: l10n.signInFeaturePrivacyTitle,
-            body: l10n.signInFeaturePrivacyBody,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildSignUpBar() {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
@@ -526,57 +478,6 @@ class _SignInScreenState extends State<SignInScreen>
           ),
         ],
       ),
-    );
-  }
-}
-
-/// One of the three accented badges above the sign-up bar.
-class _TrustBadge extends StatelessWidget {
-  const _TrustBadge({
-    required this.icon,
-    required this.color,
-    required this.title,
-    required this.body,
-  });
-
-  final IconData icon;
-  final Color color;
-  final String title;
-  final String body;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                  color: T.onSurface(context),
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                body,
-                style: TextStyle(
-                  fontSize: 10.5,
-                  height: 1.4,
-                  color: T.textSecondary(context),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        Icon(icon, size: 30, color: color),
-      ],
     );
   }
 }

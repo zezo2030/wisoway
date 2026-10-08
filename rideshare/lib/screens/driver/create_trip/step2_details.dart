@@ -81,21 +81,23 @@ class Step2Details extends StatelessWidget {
 
   Widget _buildScheduleCard(BuildContext context) {
     final locale = Localizations.localeOf(context).toString();
-    final departure = wizard.departureTime;
+    final date = wizard.departureDate;
+    final clock = wizard.departureClock;
 
     // Designs use Western digits and the wide day-period word, neither of
-    // which the Arabic locale data produces on its own.
-    final dateText = departure == null
+    // which the Arabic locale data produces on its own. Each slot shows only
+    // what the driver has picked.
+    final dateText = date == null
         ? ''
-        : toWesternDigits(DateFormat.yMMMMEEEEd(locale).format(departure));
-    final period = departure == null
+        : toWesternDigits(DateFormat.yMMMMEEEEd(locale).format(date));
+    final period = clock == null
         ? ''
-        : (departure.hour < 12
+        : (clock.hour < 12
               ? context.l10n.timePeriodAm
               : context.l10n.timePeriodPm);
-    final timeText = departure == null
+    final timeText = clock == null
         ? ''
-        : '${toWesternDigits(DateFormat('hh:mm').format(departure))} $period';
+        : '${toWesternDigits(DateFormat('hh:mm').format(DateTime(2000, 1, 1, clock.hour, clock.minute)))} $period';
 
     // Two slots share one card, split by a hairline as in the mockup.
     return CreateTripCard(
@@ -231,12 +233,30 @@ class Step2Details extends StatelessWidget {
             VehicleSeatLayoutPicker(
               layout: layout,
               vehicleType: wizard.vehicleType,
-              availableSeatCount: wizard.availableSeatCount,
-              onAvailableSeatCountChanged: (value) {
-                wizard.setAvailableSeatCount(value);
+              closedSeats: wizard.closedSeats,
+              onCloseNext: () {
+                wizard.closeNextSeat();
+                onChanged();
+              },
+              onReopenLast: () {
+                wizard.reopenLastSeat();
+                onChanged();
+              },
+              onToggleSeat: (position) {
+                wizard.toggleSeat(position);
                 onChanged();
               },
             ),
+          if (layout != null && wizard.maxLayoutSeats > 0) ...[
+            const SizedBox(height: 10),
+            Text(
+              context.l10n.seatPickerTapHint,
+              style: AppTextStyles.bodyMedium.copyWith(
+                fontSize: 12,
+                color: T.onSurfaceVariant(context),
+              ),
+            ),
+          ],
         ],
       ),
     );

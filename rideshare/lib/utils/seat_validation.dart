@@ -3,12 +3,8 @@ import '../models/seat_data.dart';
 import 'seat_layout_helpers.dart';
 
 class SeatValidation {
-  static SeatData? _seatAt(TripModel trip, int oneBasedSeatNumber) {
-    if (oneBasedSeatNumber < 1 || oneBasedSeatNumber > trip.seats.length) {
-      return null;
-    }
-    return trip.seats[oneBasedSeatNumber - 1];
-  }
+  static SeatData? _seatAt(TripModel trip, int oneBasedSeatNumber) =>
+      SeatLayoutHelpers.seatAt(trip, oneBasedSeatNumber);
 
   // Check if a seat can be selected by a user
   // Returns true if seat can be selected, false otherwise
@@ -23,12 +19,11 @@ class SeatValidation {
     required String userGender,
     bool isFamilyBooking = false,
   }) {
-    if (seatNumber < 1 || seatNumber > trip.totalSeats) {
-      return false;
-    }
-
     final seatData = _seatAt(trip, seatNumber);
-    if (seatData == null || seatData.isBooked || seatData.isLocked) {
+    if (seatData == null ||
+        seatData.isClosed ||
+        seatData.isBooked ||
+        seatData.isLocked) {
       return false;
     }
 
@@ -58,7 +53,7 @@ class SeatValidation {
     final col = coords.col;
 
     bool bookedOpposite(int? idx) {
-      if (idx == null || idx > trip.totalSeats) return false;
+      if (idx == null) return false;
       final s = _seatAt(trip, idx);
       if (s == null || !s.isBooked) return false;
       final g = s.gender;
@@ -122,7 +117,7 @@ class SeatValidation {
   }) {
     final availableSeats = <int>[];
 
-    for (int i = 1; i <= trip.totalSeats; i++) {
+    for (int i = 1; i <= SeatLayoutHelpers.layoutSeatCount(trip); i++) {
       if (canSelectSeat(
         trip: trip,
         seatNumber: i,
@@ -143,12 +138,8 @@ class SeatValidation {
     String? userGender,
     bool isFamilyBooking = false,
   }) {
-    if (seatNumber < 1 || seatNumber > trip.totalSeats) {
-      return SeatStatus.invalid;
-    }
-
     final seatData = _seatAt(trip, seatNumber);
-    if (seatData == null) {
+    if (seatData == null || seatData.isClosed) {
       return SeatStatus.invalid;
     }
     if (seatData.isBooked) {

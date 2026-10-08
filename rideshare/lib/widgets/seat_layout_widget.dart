@@ -35,7 +35,8 @@ class SeatLayoutWidget extends StatelessWidget {
     final art = vehicleArtFor(trip.vehicleType);
     // Artwork with fewer slots than the trip sells cannot show every seat, so
     // an unexpected layout falls back to the grid rather than hiding a seat.
-    final useArt = art != null && art.seatCount >= trip.totalSeats;
+    final useArt =
+        art != null && art.seatCount >= SeatLayoutHelpers.layoutSeatCount(trip);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -52,7 +53,7 @@ class SeatLayoutWidget extends StatelessWidget {
             title: context.l10n.seatLayoutLabel,
             expandedBottomBarBuilder: (context, _) => _SeatLegend(),
             seatBuilder: (context, seatNumber, refresh) =>
-                seatNumber > trip.totalSeats
+                !SeatLayoutHelpers.isOffered(trip, seatNumber)
                     ? const _UnofferedSeat()
                     : _seatFor(context, seatNumber,
                         markerOnly: true, afterTap: refresh),
@@ -75,9 +76,7 @@ class SeatLayoutWidget extends StatelessWidget {
       _SeatWidget(
         markerOnly: markerOnly,
         seatNumber: seatNumber,
-        seatData: (seatNumber >= 1 && seatNumber <= trip.seats.length)
-            ? trip.seats[seatNumber - 1]
-            : null,
+        seatData: SeatLayoutHelpers.seatAt(trip, seatNumber),
         isSelected: selectedSeat == seatNumber ||
             selectedSeats.contains(seatNumber),
         status: userGender != null
@@ -119,7 +118,9 @@ class SeatLayoutWidget extends StatelessWidget {
                 child: SizedBox(
                   width: 50,
                   height: 50,
-                  child: _seatFor(context, currentSeatCount),
+                  child: SeatLayoutHelpers.isOffered(trip, currentSeatCount)
+                      ? _seatFor(context, currentSeatCount)
+                      : const _UnofferedSeat(),
                 ),
               );
             }),

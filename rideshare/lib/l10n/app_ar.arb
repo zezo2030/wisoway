@@ -515,7 +515,7 @@
   "@errorsRouteUnavailable": {
     "description": "رسالة تعذر تحميل المسار"
   },
-  "notificationsBookingCreatedTitle": "تم حجز مقعد في رحلتك المشتركة",
+  "notificationsBookingCreatedTitle": "طلب حجز جديد في رحلتك المشتركة",
   "@notificationsBookingCreatedTitle": {
     "description": "Title for booking created notification"
   },
@@ -820,21 +820,15 @@
   "@markPassengerAbsent": {
     "description": "Driver action to mark a passenger as absent at trip completion"
   },
-  "welcomeTitle": "مرحباً بك في VisionWay",
   "welcomeSubtitle": "رحلتك تبدأ من هنا. اختر وجهتك وانطلق معنا برحلات مباشرة أو مشتركة بأمان وراحة.",
   "welcomeSubtitleHighlightDirect": "مباشرة",
   "welcomeSubtitleHighlightShared": "مشتركة",
   "welcomeBrandTagline": "طريق الرؤية",
   "welcomeDirectTitle": "رحلات مباشرة",
-  "welcomeDirectBody": "رحلتك الخاصة مباشرة وسريعة ومريحة",
   "welcomeSharedTitle": "رحلات مشتركة",
-  "welcomeSharedBody": "شارك الرحلة ووفر أكثر صديق للبيئة",
   "welcomeFeaturePricingTitle": "أسعار شفافة",
-  "welcomeFeaturePricingBody": "أسعار عادلة بدون مفاجآت",
   "welcomeFeatureSpeedTitle": "سرعة وسهولة",
-  "welcomeFeatureSpeedBody": "احجز رحلتك في خطوات بسيطة",
   "welcomeFeatureSafetyTitle": "أمان وموثوقية",
-  "welcomeFeatureSafetyBody": "سائقون موثوقون ورحلات آمنة",
   "welcomeTermsPrefix": "بالتسجيل، أنت توافق على",
   "welcomeTermsLink": "الشروط والأحكام",
   "welcomeTermsAnd": "و",
@@ -845,12 +839,6 @@
   "signInOrDivider": "أو",
   "signInWithPhoneNumber": "تسجيل الدخول باستخدام رقم الهاتف",
   "signInNewUserQuestion": "مستخدم جديد؟",
-  "signInFeatureTrustedTitle": "موثوق ومعتمد",
-  "signInFeatureTrustedBody": "سائقون موثوقون ورحلات آمنة",
-  "signInFeatureFastTitle": "سريع وسهل",
-  "signInFeatureFastBody": "حجز رحلتك في خطوات بسيطة",
-  "signInFeaturePrivacyTitle": "أمان وخصوصية",
-  "signInFeaturePrivacyBody": "بياناتك محمية بأعلى المعايير",
   "password": "كلمة المرور",
   "passwordRequired": "كلمة المرور مطلوبة",
   "passwordTooShort": "كلمة المرور قصيرة",
@@ -935,6 +923,7 @@
   "departureDate": "تاريخ المغادرة",
   "departureTime": "وقت المغادرة",
   "pricePerSeat": "السعر لكل مقعد",
+  "tripPriceLabel": "سعر الرحلة",
   "availableSeats": "المقاعد المتاحة",
   "notes": "ملاحظات",
   "createTripButton": "إنشاء الرحلة",
@@ -1173,7 +1162,6 @@
   "noActiveTripsTitle": "لا توجد رحلات قائمة",
   "noActiveTripsSubtitle": "ابدأ بإنشاء رحلة لتظهر هنا.",
   "whereDoYouWantToGo": "إلى أين تريد الذهاب؟",
-  "haveAPlaceInMind": "هل لديك مكان في الاعتبار؟",
   "nearbyTrips": "رحلات قريبة منك",
   "viewAll": "عرض الكل",
   "noNearbyTripsTitle": "لا توجد رحلات قريبة",
@@ -1227,7 +1215,7 @@
   },
   "tripStatusActive": "نشطة",
   "tripStatusFullyBooked": "مكتملة الحجز",
-  "tripStatusInProgress": "قيد التنفيذ",
+  "tripStatusInProgress": "جارية حالياً",
   "tripStatusHidden": "مخفية",
   "seatsAvailable": "{count} متاح",
   "@seatsAvailable": {
@@ -1722,7 +1710,7 @@
   "statusActive": "نشطة",
   "statusDraft": "مسودة",
   "statusFullyBooked": "مكتملة الحجز",
-  "statusInProgress": "قيد التنفيذ",
+  "statusInProgress": "جارية حالياً",
   "statusHidden": "مخفية",
   "statusCompleted": "مكتملة",
   "statusCancelled": "ملغاة",
@@ -2000,7 +1988,7 @@
       }
     }
   },
-  "tripWillConvertSoon": "سيتم تحويل الرحلة إلى «قيد التنفيذ» تلقائياً خلال لحظات.",
+  "tripWillConvertSoon": "سيتم تحويل الرحلة إلى «جارية حالياً» تلقائياً خلال لحظات.",
   "startTripSection": "بدء الرحلة",
   "endTripSection": "إنهاء الرحلة",
   "endTripHint": "اضغط «تم الوصول للوجهة» بعد إنزال الركاب لإنهاء الرحلة.",
@@ -2460,6 +2448,7 @@
   "createTripWhenAndHow": "متى وكيف؟",
   "createTripWhenAndHowSubtitle": "حدد تفاصيل رحلتك ومقاعد الركاب والسعر",
   "availableSeatsSection": "المقاعد المتاحة",
+  "seatPickerTapHint": "اضغط على أي مقعد لجعله متاحًا أو غير متاح. عند التقليل يُغلق المقعد المجاور للسائق أولًا.",
   "availableSeatsCountTitle": "عدد المقاعد المتاحة",
   "seatsUnitLabel": "مقاعد",
   "timePeriodAm": "صباحًا",
@@ -2646,9 +2635,7 @@
       }
     }
   },
-  "instantDecline": "رفض",
   "instantOfferIgnore": "تجاهل",
-  "instantAccept": "قبول",
   "instantOfferAcceptTrip": "قبول الرحلة",
   "instantOfferExpectedEarnings": "الأرباح المتوقعة",
   "instantOfferIncludesFees": "يشمل رسوم المنصة",
@@ -2678,33 +2665,9 @@
   "instantFormKmUnit": "كم",
   "instantFormPriceAfterDestination": "يتم احتساب السعر بعد تحديد الوجهة",
   "instantFormChooseDestinationCta": "اختر الوجهة لعرض السعر",
-  "instantFormYourFareTitle": "سعرك للرحلة",
-  "instantFormFareHint": "اكتب السعر",
-  "instantFormFareRange": "النطاق المسموح: {min} – {max} {currency}",
-  "instantFormFareOutOfRange": "السعر يجب أن يكون بين {min} و{max} {currency}",
-  "instantFormFareNote": "السائق قد يقبل سعرك أو يقترح سعرًا أعلى. الدفع نقدًا للسائق مباشرة.",
-  "instantTrustSupport": "دعم 24/7",
-  "instantTrustSupportSub": "نحن هنا لمساعدتك",
-  "instantTrustSafe": "آمن وموثوق",
-  "instantTrustSafeSub": "رحلتك في أمان",
-  "instantTrustTracking": "تتبع الرحلة",
-  "instantTrustTrackingSub": "شارك رحلتك مع من تحب",
-  "instantTrustCash": "دفع نقدي",
-  "instantTrustCashSub": "ادفع للسائق مباشرة",
-  "@instantFormFareRange": {
-    "placeholders": {
-      "min": {"type": "String"},
-      "max": {"type": "String"},
-      "currency": {"type": "String"}
-    }
-  },
-  "@instantFormFareOutOfRange": {
-    "placeholders": {
-      "min": {"type": "String"},
-      "max": {"type": "String"},
-      "currency": {"type": "String"}
-    }
-  },
+  "instantFormYourFareTitle": "سعر الرحلة",
+  "instantFormFareNote": "السعر محسوب حسب المسافة. الدفع نقدًا للسائق مباشرة.",
+  "instantFormFareUnavailable": "تعذّر حساب سعر الرحلة.",
   "instantSelectFromTo": "اختر نقطة الانطلاق والوصول.",
   "instantFromHint": "مكان الانطلاق",
   "instantFromPickerTitle": "اختر نقطة الانطلاق",
@@ -2724,12 +2687,7 @@
   "instantDone": "تم",
   "instantRequestCancelled": "أُلغي الطلب",
   "instantNoDrivers": "لم نتمكن من العثور على سائق حاليًا",
-  "instantNoDriversSubtitle": "قد يكون جميع السائقين مشغولين أو لا يوجد سائق قريب منك.",
-  "instantNoDriversWithinRadius": "لا يوجد سائق متاح ضمن {km} كم من نقطة انطلاقك.",
-  "instantNoDriversAllDeclined": "السائقون القريبون لم يقبلوا سعرك. جرّب رفعه قليلاً.",
-  "instantNoDriversTimedOut": "انتهت مدة البحث قبل أن يرد أي سائق.",
-  "instantNoDriversCheckPickup": "تأكد أن نقطة الانطلاق هي مكانك الحالي فعلاً.",
-  "@instantNoDriversWithinRadius": {"placeholders": {"km": {"type": "String"}}},
+  "instantNoDriversSubtitle": "لا يوجد سائق متاح حاليًا.",
   "instantNoDriversTip": "نصيحة: يمكنك المحاولة مرة أخرى بعد دقائق.",
   "instantNoDriversTipKeepSearching": "وسنستمر بالبحث لك.",
   "instantNoDriversIllustrationLabel": "لم يتم العثور على سائق",
@@ -2738,7 +2696,6 @@
   "instantRideSafety": "أمان الرحلة",
   "instantPickupPoint": "نقطة الانطلاق",
   "instantDropoffPoint": "نقطة الوصول",
-  "instantRetryFareChanged": "تغيّر نطاق السعر؛ راجع السعر ثم أعد الطلب.",
   "instantTryAgain": "إعادة المحاولة",
   "instantSearching": "جاري البحث عن سائق...",
   "instantSearchingSubtitle": "يتم التواصل مع السائقين القريبين منك",
@@ -2749,7 +2706,7 @@
   "instantSearchingTip": "قد يستغرق العثور على سائق وقتاً أطول في أوقات الذروة. شكراً لصبرك",
   "instantStepRequested": "تم إنشاء الطلب",
   "instantStepSearching": "البحث عن سائق",
-  "instantStepDriverOffer": "عرض السائق",
+  "instantStepDriverOffer": "قبول السائق",
   "instantStepDriverOnWay": "السائق في الطريق",
   "@instantSearchingMinutes": {"placeholders": {"minutes": {"type": "String"}}},
   "@instantSearchingKm": {"placeholders": {"km": {"type": "String"}}},
@@ -2765,89 +2722,12 @@
     }
   },
   "instantCancelRequest": "إلغاء الطلب",
-  "instantYourFareLabel": "سعرك",
-  "instantRaiseFare": "رفع السعر",
-  "instantFareRaiseHint": "ارفع سعرك لجذب السائقين أسرع",
-  "instantFareLockedWhileOffered": "بانتظار رد السائق على سعرك الحالي",
-  "instantFareMaxReached": "وصلت إلى الحد الأقصى للسعر",
-  "instantFareRaisedToast": "تم رفع سعرك وإبلاغ السائقين القريبين",
-  "instantRecommendedFare": "السعر المقترح: {fare} {currency}",
-  "@instantRecommendedFare": {
-    "placeholders": {
-      "fare": {
-        "type": "String"
-      },
-      "currency": {
-        "type": "String"
-      }
-    }
-  },
-  "instantYourFareValue": "سعرك: {fare} {currency}",
-  "@instantYourFareValue": {
-    "placeholders": {
-      "fare": {
-        "type": "String"
-      },
-      "currency": {
-        "type": "String"
-      }
-    }
-  },
   "instantOfferDetailsTitle": "تفاصيل الطلب",
   "instantOfferOpenDetails": "عرض تفاصيل الطلب",
   "instantOfferCashNote": "الدفع نقدًا للسائق · يشمل رسوم المنصة",
   "instantOfferPickupDistance": "المسافة إلى الراكب",
   "instantOfferPickupEta": "وقت الوصول للراكب",
   "instantOfferTripDistance": "مسافة الرحلة",
-  "instantCounterBadge": "عرض سعر",
-  "instantCounterProposedLabel": "سعر السائق",
-  "instantCounterRangeHint": "بين {min} و{max} {currency}",
-  "@instantCounterRangeHint": {
-    "placeholders": {
-      "min": {"type": "String"},
-      "max": {"type": "String"},
-      "currency": {"type": "String"}
-    }
-  },
-  "instantDriverOfferTitle": "عرض من السائق",
-  "instantProposeFare": "اقترح سعرًا أعلى",
-  "instantSendOffer": "إرسال العرض",
-  "instantCounterSentToast": "أُرسل عرضك للراكب. بانتظار موافقته...",
-  "instantCounterMaxHint": "الحد الأقصى: {fare} {currency}",
-  "@instantCounterMaxHint": {
-    "placeholders": {
-      "fare": {
-        "type": "String"
-      },
-      "currency": {
-        "type": "String"
-      }
-    }
-  },
-  "instantNudgeTitle": "لا يوجد سائق قريب حتى الآن",
-  "instantNudgeSubtitle": "جرّب رفع سعرك لجذب سائق أسرع",
-  "instantRaiseTo": "ارفع إلى {fare} {currency}",
-  "@instantRaiseTo": {
-    "placeholders": {
-      "fare": {
-        "type": "String"
-      },
-      "currency": {
-        "type": "String"
-      }
-    }
-  },
-  "instantKeepFare": "استمر بـ {fare} {currency}",
-  "@instantKeepFare": {
-    "placeholders": {
-      "fare": {
-        "type": "String"
-      },
-      "currency": {
-        "type": "String"
-      }
-    }
-  },
   "instantArrivingIn": "يصل خلال ~{minutes} دقيقة",
   "@instantArrivingIn": {
     "placeholders": {
@@ -2989,7 +2869,7 @@
   "accountTypePassengerFeatureDirectTitle": "رحلات مباشرة",
   "accountTypePassengerFeatureDirectBody": "احجز رحلة خاصة تصلك مباشرة",
   "accountTypePassengerFeatureSharedTitle": "رحلات مشتركة",
-  "accountTypePassengerFeatureSharedBody": "انضم لرحلة وشارك في التوفير",
+  "accountTypePassengerFeatureSharedBody": "شارك الرحلة مع أفراد آخرين",
   "accountTypePassengerFeaturePaymentTitle": "دفع آمن وسهل",
   "accountTypePassengerFeaturePaymentBody": "خيارات دفع متعددة وآمنة",
   "accountTypeDriverFeatureTripsTitle": "أنشئ رحلات",
@@ -3004,7 +2884,7 @@
   "passengerSignupSubtitle": "سجل الآن كراكب لبدء رحلتك معنا",
   "driverSignupTitle": "إنشاء حساب سائق",
   "driverSignupSubtitle": "ابدأ باستقبال الركاب وتحقيق دخل إضافي",
-  "fullNameIdHint": "اكتب اسمك كما هو في الهوية",
+  "fullNameIdHint": "الرجاء كتابة الاسم كما هو في الهوية",
   "phoneConfirmCallHint": "سنتصل بك لتأكيد حسابك",
   "passwordMinLengthHint": "يجب أن تحتوي على 8 أحرف على الأقل",
   "confirmPasswordReenterHint": "أعد إدخال كلمة المرور",
@@ -3013,6 +2893,8 @@
   "profileCityLabel": "المدينة *",
   "profileCityHint": "أدخل اسم مدينتك",
   "profileCityRequired": "المدينة مطلوبة",
+  "profileCityMapTitle": "اختر مدينتك من الخريطة",
+  "profileCityMapUnavailable": "تعذر تحديد المدينة من هذا الموقع. اختر موقعاً آخر أو أدخل اسم المدينة يدوياً",
   "completeDriverProfileTitle": "أكمل ملف السائق",
   "driverStep2Badge": "الخطوة 2 من 3: المعلومات الإضافية",
   "driverStep3Badge": "الخطوة 3 من 3: مستندات السيارة",
@@ -3177,7 +3059,7 @@
   "rideModeSharedSubtitle": "شارك الرحلة مع ركاب آخرين وسافر بتكلفة أقل",
   "rideModeSharedPerkSeats": "ركاب مشاركون",
   "rideModeSharedPerkPrice": "أسعار أقل",
-  "rideModeSharedPerkEco": "صديق للبيئة",
+  "rideModeSharedPerkScheduledTime": "وقت محدد",
   "rideModeSharedCta": "ابحث عن رحلة",
   "rideModePrivateBadge": "أسرع",
   "rideModePrivateTitle": "رحلة مع سائق",
@@ -3270,5 +3152,91 @@
     }
   },
   "instantOfferCurrencyJod": "د.أ",
-  "instantOfferCurrencySar": "ر.س"
+  "instantOfferCurrencySar": "ر.س",
+  "instantTripHeadingToPickup": "في الطريق إلى الراكب",
+  "instantTripPassengerOnBoard": "الراكب معك — في الطريق إلى الوجهة",
+  "instantTripAway": "على بُعد {distance}",
+  "@instantTripAway": {
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "instantTripPassengerMarker": "الراكب",
+  "instantTripPickupLabel": "نقطة الالتقاء",
+  "instantTripDestinationLabel": "الوجهة",
+  "instantTripFareLabel": "الأجرة",
+  "instantTripCashNote": "نقداً للسائق",
+  "instantTripStartedLabel": "بدأت",
+  "instantTripNavigate": "ملاحة",
+  "instantTripGpsOff": "فعّل الموقع حتى يرى الراكب مكانك",
+  "instantTripEnableGps": "تفعيل",
+  "bookingRequestTitle": "طلب حجز جديد",
+  "bookingRequestBadge": "رحلة مشتركة",
+  "bookingRequestFareLabel": "قيمة الحجز",
+  "bookingRequestSeatsLabel": "المقاعد",
+  "bookingRequestDepartureLabel": "موعد الرحلة",
+  "bookingRequestFamily": "حجز عائلي",
+  "bookingRequestExpiresIn": "ينتهي الطلب خلال {time}",
+  "@bookingRequestExpiresIn": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "bookingRequestAccept": "قبول الحجز",
+  "bookingRequestReject": "رفض",
+  "bookingRequestRejectTitle": "رفض طلب الحجز؟",
+  "bookingRequestRejectBody": "سيتم إبلاغ الراكب بأن حجزه لم يُقبل.",
+  "bookingRequestAccepted": "تم قبول الحجز",
+  "bookingRequestExpired": "انتهت مهلة طلب الحجز",
+  "bookingRequestMore": "طلبات أخرى بانتظارك: {count}",
+  "@bookingRequestMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "meetingPointCardTitle": "مكان التجمع",
+  "meetingPointCardSubtitle": "حدّد النقطة التي يلتقي فيها الركاب بالضبط، وصِفها ليسهل الوصول إليها.",
+  "meetingPointPickOnMap": "حدّد مكان التجمع على الخريطة",
+  "meetingPointChange": "تغيير",
+  "meetingPointNoteLabel": "وصف مكان التجمع",
+  "meetingPointNoteHint": "مثال: عند الدوار، أمام صيدلية النور",
+  "meetingPointRequired": "حدّد مكان التجمع على الخريطة واكتب وصفاً له",
+  "meetingPointPickerTitle": "مكان التجمع",
+  "meetingPointPickerHint": "حرّك الخريطة لوضع الدبوس على مكان التجمع بالضبط",
+  "meetingPointConfirm": "تأكيد مكان التجمع",
+  "meetingPointLocating": "جارٍ تحديد العنوان…",
+  "meetingPointOpenInMaps": "فتح في الخرائط",
+  "liveTripHeadingToDestination": "في الطريق إلى الوجهة",
+  "liveTripPassengersCount": "الركاب: {count}",
+  "@liveTripPassengersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveTripRevenueLabel": "الإيرادات",
+  "liveTripPassengersSheetTitle": "ركاب الرحلة",
+  "liveTripDetails": "التفاصيل",
+  "liveTripNoPassengers": "لا يوجد ركاب مؤكَّدون",
+  "bookingCompanionTag": "مرافق",
+  "bookingSeatOccupant": "مقعد {seat} · {name}",
+  "@bookingSeatOccupant": {
+    "placeholders": {
+      "seat": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "joinAsDriver": "انضم كسائق 🚗",
+  "joinAsDriverSubtitle": "سجّل سيارتك وابدأ باستقبال الركاب بنفس حسابك"
 }

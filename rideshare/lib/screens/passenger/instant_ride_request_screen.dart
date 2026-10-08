@@ -9,7 +9,6 @@ import '../../core/constants/route_names.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/services/booking_service.dart';
-import '../../core/services/instant_counter_offer_actions.dart';
 import '../../core/services/instant_ride_service.dart';
 import '../../core/services/location_service.dart';
 import '../../core/services/route_service.dart';
@@ -23,10 +22,10 @@ import '../../widgets/location/place_field_block.dart';
 import '../../widgets/trip/share_tracking_sheet.dart';
 import '../location/map_point_picker_screen.dart';
 import '../location/route_search_screen.dart';
-import 'trip_details_screen.dart';
 import 'widgets/instant_map_markers.dart';
 import 'widgets/no_driver_found_sheet.dart';
 import 'widgets/route_endpoint_label.dart';
+import '../../core/services/active_ride_navigator.dart';
 
 /// Passenger "اطلب الآن" flow, inDrive-style: a full-screen map with a pinned
 /// bottom sheet for pickup + destination, then the live search progress
@@ -66,8 +65,6 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
   final RouteService _routeService = RouteService();
   final TextEditingController _fromController = TextEditingController();
   final TextEditingController _toController = TextEditingController();
-  final TextEditingController _fareController = TextEditingController();
-  final FocusNode _fareFocus = FocusNode();
 
   GoogleMapController? _mapController;
   LatLng _mapCenter = _fallbackCenter;
@@ -81,7 +78,6 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
   bool _submitting = false;
   InstantRequest? _request;
   Timer? _poll;
-  Timer? _countdownTicker;
 
   /// Real nearby online drivers of ours, drawn as car pins on the map.
   List<InstantNearbyDriverPin> _nearbyDrivers = const [];
@@ -96,12 +92,12 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
   )..addListener(() => setState(() {}));
   Timer? _nearbyRefresh;
 
+  /// The fixed, distance-based fare for the chosen route. The passenger sees
+  /// it but can't change it.
   InstantQuote? _quote;
-  double? _fare;
   bool _quoteLoading = false;
+  bool _quoteFailed = false;
   int _quoteSeq = 0;
-  bool _counterBusy = false;
-  bool _nudgeBusy = false;
   bool _retrying = false;
   bool _callBusy = false;
   bool _cancelBusy = false;
@@ -116,9 +112,6 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
   Offset? _fromLabelAt;
   Offset? _toLabelAt;
   bool _labelLookupInFlight = false;
-
-  /// Suggested fare the user chose to keep ignoring ("Keep Y").
-  String? _dismissedNudgeFare;
 
   @override
   void initState() {
@@ -141,6 +134,10 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
     if (resumed != null) {
       _request = resumed;
       if (resumed.isSearching) _startPolling();
+    } else {
+      // Opened straight onto the form with both ends known: the fixed fare
+      // has to be on screen before the passenger can request.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _ensureQuote());
     }
     _loadMarkerIcons();
     _refreshNearbyDrivers();
@@ -152,17 +149,12 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
 
   @override
   void dispose() {
-    // Hand counter-offers back to the push handler on the way out.
-    InstantCounterOfferActions.setInlineHandler(null);
     _poll?.cancel();
-    _countdownTicker?.cancel();
     _nearbyRefresh?.cancel();
     _pulse.dispose();
     _mapController?.dispose();
     _fromController.dispose();
     _toController.dispose();
-    _fareController.dispose();
-    _fareFocus.dispose();
     super.dispose();
   }
 
@@ -413,34 +405,50 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
 
   // ── Fare quote ────────────────────────────────────────────────────────────────
 
-  /// Fetch the distance-based fare recommendation once both points are set.
+  /// Fetch the fixed, distance-based fare once both points are set.
   Future<void> _updateQuote() async {
     if (_from == null || _to == null) {
       _quoteSeq++;
-      if (_quote != null || _quoteLoading) {
+      if (_quote != null || _quoteLoading || _quoteFailed) {
         setState(() {
           _quote = null;
-          _setFare(null);
           _quoteLoading = false;
+          _quoteFailed = false;
         });
       }
       return;
     }
     final seq = ++_quoteSeq;
-    setState(() => _quoteLoading = true);
+    setState(() {
+      _quoteLoading = true;
+      _quoteFailed = false;
+    });
     try {
       final quote = await _service.getQuote(from: _from!, to: _to!);
       if (!mounted || seq != _quoteSeq) return;
       setState(() {
         _quote = quote;
-        _setFare(quote.recommendedFare);
         _quoteLoading = false;
       });
     } catch (_) {
       if (!mounted || seq != _quoteSeq) return;
-      // Keep any previous quote; the server re-validates on submit anyway.
-      setState(() => _quoteLoading = false);
+      // The fare is fixed by the route, so a price for the old route would be
+      // wrong — drop it and offer a retry instead.
+      setState(() {
+        _quote = null;
+        _quoteLoading = false;
+        _quoteFailed = true;
+      });
     }
+  }
+
+  /// Back on the form with a route but no fare yet (opened with both ends, or
+  /// returning from a resumed request): fetch it, since requesting waits on it.
+  void _ensureQuote() {
+    if (!mounted || _request != null) return;
+    if (_from == null || _to == null) return;
+    if (_quote != null || _quoteLoading) return;
+    _updateQuote();
   }
 
   // ── Request lifecycle ─────────────────────────────────────────────────────────
@@ -455,16 +463,9 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
     FocusScope.of(context).unfocus();
     setState(() => _submitting = true);
     try {
-      final request = await _service.createRequest(
-        from: _from!,
-        to: _to!,
-        passengerFare: _typedFare ?? _fare,
-      );
+      final request = await _service.createRequest(from: _from!, to: _to!);
       if (!mounted) return;
       setState(() => _request = request);
-      // While this screen is up it owns counter-offers for the request, so the
-      // push handler must not stack a modal on top of the inline card.
-      InstantCounterOfferActions.setInlineHandler(request.id);
       _startPolling();
     } catch (e) {
       if (mounted) ErrorSurface.showFailure(context, ApiClient.mapError(e));
@@ -482,92 +483,26 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
         final updated = await _service.getRequest(current.id);
         if (!mounted) return;
         setState(() => _request = updated);
-        if (!updated.isSearching) {
-          _poll?.cancel();
-          _countdownTicker?.cancel();
-        }
+        if (!updated.isSearching) _poll?.cancel();
+        _enterRideIfMatched(updated);
       } catch (_) {
         // transient — keep polling
       }
     });
-    // 1s repaint so the counter-offer countdown reads smoothly.
-    _countdownTicker?.cancel();
-    _countdownTicker = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted && _request?.counterOffer != null) setState(() {});
-    });
   }
 
-  Future<void> _acceptCounter() async {
-    final request = _request;
-    final offer = request?.counterOffer;
-    if (request == null || offer == null || _counterBusy) return;
-    setState(() => _counterBusy = true);
-    try {
-      final updated = await _service.acceptCounterOffer(request.id, offer.id);
-      if (!mounted) return;
-      setState(() => _request = updated);
-    } catch (e) {
-      if (!mounted) return;
-      ErrorSurface.showFailure(context, ApiClient.mapError(e));
-      await _refreshRequest(request.id);
-    } finally {
-      if (mounted) setState(() => _counterBusy = false);
-    }
-  }
-
-  Future<void> _declineCounter() async {
-    final request = _request;
-    final offer = request?.counterOffer;
-    if (request == null || offer == null || _counterBusy) return;
-    setState(() => _counterBusy = true);
-    try {
-      final updated = await _service.declineCounterOffer(request.id, offer.id);
-      if (!mounted) return;
-      setState(() => _request = updated);
-    } catch (e) {
-      if (!mounted) return;
-      ErrorSurface.showFailure(context, ApiClient.mapError(e));
-      await _refreshRequest(request.id);
-    } finally {
-      if (mounted) setState(() => _counterBusy = false);
-    }
-  }
-
-  Future<void> _refreshRequest(String id) async {
-    try {
-      final updated = await _service.getRequest(id);
-      if (mounted) setState(() => _request = updated);
-    } catch (_) {
-      // keep last known state
-    }
-  }
-
-  /// "Raise to X" — bump the asking fare so more drivers qualify.
-  Future<void> _raiseFare(String suggestedFare) async {
-    final request = _request;
-    final amount = double.tryParse(suggestedFare);
-    if (request == null || amount == null || _nudgeBusy) return;
-    setState(() => _nudgeBusy = true);
-    try {
-      final updated = await _service.updateFare(request.id, amount);
-      if (!mounted) return;
-      setState(() {
-        _request = updated;
-        _dismissedNudgeFare = null;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      ErrorSurface.showFailure(context, ApiClient.mapError(e));
-      await _refreshRequest(request.id);
-    } finally {
-      if (mounted) setState(() => _nudgeBusy = false);
-    }
+  /// A match hands the passenger straight to the ride screen, which then
+  /// stays up until the trip ends.
+  void _enterRideIfMatched(InstantRequest request) {
+    if (!mounted || !request.isMatched) return;
+    final tripId = request.match?.tripId ?? request.tripId;
+    if (tripId == null || tripId.isEmpty) return;
+    ActiveRideNavigator.enterAsPassenger(tripId);
   }
 
   Future<void> _cancel() async {
     final current = _request;
     _poll?.cancel();
-    _countdownTicker?.cancel();
     if (current != null && current.isSearching) {
       try {
         await _service.cancelRequest(current.id);
@@ -576,20 +511,15 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
       }
     }
     if (mounted) {
-      setState(() {
-        _request = null;
-        _pendingFare = null;
-      });
+      setState(() => _request = null);
+      _ensureQuote();
     }
   }
 
   void _reset() {
     _poll?.cancel();
-    _countdownTicker?.cancel();
-    setState(() {
-      _request = null;
-      _pendingFare = null;
-    });
+    setState(() => _request = null);
+    _ensureQuote();
   }
 
   /// "Try again" on the no-driver sheet: server clones the finished request
@@ -603,20 +533,6 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
       if (!mounted) return;
       setState(() => _request = next);
       _startPolling();
-    } on InstantRetryFareChangedException catch (e) {
-      if (!mounted) return;
-      // The fare has to be re-confirmed, so drop back to the form with the
-      // new bounds rather than silently re-pricing the ride.
-      setState(() {
-        _request = null;
-        if (e.quote != null) {
-          _quote = e.quote;
-          _setFare(e.quote!.recommendedFare);
-        }
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.instantRetryFareChanged)),
-      );
     } catch (e) {
       // Keep the failure sheet and its trip details on screen.
       if (mounted) ErrorSurface.showFailure(context, ApiClient.mapError(e));
@@ -642,6 +558,26 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) => _measureSheet());
     _syncPulse();
 
+    // Leaving mid-search (✕ or the system back) withdraws the request; left
+    // running it would keep ringing drivers for a passenger who has gone.
+    return PopScope(
+      canPop: !_isSearching,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _leaveSearch();
+      },
+      child: _buildScaffold(context),
+    );
+  }
+
+  Future<void> _leaveSearch() async {
+    final navigator = Navigator.of(context);
+    await _cancel();
+    if (!mounted) return;
+    // PopScope only lets go once it has rebuilt with the request cleared.
+    WidgetsBinding.instance.addPostFrameCallback((_) => navigator.maybePop());
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       body: Stack(
@@ -1011,14 +947,15 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
                           _buildEndpointRows(context),
                           const SizedBox(height: 14),
                           _buildMetricsCard(context),
-                          if (_quote != null || _quoteLoading) ...[
+                          if (_quote != null ||
+                              _quoteLoading ||
+                              _quoteFailed) ...[
                             const SizedBox(height: 14),
-                            _buildFareInput(context),
+                            _buildFareCard(context),
                           ],
                           const SizedBox(height: 16),
                           _buildPrimaryCta(context),
-                          const SizedBox(height: 18),
-                          _buildTrustRow(context),
+                          const SizedBox(height: 8),
                         ],
                       ),
                     ),
@@ -1312,76 +1249,17 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
     );
   }
 
-  // ── Fare input ───────────────────────────────────────────────────────────────
+  // ── Fare ─────────────────────────────────────────────────────────────────────
 
   static String _formatFare(double v) =>
       v == v.roundToDouble() ? v.round().toString() : v.toStringAsFixed(2);
 
-  /// Keep the model and the text field in step.
-  void _setFare(double? value) {
-    _fare = value;
-    final text = value == null ? '' : _formatFare(value);
-    if (_fareController.text != text) {
-      _fareController.value = TextEditingValue(
-        text: text,
-        selection: TextSelection.collapsed(offset: text.length),
-      );
-    }
-  }
-
-  /// The fare as typed, accepting Arabic-Indic digits and a comma decimal.
-  double? get _typedFare {
-    final text = _fareController.text.trim();
-    if (text.isEmpty) return null;
-    const arabic = '٠١٢٣٤٥٦٧٨٩';
-    final sb = StringBuffer();
-    for (final ch in text.characters) {
-      final i = arabic.indexOf(ch);
-      if (i >= 0) {
-        sb.write(i);
-      } else if (ch == '،' || ch == ',') {
-        sb.write('.');
-      } else {
-        sb.write(ch);
-      }
-    }
-    return double.tryParse(sb.toString());
-  }
-
-  bool get _fareValid {
+  /// The fare for the chosen route. The server prices the ride by distance
+  /// and the passenger can't change it, so this is read-only.
+  Widget _buildFareCard(BuildContext context) {
     final quote = _quote;
-    if (quote == null) return true;
-    final fare = _typedFare;
-    return fare != null &&
-        fare >= quote.minFare - 0.001 &&
-        fare <= quote.maxFare + 0.001;
-  }
-
-  /// Stepper increment scaled to the fare magnitude (0.25 for JOD-level fares).
-  double get _fareStep {
-    final rec = _quote?.recommendedFare ?? 0;
-    if (rec >= 100) return 5;
-    if (rec >= 20) return 1;
-    return 0.25;
-  }
-
-  void _bumpFare(double direction) {
-    final quote = _quote;
-    if (quote == null) return;
-    final current = _typedFare ?? _fare ?? quote.recommendedFare;
-    final next = (current + direction * _fareStep).clamp(
-      quote.minFare,
-      quote.maxFare,
-    );
-    setState(() => _setFare((next * 100).roundToDouble() / 100));
-  }
-
-  /// The passenger writes their own fare, inDrive style, with − / + nudges
-  /// around it and the server's recommendation as a reference.
-  Widget _buildFareInput(BuildContext context) {
-    final quote = _quote;
-    final l10n = context.l10n;
     if (quote == null) {
+      if (_quoteFailed) return _buildFareUnavailable(context);
       return const Center(
         child: SizedBox(
           height: 24,
@@ -1391,15 +1269,39 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
       );
     }
 
-    final typed = _typedFare;
-    final valid = _fareValid;
-    final canDecrease =
-        (typed ?? quote.recommendedFare) - _fareStep >= quote.minFare - 0.001;
-    final canIncrease =
-        (typed ?? quote.recommendedFare) + _fareStep <= quote.maxFare + 0.001;
-    final borderColor = valid ? T.outlineVariant(context) : T.error(context);
+    final l10n = context.l10n;
+    final distance = quote.distanceKm;
+    final duration = quote.durationMinutes;
+    final detail = [
+      if (distance != null)
+        l10n.instantSearchingKm(
+          distance == distance.roundToDouble()
+              ? distance.round().toString()
+              : distance.toStringAsFixed(1),
+        ),
+      if (duration != null) _formatMinutes(context, duration),
+    ].join(' · ');
 
+    return _fareSummary(
+      context,
+      fare: quote.recommendedFare,
+      currency: quote.currency,
+      detail: detail,
+    );
+  }
+
+  /// Label, the fare large and bold, an optional muted detail line, and the
+  /// cash note — shared by the form and the searching sheet.
+  Widget _fareSummary(
+    BuildContext context, {
+    required double fare,
+    required String currency,
+    String detail = '',
+  }) {
+    final l10n = context.l10n;
+    final muted = T.onSurfaceVariant(context);
     return Container(
+      key: const ValueKey('instant-fare-summary'),
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
         color: T.surfaceVariant(context),
@@ -1408,158 +1310,77 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            l10n.instantFormYourFareTitle,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: T.onSurfaceVariant(context),
-            ),
-          ),
-          const SizedBox(height: 8),
           Row(
             children: [
-              _fareStepButton(
-                context,
-                icon: Icons.remove,
-                enabled: canDecrease,
-                onTap: () => _bumpFare(-1),
+              Icon(
+                Icons.payments_outlined,
+                size: 16,
+                color: T.primary(context),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 6),
               Expanded(
-                child: TextField(
-                  key: const ValueKey('instant-fare-field'),
-                  controller: _fareController,
-                  focusNode: _fareFocus,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  textAlign: TextAlign.center,
-                  textInputAction: TextInputAction.done,
-                  onChanged: (_) => setState(() => _fare = _typedFare),
+                child: Text(
+                  l10n.instantFormYourFareTitle,
                   style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: T.onSurface(context),
-                  ),
-                  decoration: InputDecoration(
-                    hintText: l10n.instantFormFareHint,
-                    hintStyle: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.normal,
-                      color: T.onSurfaceVariant(context),
-                    ),
-                    suffixText: quote.currency,
-                    suffixStyle: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: T.onSurfaceVariant(context),
-                    ),
-                    isDense: true,
-                    filled: true,
-                    fillColor: T.surface(context),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: borderColor),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: borderColor),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: valid ? T.primary(context) : T.error(context),
-                        width: 1.5,
-                      ),
-                    ),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: muted,
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              _fareStepButton(
-                context,
-                icon: Icons.add,
-                enabled: canIncrease,
-                onTap: () => _bumpFare(1),
-              ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
-            valid
-                ? l10n.instantRecommendedFare(
-                    _formatFare(quote.recommendedFare),
-                    quote.currency,
-                  )
-                : l10n.instantFormFareOutOfRange(
-                    _formatFare(quote.minFare),
-                    _formatFare(quote.maxFare),
-                    quote.currency,
-                  ),
+            '${_formatFare(fare)} $currency',
+            key: const ValueKey('instant-fare-amount'),
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: valid ? FontWeight.normal : FontWeight.w600,
-              color: valid ? T.onSurfaceVariant(context) : T.error(context),
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: T.onSurface(context),
             ),
           ),
-          if (valid) ...[
+          if (detail.isNotEmpty) ...[
             const SizedBox(height: 2),
             Text(
-              l10n.instantFormFareRange(
-                _formatFare(quote.minFare),
-                _formatFare(quote.maxFare),
-                quote.currency,
-              ),
+              detail,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 11.5,
-                color: T.onSurfaceVariant(context),
-              ),
+              style: TextStyle(fontSize: 12.5, color: muted),
             ),
           ],
           const SizedBox(height: 6),
           Text(
             l10n.instantFormFareNote,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 11.5,
-              color: T.onSurfaceVariant(context),
-            ),
+            style: TextStyle(fontSize: 11.5, color: muted),
           ),
         ],
       ),
     );
   }
 
-  Widget _fareStepButton(
-    BuildContext context, {
-    required IconData icon,
-    required bool enabled,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: T.surface(context),
-      shape: const CircleBorder(),
-      elevation: enabled ? 2 : 0,
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: enabled ? onTap : null,
-        child: SizedBox(
-          width: 44,
-          height: 44,
-          child: Icon(
-            icon,
-            color: enabled
-                ? T.onSurface(context)
-                : T.onSurfaceVariant(context).withValues(alpha: 0.4),
+  /// The quote request failed: say so and let the passenger ask again.
+  Widget _buildFareUnavailable(BuildContext context) {
+    final l10n = context.l10n;
+    return Container(
+      padding: const EdgeInsetsDirectional.fromSTEB(14, 6, 6, 6),
+      decoration: BoxDecoration(
+        color: T.surfaceVariant(context),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline, size: 18, color: T.error(context)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              l10n.instantFormFareUnavailable,
+              style: TextStyle(fontSize: 12.5, color: T.onSurface(context)),
+            ),
           ),
-        ),
+          TextButton(onPressed: _updateQuote, child: Text(l10n.retry)),
+        ],
       ),
     );
   }
@@ -1569,12 +1390,14 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
   Widget _buildPrimaryCta(BuildContext context) {
     final l10n = context.l10n;
     final needsDestination = _to == null;
+    // The fare is fixed by the quote, so the request is ready the moment there
+    // is one to show.
     final ready =
         _from != null &&
         _to != null &&
         !_submitting &&
         !_quoteLoading &&
-        _fareValid;
+        _quote != null;
 
     final label = needsDestination
         ? l10n.instantFormChooseDestinationCta
@@ -1642,64 +1465,6 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
     );
   }
 
-  Widget _buildTrustRow(BuildContext context) {
-    final l10n = context.l10n;
-    final items = [
-      (Icons.lock_outline, l10n.instantTrustCash, l10n.instantTrustCashSub),
-      (
-        Icons.map_outlined,
-        l10n.instantTrustTracking,
-        l10n.instantTrustTrackingSub,
-      ),
-      (
-        Icons.verified_user_outlined,
-        l10n.instantTrustSafe,
-        l10n.instantTrustSafeSub,
-      ),
-      (
-        Icons.headset_mic_outlined,
-        l10n.instantTrustSupport,
-        l10n.instantTrustSupportSub,
-      ),
-    ];
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final (icon, title, subtitle) in items)
-          Expanded(
-            child: Column(
-              children: [
-                Icon(icon, size: 24, color: T.primary(context)),
-                const SizedBox(height: 6),
-                Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: T.onSurface(context),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    color: T.onSurfaceVariant(context),
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-
   // ── Status sheet ───────────────────────────────────────────────────────────────
 
   Widget _buildStatusSheet(BuildContext context) {
@@ -1724,11 +1489,7 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
               : context.l10n.instantDone,
           onPrimary: () {
             if (hasTrip) {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(
-                  builder: (_) => TripDetailsScreen(tripId: tripId),
-                ),
-              );
+              ActiveRideNavigator.enterAsPassenger(tripId);
             } else {
               Navigator.of(context).pop();
             }
@@ -1738,8 +1499,6 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
     } else if (request.isNoDriverFound) {
       content = NoDriverFoundSheet(
         retrying: _retrying,
-        terminalReason: request.terminalReason,
-        searchRadiusKm: request.searchRadiusKm,
         onRetry: _retry,
         // The request is already terminal, so this just leaves the flow.
         onClose: () => Navigator.of(context).maybePop(),
@@ -1780,266 +1539,65 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
     );
   }
 
-  // ── Fare while searching (inDrive: − / fare / + and "Raise fare") ─────────────
+  // ── Fare while searching ──────────────────────────────────────────────────────
 
-  /// The fare the passenger is lining up to send, if they nudged it above
-  /// what drivers currently see. Null means "no pending raise".
-  double? _pendingFare;
-
-  double _searchStepFor(double base) {
-    if (base >= 100) return 5;
-    if (base >= 20) return 1;
-    return 0.25;
-  }
-
-  void _nudgeSearchFare(InstantRequest request, double direction) {
-    final current = request.currentFare;
-    final max = request.maxFare;
-    if (current == null) return;
-    final step = _searchStepFor(
-      request.recommendedFare != null
-          ? double.tryParse(request.recommendedFare!) ?? current
-          : current,
-    );
-    final from = _pendingFare ?? current;
-    var next = from + direction * step;
-    if (max != null && next > max) next = max;
-    if (next <= current) next = current;
-    next = (next * 100).roundToDouble() / 100;
-    setState(() => _pendingFare = next > current ? next : null);
-  }
-
-  Future<void> _submitPendingFare(InstantRequest request) async {
-    final pending = _pendingFare;
-    if (pending == null || _nudgeBusy) return;
-    setState(() => _nudgeBusy = true);
-    try {
-      final updated = await _service.updateFare(request.id, pending);
-      if (!mounted) return;
-      setState(() {
-        _request = updated;
-        _pendingFare = null;
-        _dismissedNudgeFare = null;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.instantFareRaisedToast)),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ErrorSurface.showFailure(context, ApiClient.mapError(e));
-      await _refreshRequest(request.id);
-    } finally {
-      if (mounted) setState(() => _nudgeBusy = false);
-    }
-  }
-
-  /// inDrive's fare block on the waiting screen: the fare drivers see, − / +
-  /// to line up a higher one, and a "Raise fare" button that only lights up
-  /// once the pending fare is above the current one.
+  /// The fixed fare drivers are being offered, read-only. Distance and
+  /// duration already sit in the metric cards above it.
   Widget _buildSearchFareCard(BuildContext context, InstantRequest request) {
-    final l10n = context.l10n;
-    final current = request.currentFare;
-    if (current == null) return const SizedBox.shrink();
-    final max = request.maxFare;
-    // The backend only takes a raise while no offer is outstanding.
-    final locked = request.status == 'offered';
-    final shown = _pendingFare ?? current;
-    final atMax = max != null && shown >= max - 0.001;
-    final canRaise = _pendingFare != null && !locked && !_nudgeBusy;
-
-    final String hint;
-    if (locked) {
-      hint = l10n.instantFareLockedWhileOffered;
-    } else if (atMax && _pendingFare == null) {
-      hint = l10n.instantFareMaxReached;
-    } else {
-      hint = l10n.instantFareRaiseHint;
-    }
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      decoration: BoxDecoration(
-        color: T.surfaceVariant(context),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.payments_outlined,
-                size: 16,
-                color: T.primary(context),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                l10n.instantYourFareLabel,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: T.onSurfaceVariant(context),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              _fareStepButton(
-                context,
-                icon: Icons.remove,
-                enabled: !locked && _pendingFare != null,
-                onTap: () => _nudgeSearchFare(request, -1),
-              ),
-              Expanded(
-                child: Column(
-                  children: [
-                    Text(
-                      '${_formatFare(shown)} ${request.currency}',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: T.onSurface(context),
-                      ),
-                    ),
-                    if (_pendingFare != null)
-                      Text(
-                        l10n.instantYourFareValue(
-                          _formatFare(current),
-                          request.currency,
-                        ),
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          color: T.onSurfaceVariant(context),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              _fareStepButton(
-                context,
-                icon: Icons.add,
-                enabled: !locked && !atMax,
-                onTap: () => _nudgeSearchFare(request, 1),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 46,
-            child: ElevatedButton(
-              onPressed: canRaise ? () => _submitPendingFare(request) : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: T.primary(context),
-                disabledBackgroundColor: T
-                    .primary(context)
-                    .withValues(alpha: 0.3),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: _nudgeBusy
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          AppColors.white,
-                        ),
-                      ),
-                    )
-                  : Text(
-                      _pendingFare != null
-                          ? l10n.instantRaiseTo(
-                              _formatFare(_pendingFare!),
-                              request.currency,
-                            )
-                          : l10n.instantRaiseFare,
-                      style: const TextStyle(
-                        color: AppColors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            hint,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 11.5,
-              color: T.onSurfaceVariant(context),
-            ),
-          ),
-        ],
-      ),
-    );
+    final fare = request.currentFare;
+    if (fare == null) return const SizedBox.shrink();
+    return _fareSummary(context, fare: fare, currency: request.currency);
   }
 
   Widget _buildSearchingView(BuildContext context, InstantRequest request) {
     final l10n = context.l10n;
-    final counter = request.counterOffer;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (counter != null) ...[
-          _buildCounterOfferCard(context, request, counter),
-          const SizedBox(height: 14),
-        ] else ...[
-          Row(
-            children: [
-              SizedBox(
-                width: 44,
-                height: 44,
-                child: CircularProgressIndicator(
-                  strokeWidth: 4,
-                  color: T.primary(context),
-                ),
+        Row(
+          children: [
+            SizedBox(
+              width: 44,
+              height: 44,
+              child: CircularProgressIndicator(
+                strokeWidth: 4,
+                color: T.primary(context),
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.instantSearching,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: T.onSurface(context),
-                      ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.instantSearching,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: T.onSurface(context),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      l10n.instantSearchingSubtitle,
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        color: T.onSurfaceVariant(context),
-                      ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    l10n.instantSearchingSubtitle,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      color: T.onSurfaceVariant(context),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-        ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
         _buildSearchingMetrics(context, request),
         const SizedBox(height: 12),
         _buildSearchFareCard(context, request),
-        if (request.nudge != null &&
-            request.nudge!.suggestedFare != _dismissedNudgeFare) ...[
-          const SizedBox(height: 12),
-          _buildNudgeCard(context, request.nudge!),
-        ] else ...[
-          const SizedBox(height: 12),
-          _buildSearchingTip(context),
-        ],
+        const SizedBox(height: 12),
+        _buildSearchingTip(context),
         const SizedBox(height: 14),
         Divider(height: 1, color: T.outlineVariant(context)),
         const SizedBox(height: 14),
@@ -2049,7 +1607,7 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
           width: double.infinity,
           height: 52,
           child: OutlinedButton(
-            onPressed: _counterBusy || _nudgeBusy ? null : _cancel,
+            onPressed: _cancel,
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.error,
               side: BorderSide(color: AppColors.error.withValues(alpha: 0.6)),
@@ -2065,6 +1623,18 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
         ),
       ],
     );
+  }
+
+  /// Minutes as "X h Y min" once a span reaches an hour, so a long intercity
+  /// ride reads as hours and minutes instead of a bare minute count.
+  String _formatMinutes(BuildContext context, int total) {
+    final l10n = context.l10n;
+    if (total < 60) return l10n.instantSearchingMinutes(total.toString());
+    final hours = total ~/ 60;
+    final minutes = total % 60;
+    return minutes == 0
+        ? l10n.tripSummaryHoursOnly(hours)
+        : l10n.tripSummaryHoursMinutes(hours, minutes);
   }
 
   /// Expected pickup / distance / duration, each in its own outlined card.
@@ -2083,8 +1653,7 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
                 ? v.round().toString()
                 : v.toStringAsFixed(1),
           );
-    String min(int? v) =>
-        v == null ? '--' : l10n.instantSearchingMinutes(v.toString());
+    String min(int? v) => v == null ? '--' : _formatMinutes(context, v);
 
     return Row(
       children: [
@@ -2155,14 +1724,17 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
             ],
           ),
           const SizedBox(height: 6),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
-              color: T.onSurface(context),
+          // Shrinks rather than truncates "9 ساعة 26 دقيقة" in a third-width tile.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                color: T.onSurface(context),
+              ),
             ),
           ),
           const SizedBox(height: 2),
@@ -2206,7 +1778,8 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
   /// driver on the way. Only stages this flow actually goes through.
   Widget _buildProgressSteps(BuildContext context, InstantRequest request) {
     final l10n = context.l10n;
-    final hasOffer = request.counterOffer != null;
+    // The ride is with a driver right now, waiting on their answer.
+    final hasOffer = request.status == 'offered';
     final matched = request.isMatched;
 
     final steps = [
@@ -2316,280 +1889,6 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
     );
   }
 
-  /// inDrive-style nudge: "Try raising your fare — [Raise to X] [Keep Y]".
-  Widget _buildNudgeCard(BuildContext context, InstantNudge nudge) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: T.surfaceVariant(context),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          Text(
-            context.l10n.instantNudgeTitle,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: T.onSurface(context),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            context.l10n.instantNudgeSubtitle,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: T.onSurfaceVariant(context)),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            height: 46,
-            child: ElevatedButton(
-              onPressed: _nudgeBusy
-                  ? null
-                  : () => _raiseFare(nudge.suggestedFare),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: T.primary(context),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: _nudgeBusy
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          AppColors.white,
-                        ),
-                      ),
-                    )
-                  : Text(
-                      context.l10n.instantRaiseTo(
-                        nudge.suggestedFare,
-                        nudge.currency,
-                      ),
-                      style: const TextStyle(
-                        color: AppColors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          TextButton(
-            onPressed: _nudgeBusy
-                ? null
-                : () =>
-                      setState(() => _dismissedNudgeFare = nudge.suggestedFare),
-            child: Text(
-              context.l10n.instantKeepFare(nudge.currentFare, nudge.currency),
-              style: TextStyle(color: T.onSurfaceVariant(context)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// inDrive-style bid card: the driver's counter fare with Accept/Decline.
-  Widget _buildCounterOfferCard(
-    BuildContext context,
-    InstantRequest request,
-    InstantCounterOffer offer,
-  ) {
-    final remaining = offer.expiresAt != null
-        ? offer.expiresAt!.difference(DateTime.now()).inSeconds
-        : 0;
-    final yourFare = request.passengerFare ?? request.fareEstimate;
-    final vehicleLine = [
-      if (offer.vehicleModel != null && offer.vehicleModel!.isNotEmpty)
-        offer.vehicleModel!,
-      if (offer.plateNumber != null && offer.plateNumber!.isNotEmpty)
-        offer.plateNumber!,
-    ].join(' • ');
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: T.surface(context),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: T.primary(context), width: 1.5),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  context.l10n.instantDriverOfferTitle,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: T.onSurface(context),
-                  ),
-                ),
-              ),
-              if (remaining > 0)
-                Text(
-                  context.l10n.instantOfferCountdown(remaining),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: T.onSurfaceVariant(context),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: T.primary(context).withValues(alpha: 0.12),
-                child: Icon(Icons.person, color: T.primary(context)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      offer.driverName ?? '—',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: T.onSurface(context),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        if (offer.driverRating != null) ...[
-                          const Icon(
-                            Icons.star,
-                            size: 15,
-                            color: AppColors.warning,
-                          ),
-                          const SizedBox(width: 3),
-                          Text(
-                            offer.driverRating!.toStringAsFixed(1) +
-                                (offer.driverTotalRatings != null
-                                    ? ' (${offer.driverTotalRatings})'
-                                    : ''),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: T.onSurfaceVariant(context),
-                            ),
-                          ),
-                        ],
-                        if (vehicleLine.isNotEmpty) ...[
-                          if (offer.driverRating != null)
-                            const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              vehicleLine,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: T.onSurfaceVariant(context),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${offer.proposedFare} ${offer.currency}',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: T.primary(context),
-                ),
-              ),
-              const SizedBox(width: 10),
-              if (yourFare != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 3),
-                  child: Text(
-                    context.l10n.instantYourFareValue(
-                      yourFare,
-                      request.currency,
-                    ),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: T.onSurfaceVariant(context),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _counterBusy ? null : _declineCounter,
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(
-                    context.l10n.instantDecline,
-                    style: TextStyle(color: T.onSurface(context)),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _counterBusy ? null : _acceptCounter,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.success,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: _counterBusy
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              AppColors.white,
-                            ),
-                          ),
-                        )
-                      : Text(
-                          context.l10n.instantAccept,
-                          style: const TextStyle(
-                            color: AppColors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   // ── Matched ──────────────────────────────────────────────────────────────────
 
   String? _matchedTripId(InstantRequest request, InstantMatch match) {
@@ -2649,9 +1948,7 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
       Navigator.of(context).pop();
       return;
     }
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => TripDetailsScreen(tripId: tripId)),
-    );
+    ActiveRideNavigator.enterAsPassenger(tripId);
   }
 
   /// After a match the request itself is final; cancelling means cancelling
@@ -2831,8 +2128,7 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
                 ? v.round().toString()
                 : v.toStringAsFixed(1),
           );
-    String min(int? v) =>
-        v == null ? '--' : l10n.instantSearchingMinutes(v.toString());
+    String min(int? v) => v == null ? '--' : _formatMinutes(context, v);
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -2907,12 +2203,16 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
           ],
         ),
         const SizedBox(height: 6),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.bold,
-            color: T.onSurface(context),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            maxLines: 1,
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+              color: T.onSurface(context),
+            ),
           ),
         ),
         const SizedBox(height: 2),

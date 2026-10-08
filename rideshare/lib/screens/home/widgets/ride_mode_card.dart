@@ -133,7 +133,7 @@ class RideModeCard extends StatelessWidget {
         ? <(IconData, String)>[
             (IconsaxPlusBold.profile_2user, l10n.rideModeSharedPerkSeats),
             (IconsaxPlusBold.tag, l10n.rideModeSharedPerkPrice),
-            (IconsaxPlusBold.tree, l10n.rideModeSharedPerkEco),
+            (IconsaxPlusBold.clock, l10n.rideModeSharedPerkScheduledTime),
           ]
         : <(IconData, String)>[
             (IconsaxPlusBold.flash_1, l10n.rideModePrivatePerkFast),

@@ -8,6 +8,9 @@ class VehicleModel {
   final String vehicleType;
   final String plateNumber;
   final String model;
+
+  /// Free-text colour the driver entered; null until they add one.
+  final String? color;
   final int seats;
   final SeatLayoutConfig? seatLayout;
   final String? licenseImageUrl; // Driver's license image
@@ -24,6 +27,7 @@ class VehicleModel {
     required this.vehicleType,
     required this.plateNumber,
     required this.model,
+    this.color,
     required this.seats,
     this.seatLayout,
     this.licenseImageUrl,
@@ -48,6 +52,9 @@ class VehicleModel {
       vehicleType: json['vehicleType'] ?? '',
       plateNumber: json['plateNumber'] ?? '',
       model: json['model'] ?? '',
+      color: (json['color']?.toString().trim().isEmpty ?? true)
+          ? null
+          : json['color'].toString().trim(),
       seats: json['seats'] ?? 4,
       seatLayout: layout,
       licenseImageUrl: json['licenseImageUrl'],
@@ -71,6 +78,7 @@ class VehicleModel {
       'vehicleType': vehicleType,
       'plateNumber': plateNumber,
       'model': model,
+      if (color != null) 'color': color,
       'seats': seats,
       'seatLayout': seatLayout?.toMap(),
       'licenseImageUrl': licenseImageUrl,
@@ -91,6 +99,7 @@ class VehicleModel {
     String? vehicleType,
     String? plateNumber,
     String? model,
+    String? color,
     int? seats,
     SeatLayoutConfig? seatLayout,
     String? licenseImageUrl,
@@ -107,6 +116,7 @@ class VehicleModel {
       vehicleType: vehicleType ?? this.vehicleType,
       plateNumber: plateNumber ?? this.plateNumber,
       model: model ?? this.model,
+      color: color ?? this.color,
       seats: seats ?? this.seats,
       seatLayout: seatLayout ?? this.seatLayout,
       licenseImageUrl: licenseImageUrl ?? this.licenseImageUrl,

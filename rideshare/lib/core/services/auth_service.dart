@@ -213,6 +213,7 @@ class AuthService {
     required String vehicleType,
     required String plateNumber,
     required String model,
+    String? color,
     required int seats,
     required String carImageUrl,
     required String insuranceImageUrl,
@@ -229,6 +230,7 @@ class AuthService {
       'vehicleType': vehicleType,
       'plateNumber': plateNumber,
       'model': model,
+      if (color != null && color.trim().isNotEmpty) 'color': color.trim(),
       'seats': seats,
       'carImageUrl': carImageUrl,
       'insuranceImageUrl': insuranceImageUrl,
@@ -267,6 +269,15 @@ class AuthService {
   ) async {
     await _api.patch(ApiEndpoints.driverPendingRegistration, data: data);
     _currentUser = await getProfile();
+  }
+
+  /// "انضم كسائق": turn the signed-in passenger account into a driver
+  /// account pending approval. Returns the server's account state.
+  Future<String> becomeDriver(Map<String, dynamic> data) async {
+    final response = await _api.post(ApiEndpoints.driverBecome, data: data);
+    final body = response is Map ? (response['data'] ?? response) : response;
+    _currentUser = await getProfile();
+    return (body is Map ? body['accountState'] as String? : null) ?? 'active';
   }
 
   // ===== Profile Operations =====

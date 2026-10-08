@@ -3,7 +3,9 @@ import 'package:intl/intl.dart';
 
 import '../../../models/location_model.dart';
 import '../../../models/seat_layout_config.dart';
+import '../../../models/trip_meeting_point.dart';
 import '../../../models/vehicle_model.dart';
+import '../../../utils/seat_layout_helpers.dart';
 
 /// Shared, mutable state for the 3-step create-trip wizard.
 ///
@@ -38,13 +40,54 @@ class CreateTripWizardState {
   final TextEditingController fromController = TextEditingController();
   final TextEditingController toController = TextEditingController();
 
+  /// Exact pin where passengers gather, and the driver's description of it.
+  /// Both are required: a meeting point is only agreed when it is findable.
+  TripMeetingPoint? meetingPin;
+  final TextEditingController meetingNoteController = TextEditingController();
+
   // --- Step 1: details -----------------------------------------------------
-  DateTime? departureTime;
+  /// Picked separately, so choosing a day never fills in a time the driver
+  /// didn't choose; [departureTime] exists only once both are set.
+  DateTime? departureDate;
+  ({int hour, int minute})? departureClock;
+
+  DateTime? get departureTime {
+    final date = departureDate;
+    final clock = departureClock;
+    if (date == null || clock == null) return null;
+    return DateTime(date.year, date.month, date.day, clock.hour, clock.minute);
+  }
+
+  /// Sets both halves at once (prefill, tests); null clears both.
+  set departureTime(DateTime? value) {
+    departureDate = value == null
+        ? null
+        : DateTime(value.year, value.month, value.day);
+    departureClock = value == null
+        ? null
+        : (hour: value.hour, minute: value.minute);
+  }
+
   SeatLayoutConfig? layout;
   /// Vehicle type key, used to pick the cabin artwork. Null when the driver has
   /// no vehicle on file, which falls back to the plain seat grid.
   String? vehicleType;
-  int availableSeatCount = 0;
+  /// Layout positions (1-based, front row first) the driver isn't offering.
+  /// Ordered as closed, so "+" reopens the most recent one.
+  final List<int> closedSeats = <int>[];
+
+  /// Seats on offer: the layout minus what the driver closed.
+  int get availableSeatCount =>
+      maxLayoutSeats <= 0 ? 0 : maxLayoutSeats - closedSeats.length;
+
+  /// Sets the count by closing (front seat first) or reopening seats.
+  set availableSeatCount(int value) {
+    final target = value.clamp(maxLayoutSeats > 0 ? 1 : 0, maxLayoutSeats);
+    while (availableSeatCount > target && closeNextSeat()) {}
+    while (availableSeatCount < target && closedSeats.isNotEmpty) {
+      closedSeats.removeLast();
+    }
+  }
   bool preventGenderMixing = false;
   final TextEditingController priceController = TextEditingController();
   final TextEditingController notesController = TextEditingController();
@@ -81,8 +124,16 @@ class CreateTripWizardState {
 
   String get notes => notesController.text.trim();
 
-  /// Route step is complete once both endpoints are picked.
-  bool get canGoStep2 => from != null && to != null;
+  String get meetingNote => meetingNoteController.text.trim();
+
+  bool get hasMeetingPoint => meetingPin != null && meetingNote.isNotEmpty;
+
+  /// The meeting point as sent to the API (pin + description).
+  TripMeetingPoint? get meetingPoint =>
+      hasMeetingPoint ? meetingPin!.copyWith(note: meetingNote) : null;
+
+  /// Route step is complete once both endpoints and the meeting point are set.
+  bool get canGoStep2 => from != null && to != null && hasMeetingPoint;
 
   /// Details step is complete with a departure time, a valid price and seats.
   bool get canGoStep3 =>
@@ -91,32 +142,66 @@ class CreateTripWizardState {
   /// Publishing additionally requires a usable seat layout.
   bool get canPublish => canGoStep2 && canGoStep3 && hasLayout;
 
-  /// Keeps [availableSeatCount] inside `1..maxLayoutSeats` (0 when no layout).
-  void clampAvailableSeats() {
-    final max = maxLayoutSeats;
-    if (max <= 0) {
-      availableSeatCount = 0;
-      return;
-    }
-    if (availableSeatCount < 1) {
-      availableSeatCount = 1;
-    } else if (availableSeatCount > max) {
-      availableSeatCount = max;
-    }
-  }
-
   /// Seeds layout-derived fields from the driver's vehicle, falling back to the
   /// vehicle-type [template] when the vehicle has no stored layout.
   void initFromVehicle(VehicleModel? vehicle, SeatLayoutConfig? template) {
     layout = vehicle?.seatLayout ?? template;
     vehicleType = vehicle?.vehicleType;
-    availableSeatCount = maxLayoutSeats;
+    closedSeats.clear();
     preventGenderMixing = layout?.preventGenderMixing ?? false;
   }
 
-  void setAvailableSeatCount(int value) {
-    availableSeatCount = value;
-    clampAvailableSeats();
+  /// Order "−" closes seats in: the front row first — the seat beside the
+  /// driver is the one most often kept back — then from the rear forwards.
+  List<int> get _closeOrder {
+    final config = layout;
+    if (config == null) return const [];
+    final list = config.seatsPerRowList;
+    final rows = list != null && list.isNotEmpty
+        ? list
+        : List<int>.filled(config.rows, config.seatsPerRow);
+    final frontCount = rows.isEmpty ? 0 : rows.first;
+    final all = List<int>.generate(maxLayoutSeats, (i) => i + 1);
+    return [
+      ...all.take(frontCount),
+      ...all.skip(frontCount).toList().reversed,
+    ];
+  }
+
+  /// Closes the next seat in [_closeOrder]; false when only one is left open.
+  bool closeNextSeat() {
+    if (availableSeatCount <= 1) return false;
+    for (final seat in _closeOrder) {
+      if (!closedSeats.contains(seat)) {
+        closedSeats.add(seat);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Reopens the most recently closed seat.
+  void reopenLastSeat() {
+    if (closedSeats.isNotEmpty) closedSeats.removeLast();
+  }
+
+  /// Tapping a seat flips it, as long as at least one stays on offer.
+  void toggleSeat(int position) {
+    if (position < 1 || position > maxLayoutSeats) return;
+    if (closedSeats.contains(position)) {
+      closedSeats.remove(position);
+    } else if (availableSeatCount > 1) {
+      closedSeats.add(position);
+    }
+  }
+
+  /// The closed seats as the API's seat ids (`row-col`).
+  List<String> get closedSeatIds {
+    final config = layout;
+    if (config == null) return const [];
+    return closedSeats
+        .map((p) => SeatLayoutHelpers.displayIndexToBackendSeatId(p, config))
+        .toList();
   }
 
   void addStop(LocationModel stop) {
@@ -149,6 +234,7 @@ class CreateTripWizardState {
   void dispose() {
     fromController.dispose();
     toController.dispose();
+    meetingNoteController.dispose();
     priceController.dispose();
     notesController.dispose();
   }

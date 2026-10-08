@@ -17,13 +17,15 @@ class InstantAvailability {
     return InstantAvailability(
       isOnline: json['isOnline'] == true,
       acceptsInstant: json['acceptsInstant'] != false,
-      latitude: (json['latitude'] as num?)?.toDouble(),
-      longitude: (json['longitude'] as num?)?.toDouble(),
+      latitude: _asDouble(json['latitude']),
+      longitude: _asDouble(json['longitude']),
     );
   }
 }
 
-/// Distance-based fare recommendation returned before the passenger submits.
+/// The fixed, distance-based fare for a route, returned before the passenger
+/// submits. [minFare] and [maxFare] equal [recommendedFare] — the passenger
+/// can't change the price.
 class InstantQuote {
   final double recommendedFare;
   final double minFare;
@@ -48,107 +50,8 @@ class InstantQuote {
       minFare: parse(json['minFare']),
       maxFare: parse(json['maxFare']),
       currency: (json['currency'] ?? 'JOD').toString(),
-    );
-  }
-}
-
-/// A driver's counter-offer awaiting the passenger's decision.
-class InstantCounterOffer {
-  final String id;
-  final String? driverName;
-  final double? driverRating;
-  final int? driverTotalRatings;
-  final String? vehicleModel;
-  final String? plateNumber;
-  final String proposedFare;
-  final String currency;
-  final DateTime? expiresAt;
-
-  /// The fare the passenger originally asked for, shown struck through next to
-  /// the driver's price so the difference is immediately readable.
-  final String? passengerFare;
-  final String? driverPhotoUrl;
-  final String? carImageUrl;
-  final String? fromName;
-  final String? toName;
-
-  const InstantCounterOffer({
-    required this.id,
-    required this.proposedFare,
-    required this.currency,
-    this.driverName,
-    this.driverRating,
-    this.driverTotalRatings,
-    this.vehicleModel,
-    this.plateNumber,
-    this.expiresAt,
-    this.passengerFare,
-    this.driverPhotoUrl,
-    this.carImageUrl,
-    this.fromName,
-    this.toName,
-  });
-
-  /// Seconds the passenger still has to decide, floored at zero.
-  int secondsLeft([DateTime? now]) {
-    final deadline = expiresAt;
-    if (deadline == null) return 0;
-    final left = deadline.difference(now ?? DateTime.now()).inSeconds;
-    return left < 0 ? 0 : left;
-  }
-
-  factory InstantCounterOffer.fromJson(Map<String, dynamic> json) {
-    return InstantCounterOffer(
-      id: json['id']?.toString() ?? '',
-      driverName: json['driverName']?.toString(),
-      driverRating: json['driverRating'] is num
-          ? (json['driverRating'] as num).toDouble()
-          : double.tryParse(json['driverRating']?.toString() ?? ''),
-      driverTotalRatings: json['driverTotalRatings'] is num
-          ? (json['driverTotalRatings'] as num).toInt()
-          : int.tryParse(json['driverTotalRatings']?.toString() ?? ''),
-      vehicleModel: _text(json['vehicleModel']),
-      plateNumber: _text(json['plateNumber']),
-      proposedFare: json['proposedFare']?.toString() ?? '',
-      currency: (json['currency'] ?? 'JOD').toString(),
-      expiresAt: json['expiresAt'] != null
-          ? DateTime.tryParse(json['expiresAt'].toString())
-          : null,
-      passengerFare: _text(json['passengerFare']),
-      driverPhotoUrl: _text(json['driverPhotoUrl']),
-      carImageUrl: _text(json['carImageUrl']),
-      fromName: _text(json['fromName']),
-      toName: _text(json['toName']),
-    );
-  }
-
-  /// Push data arrives as strings, and absent values as empty ones.
-  static String? _text(dynamic value) {
-    final text = value?.toString().trim();
-    return text == null || text.isEmpty ? null : text;
-  }
-}
-
-/// Server-owned "raise your fare" nudge shown while searching.
-class InstantNudge {
-  final String suggestedFare;
-  final String maxFare;
-  final String currentFare;
-  final String currency;
-
-  const InstantNudge({
-    required this.suggestedFare,
-    required this.maxFare,
-    required this.currentFare,
-    required this.currency,
-  });
-
-  factory InstantNudge.fromJson(Map<String, dynamic> json) {
-    return InstantNudge(
-      suggestedFare: json['suggestedFare']?.toString() ?? '',
-      maxFare: json['maxFare']?.toString() ?? '',
-      currentFare: json['currentFare']?.toString() ?? '',
-      currency: (json['currency'] ?? 'JOD').toString(),
+      distanceKm: _asDouble(json['distanceKm']),
+      durationMinutes: _asInt(json['durationMinutes']),
     );
   }
 }
@@ -193,10 +96,10 @@ class InstantMatch {
       tripId: json['tripId']?.toString(),
       acceptedFare: json['acceptedFare']?.toString(),
       currency: (json['currency'] ?? 'JOD').toString(),
-      pickupEtaSeconds: (json['pickupEtaSeconds'] as num?)?.toInt(),
+      pickupEtaSeconds: _asInt(json['pickupEtaSeconds']),
       driverName: json['driverName']?.toString(),
-      driverRating: (json['driverRating'] as num?)?.toDouble(),
-      driverTotalRatings: (json['driverTotalRatings'] as num?)?.toInt(),
+      driverRating: _asDouble(json['driverRating']),
+      driverTotalRatings: _asInt(json['driverTotalRatings']),
       vehicleModel: json['vehicleModel']?.toString(),
       plateNumber: json['plateNumber']?.toString(),
       carImageUrl: json['carImageUrl']?.toString(),
@@ -228,21 +131,15 @@ class InstantRequest {
   final String? matchedDriverId;
   final String? tripId;
   final DateTime? expiresAt;
-  final InstantCounterOffer? counterOffer;
-  final InstantNudge? nudge;
   final InstantMatch? match;
 
   /// Straight-line route metrics for the searching sheet (newer backends).
   final double? distanceKm;
   final int? durationMinutes;
 
-  /// Highest fare the passenger may raise to while searching.
+  /// Equals the fixed fare now that fares aren't negotiable; kept because the
+  /// server still sends it.
   final double? maxFare;
-
-  /// How wide the dispatch search actually reached, in km, and the ceiling it
-  /// may grow to. Both come from the server so the UI never hardcodes them.
-  final double? searchRadiusKm;
-  final double? maxSearchRadiusKm;
 
   const InstantRequest({
     required this.id,
@@ -261,17 +158,13 @@ class InstantRequest {
     this.matchedDriverId,
     this.tripId,
     this.expiresAt,
-    this.counterOffer,
-    this.nudge,
     this.match,
     this.distanceKm,
     this.durationMinutes,
     this.maxFare,
-    this.searchRadiusKm,
-    this.maxSearchRadiusKm,
   });
 
-  /// The fare currently offered to drivers, as a number.
+  /// The fixed fare for this request, as a number.
   double? get currentFare =>
       double.tryParse(passengerFare ?? fareEstimate ?? '');
 
@@ -304,28 +197,14 @@ class InstantRequest {
       passengerFare: json['passengerFare']?.toString(),
       acceptedFare: json['acceptedFare']?.toString(),
       currency: (json['currency'] ?? 'JOD').toString(),
-      seatCount: (json['seatCount'] as num?)?.toInt() ?? 1,
+      seatCount: _asInt(json['seatCount']) ?? 1,
       matchedDriverId: json['matchedDriverId']?.toString(),
       distanceKm: double.tryParse(json['distanceKm']?.toString() ?? ''),
-      durationMinutes: (json['durationMinutes'] as num?)?.toInt(),
+      durationMinutes: _asInt(json['durationMinutes']),
       maxFare: double.tryParse(json['maxFare']?.toString() ?? ''),
-      searchRadiusKm: double.tryParse(json['searchRadiusKm']?.toString() ?? ''),
-      maxSearchRadiusKm: double.tryParse(
-        json['maxSearchRadiusKm']?.toString() ?? '',
-      ),
       tripId: json['tripId']?.toString(),
       expiresAt: json['expiresAt'] != null
           ? DateTime.tryParse(json['expiresAt'].toString())
-          : null,
-      counterOffer: json['counterOffer'] is Map
-          ? InstantCounterOffer.fromJson(
-              Map<String, dynamic>.from(json['counterOffer'] as Map),
-            )
-          : null,
-      nudge: json['nudge'] is Map
-          ? InstantNudge.fromJson(
-              Map<String, dynamic>.from(json['nudge'] as Map),
-            )
           : null,
       match: json['match'] is Map
           ? InstantMatch.fromJson(
@@ -403,10 +282,6 @@ class InstantRequestSummary {
     this.passengerPhotoUrl,
   });
 
-  /// The fare the passenger is offering, as a number.
-  double? get passengerFareValue =>
-      double.tryParse(passengerFare ?? fareEstimate ?? '');
-
   factory InstantRequestSummary.fromJson(Map<String, dynamic> json) {
     final pickup = json['pickup'] is Map ? json['pickup'] as Map : const {};
     final dropoff = json['dropoff'] is Map ? json['dropoff'] as Map : const {};
@@ -422,7 +297,7 @@ class InstantRequestSummary {
       return text == null || text.isEmpty ? null : text;
     }
     final seats =
-        (json['seatCount'] as num?)?.toInt() ??
+        _asInt(json['seatCount']) ??
         int.tryParse(json['seatCount']?.toString() ?? '') ??
         1;
     return InstantRequestSummary(
@@ -434,8 +309,8 @@ class InstantRequestSummary {
           ?.toString(),
       currency: (json['currency'] ?? 'JOD').toString(),
       seatCount: seats,
-      pickupLat: (pickup['latitude'] as num?)?.toDouble(),
-      pickupLng: (pickup['longitude'] as num?)?.toDouble(),
+      pickupLat: _asDouble(pickup['latitude']),
+      pickupLng: _asDouble(pickup['longitude']),
       distanceKm: json['distanceKm']?.toString(),
       durationMinutes: json['durationMinutes']?.toString(),
       distanceLabel: json['distanceLabel']?.toString(),
@@ -460,17 +335,38 @@ class InstantRequestSummary {
 
 /// A pending offer presented to a driver.
 class InstantOffer {
+  /// Used when the server doesn't say how long the window was.
+  static const int defaultWindowSeconds = 40;
+
   final String id;
   final String requestId;
   final DateTime? expiresAt;
   final InstantRequestSummary? request;
+
+  /// When the offer closes, on this phone's clock — the server deadline
+  /// shifted by how far the phone's clock is off from the server's.
+  final DateTime? deadline;
+
+  /// The whole response window, so every countdown bar measures against the
+  /// same length instead of restarting from whatever was left.
+  final int windowSeconds;
 
   const InstantOffer({
     required this.id,
     required this.requestId,
     this.expiresAt,
     this.request,
-  });
+    DateTime? deadline,
+    this.windowSeconds = defaultWindowSeconds,
+  }) : deadline = deadline ?? expiresAt;
+
+  /// Whole seconds left to answer, from the one shared deadline.
+  int secondsLeft([DateTime? now]) {
+    final d = deadline;
+    if (d == null) return windowSeconds;
+    final ms = d.difference(now ?? DateTime.now()).inMilliseconds;
+    return ms <= 0 ? 0 : (ms / 1000).ceil();
+  }
 
   factory InstantOffer.fromJson(Map<String, dynamic> json) {
     final offer = json['offer'] is Map
@@ -479,12 +375,32 @@ class InstantOffer {
     final request = json['request'] is Map
         ? Map<String, dynamic>.from(json['request'] as Map)
         : null;
+    DateTime? parse(Object? v) =>
+        v == null ? null : DateTime.tryParse(v.toString());
+    final expiresAt = parse(offer['expiresAt']);
+    final offeredAt = parse(offer['offeredAt']);
+    final serverNow = parse(offer['serverNow']);
+
+    // Server clock minus ours: a phone running ahead would otherwise see the
+    // offer expire early. A one-second margin keeps the card from outliving
+    // the server's own timeout.
+    DateTime? deadline;
+    if (expiresAt != null) {
+      final skew = serverNow != null
+          ? serverNow.difference(DateTime.now())
+          : Duration.zero;
+      deadline = expiresAt.subtract(skew).subtract(const Duration(seconds: 1));
+    }
+    final window = expiresAt != null && offeredAt != null
+        ? expiresAt.difference(offeredAt).inSeconds
+        : 0;
+
     return InstantOffer(
       id: offer['id']?.toString() ?? '',
       requestId: offer['requestId']?.toString() ?? '',
-      expiresAt: offer['expiresAt'] != null
-          ? DateTime.tryParse(offer['expiresAt'].toString())
-          : null,
+      expiresAt: expiresAt,
+      deadline: deadline,
+      windowSeconds: window > 0 ? window : defaultWindowSeconds,
       request: request != null ? InstantRequestSummary.fromJson(request) : null,
     );
   }
@@ -504,8 +420,39 @@ class InstantNearbyDriverPin {
 
   factory InstantNearbyDriverPin.fromJson(Map<String, dynamic> json) {
     return InstantNearbyDriverPin(
-      latitude: (json['latitude'] as num?)?.toDouble() ?? 0,
-      longitude: (json['longitude'] as num?)?.toDouble() ?? 0,
+      latitude: _asDouble(json['latitude']) ?? 0,
+      longitude: _asDouble(json['longitude']) ?? 0,
     );
   }
 }
+
+/// A matched instant ride the user is part of, from `GET /instant-rides/active`.
+class ActiveInstantRide {
+  final String tripId;
+  final bool isDriver;
+  final String? requestId;
+
+  const ActiveInstantRide({
+    required this.tripId,
+    required this.isDriver,
+    this.requestId,
+  });
+
+  static ActiveInstantRide? fromJson(Map<String, dynamic> json) {
+    final tripId = json['tripId']?.toString() ?? '';
+    if (tripId.isEmpty) return null;
+    return ActiveInstantRide(
+      tripId: tripId,
+      isDriver: json['role'] == 'driver',
+      requestId: json['requestId']?.toString(),
+    );
+  }
+}
+
+/// The API sends some numbers as strings (Postgres `decimal` columns such as
+/// ratings arrive as "4.50"), so numeric fields accept either shape.
+double? _asDouble(dynamic v) =>
+    v is num ? v.toDouble() : double.tryParse(v?.toString() ?? '');
+
+int? _asInt(dynamic v) =>
+    v is num ? v.toInt() : int.tryParse(v?.toString() ?? '');

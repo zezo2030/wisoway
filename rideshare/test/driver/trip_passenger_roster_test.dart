@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rideshare/l10n/generated/app_localizations.dart';
 import 'package:rideshare/models/booking_model.dart';
+import 'package:rideshare/models/location_model.dart';
+import 'package:rideshare/models/seat_layout_config.dart';
+import 'package:rideshare/models/trip_model.dart';
 import 'package:rideshare/models/user_model.dart';
 import 'package:rideshare/screens/driver/widgets/trip_passenger_seat_row.dart';
 
@@ -65,6 +68,39 @@ void main() {
     // Both seats stay attached to the booker for contact purposes.
     expect(entries.every((e) => e.userId == 'u-1'), isTrue);
     expect(entries.every((e) => e.phoneNumber == '0790000000'), isTrue);
+  });
+
+  test('with the trip, seat ids read as the seat-map numbers', () {
+    // 1 front + 3 back: "0-0" is seat 1, "1-0" is seat 2.
+    final trip = TripModel(
+      id: 't-1',
+      driverId: 'd-1',
+      from: LocationModel(name: 'A', latitude: 0, longitude: 0),
+      to: LocationModel(name: 'B', latitude: 0, longitude: 0),
+      departureTime: now,
+      price: 5,
+      currency: 'JOD',
+      totalSeats: 4,
+      availableSeats: 2,
+      seatLayout: SeatLayoutConfig(
+        rows: 2,
+        seatsPerRow: 3,
+        seatsPerRowList: const [1, 3],
+      ),
+      seats: const [],
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    final entries = passengerSeatEntries(
+      [
+        bookingWith([seat('0-0', 'ayat'), seat('1-0', 'محمد')]),
+      ],
+      fallbackName: 'راكب',
+      trip: trip,
+    );
+
+    expect(entries.map((e) => e.seatNumber), ['1', '2']);
   });
 
   test('a seat with no display name falls back to the booker', () {

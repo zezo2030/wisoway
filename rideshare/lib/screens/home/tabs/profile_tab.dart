@@ -9,6 +9,7 @@ import '../../../core/services/theme_service.dart';
 import '../../../core/services/localization_service.dart';
 import '../../../core/theme/colors.dart';
 import '../../../models/user_model.dart';
+import '../widgets/home_tab_scope.dart';
 import '../../../models/wallet_account_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../widgets/notification_icon_button.dart';
@@ -228,6 +229,10 @@ class _ProfileTabState extends State<ProfileTab> {
                             !user!.isDriverApproved)
                           _buildDriverReviewBanner(context),
                         _buildWalletCard(context),
+                        if (user != null && user!.isPassenger) ...[
+                          const SizedBox(height: 14),
+                          _buildJoinAsDriverCard(context),
+                        ],
                         const SizedBox(height: 20),
                         _buildSection(
                           context,
@@ -412,6 +417,12 @@ class _ProfileTabState extends State<ProfileTab> {
         height: 48,
         child: Stack(
           children: [
+            PositionedDirectional(
+              start: 0,
+              top: 0,
+              bottom: 0,
+              child: BackToHomeButton(color: T.onSurface(context)),
+            ),
             Center(
               child: Text(
                 context.l10n.profileTitle,
@@ -684,6 +695,76 @@ class _ProfileTabState extends State<ProfileTab> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// "انضم كسائق 🚗": opens the driver details steps in become-driver mode,
+  /// which turns this passenger account into a driver pending approval.
+  Widget _buildJoinAsDriverCard(BuildContext context) {
+    final accent = T.secondary(context);
+    return Material(
+      color: accent.withValues(alpha: 0.08),
+      borderRadius: AppRadius.radiusLg,
+      child: InkWell(
+        key: const ValueKey('join-as-driver'),
+        borderRadius: AppRadius.radiusLg,
+        onTap: () => Navigator.pushNamed(
+          context,
+          RouteNames.driverCompleteProfile,
+          arguments: {'becomeDriver': true},
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: AppRadius.radiusLg,
+            border: Border.all(color: accent.withValues(alpha: 0.25)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(IconsaxPlusBold.car, color: accent, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.l10n.joinAsDriver,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: T.onSurface(context),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      context.l10n.joinAsDriverSubtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: T.onSurfaceVariant(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Directionality.of(context) == TextDirection.rtl
+                    ? Icons.chevron_left_rounded
+                    : Icons.chevron_right_rounded,
+                color: accent,
+              ),
+            ],
+          ),
         ),
       ),
     );

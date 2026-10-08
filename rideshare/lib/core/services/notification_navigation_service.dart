@@ -3,8 +3,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../constants/route_names.dart';
-import 'instant_counter_offer_actions.dart';
 import 'instant_offer_actions.dart';
+import 'active_ride_navigator.dart';
+import 'booking_request_actions.dart';
+import '../../widgets/booking_request_dialog.dart';
 
 /// Service to handle navigation when user taps on notifications
 class NotificationNavigationService {
@@ -27,8 +29,26 @@ class NotificationNavigationService {
 
     switch (type) {
       case 'booking_created':
+        // A request waiting on the driver: open that trip's page, with the
+        // answer card on top of it.
+        final tripId = (data['tripId'] ?? data['entityId'])?.toString();
+        if (tripId != null && tripId.isNotEmpty) {
+          _navigateToRoute(RouteNames.tripManagement, arguments: tripId);
+        }
+        // Accept / Reject pressed on the pinned notification: open that
+        // request's card with the choice already under way.
+        BookingRequestActions.showPending(
+          focusBookingId: data['bookingId']?.toString(),
+          initialAction: BookingRequestInitialAction.fromName(
+            data['bookingAction']?.toString(),
+          ),
+        );
+        break;
+
       case 'booking_confirmed':
       case 'booking_cancelled':
+      case 'booking_rejected':
+      case 'booking_expired':
         _handleBookingNotification(data);
         break;
 
@@ -68,13 +88,9 @@ class NotificationNavigationService {
         _handleInstantOfferNotification(data);
         break;
 
-      case 'instant_counter_offer':
-        _handleInstantCounterOfferNotification(data);
-        break;
-
       case 'instant_matched':
-      case 'instant_counter_accepted':
-        _handleTripNotification(data);
+        // Matched ride: the server knows which side this user is on.
+        ActiveRideNavigator.resume();
         break;
 
       case 'driver_approved':
@@ -87,14 +103,6 @@ class NotificationNavigationService {
         // Navigate to notifications screen for unknown types
         _navigateToRoute(RouteNames.notifications);
     }
-  }
-
-  /// A driver bid on the passenger's fare — put the decision in front of them
-  /// rather than dropping them on the notifications list.
-  static void _handleInstantCounterOfferNotification(
-    Map<String, dynamic> data,
-  ) {
-    InstantCounterOfferActions.handle(data);
   }
 
   static void _handleInstantOfferNotification(Map<String, dynamic> data) {

@@ -11,7 +11,7 @@ import '../l10n/l10n_extensions.dart';
 import '../models/instant_ride_models.dart';
 import '../screens/driver/instant_offer_details_screen.dart';
 import '../screens/driver/widgets/instant_offer_parts.dart';
-import '../screens/passenger/trip_details_screen.dart';
+import '../core/services/active_ride_navigator.dart';
 
 /// The card that interrupts a driver with an incoming instant-ride request.
 ///
@@ -30,6 +30,20 @@ class InstantOfferDialog extends StatefulWidget {
     required this.service,
   });
 
+  /// The offer a card is currently showing, whichever path opened it (push
+  /// tap or the driver home poll), so a late push for it isn't also posted to
+  /// the tray.
+  static String? visibleOfferId;
+
+  static _InstantOfferDialogState? _visible;
+
+  /// Closes the card for [offerId] if it is up — the offer died elsewhere
+  /// (the passenger cancelled, another driver took it).
+  static void dismissOffer(String offerId) {
+    final state = _visible;
+    if (state != null && state.widget.offer.id == offerId) state._closeDead();
+  }
+
   @override
   State<InstantOfferDialog> createState() => _InstantOfferDialogState();
 }
@@ -38,41 +52,95 @@ class _InstantOfferDialogState extends State<InstantOfferDialog> {
   late int _secondsLeft;
   late final int _totalSeconds;
   Timer? _ticker;
+  Timer? _liveness;
   bool _busy = false;
+
+  /// Set once the card is on its way out, so a late tick or a details screen
+  /// returning can't pop whatever route is underneath it.
+  bool _closed = false;
 
   InstantRequestSummary? get _req => widget.offer.request;
 
   @override
   void initState() {
     super.initState();
-    final expiresAt = widget.offer.expiresAt;
-    final remaining = expiresAt != null
-        ? expiresAt.difference(DateTime.now()).inSeconds
-        : 25;
-    _secondsLeft = remaining.clamp(1, 120);
-    _totalSeconds = _secondsLeft;
+    // One deadline shared with the details screen; the bar measures against
+    // the whole window, so it never jumps back to full.
+    _secondsLeft = widget.offer.secondsLeft();
+    _totalSeconds = widget.offer.windowSeconds;
+    InstantOfferDialog.visibleOfferId = widget.offer.id;
+    InstantOfferDialog._visible = this;
     PushNotificationService.cancelAndroidInstantOfferNotification(
       widget.offer.id,
     );
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() => _secondsLeft -= 1);
-      if (_secondsLeft <= 0) {
-        _ticker?.cancel();
-        Navigator.of(context).maybePop();
-      }
-    });
+    // Ring until the driver decides or the window closes.
+    PushNotificationService.startInstantOfferRing(
+      widget.offer.id,
+      widget.offer.deadline ??
+          DateTime.now().add(Duration(seconds: _secondsLeft)),
+    );
+    _startTicker(tickNow: false);
+    // The cancel push can be lost or late; the server is the source of truth
+    // for whether this offer is still waiting on this driver.
+    _liveness = Timer.periodic(
+      const Duration(seconds: 3),
+      (_) => _checkStillPending(),
+    );
   }
 
   @override
   void dispose() {
     _ticker?.cancel();
+    _liveness?.cancel();
+    if (InstantOfferDialog.visibleOfferId == widget.offer.id) {
+      InstantOfferDialog.visibleOfferId = null;
+    }
+    if (InstantOfferDialog._visible == this) InstantOfferDialog._visible = null;
+    PushNotificationService.stopInstantOfferRing(widget.offer.id);
+    // The FCM push often lands after the in-app poll has already opened this
+    // card, so the cancel in initState misses it. Clear it again on the way
+    // out — accepted, declined or expired, the tray entry is stale.
+    PushNotificationService.cancelAndroidInstantOfferNotification(
+      widget.offer.id,
+    );
     super.dispose();
+  }
+
+  Future<void> _checkStillPending() async {
+    if (_busy || _closed) return;
+    try {
+      final pending = await widget.service.getPendingOffer();
+      if (!mounted || _busy || _closed) return;
+      if (pending == null || pending.id != widget.offer.id) _closeDead();
+    } catch (_) {
+      // Offline for a moment — the countdown still bounds the card.
+    }
+  }
+
+  /// The offer is gone server-side: stop ringing and take the card down, along
+  /// with the details screen if the driver had it open.
+  void _closeDead() {
+    if (_closed || !mounted) return;
+    PushNotificationService.stopInstantOfferRing(widget.offer.id);
+    final route = ModalRoute.of(context);
+    final navigator = Navigator.of(context);
+    if (route != null && !route.isCurrent) {
+      navigator.popUntil((r) => r == route);
+    }
+    _close();
+  }
+
+  void _close() {
+    if (_closed || !mounted) return;
+    _closed = true;
+    _ticker?.cancel();
+    _liveness?.cancel();
+    Navigator.of(context).pop();
   }
 
   /// Hands the decision to the details screen. The countdown keeps running
   /// there, so pausing ours avoids two timers racing to dismiss the same offer.
-  Future<void> _openDetails({bool countering = false}) async {
+  Future<void> _openDetails() async {
     if (_busy) return;
     _ticker?.cancel();
     final outcome = await Navigator.of(context).push<InstantOfferOutcome>(
@@ -80,34 +148,34 @@ class _InstantOfferDialogState extends State<InstantOfferDialog> {
         builder: (_) => InstantOfferDetailsScreen(
           offer: widget.offer,
           service: widget.service,
-          startCountering: countering,
         ),
       ),
     );
-    if (!mounted) return;
+    if (!mounted || _closed) return;
     if (outcome != null) {
       // Decided (or expired) over there — this card has nothing left to ask.
-      Navigator.of(context).pop();
+      _close();
       return;
     }
-    // Backed out without deciding: resume where the countdown actually is.
-    final expiresAt = widget.offer.expiresAt;
-    final remaining = expiresAt != null
-        ? expiresAt.difference(DateTime.now()).inSeconds
-        : _secondsLeft;
-    setState(() => _secondsLeft = remaining);
-    if (remaining <= 0) {
-      Navigator.of(context).maybePop();
-      return;
-    }
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() => _secondsLeft -= 1);
+    // Backed out without deciding: pick the shared countdown back up.
+    _startTicker();
+  }
+
+  /// Re-reads the shared deadline each tick rather than decrementing, so the
+  /// count can't drift and agrees with the details screen to the second.
+  void _startTicker({bool tickNow = true}) {
+    _ticker?.cancel();
+    void tick() {
+      if (!mounted || _closed) return;
+      setState(() => _secondsLeft = widget.offer.secondsLeft());
       if (_secondsLeft <= 0) {
         _ticker?.cancel();
-        Navigator.of(context).maybePop();
+        _close();
       }
-    });
+    }
+
+    if (tickNow) tick();
+    _ticker = Timer.periodic(const Duration(milliseconds: 500), (_) => tick());
   }
 
   Future<void> _accept() async {
@@ -116,7 +184,9 @@ class _InstantOfferDialogState extends State<InstantOfferDialog> {
     try {
       final request = await widget.service.acceptOffer(widget.offer.id);
       _ticker?.cancel();
-      if (!mounted) return;
+      _liveness?.cancel();
+      if (!mounted || _closed) return;
+      _closed = true;
       final navigator = Navigator.of(context);
       final messenger = ScaffoldMessenger.of(context);
       final toast = context.l10n.instantRideAcceptedToast;
@@ -126,15 +196,23 @@ class _InstantOfferDialogState extends State<InstantOfferDialog> {
       );
       final tripId = request.tripId;
       if (tripId != null && tripId.isNotEmpty) {
-        navigator.push(
-          MaterialPageRoute(builder: (_) => TripDetailsScreen(tripId: tripId)),
-        );
+        ActiveRideNavigator.enterAsDriver(tripId);
+      } else {
+        await ActiveRideNavigator.resume();
       }
     } catch (e) {
-      if (!mounted) return;
-      setState(() => _busy = false);
-      ErrorSurface.showFailure(context, ApiClient.mapError(e));
-      Navigator.of(context).maybePop();
+      _ticker?.cancel();
+      _liveness?.cancel();
+      if (!mounted || _closed) return;
+      _closed = true;
+      final failure = ApiClient.mapError(e);
+      final rootContext = Navigator.of(context, rootNavigator: true).context;
+      // Close the card first; popping after the error surface would close the
+      // error instead and leave this card up.
+      Navigator.of(context).pop();
+      if (rootContext.mounted) ErrorSurface.showFailure(rootContext, failure);
+      // The accept may have gone through even though the reply failed.
+      await ActiveRideNavigator.resume();
     }
   }
 
@@ -146,8 +224,7 @@ class _InstantOfferDialogState extends State<InstantOfferDialog> {
     } catch (_) {
       // The offer may already be gone; dismissing is right either way.
     }
-    _ticker?.cancel();
-    if (mounted) Navigator.of(context).pop();
+    _close();
   }
 
   @override
@@ -158,7 +235,6 @@ class _InstantOfferDialogState extends State<InstantOfferDialog> {
     final earnings =
         req?.earningsLabel ??
         (fare != null ? '$fare ${req?.currency ?? ''}' : '—');
-    final canCounter = req?.passengerFareValue != null;
 
     return Dialog(
       backgroundColor: T.surface(context),
@@ -209,7 +285,7 @@ class _InstantOfferDialogState extends State<InstantOfferDialog> {
                 totalSeconds: _totalSeconds,
               ),
               const SizedBox(height: 14),
-              _actions(context, canCounter),
+              _actions(context),
             ],
           ),
         ),
@@ -313,79 +389,65 @@ class _InstantOfferDialogState extends State<InstantOfferDialog> {
     );
   }
 
-  Widget _actions(BuildContext context, bool canCounter) {
+  Widget _actions(BuildContext context) {
     final l10n = context.l10n;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Row(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: SizedBox(
-                height: 50,
-                child: OutlinedButton(
-                  onPressed: _busy ? null : _decline,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: T.onSurface(context),
-                    side: BorderSide(color: T.outlineVariant(context)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: Text(
-                    l10n.instantOfferIgnore,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
+        Expanded(
+          child: SizedBox(
+            height: 50,
+            child: OutlinedButton(
+              onPressed: _busy ? null : _decline,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: T.onSurface(context),
+                side: BorderSide(color: T.outlineVariant(context)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
                 ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              flex: 2,
-              child: SizedBox(
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _busy ? null : _accept,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: T.primary(context),
-                    foregroundColor: T.onPrimary(context),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: _busy
-                      ? SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              T.onPrimary(context),
-                            ),
-                          ),
-                        )
-                      : Text(
-                          l10n.instantOfferAcceptTrip,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 15,
-                          ),
-                        ),
-                ),
+              child: Text(
+                l10n.instantOfferIgnore,
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
-          ],
-        ),
-        if (canCounter) ...[
-          const SizedBox(height: 4),
-          TextButton.icon(
-            onPressed: _busy ? null : () => _openDetails(countering: true),
-            icon: const Icon(Icons.trending_up, size: 19),
-            label: Text(l10n.instantProposeFare),
-            style: TextButton.styleFrom(foregroundColor: T.primary(context)),
           ),
-        ],
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          flex: 2,
+          child: SizedBox(
+            height: 50,
+            child: ElevatedButton(
+              onPressed: _busy ? null : _accept,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: T.primary(context),
+                foregroundColor: T.onPrimary(context),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: _busy
+                  ? SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          T.onPrimary(context),
+                        ),
+                      ),
+                    )
+                  : Text(
+                      l10n.instantOfferAcceptTrip,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                      ),
+                    ),
+            ),
+          ),
+        ),
       ],
     );
   }

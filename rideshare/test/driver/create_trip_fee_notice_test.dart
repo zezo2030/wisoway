@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rideshare/l10n/generated/app_localizations.dart';
+import 'package:rideshare/models/seat_layout_config.dart';
 import 'package:rideshare/models/trip_fee_quote.dart';
 import 'package:rideshare/screens/driver/create_trip/create_trip_wizard_state.dart';
 import 'package:rideshare/screens/driver/create_trip/step3_review.dart';
@@ -12,6 +13,7 @@ void main() {
     final wizard = CreateTripWizardState();
     addTearDown(wizard.dispose);
     wizard.priceController.text = '4.0';
+    wizard.layout = SeatLayoutConfig(rows: 1, seatsPerRow: 4);
     wizard.availableSeatCount = 4;
 
     await tester.pumpWidget(

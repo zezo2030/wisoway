@@ -64,6 +64,11 @@ class _DriverCompleteProfileScreenState
   };
 
   bool _isEditMode = false;
+
+  /// A signed-in passenger joining as a driver ("انضم كسائق"): the account
+  /// exists already, so the phone/password step is skipped and submit turns
+  /// that account into a driver instead of creating one.
+  bool _isBecomeDriver = false;
   bool _isBootstrapping = true;
   bool _isSubmitting = false;
 
@@ -108,6 +113,16 @@ class _DriverCompleteProfileScreenState
     final user = authProvider.userModel;
 
     final requestedEdit = args?['editMode'] == true;
+    _isBecomeDriver =
+        args?['becomeDriver'] == true &&
+        user != null &&
+        user.role == AppConstants.rolePassenger;
+    if (_isBecomeDriver) {
+      // Their current profile photo counts; they can still pick a new one.
+      _state.existingPhotoUrl = user?.photoUrl;
+      if (mounted) setState(() => _isBootstrapping = false);
+      return;
+    }
     final pendingDriverAccount =
         user != null &&
         user.role == AppConstants.roleDriver &&
@@ -122,6 +137,7 @@ class _DriverCompleteProfileScreenState
         if (vehicle != null) {
           _state.plateController.text = vehicle.plateNumber;
           _state.modelController.text = vehicle.model;
+          _state.colorController.text = vehicle.color ?? '';
           _state.setVehicleType(
             vehicle.vehicleType,
             label:
@@ -262,6 +278,7 @@ class _DriverCompleteProfileScreenState
           vehicleType: _state.vehicleType,
           plateNumber: _state.plateController.text.trim(),
           model: _state.modelController.text.trim(),
+          color: _state.colorController.text.trim(),
           seats: int.tryParse(_state.seatsController.text.trim()),
           driverLicenseImage: _state.licenseImage,
           vehicleLicenseImage: _state.vehicleLicenseImage,
@@ -282,11 +299,35 @@ class _DriverCompleteProfileScreenState
         return;
       }
 
+      if (_isBecomeDriver) {
+        await authProvider.becomeDriver(
+          profileImage: _state.profileImage,
+          vehicleType: _state.vehicleType!,
+          plateNumber: _state.plateController.text.trim(),
+          model: _state.modelController.text.trim(),
+          color: _state.colorController.text.trim(),
+          seats: int.parse(_state.seatsController.text.trim()),
+          driverLicenseImage: _state.licenseImage!,
+          vehicleLicenseImage: _state.vehicleLicenseImage!,
+          insuranceImage: _state.insuranceImage!,
+          carImage: _state.carImage!,
+        );
+        if (!mounted) return;
+        _showSnackBar(context.l10n.driverProfileSubmitted, AppColors.success);
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          RouteNames.driverPendingApproval,
+          (route) => false,
+        );
+        return;
+      }
+
       await authProvider.registerDriver(
         profileImage: _state.profileImage!,
         vehicleType: _state.vehicleType!,
         plateNumber: _state.plateController.text.trim(),
         model: _state.modelController.text.trim(),
+        color: _state.colorController.text.trim(),
         seats: int.parse(_state.seatsController.text.trim()),
         driverLicenseImage: _state.licenseImage!,
         vehicleLicenseImage: _state.vehicleLicenseImage!,

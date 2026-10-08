@@ -35,10 +35,19 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
   List<int> _customRowConfigs = [1, 3];
   bool _preventGenderMixing = false;
 
+  /// Shown to instant-ride passengers so they can spot the car.
+  final TextEditingController _colorController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
     _loadVehicle();
+  }
+
+  @override
+  void dispose() {
+    _colorController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadVehicle() async {
@@ -55,6 +64,7 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
         _vehicle = vehicle;
         _vehicleTypes = vehicleTypes;
         _selectedVehicleType = vehicle?.vehicleType;
+        _colorController.text = vehicle?.color ?? '';
         if (vehicle?.seatLayout != null) {
           final layout = vehicle!.seatLayout!;
           _rows = layout.rows;
@@ -98,6 +108,7 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
       final updated = await _vehicleService.updateVehicle(
         vehicle.id,
         vehicleType: _selectedVehicleType,
+        color: _colorController.text.trim(),
         seats: _currentTemplate?.seats,
         seatLayout: layout,
       );
@@ -214,6 +225,21 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
           _summaryRow(context.l10n.vehicleModelLabel, vehicle.model),
           _buildVehicleTypeDropdown(),
           _summaryRow(context.l10n.vehiclePlateNumberLabel, vehicle.plateNumber),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: TextField(
+              controller: _colorController,
+              maxLength: 40,
+              textInputAction: TextInputAction.done,
+              decoration: InputDecoration(
+                labelText: context.l10n.vehicleColor,
+                prefixIcon: const Icon(Icons.palette_outlined),
+                counterText: '',
+                border: const OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+          ),
           _summaryRow(
             context.l10n.registeredSeatsCount,
             '${_currentTemplate?.seats ?? vehicle.seats}',

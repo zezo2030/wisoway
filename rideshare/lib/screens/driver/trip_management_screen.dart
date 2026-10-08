@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -33,6 +35,12 @@ import '../../core/api/websocket_service.dart';
 import '../../core/services/trip_service.dart';
 import '../../l10n/l10n_extensions.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' show LatLng;
+import 'widgets/driver_live_trip_view.dart';
+import '../../models/vehicle_art.dart';
+import '../../widgets/expandable_cabin_view.dart';
+import '../../core/services/active_ride_navigator.dart';
+import '../../utils/booking_seat_formatter.dart';
 
 class TripManagementScreen extends StatefulWidget {
   final String tripId;
@@ -79,6 +87,21 @@ class _TripManagementScreenState extends State<TripManagementScreen>
   bool _markingArrived = false;
   bool _liveTrackingActive = false;
 
+  /// Latest GPS fix from the tracking tick; drives the instant-ride map.
+  LatLng? _driverPosition;
+
+  /// The live-trip page rebuilds on every GPS tick, so its bookings are
+  /// fetched once rather than from `build`.
+  Future<List<BookingModel>>? _liveBookingsFuture;
+
+  /// Shared trips in progress: the driver opened the full management page
+  /// from the live page. Back returns to the live page.
+  bool _showFullDetails = false;
+
+  /// Live trips: notices the trip ending from elsewhere (a passenger
+  /// cancellation, an admin, auto-complete) so the live page lets go.
+  Timer? _liveStatusPoll;
+
   /// Fee preview for the pre-departure fare card. `percent` and `amount` both
   /// come from `GET /trips/fee-quote` — never a client-side literal.
   TripFeeQuote? _feeQuote;
@@ -107,6 +130,8 @@ class _TripManagementScreenState extends State<TripManagementScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _locationTrackingTimer?.cancel();
+    _liveStatusPoll?.cancel();
+    ActiveRideNavigator.left(widget.tripId);
     super.dispose();
   }
 
@@ -171,7 +196,12 @@ class _TripManagementScreenState extends State<TripManagementScreen>
         heading: position.heading >= 0 ? position.heading : null,
         accuracyMeters: position.accuracy,
       );
-      if (mounted && !_liveTrackingActive) {
+      if (mounted && _isLive(trip)) {
+        setState(() {
+          _driverPosition = LatLng(position.latitude, position.longitude);
+          _liveTrackingActive = true;
+        });
+      } else if (mounted && !_liveTrackingActive) {
         setState(() => _liveTrackingActive = true);
       }
     } catch (_) {
@@ -244,8 +274,17 @@ class _TripManagementScreenState extends State<TripManagementScreen>
         setState(() {
           _trip = trip;
           _isLoading = false;
+          if (trip != null && _isLive(trip)) {
+            _liveBookingsFuture = _bookingService.getTripBookings(trip.id);
+          }
         });
         _syncLiveTrackingState();
+        if (trip != null && _isLive(trip)) {
+          _liveStatusPoll ??= Timer.periodic(
+            const Duration(seconds: 15),
+            (_) => _checkInstantEnded(),
+          );
+        }
         _loadWallet();
         _loadFeeQuote();
       }
@@ -532,6 +571,22 @@ class _TripManagementScreenState extends State<TripManagementScreen>
 
   @override
   Widget build(BuildContext context) {
+    final trip = _trip;
+    if (!_isLoading && trip != null && _isLive(trip)) {
+      if (!_showFullDetails) return _buildLiveTrip(trip);
+      // The full page, opened from the live page: back returns there.
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) setState(() => _showFullDetails = false);
+        },
+        child: _buildManagement(context),
+      );
+    }
+    return _buildManagement(context);
+  }
+
+  Widget _buildManagement(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
         backgroundColor: T.background(context),
@@ -736,12 +791,132 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     );
   }
 
+  // ───────────────────────── Instant ride ─────────────────────────
+  // One passenger, cash fare, already in progress: a live map plus the few
+  // things the driver needs, none of the shared-trip management sections.
+
+  static bool _isLive(TripModel trip) => trip.status == 'in_progress';
+
+  Future<void> _checkInstantEnded() async {
+    if (!mounted || _markingArrived) return;
+    try {
+      final trip = await Provider.of<TripProvider>(
+        context,
+        listen: false,
+      ).getTrip(widget.tripId);
+      if (!mounted || trip == null || _markingArrived) return;
+      if (!trip.isCompleted && !trip.isCancelled) return;
+      _liveStatusPoll?.cancel();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            trip.isCancelled
+                ? context.l10n.statusCancelled
+                : context.l10n.statusCompleted,
+          ),
+        ),
+      );
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } catch (_) {
+      // Transient — the next tick retries.
+    }
+  }
+
+  Widget _buildLiveTrip(TripModel trip) {
+    // Locked until the ride ends: the driver leaves only through
+    // «تم الوصول للوجهة», which moves on to the trip summary.
+    return PopScope(
+      canPop: !trip.isInstant,
+      child: _buildLiveScaffold(trip),
+    );
+  }
+
+  Widget _buildLiveScaffold(TripModel trip) {
+    return Scaffold(
+      backgroundColor: T.background(context),
+      body: FutureBuilder<List<BookingModel>>(
+        future: _previewBookingsFuture ?? _liveBookingsFuture,
+        builder: (context, snapshot) {
+          final bookings = (snapshot.data ?? const <BookingModel>[])
+              .where((b) => b.isConfirmed)
+              .toList();
+
+          return DriverLiveTripView(
+            trip: trip,
+            bookings: bookings,
+            driverPosition: _driverPosition,
+            trackingActive: _liveTrackingActive,
+            markingArrived: _markingArrived,
+            onArrived: () => _onPressArrived(trip),
+            onEnableTracking: () async {
+              final ready = await _ensureTrackingReady();
+              if (!ready) {
+                await _showEnableLocationDialog();
+                return;
+              }
+              await _pushDriverLocationTick();
+            },
+            onChatPassenger: (booking) => Navigator.pushNamed(
+              context,
+              RouteNames.driverChat,
+              arguments: {
+                'tripId': widget.tripId,
+                'passengerId': booking.userId,
+                'passengerName':
+                    booking.userPopulated?.name ??
+                    context.l10n.passengerFallback,
+              },
+            ),
+            phoneOf: (booking) {
+              final phone = booking.userPopulated?.phoneNumber ?? '';
+              return booking.sharePhoneWithDriver && phone.isNotEmpty
+                  ? phone
+                  : null;
+            },
+            onCall: _launchCall,
+            onNavigate: _launchNavigation,
+            onGroupChat: trip.isInstant
+                ? null
+                : () => Navigator.pushNamed(
+                    context,
+                    RouteNames.groupChat,
+                    arguments: {'tripId': widget.tripId, 'trip': trip},
+                  ),
+            onBack: trip.isInstant
+                ? null
+                : () => Navigator.of(context).maybePop(),
+            onOpenDetails: trip.isInstant
+                ? null
+                : () => setState(() => _showFullDetails = true),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Hands turn-by-turn navigation to Google Maps (or the browser fallback).
+  Future<void> _launchNavigation(LatLng target) async {
+    final lat = target.latitude;
+    final lng = target.longitude;
+    final app = Uri.parse('google.navigation:q=$lat,$lng&mode=d');
+    if (await canLaunchUrl(app)) {
+      await launchUrl(app);
+      return;
+    }
+    await launchUrl(
+      Uri.parse(
+        'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving',
+      ),
+      mode: LaunchMode.externalApplication,
+    );
+  }
+
   // ───────────────────────── Pre-departure body ─────────────────────────
   // Sections 1–9 of the design mock, in the mock's order. Rendered only while
-  // `trip.tripStartedAt == null`; none of the post-departure builders
-  // (_buildWalletCard, _buildLiveTrackingCard, _buildArrivedCard,
-  // _buildStatisticsRow, _buildSeatLayoutCard, _buildCarImageCard,
-  // _buildQuickActionsCard) run in this branch.
+  // `trip.tripStartedAt == null`. Besides the seat map, which the driver
+  // needs to see where booked passengers sit, none of the post-departure
+  // builders (_buildWalletCard, _buildArrivedCard, _buildStatisticsRow,
+  // _buildCarImageCard, _buildQuickActionsCard) run in this branch.
 
   List<Widget> _buildPreDepartureBody(
     TripModel trip,
@@ -751,6 +926,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     final entries = passengerSeatEntries(
       confirmedBookings,
       fallbackName: context.l10n.passengerFallback,
+      trip: trip,
     );
 
     return [
@@ -767,9 +943,12 @@ class _TripManagementScreenState extends State<TripManagementScreen>
         toName: trip.to.name,
         footer: TripFactsStrip(
           departureTime: trip.departureTime,
-          // The mock's «مكان التجمع» has no dedicated column; `from.address`
-          // is the closest match and the strip falls back to the origin name.
-          meetingPoint: trip.from.address,
+          // The driver's own description of the meeting point; trips created
+          // before it existed fall back to the origin address, then its name.
+          meetingPoint:
+              trip.meetingPoint?.note ??
+              trip.meetingPoint?.address ??
+              trip.from.address,
           originName: trip.from.name,
           distanceKm: trip.distanceKm,
           // Numerator counts seats on *confirmed* bookings. `availableSeats`
@@ -817,6 +996,11 @@ class _TripManagementScreenState extends State<TripManagementScreen>
       // 5 — One row per seat (a 2-seat booking renders 2 rows)
       ...entries.map(_buildPassengerSeatRow),
       if (entries.isNotEmpty) const SizedBox(height: 12),
+
+      // Where everyone sits, on the vehicle itself — the same drawing the
+      // passenger booked on. Long-press still locks/opens a seat.
+      _buildSeatLayoutCard(trip),
+      const SizedBox(height: 16),
 
       // 6 — Fare breakdown
       TripFareBreakdownCard(
@@ -991,6 +1175,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
       seatNumber: entry.seatNumber,
       rating: entry.rating,
       photoUrl: entry.photoUrl,
+      isCompanion: entry.isCompanion,
       onChat: () => Navigator.pushNamed(
         context,
         RouteNames.driverChat,
@@ -1379,10 +1564,53 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     );
   }
 
+  /// One line per seat when a booking holds more than one — who sits where,
+  /// with companions marked, so the driver sees the whole party before
+  /// accepting.
+  List<Widget> _seatOccupantLines(BookingModel booking) {
+    if (booking.seats.length < 2) return const [];
+    final booker = booking.userPopulated?.name ?? context.l10n.passengerFallback;
+    return [
+      const SizedBox(height: 6),
+      for (final seat in booking.seats)
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Row(
+            children: [
+              Flexible(
+                child: Text(
+                  context.l10n.bookingSeatOccupant(
+                    BookingSeatFormatter.displaySeatNumber(
+                      seat.seatNumber,
+                      _trip,
+                    ),
+                    seat.displayName.trim().isNotEmpty
+                        ? seat.displayName
+                        : booker,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: T.onSurface(context),
+                  ),
+                ),
+              ),
+              if (!seat.isMainBooker) ...[
+                const SizedBox(width: 6),
+                _CompanionTag(),
+              ],
+            ],
+          ),
+        ),
+    ];
+  }
+
   Widget _buildPendingBookingItem(BookingModel booking) {
     final isConfirming = _confirmingBookingId == booking.id;
     final isRejecting = _rejectingBookingId == booking.id;
-    final seatText = booking.seatSummary.isNotEmpty ? booking.seatSummary : '-';
+    // Seat numbers as drawn on the seat map, not the API's `row-col` ids.
+    final summary = BookingSeatFormatter.summary(booking, _trip);
+    final seatText = summary.isNotEmpty ? summary : '-';
     final canOpenPassengerDetails = booking.userPopulated != null;
     final titleText = canOpenPassengerDetails
         ? (booking.userPopulated?.name ?? context.l10n.passengerFallback)
@@ -1465,6 +1693,9 @@ class _TripManagementScreenState extends State<TripManagementScreen>
                     ),
                   ],
                 ),
+                // Full card width: the header column is too narrow for a name
+                // plus the companion tag.
+                ..._seatOccupantLines(booking),
                 const SizedBox(height: 10),
                 Text(
                   subtitleText,
@@ -2129,6 +2360,26 @@ class _TripManagementScreenState extends State<TripManagementScreen>
   }
 
   Widget _buildSeatLayoutCard(TripModel trip) {
+    final art = vehicleArtFor(trip.vehicleType);
+    // Artwork with fewer slots than the trip sells cannot show every seat, so
+    // an unexpected layout falls back to the grid rather than hiding a seat.
+    final useArt =
+        art != null && art.seatCount >= SeatLayoutHelpers.layoutSeatCount(trip);
+    final legend = Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 16,
+      runSpacing: 8,
+      children: [
+        _buildLegendItem(AppColors.success, context.l10n.legendAvailable),
+        _buildLegendItem(T.secondary(context), context.l10n.legendLocked),
+        _buildLegendItem(T.primary(context), context.l10n.legendBookedMale),
+        _buildLegendItem(
+          T.accentPink(context),
+          context.l10n.legendBookedFemale,
+        ),
+      ],
+    );
+
     return SectionCard(
       title: context.l10n.seatLayoutCardTitle,
       icon: IconsaxPlusBold.profile_2user,
@@ -2141,8 +2392,8 @@ class _TripManagementScreenState extends State<TripManagementScreen>
           ),
         ),
         const SizedBox(height: 20),
-        // Seat Layout Visualization
         Container(
+          width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: AppColors.slate50,
@@ -2151,62 +2402,59 @@ class _TripManagementScreenState extends State<TripManagementScreen>
           ),
           child: Column(
             children: [
-              // Driver seat indicator
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 8,
-                  horizontal: 12,
-                ),
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: T.primaryContainer(context),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      IconsaxPlusBold.car,
-                      size: 16,
-                      color: T.primary(context),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      context.l10n.driverSeat,
-                      style: AppTextStyles.bodySmall.copyWith(
+              if (useArt)
+                // The seats drawn on the vehicle itself, as the passenger sees
+                // them when booking. Tap to open full-screen.
+                ExpandableCabinView(
+                  art: art,
+                  title: context.l10n.seatLayoutCardTitle,
+                  expandedBottomBarBuilder: (context, _) => Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: legend,
+                  ),
+                  // Reads `_trip`, not the build-time `trip`: the full-screen
+                  // view outlives this build and must show locks made in it.
+                  seatBuilder: (context, seatNumber, refresh) => _driverSeat(
+                    _trip ?? trip,
+                    seatNumber,
+                    onArtwork: true,
+                    afterChange: refresh,
+                  ),
+                )
+              else ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 12,
+                  ),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: T.primaryContainer(context),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        IconsaxPlusBold.car,
+                        size: 16,
                         color: T.primary(context),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      Text(
+                        context.l10n.driverSeat,
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: T.primary(context),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              // Seats grid (irregular rows use same order as API + passenger UI)
-              ..._driverSeatLayoutRows(trip),
+                // Fallback for vehicle types with no artwork.
+                ..._driverSeatLayoutRows(trip),
+              ],
               const SizedBox(height: 12),
-              // Legend
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 16,
-                runSpacing: 8,
-                children: [
-                  _buildLegendItem(
-                    AppColors.success,
-                    context.l10n.legendAvailable,
-                  ),
-                  _buildLegendItem(
-                    T.secondary(context),
-                    context.l10n.legendLocked,
-                  ),
-                  _buildLegendItem(
-                    T.primary(context),
-                    context.l10n.legendBookedMale,
-                  ),
-                  _buildLegendItem(
-                    T.accentPink(context),
-                    context.l10n.legendBookedFemale,
-                  ),
-                ],
-              ),
+              legend,
             ],
           ),
         ),
@@ -2224,88 +2472,140 @@ class _TripManagementScreenState extends State<TripManagementScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(seatsInRow, (_) {
             displayIndex++;
-            final seatNumber = displayIndex;
-            final backendId = SeatLayoutHelpers.displayIndexToBackendSeatId(
-              seatNumber,
-              trip.seatLayout,
-            );
-            final matches = trip.seats.where((s) => s.seatNumber == backendId);
-            final seatData = matches.isNotEmpty
-                ? matches.first
-                : SeatData.empty(backendId);
-            final isBooked = seatData.isBooked;
-            final isLocked = seatData.isLocked;
-            final isMale = seatData.gender == 'male';
-            final isFemale = seatData.gender == 'female';
-
-            Color seatColor;
-            Color borderColor;
-            Color iconColor;
-            IconData seatIcon;
-
-            if (isLocked) {
-              seatColor = T.secondary(context).withValues(alpha: 0.15);
-              borderColor = T.secondary(context).withValues(alpha: 0.5);
-              iconColor = T.secondary(context);
-              seatIcon = IconsaxPlusBold.lock;
-            } else if (!isBooked) {
-              seatColor = AppColors.successLight.withValues(alpha: 0.2);
-              borderColor = AppColors.successLight;
-              iconColor = AppColors.success;
-              seatIcon = IconsaxPlusLinear.profile_2user;
-            } else if (isMale) {
-              seatColor = T.primary(context).withValues(alpha: 0.1);
-              borderColor = T.primary(context).withValues(alpha: 0.4);
-              iconColor = T.primary(context);
-              seatIcon = IconsaxPlusBold.profile;
-            } else if (isFemale) {
-              seatColor = T.accentPink(context).withValues(alpha: 0.1);
-              borderColor = T.accentPink(context).withValues(alpha: 0.4);
-              iconColor = T.accentPink(context);
-              seatIcon = IconsaxPlusBold.profile;
-            } else {
-              seatColor = T.surfaceVariant(context);
-              borderColor = T.outlineVariant(context);
-              iconColor = T.textSecondary(context);
-              seatIcon = IconsaxPlusBold.profile;
-            }
-
-            return GestureDetector(
-              onLongPress: () => _onDriverSeatLongPress(
-                trip: trip,
-                seatData: seatData,
-                backendSeatId: backendId,
-                displaySeatNumber: seatNumber,
-              ),
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 4),
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: SizedBox(
                 width: 50,
                 height: 50,
-                decoration: BoxDecoration(
-                  color: seatColor,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: borderColor, width: 2),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(seatIcon, size: 20, color: iconColor),
-                    const SizedBox(height: 2),
-                    Text(
-                      '$seatNumber',
-                      style: AppTextStyles.overline.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: iconColor,
-                      ),
-                    ),
-                  ],
-                ),
+                child: _driverSeat(trip, displayIndex),
               ),
             );
           }),
         ),
       );
     }).toList();
+  }
+
+  /// One seat on the driver's map, coloured by its state; long-press locks or
+  /// opens it. On the artwork it is a badge centred on the drawn seat so the
+  /// seat stays visible, while the whole slot still answers the press.
+  Widget _driverSeat(
+    TripModel trip,
+    int seatNumber, {
+    bool onArtwork = false,
+    VoidCallback? afterChange,
+  }) {
+    // A seat the driver closed when publishing (or, on older trips, one past
+    // the seats sold) is not part of this trip: nothing to show or lock.
+    final seat = SeatLayoutHelpers.seatAt(trip, seatNumber);
+    if (seat == null || seat.isClosed) {
+      return onArtwork
+          ? const SizedBox.shrink()
+          : Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: T.outlineVariant(context)),
+              ),
+            );
+    }
+    final SeatData seatData = seat;
+    final backendId = seatData.seatNumber;
+    final isBooked = seatData.isBooked;
+    final isLocked = seatData.isLocked;
+    final isMale = seatData.gender == 'male';
+    final isFemale = seatData.gender == 'female';
+
+    Color seatColor;
+    Color borderColor;
+    Color iconColor;
+    IconData seatIcon;
+
+    if (isLocked) {
+      seatColor = T.secondary(context).withValues(alpha: 0.15);
+      borderColor = T.secondary(context).withValues(alpha: 0.5);
+      iconColor = T.secondary(context);
+      seatIcon = IconsaxPlusBold.lock;
+    } else if (!isBooked) {
+      seatColor = AppColors.successLight.withValues(alpha: 0.2);
+      borderColor = AppColors.successLight;
+      iconColor = AppColors.success;
+      seatIcon = IconsaxPlusLinear.profile_2user;
+    } else if (isMale) {
+      seatColor = T.primary(context).withValues(alpha: 0.1);
+      borderColor = T.primary(context).withValues(alpha: 0.4);
+      iconColor = T.primary(context);
+      seatIcon = IconsaxPlusBold.profile;
+    } else if (isFemale) {
+      seatColor = T.accentPink(context).withValues(alpha: 0.1);
+      borderColor = T.accentPink(context).withValues(alpha: 0.4);
+      iconColor = T.accentPink(context);
+      seatIcon = IconsaxPlusBold.profile;
+    } else {
+      seatColor = T.surfaceVariant(context);
+      borderColor = T.outlineVariant(context);
+      iconColor = T.textSecondary(context);
+      seatIcon = IconsaxPlusBold.profile;
+    }
+
+    Widget chip(double radius) => Container(
+      decoration: BoxDecoration(
+        // Over artwork the tint alone would vanish into the image.
+        color: onArtwork
+            ? Color.alphaBlend(seatColor, T.surface(context))
+            : seatColor,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: borderColor, width: 2),
+      ),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Padding(
+          padding: const EdgeInsets.all(3),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(seatIcon, size: 20, color: iconColor),
+              const SizedBox(height: 2),
+              Text(
+                '$seatNumber',
+                style: AppTextStyles.overline.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: iconColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onLongPress: () async {
+        await _onDriverSeatLongPress(
+          trip: trip,
+          seatData: seatData,
+          backendSeatId: backendId,
+          displaySeatNumber: seatNumber,
+        );
+        afterChange?.call();
+      },
+      child: onArtwork
+          ? LayoutBuilder(
+              builder: (context, constraints) {
+                final side =
+                    math.min(constraints.maxWidth, constraints.maxHeight) *
+                    0.62;
+                return Center(
+                  child: SizedBox(
+                    width: side,
+                    height: side,
+                    child: chip(side * 0.28),
+                  ),
+                );
+              },
+            )
+          : chip(12),
+    );
   }
 
   Widget _buildLegendItem(Color color, String label) {
@@ -2339,7 +2639,9 @@ class _TripManagementScreenState extends State<TripManagementScreen>
   }
 
   Widget _buildPassengerItem(BookingModel booking) {
-    final seatText = booking.seatSummary.isNotEmpty ? booking.seatSummary : '-';
+    // Seat numbers as drawn on the seat map, not the API's `row-col` ids.
+    final summary = BookingSeatFormatter.summary(booking, _trip);
+    final seatText = summary.isNotEmpty ? summary : '-';
 
     return InkWell(
       onTap: () => Navigator.pushNamed(
@@ -2582,6 +2884,27 @@ class _TripManagementScreenState extends State<TripManagementScreen>
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Marks a seat booked for someone travelling with the booker.
+class _CompanionTag extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: T.primaryContainer(context),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        context.l10n.bookingCompanionTag,
+        style: AppTextStyles.labelSmall.copyWith(
+          fontWeight: FontWeight.w700,
+          color: T.primary(context),
         ),
       ),
     );

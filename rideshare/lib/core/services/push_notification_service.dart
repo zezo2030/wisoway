@@ -1,20 +1,23 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ui' show Color;
+import 'dart:ui' show AppLifecycleState, Color;
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart' show WidgetsBinding;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/notification_model.dart';
-import 'instant_counter_offer_actions.dart';
+import '../../widgets/instant_offer_dialog.dart';
 import 'instant_offer_actions.dart';
 import 'notification_navigation_service.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
 import '../constants/app_constants.dart';
+import 'active_ride_navigator.dart';
+import 'booking_request_actions.dart';
 
 class PushNotificationService {
   PushNotificationService._();
@@ -68,6 +71,15 @@ class PushNotificationService {
         }
         return null;
       }
+      if (call.method == 'onNotificationTap') {
+        final args = call.arguments;
+        if (args is Map) {
+          NotificationNavigationService.handleNotificationData(
+            Map<String, dynamic>.from(args),
+          );
+        }
+        return null;
+      }
       return null;
     });
 
@@ -101,7 +113,25 @@ class PushNotificationService {
     // Cold-start Accept/Reject — delay until navigator exists.
     Future<void>.delayed(const Duration(milliseconds: 800), () {
       unawaited(_consumePendingInstantOfferAction());
+      unawaited(_consumePendingNotificationTap());
     });
+  }
+
+  /// Cold start from a tap on one of our own rich notifications.
+  static Future<void> _consumePendingNotificationTap() async {
+    if (defaultTargetPlatform != TargetPlatform.android || kIsWeb) return;
+    try {
+      final pending = await _bookingNotificationChannel.invokeMethod(
+        'getPendingNotificationTap',
+      );
+      if (pending is Map) {
+        NotificationNavigationService.handleNotificationData(
+          Map<String, dynamic>.from(pending),
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) print('Failed to consume pending notification tap: $e');
+    }
   }
 
   static Future<void> consumePendingInstantOfferAction() =>
@@ -131,6 +161,12 @@ class PushNotificationService {
     await _foregroundSubscription?.cancel();
     _foregroundSubscription = FirebaseMessaging.onMessage.listen((message) {
       showForegroundNotification(message);
+      // A matched ride takes over the screen on both phones, even when the
+      // app is open somewhere else.
+      final type = message.data['type']?.toString();
+      if (type == 'instant_matched') {
+        ActiveRideNavigator.resume();
+      }
     });
 
     await _messageOpenedSubscription?.cancel();
@@ -245,34 +281,59 @@ class PushNotificationService {
     final data = Map<String, dynamic>.from(message.data);
     final type = data['type']?.toString() ?? '';
 
-    if (type == NotificationType.bookingCreated && !kIsWeb) {
-      final shown = await _showAndroidBookingNotification(data);
-      if (shown) return;
-    }
-
-    if (type == NotificationType.instantCounterOffer) {
-      // A bid is a decision with a 30-second window: show the card itself, not
-      // a tray notification the passenger has to notice and then tap.
-      final offerId = data['offerId']?.toString();
-      if (offerId != null &&
-          InstantCounterOfferActions.isSheetOpen &&
-          InstantCounterOfferActions.openOfferId == offerId) {
+    if (type == NotificationType.bookingCreated) {
+      // The app is open: put the request card up rather than a tray
+      // notification the driver can swipe away unanswered. If the screen just
+      // locked, the card would go unseen — pin the notification instead.
+      final visible =
+          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+      if (!visible && defaultTargetPlatform == TargetPlatform.android) {
+        try {
+          await _bookingNotificationChannel.invokeMethod(
+            'showBookingNotification',
+            data.map((k, v) => MapEntry(k, v?.toString() ?? '')),
+          );
+        } catch (e) {
+          if (kDebugMode) print('Failed to show booking notification: $e');
+        }
         return;
       }
-      unawaited(InstantCounterOfferActions.handle(data));
+      unawaited(BookingRequestActions.showPending());
       return;
     }
 
     if (type == NotificationType.instantOffer && !kIsWeb) {
-      // Prefer in-app dialog when one is already visible for this offer.
-      final offerId = data['offerId']?.toString();
-      if (offerId != null &&
-          InstantOfferActions.isDialogOpen &&
-          InstantOfferActions.openDialogOfferId == offerId) {
+      // The app is open: put the ringing card up rather than a tray entry.
+      final offerId = data['offerId']?.toString() ?? '';
+      if (offerId.isEmpty) return;
+      if (InstantOfferDialog.visibleOfferId == offerId) return;
+      // "Foreground" to FCM can still mean the screen just locked; a card
+      // nobody sees would swallow the offer, so ring in the tray instead.
+      final visible =
+          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+      if (!visible && defaultTargetPlatform == TargetPlatform.android) {
+        try {
+          await _bookingNotificationChannel.invokeMethod(
+            'showInstantOfferNotification',
+            data.map((k, v) => MapEntry(k, v?.toString() ?? '')),
+          );
+        } catch (e) {
+          if (kDebugMode) print('Failed to show instant offer notification: $e');
+        }
         return;
       }
-      final shown = await _showAndroidInstantOfferNotification(data);
-      if (shown) return;
+      unawaited(InstantOfferActions.openOfferDialog(offerId: offerId, seed: data));
+      return;
+    }
+
+    if (type == NotificationType.instantOfferCancelled) {
+      // The passenger cancelled: take the card and the ringing down now
+      // instead of leaving the driver staring at a dead offer.
+      final offerId = data['offerId']?.toString() ?? '';
+      if (offerId.isNotEmpty) {
+        InstantOfferDialog.dismissOffer(offerId);
+        await cancelAndroidInstantOfferNotification(offerId);
+      }
     }
 
     final title = NotificationModel.localizedTitleFor(
@@ -326,66 +387,46 @@ class PushNotificationService {
     );
   }
 
-  static Future<bool> _showAndroidBookingNotification(
-    Map<String, dynamic> data,
+  /// Loops the new-ride chime while the in-app offer card is up. The native
+  /// side stops it by itself at [until], so a card that never reports back
+  /// can't leave the phone ringing.
+  static Future<void> startInstantOfferRing(
+    String offerId,
+    DateTime until,
   ) async {
-    if (defaultTargetPlatform != TargetPlatform.android) {
-      return false;
-    }
-
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
     try {
-      final payload = <String, String>{};
-      data.forEach((key, value) {
-        if (value != null) {
-          payload[key] = value.toString();
-        }
+      await _bookingNotificationChannel.invokeMethod('startInstantOfferRing', {
+        'offerId': offerId,
+        'untilMs': until.millisecondsSinceEpoch,
       });
-      payload.putIfAbsent(
-        'title',
-        () =>
-            NotificationModel.localizedTitleFor(
-              type: NotificationType.bookingCreated,
-              data: data,
-              isDriver: true,
-            ),
-      );
-      await _bookingNotificationChannel.invokeMethod(
-        'showBookingNotification',
-        payload,
-      );
-      return true;
     } catch (e) {
-      if (kDebugMode) {
-        print('Failed to show custom booking notification: $e');
-      }
-      return false;
+      if (kDebugMode) print('Failed to start instant offer ring: $e');
     }
   }
 
-  static Future<bool> _showAndroidInstantOfferNotification(
-    Map<String, dynamic> data,
-  ) async {
-    if (defaultTargetPlatform != TargetPlatform.android) {
-      return false;
-    }
-
+  /// Takes down the pinned booking-request notification once it is answered.
+  static Future<void> cancelBookingRequestNotification(String bookingId) async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+    if (bookingId.isEmpty) return;
     try {
-      final payload = <String, String>{};
-      data.forEach((key, value) {
-        if (value != null) {
-          payload[key] = value.toString();
-        }
-      });
       await _bookingNotificationChannel.invokeMethod(
-        'showInstantOfferNotification',
-        payload,
+        'cancelBookingNotification',
+        {'bookingId': bookingId},
       );
-      return true;
     } catch (e) {
-      if (kDebugMode) {
-        print('Failed to show custom instant offer notification: $e');
-      }
-      return false;
+      if (kDebugMode) print('Failed to cancel booking notification: $e');
+    }
+  }
+
+  static Future<void> stopInstantOfferRing(String offerId) async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+    try {
+      await _bookingNotificationChannel.invokeMethod('stopInstantOfferRing', {
+        'offerId': offerId,
+      });
+    } catch (e) {
+      if (kDebugMode) print('Failed to stop instant offer ring: $e');
     }
   }
 

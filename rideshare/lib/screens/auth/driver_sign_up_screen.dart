@@ -175,7 +175,7 @@ class _DriverSignUpScreenState extends State<DriverSignUpScreen>
                         const SizedBox(height: 22),
                         AuthTextField(
                           controller: _nameController,
-                          label: l10n.fullName,
+                          label: l10n.name,
                           helper: l10n.fullNameIdHint,
                           icon: IconsaxPlusLinear.user,
                           validator: (v) => (v == null || v.trim().length < 3)

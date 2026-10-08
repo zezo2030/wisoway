@@ -12,6 +12,9 @@ class MainActivity : FlutterActivity() {
     private var methodChannel: MethodChannel? = null
     private var pendingInstantOfferAction: Map<String, String>? = null
 
+    /** Payload of a tapped rich notification (e.g. a booking request). */
+    private var pendingNotificationTap: Map<String, String>? = null
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         methodChannel =
@@ -42,9 +45,37 @@ class MainActivity : FlutterActivity() {
                                 result.success(true)
                             }
                         }
+                        "cancelBookingNotification" -> {
+                            val bookingId = (call.arguments as? Map<*, *>)?.get("bookingId")?.toString()
+                            if (!bookingId.isNullOrBlank()) {
+                                BookingNotificationHelper.cancel(this, bookingId)
+                            }
+                            result.success(true)
+                        }
+                        "startInstantOfferRing" -> {
+                            val args = call.arguments as? Map<*, *>
+                            val offerId = args?.get("offerId")?.toString()
+                            val untilMs = (args?.get("untilMs") as? Number)?.toLong()
+                            if (offerId.isNullOrBlank() || untilMs == null) {
+                                result.error("bad_args", "offerId and untilMs required", null)
+                            } else {
+                                InstantOfferRinger.start(this, offerId, untilMs)
+                                result.success(true)
+                            }
+                        }
+                        "stopInstantOfferRing" -> {
+                            val offerId = (call.arguments as? Map<*, *>)?.get("offerId")?.toString()
+                            InstantOfferRinger.stop(offerId)
+                            result.success(true)
+                        }
                         "getPendingInstantOfferAction" -> {
                             val pending = pendingInstantOfferAction
                             pendingInstantOfferAction = null
+                            result.success(pending)
+                        }
+                        "getPendingNotificationTap" -> {
+                            val pending = pendingNotificationTap
+                            pendingNotificationTap = null
                             result.success(pending)
                         }
                         else -> result.notImplemented()
@@ -56,7 +87,9 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         BookingNotificationHelper.ensureChannel(this)
+        InstantOfferNotificationHelper.ensureChannel(this)
         captureInstantOfferIntent(intent)
+        captureNotificationTap(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -64,6 +97,40 @@ class MainActivity : FlutterActivity() {
         setIntent(intent)
         captureInstantOfferIntent(intent)
         flushPendingInstantOfferAction()
+        captureNotificationTap(intent)
+        flushPendingNotificationTap()
+    }
+
+    /**
+     * A tap on a rich notification we drew ourselves (booking requests) opens
+     * this activity with the push data attached. FlutterFire never sees those
+     * taps, so the payload is handed to Dart here to route like any other.
+     */
+    private fun captureNotificationTap(intent: Intent?) {
+        if (intent == null) return
+        // Instant-offer taps carry an action and are handled above.
+        if (intent.hasExtra(InstantOfferNotificationHelper.EXTRA_OFFER_ACTION)) return
+        val payloadJson = intent.getStringExtra("notification_payload") ?: return
+        val map = linkedMapOf<String, String>()
+        try {
+            val obj = JSONObject(payloadJson)
+            val keys = obj.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                map[key] = obj.optString(key)
+            }
+        } catch (_: Exception) {
+            return
+        }
+        pendingNotificationTap = map
+        intent.removeExtra("notification_payload")
+    }
+
+    private fun flushPendingNotificationTap() {
+        val pending = pendingNotificationTap ?: return
+        val channel = methodChannel ?: return
+        pendingNotificationTap = null
+        channel.invokeMethod("onNotificationTap", pending)
     }
 
     private fun captureInstantOfferIntent(intent: Intent?) {

@@ -86,7 +86,8 @@ class LocationService {
   static const String _arabicLocaleIdentifier = 'ar';
   final ApiClient _apiClient;
 
-  LocationService({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient();
+  LocationService({ApiClient? apiClient})
+    : _apiClient = apiClient ?? ApiClient();
 
   static final RegExp _plusCodeRegex = RegExp(
     r'^[23456789CFGHJMPQRVWX]{2,}\+[23456789CFGHJMPQRVWX]{2,}$',
@@ -182,6 +183,69 @@ class LocationService {
     }
   }
 
+  /// Resolve a selected map point to a city, never a street or coordinate.
+  /// Returns null when the geocoder has no usable city name.
+  Future<String?> getCityFromCoordinates({
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      final placemarks = await _getLocalizedPlacemarks(
+        latitude: latitude,
+        longitude: longitude,
+      );
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        for (final candidate in [
+          place.locality,
+          place.subAdministrativeArea,
+          place.administrativeArea,
+        ]) {
+          if (candidate != null && candidate.trim().isNotEmpty) {
+            return candidate.trim();
+          }
+        }
+      }
+    } catch (_) {
+      // The device geocoder needs Play Services; the backend is the fallback.
+    }
+    return _serverCity(latitude, longitude);
+  }
+
+  /// City name from the backend's reverse geocoder (OpenStreetMap), or null.
+  Future<String?> _serverCity(double latitude, double longitude) async {
+    try {
+      final response = await _apiClient.get(
+        ApiEndpoints.locationsReverse,
+        queryParameters: {
+          'lat': latitude,
+          'lng': longitude,
+          'lang': _languageCode,
+        },
+      );
+      final city = _unwrapResponse(response)['city']?.toString().trim();
+      return city == null || city.isEmpty ? null : city;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// ISO country code for constraining route suggestions to the search area.
+  Future<String?> getCountryCodeFromCoordinates({
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      final places = await placemarkFromCoordinates(latitude, longitude);
+      final code = places.isEmpty
+          ? null
+          : places.first.isoCountryCode?.trim().toUpperCase();
+      return code != null && RegExp(r'^[A-Z]{2}$').hasMatch(code) ? code : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   // Text → coordinates deliberately has no on-device path. All place search
   // goes through `autocomplete` + `placeDetail`, so a name can only ever
   // resolve one way and the list and the resolved point cannot disagree.
@@ -207,6 +271,7 @@ class LocationService {
     String? sessionToken,
     double? latitude,
     double? longitude,
+    String? country,
     CancelToken? cancelToken,
   }) async {
     // The backend ignores a lone coordinate, so only send a complete pair.
@@ -221,6 +286,7 @@ class LocationService {
           'sessionToken': sessionToken,
         if (hasContext) 'lat': latitude,
         if (hasContext) 'lng': longitude,
+        if (country != null) 'country': country,
       },
     );
 

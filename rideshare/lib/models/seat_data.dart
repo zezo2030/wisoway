@@ -4,7 +4,7 @@ class SeatData {
   final String? userName;
   final String? gender; // 'male' or 'female'
   final DateTime? bookedAt;
-  final String status; // 'available', 'booked', 'locked'
+  final String status; // 'available', 'booked', 'locked', 'closed'
 
   SeatData({
     required this.seatNumber,
@@ -23,6 +23,9 @@ class SeatData {
 
   // Check if seat is available
   bool get isAvailable => status == 'available';
+
+  /// Taken out of the trip by the driver when publishing: never bookable.
+  bool get isClosed => status == 'closed';
 
   // Convert to Map
   Map<String, dynamic> toJson() {

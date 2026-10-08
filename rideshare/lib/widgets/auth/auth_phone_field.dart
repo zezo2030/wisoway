@@ -63,65 +63,77 @@ class AuthPhoneField extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              CountryCodePicker(
-                selectedCountry: country,
-                onCountryChanged: onCountryChanged,
-                borderColor: T.outline(context),
-                width: 116,
-              ),
-              const SizedBox(width: 8),
+              // A phone number reads left to right in every language, dial
+              // code first: under RTL the code would otherwise sit on the
+              // right, after the number.
               Expanded(
-                child: Semantics(
-                  label: context.l10n.phoneNumber,
-                  textField: true,
-                  // The hint is laid out by InputDecorator using the ambient
-                  // direction, so under RTL "07 XXX XXXX" renders reversed.
-                  child: Directionality(
-                    textDirection: TextDirection.ltr,
-                    child: TextFormField(
-                      controller: controller,
-                      keyboardType: TextInputType.phone,
-                      textDirection: TextDirection.ltr,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: T.onSurface(context),
-                        letterSpacing: 1,
+                child: Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Row(
+                    children: [
+                      CountryCodePicker(
+                        selectedCountry: country,
+                        onCountryChanged: onCountryChanged,
+                        borderColor: T.outline(context),
+                        width: 116,
                       ),
-                      decoration: InputDecoration(
-                        hintText: hint,
-                        hintStyle: TextStyle(
-                          fontSize: 14,
-                          letterSpacing: 1,
-                          color: T
-                              .onSurfaceVariant(context)
-                              .withValues(alpha: 0.5),
-                        ),
-                        isDense: true,
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        errorBorder: InputBorder.none,
-                        focusedErrorBorder: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 10,
-                        ),
-                        errorStyle: TextStyle(
-                          fontSize: 11,
-                          color: T.error(context),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Semantics(
+                          label: context.l10n.phoneNumber,
+                          textField: true,
+                          // The hint is laid out by InputDecorator using the ambient
+                          // direction, so under RTL "07 XXX XXXX" renders reversed.
+                          child: Directionality(
+                            textDirection: TextDirection.ltr,
+                            child: TextFormField(
+                              controller: controller,
+                              keyboardType: TextInputType.phone,
+                              textDirection: TextDirection.ltr,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: T.onSurface(context),
+                                letterSpacing: 1,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: hint,
+                                hintStyle: TextStyle(
+                                  fontSize: 14,
+                                  letterSpacing: 1,
+                                  color: T
+                                      .onSurfaceVariant(context)
+                                      .withValues(alpha: 0.5),
+                                ),
+                                isDense: true,
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                errorBorder: InputBorder.none,
+                                focusedErrorBorder: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                ),
+                                errorStyle: TextStyle(
+                                  fontSize: 11,
+                                  color: T.error(context),
+                                ),
+                              ),
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) {
+                                  return context.l10n.phoneNumberRequired;
+                                }
+                                final digits = v.replaceAll(RegExp(r'\s+'), '');
+                                if (!RegExp(r'^0?\d{7,15}$').hasMatch(digits)) {
+                                  return context.l10n.invalidPhoneNumber;
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
                         ),
                       ),
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return context.l10n.phoneNumberRequired;
-                        }
-                        final digits = v.replaceAll(RegExp(r'\s+'), '');
-                        if (!RegExp(r'^0?\d{7,15}$').hasMatch(digits)) {
-                          return context.l10n.invalidPhoneNumber;
-                        }
-                        return null;
-                      },
-                    ),
+                    ],
                   ),
                 ),
               ),

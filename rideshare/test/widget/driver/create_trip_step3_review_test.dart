@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rideshare/core/theme/app_theme.dart';
 import 'package:rideshare/l10n/generated/app_localizations.dart';
 import 'package:rideshare/models/location_model.dart';
+import 'package:rideshare/models/seat_layout_config.dart';
 import 'package:rideshare/models/vehicle_model.dart';
 import 'package:rideshare/screens/driver/create_trip/create_trip_wizard_state.dart';
 import 'package:rideshare/screens/driver/create_trip/step3_review.dart';
@@ -42,6 +43,7 @@ void main() {
         longitude: 39.6,
       )
       ..departureTime = DateTime(2025, 5, 23, 19, 30)
+      ..layout = SeatLayoutConfig(rows: 1, seatsPerRow: 4)
       ..availableSeatCount = 4;
     wizard.priceController.text = '30';
   });

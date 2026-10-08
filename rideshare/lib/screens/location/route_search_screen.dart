@@ -89,7 +89,14 @@ class RouteSearchScreen extends StatefulWidget {
 }
 
 /// How the results area is currently occupied.
-enum _ListMode { defaults, results, empty, error, rateLimited }
+enum _ListMode {
+  defaults,
+  results,
+  empty,
+  error,
+  rateLimited,
+  locationUnavailable,
+}
 
 class _RouteSearchScreenState extends State<RouteSearchScreen> {
   static const Duration _debounce = Duration(milliseconds: 250);
@@ -128,6 +135,7 @@ class _RouteSearchScreenState extends State<RouteSearchScreen> {
   /// Device location, fetched once and reused to bias every search rather than
   /// asking the GPS again on each keystroke.
   LatLng? _deviceLocation;
+  final Map<String, Future<String?>> _countryLookups = {};
 
   /// Camera of the inline map preview, kept so the view can follow the device
   /// location when it arrives after the map was already created.
@@ -181,10 +189,12 @@ class _RouteSearchScreenState extends State<RouteSearchScreen> {
   String get _activeSession =>
       _active == RouteField.origin ? _originSession : _destinationSession;
 
-  /// Coordinates a search is measured against, so results come back nearest
-  /// first: the user's device location, as inDrive does. When the device
-  /// location is unavailable the chosen origin stands in for it.
+  /// Rank destination results around the selected origin; otherwise use the
+  /// device location, falling back to a previously chosen origin.
   LatLng? get _searchContext {
+    if (_active == RouteField.destination && _from != null) {
+      return LatLng(_from!.latitude, _from!.longitude);
+    }
     if (_deviceLocation != null) return _deviceLocation;
     if (_from != null) return LatLng(_from!.latitude, _from!.longitude);
     return widget.mapFallbackCenter;
@@ -202,8 +212,7 @@ class _RouteSearchScreenState extends State<RouteSearchScreen> {
 
   /// Read the device location in the background so every search is ranked
   /// nearest-first around the user. Asks for the permission once when it was
-  /// never decided; a declined permission is respected and the screen stays
-  /// usable, just without distance ordering.
+  /// never decided; a declined permission leaves map selection available.
   Future<void> _primeDeviceLocation() async {
     try {
       var permission = await _locationService.checkPermission();
@@ -219,13 +228,15 @@ class _RouteSearchScreenState extends State<RouteSearchScreen> {
       if (!mounted) return;
       final here = LatLng(position.latitude, position.longitude);
       setState(() => _deviceLocation = here);
+      final query = _activeController.text.trim();
+      if (query.length >= _minQueryLength) _search(query);
       // The preview was built before the fix arrived, so move it now. A lite
       // map redraws rather than animates, so this is a move, not an animation.
       await _previewController?.moveCamera(
         CameraUpdate.newLatLngZoom(here, _previewZoom),
       );
     } catch (_) {
-      // No location context; search still works, just without distances.
+      // The user can still select a point on the map.
     }
   }
 
@@ -264,11 +275,32 @@ class _RouteSearchScreenState extends State<RouteSearchScreen> {
     final context = _searchContext;
 
     try {
+      final key = context == null
+          ? null
+          : '${context.latitude},${context.longitude}';
+      final country = key == null
+          ? null
+          : await (_countryLookups[key] ??= _locationService
+                .getCountryCodeFromCoordinates(
+                  latitude: context!.latitude,
+                  longitude: context!.longitude,
+                ));
+      if (country == null && key != null) _countryLookups.remove(key);
+      if (!mounted || sequence != _sequence || field != _active) return;
+      if (country == null) {
+        setState(() {
+          _suggestions = const [];
+          _mode = _ListMode.locationUnavailable;
+          _isLoading = false;
+        });
+        return;
+      }
       final result = await _locationService.autocomplete(
         query: query,
         sessionToken: _activeSession,
         latitude: context?.latitude,
         longitude: context?.longitude,
+        country: country,
         cancelToken: cancelToken,
       );
 
@@ -347,10 +379,7 @@ class _RouteSearchScreenState extends State<RouteSearchScreen> {
         sessionToken: _activeSession,
       );
       if (!mounted) return;
-      await _commitSelection(
-        location,
-        secondaryText: suggestion.secondaryText,
-      );
+      await _commitSelection(location, secondaryText: suggestion.secondaryText);
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -545,9 +574,7 @@ class _RouteSearchScreenState extends State<RouteSearchScreen> {
     return Container(
       decoration: BoxDecoration(
         color: T.surface(context),
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(28),
-        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
         boxShadow: [
           BoxShadow(
             color: T.shadow(context).withValues(alpha: 0.10),
@@ -790,6 +817,13 @@ class _RouteSearchScreenState extends State<RouteSearchScreen> {
           message: context.l10n.routeSearchTooManyRequests,
           onRetry: _retrySearch,
         );
+      case _ListMode.locationUnavailable:
+        return _buildMessage(
+          context,
+          icon: Icons.location_off,
+          message: context.l10n.locationUnavailable,
+          onRetry: _retrySearch,
+        );
       case _ListMode.error:
         return _buildMessage(
           context,
@@ -982,8 +1016,7 @@ class _RouteSearchScreenState extends State<RouteSearchScreen> {
                     target: center,
                     zoom: _deviceLocation == null ? 11 : _previewZoom,
                   ),
-                  onMapCreated: (controller) =>
-                      _previewController = controller,
+                  onMapCreated: (controller) => _previewController = controller,
                   markers: markers,
                   myLocationEnabled: false,
                   myLocationButtonEnabled: false,

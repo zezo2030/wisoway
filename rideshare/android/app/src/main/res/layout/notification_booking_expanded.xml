@@ -42,7 +42,7 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <View
+        <TextView
             android:layout_width="0dp"
             android:layout_height="1dp"
             android:layout_weight="1" />
@@ -76,7 +76,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:text="تم حجز مقعد في رحلتك المشتركة"
+        android:text="طلب حجز جديد في رحلتك المشتركة"
         android:textColor="#FFFFFF"
         android:textSize="15sp"
         android:textStyle="bold" />
@@ -133,7 +133,7 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <View
+        <TextView
             android:layout_width="1dp"
             android:layout_height="48dp"
             android:layout_gravity="center_vertical"
@@ -176,7 +176,7 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <View
+        <TextView
             android:layout_width="1dp"
             android:layout_height="48dp"
             android:layout_gravity="center_vertical"
@@ -219,7 +219,7 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <View
+        <TextView
             android:layout_width="1dp"
             android:layout_height="48dp"
             android:layout_gravity="center_vertical"
@@ -256,7 +256,7 @@
         </LinearLayout>
     </LinearLayout>
 
-    <View
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginTop="12dp"
@@ -286,7 +286,7 @@
                 android:id="@+id/notif_footer_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="انضم راكب جديد إلى رحلتك المشتركة"
+                android:text="راكب يطلب الانضمام إلى رحلتك"
                 android:textColor="#7C6AF5"
                 android:textSize="12sp"
                 android:textStyle="bold" />
@@ -296,9 +296,53 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="سيتم إعلامك عند انضمام أي راكب آخر"
+                android:text="اقبل الطلب أو ارفضه قبل انتهاء المهلة"
                 android:textColor="#A1A1A1"
                 android:textSize="11sp" />
         </LinearLayout>
+    </LinearLayout>
+
+    <!-- Time left to answer; the system ticks it, so it stays live even when
+         the app's process is gone. -->
+    <Chronometer
+        android:id="@+id/notif_countdown"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:gravity="center"
+        android:textColor="#FBBF24"
+        android:textSize="13sp"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/notif_btn_accept"
+            android:layout_width="0dp"
+            android:layout_height="46dp"
+            android:layout_weight="1.25"
+            android:background="@drawable/bg_instant_accept"
+            android:gravity="center"
+            android:text="قبول"
+            android:textColor="#9BEFD4"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/notif_btn_reject"
+            android:layout_width="0dp"
+            android:layout_height="46dp"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_instant_reject"
+            android:gravity="center"
+            android:text="رفض"
+            android:textColor="#F87171"
+            android:textSize="16sp"
+            android:textStyle="bold" />
     </LinearLayout>
 </LinearLayout>

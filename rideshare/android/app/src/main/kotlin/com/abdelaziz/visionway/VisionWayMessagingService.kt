@@ -14,6 +14,16 @@ class VisionWayMessagingService : FlutterFirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         val data = message.data
         val type = data["type"]
+        // Foreground or not, a dead offer must stop ringing straight away.
+        if (type == "instant_offer_cancelled") {
+            InstantOfferNotificationHelper.cancelFromPush(applicationContext, data)
+        }
+        // Same for a booking request the passenger withdrew.
+        if (type == "booking_canceled_by_passenger") {
+            data["bookingId"]?.takeIf { it.isNotBlank() }?.let {
+                BookingNotificationHelper.cancel(applicationContext, it)
+            }
+        }
         if (!isAppInForeground()) {
             when (type) {
                 "booking_created" ->

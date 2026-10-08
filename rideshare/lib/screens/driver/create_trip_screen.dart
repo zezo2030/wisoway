@@ -253,48 +253,38 @@ class _CreateTripScreenState extends State<CreateTripScreen>
   }
 
   Future<void> _selectDepartureDate() async {
-    final current = _wizard.departureTime;
+    final current = _wizard.departureDate;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: current ?? DateTime.now().add(const Duration(days: 1)),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDate: current ?? today.add(const Duration(days: 1)),
+      firstDate: today,
+      lastDate: today.add(const Duration(days: 365)),
       builder: _pickerTheme,
     );
     if (picked == null || !mounted) return;
 
-    final fallback = TimeOfDay.now();
+    // Only the day: the time stays whatever the driver chose, or empty.
     setState(() {
-      _wizard.departureTime = DateTime(
-        picked.year,
-        picked.month,
-        picked.day,
-        current?.hour ?? fallback.hour,
-        current?.minute ?? fallback.minute,
-      );
+      _wizard.departureDate = DateTime(picked.year, picked.month, picked.day);
     });
   }
 
   Future<void> _selectDepartureTimeOfDay() async {
-    final current = _wizard.departureTime;
+    final clock = _wizard.departureClock;
     final TimeOfDay? time = await showTimePicker(
       context: context,
-      initialTime: current != null
-          ? TimeOfDay.fromDateTime(current)
+      // The picker needs somewhere to start; nothing is set until confirmed.
+      initialTime: clock != null
+          ? TimeOfDay(hour: clock.hour, minute: clock.minute)
           : TimeOfDay.now(),
       builder: _pickerTheme,
     );
     if (time == null || !mounted) return;
 
-    final base = current ?? DateTime.now().add(const Duration(days: 1));
     setState(() {
-      _wizard.departureTime = DateTime(
-        base.year,
-        base.month,
-        base.day,
-        time.hour,
-        time.minute,
-      );
+      _wizard.departureClock = (hour: time.hour, minute: time.minute);
     });
   }
 
@@ -326,6 +316,10 @@ class _CreateTripScreenState extends State<CreateTripScreen>
         _wizard.to == null ||
         _wizard.departureTime == null) {
       _showError(context.l10n.completeLocationAndTimeData);
+      return;
+    }
+    if (!_wizard.hasMeetingPoint) {
+      _showError(context.l10n.meetingPointRequired);
       return;
     }
     if (_wizard.departureTime!.isBefore(DateTime.now())) {
@@ -380,8 +374,10 @@ class _CreateTripScreenState extends State<CreateTripScreen>
         currency: _currency,
         stops: _wizard.stops.isNotEmpty ? List.of(_wizard.stops) : null,
         notes: _wizard.notes.isNotEmpty ? _wizard.notes : null,
+        meetingPoint: _wizard.meetingPoint,
         recurrence: _wizard.buildRecurrencePayload(),
         availableSeats: _wizard.availableSeatCount,
+        closedSeatNumbers: _wizard.closedSeatIds,
         preventGenderMixing: _wizard.preventGenderMixing,
       );
 

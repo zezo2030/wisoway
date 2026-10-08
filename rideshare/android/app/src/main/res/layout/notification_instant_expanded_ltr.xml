@@ -49,7 +49,7 @@
             android:textColor="#8A98AA"
             android:textSize="11sp" />
 
-        <View
+        <TextView
             android:layout_width="0dp"
             android:layout_height="1dp"
             android:layout_weight="1" />
@@ -187,7 +187,7 @@
             </LinearLayout>
         </LinearLayout>
 
-        <View
+        <TextView
             android:layout_width="1dp"
             android:layout_height="match_parent"
             android:layout_marginStart="10dp"
@@ -284,7 +284,7 @@
             </LinearLayout>
         </LinearLayout>
 
-        <View
+        <TextView
             android:layout_width="1dp"
             android:layout_height="match_parent"
             android:layout_marginStart="10dp"

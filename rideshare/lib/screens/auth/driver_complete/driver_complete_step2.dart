@@ -96,6 +96,12 @@ class DriverCompleteStep2 extends StatelessWidget {
                 : null,
           ),
           const SizedBox(height: 14),
+          AuthTextField(
+            controller: state.colorController,
+            label: l10n.vehicleColor,
+            icon: IconsaxPlusLinear.colorfilter,
+          ),
+          const SizedBox(height: 14),
           _buildSeatsSummary(context),
           const SizedBox(height: 22),
           DocumentUploadBox(
