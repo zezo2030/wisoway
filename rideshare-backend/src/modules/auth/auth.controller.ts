@@ -26,6 +26,7 @@ import {
   RegisterDriverDto,
 } from './dto/register-driver.dto';
 import { UpdatePendingDriverRegistrationDto } from './dto/update-pending-driver-registration.dto';
+import { BecomeDriverDto } from './dto/become-driver.dto';
 import { SignInDto } from './dto/sign-in.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { VerifyResetOtpDto } from './dto/verify-reset-otp.dto';
@@ -101,6 +102,30 @@ export class AuthController {
   })
   async registerDriver(@Body() dto: RegisterDriverDto) {
     return this.authService.registerDriver(dto);
+  }
+
+  @Post('driver/become')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Turn the signed-in passenger account into a driver account pending approval ("انضم كسائق")',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Account is now a driver pending approval; vehicle created',
+  })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Not a passenger' })
+  @ApiResponse({
+    status: HttpStatus.CONFLICT,
+    description: 'BECOME_DRIVER_ACTIVE_RIDES — rides or bookings still open',
+  })
+  async becomeDriver(
+    @CurrentUser('id') userId: string,
+    @Body() dto: BecomeDriverDto,
+  ) {
+    return this.authService.becomeDriver(userId, dto);
   }
 
   @Patch('driver/registration')

@@ -38,7 +38,10 @@ describe('InstantRidesService', () => {
     users = { findById: jest.fn() };
     vehicles = { findById: jest.fn(), findByDriver: jest.fn() };
     locations = { getDistance: jest.fn(), reverseGeocode: jest.fn() };
-    notifications = { sendPush: jest.fn().mockResolvedValue(undefined) };
+    notifications = {
+      sendPush: jest.fn().mockResolvedValue(undefined),
+      emitRealtime: jest.fn(),
+    };
     dispatch = { dispatchNext: jest.fn().mockResolvedValue(undefined) };
     offerQueue = {
       add: jest.fn().mockResolvedValue(undefined),
@@ -69,10 +72,42 @@ describe('InstantRidesService', () => {
   };
 
   describe('createRequest', () => {
-    it('rejects when an active request already exists', async () => {
-      requestRepo.findOne.mockResolvedValue({ id: 'x', status: 'searching' });
+    it('rejects while the passenger is mid-ride', async () => {
+      requestRepo.findOne.mockResolvedValue({ id: 'x', status: 'accepted' });
       await expect(service.createRequest('p1', dto)).rejects.toThrow(
         ConflictException,
+      );
+    });
+
+    it('replaces a search the passenger walked away from', async () => {
+      requestRepo.findOne.mockResolvedValue({ id: 'old', status: 'offered' });
+      offerRepo.findOne.mockResolvedValue({
+        id: 'o1',
+        driverId: 'd1',
+        status: 'offered',
+      });
+      locations.getDistance.mockResolvedValue({
+        distanceKm: 5,
+        durationMinutes: 10,
+      });
+      locations.reverseGeocode.mockResolvedValue({ countryCode: 'JO' });
+
+      const view = await service.createRequest('p1', dto);
+
+      expect(view.status).toBe('searching');
+      // The stale search is cancelled and its driver told to stop ringing.
+      expect(requestRepo.update).toHaveBeenCalledWith(
+        { id: 'old' },
+        expect.objectContaining({ status: 'cancelled' }),
+      );
+      expect(offerRepo.update).toHaveBeenCalledWith(
+        { id: 'o1' },
+        expect.objectContaining({ status: 'cancelled' }),
+      );
+      expect(notifications.emitRealtime).toHaveBeenCalledWith(
+        'd1',
+        'instantOfferClosed',
+        expect.objectContaining({ offerId: 'o1' }),
       );
     });
 
@@ -88,9 +123,57 @@ describe('InstantRidesService', () => {
 
       expect(view.status).toBe('searching');
       expect(view.currency).toBe('JOD');
-      // 1 (base) + 5*0.5 (per km) + 10*0.1 (per min) = 4.50
-      expect(view.fareEstimate).toBe('4.50');
+      // JOD: 0.5 + 5*0.28 + 10*0.04 = 2.30, rounded up to the 0.25 step.
+      expect(view.fareEstimate).toBe('2.50');
+      expect(view.passengerFare).toBe('2.50');
+      expect(view.maxFare).toBe('2.50');
       expect(dispatch.dispatchNext).toHaveBeenCalledWith('r1');
+    });
+
+    it("prices in the pickup country's tariff", async () => {
+      requestRepo.findOne.mockResolvedValue(null);
+      locations.getDistance.mockResolvedValue({
+        distanceKm: 10,
+        durationMinutes: 15,
+      });
+      locations.reverseGeocode.mockResolvedValue({ countryCode: 'SA' });
+
+      const view = await service.createRequest('p1', dto);
+
+      expect(view.currency).toBe('SAR');
+      // SAR: 6 + 10*1.4 + 15*0.3 = 24.5, rounded up to whole riyals.
+      expect(view.fareEstimate).toBe('25.00');
+    });
+
+    it('ignores a fare typed by an older app — the platform sets it', async () => {
+      requestRepo.findOne.mockResolvedValue(null);
+      locations.getDistance.mockResolvedValue({
+        distanceKm: 5,
+        durationMinutes: 10,
+      });
+      locations.reverseGeocode.mockResolvedValue({ countryCode: 'JO' });
+
+      const view = await service.createRequest('p1', {
+        ...dto,
+        passengerFare: 1.75,
+      });
+
+      expect(view.passengerFare).toBe('2.50');
+    });
+
+    it('uses the routed road distance when Google distance is unavailable', async () => {
+      requestRepo.findOne.mockResolvedValue(null);
+      locations.getDistance.mockRejectedValue(new Error('REQUEST_DENIED'));
+      locations.getRoute = jest.fn().mockResolvedValue({
+        distanceMeters: 10_000,
+        durationSeconds: 900,
+      });
+      locations.reverseGeocode.mockResolvedValue({ countryCode: 'SA' });
+
+      const view = await service.createRequest('p1', dto);
+
+      expect(locations.getRoute).toHaveBeenCalled();
+      expect(view.fareEstimate).toBe('25.00');
     });
 
     it('falls back to haversine + default currency when geocoding is unavailable', async () => {
@@ -102,6 +185,67 @@ describe('InstantRidesService', () => {
 
       expect(view.currency).toBe('JOD');
       expect(Number(view.fareEstimate)).toBeGreaterThanOrEqual(1.5);
+    });
+  });
+
+  describe('getActiveRide', () => {
+    it('returns the in-progress instant trip the user is driving', async () => {
+      tripRepo.findOne = jest.fn().mockResolvedValue({ id: 't1' });
+      requestRepo.findOne.mockResolvedValue({ id: 'r1' });
+
+      await expect(service.getActiveRide('d1')).resolves.toEqual({
+        tripId: 't1',
+        role: 'driver',
+        requestId: 'r1',
+      });
+      expect(tripRepo.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            driverId: 'd1',
+            tripType: 'instant',
+            status: 'in_progress',
+          },
+        }),
+      );
+    });
+
+    it("returns the passenger's matched ride while its trip is live", async () => {
+      tripRepo.findOne = jest
+        .fn()
+        .mockResolvedValueOnce(null) // not driving anything
+        .mockResolvedValueOnce({ id: 't1', status: 'in_progress' });
+      requestRepo.findOne.mockResolvedValue({
+        id: 'r1',
+        status: 'accepted',
+        tripId: 't1',
+      });
+
+      await expect(service.getActiveRide('p1')).resolves.toEqual({
+        tripId: 't1',
+        role: 'passenger',
+        requestId: 'r1',
+      });
+    });
+
+    it('returns null once the ride has finished', async () => {
+      tripRepo.findOne = jest
+        .fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: 't1', status: 'completed' });
+      requestRepo.findOne.mockResolvedValue({
+        id: 'r1',
+        status: 'accepted',
+        tripId: 't1',
+      });
+
+      await expect(service.getActiveRide('p1')).resolves.toBeNull();
+    });
+
+    it('returns null while the passenger is still searching', async () => {
+      tripRepo.findOne = jest.fn().mockResolvedValue(null);
+      requestRepo.findOne.mockResolvedValue({ id: 'r1', status: 'searching' });
+
+      await expect(service.getActiveRide('p1')).resolves.toBeNull();
     });
   });
 
@@ -172,7 +316,7 @@ describe('InstantRidesService', () => {
     );
 
     it.each(['expired', 'no_drivers'])(
-      'starts a fresh search from a %s request, keeping route, seats and fare',
+      'starts a fresh search from a %s request, keeping route and seats',
       async (status) => {
         requestRepo.findOne
           .mockResolvedValueOnce({ ...expiredRequest, status }) // original
@@ -189,7 +333,8 @@ describe('InstantRidesService', () => {
         expect(view.status).toBe('searching');
         expect(view.retryOfRequestId).toBe('r0');
         expect(view.seatCount).toBe(2);
-        expect(view.passengerFare).toBe('4.50');
+        // Priced at the route's current fare (JOD 5 km / 10 min).
+        expect(view.passengerFare).toBe('2.50');
         expect(dispatch.dispatchNext).toHaveBeenCalledWith('r2');
         expect(requestQueue.add).toHaveBeenCalled();
       },
@@ -249,24 +394,20 @@ describe('InstantRidesService', () => {
       expect(manager.save).not.toHaveBeenCalled();
     });
 
-    it('asks for fare re-confirmation instead of re-pricing silently', async () => {
+    it('re-prices at the current fare instead of asking to reconfirm', async () => {
       requestRepo.findOne
         .mockResolvedValueOnce({ ...expiredRequest, passengerFare: '20.00' })
         .mockResolvedValueOnce(null);
       const manager = withManager();
+      manager.findOne
+        .mockResolvedValueOnce(expiredRequest)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null);
 
-      await expect(service.retryRequest('r0', 'p1')).rejects.toMatchObject({
-        response: {
-          code: 'INSTANT_RETRY_FARE_RECONFIRMATION_REQUIRED',
-          quote: expect.objectContaining({
-            recommendedFare: '4.50',
-            maxFare: '9.00',
-            currency: 'JOD',
-          }),
-        },
-      });
-      expect(manager.save).not.toHaveBeenCalled();
-      expect(dispatch.dispatchNext).not.toHaveBeenCalled();
+      const view = await service.retryRequest('r0', 'p1');
+
+      expect(view.passengerFare).toBe('2.50');
+      expect(dispatch.dispatchNext).toHaveBeenCalledWith('r2');
     });
   });
 

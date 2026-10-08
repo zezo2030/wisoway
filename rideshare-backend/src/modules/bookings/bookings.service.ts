@@ -942,6 +942,58 @@ export class BookingsService {
    * Charges the driver's wallet for the contact fee, marks the booking
    * confirmed, and cancels the pending timeout job.
    */
+  /**
+   * Booking requests still waiting on this driver, oldest first. The app shows
+   * them one at a time as a card the driver has to answer, so a request is
+   * never left to expire unseen.
+   */
+  async findPendingRequestsForDriver(driverId: string) {
+    const bookings = await this.bookingRepo
+      .createQueryBuilder('booking')
+      .innerJoinAndSelect('booking.trip', 'trip')
+      .leftJoinAndSelect('booking.user', 'user')
+      .leftJoinAndSelect('booking.seats', 'seats')
+      .where('trip.driverId = :driverId', { driverId })
+      .andWhere('booking.status = :status', { status: BookingStatus.PENDING })
+      .andWhere('(booking.expiresAt IS NULL OR booking.expiresAt > NOW())')
+      .orderBy('booking.createdAt', 'ASC')
+      .getMany();
+
+    return bookings.map((b) => ({
+      id: b.id,
+      tripId: b.tripId,
+      seatCount: b.seatCount,
+      totalAmount: b.totalAmount,
+      currency: b.trip.currency,
+      isFamilyBooking: b.isFamilyBooking,
+      expiresAt: b.expiresAt,
+      createdAt: b.createdAt,
+      passenger: {
+        id: b.userId,
+        name: b.user?.name ?? null,
+        photoUrl: b.user?.photoUrl ?? null,
+        gender: b.user?.gender ?? null,
+        rating: b.user?.rating != null ? Number(b.user.rating) : null,
+        totalRatings: b.user?.totalRatings ?? null,
+      },
+      // Who sits where; companions are the seats not held by the booker.
+      seats: (b.seats ?? []).map((seat) => ({
+        seatNumber: seat.seatNumber,
+        displayName: seat.displayName,
+        isMainBooker: seat.isMainBooker,
+      })),
+      trip: {
+        fromName: b.trip.fromName,
+        toName: b.trip.toName,
+        departureTime: b.trip.departureTime,
+        availableSeats: b.trip.availableSeats,
+        totalSeats: b.trip.totalSeats,
+        // Lets the app turn seat ids (row-col) into seat-map numbers.
+        seatLayout: b.trip.seatLayout,
+      },
+    }));
+  }
+
   async accept(bookingId: string, driverId: string): Promise<BookingEntity> {
     const booking = await this.bookingRepo.findOne({
       where: { id: bookingId },
@@ -1038,7 +1090,7 @@ export class BookingsService {
     }
 
     this.notificationsService
-      .notifyPassengerOfBookingDecision(bookingId, 'canceled')
+      .notifyPassengerOfBookingDecision(bookingId, 'rejected')
       .catch((err) =>
         this.logger.warn(
           `Failed to notify passenger of reject: ${(err as Error).message}`,

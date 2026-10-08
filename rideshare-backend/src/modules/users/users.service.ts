@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
@@ -80,10 +81,24 @@ export class UsersService {
     return this.userRepo.save(user);
   }
 
-  async updateRole(id: string, role: string): Promise<UserEntity> {
+  /**
+   * A user asking for their own role via PATCH /users/me/role. This used to
+   * write whatever was sent, so any account could make itself an admin, and a
+   * passenger could become a driver with no vehicle, documents or approval.
+   *
+   * Now it never grants anything: becoming a driver goes through
+   * POST /auth/driver/become, and admins are made by admins. Asking for
+   * "passenger" is answered with the account unchanged — older apps send it
+   * after profile setup, and it must not silently demote a driver either.
+   */
+  async requestOwnRole(id: string, role: string): Promise<UserEntity> {
     const user = await this.findById(id);
-    user.role = role as PgUserRole;
-    return this.userRepo.save(user);
+    if (role === user.role || role === PgUserRole.PASSENGER) return user;
+    throw new ForbiddenException(
+      role === PgUserRole.DRIVER
+        ? 'Use POST /auth/driver/become to register as a driver'
+        : 'Role cannot be changed',
+    );
   }
 
   async updateRefreshToken(id: string, refreshToken: string): Promise<void> {

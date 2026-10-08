@@ -20,6 +20,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomBytes } from 'crypto';
 
+function pointToLatLng(
+  point: { coordinates?: number[] } | null | undefined,
+): { lat: number; lng: number } | null {
+  const c = point?.coordinates;
+  if (!c || c.length < 2) return null;
+  return { lat: Number(c[1]), lng: Number(c[0]) };
+}
+
 @ApiTags('share-links')
 @Controller()
 export class ShareLinksController {
@@ -110,6 +118,11 @@ export class ShareLinksController {
       tripStatus: trip.status,
       fromName: trip.fromName,
       toName: trip.toName,
+      // Endpoints for the public map; the link holder is someone the rider
+      // chose to share the trip with.
+      from: pointToLatLng(trip.fromPoint),
+      to: pointToLatLng(trip.toPoint),
+      driverName: trip.driverName ?? null,
       departureTime: trip.departureTime,
       etaMinutes:
         trip.remainingDurationSeconds != null

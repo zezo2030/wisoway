@@ -5,7 +5,6 @@ import {
   Get,
   Headers,
   Param,
-  Patch,
   Post,
   Query,
   UseGuards,
@@ -30,7 +29,6 @@ import {
 import { NearbyDriversQueryDto } from './dto/nearby-drivers.dto';
 import { RespondOfferDto } from './dto/respond-offer.dto';
 import { normalizeOfferLocale } from './instant-offer-labels';
-import { UpdateFareDto } from './dto/update-fare.dto';
 
 @ApiTags('instant-rides')
 @Controller('instant-rides')
@@ -108,23 +106,21 @@ export class InstantRidesController {
     return this.instantRides.createRequest(passengerId, dto);
   }
 
+  @Get('active')
+  @ApiOperation({
+    summary:
+      'The instant ride the caller is currently in (driver or passenger)',
+  })
+  @ApiResponse({ status: 200, description: 'Active ride, or null' })
+  getActiveRide(@CurrentUser('id') userId: string) {
+    return this.instantRides.getActiveRide(userId);
+  }
+
   @Get('requests/:id')
   @ApiOperation({ summary: 'Poll an instant request status' })
   @ApiResponse({ status: 200, description: 'Request status returned' })
   getRequest(@Param('id') id: string, @CurrentUser('id') passengerId: string) {
     return this.instantRides.getRequest(id, passengerId);
-  }
-
-  @Patch('requests/:id/fare')
-  @ApiOperation({ summary: 'Passenger raises their fare while searching' })
-  @ApiResponse({ status: 200, description: 'Fare updated, dispatch restarted' })
-  @ApiResponse({ status: 409, description: 'Request is not searching' })
-  updateFare(
-    @Param('id') id: string,
-    @CurrentUser('id') passengerId: string,
-    @Body() dto: UpdateFareDto,
-  ) {
-    return this.instantRides.updateFare(id, passengerId, dto);
   }
 
   @Post('requests/:id/retry')
@@ -137,7 +133,7 @@ export class InstantRidesController {
   @ApiResponse({
     status: 409,
     description:
-      'INSTANT_REQUEST_NOT_RETRYABLE | INSTANT_ACTIVE_REQUEST_EXISTS | INSTANT_RETRY_FARE_RECONFIRMATION_REQUIRED',
+      'INSTANT_REQUEST_NOT_RETRYABLE | INSTANT_ACTIVE_REQUEST_EXISTS',
   })
   retryRequest(
     @Param('id') id: string,
@@ -192,7 +188,7 @@ export class InstantRidesController {
   @Post('offers/:id/respond')
   @Roles('driver')
   @ApiOperation({
-    summary: 'Driver accepts, counters with a higher fare, or declines',
+    summary: 'Driver accepts or declines (fares are fixed — no counter)',
   })
   @ApiResponse({ status: 201, description: 'Response recorded' })
   @ApiResponse({ status: 409, description: 'Offer no longer available' })
@@ -202,38 +198,5 @@ export class InstantRidesController {
     @Body() dto: RespondOfferDto,
   ) {
     return this.instantRides.respondOffer(id, driverId, dto);
-  }
-
-  // ── Passenger: respond to a driver counter-offer ────────────────────────────
-
-  @Post('requests/:rid/offers/:oid/accept')
-  @ApiOperation({ summary: "Passenger accepts a driver's counter-offer" })
-  @ApiResponse({ status: 201, description: 'Matched — trip created' })
-  @ApiResponse({ status: 409, description: 'Offer no longer available' })
-  acceptCounterOffer(
-    @Param('rid') requestId: string,
-    @Param('oid') offerId: string,
-    @CurrentUser('id') passengerId: string,
-  ) {
-    return this.instantRides.acceptCounterOffer(
-      requestId,
-      offerId,
-      passengerId,
-    );
-  }
-
-  @Post('requests/:rid/offers/:oid/decline')
-  @ApiOperation({ summary: "Passenger declines a driver's counter-offer" })
-  @ApiResponse({ status: 201, description: 'Counter-offer declined' })
-  declineCounterOffer(
-    @Param('rid') requestId: string,
-    @Param('oid') offerId: string,
-    @CurrentUser('id') passengerId: string,
-  ) {
-    return this.instantRides.declineCounterOffer(
-      requestId,
-      offerId,
-      passengerId,
-    );
   }
 }

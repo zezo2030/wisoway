@@ -1,4 +1,5 @@
 import { InstantDispatchService } from './instant-dispatch.service';
+import { INITIAL_RADIUS_KM, MAX_RADIUS_KM } from './instant-rides.constants';
 
 describe('InstantDispatchService.finalizeSearch', () => {
   let requestRepo: any;
@@ -31,6 +32,7 @@ describe('InstantDispatchService.finalizeSearch', () => {
     availabilityService = { findNearbyAvailableDrivers: jest.fn() };
     notifications = {
       sendPush: jest.fn().mockResolvedValue(undefined),
+      emitRealtime: jest.fn(),
       getPreferredLocale: jest.fn().mockResolvedValue('ar'),
     };
     offerQueue = { add: jest.fn(), getJob: jest.fn() };
@@ -144,6 +146,7 @@ describe('InstantDispatchService.dispatchNext radius growth', () => {
       availabilityService,
       {
         sendPush: jest.fn().mockResolvedValue(undefined),
+        emitRealtime: jest.fn(),
         getPreferredLocale: jest.fn().mockResolvedValue('ar'),
       } as any,
       { add: jest.fn().mockResolvedValue(undefined), getJob: jest.fn() } as any,
@@ -171,18 +174,24 @@ describe('InstantDispatchService.dispatchNext radius growth', () => {
 
     // Half the window elapsed -> half way between the initial and max reach.
     const km = searchedKm(availabilityService);
-    expect(km).toBeGreaterThan(3);
-    expect(km).toBeLessThan(25);
-    expect(km).toBeCloseTo(3 + (25 - 3) / 2, 0);
+    expect(km).toBeGreaterThan(INITIAL_RADIUS_KM);
+    expect(km).toBeLessThan(MAX_RADIUS_KM);
+    expect(km).toBeCloseTo(
+      INITIAL_RADIUS_KM + (MAX_RADIUS_KM - INITIAL_RADIUS_KM) / 2,
+      0,
+    );
   });
 
-  it('reaches the configured ceiling by the end of the window', async () => {
+  it('reaches the configured ceiling (20 km by default) by the end of the window', async () => {
     // Probed a second before expiry: at expiresAt itself the search finalises.
     const { service, availabilityService } = setup(TTL_MS - 1000);
 
     await service.dispatchNext('r1');
 
-    expect(searchedKm(availabilityService)).toBeGreaterThan(24.5);
+    expect(searchedKm(availabilityService)).toBeGreaterThan(
+      MAX_RADIUS_KM - 0.5,
+    );
+    expect(searchedKm(availabilityService)).toBeLessThanOrEqual(MAX_RADIUS_KM);
   });
 
   it('runs a single lookup per wave rather than one per ring', async () => {

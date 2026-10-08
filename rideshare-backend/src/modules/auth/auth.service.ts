@@ -12,10 +12,17 @@ import * as jwt from 'jsonwebtoken';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { MoreThan, Repository } from 'typeorm';
+import { In, MoreThan, Repository } from 'typeorm';
 import { UsersService } from '../users/users.service';
 import { UserEntity } from '../../database/entities/user.entity';
 import { VehicleEntity } from '../../database/entities/vehicle.entity';
+import {
+  BookingEntity,
+  BookingStatus,
+  InstantRequestStatus,
+  InstantRideRequestEntity,
+  TripStatus,
+} from '../../database/entities';
 import { UserDeviceStatus } from '../../database/entities/user-device.entity';
 import { PasswordResetSessionEntity } from '../../database/entities/password-reset-session.entity';
 import { PgUserRole } from '../../database/entities/shared.enums';
@@ -28,6 +35,7 @@ import {
   DRIVER_REGISTRATION_TOKEN_TTL_SECONDS,
 } from './dto/register-driver.dto';
 import { UpdatePendingDriverRegistrationDto } from './dto/update-pending-driver-registration.dto';
+import { BecomeDriverDto } from './dto/become-driver.dto';
 import { SignInDto } from './dto/sign-in.dto';
 import {
   countSeatsInLayout,
@@ -315,6 +323,7 @@ export class AuthService {
           vehicleType: dto.vehicleType,
           plateNumber: dto.plateNumber,
           model: dto.model,
+          color: dto.color?.trim() || null,
           seats,
           seatLayout,
           licenseImageUrl: dto.licenseImageUrl ?? null,
@@ -360,6 +369,117 @@ export class AuthService {
       accountState,
       deviceState: binding.deviceState,
       pendingPhoneLinkRequired: user.pendingPhoneLink ?? false,
+    };
+  }
+
+  /**
+   * "انضم كسائق": a signed-in passenger turns their own account into a driver
+   * account, keeping their phone, password, history and ratings. The account
+   * becomes a driver pending admin approval — exactly where a fresh driver
+   * registration lands — and the vehicle is created in the same transaction.
+   *
+   * Refused while the passenger still has a ride under way or waiting, since
+   * the app only shows a driver's screens once the role flips and those rides
+   * would become unreachable. No new tokens are needed: the role is read from
+   * the database on every request.
+   */
+  async becomeDriver(
+    userId: string,
+    dto: BecomeDriverDto,
+  ): Promise<{
+    user: ReturnType<AuthService['sanitizeUser']>;
+    accountState: ReturnType<AuthService['resolveAccountState']>;
+  }> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+    if (user.role !== PgUserRole.PASSENGER) {
+      throw new ForbiddenException(
+        'Only passenger accounts can become drivers',
+      );
+    }
+
+    const manager = this.userRepo.manager;
+    const activeBookings = await manager
+      .getRepository(BookingEntity)
+      .createQueryBuilder('booking')
+      .innerJoin('booking.trip', 'trip')
+      .where('booking.userId = :userId', { userId })
+      .andWhere('booking.status IN (:...statuses)', {
+        statuses: [
+          BookingStatus.PENDING,
+          BookingStatus.CONFIRMED,
+          BookingStatus.IN_PROGRESS,
+        ],
+      })
+      .andWhere('trip.status NOT IN (:...ended)', {
+        ended: [TripStatus.COMPLETED, TripStatus.CANCELLED],
+      })
+      .getCount();
+    const searching = await manager
+      .getRepository(InstantRideRequestEntity)
+      .count({
+        where: {
+          passengerId: userId,
+          status: In([
+            InstantRequestStatus.SEARCHING,
+            InstantRequestStatus.OFFERED,
+          ]),
+        },
+      });
+    if (activeBookings > 0 || searching > 0) {
+      throw new ConflictException({
+        statusCode: 409,
+        code: 'BECOME_DRIVER_ACTIVE_RIDES',
+        message: 'لديك رحلات أو حجوزات قائمة. أنهِها أو ألغِها ثم سجّل كسائق.',
+      });
+    }
+
+    const seatLayout = resolveVehicleTypeTemplate(
+      dto.vehicleType,
+      this.logger,
+    ).layout;
+    const seats = dto.seats ?? countSeatsInLayout(seatLayout);
+
+    const updated = await manager.transaction(async (em) => {
+      const vehicleRepo = em.getRepository(VehicleEntity);
+      if (await vehicleRepo.findOne({ where: { driverId: userId } })) {
+        throw new ConflictException('A vehicle is already registered');
+      }
+
+      user.role = PgUserRole.DRIVER;
+      user.isDriverApproved = false;
+      if (dto.name) user.name = dto.name;
+      if (dto.gender) user.gender = dto.gender;
+      if (dto.photoUrl) user.photoUrl = dto.photoUrl;
+      const savedUser = await em.getRepository(UserEntity).save(user);
+
+      await vehicleRepo.save(
+        vehicleRepo.create({
+          driverId: userId,
+          vehicleType: dto.vehicleType,
+          plateNumber: dto.plateNumber,
+          model: dto.model,
+          color: dto.color?.trim() || null,
+          seats,
+          seatLayout,
+          licenseImageUrl: dto.licenseImageUrl ?? null,
+          vehicleLicenseImageUrl: dto.vehicleLicenseImageUrl ?? null,
+          carImageUrl: dto.carImageUrl,
+          insuranceImageUrl: dto.insuranceImageUrl ?? null,
+        }),
+      );
+      return savedUser;
+    });
+
+    this.adminAlertsService.notifyDriverRegistration(updated).catch((err) => {
+      this.logger.error(
+        `Failed to dispatch driver-registration alert ${updated.id}: ${(err as Error).message}`,
+      );
+    });
+
+    return {
+      user: this.sanitizeUser(updated),
+      accountState: this.resolveAccountState(updated),
     };
   }
 
@@ -423,6 +543,7 @@ export class AuthService {
       }
       if (dto.plateNumber !== undefined) vehicle.plateNumber = dto.plateNumber;
       if (dto.model !== undefined) vehicle.model = dto.model;
+      if (dto.color !== undefined) vehicle.color = dto.color.trim() || null;
       if (dto.seats !== undefined) vehicle.seats = dto.seats;
       if (dto.licenseImageUrl !== undefined) {
         vehicle.licenseImageUrl = dto.licenseImageUrl;

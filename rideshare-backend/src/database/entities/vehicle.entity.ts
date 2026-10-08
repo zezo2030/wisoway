@@ -32,6 +32,10 @@ export class VehicleEntity {
   @Column({ type: 'varchar', length: 100 })
   model: string;
 
+  /** Free text ("أبيض", "Silver") so a passenger can spot the car; optional. */
+  @Column({ type: 'varchar', length: 40, nullable: true })
+  color: string | null;
+
   @Column({ type: 'int' })
   seats: number;
 

@@ -15,6 +15,7 @@ import {
   ArrayMaxSize,
   IsEnum,
   ValidateIf,
+  Matches,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -75,6 +76,31 @@ export class StopDto {
   note?: string;
 }
 
+export class MeetingPointDto {
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  lat: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  lng: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  address?: string;
+
+  /** Where exactly, in the driver's words: "by the roundabout, in front of…". */
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  note?: string;
+}
+
 export class RecurrenceDto {
   @IsEnum(['daily', 'weekly'])
   frequency: 'daily' | 'weekly';
@@ -123,6 +149,11 @@ export class CreateTripDto {
   stops?: StopDto[];
 
   @IsOptional()
+  @ValidateNested()
+  @Type(() => MeetingPointDto)
+  meetingPoint?: MeetingPointDto;
+
+  @IsOptional()
   @IsString()
   @MaxLength(2000)
   notes?: string;
@@ -141,6 +172,16 @@ export class CreateTripDto {
   @IsInt()
   @Min(1)
   availableSeats?: number;
+
+  /**
+   * Layout seat ids ("row-col") the driver is not offering. When omitted, a
+   * bare [availableSeats] closes the front seat first.
+   */
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @Matches(/^\d+-\d+$/, { each: true })
+  closedSeatNumbers?: string[];
 
   /**
    * Per-trip gender-mixing rule. Overrides the vehicle default for this trip

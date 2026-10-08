@@ -40,6 +40,8 @@ RUN addgroup -g 1001 -S nodejs && \
 COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nestjs:nodejs /app/package*.json ./
+# Static pages served by the app itself (the public trip-tracking page).
+COPY --from=builder --chown=nestjs:nodejs /app/public ./public
 
 # Entrypoint: runs pending TypeORM migrations against the compiled data source
 # before starting the app. Strip CR so a CRLF checkout on Windows still execs.

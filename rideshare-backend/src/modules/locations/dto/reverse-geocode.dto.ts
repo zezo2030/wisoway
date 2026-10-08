@@ -24,6 +24,11 @@ export interface ReverseGeocodeResponseDto {
   secondaryText: string;
   /** `primaryText` and `secondaryText` joined; the value stored on the trip. */
   label: string;
+  /**
+   * The town or city the point is in (falling back to county, then region),
+   * for a "city" field filled from the map. Empty when unknown.
+   */
+  city: string;
   lat: number;
   lng: number;
 }

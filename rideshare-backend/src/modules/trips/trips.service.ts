@@ -6,12 +6,15 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
-import { TripEntity } from '../../database/entities/trip.entity';
+import {
+  TripEntity,
+  TripMeetingPoint,
+} from '../../database/entities/trip.entity';
 import { TripStatus, TripType } from '../../database/entities/shared.enums';
-import { CreateTripDto } from './dto/create-trip.dto';
+import { CreateTripDto, MeetingPointDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { SearchTripsDto } from './dto/search-trips.dto';
 import { LocationBasedTripsDto } from './dto/location-based-trips.dto';
@@ -20,6 +23,11 @@ import { PaginatedResult } from '../../common/interfaces/paginated-result.interf
 import { NotificationsService } from '../notifications/notifications.service';
 import { BookingsService } from '../bookings/bookings.service';
 import { VehiclesService } from '../vehicles/vehicles.service';
+import {
+  buildTripSeats,
+  CLOSED_SEAT_STATUS,
+  resolveClosedSeats,
+} from './trip-seats';
 import { UsersService } from '../users/users.service';
 import { PlatformPricingService } from '../payments/platform-pricing.service';
 import { TripsGateway } from './trips.gateway';
@@ -78,6 +86,21 @@ function getToLatLng(trip: TripEntity): { lat: number; lng: number } {
 
 /** A trip as returned by the list endpoints, with its passenger summary. */
 export type TripListItem = TripEntity & TripPassengerSummary;
+
+/** Normalises the create/update DTO into the stored meeting-point shape. */
+function toMeetingPoint(
+  dto: MeetingPointDto | null | undefined,
+): TripMeetingPoint | null {
+  if (!dto) return null;
+  const address = dto.address?.trim();
+  const note = dto.note?.trim();
+  return {
+    lat: dto.lat,
+    lng: dto.lng,
+    address: address ? address : null,
+    note: note ? note : null,
+  };
+}
 
 @Injectable()
 export class TripsService {
@@ -352,17 +375,15 @@ export class TripsService {
 
     // Range check first: it only needs requested/maxSeats and is pure/local,
     // so it belongs with the other local validation above the guard.
-    const fullSeats = this.generateSeatsFromLayout(seatLayout);
-    const maxSeats = fullSeats.length;
-    const requested = createTripDto.availableSeats ?? maxSeats;
-    if (requested < 1 || requested > maxSeats) {
-      throw new BadRequestException(
-        `availableSeats must be between 1 and ${maxSeats}`,
-      );
-    }
-    // totalSeats, by contrast, exists only to feed the fee guard below.
-    const seats = fullSeats.slice(0, requested);
-    const totalSeats = seats.length;
+    // Every layout seat is kept; the ones the driver isn't offering are
+    // marked closed (their choice, or front-seat-first from a bare count).
+    const closedSeatNumbers = resolveClosedSeats(seatLayout, {
+      closedSeatNumbers: createTripDto.closedSeatNumbers,
+      availableSeats: createTripDto.availableSeats,
+    });
+    const seats = buildTripSeats(seatLayout, closedSeatNumbers);
+    // Seats on offer — what fees and "x of y" are counted against.
+    const totalSeats = seats.length - closedSeatNumbers.length;
 
     // Currency follows the country of the trip's departure point. Resolved
     // here (rather than down where the trip row is built) so the fee guard
@@ -413,6 +434,7 @@ export class TripsService {
       seats,
       stops: createTripDto.stops ?? [],
       notes: createTripDto.notes ?? null,
+      meetingPoint: toMeetingPoint(createTripDto.meetingPoint),
       status: TripStatus.PUBLISHED,
       isVisible: true,
       communicationFeeStatus: 'not_paid',
@@ -443,9 +465,11 @@ export class TripsService {
         price: String(createTripDto.price),
         currency,
         totalSeats,
+        closedSeatNumbers,
         seatLayout,
         stops: createTripDto.stops ?? [],
         notes: createTripDto.notes ?? null,
+        meetingPoint: toMeetingPoint(createTripDto.meetingPoint),
         carImageUrl: vehicle.carImageUrl ?? createTripDto.carImageUrl ?? null,
       };
 
@@ -486,7 +510,9 @@ export class TripsService {
       driverPhotoUrl?: string | null;
       driverRating?: number | null;
       vehicleType?: string | null;
+      vehicleTypeLabel?: { en: string; ar: string } | null;
       vehicleModel?: string | null;
+      vehicleColor?: string | null;
       vehiclePlateNumber?: string | null;
     }
   > {
@@ -516,7 +542,12 @@ export class TripsService {
       // Clients choose the cabin artwork by type; two types can share a seat
       // layout, so the layout alone cannot identify the vehicle.
       vehicleType: vehicle?.vehicleType ?? null,
+      // Display name for the type, so the app needn't fetch the catalog.
+      vehicleTypeLabel: vehicle?.vehicleType
+        ? resolveVehicleTypeTemplate(vehicle.vehicleType).label
+        : null,
       vehicleModel: vehicle ? `${vehicle.model}`.trim() || null : null,
+      vehicleColor: vehicle?.color ?? null,
       vehiclePlateNumber: vehicle?.plateNumber ?? null,
       carImageUrl: trip.carImageUrl ?? vehicle?.carImageUrl ?? null,
     };
@@ -556,6 +587,8 @@ export class TripsService {
       (s: any) => s.seatNumber === seatNumber,
     );
     if (seatIndex === -1) return;
+    // A closed seat was never booked; releasing must not open it up.
+    if (trip.seats[seatIndex]?.status === CLOSED_SEAT_STATUS) return;
     const seats = [...(trip.seats || [])];
     seats[seatIndex] = {
       seatNumber,
@@ -726,21 +759,42 @@ export class TripsService {
     };
   }
 
+  /**
+   * The driver's trips, newest first. [status] is the app's tab: `active`
+   * means still ahead or under way (stored as published, fully booked, in
+   * progress…), anything else matches the stored status exactly.
+   */
   async findByDriver(
     driverId: string,
     pagination: { page: number; limit: number },
+    status?: string,
   ): Promise<PaginatedResult<TripEntity>> {
     const { page = 1, limit = 20 } = pagination;
     const skip = (page - 1) * limit;
 
+    const statusFilter = !status
+      ? {}
+      : status === 'active'
+        ? {
+            status: In([
+              TripStatus.PUBLISHED,
+              TripStatus.ACTIVE,
+              TripStatus.FULLY_BOOKED,
+              TripStatus.IN_PROGRESS,
+              TripStatus.DRAFT,
+            ]),
+          }
+        : { status: status as TripStatus };
+    const where = { driverId, ...statusFilter };
+
     const [data, total] = await Promise.all([
       this.tripRepo.find({
-        where: { driverId },
+        where,
         order: { createdAt: 'DESC' },
         skip,
         take: limit,
       }),
-      this.tripRepo.count({ where: { driverId } }),
+      this.tripRepo.count({ where }),
     ]);
 
     return {
@@ -830,6 +884,9 @@ export class TripsService {
       trip.carImageUrl = updateTripDto.carImageUrl ?? null;
     if (updateTripDto.notes !== undefined) trip.notes = updateTripDto.notes;
     if (updateTripDto.stops !== undefined) trip.stops = updateTripDto.stops;
+    if (updateTripDto.meetingPoint !== undefined) {
+      trip.meetingPoint = toMeetingPoint(updateTripDto.meetingPoint);
+    }
 
     const saved = await this.tripRepo.save(trip);
     await this.rescheduleTripAutoStart(saved.id, new Date(saved.departureTime));
@@ -1157,49 +1214,6 @@ export class TripsService {
       this.logger,
     );
     return template.layout;
-  }
-
-  private generateSeatsFromLayout(layout: {
-    rows: number;
-    seatsPerRow: number;
-    seatsPerRowList?: number[];
-  }): any[] {
-    const list = layout.seatsPerRowList;
-    if (list && list.length > 0) {
-      const seats: any[] = [];
-      for (let row = 0; row < list.length; row++) {
-        const count = list[row];
-        for (let col = 0; col < count; col++) {
-          seats.push({
-            seatNumber: `${row}-${col}`,
-            userId: null,
-            userName: null,
-            gender: null,
-            bookedAt: null,
-            status: 'available',
-          });
-        }
-      }
-      return seats;
-    }
-    return this.generateSeatsGrid(layout.rows, layout.seatsPerRow);
-  }
-
-  private generateSeatsGrid(rows: number, seatsPerRow: number): any[] {
-    const seats: any[] = [];
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < seatsPerRow; col++) {
-        seats.push({
-          seatNumber: `${row}-${col}`,
-          userId: null,
-          userName: null,
-          gender: null,
-          bookedAt: null,
-          status: 'available',
-        });
-      }
-    }
-    return seats;
   }
 
   /** Schedule auto-transition PUBLISHED/FULLY_BOOKED → IN_PROGRESS at departureTime. */

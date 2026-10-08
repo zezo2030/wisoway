@@ -61,10 +61,13 @@ describe('POST /instant-rides/requests/:id/retry (Contract)', () => {
     for (const code of [
       'INSTANT_REQUEST_NOT_RETRYABLE',
       'INSTANT_ACTIVE_REQUEST_EXISTS',
-      'INSTANT_RETRY_FARE_RECONFIRMATION_REQUIRED',
     ]) {
       expect(responses['409'].description).toContain(code);
     }
+    // Fares are fixed now, so a retry re-prices instead of asking to reconfirm.
+    expect(responses['409'].description).not.toContain(
+      'INSTANT_RETRY_FARE_RECONFIRMATION_REQUIRED',
+    );
   });
 
   describe('GET /instant-rides/requests/:id', () => {
