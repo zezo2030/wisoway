@@ -1,20 +1,7 @@
-import 'package:dio/dio.dart';
-
 import '../../models/instant_ride_models.dart';
 import '../../models/location_model.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
-
-/// The retried route no longer prices at the passenger's old fare, so they
-/// have to confirm the new one instead of the app changing it silently.
-class InstantRetryFareChangedException implements Exception {
-  final InstantQuote? quote;
-
-  const InstantRetryFareChangedException(this.quote);
-
-  @override
-  String toString() => 'InstantRetryFareChangedException';
-}
 
 /// Client for the instant (on-demand) rides API — "الرحلات المباشرة".
 class InstantRideService {
@@ -99,7 +86,8 @@ class InstantRideService {
     }
   }
 
-  /// Distance-based recommended fare + allowed bounds for this route.
+  /// The fixed, distance-based fare for this route. The server charges exactly
+  /// this amount; the passenger cannot change it.
   Future<InstantQuote> getQuote({
     required LocationModel from,
     required LocationModel to,
@@ -115,40 +103,28 @@ class InstantRideService {
     required LocationModel from,
     required LocationModel to,
     int seatCount = 1,
-    double? passengerFare,
   }) async {
+    // No fare in the body: the server always charges its own quote.
     final response = await _api.post(
       ApiEndpoints.instantRequests,
       data: {
         'from': _pointJson(from),
         'to': _pointJson(to),
         'seatCount': seatCount,
-        if (passengerFare != null) 'passengerFare': passengerFare,
       },
     );
     return InstantRequest.fromJson(_unwrap(response));
   }
 
-  // ── Passenger: counter-offer decisions ─────────────────────────────────────
-
-  Future<InstantRequest> acceptCounterOffer(
-    String requestId,
-    String offerId,
-  ) async {
-    final response = await _api.post(
-      ApiEndpoints.instantCounterAccept(requestId, offerId),
-    );
-    return InstantRequest.fromJson(_unwrap(response));
-  }
-
-  Future<InstantRequest> declineCounterOffer(
-    String requestId,
-    String offerId,
-  ) async {
-    final response = await _api.post(
-      ApiEndpoints.instantCounterDecline(requestId, offerId),
-    );
-    return InstantRequest.fromJson(_unwrap(response));
+  /// The instant ride the signed-in user is in right now (as driver or
+  /// passenger), or null.
+  Future<ActiveInstantRide?> getActiveRide() async {
+    final response = await _api.get(ApiEndpoints.instantActiveRide);
+    final body = response is Map && response.containsKey('data')
+        ? response['data']
+        : response;
+    if (body is! Map) return null;
+    return ActiveInstantRide.fromJson(Map<String, dynamic>.from(body));
   }
 
   Future<InstantRequest> getRequest(String id) async {
@@ -156,43 +132,12 @@ class InstantRideService {
     return InstantRequest.fromJson(_unwrap(response));
   }
 
-  /// Raise the asking fare while searching (re-invites decliners).
-  Future<InstantRequest> updateFare(String id, double passengerFare) async {
-    final response = await _api.patch(
-      ApiEndpoints.instantRequestFare(id),
-      data: {'passengerFare': passengerFare},
-    );
+  /// Search again with the same route after no driver was found. The server
+  /// re-prices it at the current distance fare.
+  Future<InstantRequest> retryRequest(String id) async {
+    final response = await _api.post(ApiEndpoints.instantRequestRetry(id));
     return InstantRequest.fromJson(_unwrap(response));
   }
-
-  /// Search again with the same route after no driver was found.
-  ///
-  /// Throws [InstantRetryFareChangedException] when the server needs the
-  /// passenger to confirm a re-priced fare before the new attempt starts.
-  Future<InstantRequest> retryRequest(String id) async {
-    try {
-      final response = await _api.dio.post(
-        ApiEndpoints.instantRequestRetry(id),
-      );
-      return InstantRequest.fromJson(_unwrap(response.data));
-    } on DioException catch (e) {
-      final body = e.response?.data;
-      final data = body is Map ? Map<String, dynamic>.from(body) : null;
-      if (data?['code'] == _fareReconfirmationCode) {
-        throw InstantRetryFareChangedException(
-          data?['quote'] is Map
-              ? InstantQuote.fromJson(
-                  Map<String, dynamic>.from(data!['quote'] as Map),
-                )
-              : null,
-        );
-      }
-      throw ApiClient.mapError(e);
-    }
-  }
-
-  static const String _fareReconfirmationCode =
-      'INSTANT_RETRY_FARE_RECONFIRMATION_REQUIRED';
 
   Future<InstantRequest> cancelRequest(String id) async {
     final response = await _api.delete(ApiEndpoints.instantRequestById(id));
@@ -229,13 +174,5 @@ class InstantRideService {
 
   Future<void> declineOffer(String offerId) async {
     await _api.post(ApiEndpoints.instantOfferDecline(offerId));
-  }
-
-  /// Driver proposes a higher fare instead of accepting the passenger's.
-  Future<void> counterOffer(String offerId, double amount) async {
-    await _api.post(
-      ApiEndpoints.instantOfferRespond(offerId),
-      data: {'responseType': 'counter', 'amount': amount},
-    );
   }
 }

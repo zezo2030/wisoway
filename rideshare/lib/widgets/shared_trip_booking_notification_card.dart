@@ -48,16 +48,16 @@ class SharedTripBookingNotificationCard extends StatelessWidget {
     ], fallback: '—');
     final title = notification.displayTitle.isNotEmpty
         ? notification.displayTitle
-        : 'تم حجز مقعد في رحلتك المشتركة';
+        : 'طلب حجز جديد في رحلتك المشتركة';
     final footerTitle = _text(
       data,
       ['footerTitle'],
-      fallback: 'انضم راكب جديد إلى رحلتك المشتركة',
+      fallback: 'راكب يطلب الانضمام إلى رحلتك',
     );
     final footerSubtitle = _text(
       data,
       ['footerSubtitle'],
-      fallback: 'سيتم إعلامك عند انضمام أي راكب آخر',
+      fallback: 'اقبل الطلب أو ارفضه قبل انتهاء المهلة',
     );
 
     return Dismissible(

@@ -8,8 +8,8 @@ import '../../../l10n/l10n_extensions.dart';
 /// connectors. Completed steps show a check, the current step is filled with
 /// the brand colour and future steps stay muted.
 ///
-/// The mockup runs progress left-to-right in Arabic too, so the row opts out
-/// of RTL mirroring while its labels stay in the app locale.
+/// Progress follows the reading direction: 1 → 3 right-to-left in Arabic,
+/// left-to-right in English.
 class CreateTripStepper extends StatelessWidget {
   const CreateTripStepper({
     super.key,
@@ -37,17 +37,14 @@ class CreateTripStepper extends StatelessWidget {
       width: double.infinity,
       color: T.surface(context),
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-      child: Directionality(
-        textDirection: TextDirection.ltr,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (var i = 0; i < labels.length; i++) ...[
-              if (i > 0) _buildConnector(context, done: currentStep >= i),
-              _buildStep(context, index: i, label: labels[i]),
-            ],
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < labels.length; i++) ...[
+            if (i > 0) _buildConnector(context, done: currentStep >= i),
+            _buildStep(context, index: i, label: labels[i]),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -178,9 +175,8 @@ class CreateTripStepper extends StatelessWidget {
   }
 }
 
-/// Wizard title bar: back on the left, close on the right.
-///
-/// Pinned to LTR so the mockup arrangement holds in Arabic as well.
+/// Wizard title bar: back at the start, close at the end — mirrored with the
+/// reading direction, like the step row below it.
 class CreateTripAppBar extends StatelessWidget implements PreferredSizeWidget {
   const CreateTripAppBar({
     super.key,
@@ -198,43 +194,40 @@ class CreateTripAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.ltr,
-      child: AppBar(
-        backgroundColor: T.surface(context),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: true,
-        title: Text(
-          title,
-          style: AppTextStyles.titleMedium.copyWith(
-            fontWeight: FontWeight.bold,
-            color: T.onSurface(context),
-          ),
+    return AppBar(
+      backgroundColor: T.surface(context),
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      centerTitle: true,
+      title: Text(
+        title,
+        style: AppTextStyles.titleMedium.copyWith(
+          fontWeight: FontWeight.bold,
+          color: T.onSurface(context),
         ),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: T.onSurface(context)),
-          tooltip: context.l10n.backLabel,
-          onPressed: onBack,
+      ),
+      leading: IconButton(
+        icon: Icon(Icons.arrow_back, color: T.onSurface(context)),
+        tooltip: context.l10n.backLabel,
+        onPressed: onBack,
+      ),
+      actions: [
+        IconButton(
+          icon: Icon(Icons.close_rounded, color: T.onSurface(context)),
+          tooltip: context.l10n.close,
+          onPressed: onClose,
         ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.close_rounded, color: T.onSurface(context)),
-            tooltip: context.l10n.close,
-            onPressed: onClose,
-          ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Divider(height: 1, color: T.outline(context)),
-        ),
+      ],
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(1),
+        child: Divider(height: 1, color: T.outline(context)),
       ),
     );
   }
 }
 
-/// Wizard footer: back on the left, the forward/publish action on the right
-/// and wider — the mockup arrangement, in both writing directions.
+/// Wizard footer: back at the start, the wider forward/publish action at the
+/// end, mirrored with the reading direction.
 class CreateTripFooter extends StatelessWidget {
   const CreateTripFooter({
     super.key,
@@ -280,32 +273,29 @@ class CreateTripFooter extends StatelessWidget {
       child: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: maxContentWidth),
-          child: Directionality(
-            textDirection: TextDirection.ltr,
-            child: LayoutBuilder(
-              builder: (context, constraints) => Row(
-                children: showBack
-                    ? [
-                        // Sized to its own label rather than to a fixed share
-                        // of the row: "back to editing" is much wider than
-                        // "publish", and the fixed share clipped it. Capped so
-                        // a long translation still leaves the primary action
-                        // the wider of the two.
-                        ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxWidth: (constraints.maxWidth - 12) * 0.46,
-                          ),
-                          child: _SecondaryAction(
-                            label: backLabel,
-                            icon: Icons.chevron_left_rounded,
-                            onPressed: onBack,
-                          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) => Row(
+              children: showBack
+                  ? [
+                      // Sized to its own label rather than to a fixed share
+                      // of the row: "back to editing" is much wider than
+                      // "publish", and the fixed share clipped it. Capped so
+                      // a long translation still leaves the primary action
+                      // the wider of the two.
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: (constraints.maxWidth - 12) * 0.46,
                         ),
-                        const SizedBox(width: 12),
-                        forward,
-                      ]
-                    : [forward],
-              ),
+                        child: _SecondaryAction(
+                          label: backLabel,
+                          icon: Icons.chevron_left_rounded,
+                          onPressed: onBack,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      forward,
+                    ]
+                  : [forward],
             ),
           ),
         ),

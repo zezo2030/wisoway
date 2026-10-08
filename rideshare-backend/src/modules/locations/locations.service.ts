@@ -37,6 +37,12 @@ interface SearchContext {
   city?: CityDto;
 }
 
+/**
+ * Radius of the extra "nearby" search run alongside the biased one, so places
+ * around the passenger are always among the candidates.
+ */
+const LOCAL_SEARCH_RADIUS_KM = 50;
+
 /** Subset of a Photon GeoJSON feature's address properties we consume. */
 interface PhotonProperties {
   name?: string;
@@ -118,6 +124,12 @@ export class LocationsService {
     string,
     CacheEntry<ReverseGeocodeResponseDto>
   >();
+  /**
+   * Country of a search context, keyed by coordinates rounded to ~1 km, so an
+   * older app that sends no `country` still gets foreign places dropped
+   * without a reverse lookup on every keystroke.
+   */
+  private readonly contextCountryCache = new Map<string, string>();
   private readonly cacheTtlMs = 60_000;
   /** Cap on cached entries so a long-lived process cannot grow unbounded. */
   private readonly cacheMaxEntries = 500;
@@ -133,7 +145,7 @@ export class LocationsService {
    * parameter, so we over-fetch and filter down to this many locally.
    */
   private readonly suggestionLimit = 6;
-  private readonly providerFetchLimit = 15;
+  private readonly providerFetchLimit = 50;
 
   constructor(
     private configService: ConfigService,
@@ -177,10 +189,15 @@ export class LocationsService {
 
     const lang = query.lang === 'en' ? 'en' : 'ar';
     const context = this.resolveSearchContext(query);
+    const country =
+      context?.city?.countryCode.toLowerCase() ??
+      query.country?.toLowerCase() ??
+      (context ? await this.countryOfContext(context) : undefined);
     const cacheKey = [
       q.toLowerCase(),
       lang,
       this.autocompleteCountries.join(','),
+      country ?? '-',
       context?.city?.id ?? '-',
       this.contextKey(context),
     ].join('|');
@@ -197,18 +214,29 @@ export class LocationsService {
 
       const ranked = this.rankSuggestions(
         features
-          .filter((feature) => this.matchesCountryFilter(feature))
+          .filter((feature) => this.matchesCountryFilter(feature, country))
           .map((feature) => ({
             suggestion: this.toSuggestion(feature, context),
             demoted: this.isDemotedType(feature),
           }))
-          .filter((entry) => entry.suggestion.placeId),
+          .filter((entry) => entry.suggestion.placeId)
+          // The nearby and the wide search overlap; features without an OSM
+          // id escape mergeFeatureLists, so drop repeats by placeId too.
+          .filter(
+            (entry, index, all) =>
+              all.findIndex(
+                (other) =>
+                  other.suggestion.placeId === entry.suggestion.placeId,
+              ) === index,
+          ),
         context,
       );
-      const suggestions = this.promoteCityMatches(ranked, q, context).slice(
-        0,
-        this.suggestionLimit,
-      );
+      const suggestions = this.promoteCityMatches(
+        ranked,
+        q,
+        context,
+        country,
+      ).slice(0, this.suggestionLimit);
 
       this.setCached(this.autocompleteCache, cacheKey, suggestions);
       return { sessionToken, suggestions };
@@ -241,6 +269,16 @@ export class LocationsService {
     context?: SearchContext,
   ): Promise<PhotonFeature[]> {
     const forms = this.queryVariants(q);
+    // With a context, one extra search confined to the surrounding area. A
+    // proximity bias alone still lets famous far-away places fill every slot:
+    // from Al-Ula, "مستشفى" returned hospitals 1,000 km away and missed the
+    // one 6 km from the passenger. Local results go first; the final order is
+    // nearest-first anyway.
+    const local = context
+      ? this.photonRequest(q, lang, context, this.localBbox(context)).catch(
+          () => [] as PhotonFeature[],
+        )
+      : Promise.resolve([] as PhotonFeature[]);
     const settled = await Promise.allSettled(
       forms.map((form) => this.photonRequest(form, lang, context)),
     );
@@ -252,20 +290,60 @@ export class LocationsService {
         : new Error(String(raw.reason));
     }
 
-    return this.mergeFeatureLists(
-      settled
+    const nearby = await local;
+    return this.mergeFeatureLists([
+      ...(nearby.length > 0 ? [nearby] : []),
+      ...settled
         .filter(
           (entry): entry is PromiseFulfilledResult<PhotonFeature[]> =>
             entry.status === 'fulfilled',
         )
         .map((entry) => entry.value),
+    ]);
+  }
+
+  /** Box of roughly ±LOCAL_SEARCH_RADIUS_KM around the search context. */
+  private localBbox(context: SearchContext): string {
+    const dLat = LOCAL_SEARCH_RADIUS_KM / 111;
+    const dLng =
+      LOCAL_SEARCH_RADIUS_KM /
+      (111 * Math.max(Math.cos((context.lat * Math.PI) / 180), 0.2));
+    return [
+      context.lng - dLng,
+      context.lat - dLat,
+      context.lng + dLng,
+      context.lat + dLat,
+    ]
+      .map((v) => v.toFixed(4))
+      .join(',');
+  }
+
+  /** ISO country of a search context (lower case), or undefined if unknown. */
+  private async countryOfContext(
+    context: SearchContext,
+  ): Promise<string | undefined> {
+    const key = `${context.lat.toFixed(2)},${context.lng.toFixed(2)}`;
+    const cached = this.contextCountryCache.get(key);
+    if (cached) return cached;
+    const geo = await this.reverseGeocodePhoton(context.lat, context.lng).catch(
+      () => null,
     );
+    const code = geo?.countryCode ? geo.countryCode.toLowerCase() : undefined;
+    // Only answers are remembered: a provider hiccup must not stick.
+    if (code) {
+      if (this.contextCountryCache.size >= this.cacheMaxEntries) {
+        this.contextCountryCache.clear();
+      }
+      this.contextCountryCache.set(key, code);
+    }
+    return code;
   }
 
   private async photonRequest(
     q: string,
     lang: 'ar' | 'en',
     context?: SearchContext,
+    bbox?: string,
   ): Promise<PhotonFeature[]> {
     const response = await axios.get<PhotonResponse>(
       `${this.photonBaseUrl}/api/`,
@@ -283,7 +361,11 @@ export class LocationsService {
           lon: context?.lng,
           // Weight proximity heavily so the provider's candidate set is
           // already local; the final nearest-first order is applied here.
-          location_bias_scale: context ? 0.8 : undefined,
+          // In Photon a LOWER scale means prominence counts for less against
+          // distance; 0.8 let national landmarks crowd out nearby places.
+          location_bias_scale: context ? 0.1 : undefined,
+          zoom: context ? 12 : undefined,
+          bbox,
         },
         headers: { 'User-Agent': this.geocoderUserAgent },
         timeout: this.providerTimeoutMs,
@@ -355,6 +437,7 @@ export class LocationsService {
     suggestions: PlaceSuggestionDto[],
     q: string,
     context?: SearchContext,
+    country?: string,
   ): PlaceSuggestionDto[] {
     if (context?.city) return suggestions;
 
@@ -364,8 +447,9 @@ export class LocationsService {
 
     const city = CITY_CATALOG.find(
       (candidate) =>
-        this.normalizeForSearch(candidate.nameAr).startsWith(needle) ||
-        this.normalizeForSearch(candidate.nameEn).startsWith(needle),
+        (!country || candidate.countryCode.toLowerCase() === country) &&
+        (this.normalizeForSearch(candidate.nameAr).startsWith(needle) ||
+          this.normalizeForSearch(candidate.nameEn).startsWith(needle)),
     );
     if (!city) return suggestions;
 
@@ -488,6 +572,7 @@ export class LocationsService {
         primaryText: texts.primaryText,
         secondaryText: texts.secondaryText,
         label: texts.description,
+        city: this.cityName(feature?.properties),
         lat,
         lng,
       };
@@ -502,6 +587,19 @@ export class LocationsService {
       );
       throw new BadGatewayException('Places provider unavailable');
     }
+  }
+
+  /**
+   * The town a point is in, for a profile's city field: the OSM city, else
+   * the county, else the region — without the administrative prefix, so
+   * "محافظة العلا" reads "العلا".
+   */
+  private cityName(props?: PhotonProperties): string {
+    const raw = (props?.city ?? props?.county ?? props?.state ?? '').trim();
+    return raw
+      .replace(/^(محافظة|منطقة|مدينة)\s+/, '')
+      .replace(/\s+(Governorate|Province|Region)$/i, '')
+      .trim();
   }
 
   /**
@@ -571,21 +669,19 @@ export class LocationsService {
       return suggestion.distanceMeters ?? Number.POSITIVE_INFINITY;
     };
 
-    // Transit furniture sinks below every real place, whatever its distance.
-    const tier = (entry: { demoted: boolean }) => (entry.demoted ? 1 : 0);
-
     // `map`+`sort` on the index keeps the sort stable across Node versions,
     // preserving the provider's own relevance order on equal distance.
     return entries
       .map((entry, index) => ({
         entry,
         index,
-        tier: tier(entry),
         distance: distanceOf(entry.suggestion),
       }))
       .sort(
         (a, b) =>
-          a.tier - b.tier || a.distance - b.distance || a.index - b.index,
+          a.distance - b.distance ||
+          Number(a.entry.demoted) - Number(b.entry.demoted) ||
+          a.index - b.index,
       )
       .map(({ entry }) => entry.suggestion);
   }
@@ -594,10 +690,19 @@ export class LocationsService {
    * Photon has no country-restriction parameter, so honour
    * LOCATION_AUTOCOMPLETE_COUNTRIES by filtering on each feature's countrycode.
    */
-  private matchesCountryFilter(feature: PhotonFeature): boolean {
+  private matchesCountryFilter(
+    feature: PhotonFeature,
+    country?: string,
+  ): boolean {
+    const code = feature.properties?.countrycode?.toLowerCase();
+    if (country)
+      return (
+        code === country &&
+        (this.autocompleteCountries.length === 0 ||
+          this.autocompleteCountries.includes(code))
+      );
     if (this.autocompleteCountries.length === 0) return true;
-    const code = (feature.properties?.countrycode ?? '').toLowerCase();
-    return code.length === 0 || this.autocompleteCountries.includes(code);
+    return code !== undefined && this.autocompleteCountries.includes(code);
   }
 
   placeDetail(placeId: string): Promise<PlaceDetailResponseDto> {
@@ -808,7 +913,42 @@ export class LocationsService {
     }
   }
 
+  /**
+   * Address + country for a point. Google first; when it fails — e.g. the
+   * project's billing is off, which made every lookup REQUEST_DENIED and every
+   * trip fall back to JOD — Photon (OpenStreetMap) answers instead.
+   */
   async reverseGeocode(latitude: number, longitude: number) {
+    try {
+      return await this.reverseGeocodeGoogle(latitude, longitude);
+    } catch (googleError) {
+      const osm = await this.reverseGeocodePhoton(latitude, longitude).catch(
+        () => null,
+      );
+      if (osm?.countryCode) return osm;
+      throw googleError;
+    }
+  }
+
+  private async reverseGeocodePhoton(latitude: number, longitude: number) {
+    const response = await axios.get<PhotonResponse>(
+      `${this.photonBaseUrl}/reverse`,
+      { params: { lat: latitude, lon: longitude }, timeout: 5000 },
+    );
+    const p = response.data.features?.[0]?.properties;
+    if (!p) throw new BadRequestException('Location not found');
+    const address = [p.name, p.street, p.district, p.city, p.state, p.country]
+      .filter((part, i, all) => !!part && all.indexOf(part) === i)
+      .join('، ');
+    return {
+      address,
+      city: p.city || p.county || p.district || '',
+      country: p.country || '',
+      countryCode: (p.countrycode || '').toUpperCase(),
+    };
+  }
+
+  private async reverseGeocodeGoogle(latitude: number, longitude: number) {
     try {
       const response = await axios.get(
         `${this.googleMapsBaseUrl}/geocode/json`,

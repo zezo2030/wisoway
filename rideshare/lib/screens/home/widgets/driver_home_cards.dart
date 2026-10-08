@@ -138,58 +138,64 @@ class DriverHomeStatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DriverHomeCard(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      // Icon and number share the top row so the label and hint below get
+      // the card's full width — side by side, a third of the screen was too
+      // narrow and cut "رحلات اليوم" down to "رحلات اليـ…".
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w600,
-                    color: T.onSurfaceVariant(context),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 20,
-                    height: 1.1,
-                    fontWeight: FontWeight.w800,
-                    color: T.onSurface(context),
+                child: Icon(icon, size: 17, color: accent),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 22,
+                      height: 1.1,
+                      fontWeight: FontWeight.w800,
+                      color: T.onSurface(context),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  hint,
-                  style: TextStyle(
-                    fontSize: 9.5,
-                    color: T.onSurfaceVariant(context),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(width: 6),
-          Container(
-            width: 36,
-            height: 36,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
+          const SizedBox(height: 10),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.25,
+              fontWeight: FontWeight.w700,
+              color: T.onSurface(context),
             ),
-            child: Icon(icon, size: 18, color: accent),
+            softWrap: true,
+          ),
+          const SizedBox(height: 3),
+          Text(
+            hint,
+            style: TextStyle(
+              fontSize: 11,
+              height: 1.3,
+              color: T.onSurfaceVariant(context),
+            ),
+            softWrap: true,
           ),
         ],
       ),

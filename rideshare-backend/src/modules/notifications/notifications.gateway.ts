@@ -29,29 +29,15 @@ export class NotificationsGateway
 
   constructor() {}
 
+  /**
+   * Guards don't run on connect, so the user isn't known yet here: the token
+   * is checked by WsAuthGuard on `subscribe`, which is also what joins the
+   * user's room (as the chat and tracking gateways do). Rejecting here — as
+   * this used to — dropped every client, so no notification event was ever
+   * delivered over the socket.
+   */
   async handleConnection(client: Socket) {
-    try {
-      const payload = (client as any).user;
-      const userId = payload?.sub || payload?.userId || payload?.id;
-
-      if (!userId) {
-        this.logger.warn('Invalid token payload');
-        client.disconnect();
-        return;
-      }
-
-      client.data.userId = userId;
-
-      if (!this.userSockets.has(userId)) {
-        this.userSockets.set(userId, new Set());
-      }
-      this.userSockets.get(userId)!.add(client.id);
-
-      this.logger.log(`Client connected: ${client.id} (user: ${userId})`);
-    } catch (error) {
-      this.logger.warn(`Connection error: ${error.message}`);
-      client.disconnect();
-    }
+    this.logger.debug(`Client connected: ${client.id}`);
   }
 
   handleDisconnect(client: Socket) {
@@ -76,6 +62,10 @@ export class NotificationsGateway
     }
 
     client.join(`user:${userId}`);
+    if (!this.userSockets.has(userId)) {
+      this.userSockets.set(userId, new Set());
+    }
+    this.userSockets.get(userId)!.add(client.id);
     this.logger.log(`User ${userId} subscribed to notifications`);
     return { success: true };
   }

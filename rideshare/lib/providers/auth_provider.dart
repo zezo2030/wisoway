@@ -62,10 +62,10 @@ class AuthProvider extends ChangeNotifier {
     DeviceFingerprintService? deviceService,
     StorageService? storageService,
     VehicleService? vehicleService,
-  })  : _authService = authService ?? AuthService(),
-        _deviceService = deviceService ?? DeviceFingerprintService(),
-        _storageService = storageService ?? StorageService(),
-        _vehicleService = vehicleService ?? VehicleService() {
+  }) : _authService = authService ?? AuthService(),
+       _deviceService = deviceService ?? DeviceFingerprintService(),
+       _storageService = storageService ?? StorageService(),
+       _vehicleService = vehicleService ?? VehicleService() {
     _init();
   }
 
@@ -233,6 +233,7 @@ class AuthProvider extends ChangeNotifier {
     required String vehicleType,
     required String plateNumber,
     required String model,
+    String? color,
     required int seats,
     required File driverLicenseImage,
     required File vehicleLicenseImage,
@@ -295,6 +296,7 @@ class AuthProvider extends ChangeNotifier {
         vehicleType: vehicleType,
         plateNumber: plateNumber,
         model: model,
+        color: color,
         seats: seats,
         carImageUrl: carImageUrl,
         insuranceImageUrl: insuranceUrl,
@@ -322,6 +324,68 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// "انضم كسائق": a signed-in passenger becomes a driver pending approval.
+  /// Uploads with the session (the account already exists), then flips the
+  /// account and creates the vehicle in one server call. The profile photo is
+  /// optional when the account already has one.
+  Future<void> becomeDriver({
+    File? profileImage,
+    required String vehicleType,
+    required String plateNumber,
+    required String model,
+    String? color,
+    required int seats,
+    required File driverLicenseImage,
+    required File vehicleLicenseImage,
+    required File insuranceImage,
+    required File carImage,
+  }) async {
+    try {
+      _setLoading(true);
+      _setError(null);
+
+      final userId = _userModel?.id;
+      if (userId == null) throw Exception('المستخدم غير مسجل دخول');
+
+      Future<String> upload(File file, String folder) async {
+        final url = await _storageService.uploadImage(
+          imageFile: file,
+          folder: folder,
+          fileName: userId,
+        );
+        if (url == null || url.isEmpty) {
+          throw Exception('فشل رفع الملف. حاول مرة أخرى.');
+        }
+        return url;
+      }
+
+      final data = <String, dynamic>{
+        'vehicleType': vehicleType,
+        'plateNumber': plateNumber,
+        'model': model,
+        if (color != null && color.trim().isNotEmpty) 'color': color.trim(),
+        'seats': seats,
+        if (profileImage != null)
+          'photoUrl': await upload(profileImage, 'profiles'),
+        'licenseImageUrl': await upload(driverLicenseImage, 'driver_licenses'),
+        'vehicleLicenseImageUrl': await upload(
+          vehicleLicenseImage,
+          'vehicle_licenses',
+        ),
+        'insuranceImageUrl': await upload(insuranceImage, 'insurance'),
+        'carImageUrl': await upload(carImage, 'vehicles'),
+      };
+
+      _accountState = await _authService.becomeDriver(data);
+      _userModel = _authService.currentUser ?? _userModel;
+      _setLoading(false);
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      rethrow;
+    }
+  }
+
   /// Edit the submitted driver registration while approval is still pending.
   /// Only the files the driver re-picked are uploaded; everything left null
   /// keeps the value already stored on the account.
@@ -330,6 +394,7 @@ class AuthProvider extends ChangeNotifier {
     String? vehicleType,
     String? plateNumber,
     String? model,
+    String? color,
     int? seats,
     File? driverLicenseImage,
     File? vehicleLicenseImage,
@@ -380,6 +445,7 @@ class AuthProvider extends ChangeNotifier {
       if (vehicleType != null) data['vehicleType'] = vehicleType;
       if (plateNumber != null) data['plateNumber'] = plateNumber;
       if (model != null) data['model'] = model;
+      if (color != null) data['color'] = color;
       if (seats != null) data['seats'] = seats;
 
       if (data.isEmpty) {

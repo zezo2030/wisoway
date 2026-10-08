@@ -19,48 +19,19 @@ void main() {
     expect(find.text("We couldn't find a driver right now"), findsOneWidget);
   });
 
-  testWidgets('the failure sheet names the radius nobody was found in', (
-    tester,
-  ) async {
-    await _pumpScreen(
-      tester,
-      request: _request(
-        'no_drivers',
-        terminalReason: 'no_eligible_drivers',
-        searchRadiusKm: 25,
-      ),
-    );
+  for (final reason in ['no_eligible_drivers', 'all_declined', 'ttl_expired']) {
+    testWidgets('$reason: just says no driver is available', (tester) async {
+      await _pumpScreen(
+        tester,
+        request: _request('no_drivers', terminalReason: reason),
+      );
 
-    expect(
-      find.text('No driver is available within 25 km of your pickup point.'),
-      findsOneWidget,
-    );
-    expect(
-      find.text('Check that the pickup point really is where you are now.'),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets('a search where everyone declined says so instead', (
-    tester,
-  ) async {
-    await _pumpScreen(
-      tester,
-      request: _request('no_drivers', terminalReason: 'all_declined'),
-    );
-
-    expect(
-      find.text(
-        'Nearby drivers did not accept your fare. Try raising it a little.',
-      ),
-      findsOneWidget,
-    );
-    // The pickup hint only belongs on the nobody-in-range case.
-    expect(
-      find.text('Check that the pickup point really is where you are now.'),
-      findsNothing,
-    );
-  });
+      expect(find.text('No driver is available right now.'), findsOneWidget);
+      // No search radius, no pickup-point hint, no ask to pay more.
+      expect(find.textContaining(' km'), findsNothing);
+      expect(find.textContaining('pickup point'), findsNothing);
+    });
+  }
 
   testWidgets('an expired request shows the same sheet', (tester) async {
     await _pumpScreen(tester, request: _request('expired'));
@@ -147,40 +118,60 @@ void main() {
     expect(find.text('Try again'), findsOneWidget);
   });
 
-  testWidgets('a re-priced retry returns to the form with the new fare', (
+  testWidgets('the form shows the fixed fare read-only and requests with it', (
     tester,
   ) async {
-    final service = _FakeInstantRideService(
-      retryError: const InstantRetryFareChangedException(
-        InstantQuote(
-          recommendedFare: 4.5,
-          minFare: 3,
-          maxFare: 9,
-          currency: 'JOD',
-          distanceKm: 5,
-        ),
-      ),
-    );
-    await _pumpScreen(
-      tester,
-      request: _request('no_drivers', id: 'req-1'),
-      service: service,
-    );
+    final service = _FakeInstantRideService();
+    await _pumpForm(tester, service);
 
-    await tester.tap(find.text('Try again'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(NoDriverFoundSheet), findsNothing);
+    expect(find.text('Trip fare'), findsOneWidget);
+    expect(find.text('4.50 JOD'), findsOneWidget);
+    expect(find.text('12.3 km · 18 min'), findsOneWidget);
     expect(
-      find.text('The fare range changed. Review the fare before trying again.'),
+      find.text(
+        'The fare is calculated from the distance. Pay the driver in cash.',
+      ),
       findsOneWidget,
     );
-    // The passenger's fare field is re-seeded with the new recommendation.
-    final field = tester.widget<TextField>(
-      find.byKey(const ValueKey('instant-fare-field')),
-    );
-    expect(field.controller!.text, '4.50');
-    expect(find.text('Recommended fare: 4.50 JOD'), findsOneWidget);
+    // Nothing to type or nudge: no fare field, no − / + steppers.
+    expect(find.byType(TextField), findsNothing);
+    expect(find.byIcon(Icons.add), findsNothing);
+    expect(find.byIcon(Icons.remove), findsNothing);
+
+    final cta = find.widgetWithText(ElevatedButton, 'Request now');
+    expect(tester.widget<ElevatedButton>(cta).onPressed, isNotNull);
+
+    await tester.ensureVisible(cta);
+    await tester.pump();
+    await tester.tap(cta);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(service.createdRequests, 1);
+    expect(find.text('Finding the nearest driver...'), findsOneWidget);
+    await _disposeScreen(tester);
+  });
+
+  testWidgets('a failed quote offers a retry and holds the request back', (
+    tester,
+  ) async {
+    final service = _FakeInstantRideService(quoteFailures: 1);
+    await _pumpForm(tester, service);
+
+    expect(find.text("Couldn't calculate the trip fare."), findsOneWidget);
+    final cta = find.widgetWithText(ElevatedButton, 'Request now');
+    expect(tester.widget<ElevatedButton>(cta).onPressed, isNull);
+
+    await tester.ensureVisible(find.text('Retry'));
+    await tester.pump();
+    await tester.tap(find.text('Retry'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(service.quoteCalls, 2);
+    expect(find.text('4.50 JOD'), findsOneWidget);
+    expect(tester.widget<ElevatedButton>(cta).onPressed, isNotNull);
+    await _disposeScreen(tester);
   });
 
   testWidgets('a searching request shows the progress steps and cancel', (
@@ -204,7 +195,7 @@ void main() {
     for (final step in [
       'Request sent',
       'Finding a driver',
-      'Driver offer',
+      'Driver accepts',
       'Driver on the way',
     ]) {
       expect(find.text(step), findsOneWidget);
@@ -213,10 +204,9 @@ void main() {
     await _disposeScreen(tester);
   });
 
-  testWidgets('the searching sheet lets the passenger raise the fare', (
+  testWidgets('the searching sheet shows the fixed fare with no way to raise', (
     tester,
   ) async {
-    final service = _FakeInstantRideService();
     await tester.pumpWidget(
       _app(
         InstantRideRequestScreen(
@@ -224,32 +214,20 @@ void main() {
             'searching',
             id: 'req-1',
             passengerFare: '5.00',
-            maxFare: 10,
+            maxFare: 5,
           ),
-          service: service,
+          service: _FakeInstantRideService(),
         ),
       ),
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
-    expect(find.text('Your fare'), findsOneWidget);
+    expect(find.text('Trip fare'), findsOneWidget);
     expect(find.text('5 JOD'), findsOneWidget);
-    // Nothing to send until the fare is nudged up.
-    final raise = tester.widget<ElevatedButton>(
-      find.widgetWithText(ElevatedButton, 'Raise fare'),
-    );
-    expect(raise.onPressed, isNull);
-
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-    expect(find.text('5.25 JOD'), findsOneWidget);
-    expect(find.text('Raise to 5.25 JOD'), findsOneWidget);
-
-    await tester.tap(find.text('Raise to 5.25 JOD'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
-    expect(service.raisedTo, 5.25);
+    expect(find.text('Raise fare'), findsNothing);
+    expect(find.byIcon(Icons.add), findsNothing);
+    expect(find.byIcon(Icons.remove), findsNothing);
     await _disposeScreen(tester);
   });
 
@@ -322,7 +300,6 @@ InstantRequest _request(
   String? passengerFare,
   double? maxFare,
   String? terminalReason,
-  double? searchRadiusKm,
 }) {
   return InstantRequest(
     id: id,
@@ -330,7 +307,6 @@ InstantRequest _request(
     recommendedFare: passengerFare,
     maxFare: maxFare,
     terminalReason: terminalReason,
-    searchRadiusKm: searchRadiusKm,
     match: match,
     tripId: match?.tripId,
     status: status,
@@ -380,6 +356,30 @@ Future<void> _pumpScreen(
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
   }
+}
+
+/// Opens the input form with both ends set, so the screen fetches the quote.
+Future<void> _pumpForm(
+  WidgetTester tester,
+  _FakeInstantRideService service,
+) async {
+  tester.view.physicalSize = const Size(1170, 2532);
+  tester.view.devicePixelRatio = 3.0;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+
+  await tester.pumpWidget(
+    _app(
+      InstantRideRequestScreen(
+        initialFrom: _from,
+        initialTo: _to,
+        service: service,
+      ),
+    ),
+  );
+  // One frame for the post-frame quote fetch, one for its answer.
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 50));
 }
 
 /// The screen's host app: theme, English strings, and the support route.
@@ -438,13 +438,19 @@ class _FakeInstantRideService extends InstantRideService {
   final Object? retryError;
   final Duration retryDelay;
 
+  /// How many quote calls fail before one succeeds.
+  int quoteFailures;
+
   final List<String> retriedIds = [];
   final List<String> cancelledIds = [];
+  int quoteCalls = 0;
+  int createdRequests = 0;
 
   _FakeInstantRideService({
     this.retryResult,
     this.retryError,
     this.retryDelay = Duration.zero,
+    this.quoteFailures = 0,
   });
 
   @override
@@ -455,17 +461,39 @@ class _FakeInstantRideService extends InstantRideService {
     return retryResult ?? _request('searching', id: 'req-2');
   }
 
-  double? raisedTo;
+  @override
+  Future<InstantQuote> getQuote({
+    required LocationModel from,
+    required LocationModel to,
+  }) async {
+    quoteCalls++;
+    if (quoteFailures > 0) {
+      quoteFailures--;
+      throw const Failure(
+        category: FailureCategory.network,
+        messageKey: 'errorNetwork',
+        severity: FailureSeverity.error,
+        developerDetail: 'offline',
+      );
+    }
+    return const InstantQuote(
+      recommendedFare: 4.5,
+      minFare: 4.5,
+      maxFare: 4.5,
+      currency: 'JOD',
+      distanceKm: 12.3,
+      durationMinutes: 18,
+    );
+  }
 
   @override
-  Future<InstantRequest> updateFare(String id, double passengerFare) async {
-    raisedTo = passengerFare;
-    return _request(
-      'searching',
-      id: id,
-      passengerFare: passengerFare.toStringAsFixed(2),
-      maxFare: 10,
-    );
+  Future<InstantRequest> createRequest({
+    required LocationModel from,
+    required LocationModel to,
+    int seatCount = 1,
+  }) async {
+    createdRequests++;
+    return _request('searching', id: 'req-new', passengerFare: '4.50');
   }
 
   @override

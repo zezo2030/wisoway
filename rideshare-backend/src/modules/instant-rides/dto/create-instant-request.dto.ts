@@ -50,8 +50,8 @@ export class CreateInstantRequestDto {
   seatCount?: number;
 
   /**
-   * The total fare the passenger offers. Validated server-side against the
-   * distance-based recommendation bounds; omitted → the recommendation is used.
+   * Ignored: the platform fixes the fare from the route. Still accepted so
+   * older apps that send their typed fare can order.
    */
   @IsOptional()
   @Type(() => Number)

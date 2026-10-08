@@ -12,6 +12,8 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/api/api_client.dart';
 import '../../core/api/websocket_service.dart';
 import '../../core/constants/route_names.dart';
+import '../../core/services/active_ride_navigator.dart';
+import '../../core/services/route_service.dart';
 import '../../core/services/share_link_service.dart';
 import '../../core/services/trip_emergency_service.dart';
 import '../../core/theme/colors.dart';
@@ -27,11 +29,16 @@ class TripInProgressScreen extends StatefulWidget {
   final BookingModel? initialBooking;
   final bool showTrackingShare;
 
+  /// Instant rides: the passenger stays on this screen until the trip ends —
+  /// no back navigation — and is moved on to rating when it completes.
+  final bool lockedUntilEnd;
+
   const TripInProgressScreen({
     super.key,
     required this.tripId,
     this.initialBooking,
     this.showTrackingShare = false,
+    this.lockedUntilEnd = false,
   });
 
   @override
@@ -58,12 +65,18 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
   double _progressPercent = 0;
   Set<Marker> _markers = {};
   Set<Polyline> _polylines = {};
+  // Road-following route from the directions API; empty until it arrives
+  // (or when it is unavailable, in which case straight segments are drawn).
+  List<LatLng> _roadRoute = const [];
   MapType _mapType = MapType.normal;
 
   final WebSocketService _socketService = WebSocketService();
   final ShareLinkService _shareLinkService = ShareLinkService();
   final TripEmergencyService _emergencyService = TripEmergencyService();
+  final RouteService _routeService = RouteService();
   StreamSubscription<Map<String, dynamic>>? _trackingSubscription;
+  Timer? _statusPoll;
+  bool _leaving = false;
 
   @override
   void initState() {
@@ -71,10 +84,18 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
     _loadCarIcon();
     _loadTrip();
     _initTracking();
+    if (widget.lockedUntilEnd) {
+      _statusPoll = Timer.periodic(
+        const Duration(seconds: 10),
+        (_) => _checkTripEnded(),
+      );
+    }
   }
 
   @override
   void dispose() {
+    _statusPoll?.cancel();
+    ActiveRideNavigator.left(widget.tripId);
     _trackingSubscription?.cancel();
     _socketService.unsubscribeFromTripTracking(widget.tripId);
     _mapController?.dispose();
@@ -121,6 +142,7 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
       });
       _rebuildMapOverlays();
       _fitBounds();
+      _loadRoadRoute(loaded);
       if (widget.showTrackingShare) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) ShareTrackingSheet.show(context, loaded.id);
@@ -130,6 +152,118 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
       if (!mounted) return;
       setState(() => _loading = false);
       ErrorSurface.showFailure(context, ApiClient.mapError(e));
+    }
+  }
+
+  Future<void> _loadRoadRoute(TripModel trip) async {
+    final result = await _routeService.fetchRoute(
+      origin: LatLng(trip.from.latitude, trip.from.longitude),
+      destination: LatLng(trip.to.latitude, trip.to.longitude),
+    );
+    if (!mounted) return;
+    if (result is RouteOk && result.polyline.length >= 2) {
+      _roadRoute = result.polyline;
+      _rebuildMapOverlays();
+    }
+  }
+
+  /// Index of the route vertex closest to [p] (planar distance is plenty at
+  /// this scale).
+  static int _nearestIndex(List<LatLng> route, LatLng p) {
+    var best = 0;
+    var bestD = double.infinity;
+    for (var i = 0; i < route.length; i++) {
+      final dLat = route[i].latitude - p.latitude;
+      final dLng = route[i].longitude - p.longitude;
+      final d = dLat * dLat + dLng * dLng;
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
+    }
+    return best;
+  }
+
+  Set<Polyline> _buildRoutePolylines(LatLng from, LatLng to, LatLng? car) {
+    final road = _roadRoute;
+    if (road.length < 2) {
+      final points = <LatLng>[from];
+      if (car != null) points.add(car);
+      points.add(to);
+      return {
+        Polyline(
+          polylineId: const PolylineId('route'),
+          points: points,
+          color: AppColors.teal600,
+          width: 5,
+        ),
+      };
+    }
+
+    if (car == null) {
+      return {
+        Polyline(
+          polylineId: const PolylineId('route'),
+          points: road,
+          color: AppColors.teal600,
+          width: 5,
+        ),
+      };
+    }
+
+    // Split the road at the car: the stretch already driven is muted, the
+    // remainder stays in the brand colour.
+    final split = _nearestIndex(road, car);
+    return {
+      if (split > 0)
+        Polyline(
+          polylineId: const PolylineId('route_done'),
+          points: [...road.sublist(0, split + 1), car],
+          color: AppColors.slate400,
+          width: 5,
+        ),
+      Polyline(
+        polylineId: const PolylineId('route'),
+        points: [car, ...road.sublist(split)],
+        color: AppColors.teal600,
+        width: 5,
+      ),
+    };
+  }
+
+  /// Locked mode only: once the driver ends the trip, release the passenger —
+  /// to rating when it completed, back home when it was cancelled.
+  Future<void> _checkTripEnded() async {
+    if (_leaving || !mounted) return;
+    try {
+      final trip = await Provider.of<TripProvider>(
+        context,
+        listen: false,
+      ).getTrip(widget.tripId);
+      if (!mounted || trip == null) return;
+      if (!trip.isCompleted && !trip.isCancelled) return;
+      _leaving = true;
+      _statusPoll?.cancel();
+      final navigator = Navigator.of(context);
+      if (trip.isCompleted) {
+        navigator.pushNamedAndRemoveUntil(
+          RouteNames.rating,
+          (route) => route.isFirst,
+          arguments: {
+            'tripId': trip.id,
+            'trip': trip,
+            'driverId': trip.driverId,
+            'driverName': trip.driverName ?? '',
+          },
+        );
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.statusCancelled)));
+        navigator.popUntil((route) => route.isFirst);
+      }
+    } catch (_) {
+      // Transient — the next tick retries.
     }
   }
 
@@ -186,27 +320,17 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
         Marker(
           markerId: const MarkerId('car'),
           position: car,
-          icon: _carIcon ??
+          icon:
+              _carIcon ??
               BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
           anchor: const Offset(0.5, 0.5),
         ),
       );
     }
 
-    final points = <LatLng>[from];
-    if (car != null) points.add(car);
-    points.add(to);
-
     setState(() {
       _markers = markers;
-      _polylines = {
-        Polyline(
-          polylineId: const PolylineId('route'),
-          points: points,
-          color: AppColors.teal600,
-          width: 5,
-        ),
-      };
+      _polylines = _buildRoutePolylines(from, to, car);
     });
   }
 
@@ -219,6 +343,7 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
       LatLng(trip.from.latitude, trip.from.longitude),
       LatLng(trip.to.latitude, trip.to.longitude),
       if (_liveDriverLocation != null) _liveDriverLocation!,
+      ..._roadRoute,
     ];
 
     double minLat = points.first.latitude;
@@ -362,16 +487,16 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
     final eta = _etaAt;
     if (eta == null) return '—';
     final local = eta.toLocal();
-    return DateFormat('h:mm a', Localizations.localeOf(context).toString())
-        .format(local);
+    return DateFormat(
+      'h:mm a',
+      Localizations.localeOf(context).toString(),
+    ).format(local);
   }
 
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final trip = _trip;
@@ -384,98 +509,101 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
 
     final topInset = MediaQuery.paddingOf(context).top;
 
-    return Scaffold(
-      backgroundColor: AppColors.slate50,
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: GoogleMap(
-              mapType: _mapType,
-              initialCameraPosition: CameraPosition(
-                target: LatLng(trip.from.latitude, trip.from.longitude),
-                zoom: 9,
+    return PopScope(
+      canPop: !widget.lockedUntilEnd,
+      child: Scaffold(
+        backgroundColor: AppColors.slate50,
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: GoogleMap(
+                mapType: _mapType,
+                initialCameraPosition: CameraPosition(
+                  target: LatLng(trip.from.latitude, trip.from.longitude),
+                  zoom: 9,
+                ),
+                onMapCreated: (c) {
+                  _mapController = c;
+                  _fitBounds();
+                },
+                markers: _markers,
+                polylines: _polylines,
+                myLocationEnabled: false,
+                myLocationButtonEnabled: false,
+                zoomControlsEnabled: false,
+                compassEnabled: true,
+                mapToolbarEnabled: false,
               ),
-              onMapCreated: (c) {
-                _mapController = c;
-                _fitBounds();
-              },
-              markers: _markers,
-              polylines: _polylines,
-              myLocationEnabled: false,
-              myLocationButtonEnabled: false,
-              zoomControlsEnabled: false,
-              compassEnabled: true,
-              mapToolbarEnabled: false,
             ),
-          ),
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              padding: EdgeInsets.fromLTRB(12, topInset + 8, 12, 12),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.white.withValues(alpha: 0.96),
-                    Colors.white.withValues(alpha: 0.0),
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: EdgeInsets.fromLTRB(12, topInset + 8, 12, 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.96),
+                      Colors.white.withValues(alpha: 0.0),
+                    ],
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    _buildHeader(context),
+                    const SizedBox(height: 12),
+                    _buildProgressCard(context, trip),
                   ],
                 ),
               ),
+            ),
+            Positioned(
+              right: 16,
+              bottom: 290,
               child: Column(
                 children: [
-                  _buildHeader(context),
-                  const SizedBox(height: 12),
-                  _buildProgressCard(context, trip),
+                  _MapFab(
+                    icon: Icons.layers_outlined,
+                    label: context.l10n.tripInProgressLayers,
+                    onTap: () {
+                      setState(() {
+                        _mapType = _mapType == MapType.normal
+                            ? MapType.hybrid
+                            : MapType.normal;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  _MapFab(
+                    icon: Icons.my_location,
+                    label: context.l10n.tripInProgressRecenter,
+                    onTap: _fitBounds,
+                  ),
                 ],
               ),
             ),
-          ),
-          Positioned(
-            right: 16,
-            bottom: 290,
-            child: Column(
-              children: [
-                _MapFab(
-                  icon: Icons.layers_outlined,
-                  label: context.l10n.tripInProgressLayers,
-                  onTap: () {
-                    setState(() {
-                      _mapType = _mapType == MapType.normal
-                          ? MapType.hybrid
-                          : MapType.normal;
-                    });
-                  },
+            Positioned(
+              left: 12,
+              right: 12,
+              bottom: 0,
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildDriverCard(context, trip),
+                    const SizedBox(height: 12),
+                    _buildActionButtons(context),
+                    const SizedBox(height: 8),
+                  ],
                 ),
-                const SizedBox(height: 10),
-                _MapFab(
-                  icon: Icons.my_location,
-                  label: context.l10n.tripInProgressRecenter,
-                  onTap: _fitBounds,
-                ),
-              ],
-            ),
-          ),
-          Positioned(
-            left: 12,
-            right: 12,
-            bottom: 0,
-            child: SafeArea(
-              top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildDriverCard(context, trip),
-                  const SizedBox(height: 12),
-                  _buildActionButtons(context),
-                  const SizedBox(height: 8),
-                ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -483,10 +611,13 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
   Widget _buildHeader(BuildContext context) {
     return Row(
       children: [
-        IconButton(
-          onPressed: () => Navigator.maybePop(context),
-          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 28),
-        ),
+        if (widget.lockedUntilEnd)
+          const SizedBox(width: 48)
+        else
+          IconButton(
+            onPressed: () => Navigator.maybePop(context),
+            icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 28),
+          ),
         Expanded(
           child: Column(
             children: [
@@ -562,7 +693,11 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
               Expanded(
                 child: Row(
                   children: [
-                    const Icon(Icons.location_on, color: AppColors.error, size: 18),
+                    const Icon(
+                      Icons.location_on,
+                      color: AppColors.error,
+                      size: 18,
+                    ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
@@ -686,10 +821,7 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
     );
   }
 
-  Widget _buildDriverCard(
-    BuildContext context,
-    TripModel trip,
-  ) {
+  Widget _buildDriverCard(BuildContext context, TripModel trip) {
     final name = trip.driverName?.trim().isNotEmpty == true
         ? trip.driverName!
         : '—';
@@ -739,10 +871,7 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
               const SizedBox(height: 6),
               Text(
                 context.l10n.tripInProgressTripDetails,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppColors.slate500,
-                ),
+                style: const TextStyle(fontSize: 11, color: AppColors.slate500),
               ),
             ],
           ),
@@ -766,7 +895,11 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
                     ),
                     if (rating != null && rating > 0) ...[
                       const SizedBox(width: 6),
-                      const Icon(Icons.star, size: 16, color: Color(0xFFFBBF24)),
+                      const Icon(
+                        Icons.star,
+                        size: 16,
+                        color: Color(0xFFFBBF24),
+                      ),
                       const SizedBox(width: 2),
                       Text(
                         rating.toStringAsFixed(1),
@@ -788,8 +921,10 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
                 ),
                 const SizedBox(height: 6),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     border: Border.all(color: AppColors.slate300),
                     borderRadius: BorderRadius.circular(6),
@@ -915,10 +1050,7 @@ class _MetricColumn extends StatelessWidget {
         Text(
           label,
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 11,
-            color: AppColors.slate500,
-          ),
+          style: const TextStyle(fontSize: 11, color: AppColors.slate500),
         ),
         const SizedBox(height: 4),
         Text(
@@ -940,11 +1072,7 @@ class _MapFab extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
 
-  const _MapFab({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
+  const _MapFab({required this.icon, required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {

@@ -1,166 +1,275 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wisoway — Live Trip Tracking</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0d9488">
+  <title>VisionWay — تتبع الرحلة</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
+    :root {
+      --teal: #0d9488;
+      --teal-dark: #115e59;
+      --teal-soft: #ccfbf1;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --green: #16a34a;
+      --red: #dc2626;
+      --amber: #d97706;
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
-    .header { background: #1a73e8; color: white; padding: 16px 20px; text-align: center; }
-    .header h1 { font-size: 18px; font-weight: 600; }
-    .header .subtitle { font-size: 13px; opacity: 0.85; margin-top: 4px; }
-    #map { width: 100%; height: 60vh; }
-    .info-panel { padding: 16px 20px; background: white; border-top: 1px solid #e0e0e0; }
-    .route-info { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-    .route-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-    .route-dot.from { background: #1a73e8; }
-    .route-dot.to { background: #34a853; }
-    .route-line { width: 2px; height: 20px; background: #dadce0; margin-left: 4px; }
-    .route-text { font-size: 14px; color: #333; }
-    .status-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; }
-    .status-published { background: #e8f0fe; color: #1a73e8; }
-    .status-in_progress { background: #e6f4ea; color: #1e8e3e; }
-    .status-completed { background: #f1f3f4; color: #5f6368; }
-    .status-cancelled { background: #fce8e6; color: #d93025; }
-    .departure-time { font-size: 13px; color: #5f6368; margin-top: 8px; }
-    .error-state { text-align: center; padding: 40px 20px; color: #5f6368; }
-    .error-state h2 { font-size: 18px; margin-bottom: 8px; }
-    .last-updated { font-size: 11px; color: #9aa0a6; margin-top: 8px; text-align: center; }
+    html, body { height: 100%; }
+    body {
+      font-family: 'Cairo', -apple-system, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: var(--teal);
+      color: #fff;
+      padding: 14px 16px calc(14px) 16px;
+      padding-top: calc(14px + env(safe-area-inset-top));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    header .brand { font-weight: 700; font-size: 17px; }
+    header .brand small { display: block; font-weight: 400; font-size: 12px; opacity: .85; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,.18);
+      border-radius: 999px; padding: 4px 12px;
+      font-size: 13px; font-weight: 600; white-space: nowrap;
+    }
+    .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: #fff; }
+    .pill.live .dot { background: #4ade80; animation: pulse 1.6s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+
+    #map { flex: 1; min-height: 45vh; }
+
+    .sheet {
+      background: var(--card);
+      border-radius: 20px 20px 0 0;
+      margin-top: -18px;
+      position: relative;
+      z-index: 500;
+      box-shadow: 0 -6px 20px rgba(15,23,42,.08);
+      padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+    }
+    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+    .metric { text-align: center; }
+    .metric .label { font-size: 12px; color: var(--muted); }
+    .metric .value { font-size: 17px; font-weight: 700; margin-top: 2px; }
+    .metric.accent .value { color: var(--teal); }
+
+    .route { border-top: 1px solid var(--line); padding-top: 14px; }
+    .stop { display: flex; gap: 10px; align-items: flex-start; }
+    .stop .mark { width: 12px; height: 12px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+    .stop .mark.from { background: var(--green); }
+    .stop .mark.to { background: var(--red); }
+    .stop .label { font-size: 12px; color: var(--muted); }
+    .stop .name { font-size: 15px; font-weight: 600; line-height: 1.4; }
+    .connector { width: 2px; height: 14px; background: var(--line); margin: 2px 5px; }
+
+    .driver { margin-top: 14px; font-size: 14px; color: var(--muted); }
+    .driver b { color: var(--ink); }
+    .updated { margin-top: 10px; font-size: 12px; color: var(--muted); text-align: center; }
+
+    .message {
+      flex: 1; display: none; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 40px 24px; gap: 8px;
+    }
+    .message h2 { font-size: 20px; }
+    .message p { color: var(--muted); font-size: 15px; }
+
+    .car-icon { font-size: 26px; line-height: 1; filter: drop-shadow(0 2px 2px rgba(0,0,0,.35)); }
+    .pin {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.4);
+    }
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>Wisoway Trip Tracker</h1>
-    <div class="subtitle" id="status-text">Loading...</div>
-  </div>
+  <header>
+    <div class="brand">VisionWay<small data-i18n="subtitle">تتبع الرحلة مباشرة</small></div>
+    <span class="pill" id="status-pill"><span class="dot"></span><span id="status-text" data-i18n="loading">جارٍ التحميل…</span></span>
+  </header>
+
   <div id="map"></div>
-  <div class="info-panel" id="info-panel">
-    <div class="route-info">
-      <div>
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-          <div class="route-dot from"></div>
-          <span class="route-text" id="from-name">—</span>
-        </div>
-        <div class="route-line" style="margin-left:4px;"></div>
-        <div style="display:flex;align-items:center;gap:12px;margin-top:8px;">
-          <div class="route-dot to"></div>
-          <span class="route-text" id="to-name">—</span>
-        </div>
-      </div>
+
+  <section class="sheet" id="sheet">
+    <div class="metrics">
+      <div class="metric accent"><div class="label" data-i18n="remainingTime">الوقت المتبقي</div><div class="value" id="m-time">—</div></div>
+      <div class="metric"><div class="label" data-i18n="remainingDistance">المسافة المتبقية</div><div class="value" id="m-distance">—</div></div>
+      <div class="metric"><div class="label" data-i18n="eta">وقت الوصول</div><div class="value" id="m-eta">—</div></div>
     </div>
-    <div>
-      <span class="status-badge" id="status-badge">—</span>
+    <div class="route">
+      <div class="stop"><span class="mark from"></span><div><div class="label" data-i18n="from">من</div><div class="name" id="from-name">—</div></div></div>
+      <div class="connector"></div>
+      <div class="stop"><span class="mark to"></span><div><div class="label" data-i18n="to">إلى</div><div class="name" id="to-name">—</div></div></div>
     </div>
-    <div class="departure-time" id="departure-time"></div>
-    <div class="last-updated" id="last-updated"></div>
-  </div>
-  <div class="error-state" id="error-state" style="display:none;">
-    <h2>Trip Not Found</h2>
-    <p>This share link may have expired or is invalid.</p>
+    <div class="driver" id="driver" hidden></div>
+    <div class="updated" id="updated"></div>
+  </section>
+
+  <div class="message" id="message">
+    <h2 id="message-title"></h2>
+    <p id="message-body"></p>
   </div>
 
   <script>
-    (function() {
-      var path = window.location.pathname;
-      var token = path.replace('/share/', '').replace('/share', '');
-      if (!token) {
-        document.getElementById('error-state').style.display = 'block';
-        document.getElementById('info-panel').style.display = 'none';
-        document.getElementById('map').style.display = 'none';
-        return;
+    (function () {
+      var en = (navigator.language || '').toLowerCase().indexOf('en') === 0;
+      var T = en ? {
+        subtitle: 'Live trip tracking', loading: 'Loading…',
+        remainingTime: 'Time left', remainingDistance: 'Distance left', eta: 'Arrival',
+        from: 'From', to: 'To', driver: 'Driver', updated: 'Location updated at',
+        live: 'On the way', scheduled: 'Scheduled', completed: 'Arrived', cancelled: 'Cancelled',
+        min: 'min', h: 'h', km: 'km', m: 'm',
+        notFoundTitle: 'Link not found', notFoundBody: 'Check the link you received and try again.',
+        expiredTitle: 'Link expired', expiredBody: 'This tracking link is no longer active.',
+        completedNote: 'The trip has ended.', cancelledNote: 'This trip was cancelled.',
+        waitingLocation: 'Waiting for the driver’s location…'
+      } : {
+        subtitle: 'تتبع الرحلة مباشرة', loading: 'جارٍ التحميل…',
+        remainingTime: 'الوقت المتبقي', remainingDistance: 'المسافة المتبقية', eta: 'وقت الوصول',
+        from: 'من', to: 'إلى', driver: 'السائق', updated: 'آخر تحديث للموقع',
+        live: 'في الطريق', scheduled: 'مجدولة', completed: 'وصلت', cancelled: 'ملغاة',
+        min: 'دقيقة', h: 'ساعة', km: 'كم', m: 'م',
+        notFoundTitle: 'الرابط غير موجود', notFoundBody: 'تأكد من الرابط الذي وصلك وحاول مجدداً.',
+        expiredTitle: 'انتهت صلاحية الرابط', expiredBody: 'رابط التتبع هذا لم يعد فعّالاً.',
+        completedNote: 'انتهت الرحلة.', cancelledNote: 'تم إلغاء هذه الرحلة.',
+        waitingLocation: 'بانتظار موقع السائق…'
+      };
+      if (en) { document.documentElement.lang = 'en'; document.documentElement.dir = 'ltr'; }
+      document.querySelectorAll('[data-i18n]').forEach(function (el) {
+        var k = el.getAttribute('data-i18n'); if (T[k]) el.textContent = T[k];
+      });
+      var locale = en ? 'en-US' : 'ar';
+
+      var token = window.location.pathname.replace(/^\/share\/?/, '').replace(/\/+$/, '');
+      var $ = function (id) { return document.getElementById(id); };
+
+      function showMessage(title, body) {
+        $('map').style.display = 'none';
+        $('sheet').style.display = 'none';
+        $('message').style.display = 'flex';
+        $('message-title').textContent = title;
+        $('message-body').textContent = body;
+        $('status-text').textContent = title;
       }
 
-      var map = L.map('map').setView([31.95, 35.92], 7);
+      if (!token) { showMessage(T.notFoundTitle, T.notFoundBody); return; }
+
+      var map = L.map('map', { zoomControl: false }).setView([24.7, 46.7], 6);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
+        maxZoom: 19, attribution: '&copy; OpenStreetMap'
       }).addTo(map);
 
-      var driverMarker = null;
-      var pollInterval = null;
+      function pin(color) {
+        return L.divIcon({ className: '', html: '<div class="pin" style="background:' + color + '"></div>', iconSize: [18, 18], iconAnchor: [9, 9] });
+      }
+      var carIcon = L.divIcon({ className: 'car-icon', html: '🚗', iconSize: [28, 28], iconAnchor: [14, 14] });
 
-      function fetchTripData() {
-        var apiUrl = window.location.origin + '/api/v1/share/' + encodeURIComponent(token);
-        fetch(apiUrl)
-          .then(function(res) { return res.json(); })
-          .then(function(data) {
-            if (data.statusCode === 404 || data.statusCode === 410) {
-              document.getElementById('error-state').style.display = 'block';
-              document.getElementById('error-state').querySelector('h2').textContent =
-                data.statusCode === 410 ? 'Link Expired' : 'Trip Not Found';
-              document.getElementById('info-panel').style.display = 'none';
-              document.getElementById('map').style.display = 'none';
-              if (pollInterval) clearInterval(pollInterval);
-              return;
-            }
+      var fromMarker = null, toMarker = null, carMarker = null, line = null;
+      var fitted = false, timer = null;
 
-            document.getElementById('from-name').textContent = data.fromName || '—';
-            document.getElementById('to-name').textContent = data.toName || '—';
-
-            var status = data.tripStatus || 'published';
-            var badge = document.getElementById('status-badge');
-            badge.textContent = status.replace(/_/g, ' ');
-            badge.className = 'status-badge status-' + status;
-
-            document.getElementById('status-text').textContent =
-              status === 'in_progress' ? 'Trip in progress — tracking driver live'
-              : status === 'completed' ? 'Trip completed'
-              : status === 'cancelled' ? 'Trip cancelled'
-              : 'Trip scheduled';
-
-            if (data.departureTime) {
-              var d = new Date(data.departureTime);
-              document.getElementById('departure-time').textContent =
-                'Departure: ' + d.toLocaleString();
-            }
-
-            var etaBits = [];
-            if (data.remainingDistanceKm != null) {
-              etaBits.push(Number(data.remainingDistanceKm).toFixed(0) + ' km left');
-            }
-            if (data.etaMinutes != null) {
-              etaBits.push(data.etaMinutes + ' min');
-            }
-            if (data.etaAt) {
-              etaBits.push('ETA ' + new Date(data.etaAt).toLocaleTimeString());
-            }
-            if (etaBits.length) {
-              document.getElementById('departure-time').textContent +=
-                ' · ' + etaBits.join(' · ');
-            }
-
-            if (data.driverLocation) {
-              var lat = data.driverLocation.lat;
-              var lng = data.driverLocation.lng;
-              if (driverMarker) {
-                driverMarker.setLatLng([lat, lng]);
-              } else {
-                driverMarker = L.marker([lat, lng]).addTo(map);
-                driverMarker.bindPopup('Driver location');
-              }
-              map.setView([lat, lng], 14);
-
-              if (data.driverLocation.capturedAt) {
-                var ct = new Date(data.driverLocation.capturedAt);
-                document.getElementById('last-updated').textContent =
-                  'Location updated: ' + ct.toLocaleTimeString();
-              }
-            }
-
-            if (status !== 'in_progress' && pollInterval) {
-              clearInterval(pollInterval);
-              pollInterval = null;
-            }
-          })
-          .catch(function(err) {
-            console.error('Failed to fetch trip data:', err);
-          });
+      function formatDuration(seconds) {
+        var mins = Math.max(1, Math.ceil(seconds / 60));
+        if (mins < 60) return mins + ' ' + T.min;
+        var h = Math.floor(mins / 60), m = mins % 60;
+        return h + ' ' + T.h + (m ? ' ' + m + ' ' + T.min : '');
+      }
+      function formatDistance(km) {
+        if (km < 1) return Math.round(km * 1000) + ' ' + T.m;
+        return (km >= 10 ? Math.round(km) : km.toFixed(1)) + ' ' + T.km;
+      }
+      function formatTime(iso) {
+        return new Date(iso).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
       }
 
-      fetchTripData();
-      pollInterval = setInterval(fetchTripData, 5000);
+      function setStatus(status) {
+        var pill = $('status-pill');
+        pill.classList.toggle('live', status === 'in_progress');
+        $('status-text').textContent =
+          status === 'in_progress' ? T.live :
+          status === 'completed' ? T.completed :
+          status === 'cancelled' ? T.cancelled : T.scheduled;
+      }
+
+      function render(d) {
+        setStatus(d.tripStatus);
+        $('from-name').textContent = d.fromName || '—';
+        $('to-name').textContent = d.toName || '—';
+        if (d.driverName) {
+          $('driver').hidden = false;
+          $('driver').innerHTML = '';
+          $('driver').appendChild(document.createTextNode(T.driver + ': '));
+          var b = document.createElement('b'); b.textContent = d.driverName;
+          $('driver').appendChild(b);
+        }
+
+        var finished = d.tripStatus === 'completed' || d.tripStatus === 'cancelled';
+        $('m-time').textContent = !finished && d.remainingDurationSeconds != null ? formatDuration(d.remainingDurationSeconds) : '—';
+        $('m-distance').textContent = !finished && d.remainingDistanceKm != null ? formatDistance(Number(d.remainingDistanceKm)) : '—';
+        $('m-eta').textContent = !finished && d.etaAt ? formatTime(d.etaAt) : '—';
+
+        if (d.from && !fromMarker) fromMarker = L.marker([d.from.lat, d.from.lng], { icon: pin('#16a34a') }).addTo(map);
+        if (d.to && !toMarker) toMarker = L.marker([d.to.lat, d.to.lng], { icon: pin('#dc2626') }).addTo(map);
+
+        var car = d.driverLocation;
+        if (car && !finished) {
+          var at = [car.lat, car.lng];
+          if (carMarker) carMarker.setLatLng(at); else carMarker = L.marker(at, { icon: carIcon, zIndexOffset: 1000 }).addTo(map);
+          if (d.to) {
+            var pts = [at, [d.to.lat, d.to.lng]];
+            if (line) line.setLatLngs(pts); else line = L.polyline(pts, { color: '#0d9488', weight: 4, dashArray: '8 8' }).addTo(map);
+          }
+          $('updated').textContent = car.capturedAt ? T.updated + ' ' + formatTime(car.capturedAt) : '';
+        } else if (finished) {
+          if (carMarker) { map.removeLayer(carMarker); carMarker = null; }
+          if (line) { map.removeLayer(line); line = null; }
+          $('updated').textContent = d.tripStatus === 'completed' ? T.completedNote : T.cancelledNote;
+        } else if (d.tripStatus === 'in_progress') {
+          $('updated').textContent = T.waitingLocation;
+        }
+
+        if (!fitted) {
+          var bounds = [];
+          if (fromMarker) bounds.push(fromMarker.getLatLng());
+          if (toMarker) bounds.push(toMarker.getLatLng());
+          if (carMarker) bounds.push(carMarker.getLatLng());
+          if (bounds.length) { map.fitBounds(L.latLngBounds(bounds), { padding: [40, 40], maxZoom: 15 }); fitted = true; }
+        }
+
+        if (finished && timer) { clearInterval(timer); timer = null; }
+      }
+
+      function load() {
+        fetch('/api/v1/share/' + encodeURIComponent(token), { cache: 'no-store' })
+          .then(function (res) { return res.json(); })
+          .then(function (json) {
+            // API responses are wrapped as { success, data }.
+            var d = json && json.data !== undefined ? json.data : json;
+            if (!d || d.statusCode === 404) { if (timer) clearInterval(timer); return showMessage(T.notFoundTitle, T.notFoundBody); }
+            if (d.statusCode === 410) { if (timer) clearInterval(timer); return showMessage(T.expiredTitle, T.expiredBody); }
+            render(d);
+          })
+          .catch(function () { /* transient — next poll retries */ });
+      }
+
+      load();
+      timer = setInterval(load, 5000);
     })();
   </script>
 </body>

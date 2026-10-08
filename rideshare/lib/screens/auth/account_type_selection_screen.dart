@@ -11,7 +11,7 @@ import '../../widgets/auth/auth_language_switcher.dart';
 ///
 /// Layout follows `docs/superpowers/assets/2026-07-28-auth-registration/
 /// account-type-selection.png`: cityscape header, two accent-coloured hero
-/// cards side by side, safety banner, sign-in link.
+/// cards side by side, and a sign-in link.
 class AccountTypeSelectionScreen extends StatefulWidget {
   const AccountTypeSelectionScreen({super.key});
 
@@ -61,15 +61,8 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
 
     return Scaffold(
       backgroundColor: T.surface(context),
-      // The page scrolls as one piece, cityscape included, so the backdrop
-      // travels with the cards instead of staying pinned to the viewport.
-      body: SingleChildScrollView(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            minHeight: MediaQuery.sizeOf(context).height,
-          ),
-          child: Stack(
-            children: [
+      body: Stack(
+        children: [
               // Cityscape sits behind the header only; the cards cover the rest.
               Positioned(
                 top: 0,
@@ -85,17 +78,24 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
                 ),
               ),
               SafeArea(
-                child: FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
+                child: LayoutBuilder(
+                  builder: (context, constraints) => Center(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: SizedBox(
+                        width: constraints.maxWidth - 32,
+                        child: FadeTransition(
+                          opacity: _fadeAnimation,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
                         _buildTopBar(),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 12),
                         _buildHeader(),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
                         SlideTransition(
                           position: _slideAnimation,
                           child: IntrinsicHeight(
@@ -127,7 +127,7 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
                                         l10n.accountTypePassengerFeaturePaymentBody,
                                       ),
                                     ],
-                                    onTap: () => Navigator.pushReplacementNamed(
+                                    onTap: () => Navigator.pushNamed(
                                       context,
                                       RouteNames.signUp,
                                       arguments: {
@@ -163,7 +163,7 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
                                         l10n.accountTypeDriverFeatureIncomeBody,
                                       ),
                                     ],
-                                    onTap: () => Navigator.pushReplacementNamed(
+                                    onTap: () => Navigator.pushNamed(
                                       context,
                                       RouteNames.driverSignUp,
                                     ),
@@ -173,19 +173,19 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
                             ),
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        _buildSafetyBanner(),
-                        const SizedBox(height: 12),
-                        _buildSignInRow(),
-                      ],
+                                const SizedBox(height: 12),
+                                _buildSignInRow(),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
             ],
           ),
-        ),
-      ),
     );
   }
 
@@ -267,60 +267,6 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
     ),
   );
 
-  Widget _buildSafetyBanner() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: T.surfaceVariant(context).withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: T.outline(context)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: T.primary(context).withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              IconsaxPlusBold.shield_tick,
-              color: T.primary(context),
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  context.l10n.accountTypeSafetyTitle,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: T.onSurface(context),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  context.l10n.accountTypeSafetyBody,
-                  style: TextStyle(
-                    fontSize: 12,
-                    height: 1.4,
-                    color: T.onSurfaceVariant(context),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSignInRow() {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -331,9 +277,16 @@ class _AccountTypeSelectionScreenState extends State<AccountTypeSelectionScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            context.l10n.alreadyHaveAccount,
-            style: TextStyle(fontSize: 13, color: T.onSurfaceVariant(context)),
+          // Wraps instead of overflowing on narrow screens or large text.
+          Flexible(
+            child: Text(
+              context.l10n.alreadyHaveAccount,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: T.onSurfaceVariant(context),
+              ),
+            ),
           ),
           Semantics(
             button: true,

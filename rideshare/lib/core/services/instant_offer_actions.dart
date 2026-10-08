@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../models/instant_ride_models.dart';
-import '../../screens/passenger/trip_details_screen.dart';
 import '../../widgets/instant_offer_dialog.dart';
 import '../api/api_client.dart';
 import '../ui/error_surface.dart';
 import 'instant_ride_service.dart';
 import 'notification_navigation_service.dart';
+import 'active_ride_navigator.dart';
 
 /// Handles Accept / Decline / Open coming from the Android rich notification.
 class InstantOfferActions {
@@ -49,6 +49,8 @@ class InstantOfferActions {
     Map<String, dynamic>? seed,
   }) async {
     if (_dialogOpen && _openDialogOfferId == offerId) return;
+    // The driver home poll may already have this offer's card up.
+    if (InstantOfferDialog.visibleOfferId == offerId) return;
 
     final context = NotificationNavigationService.navigatorKey.currentContext;
     if (context == null) {
@@ -63,12 +65,15 @@ class InstantOfferActions {
 
     await _cancelNotification(offerId);
 
-    if (_dialogOpen) return;
+    if (_dialogOpen || InstantOfferDialog.visibleOfferId != null) return;
+    final dialogContext =
+        NotificationNavigationService.navigatorKey.currentContext;
+    if (dialogContext == null || !dialogContext.mounted) return;
     _dialogOpen = true;
     _openDialogOfferId = offerId;
     try {
       await showDialog<void>(
-        context: context,
+        context: dialogContext,
         barrierDismissible: false,
         builder: (_) => InstantOfferDialog(offer: offer!, service: _service),
       );
@@ -84,13 +89,13 @@ class InstantOfferActions {
     try {
       final request = await _service.acceptOffer(offerId);
       final tripId = request.tripId;
-      if (context == null) return;
       if (tripId != null && tripId.isNotEmpty) {
-        await Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => TripDetailsScreen(tripId: tripId)),
-        );
+        ActiveRideNavigator.enterAsDriver(tripId);
+      } else {
+        await ActiveRideNavigator.resume();
       }
     } catch (e) {
+      await ActiveRideNavigator.resume();
       if (context != null && context.mounted) {
         ErrorSurface.showFailure(context, ApiClient.mapError(e));
       } else if (kDebugMode) {

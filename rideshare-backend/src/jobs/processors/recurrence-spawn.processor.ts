@@ -23,6 +23,10 @@ import {
   computeTripAutoStartDelayMs,
   TRIP_AUTO_START_JOB_ID_PREFIX,
 } from '../../modules/trips/trip-auto-start.util';
+import {
+  buildTripSeats,
+  layoutSeatNumbers,
+} from '../../modules/trips/trip-seats';
 
 @Processor('recurrence-spawn')
 export class RecurrenceSpawnProcessor {
@@ -145,15 +149,17 @@ export class RecurrenceSpawnProcessor {
   ): Promise<TripEntity> {
     const tpl = rule.templateJson;
 
-    // The template layout describes the full vehicle shape, but the driver may
-    // have published fewer seats than the layout allows (CreateTripDto.availableSeats).
-    // Clamp so seats.length always matches totalSeats on spawned instances.
-    const layoutSeats = this.generateSeatsFromLayout(tpl.seatLayout);
-    const seats =
-      tpl.totalSeats > 0 && tpl.totalSeats < layoutSeats.length
-        ? layoutSeats.slice(0, tpl.totalSeats)
-        : layoutSeats;
-    const totalSeats = seats.length || tpl.totalSeats;
+    // Every instance keeps the seats the driver closed on the original trip.
+    // Rules saved before seats could be closed only stored a count, and
+    // offered the first N layout seats — keep that for them.
+    const layoutIds = layoutSeatNumbers(tpl.seatLayout);
+    const closed: string[] = Array.isArray(tpl.closedSeatNumbers)
+      ? tpl.closedSeatNumbers
+      : tpl.totalSeats > 0 && tpl.totalSeats < layoutIds.length
+        ? layoutIds.slice(tpl.totalSeats)
+        : [];
+    const seats = buildTripSeats(tpl.seatLayout, closed);
+    const totalSeats = seats.length - closed.length || tpl.totalSeats;
 
     const trip = this.tripRepo.create({
       driverId: rule.driverId,
@@ -179,6 +185,7 @@ export class RecurrenceSpawnProcessor {
       seats,
       stops: tpl.stops ?? [],
       notes: tpl.notes ?? null,
+      meetingPoint: tpl.meetingPoint ?? null,
       status: TripStatus.PUBLISHED,
       isVisible: true,
       communicationFeeStatus: 'not_paid',
@@ -216,40 +223,5 @@ export class RecurrenceSpawnProcessor {
       );
 
     return saved;
-  }
-
-  private generateSeatsFromLayout(layout: any): any[] {
-    if (!layout) return [];
-    const list = layout.seatsPerRowList;
-    if (list && list.length > 0) {
-      const seats: any[] = [];
-      for (let row = 0; row < list.length; row++) {
-        for (let col = 0; col < list[row]; col++) {
-          seats.push({
-            seatNumber: `${row}-${col}`,
-            userId: null,
-            userName: null,
-            gender: null,
-            bookedAt: null,
-            status: 'available',
-          });
-        }
-      }
-      return seats;
-    }
-    const seats: any[] = [];
-    for (let row = 0; row < (layout.rows || 0); row++) {
-      for (let col = 0; col < (layout.seatsPerRow || 0); col++) {
-        seats.push({
-          seatNumber: `${row}-${col}`,
-          userId: null,
-          userName: null,
-          gender: null,
-          bookedAt: null,
-          status: 'available',
-        });
-      }
-    }
-    return seats;
   }
 }

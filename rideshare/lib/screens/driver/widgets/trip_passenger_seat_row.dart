@@ -6,6 +6,8 @@ import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/booking_model.dart';
+import '../../../models/trip_model.dart';
+import '../../../utils/booking_seat_formatter.dart';
 
 /// One booked seat on the driver's pre-departure roster.
 ///
@@ -22,6 +24,7 @@ class PassengerSeatEntry {
     required this.phoneNumber,
     required this.rating,
     this.photoUrl,
+    this.isCompanion = false,
   });
 
   final String bookingId;
@@ -31,6 +34,9 @@ class PassengerSeatEntry {
   final String phoneNumber;
   final double rating;
   final String? photoUrl;
+
+  /// A seat booked for someone travelling with the booker.
+  final bool isCompanion;
 }
 
 /// Expands bookings into one entry per seat.
@@ -38,25 +44,33 @@ class PassengerSeatEntry {
 /// This is the "per-seat, not per-booking" rule the design locks in: a booking
 /// of two seats yields two entries. Bookings that predate the seats list fall
 /// back to their single `seatNumber`.
+///
+/// With [trip], seat ids (`row-col`, e.g. "0-1") become the seat numbers the
+/// driver sees on the seat map ("2"); without it they are passed through.
 List<PassengerSeatEntry> passengerSeatEntries(
   List<BookingModel> bookings, {
   required String fallbackName,
+  TripModel? trip,
 }) {
   final entries = <PassengerSeatEntry>[];
   for (final booking in bookings) {
     final user = booking.userPopulated;
     final bookerName = user?.name ?? fallbackName;
 
-    PassengerSeatEntry entry(String seatNumber, String displayName) =>
-        PassengerSeatEntry(
-          bookingId: booking.id,
-          userId: booking.userId,
-          displayName: displayName,
-          seatNumber: seatNumber,
-          phoneNumber: user?.phoneNumber ?? '',
-          rating: user?.rating ?? 0,
-          photoUrl: user?.photoUrl,
-        );
+    PassengerSeatEntry entry(
+      String seatNumber,
+      String displayName, {
+      bool isCompanion = false,
+    }) => PassengerSeatEntry(
+      isCompanion: isCompanion,
+      bookingId: booking.id,
+      userId: booking.userId,
+      displayName: displayName,
+      seatNumber: BookingSeatFormatter.displaySeatNumber(seatNumber, trip),
+      phoneNumber: user?.phoneNumber ?? '',
+      rating: user?.rating ?? 0,
+      photoUrl: user?.photoUrl,
+    );
 
     if (booking.seats.isNotEmpty) {
       for (final seat in booking.seats) {
@@ -64,6 +78,7 @@ List<PassengerSeatEntry> passengerSeatEntries(
           entry(
             seat.seatNumber,
             seat.displayName.trim().isNotEmpty ? seat.displayName : bookerName,
+            isCompanion: !seat.isMainBooker,
           ),
         );
       }
@@ -87,6 +102,7 @@ class TripPassengerSeatRow extends StatelessWidget {
     required this.photoUrl,
     required this.onChat,
     required this.onCall,
+    this.isCompanion = false,
   });
 
   final String displayName;
@@ -95,6 +111,9 @@ class TripPassengerSeatRow extends StatelessWidget {
   final String? photoUrl;
   final VoidCallback? onChat;
   final VoidCallback? onCall;
+
+  /// Travelling with the booker: has no account, so no rating of their own.
+  final bool isCompanion;
 
   @override
   Widget build(BuildContext context) {
@@ -130,22 +149,41 @@ class TripPassengerSeatRow extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(
-                      IconsaxPlusBold.star,
-                      size: 14,
-                      color: AppColors.warning,
+                if (isCompanion)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      rating.toStringAsFixed(1),
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: T.textSecondary(context),
+                    decoration: BoxDecoration(
+                      color: T.primaryContainer(context),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      context.l10n.bookingCompanionTag,
+                      style: AppTextStyles.labelSmall.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: T.primary(context),
                       ),
                     ),
-                  ],
-                ),
+                  )
+                else
+                  Row(
+                    children: [
+                      const Icon(
+                        IconsaxPlusBold.star,
+                        size: 14,
+                        color: AppColors.warning,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        rating.toStringAsFixed(1),
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: T.textSecondary(context),
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             ),
           ),

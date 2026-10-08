@@ -22,6 +22,8 @@ class ApiEndpoints {
   static const String driverRegister = '/auth/driver/register';
   // Edit the submitted driver details/documents while approval is pending.
   static const String driverPendingRegistration = '/auth/driver/registration';
+  /// A signed-in passenger turns their own account into a driver account.
+  static const String driverBecome = '/auth/driver/become';
   static const String linkPhone = '/auth/link-phone';
   static const String refresh = '/auth/refresh';
   static const String logout = '/auth/logout';
@@ -84,6 +86,7 @@ class ApiEndpoints {
   static const String bookingsV2AutoPick = '/v2/bookings/auto-pick';
   static String acceptBooking(String id) => '/v2/bookings/$id/accept';
   static String rejectBooking(String id) => '/v2/bookings/$id/reject';
+  static const String pendingBookingRequests = '/v2/bookings/pending-requests';
 
   // Pending charges
   static const String myPendingCharges = '/me/pending-charges';
@@ -163,9 +166,8 @@ class ApiEndpoints {
   static const String instantQuotes = '/instant-rides/quotes';
   static const String instantNearbyDrivers = '/instant-rides/nearby-drivers';
   static const String instantRequests = '/instant-rides/requests';
+  static const String instantActiveRide = '/instant-rides/active';
   static String instantRequestById(String id) => '/instant-rides/requests/$id';
-  static String instantRequestFare(String id) =>
-      '/instant-rides/requests/$id/fare';
   static String instantRequestRetry(String id) =>
       '/instant-rides/requests/$id/retry';
   static const String instantPendingOffer = '/instant-rides/offers/pending';
@@ -173,12 +175,6 @@ class ApiEndpoints {
       '/instant-rides/offers/$id/accept';
   static String instantOfferDecline(String id) =>
       '/instant-rides/offers/$id/decline';
-  static String instantOfferRespond(String id) =>
-      '/instant-rides/offers/$id/respond';
-  static String instantCounterAccept(String requestId, String offerId) =>
-      '/instant-rides/requests/$requestId/offers/$offerId/accept';
-  static String instantCounterDecline(String requestId, String offerId) =>
-      '/instant-rides/requests/$requestId/offers/$offerId/decline';
 
   // Uploads
   static const String uploads = '/uploads';

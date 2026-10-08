@@ -16,6 +16,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { TripsService } from './trips.service';
+import { buildTripSeats, defaultClosedSeats } from './trip-seats';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { TripEntity } from '../../database/entities/trip.entity';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -190,6 +191,39 @@ describe('TripsService (TypeORM)', () => {
 
   afterEach(() => jest.clearAllMocks());
 
+  describe('findByDriver', () => {
+    it("lists only trips still ahead or under way for the 'active' tab", async () => {
+      tripRepo.find.mockResolvedValue([]);
+      tripRepo.count = jest.fn().mockResolvedValue(0);
+
+      await service.findByDriver(DRIVER_ID, { page: 1, limit: 20 }, 'active');
+
+      const where = tripRepo.find.mock.calls[0][0].where;
+      expect(where.driverId).toBe(DRIVER_ID);
+      const allowed: string[] = where.status.value;
+      expect(allowed).toEqual(
+        expect.arrayContaining(['published', 'fully_booked', 'in_progress']),
+      );
+      expect(allowed).not.toContain('completed');
+    });
+
+    it('matches any other tab exactly', async () => {
+      tripRepo.find.mockResolvedValue([]);
+      tripRepo.count = jest.fn().mockResolvedValue(0);
+
+      await service.findByDriver(
+        DRIVER_ID,
+        { page: 1, limit: 20 },
+        'completed',
+      );
+
+      expect(tripRepo.find.mock.calls[0][0].where).toEqual({
+        driverId: DRIVER_ID,
+        status: 'completed',
+      });
+    });
+  });
+
   describe('create', () => {
     it('publishes every layout seat when no override is supplied', async () => {
       const trip = await service.create(baseDto(), DRIVER_ID, DRIVER_NAME);
@@ -205,7 +239,7 @@ describe('TripsService (TypeORM)', () => {
       ]);
     });
 
-    it('clamps published seats to the availableSeats override', async () => {
+    it('closes the front seat first for a bare availableSeats count', async () => {
       const trip = await service.create(
         { ...baseDto(), availableSeats: 2 },
         DRIVER_ID,
@@ -214,8 +248,51 @@ describe('TripsService (TypeORM)', () => {
 
       expect(trip.totalSeats).toBe(2);
       expect(trip.availableSeats).toBe(2);
-      expect(trip.seats).toHaveLength(2);
-      expect(trip.seats.map((s: any) => s.seatNumber)).toEqual(['0-0', '1-0']);
+      // Every seat keeps its place; the seat beside the driver goes first,
+      // then the rear-most one.
+      expect(trip.seats).toHaveLength(4);
+      const status = Object.fromEntries(
+        trip.seats.map((s: any) => [s.seatNumber, s.status]),
+      );
+      expect(status).toEqual({
+        '0-0': 'closed',
+        '1-0': 'available',
+        '1-1': 'available',
+        '1-2': 'closed',
+      });
+    });
+
+    it('closes exactly the seats the driver picked', async () => {
+      const trip = await service.create(
+        { ...baseDto(), closedSeatNumbers: ['1-1'], availableSeats: 3 },
+        DRIVER_ID,
+        DRIVER_NAME,
+      );
+
+      expect(trip.totalSeats).toBe(3);
+      expect(trip.availableSeats).toBe(3);
+      expect(
+        trip.seats
+          .filter((s: any) => s.status === 'closed')
+          .map((s: any) => s.seatNumber),
+      ).toEqual(['1-1']);
+    });
+
+    it('rejects closing a seat outside the layout, or every seat', async () => {
+      await expect(
+        service.create(
+          { ...baseDto(), closedSeatNumbers: ['5-0'] },
+          DRIVER_ID,
+          DRIVER_NAME,
+        ),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.create(
+          { ...baseDto(), closedSeatNumbers: ['0-0', '1-0', '1-1', '1-2'] },
+          DRIVER_ID,
+          DRIVER_NAME,
+        ),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('overrides preventGenderMixing without mutating the vehicle shape', async () => {
@@ -291,6 +368,8 @@ describe('TripsService (TypeORM)', () => {
       expect(recurrenceService.createRule).toHaveBeenCalled();
       const templateJson = recurrenceService.createRule.mock.calls[0][1];
       expect(templateJson.totalSeats).toBe(3);
+      // Each spawned trip closes the same seat as the original.
+      expect(templateJson.closedSeatNumbers).toEqual(['0-0']);
       expect(templateJson.seatLayout.preventGenderMixing).toBe(false);
       expect(templateJson.seatLayout.seatsPerRowList).toEqual([1, 3]);
     });
@@ -707,14 +786,21 @@ describe('TripsService (TypeORM)', () => {
     });
   });
 
-  describe('generateSeatsGrid', () => {
+  describe('trip seats', () => {
     it('generates a row-major seat grid', () => {
-      const seats = service['generateSeatsGrid'](2, 2);
+      const seats = buildTripSeats({ rows: 2, seatsPerRow: 2 }, []);
 
       expect(seats).toHaveLength(4);
       expect(seats[0].seatNumber).toBe('0-0');
       expect(seats[0].status).toBe('available');
       expect(seats[3].seatNumber).toBe('1-1');
+    });
+
+    it('closes the front row first, then from the back', () => {
+      const layout = { rows: 3, seatsPerRow: 0, seatsPerRowList: [2, 3, 3] };
+      expect(defaultClosedSeats(layout, 8)).toEqual([]);
+      expect(defaultClosedSeats(layout, 6)).toEqual(['0-0', '0-1']);
+      expect(defaultClosedSeats(layout, 5)).toEqual(['0-0', '0-1', '2-2']);
     });
   });
 });

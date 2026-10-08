@@ -29,6 +29,15 @@ void main() {
       expect(find.text('ابحث عن رحلة'), findsOneWidget);
     });
 
+    testWidgets('shared perks: scheduled time with a clock, not eco-friendly', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_host(RideMode.shared));
+
+      expect(find.text('وقت محدد'), findsOneWidget);
+      expect(find.textContaining('للبيئة'), findsNothing);
+    });
+
     testWidgets('sells the private ride on speed and privacy', (tester) async {
       await tester.pumpWidget(_host(RideMode.private));
 

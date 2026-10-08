@@ -213,6 +213,107 @@ describe('LocationsService', () => {
       expect(result.suggestions[1].primaryText).toBe('شارع البحر');
     });
 
+    it('keeps only the requested country and orders all matches by distance', async () => {
+      (configService.get as jest.Mock).mockReturnValue(undefined);
+      mockedAxios.get.mockResolvedValue({
+        data: {
+          features: [
+            {
+              geometry: { coordinates: [39.5, 24.5] },
+              properties: { name: 'بعيد', countrycode: 'SA' },
+            },
+            {
+              geometry: { coordinates: [35.0, 31.0] },
+              properties: { name: 'خارج الدولة', countrycode: 'JO' },
+            },
+            {
+              geometry: { coordinates: [39.001, 24.001] },
+              properties: {
+                name: 'قريب',
+                countrycode: 'SA',
+                osm_key: 'highway',
+                osm_value: 'bus_stop',
+              },
+            },
+            {
+              geometry: { coordinates: [39.002, 24.002] },
+              properties: { name: 'مجهول الدولة' },
+            },
+          ],
+        },
+      } as never);
+
+      const result = await build().autocomplete(
+        { q: 'مكان', lat: '24', lng: '39', country: 'SA' },
+        'user-1',
+      );
+      expect(result.suggestions.map((s) => s.primaryText)).toEqual([
+        'قريب',
+        'بعيد',
+      ]);
+    });
+
+    it('infers the country from the context when the app sends none', async () => {
+      (configService.get as jest.Mock).mockReturnValue(undefined);
+      mockedAxios.get.mockImplementation(async (url: string) =>
+        url.endsWith('/reverse')
+          ? ({
+              data: { features: [{ properties: { countrycode: 'sa' } }] },
+            } as never)
+          : ({
+              data: {
+                features: [
+                  {
+                    geometry: { coordinates: [39.01, 24.01] },
+                    properties: { name: 'محلي', countrycode: 'SA' },
+                  },
+                  {
+                    geometry: { coordinates: [35.0, 31.0] },
+                    properties: { name: 'أجنبي', countrycode: 'JO' },
+                  },
+                ],
+              },
+            } as never),
+      );
+
+      const result = await build().autocomplete(
+        { q: 'مكان', lat: '24', lng: '39' },
+        'user-1',
+      );
+
+      expect(result.suggestions.map((s) => s.primaryText)).toEqual(['محلي']);
+    });
+
+    it('also searches a box around the passenger so nearby places are candidates', async () => {
+      (configService.get as jest.Mock).mockReturnValue(undefined);
+      mockedAxios.get.mockResolvedValue({ data: { features: [] } } as never);
+
+      await build().autocomplete(
+        { q: 'مستشفى', lat: '26.6', lng: '37.9', country: 'SA' },
+        'user-1',
+      );
+
+      const searches = mockedAxios.get.mock.calls
+        .filter(([url]) => String(url).endsWith('/api/'))
+        .map(
+          ([, config]) =>
+            (config as { params: Record<string, unknown> }).params,
+        );
+      const boxed = searches.find((p) => p.bbox);
+      expect(boxed).toBeDefined();
+      const [minLng, minLat, maxLng, maxLat] = String(boxed!.bbox)
+        .split(',')
+        .map(Number);
+      expect(minLat).toBeLessThan(26.6);
+      expect(maxLat).toBeGreaterThan(26.6);
+      expect(minLng).toBeLessThan(37.9);
+      expect(maxLng).toBeGreaterThan(37.9);
+      // ~50 km either side, not the whole country.
+      expect(maxLat - minLat).toBeLessThan(1.1);
+      // The unboxed search weights distance over prominence.
+      expect(searches.find((p) => !p.bbox)?.location_bias_scale).toBe(0.1);
+    });
+
     it('orders results nearest first when a search context is sent', async () => {
       (configService.get as jest.Mock).mockReturnValue(undefined);
       mockedAxios.get.mockResolvedValue({
@@ -569,8 +670,34 @@ describe('LocationsService', () => {
       expect(result.primaryText).toBe('شارع الرينبو');
       expect(result.secondaryText).toBe('جبل عمان، عمان');
       expect(result.label).toBe('شارع الرينبو، جبل عمان، عمان');
+      expect(result.city).toBe('عمان');
       expect(result.lat).toBeCloseTo(31.9539, 4);
       expect(result.lng).toBeCloseTo(35.9106, 4);
+    });
+
+    it('falls back to the county, then the region, for the city', async () => {
+      (configService.get as jest.Mock).mockReturnValue(undefined);
+      mockedAxios.get.mockResolvedValue({
+        data: {
+          features: [
+            {
+              geometry: { type: 'Point', coordinates: [37.92, 26.6] },
+              properties: {
+                name: 'سوق',
+                county: 'محافظة العلا',
+                state: 'منطقة المدينة المنورة',
+              },
+            },
+          ],
+        },
+      } as never);
+
+      const result = await build().reverse(
+        { lat: '26.6', lng: '37.92' },
+        'user-1',
+      );
+
+      expect(result.city).toBe('العلا');
     });
 
     it('returns the point with empty text when the provider knows no address', async () => {
@@ -762,6 +889,48 @@ describe('LocationsService', () => {
       await expect(
         service.getRoute(31.95, 35.93, 31.96, 35.94),
       ).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
+
+  describe('reverseGeocode', () => {
+    it('falls back to Photon when Google refuses (billing off)', async () => {
+      (configService.get as jest.Mock).mockReturnValue(undefined);
+      mockedAxios.get
+        .mockResolvedValueOnce({
+          data: { status: 'REQUEST_DENIED', results: [] },
+        } as never)
+        .mockResolvedValueOnce({
+          data: {
+            features: [
+              {
+                properties: {
+                  district: 'العلا',
+                  state: 'منطقة المدينة المنورة',
+                  country: 'السعودية',
+                  countrycode: 'sa',
+                },
+              },
+            ],
+          },
+        } as never);
+
+      const result = await build().reverseGeocode(26.6086, 37.9232);
+
+      expect(result.countryCode).toBe('SA');
+      expect(mockedAxios.get.mock.calls[1][0]).toContain('/reverse');
+    });
+
+    it('keeps the Google error when Photon has no answer either', async () => {
+      (configService.get as jest.Mock).mockReturnValue(undefined);
+      mockedAxios.get
+        .mockResolvedValueOnce({
+          data: { status: 'REQUEST_DENIED', results: [] },
+        } as never)
+        .mockResolvedValueOnce({ data: { features: [] } } as never);
+
+      await expect(build().reverseGeocode(0, 0)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
     });
   });
 });

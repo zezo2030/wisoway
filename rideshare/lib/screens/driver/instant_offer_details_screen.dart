@@ -9,17 +9,16 @@ import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/instant_ride_models.dart';
-import '../passenger/trip_details_screen.dart';
-import 'widgets/instant_fare_editor.dart';
 import 'widgets/instant_offer_parts.dart';
+import '../../core/services/active_ride_navigator.dart';
 
 /// How the driver left the offer. The compact card that launched this screen
 /// uses it to dismiss itself instead of hanging over a decision already made.
-enum InstantOfferOutcome { accepted, declined, countered, expired }
+enum InstantOfferOutcome { accepted, declined, expired }
 
 /// The full request behind an instant-ride offer: the whole route, both legs
-/// of distance, who is asking, and the three things a driver can do about it —
-/// take it at the passenger's price, name a higher one, or pass.
+/// of distance, who is asking, and the two things a driver can do about it —
+/// take it at the distance-priced fare, or pass.
 ///
 /// The interrupting card deliberately shows less; this is where a driver comes
 /// to actually read the job before committing to it.
@@ -27,15 +26,10 @@ class InstantOfferDetailsScreen extends StatefulWidget {
   final InstantOffer offer;
   final InstantRideService service;
 
-  /// Opens the counter composer immediately, for the "اقترح سعرًا أعلى"
-  /// shortcut on the card.
-  final bool startCountering;
-
   const InstantOfferDetailsScreen({
     super.key,
     required this.offer,
     required this.service,
-    this.startCountering = false,
   });
 
   @override
@@ -44,48 +38,24 @@ class InstantOfferDetailsScreen extends StatefulWidget {
 }
 
 class _InstantOfferDetailsScreenState extends State<InstantOfferDetailsScreen> {
-  late final TextEditingController _counterController;
   late int _secondsLeft;
   late final int _totalSeconds;
   Timer? _ticker;
   bool _busy = false;
-  bool _countering = false;
-  double? _counterAmount;
   GoogleMapController? _mapController;
 
   InstantRequestSummary? get _req => widget.offer.request;
 
-  double? get _passengerFare => _req?.passengerFareValue;
-
-  /// The server caps a counter at +50% of the passenger's fare; going past it
-  /// only earns a rejected request, so the editor never offers the value.
-  double get _counterMax {
-    final fare = _passengerFare ?? 0;
-    return (fare * 1.5 * 100).floorToDouble() / 100;
-  }
-
-  double get _counterMin {
-    final fare = _passengerFare ?? 0;
-    return ((fare + fareStepFor(fare)) * 100).roundToDouble() / 100;
-  }
-
   @override
   void initState() {
     super.initState();
-    final expiresAt = widget.offer.expiresAt;
-    final remaining = expiresAt != null
-        ? expiresAt.difference(DateTime.now()).inSeconds
-        : 25;
-    _secondsLeft = remaining.clamp(1, 120);
-    _totalSeconds = _secondsLeft;
-    _counterController = TextEditingController(
-      text: _passengerFare == null ? '' : _counterMin.toStringAsFixed(2),
-    );
-    _counterAmount = _passengerFare == null ? null : _counterMin;
-    _countering = widget.startCountering && _passengerFare != null;
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+    // The same deadline and window the card used: the countdown continues
+    // here instead of starting over.
+    _secondsLeft = widget.offer.secondsLeft();
+    _totalSeconds = widget.offer.windowSeconds;
+    _ticker = Timer.periodic(const Duration(milliseconds: 500), (_) {
       if (!mounted) return;
-      setState(() => _secondsLeft -= 1);
+      setState(() => _secondsLeft = widget.offer.secondsLeft());
       if (_secondsLeft <= 0) {
         _ticker?.cancel();
         Navigator.of(context).pop(InstantOfferOutcome.expired);
@@ -96,7 +66,6 @@ class _InstantOfferDetailsScreenState extends State<InstantOfferDetailsScreen> {
   @override
   void dispose() {
     _ticker?.cancel();
-    _counterController.dispose();
     _mapController?.dispose();
     super.dispose();
   }
@@ -119,14 +88,15 @@ class _InstantOfferDetailsScreenState extends State<InstantOfferDetailsScreen> {
       );
       final tripId = request.tripId;
       if (tripId != null && tripId.isNotEmpty) {
-        navigator.push(
-          MaterialPageRoute(builder: (_) => TripDetailsScreen(tripId: tripId)),
-        );
+        ActiveRideNavigator.enterAsDriver(tripId);
+      } else {
+        await ActiveRideNavigator.resume();
       }
     } catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
       ErrorSurface.showFailure(context, ApiClient.mapError(e));
+      await ActiveRideNavigator.resume();
     }
   }
 
@@ -140,41 +110,6 @@ class _InstantOfferDetailsScreenState extends State<InstantOfferDetailsScreen> {
     }
     _ticker?.cancel();
     if (mounted) Navigator.of(context).pop(InstantOfferOutcome.declined);
-  }
-
-  Future<void> _sendCounter() async {
-    final amount = _counterAmount;
-    if (_busy || amount == null) return;
-    if (amount < _counterMin || amount > _counterMax) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.l10n.instantCounterRangeHint(
-              _counterMin.toStringAsFixed(2),
-              _counterMax.toStringAsFixed(2),
-              _req?.currency ?? '',
-            ),
-          ),
-        ),
-      );
-      return;
-    }
-    setState(() => _busy = true);
-    try {
-      await widget.service.counterOffer(widget.offer.id, amount);
-      _ticker?.cancel();
-      if (!mounted) return;
-      final messenger = ScaffoldMessenger.of(context);
-      final toast = context.l10n.instantCounterSentToast;
-      Navigator.of(context).pop(InstantOfferOutcome.countered);
-      messenger.showSnackBar(
-        SnackBar(content: Text(toast), backgroundColor: AppColors.success),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _busy = false);
-      ErrorSurface.showFailure(context, ApiClient.mapError(e));
-    }
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -413,7 +348,6 @@ class _InstantOfferDetailsScreenState extends State<InstantOfferDetailsScreen> {
 
   Widget _actionBar(BuildContext context) {
     final l10n = context.l10n;
-    final canCounter = _passengerFare != null && _counterMax > _counterMin;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -425,28 +359,13 @@ class _InstantOfferDetailsScreenState extends State<InstantOfferDetailsScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_countering) ...[
-            InstantFareEditor(
-              controller: _counterController,
-              min: _counterMin,
-              max: _counterMax,
-              currency: _req?.currency ?? '',
-              enabled: !_busy,
-              onChanged: (value) => setState(() => _counterAmount = value),
-            ),
-            const SizedBox(height: 12),
-          ],
           Row(
             children: [
               Expanded(
                 child: SizedBox(
                   height: 52,
                   child: OutlinedButton(
-                    onPressed: _busy
-                        ? null
-                        : (_countering
-                              ? () => setState(() => _countering = false)
-                              : _decline),
+                    onPressed: _busy ? null : _decline,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: T.onSurface(context),
                       side: BorderSide(color: T.outlineVariant(context)),
@@ -455,7 +374,7 @@ class _InstantOfferDetailsScreenState extends State<InstantOfferDetailsScreen> {
                       ),
                     ),
                     child: Text(
-                      _countering ? l10n.cancel : l10n.instantOfferIgnore,
+                      l10n.instantOfferIgnore,
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ),
@@ -467,9 +386,7 @@ class _InstantOfferDetailsScreenState extends State<InstantOfferDetailsScreen> {
                 child: SizedBox(
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: _busy
-                        ? null
-                        : (_countering ? _sendCounter : _accept),
+                    onPressed: _busy ? null : _accept,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: T.primary(context),
                       foregroundColor: T.onPrimary(context),
@@ -490,9 +407,7 @@ class _InstantOfferDetailsScreenState extends State<InstantOfferDetailsScreen> {
                             ),
                           )
                         : Text(
-                            _countering
-                                ? l10n.instantSendOffer
-                                : l10n.instantOfferAcceptTrip,
+                            l10n.instantOfferAcceptTrip,
                             style: const TextStyle(
                               fontWeight: FontWeight.w800,
                               fontSize: 15.5,
@@ -503,17 +418,6 @@ class _InstantOfferDetailsScreenState extends State<InstantOfferDetailsScreen> {
               ),
             ],
           ),
-          if (!_countering && canCounter) ...[
-            const SizedBox(height: 6),
-            TextButton.icon(
-              onPressed: _busy
-                  ? null
-                  : () => setState(() => _countering = true),
-              icon: const Icon(Icons.trending_up, size: 19),
-              label: Text(l10n.instantProposeFare),
-              style: TextButton.styleFrom(foregroundColor: T.primary(context)),
-            ),
-          ],
         ],
       ),
     );

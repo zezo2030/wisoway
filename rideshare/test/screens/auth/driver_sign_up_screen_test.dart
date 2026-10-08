@@ -48,6 +48,23 @@ void main() {
       );
     });
 
+    testWidgets('name field is "الاسم" with the ID hint', (tester) async {
+      await _pump(tester, const Locale('ar'));
+
+      expect(find.text('الاسم'), findsOneWidget);
+      expect(find.text('الرجاء كتابة الاسم كما هو في الهوية'), findsOneWidget);
+      expect(find.text('الاسم الكامل'), findsNothing);
+    });
+
+    testWidgets('dial code sits left of the number in Arabic', (tester) async {
+      await _pump(tester, const Locale('ar'));
+
+      expect(
+        tester.getCenter(find.byType(CountryCodePicker)).dx,
+        lessThan(tester.getCenter(find.text('07 XXX XXXX')).dx),
+      );
+    });
+
     testWidgets('dial code and phone hint read left-to-right in Arabic', (
       tester,
     ) async {

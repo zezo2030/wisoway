@@ -2,10 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/api/websocket_service.dart';
 import '../../../core/services/instant_offer_actions.dart';
+import '../../../core/services/push_notification_service.dart';
 import '../../../core/services/instant_ride_service.dart';
 import '../../../core/services/location_service.dart';
-import '../../../core/services/push_notification_service.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/ui/error_surface.dart';
 import '../../../l10n/l10n_extensions.dart';
@@ -26,7 +27,8 @@ class DriverAvailabilityCard extends StatefulWidget {
   State<DriverAvailabilityCard> createState() => _DriverAvailabilityCardState();
 }
 
-class _DriverAvailabilityCardState extends State<DriverAvailabilityCard> {
+class _DriverAvailabilityCardState extends State<DriverAvailabilityCard>
+    with WidgetsBindingObserver {
   final InstantRideService _service = InstantRideService();
   final LocationService _location = LocationService();
 
@@ -36,17 +38,47 @@ class _DriverAvailabilityCardState extends State<DriverAvailabilityCard> {
   Timer? _offerPollTimer;
   bool _offerDialogOpen = false;
 
+  bool get _appVisible =>
+      WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+
+  final WebSocketService _socket = WebSocketService();
+  StreamSubscription<Map<String, dynamic>>? _offerSub;
+  StreamSubscription<Map<String, dynamic>>? _offerClosedSub;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadStatus();
+    // The socket tells an open app about an offer the moment it is made, so
+    // the card doesn't wait for the next poll or a slow push.
+    _socket.connect();
+    _offerSub = _socket.onInstantOffer.listen((_) {
+      if (_isOnline) _pollForOffer();
+    });
+    _offerClosedSub = _socket.onInstantOfferClosed.listen((data) {
+      final offerId = data['offerId']?.toString() ?? '';
+      if (offerId.isEmpty) return;
+      InstantOfferDialog.dismissOffer(offerId);
+      PushNotificationService.cancelAndroidInstantOfferNotification(offerId);
+    });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _offerSub?.cancel();
+    _offerClosedSub?.cancel();
     _heartbeatTimer?.cancel();
     _offerPollTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Back from the background or the lock screen: an offer that rang in the
+    // tray meanwhile should be on screen now, not up to a poll interval later.
+    if (state == AppLifecycleState.resumed && _isOnline) _pollForOffer();
   }
 
   Future<void> _loadStatus() async {
@@ -128,16 +160,24 @@ class _DriverAvailabilityCardState extends State<DriverAvailabilityCard> {
   }
 
   Future<void> _pollForOffer() async {
-    if (_offerDialogOpen || InstantOfferActions.isDialogOpen || !mounted) {
+    if (_offerDialogOpen ||
+        InstantOfferActions.isDialogOpen ||
+        InstantOfferDialog.visibleOfferId != null ||
+        !mounted) {
       return;
     }
+    // Timers keep firing while the app is backgrounded or the screen is
+    // locked. Opening the card then would take down the ringing tray
+    // notification for a dialog nobody can see — leave the offer to the
+    // notification, and pick it up here once the driver is back.
+    if (!_appVisible) return;
     try {
       final offer = await _service.getPendingOffer();
-      if (offer == null || offer.id.isEmpty || !mounted) return;
+      if (offer == null || offer.id.isEmpty || !mounted || !_appVisible) {
+        return;
+      }
+      if (InstantOfferDialog.visibleOfferId != null) return;
       _offerDialogOpen = true;
-      await PushNotificationService.cancelAndroidInstantOfferNotification(
-        offer.id,
-      );
       await showDialog<void>(
         context: context,
         barrierDismissible: false,

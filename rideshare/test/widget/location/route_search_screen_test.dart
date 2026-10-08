@@ -17,13 +17,37 @@ class _FakeLocationService extends LocationService {
   final Map<String, Completer<LocationAutocompleteResult>> pending = {};
   final List<String> queries = [];
   final List<double?> sentLatitudes = [];
+  final List<String?> sentCountries = [];
+  bool countryAvailable = true;
 
   /// Queries answered immediately instead of parked in [pending].
   final Map<String, List<PlaceSuggestion>> canned = {};
 
   @override
   Future<LocationPermission> checkPermission() async =>
-      LocationPermission.denied;
+      LocationPermission.whileInUse;
+
+  @override
+  Future<Position> getCurrentPosition({
+    bool checkPrivacyPreference = true,
+  }) async => Position(
+    latitude: 31.9539,
+    longitude: 35.9106,
+    timestamp: DateTime(2024),
+    accuracy: 5,
+    altitude: 0,
+    altitudeAccuracy: 0,
+    heading: 0,
+    headingAccuracy: 0,
+    speed: 0,
+    speedAccuracy: 0,
+  );
+
+  @override
+  Future<String?> getCountryCodeFromCoordinates({
+    required double latitude,
+    required double longitude,
+  }) async => countryAvailable ? 'JO' : null;
 
   @override
   Future<LocationAutocompleteResult> autocomplete({
@@ -32,10 +56,12 @@ class _FakeLocationService extends LocationService {
     String? sessionToken,
     double? latitude,
     double? longitude,
+    String? country,
     dynamic cancelToken,
   }) {
     queries.add(query);
     sentLatitudes.add(latitude);
+    sentCountries.add(country);
 
     final immediate = canned[query];
     if (immediate != null) {
@@ -53,9 +79,14 @@ class _FakeLocationService extends LocationService {
   }
 
   void complete(String query, List<PlaceSuggestion> suggestions) {
-    pending.remove(query)?.complete(
-      LocationAutocompleteResult(sessionToken: 't', suggestions: suggestions),
-    );
+    pending
+        .remove(query)
+        ?.complete(
+          LocationAutocompleteResult(
+            sessionToken: 't',
+            suggestions: suggestions,
+          ),
+        );
   }
 
   @override
@@ -258,6 +289,32 @@ void main() {
       expect(find.text('اختيار على الخريطة'), findsOneWidget);
     });
 
+    testWidgets('sends the search area country with each request', (
+      tester,
+    ) async {
+      service.canned['العزيزية'] = [_suggestion('العزيزية')];
+      await pumpScreen(tester, focus: RouteField.destination);
+
+      await tester.enterText(find.byType(TextField).last, 'العزيزية');
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
+
+      expect(service.sentCountries, ['JO']);
+    });
+
+    testWidgets('does not request global results when country is unknown', (
+      tester,
+    ) async {
+      service.countryAvailable = false;
+      await pumpScreen(tester, focus: RouteField.destination);
+
+      await tester.enterText(find.byType(TextField).last, 'العزيزية');
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
+
+      expect(service.queries, isEmpty);
+    });
+
     testWidgets('renders the distance on a suggestion row', (tester) async {
       service.canned['مستشفى'] = [
         _suggestion('مستشفى الجامعة', distanceMeters: 2400),
@@ -291,7 +348,9 @@ void main() {
       expect(find.byType(RouteSearchScreen), findsOneWidget);
       final origin = tester.widget<TextField>(find.byType(TextField).first);
       expect(origin.controller?.text, 'resolved-وسط البلد');
-      final destination = tester.widget<TextField>(find.byType(TextField).at(1));
+      final destination = tester.widget<TextField>(
+        find.byType(TextField).at(1),
+      );
       expect(destination.focusNode?.hasFocus, isTrue);
     });
 
@@ -316,17 +375,16 @@ void main() {
               body: Center(
                 child: ElevatedButton(
                   onPressed: () async {
-                    captured = await Navigator.of(context)
-                        .push<RouteSelection>(
-                          MaterialPageRoute(
-                            builder: (_) => RouteSearchScreen(
-                              focusField: RouteField.destination,
-                              savedPlaces: savedPlaces,
-                              from: existingOrigin,
-                              locationService: service,
-                            ),
-                          ),
-                        );
+                    captured = await Navigator.of(context).push<RouteSelection>(
+                      MaterialPageRoute(
+                        builder: (_) => RouteSearchScreen(
+                          focusField: RouteField.destination,
+                          savedPlaces: savedPlaces,
+                          from: existingOrigin,
+                          locationService: service,
+                        ),
+                      ),
+                    );
                   },
                   child: const Text('open'),
                 ),
@@ -390,17 +448,16 @@ void main() {
               body: Center(
                 child: ElevatedButton(
                   onPressed: () async {
-                    captured = await Navigator.of(context)
-                        .push<RouteSelection>(
-                          MaterialPageRoute(
-                            builder: (_) => RouteSearchScreen(
-                              focusField: RouteField.origin,
-                              savedPlaces: savedPlaces,
-                              from: origin,
-                              locationService: service,
-                            ),
-                          ),
-                        );
+                    captured = await Navigator.of(context).push<RouteSelection>(
+                      MaterialPageRoute(
+                        builder: (_) => RouteSearchScreen(
+                          focusField: RouteField.origin,
+                          savedPlaces: savedPlaces,
+                          from: origin,
+                          locationService: service,
+                        ),
+                      ),
+                    );
                   },
                   child: const Text('open'),
                 ),
@@ -427,7 +484,11 @@ void main() {
       tester,
     ) async {
       await savedPlaces.addRecent(
-        LocationModel(name: 'الجامعة الأردنية', latitude: 32.0, longitude: 35.8),
+        LocationModel(
+          name: 'الجامعة الأردنية',
+          latitude: 32.0,
+          longitude: 35.8,
+        ),
         secondaryText: 'عمّان',
       );
       await pumpScreen(tester);
@@ -452,16 +513,15 @@ void main() {
               body: Center(
                 child: ElevatedButton(
                   onPressed: () async {
-                    captured = await Navigator.of(context)
-                        .push<RouteSelection>(
-                          MaterialPageRoute(
-                            builder: (_) => RouteSearchScreen.singlePoint(
-                              savedPlaces: savedPlaces,
-                              title: 'محطة توقف',
-                              locationService: service,
-                            ),
-                          ),
-                        );
+                    captured = await Navigator.of(context).push<RouteSelection>(
+                      MaterialPageRoute(
+                        builder: (_) => RouteSearchScreen.singlePoint(
+                          savedPlaces: savedPlaces,
+                          title: 'محطة توقف',
+                          locationService: service,
+                        ),
+                      ),
+                    );
                   },
                   child: const Text('open'),
                 ),

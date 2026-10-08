@@ -39,6 +39,8 @@ class _MyTripsScreenState extends State<MyTripsScreen>
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
+      // Fires during the swipe animation too; act once it settles.
+      if (_tabController.indexIsChanging) return;
       setState(() {
         switch (_tabController.index) {
           case 0:
@@ -52,6 +54,12 @@ class _MyTripsScreenState extends State<MyTripsScreen>
             break;
         }
       });
+      // The provider only loads each tab once; a trip may have moved tabs
+      // since (completed, hidden), so load this tab fresh.
+      _refreshTrips();
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _refreshTrips();
     });
   }
 
@@ -152,7 +160,12 @@ class _MyTripsScreenState extends State<MyTripsScreen>
             );
           }
 
-          final trips = snapshot.data ?? [];
+          // The provider shares one driver-trips list across screens and
+          // tabs, so it can briefly hold another tab's trips (or all of
+          // them); show only the ones that belong here.
+          final trips = (snapshot.data ?? [])
+              .where((trip) => trip.inDriverTab(_selectedStatus))
+              .toList();
 
           if (trips.isEmpty) {
             return RefreshIndicator(

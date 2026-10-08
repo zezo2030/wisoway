@@ -7,6 +7,8 @@ import '../../providers/notification_provider.dart';
 import '../../models/location_model.dart';
 import '../../core/theme/colors.dart';
 import '../../core/services/location_service.dart';
+import '../../core/services/active_ride_navigator.dart';
+import '../../core/services/booking_request_actions.dart';
 import '../../core/utils/responsive_layout.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../core/services/saved_places_scope.dart';
@@ -17,6 +19,7 @@ import 'tabs/driver_home_content.dart';
 import 'tabs/search_tab.dart';
 import 'tabs/bookings_tab.dart';
 import 'tabs/profile_tab.dart';
+import 'widgets/home_tab_scope.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,7 +28,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
   LocationModel? _userLocation;
   bool _isLoadingLocation = false;
@@ -35,9 +38,28 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadUserLocation();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeNotifications();
+      // A matched instant ride owns the screen until it ends.
+      ActiveRideNavigator.resume();
+      // Booking requests the driver hasn't answered yet.
+      BookingRequestActions.showPending();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ActiveRideNavigator.resume();
+      BookingRequestActions.showPending();
+    }
   }
 
   Future<void> _initializeNotifications() async {
@@ -197,10 +219,23 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = authProvider.userModel;
     final bool useRail = ResponsiveLayout.useNavigationRail(context);
 
-    if (useRail) {
-      return _buildScaffoldWithNavigationRail(context, user);
-    }
-    return _buildScaffoldWithBottomNav(context, user);
+    final scaffold = useRail
+        ? _buildScaffoldWithNavigationRail(context, user)
+        : _buildScaffoldWithBottomNav(context, user);
+
+    // Off the home tab, back (the header arrow or the system button) returns
+    // to the home tab instead of leaving the app.
+    return PopScope(
+      canPop: _currentIndex == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _goHome();
+      },
+      child: HomeTabScope(goHome: _goHome, child: scaffold),
+    );
+  }
+
+  void _goHome() {
+    if (_currentIndex != 0) setState(() => _currentIndex = 0);
   }
 
   Widget _buildScaffoldWithNavigationRail(BuildContext context, user) {

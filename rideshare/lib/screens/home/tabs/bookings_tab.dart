@@ -11,6 +11,7 @@ import '../../../models/user_model.dart';
 import '../../../providers/trip_provider.dart';
 import '../../../core/services/booking_service.dart';
 import '../../../widgets/notification_icon_button.dart';
+import '../widgets/home_tab_scope.dart';
 import '../widgets/booking_card.dart';
 import '../widgets/trip_card.dart';
 import '../../../widgets/common/empty_state.dart';
@@ -78,6 +79,7 @@ class _BookingsTabState extends State<BookingsTab> {
           style: GoogleFonts.tajawal(fontWeight: FontWeight.bold),
         ),
         automaticallyImplyLeading: false,
+        leading: const BackToHomeButton(),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -172,6 +174,7 @@ class _BookingsTabState extends State<BookingsTab> {
             style: GoogleFonts.tajawal(fontWeight: FontWeight.bold),
           ),
           automaticallyImplyLeading: false,
+          leading: const BackToHomeButton(),
           elevation: 0,
           actions: [
             Padding(
@@ -195,6 +198,7 @@ class _BookingsTabState extends State<BookingsTab> {
           style: GoogleFonts.tajawal(fontWeight: FontWeight.bold),
         ),
         automaticallyImplyLeading: false,
+        leading: const BackToHomeButton(),
         elevation: 0,
       ),
       body: FutureBuilder<List<BookingModel>>(

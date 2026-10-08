@@ -88,10 +88,11 @@ export class TripsController {
     @Query('limit') limit?: number,
     @Query('status') status?: string,
   ) {
-    return this.tripsService.findByDriver(driverId, {
-      page: page || 1,
-      limit: limit || 20,
-    });
+    return this.tripsService.findByDriver(
+      driverId,
+      { page: page || 1, limit: limit || 20 },
+      status,
+    );
   }
 
   @Get('fee-quote')

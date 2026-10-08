@@ -48,7 +48,7 @@
             android:textColor="#8A98AA"
             android:textSize="11sp" />
 
-        <View
+        <TextView
             android:layout_width="0dp"
             android:layout_height="1dp"
             android:layout_weight="1" />

@@ -6,6 +6,7 @@ import '../../models/trip_fee_quote.dart';
 import '../../models/trip_price_suggestion.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
+import '../../models/trip_meeting_point.dart';
 
 class TripService {
   final ApiClient _api = ApiClient();
@@ -52,8 +53,10 @@ class TripService {
     String? carImageUrl,
     List<LocationModel>? stops,
     String? notes,
+    TripMeetingPoint? meetingPoint,
     Map<String, dynamic>? recurrence,
     int? availableSeats,
+    List<String>? closedSeatNumbers,
     bool? preventGenderMixing,
   }) async {
     try {
@@ -71,8 +74,11 @@ class TripService {
               .map((e) => e.value.toStopMap(order: e.key + 1))
               .toList(),
         if (notes != null && notes.isNotEmpty) 'notes': notes,
+        if (meetingPoint != null) 'meetingPoint': meetingPoint.toJson(),
         if (recurrence != null) 'recurrence': recurrence,
         if (availableSeats != null) 'availableSeats': availableSeats,
+        // Exactly which seats are not offered (front seat first by default).
+        if (closedSeatNumbers != null) 'closedSeatNumbers': closedSeatNumbers,
         if (preventGenderMixing != null)
           'preventGenderMixing': preventGenderMixing,
       };
@@ -198,10 +204,12 @@ class TripService {
         ApiEndpoints.trips,
         queryParameters: fallbackQuery.isEmpty ? null : fallbackQuery,
       );
-      final fallbackTrips = _extractTrips(fallbackResponse);
+      final fallbackTrips = _extractTrips(fallbackResponse).where(
+        (trip) => status == null || status.isEmpty || trip.inDriverTab(status),
+      );
       if ((driverId == null || driverId.isEmpty) &&
           (driverName == null || driverName.trim().isEmpty)) {
-        return fallbackTrips;
+        return fallbackTrips.toList();
       }
       return fallbackTrips.where(sameDriver).toList();
     }
@@ -217,15 +225,13 @@ class TripService {
       );
       final trips = _extractTrips(response);
       // Some backend versions ignore status on /trips/my; enforce locally.
-      final filteredTrips = (status == null || status.isEmpty)
+      // "active" is a group (published, fully booked, under way…), not the
+      // literal status — new trips are stored as `published`.
+      // An empty tab is a real answer (no hidden trips, say), not a failure —
+      // the public-trips fallback is only for when /trips/my itself fails.
+      return (status == null || status.isEmpty)
           ? trips
-          : trips.where((trip) => trip.status == status).toList();
-      if (filteredTrips.isNotEmpty ||
-          ((driverId == null || driverId.isEmpty) &&
-              (driverName == null || driverName.trim().isEmpty))) {
-        return filteredTrips;
-      }
-      return fallbackFromPublicTrips();
+          : trips.where((trip) => trip.inDriverTab(status)).toList();
     } catch (e) {
       print('❌ Error getting driver trips: $e');
       if (driverId != null && driverId.isNotEmpty) {

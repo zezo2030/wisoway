@@ -82,7 +82,7 @@ export class BookingsTimeoutProcessor {
 
     // Notify the passenger that their booking was auto-cancelled
     this.notificationsService
-      .notifyPassengerOfBookingDecision(bookingId, 'canceled')
+      .notifyPassengerOfBookingDecision(bookingId, 'expired')
       .catch((err: Error) =>
         this.logger.warn(
           `Failed to notify passenger of auto-cancellation for booking ${bookingId}: ${err.message}`,

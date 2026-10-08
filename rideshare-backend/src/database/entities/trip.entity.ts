@@ -19,6 +19,13 @@ type GeoPoint = {
   coordinates: [number, number];
 };
 
+export interface TripMeetingPoint {
+  lat: number;
+  lng: number;
+  address?: string | null;
+  note?: string | null;
+}
+
 @Entity({ name: 'trips' })
 @Index('trips_driver_idx', ['driverId'])
 @Index('trips_status_departure_idx', ['status', 'departureTime'])
@@ -94,6 +101,13 @@ export class TripEntity {
   /** Free-text driver notes visible to passengers (phase 6 / US4). */
   @Column({ type: 'text', nullable: true })
   notes: string | null;
+
+  /**
+   * Exact gathering spot: a map pin plus the driver's description of it.
+   * Null on trips created before it existed — clients fall back to `from`.
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  meetingPoint: TripMeetingPoint | null;
 
   @Column({ type: 'enum', enum: TripStatus, default: TripStatus.PUBLISHED })
   status: TripStatus;

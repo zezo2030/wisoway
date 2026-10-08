@@ -102,6 +102,11 @@ export class RegisterDriverDto {
   model: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  color?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)

@@ -98,17 +98,22 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "C:/Users/zezo/.cursor/projects/c-Users-zezo-Desktop-work-wisoway/assets/c__Users_zezo_AppData_Roaming_Cursor_User_workspaceStorage_622b6bf28e5f0bc27e7e2fa521d28ff8_images_OIG1-a647901b-a27a-46ce-9ffd-153f5607c402.png"
+  # The VisionWay mark (circle + arrow) cut out of the brand artwork;
+  # the full artwork (skyline + wordmark) is unreadable at icon size.
+  image_path: "assets/icon/app_icon.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+  remove_alpha_ios: true
   min_sdk_android: 21
   web:
     generate: true
-    image_path: "C:/Users/zezo/.cursor/projects/c-Users-zezo-Desktop-work-wisoway/assets/c__Users_zezo_AppData_Roaming_Cursor_User_workspaceStorage_622b6bf28e5f0bc27e7e2fa521d28ff8_images_OIG1-a647901b-a27a-46ce-9ffd-153f5607c402.png"
-    background_color: "#001B4D"
-    theme_color: "#001B4D"
+    image_path: "assets/icon/app_icon.png"
+    background_color: "#FFFFFF"
+    theme_color: "#0B3C6E"
   windows:
     generate: true
-    image_path: "C:/Users/zezo/.cursor/projects/c-Users-zezo-Desktop-work-wisoway/assets/c__Users_zezo_AppData_Roaming_Cursor_User_workspaceStorage_622b6bf28e5f0bc27e7e2fa521d28ff8_images_OIG1-a647901b-a27a-46ce-9ffd-153f5607c402.png"
+    image_path: "assets/icon/app_icon.png"
     icon_size: 48
   macos:
     generate: true
-    image_path: "C:/Users/zezo/.cursor/projects/c-Users-zezo-Desktop-work-wisoway/assets/c__Users_zezo_AppData_Roaming_Cursor_User_workspaceStorage_622b6bf28e5f0bc27e7e2fa521d28ff8_images_OIG1-a647901b-a27a-46ce-9ffd-153f5607c402.png"
+    image_path: "assets/icon/app_icon.png"

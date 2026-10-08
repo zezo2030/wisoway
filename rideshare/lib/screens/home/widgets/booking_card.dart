@@ -221,14 +221,16 @@ class BookingCard extends StatelessWidget {
                         mutedStyle: isPastTrip,
                       ),
                     ),
-                    Expanded(
-                      child: _BookingInfoItem(
-                        icon: IconsaxPlusBold.profile_2user,
-                        label: context.l10n.seatLabel,
-                        value: seatSummary.isNotEmpty ? seatSummary : '-',
-                        mutedStyle: isPastTrip,
+                    // An instant ride hires the whole car — there is no seat.
+                    if (trip?.isInstant != true)
+                      Expanded(
+                        child: _BookingInfoItem(
+                          icon: IconsaxPlusBold.profile_2user,
+                          label: context.l10n.seatLabel,
+                          value: seatSummary.isNotEmpty ? seatSummary : '-',
+                          mutedStyle: isPastTrip,
+                        ),
                       ),
-                    ),
                   ],
                 ),
                 // Cancel booking action — visible for cancellable bookings.

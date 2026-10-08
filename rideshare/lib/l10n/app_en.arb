@@ -515,7 +515,7 @@
   "@errorsRouteUnavailable": {
     "description": "Route unavailable error message"
   },
-  "notificationsBookingCreatedTitle": "A seat was booked on your shared trip",
+  "notificationsBookingCreatedTitle": "New booking request on your shared trip",
   "@notificationsBookingCreatedTitle": {
     "description": "Title for booking created notification"
   },
@@ -820,21 +820,15 @@
   "@markPassengerAbsent": {
     "description": "Driver action to mark a passenger as absent at trip completion"
   },
-  "welcomeTitle": "Welcome to VisionWay",
   "welcomeSubtitle": "Your journey starts here. Pick your destination and travel with us on direct or shared rides, safely and comfortably.",
   "welcomeSubtitleHighlightDirect": "direct",
   "welcomeSubtitleHighlightShared": "shared",
   "welcomeBrandTagline": "طريق الرؤية",
   "welcomeDirectTitle": "Direct rides",
-  "welcomeDirectBody": "Your own ride: direct, fast and comfortable",
   "welcomeSharedTitle": "Shared rides",
-  "welcomeSharedBody": "Share the ride, save more, greener travel",
   "welcomeFeaturePricingTitle": "Transparent pricing",
-  "welcomeFeaturePricingBody": "Fair fares with no surprises",
   "welcomeFeatureSpeedTitle": "Fast and simple",
-  "welcomeFeatureSpeedBody": "Book your ride in a few steps",
   "welcomeFeatureSafetyTitle": "Safe and reliable",
-  "welcomeFeatureSafetyBody": "Trusted drivers and secure trips",
   "welcomeTermsPrefix": "By signing up, you agree to the",
   "welcomeTermsLink": "Terms & Conditions",
   "welcomeTermsAnd": "and",
@@ -845,12 +839,6 @@
   "signInOrDivider": "or",
   "signInWithPhoneNumber": "Sign in with your phone number",
   "signInNewUserQuestion": "New here?",
-  "signInFeatureTrustedTitle": "Trusted and verified",
-  "signInFeatureTrustedBody": "Vetted drivers and safe trips",
-  "signInFeatureFastTitle": "Fast and simple",
-  "signInFeatureFastBody": "Book your ride in a few steps",
-  "signInFeaturePrivacyTitle": "Safety and privacy",
-  "signInFeaturePrivacyBody": "Your data is protected to the highest standard",
   "password": "Password",
   "passwordRequired": "Password is required",
   "passwordTooShort": "Password is too short",
@@ -935,6 +923,7 @@
   "departureDate": "Departure date",
   "departureTime": "Departure time",
   "pricePerSeat": "Price per seat",
+  "tripPriceLabel": "Trip price",
   "availableSeats": "Available seats",
   "notes": "Notes",
   "createTripButton": "Create trip",
@@ -1173,7 +1162,6 @@
   "noActiveTripsTitle": "No active trips",
   "noActiveTripsSubtitle": "Start by creating a trip to see it here.",
   "whereDoYouWantToGo": "Where do you want to go?",
-  "haveAPlaceInMind": "Have a place in mind?",
   "nearbyTrips": "Trips near you",
   "viewAll": "View all",
   "noNearbyTripsTitle": "No nearby trips",
@@ -2460,6 +2448,7 @@
   "createTripWhenAndHow": "When and how?",
   "createTripWhenAndHowSubtitle": "Set your trip details, passenger seats, and price",
   "availableSeatsSection": "Available seats",
+  "seatPickerTapHint": "Tap any seat to open or close it. Reducing the count closes the seat beside the driver first.",
   "availableSeatsCountTitle": "Available seats count",
   "seatsUnitLabel": "Seats",
   "timePeriodAm": "AM",
@@ -2587,9 +2576,7 @@
   "instantOfferDirectSubtitle": "Direct trip with no stops",
   "instantRideAcceptedToast": "Ride accepted. Head to the pickup point.",
   "instantOfferCountdown": "Expires in {seconds}s",
-  "instantDecline": "Decline",
   "instantOfferIgnore": "Ignore",
-  "instantAccept": "Accept",
   "instantOfferAcceptTrip": "Accept trip",
   "instantOfferExpectedEarnings": "Expected earnings",
   "instantOfferIncludesFees": "Includes platform fees",
@@ -2619,33 +2606,9 @@
   "instantFormKmUnit": "km",
   "instantFormPriceAfterDestination": "The fare is calculated after you choose a destination",
   "instantFormChooseDestinationCta": "Choose a destination to see the fare",
-  "instantFormYourFareTitle": "Your fare for the ride",
-  "instantFormFareHint": "Enter a fare",
-  "instantFormFareRange": "Allowed range: {min} – {max} {currency}",
-  "instantFormFareOutOfRange": "The fare must be between {min} and {max} {currency}",
-  "instantFormFareNote": "The driver may accept your fare or propose a higher one. Pay the driver in cash.",
-  "instantTrustSupport": "24/7 support",
-  "instantTrustSupportSub": "We are here to help",
-  "instantTrustSafe": "Safe and trusted",
-  "instantTrustSafeSub": "Your ride is in safe hands",
-  "instantTrustTracking": "Trip tracking",
-  "instantTrustTrackingSub": "Share your ride with loved ones",
-  "instantTrustCash": "Cash payment",
-  "instantTrustCashSub": "Pay the driver directly",
-  "@instantFormFareRange": {
-    "placeholders": {
-      "min": {"type": "String"},
-      "max": {"type": "String"},
-      "currency": {"type": "String"}
-    }
-  },
-  "@instantFormFareOutOfRange": {
-    "placeholders": {
-      "min": {"type": "String"},
-      "max": {"type": "String"},
-      "currency": {"type": "String"}
-    }
-  },
+  "instantFormYourFareTitle": "Trip fare",
+  "instantFormFareNote": "The fare is calculated from the distance. Pay the driver in cash.",
+  "instantFormFareUnavailable": "Couldn't calculate the trip fare.",
   "instantSelectFromTo": "Choose pickup and destination.",
   "instantFromHint": "Pickup location",
   "instantFromPickerTitle": "Choose pickup point",
@@ -2665,12 +2628,7 @@
   "instantDone": "Done",
   "instantRequestCancelled": "Request cancelled",
   "instantNoDrivers": "We couldn't find a driver right now",
-  "instantNoDriversSubtitle": "All nearby drivers may be busy, or none may be close to you.",
-  "instantNoDriversWithinRadius": "No driver is available within {km} km of your pickup point.",
-  "instantNoDriversAllDeclined": "Nearby drivers did not accept your fare. Try raising it a little.",
-  "instantNoDriversTimedOut": "The search window ended before any driver responded.",
-  "instantNoDriversCheckPickup": "Check that the pickup point really is where you are now.",
-  "@instantNoDriversWithinRadius": {"placeholders": {"km": {"type": "String"}}},
+  "instantNoDriversSubtitle": "No driver is available right now.",
   "instantNoDriversTip": "Tip: You can try again in a few minutes.",
   "instantNoDriversTipKeepSearching": "We'll keep looking for you.",
   "instantNoDriversIllustrationLabel": "No driver found",
@@ -2679,7 +2637,6 @@
   "instantRideSafety": "Ride safety",
   "instantPickupPoint": "Pickup point",
   "instantDropoffPoint": "Drop-off point",
-  "instantRetryFareChanged": "The fare range changed. Review the fare before trying again.",
   "instantTryAgain": "Try again",
   "instantSearching": "Finding the nearest driver...",
   "instantSearchingSubtitle": "Reaching out to drivers near you",
@@ -2690,45 +2647,18 @@
   "instantSearchingTip": "Finding a driver can take longer at peak times. Thanks for your patience",
   "instantStepRequested": "Request sent",
   "instantStepSearching": "Finding a driver",
-  "instantStepDriverOffer": "Driver offer",
+  "instantStepDriverOffer": "Driver accepts",
   "instantStepDriverOnWay": "Driver on the way",
   "@instantSearchingMinutes": {"placeholders": {"minutes": {"type": "String"}}},
   "@instantSearchingKm": {"placeholders": {"km": {"type": "String"}}},
   "instantFareEstimate": "Estimated fare: {fare} {currency}",
   "instantCancelRequest": "Cancel request",
-  "instantYourFareLabel": "Your fare",
-  "instantRaiseFare": "Raise fare",
-  "instantFareRaiseHint": "Raise your fare to attract drivers faster",
-  "instantFareLockedWhileOffered": "Waiting for a driver to answer your current fare",
-  "instantFareMaxReached": "You have reached the maximum fare",
-  "instantFareRaisedToast": "Your fare was raised and nearby drivers notified",
-  "instantRecommendedFare": "Recommended fare: {fare} {currency}",
-  "instantYourFareValue": "Your fare: {fare} {currency}",
   "instantOfferDetailsTitle": "Request details",
   "instantOfferOpenDetails": "View request details",
   "instantOfferCashNote": "Cash to the driver · platform fees included",
   "instantOfferPickupDistance": "Distance to pickup",
   "instantOfferPickupEta": "Time to pickup",
   "instantOfferTripDistance": "Trip distance",
-  "instantCounterBadge": "Fare offer",
-  "instantCounterProposedLabel": "Driver's price",
-  "instantCounterRangeHint": "Between {min} and {max} {currency}",
-  "@instantCounterRangeHint": {
-    "placeholders": {
-      "min": {"type": "String"},
-      "max": {"type": "String"},
-      "currency": {"type": "String"}
-    }
-  },
-  "instantDriverOfferTitle": "Driver's offer",
-  "instantProposeFare": "Offer a higher fare",
-  "instantSendOffer": "Send offer",
-  "instantCounterSentToast": "Your offer was sent to the passenger. Waiting for approval...",
-  "instantCounterMaxHint": "Max: {fare} {currency}",
-  "instantNudgeTitle": "No nearby driver yet",
-  "instantNudgeSubtitle": "Try raising your fare to attract a driver faster",
-  "instantRaiseTo": "Raise to {fare} {currency}",
-  "instantKeepFare": "Keep {fare} {currency}",
   "instantArrivingIn": "Arriving in ~{minutes} min",
   "instantAgreedFare": "Agreed fare: {fare} {currency}",
   "tripSummaryThanks": "Thank you for your trip",
@@ -2842,7 +2772,7 @@
   "accountTypePassengerFeatureDirectTitle": "Direct rides",
   "accountTypePassengerFeatureDirectBody": "Book a private ride that comes to you",
   "accountTypePassengerFeatureSharedTitle": "Shared rides",
-  "accountTypePassengerFeatureSharedBody": "Join a trip and share the savings",
+  "accountTypePassengerFeatureSharedBody": "Share the ride with others",
   "accountTypePassengerFeaturePaymentTitle": "Safe and easy payment",
   "accountTypePassengerFeaturePaymentBody": "Multiple secure payment options",
   "accountTypeDriverFeatureTripsTitle": "Create trips",
@@ -2857,7 +2787,7 @@
   "passengerSignupSubtitle": "Register now as a passenger to start your journey with us",
   "driverSignupTitle": "Create driver account",
   "driverSignupSubtitle": "Start receiving passengers and earning extra income",
-  "fullNameIdHint": "Write your name as it appears on your ID",
+  "fullNameIdHint": "Please write your name as it appears on your ID",
   "phoneConfirmCallHint": "We'll contact you to confirm your account",
   "passwordMinLengthHint": "Must contain at least 8 characters",
   "confirmPasswordReenterHint": "Re-enter the password",
@@ -2866,6 +2796,8 @@
   "profileCityLabel": "City *",
   "profileCityHint": "Enter your city",
   "profileCityRequired": "City is required",
+  "profileCityMapTitle": "Choose your city on the map",
+  "profileCityMapUnavailable": "Could not find a city at this location. Pick another point or enter your city manually",
   "completeDriverProfileTitle": "Complete driver profile",
   "driverStep2Badge": "Step 2 of 3: Additional information",
   "driverStep3Badge": "Step 3 of 3: Vehicle documents",
@@ -2989,7 +2921,7 @@
   "rideModeSharedSubtitle": "Share the ride with other passengers and travel for less",
   "rideModeSharedPerkSeats": "Fellow riders",
   "rideModeSharedPerkPrice": "Lower fares",
-  "rideModeSharedPerkEco": "Eco friendly",
+  "rideModeSharedPerkScheduledTime": "Scheduled time",
   "rideModeSharedCta": "Find a ride",
   "rideModePrivateBadge": "Faster",
   "rideModePrivateTitle": "Ride with a driver",
@@ -3082,5 +3014,91 @@
     }
   },
   "instantOfferCurrencyJod": "JOD",
-  "instantOfferCurrencySar": "SAR"
+  "instantOfferCurrencySar": "SAR",
+  "instantTripHeadingToPickup": "Heading to the passenger",
+  "instantTripPassengerOnBoard": "Passenger on board — heading to destination",
+  "instantTripAway": "{distance} away",
+  "@instantTripAway": {
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "instantTripPassengerMarker": "Passenger",
+  "instantTripPickupLabel": "Pickup",
+  "instantTripDestinationLabel": "Destination",
+  "instantTripFareLabel": "Fare",
+  "instantTripCashNote": "Cash to driver",
+  "instantTripStartedLabel": "Started",
+  "instantTripNavigate": "Navigate",
+  "instantTripGpsOff": "Turn on location so the passenger can see you",
+  "instantTripEnableGps": "Enable",
+  "bookingRequestTitle": "New booking request",
+  "bookingRequestBadge": "Shared trip",
+  "bookingRequestFareLabel": "Booking amount",
+  "bookingRequestSeatsLabel": "Seats",
+  "bookingRequestDepartureLabel": "Departure",
+  "bookingRequestFamily": "Family booking",
+  "bookingRequestExpiresIn": "Request expires in {time}",
+  "@bookingRequestExpiresIn": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "bookingRequestAccept": "Accept booking",
+  "bookingRequestReject": "Decline",
+  "bookingRequestRejectTitle": "Decline this booking?",
+  "bookingRequestRejectBody": "The passenger will be told their booking was not accepted.",
+  "bookingRequestAccepted": "Booking accepted",
+  "bookingRequestExpired": "The booking request expired",
+  "bookingRequestMore": "More requests waiting: {count}",
+  "@bookingRequestMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "meetingPointCardTitle": "Meeting point",
+  "meetingPointCardSubtitle": "Pin the exact spot passengers meet you, and describe it so it is easy to find.",
+  "meetingPointPickOnMap": "Pin the meeting point on the map",
+  "meetingPointChange": "Change",
+  "meetingPointNoteLabel": "Describe the meeting point",
+  "meetingPointNoteHint": "e.g. At the roundabout, in front of Al-Noor pharmacy",
+  "meetingPointRequired": "Pin the meeting point on the map and describe it",
+  "meetingPointPickerTitle": "Meeting point",
+  "meetingPointPickerHint": "Move the map to put the pin exactly on the meeting point",
+  "meetingPointConfirm": "Confirm meeting point",
+  "meetingPointLocating": "Finding the address…",
+  "meetingPointOpenInMaps": "Open in Maps",
+  "liveTripHeadingToDestination": "Heading to the destination",
+  "liveTripPassengersCount": "Passengers: {count}",
+  "@liveTripPassengersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveTripRevenueLabel": "Revenue",
+  "liveTripPassengersSheetTitle": "Passengers",
+  "liveTripDetails": "Details",
+  "liveTripNoPassengers": "No confirmed passengers",
+  "bookingCompanionTag": "Companion",
+  "bookingSeatOccupant": "Seat {seat} · {name}",
+  "@bookingSeatOccupant": {
+    "placeholders": {
+      "seat": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "joinAsDriver": "Join as a driver 🚗",
+  "joinAsDriverSubtitle": "Register your car and start taking riders with the same account"
 }

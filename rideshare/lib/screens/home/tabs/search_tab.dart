@@ -4,6 +4,7 @@ import '../../../core/constants/route_names.dart';
 import '../../../core/theme/colors.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../widgets/notification_icon_button.dart';
+import '../widgets/home_tab_scope.dart';
 
 class SearchTab extends StatelessWidget {
   const SearchTab({super.key});
@@ -14,6 +15,7 @@ class SearchTab extends StatelessWidget {
       appBar: AppBar(
         title: Text(context.l10n.searchForTrip),
         automaticallyImplyLeading: false,
+        leading: const BackToHomeButton(),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),

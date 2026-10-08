@@ -22,7 +22,7 @@ void main() {
     expect(find.byType(Image), findsOneWidget);
     expect(find.text("We couldn't find a driver right now"), findsOneWidget);
     expect(
-      find.text('All nearby drivers may be busy, or none may be close to you.'),
+      find.text('No driver is available right now.'),
       findsOneWidget,
     );
     expect(

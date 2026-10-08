@@ -136,11 +136,13 @@ class VehicleService {
   Future<VehicleModel> updateVehicle(
     String vehicleId, {
     String? vehicleType,
+    String? color,
     int? seats,
     SeatLayoutConfig? seatLayout,
   }) async {
     final body = <String, dynamic>{
       if (vehicleType != null) 'vehicleType': vehicleType,
+      if (color != null) 'color': color,
       if (seats != null) 'seats': seats,
       if (seatLayout != null) 'seatLayout': seatLayout.toMap(),
     };

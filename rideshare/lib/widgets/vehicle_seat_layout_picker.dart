@@ -14,14 +14,18 @@ import 'expandable_cabin_view.dart';
 /// Top-down cabin preview + stepper used when publishing a trip.
 ///
 /// The layout *shape* is fixed by the driver's vehicle (or its type template);
-/// only the number of published passenger seats can be changed here. The driver
-/// placeholder drawn next to the first row is UI-only and is never counted.
+/// here the driver chooses which of its seats to offer. "−" closes the seat
+/// beside the driver first, "+" reopens the last one closed, and tapping any
+/// seat opens or closes it. The driver placeholder drawn next to the first row
+/// is UI-only and is never counted.
 class VehicleSeatLayoutPicker extends StatefulWidget {
   const VehicleSeatLayoutPicker({
     super.key,
     required this.layout,
-    required this.availableSeatCount,
-    required this.onAvailableSeatCountChanged,
+    required this.closedSeats,
+    required this.onCloseNext,
+    required this.onReopenLast,
+    required this.onToggleSeat,
     this.vehicleType,
   });
 
@@ -30,8 +34,13 @@ class VehicleSeatLayoutPicker extends StatefulWidget {
   /// Picks the cabin artwork. Null, unknown, or a type whose artwork does not
   /// match this layout's seat count falls back to the schematic cabin.
   final String? vehicleType;
-  final int availableSeatCount;
-  final ValueChanged<int> onAvailableSeatCountChanged;
+
+  /// 1-based layout positions not on offer. Read live, so the expanded
+  /// picker (its own route) always shows the current choice.
+  final List<int> closedSeats;
+  final VoidCallback onCloseNext;
+  final VoidCallback onReopenLast;
+  final ValueChanged<int> onToggleSeat;
 
   @override
   State<VehicleSeatLayoutPicker> createState() =>
@@ -42,29 +51,18 @@ class _VehicleSeatLayoutPickerState extends State<VehicleSeatLayoutPicker> {
   static const double _stepperWidth = 116;
   static const double _columnGap = 10;
 
-  /// Mirrors the published count so the expanded picker, which is pushed once
-  /// and keeps its own element tree, can read the current value instead of the
-  /// one captured when it opened.
-  late int _count = widget.availableSeatCount;
+  bool _isOpen(int position) => !widget.closedSeats.contains(position);
 
-  @override
-  void didUpdateWidget(VehicleSeatLayoutPicker old) {
-    super.didUpdateWidget(old);
-    if (widget.availableSeatCount != old.availableSeatCount) {
-      _count = widget.availableSeatCount;
-    }
-  }
-
-  void _setCount(int value) {
-    setState(() => _count = value);
-    widget.onAvailableSeatCountChanged(value);
+  void _toggle(int position, VoidCallback? refresh) {
+    widget.onToggleSeat(position);
+    setState(() {});
+    refresh?.call();
   }
 
   @override
   Widget build(BuildContext context) {
     final rowCounts = SeatLayoutHelpers.rowSeatCounts(widget.layout);
     final maxSeats = rowCounts.fold<int>(0, (sum, count) => sum + count);
-    final selected = _clampInt(_count, 1, maxSeats);
 
     if (maxSeats <= 0) return const SizedBox.shrink();
 
@@ -75,10 +73,19 @@ class _VehicleSeatLayoutPickerState extends State<VehicleSeatLayoutPicker> {
           constraints.maxWidth - _stepperWidth - (_columnGap * 2),
         );
         final cabinCrossSize = _clampDouble(free * 0.58, 100, 170);
-        final cabinRows = SeatLayoutHelpers.progressiveCabinRows(
-          rowCounts: rowCounts,
-          availableSeatCount: selected,
-        );
+        // Every row of the vehicle, each seat open or closed by the driver.
+        var position = 0;
+        final cabinRows = [
+          for (var row = 0; row < rowCounts.length; row++)
+            ProgressiveCabinRow(
+              layoutRowIndex: row,
+              showDriver: row == 0,
+              passengerSeats: [
+                for (var col = 0; col < rowCounts[row]; col++)
+                  ProgressiveCabinSeat(isAvailable: _isOpen(++position)),
+              ],
+            ),
+        ];
 
         final art = vehicleArtFor(widget.vehicleType);
         final useArt = art != null && art.seatCount == maxSeats;
@@ -114,12 +121,21 @@ class _VehicleSeatLayoutPickerState extends State<VehicleSeatLayoutPicker> {
                       ],
                     ),
                   ),
-                  seatBuilder: (context, seatNumber, _) => _PublishedSeatMarker(
-                    isPublished: seatNumber <= _clampInt(_count, 1, maxSeats),
+                  seatBuilder: (context, seatNumber, refresh) =>
+                      GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => _toggle(seatNumber, refresh),
+                    child: _PublishedSeatMarker(
+                      isPublished: _isOpen(seatNumber),
+                    ),
                   ),
                 )
               else
-                _CarCabin(cabinRows: cabinRows, width: cabinCrossSize),
+                _CarCabin(
+                  cabinRows: cabinRows,
+                  width: cabinCrossSize,
+                  onSeatTap: (position) => _toggle(position, null),
+                ),
               const SizedBox(width: _columnGap),
               const Expanded(child: _SeatLegend()),
               const SizedBox(width: _columnGap),
@@ -137,16 +153,17 @@ class _VehicleSeatLayoutPickerState extends State<VehicleSeatLayoutPicker> {
   /// [refresh] redraws the expanded picker when the change came from inside it,
   /// which the screen behind it cannot do for a route it does not own.
   Widget _buildStepper(int maxSeats, VoidCallback? refresh) {
-    final value = _clampInt(_count, 1, maxSeats);
-    void apply(int next) {
-      _setCount(next);
+    final value = maxSeats - widget.closedSeats.length;
+    void apply(VoidCallback change) {
+      change();
+      setState(() {});
       refresh?.call();
     }
 
     return _SeatCountStepper(
       value: value,
-      onDecrease: value > 1 ? () => apply(value - 1) : null,
-      onIncrease: value < maxSeats ? () => apply(value + 1) : null,
+      onDecrease: value > 1 ? () => apply(widget.onCloseNext) : null,
+      onIncrease: value < maxSeats ? () => apply(widget.onReopenLast) : null,
     );
   }
 }
@@ -200,13 +217,6 @@ class _PublishedSeatMarker extends StatelessWidget {
       },
     );
   }
-}
-
-int _clampInt(int value, int min, int max) {
-  if (max < min) return max;
-  if (value < min) return min;
-  if (value > max) return max;
-  return value;
 }
 
 double _clampDouble(double value, double min, double max) {
@@ -426,10 +436,17 @@ class _LegendRow extends StatelessWidget {
 /// driver placeholder in the first row. Rows past the selected seat count are
 /// not drawn at all, so the shell grows/shrinks with the stepper.
 class _CarCabin extends StatelessWidget {
-  const _CarCabin({required this.cabinRows, required this.width});
+  const _CarCabin({
+    required this.cabinRows,
+    required this.width,
+    required this.onSeatTap,
+  });
 
   final List<ProgressiveCabinRow> cabinRows;
   final double width;
+
+  /// 1-based layout position of the tapped seat.
+  final ValueChanged<int> onSeatTap;
 
   static const double _bodyInset = 9;
 
@@ -453,6 +470,7 @@ class _CarCabin extends StatelessWidget {
     );
 
     final rows = <Widget>[];
+    var position = 0;
     for (var i = 0; i < cabinRows.length; i++) {
       final cabinRow = cabinRows[i];
       final slots = <Widget>[];
@@ -460,7 +478,13 @@ class _CarCabin extends StatelessWidget {
         slots.add(_DriverPlaceholder(size: seatSize));
       }
       for (final seat in cabinRow.passengerSeats) {
-        slots.add(_SeatTile(size: seatSize, isAvailable: seat.isAvailable));
+        final seatPosition = ++position;
+        slots.add(
+          GestureDetector(
+            onTap: () => onSeatTap(seatPosition),
+            child: _SeatTile(size: seatSize, isAvailable: seat.isAvailable),
+          ),
+        );
       }
       if (i > 0) {
         rows.add(SizedBox(height: gap * 1.6));

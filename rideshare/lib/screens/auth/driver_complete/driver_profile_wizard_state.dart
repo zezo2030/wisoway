@@ -33,6 +33,9 @@ class DriverProfileWizardState extends ChangeNotifier {
 
   final plateController = TextEditingController();
   final modelController = TextEditingController();
+
+  /// Optional: shown to instant-ride passengers so they can spot the car.
+  final colorController = TextEditingController();
   final seatsController = TextEditingController();
 
   /// Read-only mirror of the chosen [vehicleType]'s label, shown in the field.
@@ -72,6 +75,7 @@ class DriverProfileWizardState extends ChangeNotifier {
   void dispose() {
     plateController.dispose();
     modelController.dispose();
+    colorController.dispose();
     seatsController.dispose();
     vehicleTypeController.dispose();
     super.dispose();

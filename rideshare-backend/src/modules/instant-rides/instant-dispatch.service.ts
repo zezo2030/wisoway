@@ -41,8 +41,7 @@ import {
  * distant ones only come into play after the wait has stretched on.
  *
  * When a wave finds nobody the request stays alive: another wave fires a few
- * seconds later with a wider reach, and the passenger is nudged once to raise
- * the fare.
+ * seconds later with a wider reach.
  */
 @Injectable()
 export class InstantDispatchService {
@@ -81,8 +80,9 @@ export class InstantDispatchService {
       where: { requestId },
       select: ['driverId', 'status', 'fareRevision'],
     });
-    // Skip drivers with an offer in flight — but drivers who declined/timed
-    // out at an older fare revision become eligible again after a raise.
+    // Skip drivers with an offer in flight and drivers already asked about
+    // this request. (Fares no longer change, so `fareRevision` stays at 0 and
+    // nobody who declined is asked again.)
     const activeStatuses: string[] = [
       InstantOfferStatus.OFFERED,
       InstantOfferStatus.COUNTERED,
@@ -152,37 +152,17 @@ export class InstantDispatchService {
     const progress = Math.min(1, Math.max(0, (now - start) / (end - start)));
     const grown =
       INITIAL_RADIUS_KM + (MAX_RADIUS_KM - INITIAL_RADIUS_KM) * progress;
-    // Never shrink: a raise re-dispatches an already-widened request.
+    // Never shrink: a later wave must not undo an already-widened reach.
     return Math.round(Math.max(grown, request.radiusKm ?? 0) * 100) / 100;
   }
 
   /**
-   * Nobody reachable up to the max radius: keep the request alive, nudge the
-   * passenger to raise the fare (once), and schedule the next retry wave.
+   * Nobody reachable yet: keep the request alive and schedule the next wave,
+   * which reaches further. The fare is fixed, so there is nothing to nudge.
    */
   private async handleEmptySweep(
     request: InstantRideRequestEntity,
   ): Promise<void> {
-    if (!request.nudgedAt) {
-      const marked = await this.requestRepo.update(
-        {
-          id: request.id,
-          status: InstantRequestStatus.SEARCHING,
-          nudgedAt: IsNull(),
-        },
-        { nudgedAt: new Date() },
-      );
-      if (marked.affected === 1) {
-        await this.notifications
-          .sendPush(request.passengerId, {
-            title: 'لا يوجد سائق قريب حتى الآن',
-            body: 'جرّب رفع سعرك لجذب سائق أسرع.',
-            type: 'instant_raise_fare_nudge',
-            data: { requestId: request.id },
-          })
-          .catch(() => undefined);
-      }
-    }
     await this.scheduleWave(request.id);
   }
 
@@ -267,6 +247,14 @@ export class InstantDispatchService {
       toName: request.toName,
       earningsLabel: routeMetrics.earningsLabel,
       locale,
+    });
+
+    // An open app hears about the offer over its socket at once; the push is
+    // for when it is backgrounded or closed, and can take seconds to land.
+    this.notifications.emitRealtime(candidate.driverId, 'instantOffer', {
+      offerId: offer.id,
+      requestId: request.id,
+      expiresAt: offer.expiresAt.toISOString(),
     });
 
     await this.notifications

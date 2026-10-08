@@ -215,6 +215,17 @@ export class NotificationsService {
     return saved;
   }
 
+  /** A socket-only event to the user's open app — nothing stored or pushed. */
+  emitRealtime(userId: string, event: string, data: Record<string, unknown>) {
+    try {
+      this.notificationsGateway.emitToUser(userId, event, data);
+    } catch (err) {
+      this.logger.warn(
+        `Realtime ${event} to ${userId} failed: ${(err as Error).message}`,
+      );
+    }
+  }
+
   async sendPush(
     userId: string,
     payload: {
@@ -561,9 +572,10 @@ export class NotificationsService {
       const distanceLabel = distanceKm != null ? `${distanceKm} كم` : undefined;
       const meetingPoint = (trip.fromAddress || trip.fromName || '').trim();
       const seatsLabel = `${trip.availableSeats} مقاعد`;
-      const title = 'تم حجز مقعد في رحلتك المشتركة';
-      const footerTitle = 'انضم راكب جديد إلى رحلتك المشتركة';
-      const footerSubtitle = 'سيتم إعلامك عند انضمام أي راكب آخر';
+      // A request the driver still has to answer — not a done booking.
+      const title = 'طلب حجز جديد في رحلتك المشتركة';
+      const footerTitle = 'راكب يطلب الانضمام إلى رحلتك';
+      const footerSubtitle = 'اقبل الطلب أو ارفضه قبل انتهاء المهلة';
 
       await this.create({
         userId: trip.driverId,
@@ -589,6 +601,16 @@ export class NotificationsService {
           footerTitle,
           footerSubtitle,
           ...(booking.user?.name ? { passengerName: booking.user.name } : {}),
+          seatCount: String(booking.seatCount),
+          ...(booking.totalAmount != null
+            ? {
+                totalAmount: Number(booking.totalAmount).toFixed(2),
+                currency: trip.currency,
+              }
+            : {}),
+          ...(booking.expiresAt
+            ? { expiresAt: new Date(booking.expiresAt).toISOString() }
+            : {}),
         },
       });
 
@@ -608,39 +630,90 @@ export class NotificationsService {
     }
   }
 
+  /**
+   * Tells the passenger what became of their booking request. Saved as an
+   * in-app notification too (not just a push), so the answer is still in the
+   * app's list when the push was missed.
+   *
+   * - `confirmed`: the driver accepted.
+   * - `rejected`: the driver declined the request.
+   * - `expired`: the driver never answered within the acceptance window.
+   * - `canceled`: an accepted booking was cancelled by the driver or an admin.
+   */
   async notifyPassengerOfBookingDecision(
     bookingId: string,
-    decision: 'confirmed' | 'rejected' | 'canceled',
+    decision: 'confirmed' | 'rejected' | 'expired' | 'canceled',
   ): Promise<void> {
     try {
       const bookingRepo =
         this.notificationRepo.manager.getRepository(BookingEntity);
       const booking = await bookingRepo.findOne({
         where: { id: bookingId },
+        relations: ['trip'],
       });
       if (!booking) return;
 
-      const titleMap: Record<string, string> = {
-        confirmed: 'Booking Confirmed',
-        rejected: 'Booking Rejected',
-        canceled: 'Booking Cancelled',
+      const ar = (await this.getPreferredLocale(booking.userId)) === 'ar';
+      const to = booking.trip?.toName ?? '';
+      const copy: Record<
+        typeof decision,
+        { ar: [string, string]; en: [string, string] }
+      > = {
+        confirmed: {
+          ar: ['تم قبول حجزك', `وافق السائق على حجزك في الرحلة إلى ${to}.`],
+          en: [
+            'Booking accepted',
+            `The driver accepted your booking to ${to}.`,
+          ],
+        },
+        rejected: {
+          ar: [
+            'لم يتم قبول حجزك',
+            `اعتذر السائق عن قبول حجزك في الرحلة إلى ${to}. يمكنك البحث عن رحلة أخرى.`,
+          ],
+          en: [
+            'Booking not accepted',
+            `The driver declined your booking to ${to}. You can look for another trip.`,
+          ],
+        },
+        expired: {
+          ar: [
+            'لم يتم قبول حجزك',
+            `لم يرد السائق على طلب حجزك في الرحلة إلى ${to} في الوقت المحدد، فأُلغي الطلب. يمكنك البحث عن رحلة أخرى.`,
+          ],
+          en: [
+            'Booking not accepted',
+            `The driver didn't answer your booking request to ${to} in time, so it was cancelled. You can look for another trip.`,
+          ],
+        },
+        canceled: {
+          ar: ['تم إلغاء حجزك', `أُلغي حجزك في الرحلة إلى ${to}.`],
+          en: ['Booking cancelled', `Your booking to ${to} was cancelled.`],
+        },
       };
+      const [title, text] = copy[decision][ar ? 'ar' : 'en'];
+      // The app and dashboard spell the cancelled type with two l's.
+      const type =
+        decision === 'canceled' ? 'booking_cancelled' : `booking_${decision}`;
 
-      await this.sendPush(booking.userId, {
-        title: titleMap[decision] || 'Booking Update',
-        body: `Your booking has been ${decision}`,
-        type: `booking_${decision}`,
+      await this.create({
+        userId: booking.userId,
+        title,
+        body: text,
+        type,
         data: {
-          type: `booking_${decision}`,
+          type,
           screen: 'booking_details',
           entityId: bookingId,
+          bookingId,
+          tripId: booking.tripId,
         },
       });
 
       this.logger.log(
         JSON.stringify({
           event: 'notification.dispatch',
-          trigger: `booking_${decision}`,
+          trigger: type,
           recipientUserCount: 1,
           bookingId,
           correlationId: bookingId,
@@ -674,6 +747,8 @@ export class NotificationsService {
           type: 'booking_canceled_by_passenger',
           screen: 'trip_details',
           entityId: trip.id,
+          // Lets the driver's app take down a still-pinned request for it.
+          bookingId,
         },
       });
 

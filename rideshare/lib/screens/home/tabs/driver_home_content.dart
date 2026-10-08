@@ -458,11 +458,13 @@ class _DriverHomeContentState extends State<DriverHomeContent> {
         final upcoming = _upcoming(snapshot.data ?? const <TripModel>[]);
         _refreshPendingRequests(upcoming);
 
+        // The driver's own trips come first — they are what needs acting on;
+        // the day's numbers are context.
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildSummary(context, upcoming),
             _buildMyTripsSection(context, snapshot, upcoming),
+            _buildSummary(context, upcoming),
           ],
         );
       },
@@ -523,7 +525,7 @@ class _DriverHomeContentState extends State<DriverHomeContent> {
     );
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 4),
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -605,7 +607,7 @@ class _DriverHomeContentState extends State<DriverHomeContent> {
     final l10n = context.l10n;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -657,10 +659,13 @@ class _DriverHomeContentState extends State<DriverHomeContent> {
                     padding: const EdgeInsets.only(bottom: 12),
                     child: TripCard(
                       trip: trip,
+                      // The driver's own trip: open their management page
+                      // (live map while it is under way). Passing the model
+                      // to tripDetails, which expects an id, threw on tap.
                       onTap: () => Navigator.pushNamed(
                         context,
-                        RouteNames.tripDetails,
-                        arguments: trip,
+                        RouteNames.tripManagement,
+                        arguments: trip.id,
                       ),
                     ),
                   ),

@@ -18,10 +18,11 @@ import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
 import '../../utils/booking_seat_formatter.dart';
-import '../../utils/seat_layout_helpers.dart';
+import '../../utils/western_digits.dart';
 import '../../widgets/seat_layout_widget.dart';
 import '../../widgets/trip/share_tracking_sheet.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../widgets/meeting_point_card.dart';
 
 class TripDetailsScreen extends StatefulWidget {
   final String tripId;
@@ -94,6 +95,17 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       if (!mounted) return;
       if (loaded == null) {
         setState(() => _isLoading = false);
+        return;
+      }
+      // This is the passenger's view of a trip. Its own driver — who can land
+      // here from a notification — belongs on the trip-management screen.
+      final me = Provider.of<AuthProvider>(context, listen: false).userModel;
+      if (me != null && me.id.isNotEmpty && me.id == loaded.driverId) {
+        Navigator.pushReplacementNamed(
+          context,
+          RouteNames.tripManagement,
+          arguments: loaded.id,
+        );
         return;
       }
       setState(() {
@@ -240,8 +252,29 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     final trip = _trip!;
     final authProvider = Provider.of<AuthProvider>(context);
     final userModel = authProvider.userModel;
-    final dateFormat = DateFormat('yyyy-MM-dd');
-    final timeFormat = DateFormat('HH:mm');
+    // Booking, chatting with the driver and rating are passenger actions; a
+    // driver account only ever books through a passenger account.
+    final isPassenger = userModel != null && !userModel.isDriver;
+    // Weekday name, then the date, then a 12-hour clock with the wide
+    // day-period word (مساءً / صباحًا) rather than a 24-hour time.
+    final locale = Localizations.localeOf(context).toString();
+    final departure = trip.departureTime;
+    final period = departure.hour < 12
+        ? context.l10n.timePeriodAm
+        : context.l10n.timePeriodPm;
+    final departureText =
+        '${DateFormat('EEEE', locale).format(departure)} '
+        '${DateFormat('yyyy-MM-dd').format(departure)} '
+        '${toWesternDigits(DateFormat('h:mm').format(departure))} $period';
+    // "سيدان · Camry": the type's display name with the model when known.
+    final typeName = trip.vehicleTypeName(
+      Localizations.localeOf(context).languageCode,
+    );
+    final typeParts = [
+      typeName,
+      trip.vehicleModel,
+    ].whereType<String>().where((s) => s.trim().isNotEmpty).join(' · ');
+    final String? vehicleTypeText = typeParts.isEmpty ? null : typeParts;
     final activeBookingSeatIndexes = _activeBooking == null
         ? <int>[]
         : BookingSeatFormatter.displaySeatIndexes(_activeBooking!, trip);
@@ -300,7 +333,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                   '${i + 1}. ${stop.name}',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: T.onSurface(context)
+                                    color: T
+                                        .onSurface(context)
                                         .withValues(alpha: 0.70),
                                   ),
                                 ),
@@ -400,6 +434,24 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
+                    // An instant ride is one car hired whole: say which car,
+                    // and the ride's fare — seats don't apply.
+                    if (trip.isInstant && vehicleTypeText != null) ...[
+                      _DetailRow(
+                        icon: Icons.directions_car_outlined,
+                        label: context.l10n.vehicleType,
+                        value: vehicleTypeText,
+                      ),
+                      const Divider(),
+                    ],
+                    if (trip.isInstant && trip.vehicleColor != null) ...[
+                      _DetailRow(
+                        icon: Icons.palette_outlined,
+                        label: context.l10n.vehicleColor,
+                        value: trip.vehicleColor!,
+                      ),
+                      const Divider(),
+                    ],
                     if (trip.distanceKm != null) ...[
                       _DetailRow(
                         icon: Icons.straighten,
@@ -413,35 +465,29 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                     _DetailRow(
                       icon: Icons.access_time,
                       label: context.l10n.departureTimeLabel,
-                      value:
-                          '${dateFormat.format(trip.departureTime)} ${timeFormat.format(trip.departureTime)}',
+                      value: departureText,
                     ),
                     const Divider(),
                     _DetailRow(
                       icon: Icons.attach_money,
-                      label: context.l10n.pricePerSeat,
+                      label: trip.isInstant
+                          ? context.l10n.tripPriceLabel
+                          : context.l10n.pricePerSeat,
                       value: '${trip.price} ${trip.currency}',
                     ),
-                    const Divider(),
-                    _DetailRow(
-                      icon: Icons.event_seat,
-                      label: context.l10n.availableSeats,
-                      value: context.l10n.seatsCountOfTotal(
-                        trip.availableSeats,
-                        trip.totalSeats,
+                    if (!trip.isInstant) ...[
+                      const Divider(),
+                      _DetailRow(
+                        icon: Icons.event_seat,
+                        label: context.l10n.availableSeats,
+                        value: context.l10n.seatsCountOfTotal(
+                          trip.availableSeats,
+                          trip.totalSeats,
+                        ),
                       ),
-                    ),
-                    const Divider(),
-                    _DetailRow(
-                      icon: Icons.grid_view,
-                      label: context.l10n.seatLayoutLabel,
-                      value: SeatLayoutHelpers.formatTripSeatLayoutPattern(
-                        trip.seatLayout,
-                        trip.seats,
-                        trip.totalSeats,
-                      ),
-                    ),
-                    if (trip.seatLayout.preventGenderMixing) ...[
+                    ],
+                    if (!trip.isInstant &&
+                        trip.seatLayout.preventGenderMixing) ...[
                       const Divider(),
                       _DetailRow(
                         icon: Icons.block,
@@ -485,6 +531,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               ),
             ),
             const SizedBox(height: 16),
+            if (trip.meetingPoint != null) ...[
+              MeetingPointCard(meetingPoint: trip.meetingPoint!),
+              const SizedBox(height: 16),
+            ],
             // Driver notes card
             if (trip.notes != null && trip.notes!.isNotEmpty)
               Card(
@@ -524,7 +574,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   ),
                 ),
               ),
-            if (_activeBooking != null) ...[
+            // No seat map for an instant ride: the passenger hires the car.
+            if (_activeBooking != null && !trip.isInstant) ...[
               const SizedBox(height: 16),
               Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -591,7 +642,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               ),
               const SizedBox(height: 16),
             ],
-            if (userModel != null &&
+            if (isPassenger &&
                 _activeBooking == null &&
                 trip.hasAvailableSeats &&
                 trip.isUpcoming)
@@ -619,7 +670,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   ),
                 ),
               )
-            else if (userModel != null &&
+            else if (isPassenger &&
+                !trip.isInstant &&
                 _activeBooking == null &&
                 !trip.hasAvailableSeats)
               Padding(
@@ -647,50 +699,53 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   ),
                 ),
               ),
-            if (userModel != null) ...[
+            if (isPassenger) ...[
               const SizedBox(height: 16),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    Expanded(
-                      child: _ChatRatingButton(
-                        icon: Icons.chat_bubble_outline,
-                        label: context.l10n.chatLabel,
-                        color: T.primary(context),
-                        onTap: () async {
-                          final chatService = ChatService();
-                          final chatEnabled = await chatService
-                              .checkIfChatEnabled(trip.id);
+                    // Instant rides keep rating only: no chat or group chat.
+                    if (!trip.isInstant) ...[
+                      Expanded(
+                        child: _ChatRatingButton(
+                          icon: Icons.chat_bubble_outline,
+                          label: context.l10n.chatLabel,
+                          color: T.primary(context),
+                          onTap: () async {
+                            final chatService = ChatService();
+                            final chatEnabled = await chatService
+                                .checkIfChatEnabled(trip.id);
 
-                          if (!chatEnabled) {
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    context.l10n.chatNotEnabledYet,
+                            if (!chatEnabled) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      context.l10n.chatNotEnabledYet,
+                                    ),
+                                    backgroundColor: AppColors.warning,
                                   ),
-                                  backgroundColor: AppColors.warning,
-                                ),
-                              );
+                                );
+                              }
+                              return;
                             }
-                            return;
-                          }
 
-                          Navigator.pushNamed(
-                            context,
-                            RouteNames.chat,
-                            arguments: {
-                              'tripId': trip.id,
-                              'trip': trip,
-                              'driverId': trip.driverId,
-                              'driverName': trip.driverName,
-                            },
-                          );
-                        },
+                            Navigator.pushNamed(
+                              context,
+                              RouteNames.chat,
+                              arguments: {
+                                'tripId': trip.id,
+                                'trip': trip,
+                                'driverId': trip.driverId,
+                                'driverName': trip.driverName,
+                              },
+                            );
+                          },
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
+                      const SizedBox(width: 12),
+                    ],
                     Expanded(
                       child: _ChatRatingButton(
                         icon: Icons.star_outline,
@@ -753,31 +808,36 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.pushNamed(
-                        context,
-                        RouteNames.groupChat,
-                        arguments: {'tripId': trip.id, 'trip': trip},
-                      );
-                    },
-                    icon: Icon(Icons.groups_outlined, color: T.primary(context)),
-                    label: Text(
-                      context.l10n.tripGroupChat,
-                      style: TextStyle(color: T.primary(context)),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      side: BorderSide(color: T.primary(context)),
+              if (!trip.isInstant) ...[
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pushNamed(
+                          context,
+                          RouteNames.groupChat,
+                          arguments: {'tripId': trip.id, 'trip': trip},
+                        );
+                      },
+                      icon: Icon(
+                        Icons.groups_outlined,
+                        color: T.primary(context),
+                      ),
+                      label: Text(
+                        context.l10n.tripGroupChat,
+                        style: TextStyle(color: T.primary(context)),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: BorderSide(color: T.primary(context)),
+                      ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ],
             const SizedBox(height: 16),
           ],

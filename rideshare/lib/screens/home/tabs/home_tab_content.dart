@@ -78,7 +78,6 @@ class _HomeTabContentState extends State<HomeTabContent> {
             slivers: [
               SliverToBoxAdapter(child: _buildHeader(context)),
               SliverToBoxAdapter(child: _buildRideModes(context)),
-              SliverToBoxAdapter(child: _buildSearchBar(context)),
               SliverToBoxAdapter(child: _buildLocationSection(context)),
               SliverToBoxAdapter(child: _buildSuggestedTripsSection(context)),
               const SliverToBoxAdapter(
@@ -200,63 +199,6 @@ class _HomeTabContentState extends State<HomeTabContent> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSearchBar(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      child: Container(
-        decoration: BoxDecoration(
-          color: T.surface(context),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: TextField(
-          decoration: InputDecoration(
-            hintText: context.l10n.haveAPlaceInMind,
-            hintStyle: TextStyle(
-              color: T.onSurfaceVariant(context).withValues(alpha: 0.6),
-              fontSize: 16,
-            ),
-            prefixIcon: Icon(
-              IconsaxPlusLinear.search_normal,
-              color: T.onSurfaceVariant(context),
-            ),
-            suffixIcon: Container(
-              margin: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: T.primary(context).withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                IconsaxPlusLinear.gps,
-                color: T.primary(context),
-                size: 20,
-              ),
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide.none,
-            ),
-            filled: true,
-            fillColor: T.surface(context),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 16,
-            ),
-          ),
-          onTap: () {
-            Navigator.pushNamed(context, RouteNames.tripsList);
-          },
         ),
       ),
     );

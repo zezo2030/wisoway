@@ -52,6 +52,12 @@ export class LocationAutocompleteQueryDto {
     message: 'cityId must be a city catalog identifier',
   })
   cityId?: string;
+
+  /** ISO country code of the search context, to exclude foreign places. */
+  @IsOptional()
+  @IsString()
+  @Matches(/^[a-z]{2}$/i)
+  country?: string;
 }
 
 export interface PlaceSuggestionDto {

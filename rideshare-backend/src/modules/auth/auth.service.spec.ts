@@ -1,3 +1,4 @@
+import { ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -138,6 +139,81 @@ describe('AuthService — driver registration', () => {
     expect(vehicleCreate).toHaveBeenCalledWith(
       expect.objectContaining({ insuranceImageUrl: null }),
     );
+  });
+
+  describe('becomeDriver ("انضم كسائق")', () => {
+    const { name: _n, password: _p, ...vehicleDto } = baseDto;
+
+    /** Open rides the passenger still has: bookings, live instant searches. */
+    function withOpenRides(bookings: number, searches: number) {
+      (userRepo.manager as Record<string, unknown>).getRepository = jest.fn(
+        () => ({
+          createQueryBuilder: () => {
+            const qb = {
+              innerJoin: () => qb,
+              where: () => qb,
+              andWhere: () => qb,
+              getCount: () => Promise.resolve(bookings),
+            };
+            return qb;
+          },
+          count: () => Promise.resolve(searches),
+        }),
+      );
+    }
+
+    it('turns the passenger into a driver pending approval, with the car', async () => {
+      userRepo.findOne.mockResolvedValue({
+        id: 'user-1',
+        name: 'Rider',
+        role: PgUserRole.PASSENGER,
+        isActive: true,
+      });
+      withOpenRides(0, 0);
+
+      const result = await service.becomeDriver('user-1', vehicleDto as never);
+
+      expect(result.user.role).toBe(PgUserRole.DRIVER);
+      expect(result.user.isDriverApproved).toBe(false);
+      // The account keeps its own name when none is sent.
+      expect(result.user.name).toBe('Rider');
+      expect(vehicleCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          driverId: 'user-1',
+          plateNumber: 'ABC123',
+          insuranceImageUrl: 'https://cdn/ins.jpg',
+        }),
+      );
+    });
+
+    it('refuses a non-passenger', async () => {
+      userRepo.findOne.mockResolvedValue({
+        id: 'user-1',
+        role: PgUserRole.DRIVER,
+      });
+
+      await expect(
+        service.becomeDriver('user-1', vehicleDto as never),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it.each([
+      ['an open booking', 1, 0],
+      ['a live instant search', 0, 1],
+    ])('refuses while the passenger has %s', async (_label, b, s) => {
+      userRepo.findOne.mockResolvedValue({
+        id: 'user-1',
+        role: PgUserRole.PASSENGER,
+      });
+      withOpenRides(b, s);
+
+      await expect(
+        service.becomeDriver('user-1', vehicleDto as never),
+      ).rejects.toMatchObject({
+        response: { code: 'BECOME_DRIVER_ACTIVE_RIDES' },
+      });
+      expect(vehicleSave).not.toHaveBeenCalled();
+    });
   });
 });
 
@@ -370,7 +446,10 @@ describe('AuthService — OTP sign-in for existing accounts', () => {
   it('signs in an existing account when the OTP is correct', async () => {
     const { service } = await arrange(existing);
 
-    const result = await service.verifyOtp({ phoneNumber: PHONE, code: '123456' });
+    const result = await service.verifyOtp({
+      phoneNumber: PHONE,
+      code: '123456',
+    });
 
     expect(result.accessToken).toBe('a');
     expect(result.user.id).toBe('user-1');
@@ -392,7 +471,10 @@ describe('AuthService — OTP sign-in for existing accounts', () => {
   it('still reports a banned account rather than signing it in silently', async () => {
     const { service } = await arrange({ ...existing, bannedAt: new Date() });
 
-    const result = await service.verifyOtp({ phoneNumber: PHONE, code: '123456' });
+    const result = await service.verifyOtp({
+      phoneNumber: PHONE,
+      code: '123456',
+    });
 
     expect(result.accountState).toBe('banned');
   });

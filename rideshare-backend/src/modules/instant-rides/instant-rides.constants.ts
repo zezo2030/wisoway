@@ -21,16 +21,18 @@ function envKm(name: string, fallback: number): number {
 /** Radius of the first sweep — keeps dense-city matches close. */
 export const INITIAL_RADIUS_KM = envKm('INSTANT_INITIAL_RADIUS_KM', 3);
 /**
- * Ceiling for the search. Raising this never worsens a city match: candidates
- * are always ordered nearest-first, so a wider ring is only ever reached after
- * the closer ones came back empty. It does raise the worst-case pickup wait,
- * which is the real trade-off — at PICKUP_ETA_SPEED_KMH, 25 km is roughly an
- * hour of approach.
+ * Ceiling for the search. Candidates are always ordered nearest-first, so a
+ * wider ring is only reached after the closer ones came back empty; the cost
+ * is the pickup wait — at PICKUP_ETA_SPEED_KMH, 20 km is ~50 min of approach.
+ * 20 km is the owner's choice: further than that is not an "instant" ride.
  */
-export const MAX_RADIUS_KM = envKm('INSTANT_MAX_RADIUS_KM', 25);
+export const MAX_RADIUS_KM = envKm('INSTANT_MAX_RADIUS_KM', 20);
 
-/** How long a single driver has to respond to an offer. */
-export const OFFER_TTL_SECONDS = 25;
+/**
+ * How long a single driver has to respond to an offer. 25 s proved too short
+ * once delivery and reading the card ate into it.
+ */
+export const OFFER_TTL_SECONDS = 40;
 /** Overall window before a request gives up searching. */
 export const REQUEST_TTL_SECONDS = 180;
 /**
@@ -38,26 +40,74 @@ export const REQUEST_TTL_SECONDS = 180;
  * wave after this interval (the request keeps searching until its TTL).
  */
 export const DISPATCH_RETRY_SECONDS = 10;
-/** Suggested raise in the "no drivers — raise your fare" nudge (+15%). */
-export const NUDGE_FARE_BUMP_FACTOR = 1.15;
 /** Average urban approach speed used for pickup-ETA estimates. */
 export const PICKUP_ETA_SPEED_KMH = 25;
 
-// ── Fare estimate ───────────────────────────────────────────────────────────
-export const FARE_BASE = 1.0;
-export const FARE_PER_KM = 0.5;
-export const FARE_PER_MIN = 0.1;
-export const FARE_MINIMUM = 1.5;
+// ── Fare ────────────────────────────────────────────────────────────────────
+/**
+ * Instant fares are fixed by the platform: base + per km + per minute of the
+ * driving route, never below the minimum, rounded up to `step`. There is no
+ * passenger pricing and no driver counter-offer — the passenger sees the
+ * price before ordering and the driver accepts or declines it as-is.
+ *
+ * Amounts are in the currency of the pickup country, so each market needs its
+ * own row; a currency without one uses {@link DEFAULT_FARE_TARIFF}.
+ */
+export interface FareTariff {
+  base: number;
+  perKm: number;
+  perMin: number;
+  minimum: number;
+  /** The fare is rounded up to a multiple of this (no 17.43 SAR fares). */
+  step: number;
+}
 
-// ── Passenger-priced fares + driver counter-offers ──────────────────────────
-/** Lowest passenger fare accepted, as a fraction of the recommendation. */
-export const PASSENGER_FARE_MIN_FACTOR = 0.7;
-/** Highest passenger fare accepted, as a multiple of the recommendation. */
-export const PASSENGER_FARE_MAX_FACTOR = 2.0;
-/** A driver's counter-offer may exceed the passenger's fare by at most +50%. */
-export const COUNTER_FARE_MAX_FACTOR = 1.5;
-/** How long the passenger has to accept/decline a driver's counter-offer. */
-export const COUNTER_TTL_SECONDS = 30;
+export const FARE_TARIFFS: Readonly<Record<string, FareTariff>> = {
+  SAR: { base: 6, perKm: 1.4, perMin: 0.3, minimum: 12, step: 1 },
+  JOD: { base: 0.5, perKm: 0.28, perMin: 0.04, minimum: 1.25, step: 0.25 },
+  AED: { base: 6, perKm: 1.4, perMin: 0.3, minimum: 12, step: 1 },
+  QAR: { base: 6, perKm: 1.4, perMin: 0.3, minimum: 12, step: 1 },
+  KWD: { base: 0.4, perKm: 0.12, perMin: 0.03, minimum: 1, step: 0.25 },
+  BHD: { base: 0.5, perKm: 0.15, perMin: 0.03, minimum: 1, step: 0.25 },
+  OMR: { base: 0.5, perKm: 0.15, perMin: 0.03, minimum: 1, step: 0.25 },
+  EGP: { base: 15, perKm: 7, perMin: 1.5, minimum: 35, step: 5 },
+};
+
+/** Fallback for currencies without their own row (the original defaults). */
+export const DEFAULT_FARE_TARIFF: FareTariff = {
+  base: 1,
+  perKm: 0.5,
+  perMin: 0.1,
+  minimum: 1.5,
+  step: 0.25,
+};
+
+export function fareTariffFor(currency: string): FareTariff {
+  return FARE_TARIFFS[currency?.toUpperCase()] ?? DEFAULT_FARE_TARIFF;
+}
+
+/** The fixed fare for a route of this length and driving time. */
+export function computeFare(
+  distanceKm: number,
+  durationMin: number,
+  currency: string,
+): number {
+  const t = fareTariffFor(currency);
+  const raw = Math.max(
+    t.minimum,
+    t.base + distanceKm * t.perKm + durationMin * t.perMin,
+  );
+  // Round up to the step; the epsilon keeps 12.000000001 from becoming 13.
+  const steps = Math.ceil(raw / t.step - 1e-9);
+  return Math.round(steps * t.step * 100) / 100;
+}
+
+/**
+ * When no routing service answers, the straight line is stretched by this to
+ * approximate the road distance, and driven at {@link FALLBACK_ROUTE_SPEED_KMH}.
+ */
+export const FALLBACK_ROAD_FACTOR = 1.3;
+export const FALLBACK_ROUTE_SPEED_KMH = 40;
 
 // ── Queue names ─────────────────────────────────────────────────────────────
 export const INSTANT_OFFER_TIMEOUT_QUEUE = 'instant-offer-timeout';

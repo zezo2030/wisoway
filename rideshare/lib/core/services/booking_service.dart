@@ -1,4 +1,5 @@
 import '../../models/booking_model.dart';
+import '../../models/booking_request.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
 import '../errors/failure.dart';
@@ -174,6 +175,18 @@ class BookingService {
   }
 
   /// Driver rejects a booking via PATCH /v2/bookings/:id/reject.
+  /// Requests on the driver's shared trips still waiting for an answer,
+  /// oldest first.
+  Future<List<BookingRequest>> getPendingRequests() async {
+    final response = await _api.get(ApiEndpoints.pendingBookingRequests);
+    final raw = response is Map ? (response['data'] ?? response) : response;
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((e) => BookingRequest.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
   Future<BookingModel> rejectBooking(String bookingId, {String? reason}) async {
     try {
       final response = await _api.patch(

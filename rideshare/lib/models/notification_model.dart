@@ -3,6 +3,8 @@ class NotificationType {
   static const String bookingCreated = 'booking_created';
   static const String bookingConfirmed = 'booking_confirmed';
   static const String bookingCancelled = 'booking_cancelled';
+  static const String bookingRejected = 'booking_rejected';
+  static const String bookingExpired = 'booking_expired';
   static const String paymentApproved = 'payment_approved';
   static const String paymentRejected = 'payment_rejected';
   static const String tripReminder = 'trip_reminder';
@@ -17,11 +19,7 @@ class NotificationType {
   static const String presenceDriverPrompt = 'presence_driver_prompt';
   static const String instantOffer = 'instant_offer';
   static const String instantOfferCancelled = 'instant_offer_cancelled';
-  static const String instantCounterOffer = 'instant_counter_offer';
-  static const String instantCounterAccepted = 'instant_counter_accepted';
-  static const String instantCounterRejected = 'instant_counter_rejected';
   static const String instantMatched = 'instant_matched';
-  static const String instantRaiseFareNudge = 'instant_raise_fare_nudge';
   static const String driverApproved = 'driver_approved';
   static const String driverRejected = 'driver_rejected';
 }
@@ -109,7 +107,9 @@ class NotificationModel {
   bool get isBookingNotification =>
       type == NotificationType.bookingCreated ||
       type == NotificationType.bookingConfirmed ||
-      type == NotificationType.bookingCancelled;
+      type == NotificationType.bookingCancelled ||
+      type == NotificationType.bookingRejected ||
+      type == NotificationType.bookingExpired;
 
   bool get isPaymentNotification =>
       type == NotificationType.paymentApproved ||
@@ -151,7 +151,7 @@ class NotificationModel {
     switch (type) {
       case NotificationType.bookingCreated:
         return isDriver == true
-            ? 'تم حجز مقعد في رحلتك المشتركة'
+            ? 'طلب حجز جديد في رحلتك المشتركة'
             : 'تم إنشاء حجز جديد';
       case NotificationType.bookingConfirmed:
         return isDriver == true ? 'تم تأكيد الحجز' : 'تم تأكيد حجزك';
@@ -179,16 +179,8 @@ class NotificationModel {
         return 'تم إضافة رصيد إلى محفظتك';
       case NotificationType.instantOffer:
         return 'رحلة مباشرة جديدة';
-      case NotificationType.instantCounterOffer:
-        return 'عرض سعر من سائق';
-      case NotificationType.instantCounterAccepted:
-        return 'قبل الراكب عرضك!';
-      case NotificationType.instantCounterRejected:
-        return 'لم يُقبل عرضك';
       case NotificationType.instantMatched:
         return 'تم العثور على سائق!';
-      case NotificationType.instantRaiseFareNudge:
-        return 'لا يوجد سائق قريب حتى الآن';
       case NotificationType.driverApproved:
         return 'تم قبول حسابك كسائق';
       case NotificationType.driverRejected:
@@ -230,7 +222,7 @@ class NotificationModel {
           }
           return passengerName != null
               ? 'لديك حجز جديد من $passengerName على رحلتك.'
-              : 'انضم راكب جديد إلى رحلتك المشتركة';
+              : 'راكب يطلب الانضمام إلى رحلتك';
         }
         return 'تم إنشاء حجز جديد بنجاح.';
       case NotificationType.bookingConfirmed:
@@ -298,20 +290,8 @@ class NotificationModel {
           'من $fromName إلى $toName',
           'افتح التطبيق لعرض التفاصيل',
         ].join('\n');
-      case NotificationType.instantCounterOffer:
-        final proposed = _stringFromData(data, ['proposedFare']);
-        final currency = _stringFromData(data, ['currency']) ?? '';
-        return proposed != null
-            ? 'عرض السائق $proposed $currency'.trim()
-            : 'اقترح السائق سعراً أعلى لرحلتك.';
-      case NotificationType.instantCounterAccepted:
-        return 'توجّه إلى نقطة الانطلاق.';
-      case NotificationType.instantCounterRejected:
-        return 'رفض الراكب السعر المقترح.';
       case NotificationType.instantMatched:
         return 'السائق في الطريق إليك.';
-      case NotificationType.instantRaiseFareNudge:
-        return 'جرّب رفع سعرك لجذب سائق أسرع.';
       case NotificationType.driverApproved:
         return 'تهانينا! تم قبول حسابك كسائق. يمكنك الآن إنشاء الرحلات.';
       case NotificationType.driverRejected:

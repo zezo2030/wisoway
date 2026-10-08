@@ -12,13 +12,14 @@ import 'package:rideshare/providers/trip_provider.dart';
 import 'package:rideshare/screens/driver/trip_management_screen.dart';
 import 'package:rideshare/screens/driver/widgets/trip_fare_breakdown_card.dart';
 import 'package:rideshare/screens/driver/widgets/trip_route_card.dart';
+import 'package:rideshare/widgets/expandable_cabin_view.dart';
 
 /// The whole task rests on one invariant: `tripStartedAt == null` renders the
 /// design's pre-departure composition, and anything else keeps the original
 /// live-tracking / «وصلت» body. Both directions are asserted here because the
 /// invariant otherwise lives only in a pair of ternaries.
 void main() {
-  TripModel trip({DateTime? startedAt}) => TripModel(
+  TripModel trip({DateTime? startedAt, String? vehicleType}) => TripModel(
     id: 't-1',
     driverId: 'd-1',
     driverName: 'سائق',
@@ -36,6 +37,7 @@ void main() {
     updatedAt: DateTime.now(),
     tripStartedAt: startedAt,
     distanceKm: 181,
+    vehicleType: vehicleType,
   );
 
   Future<void> pump(WidgetTester tester, TripModel value) async {
@@ -87,5 +89,35 @@ void main() {
     // …and the original composition is back, AppBar and all.
     expect(find.byType(AppBar), findsOneWidget);
     expect(find.text('إدارة الرحلة'), findsOneWidget);
+  });
+
+  testWidgets('before departure the seat map is shown on the vehicle', (
+    tester,
+  ) async {
+    await pump(tester, trip(vehicleType: 'standard_car'));
+    await tester.scrollUntilVisible(
+      find.byType(ExpandableCabinView),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    expect(find.byType(ExpandableCabinView), findsOneWidget);
+  });
+
+  testWidgets('after departure the seats are drawn on the vehicle artwork', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      trip(startedAt: DateTime.now(), vehicleType: 'standard_car'),
+    );
+    await tester.scrollUntilVisible(
+      find.byType(ExpandableCabinView),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    expect(find.byType(ExpandableCabinView), findsOneWidget);
+    expect(find.text('مقعد السائق'), findsNothing);
   });
 }

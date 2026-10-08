@@ -61,7 +61,7 @@ export class UsersController {
     @Body() updateProfileDto: UpdateProfileDto,
   ) {
     if (updateProfileDto.role) {
-      return this.usersService.updateRole(userId, updateProfileDto.role);
+      return this.usersService.requestOwnRole(userId, updateProfileDto.role);
     }
     return this.usersService.findById(userId);
   }

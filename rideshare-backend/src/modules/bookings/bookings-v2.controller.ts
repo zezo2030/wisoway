@@ -1,5 +1,6 @@
 import {
   Controller,
+  Get,
   Post,
   Patch,
   Body,
@@ -86,6 +87,16 @@ export class BookingsV2Controller {
     @CurrentUser('id') userId: string,
   ) {
     return this.bookingsService.autoPick(dto, userId);
+  }
+
+  @Get('pending-requests')
+  @Roles('driver')
+  @ApiOperation({
+    summary: 'Booking requests waiting on the driver (oldest first)',
+  })
+  @ApiResponse({ status: 200, description: 'Pending requests' })
+  async pendingRequests(@CurrentUser('id') driverId: string) {
+    return this.bookingsService.findPendingRequestsForDriver(driverId);
   }
 
   @Patch(':id/accept')

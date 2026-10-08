@@ -2,8 +2,11 @@ import '../models/seat_data.dart';
 import '../models/seat_layout_config.dart';
 import '../models/trip_model.dart';
 
-/// Maps between passenger UI order (1-based, same as [TripModel.seats] indices)
-/// and backend seat ids (`row-col`, 0-based), including irregular `seatsPerRowList` layouts.
+/// Maps between passenger UI order (1-based layout positions) and backend seat
+/// ids (`row-col`, 0-based), including irregular `seatsPerRowList` layouts.
+///
+/// Trips now store every layout seat (closed ones marked `closed`); older trips
+/// stored only the first N seats. [seatAt] reads both by seat id.
 class SeatLayoutHelpers {
   SeatLayoutHelpers._();
 
@@ -30,7 +33,9 @@ class SeatLayoutHelpers {
   ) {
     final fromConfig = rowSeatCounts(layout);
     final configSum = fromConfig.fold<int>(0, (a, b) => a + b);
-    if (tripTotalSeats > 0 && configSum == tripTotalSeats) {
+    // Matches what is sold, or every seat is stored (closed ones included).
+    if (configSum > 0 &&
+        (configSum == tripTotalSeats || configSum == seats.length)) {
       return fromConfig;
     }
     final inferred = inferRowCountsFromSeatNumbers(seats);
@@ -86,6 +91,37 @@ class SeatLayoutHelpers {
       preventGenderMixing: trip.seatLayout.preventGenderMixing,
     );
   }
+
+  /// The seat at 1-based layout position [displayIndex], found by its id; null
+  /// when the trip has no such seat (an older trip that only stored the seats
+  /// it sold).
+  static SeatData? seatAt(TripModel trip, int displayIndex) {
+    final layout = effectiveSeatLayoutConfigForTrip(trip);
+    final coords = displayIndexToBackendCoords(displayIndex, layout);
+    if (coords == null) return null;
+    final id = '${coords.row}-${coords.col}';
+    for (final seat in trip.seats) {
+      if (seat.seatNumber == id) return seat;
+    }
+    // Very old rows without `row-col` ids: position is all there is.
+    if (displayIndex <= trip.seats.length &&
+        parseBackendSeatId(trip.seats[displayIndex - 1].seatNumber) == null) {
+      return trip.seats[displayIndex - 1];
+    }
+    return null;
+  }
+
+  /// Whether layout position [displayIndex] is a seat this trip offers —
+  /// present and not closed by the driver (booked or not).
+  static bool isOffered(TripModel trip, int displayIndex) {
+    final seat = seatAt(trip, displayIndex);
+    return seat != null && !seat.isClosed;
+  }
+
+  /// Positions in the trip's layout, offered or not.
+  static int layoutSeatCount(TripModel trip) => rowSeatCounts(
+    effectiveSeatLayoutConfigForTrip(trip),
+  ).fold<int>(0, (a, b) => a + b);
 
   /// Seats per visual row: either [seatsPerRowList] or uniform [rows × seatsPerRow].
   static List<int> rowSeatCounts(SeatLayoutConfig layout) {

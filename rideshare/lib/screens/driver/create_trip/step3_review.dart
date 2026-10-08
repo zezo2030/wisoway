@@ -98,6 +98,26 @@ class Step3Review extends StatelessWidget {
               ),
             ),
           ],
+          if (wizard.meetingPoint != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              '${context.l10n.meetingPointCardTitle}: '
+              '${wizard.meetingPoint!.note ?? ''}',
+              style: AppTextStyles.bodyMedium.copyWith(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: T.onSurface(context),
+              ),
+            ),
+            if (wizard.meetingPoint!.address != null)
+              Text(
+                wizard.meetingPoint!.address!,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  fontSize: 11,
+                  color: T.onSurfaceVariant(context),
+                ),
+              ),
+          ],
           const SizedBox(height: 16),
           Divider(color: T.outline(context), height: 1),
           const SizedBox(height: 14),

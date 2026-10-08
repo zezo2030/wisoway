@@ -1,8 +1,16 @@
 package com.abdelaziz.visionway
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.AudioManager
+import android.net.Uri
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.widget.RemoteViews
@@ -24,13 +32,54 @@ object InstantOfferNotificationHelper {
 
     private const val DEFAULT_OFFER_TTL_MS = 25_000L
 
+    /**
+     * Ride offers ring on their own channel: a channel's sound is fixed once
+     * it is created, and the shared channel uses the default sound. Bump the id
+     * to change the sound on installed apps.
+     */
+    const val CHANNEL_ID = "instant_offers_ring_v1"
+
+    private val VIBRATION = longArrayOf(0, 400, 250, 400, 900)
+
+    /** requestId → offerId, for cancel pushes that only name the request. */
+    private val offerByRequest = ConcurrentHashMap<String, String>()
+
+    fun soundUri(context: Context): Uri =
+        Uri.parse(
+            "${ContentResolver.SCHEME_ANDROID_RESOURCE}://${context.packageName}/${R.raw.instant_offer_ring}",
+        )
+
+    fun ensureChannel(context: Context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val manager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (manager.getNotificationChannel(CHANNEL_ID) != null) return
+        val s = NotificationLocale.strings(context)
+        val channel =
+            NotificationChannel(CHANNEL_ID, s.newInstantTrip, NotificationManager.IMPORTANCE_HIGH)
+                .apply {
+                    setSound(
+                        soundUri(context),
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build(),
+                    )
+                    enableVibration(true)
+                    vibrationPattern = VIBRATION
+                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                }
+        manager.createNotificationChannel(channel)
+    }
+
     private val handler = Handler(Looper.getMainLooper())
     private val tickers = ConcurrentHashMap<String, Runnable>()
 
     fun show(context: Context, data: Map<String, String>) {
-        BookingNotificationHelper.ensureChannel(context)
+        ensureChannel(context)
 
         val offerId = data["offerId"]?.takeIf { it.isNotBlank() } ?: return
+        data["requestId"]?.takeIf { it.isNotBlank() }?.let { offerByRequest[it] = offerId }
         val expiresAtMs = parseExpiresAtMs(data["expiresAt"])
         val secondsLeft = ((expiresAtMs - System.currentTimeMillis()) / 1000).toInt()
         if (secondsLeft <= 0) {
@@ -44,7 +93,18 @@ object InstantOfferNotificationHelper {
 
     fun cancel(context: Context, offerId: String) {
         stopTicker(offerId)
+        offerByRequest.values.remove(offerId)
+        InstantOfferRinger.stop(offerId)
         NotificationManagerCompat.from(context).cancel(notificationId(offerId))
+    }
+
+    /** The offer died server-side (the passenger cancelled): take it down. */
+    fun cancelFromPush(context: Context, data: Map<String, String>) {
+        val offerId =
+            data["offerId"]?.takeIf { it.isNotBlank() }
+                ?: data["requestId"]?.let { offerByRequest[it] }
+                ?: return
+        cancel(context, offerId)
     }
 
     private fun startTicker(
@@ -170,7 +230,7 @@ object InstantOfferNotificationHelper {
             )
 
         val notification =
-            NotificationCompat.Builder(context, BookingNotificationHelper.CHANNEL_ID)
+            NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.notification_icon)
                 .setColor(0xFF2DD4BF.toInt())
                 .setContentTitle(s.newInstantTrip)
@@ -184,8 +244,12 @@ object InstantOfferNotificationHelper {
                 )
                 .setCustomContentView(collapsed)
                 .setCustomBigContentView(expanded)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_CALL)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                // Pre-O has no channels: carry the same sound and buzz here.
+                .setSound(soundUri(context), AudioManager.STREAM_RING)
+                .setVibrate(VIBRATION)
                 .setOngoing(true)
                 .setAutoCancel(false)
                 .setOnlyAlertOnce(true)
@@ -194,6 +258,12 @@ object InstantOfferNotificationHelper {
                     (secondsLeft * 1000L).coerceAtLeast(1000L),
                 )
                 .build()
+                .apply {
+                    // Ring until answered, cancelled or setTimeoutAfter expires.
+                    // The once-a-second countdown refreshes don't restart it
+                    // thanks to setOnlyAlertOnce.
+                    flags = flags or Notification.FLAG_INSISTENT
+                }
 
         NotificationManagerCompat.from(context).notify(notificationId(offerId), notification)
     }

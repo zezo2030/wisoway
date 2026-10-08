@@ -8,14 +8,17 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../providers/auth_provider.dart';
 import '../../core/api/api_client.dart';
 import '../../core/constants/route_names.dart';
+import '../../core/services/location_service.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/location_model.dart';
 import '../../widgets/auth/auth_primary_button.dart';
 import '../../widgets/auth/auth_step_indicator.dart';
 import '../../widgets/auth/auth_text_field.dart';
 import '../../widgets/auth/security_notice.dart';
+import '../location/map_point_picker_screen.dart';
 
 /// Passenger registration — step 3 of 3.
 ///
@@ -37,6 +40,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
 
   File? _profileImage;
   bool _isSaving = false;
+  bool _isResolvingCity = false;
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -90,7 +94,46 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     }
   }
 
+  Future<void> _chooseCityFromMap() async {
+    final l10n = context.l10n;
+    final selected = await Navigator.push<LocationModel>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MapPointPickerScreen(
+          title: l10n.profileCityMapTitle,
+          confirmLabel: l10n.confirm,
+        ),
+      ),
+    );
+    if (!mounted || selected == null) return;
+
+    setState(() => _isResolvingCity = true);
+    try {
+      final city = await LocationService().getCityFromCoordinates(
+        latitude: selected.latitude,
+        longitude: selected.longitude,
+      );
+      if (!mounted) return;
+      if (city == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.profileCityMapUnavailable)),
+        );
+        return;
+      }
+      _cityController.text = city;
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.profileCityMapUnavailable)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isResolvingCity = false);
+    }
+  }
+
   Future<void> _save() async {
+    if (_isResolvingCity) return;
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSaving = true);
@@ -198,6 +241,28 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                     label: l10n.profileCityLabel,
                     hint: l10n.profileCityHint,
                     icon: IconsaxPlusLinear.location,
+                    suffix: _isResolvingCity
+                        ? const SizedBox(
+                            width: 40,
+                            height: 40,
+                            child: Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            ),
+                          )
+                        : IconButton(
+                            icon: Icon(
+                              IconsaxPlusLinear.map,
+                              color: T.primary(context),
+                            ),
+                            tooltip: l10n.profileCityMapTitle,
+                            onPressed: _isSaving ? null : _chooseCityFromMap,
+                          ),
                     validator: (v) => (v == null || v.trim().isEmpty)
                         ? l10n.profileCityRequired
                         : null,
@@ -208,7 +273,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                   AuthPrimaryButton(
                     label: l10n.complete,
                     loading: _isSaving,
-                    onPressed: _isSaving ? null : _save,
+                    onPressed: _isSaving || _isResolvingCity ? null : _save,
                   ),
                 ],
               ),

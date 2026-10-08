@@ -43,6 +43,20 @@ class WebSocketService {
   Stream<Map<String, dynamic>> get onTrackingUpdate =>
       _trackingController.stream;
 
+  final _instantOfferController =
+      StreamController<Map<String, dynamic>>.broadcast();
+
+  /// A new instant-ride offer for this driver (offerId, requestId, expiresAt).
+  Stream<Map<String, dynamic>> get onInstantOffer =>
+      _instantOfferController.stream;
+
+  final _instantOfferClosedController =
+      StreamController<Map<String, dynamic>>.broadcast();
+
+  /// An offer this driver holds is gone (the passenger cancelled).
+  Stream<Map<String, dynamic>> get onInstantOfferClosed =>
+      _instantOfferClosedController.stream;
+
   // Initialize socket connection
   Future<void> connect() async {
     if ((_chatSocket != null && _chatSocket!.connected) &&
@@ -109,6 +123,16 @@ class WebSocketService {
     // Listen to Notification events
     _notificationsSocket!.on('newNotification', (data) {
       _notificationController.add(Map<String, dynamic>.from(data));
+    });
+
+    // Instant-ride offers reach an open driver app here first; FCM can lag.
+    _notificationsSocket!.on('instantOffer', (data) {
+      if (data is Map) _instantOfferController.add(Map<String, dynamic>.from(data));
+    });
+    _notificationsSocket!.on('instantOfferClosed', (data) {
+      if (data is Map) {
+        _instantOfferClosedController.add(Map<String, dynamic>.from(data));
+      }
     });
 
     // Listen to Tracking events
