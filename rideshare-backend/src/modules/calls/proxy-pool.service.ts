@@ -45,6 +45,11 @@ export class ProxyPoolService {
     }
   }
 
+  /** False when no proxy numbers are configured. */
+  get isConfigured(): boolean {
+    return this.pool.length > 0;
+  }
+
   /**
    * Allocate a proxy number for the given booking.
    * Reuses the same number on subsequent calls for the same booking.

@@ -465,7 +465,7 @@ export class AdminDashboardController {
   @ApiQuery({ name: 'countryCode', required: false, example: 'JO' })
   async getPricingSettings(@Query('countryCode') countryCode?: string) {
     return this.adminDashboardService.getPlatformPricingSettings(
-      countryCode || 'JO',
+      countryCode?.trim().toUpperCase() || 'JO',
     );
   }
 
@@ -480,7 +480,7 @@ export class AdminDashboardController {
     @Body() dto: AdminPatchPricingSettingsDto,
   ) {
     return this.adminDashboardService.patchPlatformPricingSettings(
-      countryCode || 'JO',
+      countryCode?.trim().toUpperCase() || 'JO',
       dto,
     );
   }

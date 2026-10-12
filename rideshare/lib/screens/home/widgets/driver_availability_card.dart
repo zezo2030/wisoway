@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/websocket_service.dart';
@@ -17,7 +19,15 @@ import 'driver_home_cards.dart';
 /// streams the driver's location (heartbeat) and polls for incoming ride
 /// offers — presenting each as a countdown accept/decline dialog.
 class DriverAvailabilityCard extends StatefulWidget {
-  const DriverAvailabilityCard({super.key, this.onOnlineChanged});
+  const DriverAvailabilityCard({
+    super.key,
+    this.onOnlineChanged,
+    this.onLocationSent,
+  });
+
+  /// Every location the server accepted while online — the dashboard's
+  /// location card shows this, the position rides are dispatched by.
+  final void Function(double latitude, double longitude)? onLocationSent;
 
   /// Fires whenever the online state settles, so the surrounding dashboard can
   /// mirror it (the header's presence dot).
@@ -36,6 +46,18 @@ class _DriverAvailabilityCardState extends State<DriverAvailabilityCard>
   bool _busy = true;
   Timer? _heartbeatTimer;
   Timer? _offerPollTimer;
+
+  /// While online, a location stream — on Android a foreground service with
+  /// an «أنت متصل» notification. It keeps the heartbeat going with the screen
+  /// locked or the app in the background; without it the server stopped
+  /// seeing the driver a minute after the screen went off, and offers never
+  /// reached them.
+  StreamSubscription<Position>? _positionSub;
+  Position? _lastPosition;
+  DateTime? _lastHeartbeatAt;
+
+  /// Last time the server accepted the driver's location.
+  DateTime? _lastLocationSentAt;
   bool _offerDialogOpen = false;
 
   bool get _appVisible =>
@@ -71,6 +93,7 @@ class _DriverAvailabilityCardState extends State<DriverAvailabilityCard>
     _offerClosedSub?.cancel();
     _heartbeatTimer?.cancel();
     _offerPollTimer?.cancel();
+    _positionSub?.cancel();
     super.dispose();
   }
 
@@ -108,9 +131,13 @@ class _DriverAvailabilityCardState extends State<DriverAvailabilityCard>
           longitude: pos.longitude,
         );
         if (!mounted) return;
+        // Going online carried a location too.
+        _lastLocationSentAt = DateTime.now();
+        widget.onLocationSent?.call(pos.latitude, pos.longitude);
         setState(() => _isOnline = true);
         widget.onOnlineChanged?.call(true);
         _startTimers();
+        unawaited(_checkOverLockScreen());
       } else {
         _stopTimers();
         await _service.setAvailability(isOnline: false);
@@ -128,6 +155,10 @@ class _DriverAvailabilityCardState extends State<DriverAvailabilityCard>
   }
 
   void _startTimers() {
+    _startLocationStream();
+    // Report straight away rather than 12 s from now, so a driver back from a
+    // closed app is visible to dispatch at once.
+    unawaited(_sendHeartbeat());
     _heartbeatTimer?.cancel();
     _heartbeatTimer = Timer.periodic(
       const Duration(seconds: 12),
@@ -145,18 +176,116 @@ class _DriverAvailabilityCardState extends State<DriverAvailabilityCard>
     _offerPollTimer?.cancel();
     _heartbeatTimer = null;
     _offerPollTimer = null;
+    _positionSub?.cancel();
+    _positionSub = null;
+    _lastPosition = null;
+  }
+
+  void _startLocationStream() {
+    if (_positionSub != null) return;
+    final l10n = context.l10n;
+    final LocationSettings settings =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+        ? AndroidSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 30,
+            intervalDuration: const Duration(seconds: 10),
+            foregroundNotificationConfig: ForegroundNotificationConfig(
+              notificationTitle: l10n.driverOnlineServiceTitle,
+              notificationText: l10n.driverOnlineServiceText,
+              notificationChannelName: l10n.driverOnlineServiceTitle,
+              notificationIcon: const AndroidResource(
+                name: 'notification_icon',
+                defType: 'drawable',
+              ),
+              enableWakeLock: true,
+              setOngoing: true,
+            ),
+          )
+        : const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 30,
+          );
+    try {
+      _positionSub = Geolocator.getPositionStream(locationSettings: settings)
+          .listen(
+            (pos) {
+              _lastPosition = pos;
+              // A moving driver reports promptly; a parked one still gets the
+              // timer's heartbeat.
+              final last = _lastHeartbeatAt;
+              if (last == null ||
+                  DateTime.now().difference(last).inSeconds >= 10) {
+                _sendHeartbeat();
+              }
+            },
+            onError: (_) {
+              // Permission or GPS trouble: the timer falls back to one-off fixes.
+            },
+          );
+    } catch (_) {
+      _positionSub = null;
+    }
   }
 
   Future<void> _sendHeartbeat() async {
     try {
-      final pos = await _location.getCurrentPosition();
+      // The stream's last fix works with the screen off; a one-off fix
+      // (needs the app in the foreground) is only the fallback.
+      final last = _lastPosition;
+      final fresh =
+          last != null && DateTime.now().difference(last.timestamp).inSeconds < 60;
+      final pos = fresh ? last : await _location.getCurrentPosition();
+      _lastHeartbeatAt = DateTime.now();
       await _service.heartbeat(
         latitude: pos.latitude,
         longitude: pos.longitude,
       );
+      _lastLocationSentAt = DateTime.now();
+      widget.onLocationSent?.call(pos.latitude, pos.longitude);
     } catch (_) {
       // Transient — the next tick will retry.
     }
+    // Re-evaluate the "requests may not reach you" warning either way.
+    if (mounted) setState(() {});
+  }
+
+  /// The server stops offering rides to a driver whose location is older than
+  /// this (DriverAvailabilityService.staleThresholdMs) — past it, the driver
+  /// looks online here but is invisible to dispatch.
+  static const _serverStaleAfter = Duration(seconds: 60);
+
+  bool get _locationStale {
+    if (!_isOnline) return false;
+    final sent = _lastLocationSentAt;
+    return sent == null || DateTime.now().difference(sent) > _serverStaleAfter;
+  }
+
+  /// Android 14+: without full-screen notifications an offer can't wake a
+  /// locked phone. Ask the driver to allow it when they go online.
+  Future<void> _checkOverLockScreen() async {
+    if (await PushNotificationService.canShowOffersOverLockScreen()) return;
+    if (!mounted) return;
+    final l10n = context.l10n;
+    final open = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(IconsaxPlusBold.notification_bing, size: 32),
+        title: Text(l10n.offersOverLockTitle),
+        content: Text(l10n.offersOverLockBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.close),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.offersOverLockAction),
+          ),
+        ],
+      ),
+    );
+    if (open == true) await PushNotificationService.openOverLockScreenSettings();
   }
 
   Future<void> _pollForOffer() async {
@@ -284,13 +413,19 @@ class _DriverAvailabilityCardState extends State<DriverAvailabilityCard>
                 children: [
                   Expanded(
                     child: Text(
-                      _isOnline
+                      _locationStale
+                          ? l10n.instantLocationNotReaching
+                          : _isOnline
                           ? l10n.instantOnlineReady
                           : l10n.instantGoOnlineHint,
+                      key: const ValueKey('availability-status-line'),
                       style: TextStyle(
                         fontSize: 11.5,
                         height: 1.35,
-                        color: T.onSurfaceVariant(context),
+                        fontWeight: _locationStale ? FontWeight.w700 : null,
+                        color: _locationStale
+                            ? AppColors.error
+                            : T.onSurfaceVariant(context),
                       ),
                     ),
                   ),

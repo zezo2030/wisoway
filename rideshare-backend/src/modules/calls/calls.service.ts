@@ -16,6 +16,7 @@ import {
 } from '../../database/entities/call-session.entity';
 import { UserEntity } from '../../database/entities/user.entity';
 import { ProxyPoolService } from './proxy-pool.service';
+import { ErrorCodes } from '../../common/errors/error-codes';
 
 const SESSION_EXPIRY_MINUTES = 60;
 
@@ -54,9 +55,11 @@ export class CallsService {
     bookingId: string,
     callerId: string,
   ): Promise<{
-    callSessionId: string;
+    /** Null when the number is dialled directly (no proxy pool). */
+    callSessionId: string | null;
+    /** The number to dial: a proxy, or the other party's own number. */
     proxyNumberE164: string;
-    expiresAt: string;
+    expiresAt: string | null;
   }> {
     const booking = await this.bookingRepo.findOne({
       where: { id: bookingId },
@@ -83,6 +86,23 @@ export class CallsService {
     const callee = await this.userRepo.findOne({ where: { id: calleeId } });
 
     if (!caller || !callee) throw new NotFoundException('User not found');
+
+    // Without proxy numbers the caller dials the other party directly — but
+    // only when they have not chosen to hide their number; then it is chat.
+    if (!this.proxyPoolService.isConfigured) {
+      if (callee.hidePhoneNumber || !callee.phoneNumber) {
+        throw new ForbiddenException({
+          code: ErrorCodes.PHONE_HIDDEN,
+          message:
+            'This user keeps their number private; reach them through chat',
+        });
+      }
+      return {
+        callSessionId: null,
+        proxyNumberE164: callee.phoneNumber,
+        expiresAt: null,
+      };
+    }
 
     const proxyNumber = await this.proxyPoolService.allocate(bookingId);
 

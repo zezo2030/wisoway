@@ -67,8 +67,9 @@ export class UsersService {
   async update(id: string, updateUserDto: UpdateUserDto): Promise<UserEntity> {
     const user = await this.findById(id);
 
-    const { city, ...rest } = updateUserDto as UpdateUserDto & {
+    const { city, cliqAlias, ...rest } = updateUserDto as UpdateUserDto & {
       city?: string | null;
+      cliqAlias?: string | null;
     };
 
     this.userRepo.merge(user, rest as Partial<UserEntity>);
@@ -76,6 +77,10 @@ export class UsersService {
     if (city !== undefined) {
       const trimmed = typeof city === 'string' ? city.trim() : '';
       user.city = trimmed.length > 0 ? trimmed : null;
+    }
+    if (cliqAlias !== undefined) {
+      const trimmed = typeof cliqAlias === 'string' ? cliqAlias.trim() : '';
+      user.cliqAlias = trimmed.length > 0 ? trimmed : null;
     }
 
     return this.userRepo.save(user);

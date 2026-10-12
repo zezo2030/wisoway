@@ -30,6 +30,9 @@ object InstantOfferNotificationHelper {
     const val EXTRA_OFFER_ID = "instant_offer_id"
     const val EXTRA_PAYLOAD = "notification_payload"
 
+    /** Set on the full-screen intent: MainActivity shows over the lock screen. */
+    const val EXTRA_OVER_LOCK_SCREEN = "instant_offer_over_lock_screen"
+
     private const val DEFAULT_OFFER_TTL_MS = 25_000L
 
     /**
@@ -75,6 +78,20 @@ object InstantOfferNotificationHelper {
     private val handler = Handler(Looper.getMainLooper())
     private val tickers = ConcurrentHashMap<String, Runnable>()
 
+    /** Offers whose full-screen intent already fired. */
+    private val launchedFullScreen = ConcurrentHashMap.newKeySet<String>()
+
+    /**
+     * Android 14+ lets the user (or Play) withhold full-screen intents; without
+     * it an offer only rings as a heads-up and can't open over the lock screen.
+     */
+    fun canUseFullScreenIntent(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < 34) return true
+        val manager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        return manager.canUseFullScreenIntent()
+    }
+
     fun show(context: Context, data: Map<String, String>) {
         ensureChannel(context)
 
@@ -93,6 +110,7 @@ object InstantOfferNotificationHelper {
 
     fun cancel(context: Context, offerId: String) {
         stopTicker(offerId)
+        launchedFullScreen.remove(offerId)
         offerByRequest.values.remove(offerId)
         InstantOfferRinger.stop(offerId)
         NotificationManagerCompat.from(context).cancel(notificationId(offerId))
@@ -157,12 +175,14 @@ object InstantOfferNotificationHelper {
                 ?: data["durationLabel"]?.takeIf { it.isNotBlank() }
                 ?: "—"
         val fare = data["passengerFare"]?.takeIf { it.isNotBlank() } ?: data["fareEstimate"]
-        val earnings =
+        val fareLabel =
             if (fare != null) {
                 s.earningsLabel(fare, data["currency"])
             } else {
                 data["earningsLabel"]?.takeIf { it.isNotBlank() } ?: "—"
             }
+        // A CliQ ride is paid by transfer to the driver's alias, not cash.
+        val earnings = if (data["paymentMethod"] == "cliq") "$fareLabel · CliQ" else fareLabel
         val tripType = s.tripTypeDirect
         val seats =
             data["seatCount"]?.toDoubleOrNull()?.let { s.passengers(it.toInt()) }
@@ -229,6 +249,23 @@ object InstantOfferNotificationHelper {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
 
+        // Like an incoming call: on a locked or sleeping phone this wakes the
+        // screen and opens the offer over the lock screen; on an unlocked one
+        // Android shows it as a heads-up instead. Only on the first post — the
+        // countdown refreshes must not relaunch the screen every second.
+        val firstPost = launchedFullScreen.add(offerId)
+        val fullScreenPending =
+            if (firstPost) {
+                PendingIntent.getActivity(
+                    context,
+                    notificationId(offerId) + 1,
+                    Intent(openIntent).putExtra(EXTRA_OVER_LOCK_SCREEN, true),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
+            } else {
+                null
+            }
+
         val notification =
             NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.notification_icon)
@@ -254,6 +291,11 @@ object InstantOfferNotificationHelper {
                 .setAutoCancel(false)
                 .setOnlyAlertOnce(true)
                 .setContentIntent(contentPending)
+                .apply {
+                    if (fullScreenPending != null) {
+                        setFullScreenIntent(fullScreenPending, true)
+                    }
+                }
                 .setTimeoutAfter(
                     (secondsLeft * 1000L).coerceAtLeast(1000L),
                 )

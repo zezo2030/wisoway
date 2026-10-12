@@ -34,6 +34,10 @@ class InstantQuote {
   final double? distanceKm;
   final int? durationMinutes;
 
+  /// What the passenger may pay with here: always `cash`, plus `cliq` for
+  /// rides in Jordan.
+  final List<String> paymentMethods;
+
   const InstantQuote({
     required this.recommendedFare,
     required this.minFare,
@@ -41,10 +45,14 @@ class InstantQuote {
     required this.currency,
     this.distanceKm,
     this.durationMinutes,
+    this.paymentMethods = const ['cash'],
   });
+
+  bool get allowsCliq => paymentMethods.contains('cliq');
 
   factory InstantQuote.fromJson(Map<String, dynamic> json) {
     double parse(dynamic v) => double.tryParse(v?.toString() ?? '') ?? 0;
+    final methods = json['paymentMethods'];
     return InstantQuote(
       recommendedFare: parse(json['recommendedFare']),
       minFare: parse(json['minFare']),
@@ -52,6 +60,9 @@ class InstantQuote {
       currency: (json['currency'] ?? 'JOD').toString(),
       distanceKm: _asDouble(json['distanceKm']),
       durationMinutes: _asInt(json['durationMinutes']),
+      paymentMethods: methods is List
+          ? methods.map((m) => m.toString()).toList()
+          : const ['cash'],
     );
   }
 }
@@ -162,7 +173,11 @@ class InstantRequest {
     this.distanceKm,
     this.durationMinutes,
     this.maxFare,
+    this.paymentMethod = 'cash',
   });
+
+  /// `cash` or `cliq`, as chosen when ordering.
+  final String paymentMethod;
 
   /// The fixed fare for this request, as a number.
   double? get currentFare =>
@@ -202,6 +217,7 @@ class InstantRequest {
       distanceKm: double.tryParse(json['distanceKm']?.toString() ?? ''),
       durationMinutes: _asInt(json['durationMinutes']),
       maxFare: double.tryParse(json['maxFare']?.toString() ?? ''),
+      paymentMethod: json['paymentMethod']?.toString() ?? 'cash',
       tripId: json['tripId']?.toString(),
       expiresAt: json['expiresAt'] != null
           ? DateTime.tryParse(json['expiresAt'].toString())
@@ -280,7 +296,13 @@ class InstantRequestSummary {
     this.passengerRating,
     this.passengerTotalRatings,
     this.passengerPhotoUrl,
+    this.paymentMethod = 'cash',
   });
+
+  /// `cash` or `cliq` — how the passenger will pay the driver.
+  final String paymentMethod;
+
+  bool get isCliq => paymentMethod == 'cliq';
 
   factory InstantRequestSummary.fromJson(Map<String, dynamic> json) {
     final pickup = json['pickup'] is Map ? json['pickup'] as Map : const {};
@@ -329,6 +351,7 @@ class InstantRequestSummary {
       passengerRating: asDouble(json['passengerRating']),
       passengerTotalRatings: asInt(json['passengerTotalRatings']),
       passengerPhotoUrl: asText(json['passengerPhotoUrl']),
+      paymentMethod: asText(json['paymentMethod']) ?? 'cash',
     );
   }
 }
@@ -432,10 +455,15 @@ class ActiveInstantRide {
   final bool isDriver;
   final String? requestId;
 
+  /// The ride is over and its fare not yet settled: both apps belong on the
+  /// payment screen rather than the live ride.
+  final bool awaitingPayment;
+
   const ActiveInstantRide({
     required this.tripId,
     required this.isDriver,
     this.requestId,
+    this.awaitingPayment = false,
   });
 
   static ActiveInstantRide? fromJson(Map<String, dynamic> json) {
@@ -445,6 +473,7 @@ class ActiveInstantRide {
       tripId: tripId,
       isDriver: json['role'] == 'driver',
       requestId: json['requestId']?.toString(),
+      awaitingPayment: json['stage'] == 'payment',
     );
   }
 }

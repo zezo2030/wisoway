@@ -88,6 +88,23 @@ void main() {
         expect(failure.nextAction, isNull);
       });
 
+      // The wallet screen after a failed token refresh: the tokens are gone,
+      // so the request goes out bare. That is a lost session, not a typo.
+      test('HTTP 401 on a signed-in endpoint sent without a token → session '
+          'expired', () {
+        final options = RequestOptions(path: '/wallet/me');
+        final error = DioException(
+          type: DioExceptionType.badResponse,
+          response: Response(statusCode: 401, requestOptions: options),
+          requestOptions: options,
+        );
+
+        final failure = ExceptionMapper.fromError(error);
+
+        expect(failure.messageKey, 'errorsAuthSessionExpired');
+        expect(failure.nextAction, FailureAction.reauthenticate);
+      });
+
       test('HTTP 500 → server error failure', () {
         final error = DioException(
           type: DioExceptionType.badResponse,
@@ -140,24 +157,27 @@ void main() {
         expect(failure.messageArgs!.first, 'This booking already exists.');
       });
 
-      test('HTTP 400 with list message → validation failure with first item', () {
-        final error = DioException(
-          type: DioExceptionType.badResponse,
-          response: Response(
-            statusCode: 400,
-            data: {
-              'message': ['Field is required', 'Invalid format'],
-            },
+      test(
+        'HTTP 400 with list message → validation failure with first item',
+        () {
+          final error = DioException(
+            type: DioExceptionType.badResponse,
+            response: Response(
+              statusCode: 400,
+              data: {
+                'message': ['Field is required', 'Invalid format'],
+              },
+              requestOptions: RequestOptions(path: '/test'),
+            ),
             requestOptions: RequestOptions(path: '/test'),
-          ),
-          requestOptions: RequestOptions(path: '/test'),
-        );
+          );
 
-        final failure = ExceptionMapper.fromError(error);
+          final failure = ExceptionMapper.fromError(error);
 
-        expect(failure.category, FailureCategory.validation);
-        expect(failure.messageArgs!.first, 'Field is required');
-      });
+          expect(failure.category, FailureCategory.validation);
+          expect(failure.messageArgs!.first, 'Field is required');
+        },
+      );
     });
 
     group('FirebaseException mapping', () {
@@ -214,19 +234,14 @@ void main() {
 
     group('developerDetail', () {
       test('includes original exception type', () {
-        final failure = ExceptionMapper.fromError(
-          Exception('test'),
-        );
+        final failure = ExceptionMapper.fromError(Exception('test'));
 
         expect(failure.developerDetail, contains('_Exception'));
       });
 
       test('includes stack trace when provided', () {
         final st = StackTrace.current;
-        final failure = ExceptionMapper.fromError(
-          Exception('test'),
-          st,
-        );
+        final failure = ExceptionMapper.fromError(Exception('test'), st);
 
         expect(failure.developerDetail, contains(st.toString()));
       });

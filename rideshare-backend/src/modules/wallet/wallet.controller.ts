@@ -1,5 +1,10 @@
 import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -15,12 +20,22 @@ export class WalletController {
   constructor(private readonly walletService: WalletService) {}
 
   @Get('me')
-  @ApiOperation({ summary: 'Get wallet summary for current user' })
+  @ApiOperation({
+    summary: 'Get wallet summary for current user',
+    description:
+      'An empty wallet is shown in the currency of `country` (ISO alpha-2 of the device location), falling back to the phone number country.',
+  })
+  @ApiQuery({ name: 'country', required: false, example: 'SA' })
   async getSummary(
     @CurrentUser('id') userId: string,
     @CurrentUser('role') role: string,
+    @Query('country') country?: string,
   ) {
-    return this.walletService.getWalletSummary(userId, role);
+    const currency = await this.walletService.resolveLocalCurrency(
+      userId,
+      country,
+    );
+    return this.walletService.getWalletSummary(userId, role, currency);
   }
 
   @Get('transactions')

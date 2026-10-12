@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
+import '../../../core/constants/countries.dart';
 import '../../../core/constants/route_names.dart';
 import '../../../core/theme/colors.dart';
 import '../../../l10n/l10n_extensions.dart';
@@ -57,10 +58,15 @@ class _HomeTabContentState extends State<HomeTabContent> {
   Future<void> _handleRefresh() async {
     final tripProvider = Provider.of<TripProvider>(context, listen: false);
 
+    final user = Provider.of<AuthProvider>(context, listen: false).userModel;
     await Future.wait([
-      tripProvider.fetchActiveTrips(
-        minDepartureTime: _activeTripsMinDepartureTime,
-      ),
+      if (widget.userLocation != null && user != null)
+        tripProvider.fetchNearbyTrips()
+      else
+        tripProvider.fetchActiveTrips(
+          minDepartureTime: _activeTripsMinDepartureTime,
+          country: _userCountry(user),
+        ),
       if (widget.onRefreshData != null) widget.onRefreshData!(),
     ]);
   }
@@ -491,15 +497,23 @@ class _HomeTabContentState extends State<HomeTabContent> {
     final location = widget.userLocation;
 
     if (location == null || user == null) {
+      // No location: stay within the passenger's own country (taken from
+      // their phone number) rather than listing trips from everywhere.
       return tripProvider.getActiveTripsStream(
         minDepartureTime: _activeTripsMinDepartureTime,
+        country: _userCountry(user),
       );
     }
 
     return tripProvider.getNearbyTripsStream(
       excludeDriverId: user.id,
       userLocation: location,
-      minDepartureTime: _activeTripsMinDepartureTime,
     );
+  }
+
+  static String? _userCountry(UserModel? user) {
+    final phone = user?.phoneNumber;
+    if (phone == null || phone.isEmpty) return null;
+    return Countries.fromPhoneNumber(phone)?.iso2;
   }
 }

@@ -55,6 +55,13 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
   bool _sharePhone = true;
   late bool _isFamilyBooking = widget.initialIsFamilyBooking;
 
+  /// `cash` to the driver, or `cliq` — a request-to-pay when the trip ends
+  /// (Jordanian trips only).
+  String _paymentMethod = 'cash';
+  final _cliqAliasCtrl = TextEditingController();
+
+  bool get _cliqAvailable => widget.trip.currency.toUpperCase() == 'JOD';
+
   // Row data — index 0 is the main booker.
   late List<_PassengerRowData> _rows;
 
@@ -63,6 +70,7 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
     super.initState();
     final authProvider = context.read<AuthProvider>();
     final user = authProvider.userModel;
+    _cliqAliasCtrl.text = user?.cliqAlias ?? '';
     _rows = [
       _PassengerRowData(
         nameCtrl: TextEditingController(text: user?.name ?? ''),
@@ -81,6 +89,7 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
     for (final r in _rows) {
       r.nameCtrl.dispose();
     }
+    _cliqAliasCtrl.dispose();
     super.dispose();
   }
 
@@ -146,6 +155,9 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
     });
   }
 
+  String? get _payerAlias =>
+      _paymentMethod == 'cliq' ? _cliqAliasCtrl.text.trim() : null;
+
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
     final passengers = _buildRequests();
@@ -153,23 +165,27 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
 
     if (widget.autoPick) {
       context.read<BookingBloc>().add(
-            BookingAutoPick(
-              tripId: widget.trip.id,
-              seatCount: _seatCount,
-              passengers: passengers,
-              sharePhoneWithDriver: _sharePhone,
-              isFamilyBooking: isFamilyBooking,
-            ),
-          );
+        BookingAutoPick(
+          tripId: widget.trip.id,
+          seatCount: _seatCount,
+          passengers: passengers,
+          sharePhoneWithDriver: _sharePhone,
+          isFamilyBooking: isFamilyBooking,
+          paymentMethod: _paymentMethod,
+          payerCliqAlias: _payerAlias,
+        ),
+      );
     } else {
       context.read<BookingBloc>().add(
-            BookingCreateMultiSeat(
-              tripId: widget.trip.id,
-              seats: passengers,
-              sharePhoneWithDriver: _sharePhone,
-              isFamilyBooking: isFamilyBooking,
-            ),
-          );
+        BookingCreateMultiSeat(
+          tripId: widget.trip.id,
+          seats: passengers,
+          sharePhoneWithDriver: _sharePhone,
+          isFamilyBooking: isFamilyBooking,
+          paymentMethod: _paymentMethod,
+          payerCliqAlias: _payerAlias,
+        ),
+      );
     }
   }
 
@@ -190,8 +206,7 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
         } else if (state is BookingError) {
           ErrorSurface.showFailure(
             context,
-            state.failure ??
-                ApiClient.mapError(Exception(state.message)),
+            state.failure ?? ApiClient.mapError(Exception(state.message)),
           );
         }
       },
@@ -232,7 +247,9 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
                               widget.trip.currency,
                             ),
                             style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -300,6 +317,15 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
                     ),
                     const SizedBox(height: 16),
                   ],
+
+                  // ── Payment method ─────────────────────────────────────
+                  _PaymentMethodCard(
+                    method: _paymentMethod,
+                    cliqAvailable: _cliqAvailable,
+                    aliasController: _cliqAliasCtrl,
+                    onChanged: (m) => setState(() => _paymentMethod = m),
+                  ),
+                  const SizedBox(height: 16),
 
                   // ── Share phone toggle ─────────────────────────────────
                   Card(
@@ -382,10 +408,7 @@ class _PassengerFormRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                label,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
+              Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               TextFormField(
                 controller: data.nameCtrl,
@@ -402,10 +425,7 @@ class _PassengerFormRow extends StatelessWidget {
               const SizedBox(height: 8),
               SegmentedButton<String>(
                 segments: [
-                  ButtonSegment(
-                    value: 'male',
-                    label: Text(context.l10n.male),
-                  ),
+                  ButtonSegment(value: 'male', label: Text(context.l10n.male)),
                   ButtonSegment(
                     value: 'female',
                     label: Text(context.l10n.female),
@@ -418,6 +438,86 @@ class _PassengerFormRow extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// How the fare is paid when the trip ends: cash to the driver, or CliQ (a
+/// request-to-pay to the passenger's alias, Jordanian trips only).
+class _PaymentMethodCard extends StatelessWidget {
+  const _PaymentMethodCard({
+    required this.method,
+    required this.cliqAvailable,
+    required this.aliasController,
+    required this.onChanged,
+  });
+
+  final String method;
+  final bool cliqAvailable;
+  final TextEditingController aliasController;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              l10n.instantPaymentMethodTitle,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            SegmentedButton<String>(
+              segments: [
+                ButtonSegment(
+                  value: 'cash',
+                  icon: const Icon(Icons.payments_outlined),
+                  label: Text(l10n.paymentMethodCash),
+                ),
+                if (cliqAvailable)
+                  ButtonSegment(
+                    value: 'cliq',
+                    icon: const Icon(Icons.account_balance_outlined),
+                    label: Text(l10n.paymentMethodCliq),
+                  ),
+              ],
+              selected: {method},
+              onSelectionChanged: (s) => onChanged(s.first),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              method == 'cliq'
+                  ? l10n.bookingPaymentCliqNote
+                  : l10n.bookingPaymentCashNote,
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            if (method == 'cliq') ...[
+              const SizedBox(height: 10),
+              TextFormField(
+                key: const ValueKey('booking-cliq-alias'),
+                controller: aliasController,
+                textDirection: TextDirection.ltr,
+                decoration: InputDecoration(
+                  labelText: l10n.cliqPayerAliasLabel,
+                  hintText: l10n.cliqPayerAliasHint,
+                  isDense: true,
+                  border: const OutlineInputBorder(),
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? l10n.cliqPayerAliasRequired
+                    : null,
+              ),
+            ],
+          ],
         ),
       ),
     );

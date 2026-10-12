@@ -100,6 +100,22 @@ export class CreateMultiSeatBookingDto {
   @IsBoolean()
   @IsOptional()
   isFamilyBooking?: boolean;
+
+  /**
+   * How the fare is paid when the trip ends: `cash` to the driver, or `cliq`
+   * (a request-to-pay to the platform; Jordanian trips only).
+   */
+  @ApiPropertyOptional({ enum: ['cash', 'cliq'], default: 'cash' })
+  @IsOptional()
+  @IsIn(['cash', 'cliq'])
+  paymentMethod?: 'cash' | 'cliq';
+
+  /** CliQ: the passenger's alias or mobile; defaults to the one on file. */
+  @ApiPropertyOptional({ example: 'ahmad@cliq' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  payerCliqAlias?: string;
 }
 
 export class AutoPickBookingDto {
@@ -135,4 +151,20 @@ export class AutoPickBookingDto {
   @IsBoolean()
   @IsOptional()
   isFamilyBooking?: boolean;
+
+  /**
+   * How the fare is paid when the trip ends: `cash` to the driver, or `cliq`
+   * (a request-to-pay to the platform; Jordanian trips only).
+   */
+  @ApiPropertyOptional({ enum: ['cash', 'cliq'], default: 'cash' })
+  @IsOptional()
+  @IsIn(['cash', 'cliq'])
+  paymentMethod?: 'cash' | 'cliq';
+
+  /** CliQ: the passenger's alias or mobile; defaults to the one on file. */
+  @ApiPropertyOptional({ example: 'ahmad@cliq' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  payerCliqAlias?: string;
 }

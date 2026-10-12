@@ -21,6 +21,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { RestrictedAccountInterceptor } from './common/interceptors/restricted.interceptor';
 import { UploadUrlInterceptor } from './common/interceptors/upload-url.interceptor';
+import { HiddenPhoneInterceptor } from './common/interceptors/hidden-phone.interceptor';
 import { ValidationPipe } from './common/pipes/validation.pipe';
 import { HealthModule } from './modules/health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -42,11 +43,13 @@ import { WalletModule } from './modules/wallet/wallet.module';
 import { SecurityModule } from './modules/security/security.module';
 import { AuditModule } from './common/audit/audit.module';
 import { PendingChargesModule } from './modules/pending-charges/pending-charges.module';
+import { SavedPlacesModule } from './modules/saved-places/saved-places.module';
 import { TripTimeModule } from './modules/trip-time/trip-time.module';
 import { ShareLinksModule } from './modules/share-links/share-links.module';
 import { SettlementModule } from './modules/settlement/settlement.module';
 import { CallsModule } from './modules/calls/calls.module';
 import { ComplaintsModule } from './modules/complaints/complaints.module';
+import { RidePaymentsModule } from './modules/ride-payments/ride-payments.module';
 import { RefundsModule } from './modules/refunds/refunds.module';
 import { SupportModule } from './modules/support/support.module';
 import { InstantRidesModule } from './modules/instant-rides/instant-rides.module';
@@ -99,11 +102,13 @@ import { InstantRidesModule } from './modules/instant-rides/instant-rides.module
     SecurityModule,
     AuditModule,
     PendingChargesModule,
+    SavedPlacesModule,
     TripTimeModule,
     ShareLinksModule,
     SettlementModule,
     CallsModule,
     ComplaintsModule,
+    RidePaymentsModule,
     RefundsModule,
     SupportModule,
     InstantRidesModule,
@@ -142,6 +147,11 @@ import { InstantRidesModule } from './modules/instant-rides/instant-rides.module
       // stay reachable across port/host/device changes.
       provide: APP_INTERCEPTOR,
       useClass: UploadUrlInterceptor,
+    },
+    {
+      // Blanks the phone of any other user who chose to hide it.
+      provide: APP_INTERCEPTOR,
+      useClass: HiddenPhoneInterceptor,
     },
     {
       provide: APP_INTERCEPTOR,

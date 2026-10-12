@@ -103,6 +103,8 @@ class InstantRideService {
     required LocationModel from,
     required LocationModel to,
     int seatCount = 1,
+    String paymentMethod = 'cash',
+    String? payerCliqAlias,
   }) async {
     // No fare in the body: the server always charges its own quote.
     final response = await _api.post(
@@ -111,6 +113,9 @@ class InstantRideService {
         'from': _pointJson(from),
         'to': _pointJson(to),
         'seatCount': seatCount,
+        'paymentMethod': paymentMethod,
+        if (payerCliqAlias != null && payerCliqAlias.trim().isNotEmpty)
+          'payerCliqAlias': payerCliqAlias.trim(),
       },
     );
     return InstantRequest.fromJson(_unwrap(response));

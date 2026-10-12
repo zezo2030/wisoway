@@ -119,6 +119,10 @@ export class TripEntity {
   @Column({ type: 'varchar', length: 16, default: TripType.SCHEDULED })
   tripType: TripType;
 
+  /** Instant rides: when the driver pressed «وصلت إلى الراكب» at the pickup. */
+  @Column({ type: 'timestamptz', nullable: true })
+  driverArrivedAt: Date | null;
+
   /** When the driver pressed "Start Trip". */
   @Column({ type: 'timestamptz', nullable: true })
   tripStartedAt: Date | null;

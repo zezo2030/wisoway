@@ -300,6 +300,7 @@ class AuthService {
     String? profileImageUrl,
     String? city,
     bool? hidePhoneNumber,
+    String? cliqAlias,
   }) async {
     final Map<String, dynamic> data = {};
     if (name != null) {
@@ -316,6 +317,10 @@ class AuthService {
     }
     if (hidePhoneNumber != null) {
       data['hidePhoneNumber'] = hidePhoneNumber;
+    }
+    if (cliqAlias != null) {
+      // Empty clears it on the server.
+      data['cliqAlias'] = cliqAlias.trim();
     }
     // Note: email update is not supported in UpdateUserDto (read-only after registration)
 

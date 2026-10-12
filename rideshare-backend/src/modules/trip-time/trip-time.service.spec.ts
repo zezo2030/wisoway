@@ -14,6 +14,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PresenceService } from './presence.service';
 import { AdminAlertsService } from '../admin/admin-alerts.service';
 import { DriverTripFeeService } from '../driver-trip-fee/driver-trip-fee.service';
+import { RidePaymentsService } from '../ride-payments/ride-payments.service';
 import { TripTimeService } from './trip-time.service';
 
 describe('TripTimeService.completeTrip — fee reconciliation sweep', () => {
@@ -119,6 +120,10 @@ describe('TripTimeService.completeTrip — fee reconciliation sweep', () => {
           useValue: { getJob: jest.fn().mockResolvedValue(undefined) },
         },
         { provide: DriverTripFeeService, useValue: driverTripFee },
+        {
+          provide: RidePaymentsService,
+          useValue: { openForTrip: jest.fn().mockResolvedValue(undefined) },
+        },
       ],
     }).compile();
 

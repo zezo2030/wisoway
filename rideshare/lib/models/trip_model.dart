@@ -47,7 +47,10 @@ class TripModel {
   final String communicationFeeStatus; // 'not_paid', 'paid'
 
   // Trip lifecycle timestamps
+  /// Instant rides: the driver reached the passenger («وصلت إلى الراكب»).
+  final DateTime? driverArrivedAt;
   final DateTime? tripStartedAt;
+
   final DateTime? tripCompletedAt;
 
   // Presence settlement (012)
@@ -125,6 +128,7 @@ class TripModel {
     this.isVisible = true,
     this.tripType = 'scheduled',
     this.communicationFeeStatus = 'not_paid',
+    this.driverArrivedAt,
     this.tripStartedAt,
     this.tripCompletedAt,
     this.presenceSettledAt,
@@ -247,6 +251,9 @@ class TripModel {
       isVisible: json['isVisible'] ?? true,
       tripType: json['tripType']?.toString() ?? 'scheduled',
       communicationFeeStatus: json['communicationFeeStatus'] ?? 'not_paid',
+      driverArrivedAt: json['driverArrivedAt'] != null
+          ? DateTime.tryParse(json['driverArrivedAt'].toString())
+          : null,
       tripStartedAt: json['tripStartedAt'] != null
           ? DateTime.tryParse(json['tripStartedAt'].toString())
           : null,
@@ -344,6 +351,8 @@ class TripModel {
       'isVisible': isVisible,
       'tripType': tripType,
       'communicationFeeStatus': communicationFeeStatus,
+      if (driverArrivedAt != null)
+        'driverArrivedAt': driverArrivedAt!.toIso8601String(),
       if (tripStartedAt != null)
         'tripStartedAt': tripStartedAt!.toIso8601String(),
       if (tripCompletedAt != null)
@@ -407,6 +416,7 @@ class TripModel {
     bool? isVisible,
     String? tripType,
     String? communicationFeeStatus,
+    DateTime? driverArrivedAt,
     DateTime? tripStartedAt,
     DateTime? tripCompletedAt,
     DateTime? presenceSettledAt,
@@ -452,6 +462,7 @@ class TripModel {
       tripType: tripType ?? this.tripType,
       communicationFeeStatus:
           communicationFeeStatus ?? this.communicationFeeStatus,
+      driverArrivedAt: driverArrivedAt ?? this.driverArrivedAt,
       tripStartedAt: tripStartedAt ?? this.tripStartedAt,
       tripCompletedAt: tripCompletedAt ?? this.tripCompletedAt,
       presenceSettledAt: presenceSettledAt ?? this.presenceSettledAt,

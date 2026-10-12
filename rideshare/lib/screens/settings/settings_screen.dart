@@ -5,7 +5,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/route_names.dart';
-import '../../../core/constants/social_constants.dart';
 import '../../../core/constants/support_constants.dart';
 import '../../../core/services/theme_service.dart';
 import '../../../core/services/localization_service.dart';
@@ -16,7 +15,6 @@ import '../../../widgets/settings/settings_section.dart';
 import '../../../widgets/settings/settings_tile.dart';
 import '../../../widgets/settings/settings_switch_tile.dart';
 import 'account_security_screen.dart';
-import 'in_app_browser_screen.dart';
 import '../../l10n/l10n_extensions.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -126,7 +124,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             RadioListTile<String>(
-              title: const Text('العربية'),
+              title: const Text('Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©'),
               value: 'ar',
               groupValue: localizationService.locale.languageCode,
               onChanged: (value) {
@@ -208,17 +206,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await authProvider.signOut();
     } catch (_) {
       _showContactSupportDialog(context);
-    }
-  }
-
-  Future<void> _openExternalUrl(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.errorWithMessage(url))),
-      );
     }
   }
 
@@ -425,105 +412,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ],
                   ),
-                SettingsSection(
-                  title: context.l10n.paymentAndWallet,
-                  children: [
-                    SettingsTile(
-                      icon: IconsaxPlusBroken.wallet,
-                      title: context.l10n.wallet,
-                      trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
-                      onTap: () {
-                        final authProvider = context.read<AuthProvider>();
-                        final isDriver =
-                            authProvider.userModel?.role ==
-                            AppConstants.roleDriver;
-                        Navigator.pushNamed(
-                          context,
-                          isDriver
-                              ? RouteNames.driverWallet
-                              : RouteNames.passengerWallet,
-                        );
-                      },
-                    ),
-                  ],
-                ),
-                SettingsSection(
-                  title: context.l10n.supportAndHelp,
-                  children: [
-                    SettingsTile(
-                      icon: IconsaxPlusBroken.message,
-                      title: context.l10n.contactUs,
-                      trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
-                      onTap: () {
-                        Navigator.pushNamed(context, RouteNames.support);
-                      },
-                    ),
-                    SettingsTile(
-                      icon: IconsaxPlusBroken.document_text,
-                      title: context.l10n.termsOfService,
-                      trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => InAppBrowserScreen(
-                              title: context.l10n.termsOfService,
-                              url: 'https://rideshare.app/terms',
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    SettingsTile(
-                      icon: IconsaxPlusBroken.shield_security,
-                      title: context.l10n.privacyPolicy,
-                      trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => InAppBrowserScreen(
-                              title: context.l10n.privacyPolicy,
-                              url: 'https://rideshare.app/privacy',
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-                SettingsSection(
-                  title: context.l10n.followUs,
-                  children: [
-                    SettingsTile(
-                      icon: Icons.facebook,
-                      iconColor: const Color(0xFF1877F2),
-                      title: context.l10n.followOnFacebook,
-                      trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
-                      onTap: () => _openExternalUrl(SocialConstants.facebookUrl),
-                    ),
-                    SettingsTile(
-                      icon: Icons.business_center,
-                      iconColor: const Color(0xFF0A66C2),
-                      title: context.l10n.followOnLinkedIn,
-                      trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
-                      onTap: () => _openExternalUrl(SocialConstants.linkedInUrl),
-                    ),
-                  ],
-                ),
-                SettingsSection(
-                  title: context.l10n.aboutApp,
-                  children: [
-                    SettingsTile(
-                      icon: IconsaxPlusBroken.info_circle,
-                      title: context.l10n.aboutApp,
-                      trailing: const Icon(IconsaxPlusBroken.arrow_right_1),
-                      onTap: () {
-                        Navigator.pushNamed(context, RouteNames.about);
-                      },
-                    ),
-                  ],
-                ),
                 const SizedBox(height: 16),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),

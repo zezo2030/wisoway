@@ -125,16 +125,17 @@ class _PassengerDetailsScreenState extends State<PassengerDetailsScreen> {
             ),
             const SizedBox(height: 24),
             if (hasData) ...[
-              _InfoCard(
-                icon: IconsaxPlusLinear.call,
-                label: context.l10n.phoneNumberLabel,
-                value: user.phoneNumber,
-                isPhone: true,
-                onTap: user.phoneNumber.isNotEmpty
-                    ? () => _launchCall(user.phoneNumber)
-                    : null,
-              ),
-              const SizedBox(height: 12),
+              // Empty when the passenger hid their number.
+              if (user.phoneNumber.isNotEmpty) ...[
+                _InfoCard(
+                  icon: IconsaxPlusLinear.call,
+                  label: context.l10n.phoneNumberLabel,
+                  value: user.phoneNumber,
+                  isPhone: true,
+                  onTap: () => _launchCall(user.phoneNumber),
+                ),
+                const SizedBox(height: 12),
+              ],
               _InfoCard(
                 icon: IconsaxPlusLinear.sms,
                 label: context.l10n.emailLabel,

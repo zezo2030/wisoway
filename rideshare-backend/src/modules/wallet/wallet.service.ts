@@ -27,15 +27,38 @@ import { CreateTopupDto } from './dto/create-topup.dto';
 import { CreatePayoutRequestDto } from './dto/create-payout-request.dto';
 import { PlatformPricingService } from '../payments/platform-pricing.service';
 import { ErrorCodes } from '../../common/errors/error-codes';
+import {
+  countryForPhone,
+  knownCurrencyForCountry,
+} from '../../common/currency/country-currency';
 
-/** Primary ledger row for a (user, bucket): highest positive balance, else JOD, else first. */
+/** True when the account holds, owes or reserves anything. */
+function carriesFunds(account: WalletAccountEntity): boolean {
+  return (
+    Number(account.balance) !== 0 || Number(account.reservedBalance ?? 0) !== 0
+  );
+}
+
+/**
+ * Primary ledger row for a (user, bucket). Money is never relabelled, so a row
+ * that carries funds always beats an empty one: the preferred currency's row
+ * if it carries funds, else the highest positive balance, else any row in
+ * debt; only among empty rows do the preferred currency, then JOD, win.
+ */
 export function pickPrimaryWalletLedgerAccount(
   accounts: WalletAccountEntity[],
+  preferredCurrency?: string | null,
 ): WalletAccountEntity | null {
   if (accounts.length === 0) return null;
+  const preferred = preferredCurrency
+    ? accounts.find((a) => a.currency === preferredCurrency)
+    : undefined;
+  if (preferred && carriesFunds(preferred)) return preferred;
   const positive = accounts.filter((a) => Number(a.balance) > 0);
   return (
     [...positive].sort((a, b) => Number(b.balance) - Number(a.balance))[0] ??
+    accounts.find(carriesFunds) ??
+    preferred ??
     accounts.find((a) => a.currency === 'JOD') ??
     accounts[0]
   );
@@ -104,10 +127,34 @@ export class WalletService {
   }
 
   /**
-   * Wallet balances are per (user, role bucket, currency). Default currency is JOD (Jordan).
-   * When multiple accounts exist, we pick the best row to display (see below).
+   * Currency of the country the user is in: the country the app reports from
+   * the device location, else the one their phone number belongs to. Null when
+   * neither is known, which keeps the legacy JOD default.
    */
-  async getWalletSummary(userId: string, role: string) {
+  async resolveLocalCurrency(
+    userId: string,
+    countryCode?: string | null,
+  ): Promise<string | null> {
+    const fromLocation = knownCurrencyForCountry(countryCode);
+    if (fromLocation) return fromLocation;
+    const user = await this.userRepo.findOne({
+      where: { id: userId },
+      select: { id: true, phoneNumber: true },
+    });
+    return knownCurrencyForCountry(countryForPhone(user?.phoneNumber));
+  }
+
+  /**
+   * Wallet balances are per (user, role bucket, currency). With a
+   * [preferredCurrency] (the user's local one) an empty wallet is shown in that
+   * currency; a balance held in another currency is still shown as it is.
+   * Without one the default currency is JOD (Jordan).
+   */
+  async getWalletSummary(
+    userId: string,
+    role: string,
+    preferredCurrency?: string | null,
+  ) {
     const accountType =
       role === WalletAccountType.DRIVER
         ? WalletAccountType.DRIVER
@@ -118,10 +165,19 @@ export class WalletService {
       order: { updatedAt: 'DESC' },
     });
 
-    const account =
-      accounts.length === 0
-        ? await this.getOrCreateAccount(userId, accountType)
-        : pickPrimaryWalletLedgerAccount(accounts)!;
+    let account = pickPrimaryWalletLedgerAccount(accounts, preferredCurrency);
+    if (
+      preferredCurrency &&
+      (!account ||
+        (account.currency !== preferredCurrency && !carriesFunds(account)))
+    ) {
+      account = await this.getOrCreateAccount(
+        userId,
+        accountType,
+        preferredCurrency,
+      );
+    }
+    account ??= await this.getOrCreateAccount(userId, accountType);
 
     // `balance` is what the account owns; `reserved` is the part promised to
     // active trip holds. Drivers spend against `available`.
@@ -144,19 +200,32 @@ export class WalletService {
    * or going online for instant rides until they top up / settle.
    */
   async assertNonNegativeDriverBalance(driverId: string): Promise<void> {
-    const summary = await this.getWalletSummary(
-      driverId,
-      WalletAccountType.DRIVER,
-    );
-    if (summary.balance < 0) {
+    // A debt in any currency blocks, not only in the one the wallet shows.
+    const accounts = await this.walletAccountRepo.find({
+      where: { userId: driverId, accountType: WalletAccountType.DRIVER },
+    });
+    const inDebt = accounts.find((a) => Number(a.balance) < 0);
+    if (inDebt) {
       throw new ForbiddenException({
         code: ErrorCodes.NEGATIVE_WALLET_BALANCE,
         message:
           'رصيد محفظتك سالب. سدد المستحقات قبل إنشاء رحلات مشتركة أو تلقي رحلات مباشرة.',
-        balance: summary.balance,
-        currency: summary.currency,
+        balance: Number(inDebt.balance),
+        currency: inDebt.currency,
       });
     }
+  }
+
+  /** Balance of the user's ledger row in exactly [currency]; 0 when there is none. */
+  async getBalanceIn(
+    userId: string,
+    accountType: WalletAccountType,
+    currency: string,
+  ): Promise<number> {
+    const account = await this.walletAccountRepo.findOne({
+      where: { userId, accountType, currency },
+    });
+    return Number(account?.balance ?? 0);
   }
 
   /** Active holds for a user — surfaced in the driver wallet screen. */
@@ -200,6 +269,8 @@ export class WalletService {
     currency?: string;
     idempotencyKey: string;
     note?: string | null;
+    /** Defaults to a top-up; ride fares the platform collected post as TRIP_PAYMENT. */
+    type?: WalletTransactionType;
   }): Promise<WalletTransactionEntity> {
     const { userId, accountType, amount, idempotencyKey } = params;
     const currency = params.currency || 'JOD';
@@ -235,7 +306,7 @@ export class WalletService {
 
       const tx = manager.create(WalletTransactionEntity, {
         accountId: locked.id,
-        type: WalletTransactionType.TOPUP,
+        type: params.type ?? WalletTransactionType.TOPUP,
         direction: WalletEntryDirection.CREDIT,
         status: WalletTransactionStatus.POSTED,
         amount: amount.toFixed(2),

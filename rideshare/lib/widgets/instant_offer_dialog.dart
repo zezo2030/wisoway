@@ -263,7 +263,9 @@ class _InstantOfferDialogState extends State<InstantOfferDialog> {
                       InstantFareHero(
                         earnings: earnings,
                         label: l10n.instantOfferExpectedEarnings,
-                        note: l10n.instantOfferCashNote,
+                        note: req?.isCliq == true
+                            ? l10n.instantOfferCliqNote
+                            : l10n.instantOfferCashNote,
                       ),
                       const SizedBox(height: 14),
                       InstantRouteBlock(

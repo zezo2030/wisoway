@@ -109,7 +109,7 @@ describe('PresenceService', () => {
         {
           provide: PlatformPricingService,
           useValue: {
-            getActiveFeeRow: jest.fn(async () => null),
+            getFeeRowForCurrency: jest.fn(async () => null),
             driverUnlockPricing: jest.fn(() => ({
               driverUnlockPercent: PERCENT,
               seatPrice: SEAT_PRICE,

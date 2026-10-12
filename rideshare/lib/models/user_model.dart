@@ -19,6 +19,10 @@ class UserModel {
   final String? provider; // 'email', 'phone', 'google', 'facebook'
   /// Hide real phone number from the other party during in-app calls.
   final bool hidePhoneNumber;
+
+  /// Drivers: CliQ alias passengers transfer instant-ride fares to. Without
+  /// one the driver only receives cash ride requests.
+  final String? cliqAlias;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -39,6 +43,7 @@ class UserModel {
     this.photoUrl,
     this.provider,
     this.hidePhoneNumber = false,
+    this.cliqAlias,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -70,6 +75,10 @@ class UserModel {
       fcmToken: json['fcmToken']?.toString(),
       photoUrl: BackendUrlResolver.normalize(json['photoUrl']?.toString()),
       provider: json['provider']?.toString(),
+      hidePhoneNumber: json['hidePhoneNumber'] == true,
+      cliqAlias: (json['cliqAlias']?.toString().trim().isEmpty ?? true)
+          ? null
+          : json['cliqAlias'].toString().trim(),
       createdAt: _parseDateTime(json['createdAt']),
       updatedAt: _parseDateTime(json['updatedAt']),
     );
@@ -93,6 +102,8 @@ class UserModel {
       'fcmToken': fcmToken,
       'photoUrl': photoUrl,
       'provider': provider,
+      'hidePhoneNumber': hidePhoneNumber,
+      if (cliqAlias != null) 'cliqAlias': cliqAlias,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
@@ -118,6 +129,8 @@ class UserModel {
     String? fcmToken,
     String? photoUrl,
     String? provider,
+    bool? hidePhoneNumber,
+    String? cliqAlias,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -137,6 +150,8 @@ class UserModel {
       fcmToken: fcmToken ?? this.fcmToken,
       photoUrl: photoUrl ?? this.photoUrl,
       provider: provider ?? this.provider,
+      hidePhoneNumber: hidePhoneNumber ?? this.hidePhoneNumber,
+      cliqAlias: cliqAlias ?? this.cliqAlias,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

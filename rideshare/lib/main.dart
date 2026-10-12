@@ -61,6 +61,7 @@ import 'screens/passenger/chat_screen.dart';
 import 'screens/driver/chat_screen.dart' as driver_chat;
 import 'screens/chat/group_chat_screen.dart';
 import 'screens/passenger/rating_screen.dart';
+import 'screens/passenger/ride_payment_due_screen.dart';
 import 'screens/profile/edit_profile_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/settings/change_password_screen.dart';
@@ -228,6 +229,7 @@ class MyApp extends StatelessWidget {
                         builder: (context) => ComplaintScreen(
                           againstUserId: args?['againstUserId'] as String?,
                           tripId: args?['tripId'] as String?,
+                          initialCategory: args?['category'] as String?,
                         ),
                       );
                     }
@@ -391,6 +393,16 @@ class MyApp extends StatelessWidget {
                           tripId: args['tripId'],
                           chatRoomId: args['chatRoomId'],
                           trip: args['trip'],
+                        ),
+                      );
+                    }
+                    if (settings.name == RouteNames.ridePaymentDue) {
+                      final args = settings.arguments as Map<String, dynamic>;
+                      return MaterialPageRoute(
+                        settings: settings,
+                        builder: (context) => RidePaymentDueScreen(
+                          tripId: args['tripId'] as String,
+                          trip: args['trip'] as TripModel?,
                         ),
                       );
                     }

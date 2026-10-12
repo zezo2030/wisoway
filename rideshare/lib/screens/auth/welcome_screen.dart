@@ -6,7 +6,8 @@ import '../../core/theme/colors.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../widgets/auth/auth_language_switcher.dart';
 import '../../widgets/common/form_components.dart';
-import '../settings/in_app_browser_screen.dart';
+import '../legal/legal_content.dart';
+import '../legal/legal_document_screen.dart';
 
 /// First screen an unauthenticated user sees.
 ///
@@ -21,8 +22,6 @@ class WelcomeScreen extends StatefulWidget {
 
 class _WelcomeScreenState extends State<WelcomeScreen>
     with SingleTickerProviderStateMixin {
-  static const String _termsUrl = 'https://rideshare.app/terms';
-  static const String _privacyUrl = 'https://rideshare.app/privacy';
 
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
@@ -389,23 +388,18 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           crossAxisAlignment: WrapCrossAlignment.center,
           spacing: 5,
           children: [
-            _legalLink(l10n.welcomeTermsLink, _termsUrl),
+            _legalLink(l10n.welcomeTermsLink, LegalDocumentKind.terms),
             Text(l10n.welcomeTermsAnd, style: labelStyle),
-            _legalLink(l10n.privacyPolicy, _privacyUrl),
+            _legalLink(l10n.privacyPolicy, LegalDocumentKind.privacy),
           ],
         ),
       ],
     );
   }
 
-  Widget _legalLink(String label, String url) {
+  Widget _legalLink(String label, LegalDocumentKind kind) {
     return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => InAppBrowserScreen(title: label, url: url),
-        ),
-      ),
+      onTap: () => Navigator.push(context, LegalDocumentScreen.route(kind)),
       child: Text(
         label,
         style: TextStyle(

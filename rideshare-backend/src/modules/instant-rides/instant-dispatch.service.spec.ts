@@ -1,5 +1,9 @@
 import { InstantDispatchService } from './instant-dispatch.service';
-import { INITIAL_RADIUS_KM, MAX_RADIUS_KM } from './instant-rides.constants';
+import {
+  INITIAL_RADIUS_KM,
+  MAX_RADIUS_KM,
+  NO_DRIVER_SEARCH_SECONDS,
+} from './instant-rides.constants';
 
 describe('InstantDispatchService.finalizeSearch', () => {
   let requestRepo: any;
@@ -118,6 +122,8 @@ describe('InstantDispatchService.finalizeSearch', () => {
 
 describe('InstantDispatchService.dispatchNext radius growth', () => {
   const TTL_MS = 180_000;
+  /** The reach grows over the no-driver window, not the whole TTL. */
+  const WINDOW_MS = NO_DRIVER_SEARCH_SECONDS * 1000;
 
   /// Builds a service whose request was created `elapsedMs` ago.
   const setup = (elapsedMs: number) => {
@@ -139,6 +145,10 @@ describe('InstantDispatchService.dispatchNext radius growth', () => {
     const availabilityService: any = {
       findNearbyAvailableDrivers: jest.fn().mockResolvedValue([]),
     };
+    const requestQueue: any = {
+      add: jest.fn().mockResolvedValue(undefined),
+      getJob: jest.fn(),
+    };
     const service = new InstantDispatchService(
       requestRepo,
       { find: jest.fn().mockResolvedValue([]), count: jest.fn() } as any,
@@ -150,9 +160,9 @@ describe('InstantDispatchService.dispatchNext radius growth', () => {
         getPreferredLocale: jest.fn().mockResolvedValue('ar'),
       } as any,
       { add: jest.fn().mockResolvedValue(undefined), getJob: jest.fn() } as any,
-      { add: jest.fn().mockResolvedValue(undefined), getJob: jest.fn() } as any,
+      requestQueue,
     );
-    return { service, availabilityService };
+    return { service, availabilityService, requestRepo, requestQueue };
   };
 
   /** Radius the lookup was actually run with, in km. */
@@ -168,7 +178,7 @@ describe('InstantDispatchService.dispatchNext radius growth', () => {
   });
 
   it('widens as the passenger keeps waiting', async () => {
-    const { service, availabilityService } = setup(TTL_MS / 2);
+    const { service, availabilityService } = setup(WINDOW_MS / 2);
 
     await service.dispatchNext('r1');
 
@@ -183,8 +193,7 @@ describe('InstantDispatchService.dispatchNext radius growth', () => {
   });
 
   it('reaches the configured ceiling (20 km by default) by the end of the window', async () => {
-    // Probed a second before expiry: at expiresAt itself the search finalises.
-    const { service, availabilityService } = setup(TTL_MS - 1000);
+    const { service, availabilityService } = setup(WINDOW_MS - 100);
 
     await service.dispatchNext('r1');
 
@@ -195,12 +204,44 @@ describe('InstantDispatchService.dispatchNext radius growth', () => {
   });
 
   it('runs a single lookup per wave rather than one per ring', async () => {
-    const { service, availabilityService } = setup(TTL_MS - 1000);
+    const { service, availabilityService } = setup(WINDOW_MS - 1000);
 
     await service.dispatchNext('r1');
 
     expect(
       availabilityService.findNearbyAvailableDrivers,
     ).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps searching while the reach is still growing', async () => {
+    const { service, requestRepo, requestQueue } = setup(WINDOW_MS / 2);
+
+    await service.dispatchNext('r1');
+
+    expect(requestQueue.add).toHaveBeenCalledWith(
+      'dispatch-wave',
+      { requestId: 'r1' },
+      expect.anything(),
+    );
+    expect(requestRepo.update).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ status: 'expired' }),
+    );
+  });
+
+  it('ends the search once the full reach found nobody', async () => {
+    const { service, requestRepo, requestQueue } = setup(WINDOW_MS + 100);
+
+    await service.dispatchNext('r1');
+
+    // Told «لا يوجد سائق» now, not at the 3-minute TTL.
+    expect(requestRepo.update).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'r1' }),
+      expect.objectContaining({
+        status: 'expired',
+        terminalReason: 'no_eligible_drivers',
+      }),
+    );
+    expect(requestQueue.add).not.toHaveBeenCalled();
   });
 });

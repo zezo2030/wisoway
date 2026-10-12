@@ -9,7 +9,14 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
-import { EntityManager, In, Repository } from 'typeorm';
+import {
+  EntityManager,
+  In,
+  IsNull,
+  MoreThan,
+  Not,
+  Repository,
+} from 'typeorm';
 import {
   BookingEntity,
   BookingStatus,
@@ -32,6 +39,7 @@ import {
   DEFAULT_CURRENCY,
 } from '../../common/currency/country-currency';
 import { InstantDispatchService } from './instant-dispatch.service';
+import { resolvePaymentChoice } from '../ride-payments/cliq-payer';
 import {
   CreateInstantRequestDto,
   QuoteInstantRequestDto,
@@ -48,6 +56,7 @@ import {
   INSTANT_OFFER_TIMEOUT_QUEUE,
   INSTANT_REQUEST_EXPIRY_QUEUE,
   offerTimeoutJobId,
+  paymentMethodsFor,
   PICKUP_ETA_SPEED_KMH,
   REQUEST_TTL_SECONDS,
   requestExpiryJobId,
@@ -96,6 +105,8 @@ export class InstantRidesService {
       minFare: fare,
       maxFare: fare,
       currency: quote.currency,
+      /** What the passenger may choose here (CliQ only in Jordan). */
+      paymentMethods: paymentMethodsFor(quote.currency),
       distanceKm: Math.round(quote.distanceKm * 10) / 10,
       durationMinutes: Math.round(quote.durationMin),
     };
@@ -153,6 +164,81 @@ export class InstantRidesService {
     tripId: string;
     role: 'driver' | 'passenger';
     requestId: string | null;
+    /** `ride` while under way; `payment` once arrived, until the driver settles. */
+    stage?: 'ride' | 'payment';
+  } | null> {
+    const live = await this.getLiveRide(userId);
+    if (live) return { ...live, stage: 'ride' };
+    const unpaid = await this.getRideAwaitingPayment(userId);
+    return unpaid ? { ...unpaid, stage: 'payment' } : null;
+  }
+
+  /**
+   * A finished ride — instant or shared — whose fare is still open. The
+   * passenger returns to their amount-due screen (pending cash, CliQ request
+   * out, or CliQ failed); the driver returns to the trip summary only while a
+   * cash fare waits for their confirmation (CliQ fares settle without them).
+   * Rides older than a day are left to support rather than trapping anyone.
+   */
+  private async getRideAwaitingPayment(userId: string): Promise<{
+    tripId: string;
+    role: 'driver' | 'passenger';
+    requestId: string | null;
+  } | null> {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const bookings = this.tripRepo.manager.getRepository(BookingEntity);
+
+    const driverOwed = await bookings
+      .createQueryBuilder('b')
+      .innerJoin(TripEntity, 't', 't.id = b."tripId"')
+      .where('t."driverId" = :userId', { userId })
+      .andWhere('t.status = :done', { done: TripStatus.COMPLETED })
+      .andWhere('t."tripCompletedAt" > :since', { since })
+      .andWhere('b.status = :completed', { completed: BookingStatus.COMPLETED })
+      .andWhere(`b."paymentMethod" = 'cash'`)
+      .andWhere(`b."paymentStatus" = 'pending'`)
+      .orderBy('t."tripCompletedAt"', 'DESC')
+      .select(['b.tripId'])
+      .getOne();
+    if (driverOwed) {
+      const request = await this.requestRepo.findOne({
+        where: { tripId: driverOwed.tripId },
+        select: ['id'],
+      });
+      return {
+        tripId: driverOwed.tripId,
+        role: 'driver',
+        requestId: request?.id ?? null,
+      };
+    }
+
+    const passengerOwes = await bookings
+      .createQueryBuilder('b')
+      .innerJoin(TripEntity, 't', 't.id = b."tripId"')
+      .where('b."userId" = :userId', { userId })
+      .andWhere('b.status = :completed', { completed: BookingStatus.COMPLETED })
+      .andWhere(`b."paymentStatus" IN ('pending', 'requested', 'failed')`)
+      .andWhere('t.status = :done', { done: TripStatus.COMPLETED })
+      .andWhere('t."tripCompletedAt" > :since', { since })
+      .orderBy('t."tripCompletedAt"', 'DESC')
+      .select(['b.tripId'])
+      .getOne();
+    if (!passengerOwes) return null;
+    const request = await this.requestRepo.findOne({
+      where: { tripId: passengerOwes.tripId },
+      select: ['id'],
+    });
+    return {
+      tripId: passengerOwes.tripId,
+      role: 'passenger',
+      requestId: request?.id ?? null,
+    };
+  }
+
+  private async getLiveRide(userId: string): Promise<{
+    tripId: string;
+    role: 'driver' | 'passenger';
+    requestId: string | null;
   } | null> {
     const drivenTrip = await this.tripRepo.findOne({
       where: {
@@ -199,6 +285,20 @@ export class InstantRidesService {
     // ignored rather than rejected so those apps can still order.
     const quote = await this.computeQuote(dto.from, dto.to);
     const fare = quote.fare.toFixed(2);
+    const { method: paymentMethod, payerCliqAlias } = resolvePaymentChoice(
+      dto.paymentMethod,
+      quote.currency,
+      dto.payerCliqAlias ??
+        (dto.paymentMethod === 'cliq'
+          ? await this.savedCliqAlias(passengerId)
+          : null),
+    );
+    if (payerCliqAlias) {
+      // Remembered so the next CliQ ride is pre-filled.
+      await this.usersService
+        .update(passengerId, { cliqAlias: payerCliqAlias })
+        .catch(() => undefined);
+    }
 
     const now = new Date();
 
@@ -223,6 +323,8 @@ export class InstantRidesService {
         recommendedFare: fare,
         passengerFare: fare,
         currency: quote.currency,
+        paymentMethod,
+        payerCliqAlias,
         radiusKm: INITIAL_RADIUS_KM,
         expiresAt: new Date(now.getTime() + REQUEST_TTL_SECONDS * 1000),
       }),
@@ -251,6 +353,15 @@ export class InstantRidesService {
       );
 
     return this.toRequestView(request);
+  }
+
+  private async savedCliqAlias(userId: string): Promise<string | null> {
+    try {
+      const user = await this.usersService.findById(userId);
+      return user?.cliqAlias ?? null;
+    } catch {
+      return null;
+    }
   }
 
   async getRequest(requestId: string, passengerId: string) {
@@ -424,6 +535,8 @@ export class InstantRidesService {
           toAddress: original.toAddress,
           toPoint: original.toPoint,
           seatCount: original.seatCount,
+          paymentMethod: original.paymentMethod,
+          payerCliqAlias: original.payerCliqAlias,
           status: InstantRequestStatus.SEARCHING,
           fareEstimate: fare,
           recommendedFare: fare,
@@ -669,7 +782,9 @@ export class InstantRidesService {
         notes: null,
         status: TripStatus.IN_PROGRESS,
         tripType: TripType.INSTANT,
-        tripStartedAt: now,
+        // Not started yet: the driver is only heading to the pickup. It
+        // starts when the driver presses «بدء الرحلة» (startRide).
+        tripStartedAt: null,
         isVisible: false,
         communicationFeeStatus: 'not_paid',
         carImageUrl: vehicle?.carImageUrl ?? null,
@@ -690,6 +805,9 @@ export class InstantRidesService {
         totalAmount: acceptedFare,
         seatPriceAtBooking: seatPrice,
         expiresAt: null,
+        // Settled when the ride ends: cash to the driver, or CliQ to us.
+        paymentMethod: request.paymentMethod ?? 'cash',
+        payerCliqAlias: request.payerCliqAlias ?? null,
       });
       await m.save(booking);
 
@@ -711,6 +829,77 @@ export class InstantRidesService {
     );
 
     return { tripId, driverName: driver?.name ?? '' };
+  }
+
+  // ── Driver: pickup stages ──────────────────────────────────────────────────
+
+  /**
+   * The driver has reached the passenger («وصلت إلى الراكب»). Idempotent —
+   * pressing it again keeps the first arrival time.
+   */
+  async markArrivedAtPickup(tripId: string, driverId: string) {
+    const trip = await this.liveInstantTripOf(tripId, driverId);
+    if (trip.tripStartedAt) return trip;
+    if (!trip.driverArrivedAt) {
+      trip.driverArrivedAt = new Date();
+      await this.tripRepo.save(trip);
+      await this.notifyPassenger(trip, {
+        title: 'وصل السائق',
+        body: 'السائق بانتظارك في نقطة الالتقاء.',
+        type: 'instant_driver_arrived',
+      });
+    }
+    return trip;
+  }
+
+  /**
+   * The passenger is in the car and the ride begins («بدء الرحلة»). Arrival is
+   * implied if the driver skipped that step. Idempotent.
+   */
+  async startRide(tripId: string, driverId: string) {
+    const trip = await this.liveInstantTripOf(tripId, driverId);
+    if (trip.tripStartedAt) return trip;
+    const now = new Date();
+    trip.driverArrivedAt ??= now;
+    trip.tripStartedAt = now;
+    await this.tripRepo.save(trip);
+    await this.notifyPassenger(trip, {
+      title: 'بدأت الرحلة',
+      body: `في الطريق إلى ${trip.toName}.`,
+      type: 'instant_ride_started',
+    });
+    return trip;
+  }
+
+  private async liveInstantTripOf(tripId: string, driverId: string) {
+    const trip = await this.tripRepo.findOne({ where: { id: tripId } });
+    if (!trip || trip.tripType !== TripType.INSTANT) {
+      throw new NotFoundException('الرحلة غير موجودة.');
+    }
+    if (trip.driverId !== driverId) {
+      throw new ForbiddenException('هذه الرحلة ليست لك.');
+    }
+    if (trip.status !== TripStatus.IN_PROGRESS) {
+      throw new ConflictException('الرحلة لم تعد جارية.');
+    }
+    return trip;
+  }
+
+  private async notifyPassenger(
+    trip: TripEntity,
+    push: { title: string; body: string; type: string },
+  ) {
+    const request = await this.requestRepo.findOne({
+      where: { tripId: trip.id },
+      select: ['id', 'passengerId'],
+    });
+    if (!request) return;
+    this.notifications
+      .sendPush(request.passengerId, {
+        ...push,
+        data: { requestId: request.id, tripId: trip.id },
+      })
+      .catch(() => undefined);
   }
 
   /** Rough driver→pickup travel time from the driver's last known position. */
@@ -867,6 +1056,7 @@ export class InstantRidesService {
       passengerFare: request.passengerFare,
       acceptedFare: request.acceptedFare,
       currency: request.currency,
+      paymentMethod: request.paymentMethod ?? 'cash',
       matchedDriverId: request.matchedDriverId,
       tripId: request.tripId,
       expiresAt: request.expiresAt,
@@ -944,6 +1134,7 @@ export class InstantRidesService {
       bookingId: booking?.id ?? null,
       acceptedFare: request.acceptedFare,
       currency: request.currency,
+      paymentMethod: request.paymentMethod ?? 'cash',
       pickupEtaSeconds: request.pickupEtaSeconds,
       driverId: request.matchedDriverId,
       driverName: driver?.name ?? null,
@@ -991,6 +1182,7 @@ export class InstantRidesService {
       fareEstimate: request.fareEstimate,
       passengerFare: request.passengerFare ?? request.fareEstimate,
       currency: request.currency,
+      paymentMethod: request.paymentMethod ?? 'cash',
       seatCount: request.seatCount,
       seatCountLabel: routeMetrics.seatCountLabel,
       pickup: { latitude: fromLat, longitude: fromLng },

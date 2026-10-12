@@ -1,3 +1,5 @@
+import { CLIQ_CURRENCIES } from '../ride-payments/cliq-payer';
+
 /**
  * Tunable parameters for instant-ride dispatch and fare estimation.
  *
@@ -33,8 +35,19 @@ export const MAX_RADIUS_KM = envKm('INSTANT_MAX_RADIUS_KM', 20);
  * once delivery and reading the card ate into it.
  */
 export const OFFER_TTL_SECONDS = 40;
-/** Overall window before a request gives up searching. */
+/**
+ * Hard cap on a request's life. Only reached while drivers are being offered
+ * the ride one after another; with nobody around the search ends far sooner,
+ * at {@link NO_DRIVER_SEARCH_SECONDS}.
+ */
 export const REQUEST_TTL_SECONDS = 180;
+/**
+ * How long to look for a driver before telling the passenger there is none.
+ * The reach widens from [INITIAL_RADIUS_KM] to [MAX_RADIUS_KM] over this
+ * window; a sweep at full reach that still finds nobody ends the search
+ * rather than leaving the passenger watching a spinner for minutes.
+ */
+export const NO_DRIVER_SEARCH_SECONDS = envKm('INSTANT_NO_DRIVER_SECONDS', 40);
 /**
  * When a full radius sweep finds no lockable driver, retry a new dispatch
  * wave after this interval (the request keeps searching until its TTL).
@@ -108,6 +121,14 @@ export function computeFare(
  */
 export const FALLBACK_ROAD_FACTOR = 1.3;
 export const FALLBACK_ROUTE_SPEED_KMH = 40;
+
+// ── Payment ───────────────────────────────────────────────────────────────────
+/** CliQ (Jordan only) is offered where the fare is in JOD; elsewhere cash. */
+export function paymentMethodsFor(currency: string): Array<'cash' | 'cliq'> {
+  return CLIQ_CURRENCIES.includes(currency?.toUpperCase())
+    ? ['cash', 'cliq']
+    : ['cash'];
+}
 
 // ── Queue names ─────────────────────────────────────────────────────────────
 export const INSTANT_OFFER_TIMEOUT_QUEUE = 'instant-offer-timeout';

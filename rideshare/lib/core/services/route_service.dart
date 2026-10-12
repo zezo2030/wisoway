@@ -12,12 +12,16 @@ class RouteOk extends RouteResult {
   final LatLngBounds? bounds;
   final String distance;
   final String duration;
+  final double? distanceMeters;
+  final int? durationSeconds;
 
   RouteOk({
     required this.polyline,
     this.bounds,
     this.distance = '',
     this.duration = '',
+    this.distanceMeters,
+    this.durationSeconds,
   });
 }
 
@@ -79,6 +83,8 @@ class RouteService {
         bounds: bounds,
         distance: (data['distanceText'] as String?) ?? '',
         duration: (data['durationText'] as String?) ?? '',
+        distanceMeters: (data['distanceMeters'] as num?)?.toDouble(),
+        durationSeconds: (data['durationSeconds'] as num?)?.round(),
       );
     } catch (e, st) {
       return RouteUnavailable(ExceptionMapper.fromError(e, st).copyWith(

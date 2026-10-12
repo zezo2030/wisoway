@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:intl/intl.dart';
@@ -32,6 +33,9 @@ class DriverLiveTripView extends StatefulWidget {
     required this.trackingActive,
     required this.markingArrived,
     required this.onArrived,
+    this.onArrivedAtPickup,
+    this.onStartRide,
+    this.stageBusy = false,
     required this.onEnableTracking,
     required this.onChatPassenger,
     required this.phoneOf,
@@ -53,6 +57,13 @@ class DriverLiveTripView extends StatefulWidget {
   final bool trackingActive;
   final bool markingArrived;
   final VoidCallback onArrived;
+
+  /// Instant rides: «وصلت إلى الراكب» and «بدء الرحلة».
+  final VoidCallback? onArrivedAtPickup;
+  final VoidCallback? onStartRide;
+
+  /// One of the two pickup-stage calls is in flight.
+  final bool stageBusy;
   final VoidCallback onEnableTracking;
   final void Function(BookingModel booking) onChatPassenger;
 
@@ -77,9 +88,18 @@ class DriverLiveTripView extends StatefulWidget {
   State<DriverLiveTripView> createState() => _DriverLiveTripViewState();
 }
 
+/// Where an instant ride stands. Shared trips are always [onBoard].
+enum _Stage { toPickup, atPickup, onBoard }
+
 class _DriverLiveTripViewState extends State<DriverLiveTripView> {
-  /// Inside this radius of the pickup the passenger is taken to be on board.
-  static const _pickupReachedMeters = 150.0;
+  /// Inside this radius the driver counts as being at the pickup.
+  static const _atPickupMeters = 150.0;
+
+  /// Leaving the pickup by this much without starting asks the driver to.
+  static const _leftPickupMeters = 300.0;
+
+  /// After «ليس بعد», ask again only once the driver is this much further on.
+  static const _reaskStepMeters = 500.0;
 
   /// The driver→pickup leg is re-routed once the driver drifts this far from
   /// where it was last computed.
@@ -93,9 +113,22 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
   List<LatLng> _pickupLeg = const [];
   LatLng? _pickupLegOrigin;
   bool _fetchingPickupLeg = false;
-  late bool _passengersOnBoard = !widget.trip.isInstant;
+  /// The driver has been at the pickup (by GPS or by pressing «وصلت»).
+  bool _beenAtPickup = false;
+  bool _startPromptOpen = false;
+  double _askAgainBeyondMeters = _leftPickupMeters;
 
   bool get _isInstant => widget.trip.isInstant;
+
+  /// Set by the driver's own presses, never guessed from distance: being near
+  /// the pickup doesn't mean the passenger got in.
+  _Stage get _stage {
+    if (!_isInstant || widget.trip.tripStartedAt != null) return _Stage.onBoard;
+    if (widget.trip.driverArrivedAt != null) return _Stage.atPickup;
+    return _Stage.toPickup;
+  }
+
+  bool get _passengersOnBoard => _stage == _Stage.onBoard;
 
   LatLng get _pickup =>
       LatLng(widget.trip.from.latitude, widget.trip.from.longitude);
@@ -112,7 +145,9 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
   @override
   void didUpdateWidget(covariant DriverLiveTripView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.driverPosition != oldWidget.driverPosition) {
+    if (widget.driverPosition != oldWidget.driverPosition ||
+        widget.trip.driverArrivedAt != oldWidget.trip.driverArrivedAt ||
+        widget.trip.tripStartedAt != oldWidget.trip.tripStartedAt) {
       _onDriverMoved();
     }
   }
@@ -141,12 +176,11 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
     final car = widget.driverPosition;
     if (car == null) return;
 
-    if (!_passengersOnBoard &&
-        _distanceMeters(car, _pickup) <= _pickupReachedMeters) {
-      setState(() => _passengersOnBoard = true);
+    if (!_passengersOnBoard) {
+      _checkLeftPickup(car);
     }
 
-    if (!_passengersOnBoard) {
+    if (_stage == _Stage.toPickup) {
       final origin = _pickupLegOrigin;
       if (origin == null || _distanceMeters(origin, car) > _rerouteMeters) {
         _loadPickupLeg(car);
@@ -154,6 +188,67 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
     }
 
     if (!_cameraFitted) _fitCamera();
+  }
+
+  /// The driver drove off from the pickup without pressing «بدء الرحلة» —
+  /// most likely the passenger is in and the driver forgot. Ask, so the ride
+  /// is started (and timed) from when it really began.
+  void _checkLeftPickup(LatLng car) {
+    final fromPickup = _distanceMeters(car, _pickup);
+    if (_stage == _Stage.atPickup || fromPickup <= _atPickupMeters) {
+      _beenAtPickup = true;
+    }
+    if (!_beenAtPickup ||
+        _startPromptOpen ||
+        widget.onStartRide == null ||
+        fromPickup < _askAgainBeyondMeters) {
+      return;
+    }
+    _startPromptOpen = true;
+    // Reached from initState / didUpdateWidget: open the dialog after build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _askToStart(fromPickup);
+      } else {
+        _startPromptOpen = false;
+      }
+    });
+  }
+
+  Future<void> _askToStart(double fromPickup) async {
+    HapticFeedback.heavyImpact();
+    SystemSound.play(SystemSoundType.alert);
+    final l10n = context.l10n;
+    final start = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        icon: Icon(
+          IconsaxPlusBold.routing,
+          color: T.primary(ctx),
+          size: 32,
+        ),
+        title: Text(l10n.instantTripMovedTitle),
+        content: Text(l10n.instantTripMovedBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.instantTripNotYet),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.instantTripStartAction),
+          ),
+        ],
+      ),
+    );
+    _startPromptOpen = false;
+    if (!mounted) return;
+    if (start == true) {
+      widget.onStartRide?.call();
+    } else {
+      _askAgainBeyondMeters = fromPickup + _reaskStepMeters;
+    }
   }
 
   Future<void> _loadPickupLeg(LatLng car) async {
@@ -430,11 +525,14 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
   Widget _buildPanel(BuildContext context, MediaQueryData media, LatLng target) {
     final l10n = context.l10n;
     final car = widget.driverPosition;
-    final stageText = !_passengersOnBoard
-        ? l10n.instantTripHeadingToPickup
-        : _isInstant
-        ? l10n.instantTripPassengerOnBoard
-        : l10n.liveTripHeadingToDestination;
+    final stageText = switch (_stage) {
+      _Stage.toPickup => l10n.instantTripHeadingToPickup,
+      _Stage.atPickup => l10n.instantTripWaitingForPassenger,
+      _Stage.onBoard =>
+        _isInstant
+            ? l10n.instantTripPassengerOnBoard
+            : l10n.liveTripHeadingToDestination,
+    };
     final away = car == null
         ? null
         : l10n.instantTripAway(
@@ -865,7 +963,11 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
                   ? l10n.instantTripFareLabel
                   : l10n.liveTripRevenueLabel,
               value: '${money.toStringAsFixed(2)} ${widget.trip.currency}',
-              caption: _isInstant ? l10n.instantTripCashNote : null,
+              caption: !_isInstant
+                  ? null
+                  : widget.bookings.firstOrNull?.paymentMethod == 'cliq'
+                  ? l10n.instantTripCliqNote
+                  : l10n.instantTripCashNote,
               emphasize: true,
             ),
           ),
@@ -894,6 +996,33 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
   }
 
   Widget _buildActions(BuildContext context, LatLng target) {
+    final l10n = context.l10n;
+    // The primary action follows the ride: arrive at the passenger, start the
+    // ride once they're in, and only then arrive at the destination.
+    final (VoidCallback? onPrimary, String label, IconData icon, bool busy) =
+        switch (_stage) {
+          _Stage.toPickup => (
+            widget.onArrivedAtPickup,
+            l10n.instantTripArrivedAtPickupAction,
+            IconsaxPlusBold.location_tick,
+            widget.stageBusy,
+          ),
+          _Stage.atPickup => (
+            widget.onStartRide,
+            l10n.instantTripStartAction,
+            IconsaxPlusBold.play_circle,
+            widget.stageBusy,
+          ),
+          _Stage.onBoard => (
+            widget.onArrived,
+            widget.markingArrived
+                ? l10n.endingInProgress
+                : l10n.arrivedAtDestination,
+            IconsaxPlusBold.tick_circle,
+            widget.markingArrived,
+          ),
+        };
+
     return Row(
       children: [
         Expanded(
@@ -920,8 +1049,8 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
           child: SizedBox(
             height: 50,
             child: ElevatedButton.icon(
-              onPressed: widget.markingArrived ? null : widget.onArrived,
-              icon: widget.markingArrived
+              onPressed: busy ? null : onPrimary,
+              icon: busy
                   ? const SizedBox(
                       width: 18,
                       height: 18,
@@ -930,15 +1059,15 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
                         color: AppColors.white,
                       ),
                     )
-                  : const Icon(IconsaxPlusBold.tick_circle),
+                  : Icon(icon),
               label: Text(
-                widget.markingArrived
-                    ? context.l10n.endingInProgress
-                    : context.l10n.arrivedAtDestination,
+                label,
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.success,
+                backgroundColor: _stage == _Stage.onBoard
+                    ? AppColors.success
+                    : T.primary(context),
                 foregroundColor: AppColors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(

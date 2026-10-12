@@ -28,10 +28,36 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
   _TopupMethod _selectedMethod = _TopupMethod.manual;
   String _aliasType = 'MOBL';
 
+  /// The wallet's currency — the local one where the user is. Top-ups are
+  /// requested in it so they land in the wallet the screen shows.
+  String _currency = 'JOD';
+
+  /// CliQ is a Jordanian rail, so it only funds a dinar wallet.
+  bool get _cliqAvailable => _currency == 'JOD';
+
   File? _proofImage;
   bool _isLoading = false;
   bool _isPolling = false;
   String? _pollingStatus;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrency();
+  }
+
+  Future<void> _loadCurrency() async {
+    try {
+      final account = await _paymentService.getWalletAccountMe();
+      if (!mounted) return;
+      setState(() {
+        _currency = account.currency;
+        if (!_cliqAvailable) _selectedMethod = _TopupMethod.manual;
+      });
+    } catch (_) {
+      // Keep the dinar default; the backend still credits the right wallet.
+    }
+  }
 
   @override
   void dispose() {
@@ -73,7 +99,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
       if (_selectedMethod == _TopupMethod.manual) {
         await _paymentService.createWalletTopup(
           amount: amount,
-          currency: 'JOD',
+          currency: _currency,
           method: 'manual',
           proofImage: _proofImage,
           walletNumber: _walletRefController.text.trim().isEmpty
@@ -299,11 +325,12 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
             icon: IconsaxPlusLinear.gallery_add,
             value: _TopupMethod.manual,
           ),
-          _buildMethodTab(
-            label: 'CliQ A2A',
-            icon: IconsaxPlusLinear.flash,
-            value: _TopupMethod.cliqA2a,
-          ),
+          if (_cliqAvailable)
+            _buildMethodTab(
+              label: 'CliQ A2A',
+              icon: IconsaxPlusLinear.flash,
+              value: _TopupMethod.cliqA2a,
+            ),
         ],
       ),
     );
@@ -369,7 +396,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
   }
 
   Widget _buildAmountField() {
-    final currency = 'JOD';
+    final currency = _currency;
     return TextFormField(
       controller: _amountController,
       keyboardType:

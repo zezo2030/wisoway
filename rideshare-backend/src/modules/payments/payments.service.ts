@@ -444,6 +444,10 @@ export class PaymentsService {
       );
     }
     if (dto.method === 'cliq_a2a') {
+      // CliQ is Jordan's rail: it can only fund a dinar wallet.
+      if (dto.currency && dto.currency.toUpperCase() !== 'JOD') {
+        throw new BadRequestException('CliQ top-ups are available in JOD only');
+      }
       if (!dto.aliasType || !dto.aliasValue?.trim()) {
         throw new BadRequestException(
           'aliasType and aliasValue are required for CliQ A2A top-up',

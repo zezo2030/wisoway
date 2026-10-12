@@ -91,6 +91,7 @@ class ApiEndpoints {
   // Pending charges
   static const String myPendingCharges = '/me/pending-charges';
   static const String myPendingChargesCollect = '/me/pending-charges/collect';
+  static const String mySavedPlaces = '/me/saved-places';
 
   // Payments
   static const String payments = '/payments';
@@ -168,6 +169,21 @@ class ApiEndpoints {
   static const String instantRequests = '/instant-rides/requests';
   static const String instantActiveRide = '/instant-rides/active';
   static String instantRequestById(String id) => '/instant-rides/requests/$id';
+  static String instantTripArrivedAtPickup(String tripId) =>
+      '/instant-rides/trips/$tripId/arrived-at-pickup';
+  static String instantTripStart(String tripId) =>
+      '/instant-rides/trips/$tripId/start';
+  // Ride fares (instant + shared): cash confirmed by the driver, or CliQ.
+  static String ridePaymentMine(String tripId) =>
+      '/ride-payments/trips/$tripId/mine';
+  static String ridePaymentsForTrip(String tripId) =>
+      '/ride-payments/trips/$tripId';
+  static String ridePaymentCash(String bookingId) =>
+      '/ride-payments/bookings/$bookingId/cash';
+  static String ridePaymentRetryCliq(String bookingId) =>
+      '/ride-payments/bookings/$bookingId/cliq/retry';
+  static String ridePaymentSwitchToCash(String bookingId) =>
+      '/ride-payments/bookings/$bookingId/switch-to-cash';
   static String instantRequestRetry(String id) =>
       '/instant-rides/requests/$id/retry';
   static const String instantPendingOffer = '/instant-rides/offers/pending';

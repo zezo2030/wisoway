@@ -139,4 +139,98 @@ describe('WalletService', () => {
     expect(summary.currency).toBe('JOD');
     expect(summary.balance).toBe(15.5);
   });
+
+  describe('local currency', () => {
+    const account = (id: string, currency: string, balance: string) =>
+      ({
+        id,
+        userId: 'u1',
+        accountType: 'rider',
+        currency,
+        balance,
+        reservedBalance: '0',
+        isActive: true,
+      }) as any;
+
+    beforeEach(() => {
+      walletAccountRepo.findOne.mockResolvedValue(null);
+      walletAccountRepo.create.mockImplementation((v: any) => v);
+      walletAccountRepo.save.mockImplementation(async (v: any) => ({
+        id: 'created',
+        ...v,
+      }));
+    });
+
+    it('shows an empty wallet in the local currency', async () => {
+      walletAccountRepo.find.mockResolvedValue([account('jod', 'JOD', '0')]);
+
+      const summary = await service.getWalletSummary('u1', 'passenger', 'SAR');
+
+      expect(summary.currency).toBe('SAR');
+      expect(summary.balance).toBe(0);
+      expect(walletAccountRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ currency: 'SAR', accountType: 'rider' }),
+      );
+    });
+
+    it('reuses the existing local-currency account', async () => {
+      walletAccountRepo.find.mockResolvedValue([
+        account('jod', 'JOD', '0'),
+        account('sar', 'SAR', '0'),
+      ]);
+
+      const summary = await service.getWalletSummary('u1', 'passenger', 'SAR');
+
+      expect(summary.accountId).toBe('sar');
+      expect(walletAccountRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('never relabels money held in another currency', async () => {
+      walletAccountRepo.find.mockResolvedValue([account('jod', 'JOD', '7.00')]);
+
+      const summary = await service.getWalletSummary('u1', 'passenger', 'SAR');
+
+      expect(summary.accountId).toBe('jod');
+      expect(summary.currency).toBe('JOD');
+      expect(summary.balance).toBe(7);
+    });
+
+    it('keeps showing a debt held in another currency', async () => {
+      walletAccountRepo.find.mockResolvedValue([
+        account('jod', 'JOD', '-3.00'),
+        account('sar', 'SAR', '0'),
+      ]);
+
+      const summary = await service.getWalletSummary('u1', 'driver', 'SAR');
+
+      expect(summary.accountId).toBe('jod');
+      expect(summary.balance).toBe(-3);
+    });
+
+    it('resolves the currency from the reported country first', async () => {
+      await expect(service.resolveLocalCurrency('u1', 'sa')).resolves.toBe(
+        'SAR',
+      );
+    });
+
+    it('falls back to the phone number country', async () => {
+      const userRepo = (service as any).userRepo;
+      userRepo.findOne.mockResolvedValue({
+        id: 'u1',
+        phoneNumber: '+966501234567',
+      });
+
+      await expect(service.resolveLocalCurrency('u1')).resolves.toBe('SAR');
+      await expect(service.resolveLocalCurrency('u1', 'XX')).resolves.toBe(
+        'SAR',
+      );
+    });
+
+    it('returns null when neither country nor phone is known', async () => {
+      const userRepo = (service as any).userRepo;
+      userRepo.findOne.mockResolvedValue({ id: 'u1', phoneNumber: null });
+
+      await expect(service.resolveLocalCurrency('u1')).resolves.toBeNull();
+    });
+  });
 });

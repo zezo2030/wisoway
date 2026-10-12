@@ -218,6 +218,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     final quote = await TripService().getTripFeeQuote(
       seatPrice: price,
       totalSeats: seats,
+      currency: _currency,
     );
     if (!mounted) return;
     setState(() {

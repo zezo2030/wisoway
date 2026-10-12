@@ -1,7 +1,11 @@
 package com.abdelaziz.visionway
 
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
+import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -73,6 +77,15 @@ class MainActivity : FlutterActivity() {
                             pendingInstantOfferAction = null
                             result.success(pending)
                         }
+                        "canUseFullScreenIntent" -> {
+                            result.success(
+                                InstantOfferNotificationHelper.canUseFullScreenIntent(this),
+                            )
+                        }
+                        "openFullScreenIntentSettings" -> {
+                            openFullScreenIntentSettings()
+                            result.success(true)
+                        }
                         "getPendingNotificationTap" -> {
                             val pending = pendingNotificationTap
                             pendingNotificationTap = null
@@ -88,6 +101,7 @@ class MainActivity : FlutterActivity() {
         super.onCreate(savedInstanceState)
         BookingNotificationHelper.ensureChannel(this)
         InstantOfferNotificationHelper.ensureChannel(this)
+        applyOverLockScreen(intent)
         captureInstantOfferIntent(intent)
         captureNotificationTap(intent)
     }
@@ -95,10 +109,67 @@ class MainActivity : FlutterActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        applyOverLockScreen(intent)
         captureInstantOfferIntent(intent)
         flushPendingInstantOfferAction()
         captureNotificationTap(intent)
         flushPendingNotificationTap()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Over-the-lock-screen is for the offer that woke the phone only; the
+        // next time the phone locks, the app goes back behind the lock screen.
+        setOverLockScreen(false)
+    }
+
+    /** Opened by a ride offer's full-screen intent: wake and show over the lock. */
+    private fun applyOverLockScreen(intent: Intent?) {
+        if (intent?.getBooleanExtra(
+                InstantOfferNotificationHelper.EXTRA_OVER_LOCK_SCREEN,
+                false,
+            ) != true
+        ) {
+            return
+        }
+        intent.removeExtra(InstantOfferNotificationHelper.EXTRA_OVER_LOCK_SCREEN)
+        setOverLockScreen(true)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun setOverLockScreen(on: Boolean) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(on)
+            setTurnScreenOn(on)
+        } else {
+            val flags =
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+            if (on) window.addFlags(flags) else window.clearFlags(flags)
+        }
+    }
+
+    /** Android 14+: the per-app switch for full-screen notifications. */
+    private fun openFullScreenIntentSettings() {
+        val intent =
+            if (Build.VERSION.SDK_INT >= 34) {
+                Intent(
+                    Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                    Uri.parse("package:$packageName"),
+                )
+            } else {
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+            }
+        try {
+            startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (_: Exception) {
+            startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                    .setData(Uri.parse("package:$packageName"))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }
     }
 
     /**

@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
+import 'saved_places_remote.dart';
 import 'saved_places_service.dart';
 
 /// Anonymous bucket used before sign-in. Kept separate from every real account
@@ -24,7 +25,10 @@ SavedPlacesService savedPlacesFor(BuildContext context) {
     userId = null;
   }
 
+  final signedIn = userId != null && userId.isNotEmpty;
   return SavedPlacesService(
-    userId: userId == null || userId.isEmpty ? kGuestPlacesUserId : userId,
+    userId: signedIn ? userId : kGuestPlacesUserId,
+    // A signed-in user's shortcuts live on the account; a guest's stay here.
+    remote: signedIn ? ApiSavedPlacesRemote() : null,
   );
 }

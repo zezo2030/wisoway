@@ -687,7 +687,7 @@
   "@hidePhoneNumberToggle": {
     "description": "Profile settings toggle to hide phone number from other parties"
   },
-  "hidePhoneNumberSubtitle": "Calls will be routed through a proxy number",
+  "hidePhoneNumberSubtitle": "Your number is not shown to the other party on a trip; they reach you through in-app chat",
   "@hidePhoneNumberSubtitle": {
     "description": "Description for the hide-phone-number toggle"
   },
@@ -903,6 +903,22 @@
   "vehicleModelRequired": "Vehicle model is required",
   "vehicleYearRequired": "Year is required",
   "vehicleColorRequired": "Color is required",
+  "vehicleColorSelect": "Choose the car colour",
+  "vehicleColorWhite": "White",
+  "vehicleColorBlack": "Black",
+  "vehicleColorSilver": "Silver",
+  "vehicleColorGray": "Gray",
+  "vehicleColorRed": "Red",
+  "vehicleColorBlue": "Blue",
+  "vehicleColorGreen": "Green",
+  "vehicleColorBeige": "Beige",
+  "vehicleColorBrown": "Brown",
+  "vehicleColorGold": "Gold",
+  "vehicleColorYellow": "Yellow",
+  "vehicleColorOrange": "Orange",
+  "vehicleTypePickTitle": "Vehicle type",
+  "vehicleSeatMapHint": "These are your vehicle seats as passengers will see them. Tap the picture to enlarge it.",
+  "vehicleSeatMapUnavailable": "There is no picture for this type yet; the vehicle's registered layout is used.",
   "vehiclePlateRequired": "Plate number is required",
   "vehicleSeatsRequired": "Number of seats is required",
   "licenseNumberRequired": "License number is required",
@@ -1488,7 +1504,7 @@
   "complaintDescriptionRequired": "Please write a description of the problem",
   "complaintDescriptionTooShort": "Description is too short (at least 10 characters)",
   "walletMyWallet": "My wallet",
-  "walletTopUpDescription": "Used to pay the booking cost when wallet payment is enabled. Top up in Jordanian Dinar (JOD) via CliQ or manual transfer with proof; the balance is added after confirmation or admin approval depending on the method.",
+  "walletTopUpDescription": "Used to pay the booking cost when wallet payment is enabled. Top up in your local currency by manual transfer with proof (or via CliQ in Jordan); the balance is added after confirmation or admin approval depending on the method.",
   "walletTransactionHistory": "Transaction history",
   "walletTopUp": "Top up",
   "walletTopUpSemantics": "Top up wallet",
@@ -1747,7 +1763,7 @@
     }
   },
   "confirmFinePayment": "Confirm fine payment",
-  "amountDue": "Amount due: {amount} JOD",
+  "amountDue": "Amount due: {amount}",
   "@amountDue": {
     "placeholders": {
       "amount": {
@@ -1755,7 +1771,7 @@
       }
     }
   },
-  "currentWalletBalance": "Current wallet balance: {amount} JOD",
+  "currentWalletBalance": "Current wallet balance: {amount}",
   "@currentWalletBalance": {
     "placeholders": {
       "amount": {
@@ -1763,7 +1779,7 @@
       }
     }
   },
-  "balanceAfterPayment": "Balance after payment: {amount} JOD",
+  "balanceAfterPayment": "Balance after payment: {amount}",
   "@balanceAfterPayment": {
     "placeholders": {
       "amount": {
@@ -1784,7 +1800,7 @@
   "noOutstandingCharges": "No outstanding charges",
   "accountInGoodStanding": "Your account is in good standing.",
   "cannotPublishUntilSettled": "You can't publish a new trip until settled",
-  "totalDue": "Total due: {amount} JOD",
+  "totalDue": "Total due: {amount}",
   "@totalDue": {
     "placeholders": {
       "amount": {
@@ -1792,7 +1808,7 @@
       }
     }
   },
-  "walletBalanceAmount": "Wallet balance: {amount} JOD",
+  "walletBalanceAmount": "Wallet balance: {amount}",
   "@walletBalanceAmount": {
     "placeholders": {
       "amount": {
@@ -1804,7 +1820,7 @@
   "balanceNotEnoughForFine": "Your balance is not enough — top up your wallet to settle.",
   "payFine": "Pay Fine",
   "topUpWallet": "Top Up Wallet",
-  "amountAmount": "Amount: {amount} JOD",
+  "amountAmount": "Amount: {amount}",
   "@amountAmount": {
     "placeholders": {
       "amount": {
@@ -2559,11 +2575,19 @@
   "tripInProgressEmergency": "Emergency",
   "tripInProgressLayers": "Layers",
   "tripInProgressRecenter": "Recenter",
-  "tripInProgressEmergencySent": "Emergency alert sent to support",
+  "tripInProgressEmergencySent": "Your location was sent to the VisionWay team",
   "tripInProgressEmergencyError": "Could not send emergency alert",
   "tripInProgressEmergencyConfirmTitle": "Emergency alert",
-  "tripInProgressEmergencyConfirmMessage": "Support will be notified with your current location. Continue?",
-  "tripInProgressEmergencyConfirmAction": "Send alert",
+  "tripInProgressEmergencyConfirmMessage": "We'll call the VisionWay team now and send them your current location.",
+  "tripInProgressEmergencyCallFailed": "Couldn't start the call. Call the VisionWay team on {phone}",
+  "@tripInProgressEmergencyCallFailed": {
+    "placeholders": {
+      "phone": {
+        "type": "String"
+      }
+    }
+  },
+  "tripInProgressEmergencyConfirmAction": "Call VisionWay",
   "tripInProgressEmergencyCancel": "Cancel",
   "locationAutocompleteSuggestions": "Place suggestions",
   "locationAutocompleteNoResults": "No matching places. Pick the location on the map instead.",
@@ -2649,8 +2673,20 @@
   "instantStepSearching": "Finding a driver",
   "instantStepDriverOffer": "Driver accepts",
   "instantStepDriverOnWay": "Driver on the way",
-  "@instantSearchingMinutes": {"placeholders": {"minutes": {"type": "String"}}},
-  "@instantSearchingKm": {"placeholders": {"km": {"type": "String"}}},
+  "@instantSearchingMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "@instantSearchingKm": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
   "instantFareEstimate": "Estimated fare: {fare} {currency}",
   "instantCancelRequest": "Cancel request",
   "instantOfferDetailsTitle": "Request details",
@@ -2836,8 +2872,12 @@
   "tripPartiallyBookedSubtitle": "{booked} of {total} seats booked",
   "@tripPartiallyBookedSubtitle": {
     "placeholders": {
-      "booked": { "type": "int" },
-      "total": { "type": "int" }
+      "booked": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "tripDayLabel": "Trip day",
@@ -2903,15 +2943,38 @@
   "paymentMethodsSubtitle": "Manage your cards and payment methods",
   "savedAddresses": "Saved addresses",
   "savedAddressesSubtitle": "Manage your pickup and drop-off places",
+  "savedAddressesHint": "These places appear as shortcuts when you choose a pickup or destination. They are stored on this device.",
+  "savedAddressHome": "Home",
+  "savedAddressWork": "Work",
+  "savedAddressNotSet": "Not set — tap to add",
+  "savedAddressOthers": "Other places",
+  "savedAddressAdd": "Add a place",
+  "savedAddressNameTitle": "Name this place",
+  "savedAddressNameHint": "e.g. University, Gym",
+  "savedAddressPickTitle": "Choose the location of {label}",
+  "@savedAddressPickTitle": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "savedAddressChangeLocation": "Change location",
+  "savedAddressRename": "Rename",
+  "savedAddressSaveFailed": "Could not save the change. Check your connection and try again.",
   "pastTrips": "Past trips",
   "pastTripsSubtitle": "View all your past trips",
   "cancelledTrips": "Cancelled trips",
+  "noPastTrips": "No past trips yet.",
+  "noCancelledTrips": "No cancelled trips.",
   "cancelledTripsSubtitle": "View trips that were cancelled",
   "settingsSubtitle": "Customize your app experience",
   "notificationsSubtitle": "Manage your notification preferences",
   "languageSubtitle": "Change the app language",
   "helpSupportSubtitle": "FAQs and ways to get help",
   "contactUsSubtitle": "Need a hand? We are here for you",
+  "termsOfServiceSubtitle": "The rules for using the app",
+  "privacyPolicySubtitle": "How we collect and protect your data",
   "aboutAppSubtitle": "Version, terms and policies",
   "walletTopUpBalance": "Add funds",
   "walletTrialBalanceHint": "Welcome balance – deducted automatically from your upcoming trips",
@@ -3014,8 +3077,19 @@
     }
   },
   "instantOfferCurrencyJod": "JOD",
-  "instantOfferCurrencySar": "SAR",
+  "instantOfferCurrencySar": "SAR",
   "instantTripHeadingToPickup": "Heading to the passenger",
+  "instantTripWaitingForPassenger": "Waiting for the passenger to get in",
+  "instantTripArrivedAtPickupAction": "I've arrived",
+  "instantTripStartAction": "Start trip",
+  "instantTripMovedTitle": "Has the trip started?",
+  "instantTripMovedBody": "You've moved away from the pickup without starting the trip. If the passenger is with you, start it now.",
+  "instantTripNotYet": "Not yet",
+  "driverOnlineServiceTitle": "You're online",
+  "driverOnlineServiceText": "Receiving instant ride requests",
+  "offersOverLockTitle": "Show requests on the lock screen",
+  "offersOverLockBody": "To see ride requests instantly — waking a locked screen — turn on “Full-screen notifications” for VisionWay in Settings.",
+  "offersOverLockAction": "Open settings",
   "instantTripPassengerOnBoard": "Passenger on board — heading to destination",
   "instantTripAway": "{distance} away",
   "@instantTripAway": {
@@ -3100,5 +3174,56 @@
     }
   },
   "joinAsDriver": "Join as a driver 🚗",
-  "joinAsDriverSubtitle": "Register your car and start taking riders with the same account"
+  "joinAsDriverSubtitle": "Register your car and start taking riders with the same account",
+  "cliqAliasInvalid": "Enter a valid CliQ alias (letters, digits, dots) or a mobile number",
+  "instantPaymentMethodTitle": "Payment method",
+  "paymentMethodCash": "Cash",
+  "paymentMethodCliq": "CliQ",
+  "instantFormFareNoteCliq": "Priced by distance. You'll get a CliQ payment request on arrival.",
+  "instantPaymentCollectTitle": "Collect the fare",
+  "instantPaymentReportedLabel": "Non-payment reported",
+  "instantPaymentReceivedAction": "I received the amount",
+  "instantPaymentNotPaidAction": "The passenger didn't pay",
+  "instantPaymentNotPaidTitle": "Passenger didn't pay?",
+  "instantPaymentNotPaidBody": "We'll file a report for the VisionWay team and close the passenger's payment screen.",
+  "instantPaymentNotPaidHint": "What happened? (optional)",
+  "instantPaymentNotPaidConfirm": "Send report",
+  "instantPaymentReportedToast": "Report sent to the VisionWay team",
+  "tripReportProblem": "Report a problem with this trip",
+  "complaintCategoryRudeBehavior": "Rude behavior",
+  "complaintCategoryNoShow": "No-show",
+  "instantOfferCliqNote": "Passenger pays by CliQ · the fare goes to your wallet",
+  "instantTripCliqNote": "CliQ · paid into your wallet",
+  "cliqPayerAliasLabel": "Your CliQ alias or mobile",
+  "cliqPayerAliasHint": "e.g. ahmad@cliq or 0791234567",
+  "cliqPayerAliasHelp": "We send the payment request here when the ride ends; approve it in your bank app.",
+  "cliqPayerAliasRequired": "Enter your CliQ alias or mobile",
+  "bookingPaymentCashNote": "You pay the driver in cash when the trip ends.",
+  "bookingPaymentCliqNote": "When the trip ends you'll get a CliQ payment request to approve in your bank app.",
+  "ridePaymentArrivedTitle": "You've arrived",
+  "ridePaymentPayDriverTitle": "Please pay the driver for the trip",
+  "ridePaymentAmountDue": "Amount due",
+  "ridePaymentCashInstruction": "Pay the driver in cash; they will confirm receiving it.",
+  "ridePaymentWaitingDriver": "Waiting for the driver to confirm payment…",
+  "ridePaymentCliqRequested": "We sent a CliQ payment request to {alias}. Open your bank app and approve it.",
+  "ridePaymentCliqRequestedNoAlias": "We sent a CliQ payment request. Open your bank app and approve it.",
+  "ridePaymentWaitingBank": "Waiting for the bank to confirm…",
+  "ridePaymentCliqFailed": "The CliQ payment didn't go through.",
+  "ridePaymentRetryCliq": "Send the payment request again",
+  "ridePaymentPayCashInstead": "Pay the driver in cash instead",
+  "ridePaymentDisputedTitle": "Payment not recorded",
+  "ridePaymentDisputedBody": "The driver reported they weren't paid. The VisionWay team will contact you.",
+  "ridePaymentsCardTitle": "Passenger fares",
+  "ridePaymentDriverPaidCash": "Received in cash ✓",
+  "ridePaymentDriverPaidCliq": "Paid by CliQ · added to your wallet ✓",
+  "ridePaymentDriverCliqPending": "Waiting for the passenger to approve CliQ",
+  "ridePaymentDriverCliqFailed": "CliQ payment hasn't gone through yet",
+  "@ridePaymentCliqRequested": {
+    "placeholders": {
+      "alias": {
+        "type": "String"
+      }
+    }
+  },
+  "instantLocationNotReaching": "Your location isn't reaching us right now, so ride requests can't reach you. Check your internet and location."
 }

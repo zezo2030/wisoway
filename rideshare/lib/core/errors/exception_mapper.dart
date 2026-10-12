@@ -115,9 +115,13 @@ class ExceptionMapper {
       // other public endpoints) means the submitted credentials were wrong —
       // NOT an expired session. Showing "session expired / log in again" or
       // triggering reauth there is misleading, so map it to invalid creds.
-      final isAuthenticatedRequest = error.requestOptions.headers.keys
-          .any((key) => key.toLowerCase() == 'authorization');
-      if (!isAuthenticatedRequest) {
+      // A signed-in endpoint sent without a token (the session was cleared
+      // after a failed refresh) is an expired session, not a bad password.
+      final isAuthenticatedRequest = error.requestOptions.headers.keys.any(
+        (key) => key.toLowerCase() == 'authorization',
+      );
+      final isCredentialEndpoint = error.requestOptions.path.contains('/auth/');
+      if (!isAuthenticatedRequest && isCredentialEndpoint) {
         return Failure(
           category: FailureCategory.auth,
           messageKey: 'errorsAuthInvalidCredentials',
@@ -138,8 +142,9 @@ class ExceptionMapper {
       final code = _extractCode(data);
       if (code == 'ACCOUNT_BANNED') {
         final banReason = data is Map ? data['banReason'] as String? : null;
-        final supportWhatsApp =
-            data is Map ? data['supportWhatsApp'] as String? : null;
+        final supportWhatsApp = data is Map
+            ? data['supportWhatsApp'] as String?
+            : null;
         return Failure(
           category: FailureCategory.banned,
           messageKey: 'errorsAccountBanned',
@@ -164,10 +169,16 @@ class ExceptionMapper {
           outstandingTotal: total,
         );
       }
+      if (code == 'PHONE_HIDDEN') {
+        return Failure(
+          category: FailureCategory.permission,
+          messageKey: 'errorsPhoneHidden',
+          severity: FailureSeverity.info,
+          developerDetail: detail,
+        );
+      }
       if (code == 'NEGATIVE_WALLET_BALANCE') {
-        final message = data is Map
-            ? (data['message'] as String?)
-            : null;
+        final message = data is Map ? (data['message'] as String?) : null;
         return Failure(
           category: FailureCategory.permission,
           messageKey: 'errorsNegativeWalletBalance',
@@ -178,9 +189,12 @@ class ExceptionMapper {
         );
       }
       if (code == 'INSUFFICIENT_BALANCE_FOR_TRIP_FEE') {
-        final balance = data is Map ? (data['balance'] as num?)?.toDouble() : null;
-        final requiredAmount =
-            data is Map ? (data['requiredAmount'] as num?)?.toDouble() : null;
+        final balance = data is Map
+            ? (data['balance'] as num?)?.toDouble()
+            : null;
+        final requiredAmount = data is Map
+            ? (data['requiredAmount'] as num?)?.toDouble()
+            : null;
         final currency = data is Map ? data['currency'] as String? : null;
         return Failure(
           category: FailureCategory.permission,
@@ -249,8 +263,7 @@ class ExceptionMapper {
       );
     }
 
-    if (code.contains('permission-denied') ||
-        code.contains('unauthorized')) {
+    if (code.contains('permission-denied') || code.contains('unauthorized')) {
       return Failure(
         category: FailureCategory.permission,
         messageKey: 'errorsPermissionDenied',

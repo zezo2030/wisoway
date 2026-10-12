@@ -9,6 +9,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/trip_provider.dart';
 import '../../models/booking_model.dart';
 import '../../models/trip_model.dart';
+import '../../models/vehicle_colors.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/services/booking_service.dart';
 import '../../core/services/chat_service.dart';
@@ -448,7 +449,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       _DetailRow(
                         icon: Icons.palette_outlined,
                         label: context.l10n.vehicleColor,
-                        value: trip.vehicleColor!,
+                        value: vehicleColorLabel(
+                          context.l10n,
+                          trip.vehicleColor!,
+                        ),
                       ),
                       const Divider(),
                     ],

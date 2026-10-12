@@ -469,6 +469,8 @@ export const translations = {
     generalConfig: "General Configuration",
     generalConfigDesc: "System-wide settings and currency configuration for this region.",
     localCurrencyCode: "Local Currency Code",
+    pricingCountry: "Country",
+    pricingFallbackNote: "This country has no fee schedule of its own yet, so its trips are charged on Jordan's percentages (shown below) in the local currency. Save to give it its own.",
     enablePricing: "Enable pricing & active status for this country",
     saveSettings: "Save Settings",
 
@@ -1183,6 +1185,8 @@ export const translations = {
     generalConfig: "الإعدادات العامة",
     generalConfigDesc: "إعدادات العملة والتفعيل لهذه المنطقة.",
     localCurrencyCode: "رمز العملة المحلية",
+    pricingCountry: "الدولة",
+    pricingFallbackNote: "لا توجد إعدادات رسوم خاصة بهذه الدولة بعد، لذا تُحتسب رسوم رحلاتها بنسب الأردن (المعروضة أدناه) وبعملتها المحلية. احفظ لتعيين إعدادات خاصة بها.",
     enablePricing: "تفعيل التسعير والحالة النشطة لهذا البلد",
     saveSettings: "حفظ الإعدادات",
 

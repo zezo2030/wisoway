@@ -21,6 +21,7 @@ export * from './pending-registration.entity';
 export * from './otp-code.entity';
 export * from './vehicle.entity';
 export * from './rating.entity';
+export * from './saved-place.entity';
 export * from './booking.entity';
 export * from './booking-seat.entity';
 export * from './pending-charge.entity';

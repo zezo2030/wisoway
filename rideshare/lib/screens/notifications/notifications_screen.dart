@@ -9,6 +9,7 @@ import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
 import '../../core/constants/route_names.dart';
+import '../../core/services/active_ride_navigator.dart';
 import '../../widgets/common/empty_state.dart';
 import '../../widgets/notification_card.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -32,116 +33,188 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     });
   }
 
-  void _handleNotificationTap(NotificationModel notification) {
+  /// Opens whatever the notification is about. Notifications that point at
+  /// nothing still openable (an expired ride offer, an announcement) show
+  /// their full text instead, since the card cuts long messages off.
+  Future<void> _handleNotificationTap(NotificationModel notification) async {
     Provider.of<NotificationProvider>(
       context,
       listen: false,
     ).markAsRead(notification.id);
 
-    final data = notification.data;
-    final tripId = data?['tripId'] as String?;
+    final isDriver =
+        Provider.of<AuthProvider>(context, listen: false).userModel?.isDriver ??
+        false;
+    final data = notification.data ?? const <String, dynamic>{};
+    final tripId = _idFrom(data, 'tripId') ?? _idFrom(data, 'entityId');
+    final bookingId = _idFrom(data, 'bookingId');
 
     switch (notification.type) {
-      case NotificationType.bookingCreated:
-      case NotificationType.bookingConfirmed:
-      case NotificationType.bookingCancelled:
-        if (tripId != null) {
+      case NotificationType.chatMessage:
+        if (tripId == null) break;
+        final senderId = data['senderId'] as String?;
+        final senderName = data['senderName'] as String?;
+        final chatRoomId = data['chatRoomId'] as String?;
+        if (data['senderRole'] == 'driver') {
           Navigator.pushNamed(
             context,
-            RouteNames.tripDetails,
-            arguments: tripId,
+            RouteNames.chat,
+            arguments: {
+              'tripId': tripId,
+              'chatRoomId': chatRoomId,
+              'driverId': senderId ?? '',
+              'driverName': senderName ?? 'السائق',
+            },
+          );
+        } else {
+          Navigator.pushNamed(
+            context,
+            RouteNames.driverChat,
+            arguments: {
+              'tripId': tripId,
+              'chatRoomId': chatRoomId,
+              'passengerId': senderId,
+              'passengerName': senderName ?? 'الراكب',
+            },
           );
         }
-        break;
+        return;
+
+      case NotificationType.presencePrompt:
+      case NotificationType.presenceMarkedAbsent:
+        if (bookingId == null) break;
+        Navigator.pushNamed(
+          context,
+          RouteNames.presenceConfirmation,
+          arguments: {'bookingId': bookingId},
+        );
+        return;
 
       case NotificationType.paymentApproved:
       case NotificationType.paymentRejected:
         Navigator.pushNamed(context, RouteNames.paymentHistory);
-        break;
+        return;
 
-      case NotificationType.tripReminder:
-      case NotificationType.driverArrived:
-        if (tripId != null) {
-          Navigator.pushNamed(
-            context,
-            RouteNames.tripDetails,
-            arguments: tripId,
-          );
-        }
-        break;
-
-      case NotificationType.communicationActivated:
-        if (tripId != null) {
-          Navigator.pushNamed(
-            context,
-            RouteNames.tripManagement,
-            arguments: tripId,
-          );
-        }
-        break;
-
-      case NotificationType.chatMessage:
-        if (tripId != null) {
-          final senderId = data?['senderId'] as String?;
-          final senderName = data?['senderName'] as String?;
-          final senderRole = data?['senderRole'] as String?;
-          final chatRoomId = data?['chatRoomId'] as String?;
-
-          if (senderRole == 'driver') {
-            Navigator.pushNamed(
-              context,
-              RouteNames.chat,
-              arguments: {
-                'tripId': tripId,
-                'chatRoomId': chatRoomId,
-                'driverId': senderId ?? '',
-                'driverName': senderName ?? 'السائق',
-              },
-            );
-          } else {
-            Navigator.pushNamed(
-              context,
-              RouteNames.driverChat,
-              arguments: {
-                'tripId': tripId,
-                'chatRoomId': chatRoomId,
-                'passengerId': senderId,
-                'passengerName': senderName ?? 'الراكب',
-              },
-            );
-          }
-        }
-        break;
       case NotificationType.walletCredited:
-        // Navigate to the relevant wallet screen
-        Navigator.pushNamed(context, RouteNames.passengerWallet);
-        break;
-      case NotificationType.presencePrompt:
-      case NotificationType.presenceMarkedAbsent:
-        final bookingId = data?['bookingId'] as String?;
-        if (bookingId != null) {
-          Navigator.pushNamed(
-            context,
-            RouteNames.presenceConfirmation,
-            arguments: {'bookingId': bookingId},
-          );
-        }
-        break;
-      case NotificationType.presenceDriverPrompt:
-        if (tripId != null) {
-          Navigator.pushNamed(
-            context,
-            RouteNames.tripManagement,
-            arguments: tripId,
-          );
-        }
-        break;
+      case NotificationType.rideFareCredited:
+      case NotificationType.tripFeeCharged:
+      case NotificationType.tripPayment:
+      case NotificationType.settlementMarkedPaid:
+      case NotificationType.driverFineIssued:
+        Navigator.pushNamed(
+          context,
+          isDriver ? RouteNames.driverWallet : RouteNames.passengerWallet,
+        );
+        return;
+
+      case NotificationType.penaltyCharged:
+        Navigator.pushNamed(context, RouteNames.pendingCharges);
+        return;
+
       case NotificationType.driverApproved:
       case NotificationType.driverRejected:
-        // Driver account review outcome → open the driver account status screen
         Navigator.pushNamed(context, RouteNames.driverPendingApproval);
+        return;
+
+      // A ride offer or search that has long since ended has no screen to
+      // return to.
+      case NotificationType.instantOffer:
+      case NotificationType.instantOfferCancelled:
+      case NotificationType.instantNoDrivers:
         break;
+
+      // The fare of an instant ride: back to the payment screen while it is
+      // still open, otherwise to the trip (the driver's summary lists every
+      // passenger's payment).
+      case NotificationType.ridePaymentDue:
+      case NotificationType.ridePaymentRequested:
+      case NotificationType.ridePaymentFailed:
+      case NotificationType.ridePaymentCashSwitch:
+        if (tripId == null) break;
+        if (await ActiveRideNavigator.resumePaymentFor(tripId)) return;
+        if (!mounted) return;
+        _openTrip(tripId, isDriver: isDriver, finished: true);
+        return;
+
+      case NotificationType.tripCompleted:
+      case NotificationType.tripAutoCompleted:
+      case NotificationType.ridePaymentPaid:
+      case NotificationType.ridePaymentDisputed:
+        if (tripId == null) break;
+        _openTrip(tripId, isDriver: isDriver, finished: true);
+        return;
+
+      default:
+        // Bookings, reminders, trip started / cancelled, presence reports,
+        // ratings, new trips nearby…: all about one trip.
+        if (tripId == null) break;
+        _openTrip(tripId, isDriver: isDriver);
+        return;
     }
+
+    _showFullText(notification, isDriver: isDriver);
+  }
+
+  /// The driver manages their trip (or reviews its summary once it is over);
+  /// a passenger sees its details, which move on to the live screen while
+  /// the trip is running.
+  void _openTrip(
+    String tripId, {
+    required bool isDriver,
+    bool finished = false,
+  }) {
+    if (isDriver && finished) {
+      Navigator.pushNamed(
+        context,
+        RouteNames.tripSummary,
+        arguments: {'tripId': tripId},
+      );
+    } else if (isDriver) {
+      Navigator.pushNamed(
+        context,
+        RouteNames.tripManagement,
+        arguments: tripId,
+      );
+    } else {
+      Navigator.pushNamed(context, RouteNames.tripDetails, arguments: tripId);
+    }
+  }
+
+  void _showFullText(NotificationModel notification, {required bool isDriver}) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: SingleChildScrollView(
+          key: const Key('notification-full-text'),
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                notification.titleForRole(isDriver: isDriver),
+                style: GoogleFonts.tajawal(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                notification.bodyForRole(isDriver: isDriver),
+                style: GoogleFonts.tajawal(fontSize: 15, height: 1.5),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static String? _idFrom(Map<String, dynamic> data, String key) {
+    final value = data[key]?.toString().trim();
+    return value == null || value.isEmpty ? null : value;
   }
 
   Future<void> _handleDelete(NotificationModel notification) async {

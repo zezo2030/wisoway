@@ -4,6 +4,7 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/constants/social_constants.dart';
 import '../../../core/constants/support_constants.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/phone_text.dart';
@@ -110,6 +111,18 @@ class _SupportScreenState extends State<SupportScreen> {
     }
   }
 
+  Future<void> _openSocial(BuildContext context, String url) async {
+    final uri = Uri.parse(url);
+    try {
+      if (await launchUrl(uri, mode: LaunchMode.externalApplication)) return;
+    } catch (_) {
+      // fall through to the error message
+    }
+    if (context.mounted) {
+      _showMessage(context, context.l10n.errorWithMessage(url));
+    }
+  }
+
   void _showMessage(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -169,6 +182,26 @@ class _SupportScreenState extends State<SupportScreen> {
                 description: context.l10n.supportContactWhatsAppDescription,
                 primaryActionLabel: context.l10n.supportWhatsAppButton,
                 onPrimaryAction: () => _launchWhatsApp(context),
+              ),
+              const SizedBox(height: 16),
+              _SocialPanel(
+                title: context.l10n.followUs,
+                links: [
+                  _SocialLink(
+                    icon: Icons.facebook,
+                    color: const Color(0xFF1877F2),
+                    label: context.l10n.followOnFacebook,
+                    onTap: () =>
+                        _openSocial(context, SocialConstants.facebookUrl),
+                  ),
+                  _SocialLink(
+                    icon: Icons.business_center,
+                    color: const Color(0xFF0A66C2),
+                    label: context.l10n.followOnLinkedIn,
+                    onTap: () =>
+                        _openSocial(context, SocialConstants.linkedInUrl),
+                  ),
+                ],
               ),
               const SizedBox(height: 20),
               _InfoPanel(
@@ -428,6 +461,79 @@ class _ContactCard extends StatelessWidget {
                       ),
                     ),
                     child: Text(secondaryActionLabel!),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SocialLink {
+  const _SocialLink({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String label;
+  final VoidCallback onTap;
+}
+
+class _SocialPanel extends StatelessWidget {
+  const _SocialPanel({
+    required this.title,
+    required this.links,
+  });
+
+  final String title;
+  final List<_SocialLink> links;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: T.surface(context),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: T.onSurface(context),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              for (final link in links) ...[
+                if (link != links.first) const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: link.onTap,
+                    icon: Icon(link.icon, color: link.color),
+                    label: Text(link.label),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: T.onSurface(context),
+                      side: BorderSide(
+                        color: link.color.withValues(alpha: 0.3),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
                   ),
                 ),
               ],

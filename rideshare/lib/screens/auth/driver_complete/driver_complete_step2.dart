@@ -6,6 +6,7 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../widgets/auth/auth_primary_button.dart';
 import '../../../widgets/auth/auth_text_field.dart';
 import '../../../widgets/auth/document_upload_box.dart';
+import '../../../widgets/vehicle_color_dropdown.dart';
 import 'driver_profile_wizard_state.dart';
 
 /// Driver wizard — step 2 of 3: photo, vehicle basics and the driving license.
@@ -96,10 +97,9 @@ class DriverCompleteStep2 extends StatelessWidget {
                 : null,
           ),
           const SizedBox(height: 14),
-          AuthTextField(
-            controller: state.colorController,
-            label: l10n.vehicleColor,
-            icon: IconsaxPlusLinear.colorfilter,
+          VehicleColorDropdown(
+            value: state.colorController.text,
+            onChanged: (key) => state.colorController.text = key,
           ),
           const SizedBox(height: 14),
           _buildSeatsSummary(context),

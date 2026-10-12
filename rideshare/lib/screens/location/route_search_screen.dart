@@ -844,8 +844,10 @@ class _RouteSearchScreenState extends State<RouteSearchScreen> {
         ..._shortcuts.map(
           (place) => PlaceResultRow(
             icon: _shortcutIcon(place.kind),
-            title: place.label.isNotEmpty ? place.label : place.name,
-            subtitle: place.label.isNotEmpty ? place.name : place.secondaryText,
+            title: _shortcutTitle(context, place),
+            subtitle: _shortcutTitle(context, place) == place.name
+                ? place.secondaryText
+                : place.name,
             onTap: () => _commitSelection(
               place.toLocation(),
               secondaryText: place.secondaryText,
@@ -1073,6 +1075,19 @@ class _RouteSearchScreenState extends State<RouteSearchScreen> {
         color: T.primary(context),
       ),
     );
+  }
+
+  /// Home and Work are named in the current language; a custom shortcut by
+  /// the label the user gave it.
+  String _shortcutTitle(BuildContext context, SavedPlace place) {
+    switch (place.kind) {
+      case SavedPlaceKind.home:
+        return context.l10n.savedAddressHome;
+      case SavedPlaceKind.work:
+        return context.l10n.savedAddressWork;
+      default:
+        return place.label.isNotEmpty ? place.label : place.name;
+    }
   }
 
   IconData _shortcutIcon(SavedPlaceKind kind) {

@@ -3,8 +3,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/api/api_client.dart';
+import '../../core/services/error_localizations.dart';
 import '../../core/constants/route_names.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -17,6 +19,7 @@ import '../../core/ui/error_surface.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/instant_ride_models.dart';
 import '../../models/location_model.dart';
+import '../../providers/auth_provider.dart';
 import '../../core/services/saved_places_scope.dart';
 import '../../widgets/location/place_field_block.dart';
 import '../../widgets/trip/share_tracking_sheet.dart';
@@ -95,6 +98,13 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
   /// The fixed, distance-based fare for the chosen route. The passenger sees
   /// it but can't change it.
   InstantQuote? _quote;
+
+  /// `cash` or `cliq` (offered only where the quote allows it — Jordan).
+  String _paymentMethod = 'cash';
+
+  /// CliQ: where the request-to-pay goes when the ride ends — the
+  /// passenger's alias or mobile, pre-filled from the last CliQ ride.
+  final TextEditingController _cliqAliasController = TextEditingController();
   bool _quoteLoading = false;
   bool _quoteFailed = false;
   int _quoteSeq = 0;
@@ -140,6 +150,7 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
       WidgetsBinding.instance.addPostFrameCallback((_) => _ensureQuote());
     }
     _loadMarkerIcons();
+    _prefillCliqAlias();
     _refreshNearbyDrivers();
     _nearbyRefresh = Timer.periodic(
       const Duration(seconds: 20),
@@ -155,6 +166,7 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
     _mapController?.dispose();
     _fromController.dispose();
     _toController.dispose();
+    _cliqAliasController.dispose();
     super.dispose();
   }
 
@@ -429,6 +441,8 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
       setState(() {
         _quote = quote;
         _quoteLoading = false;
+        // A route outside Jordan can't be paid by CliQ.
+        if (!quote.allowsCliq) _paymentMethod = 'cash';
       });
     } catch (_) {
       if (!mounted || seq != _quoteSeq) return;
@@ -451,6 +465,18 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
     _updateQuote();
   }
 
+  void _prefillCliqAlias() {
+    try {
+      final saved = Provider.of<AuthProvider>(
+        context,
+        listen: false,
+      ).userModel?.cliqAlias;
+      if (saved != null) _cliqAliasController.text = saved;
+    } catch (_) {
+      // No signed-in user in scope (tests) — the field just starts empty.
+    }
+  }
+
   // ── Request lifecycle ─────────────────────────────────────────────────────────
 
   Future<void> _submit() async {
@@ -463,7 +489,14 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
     FocusScope.of(context).unfocus();
     setState(() => _submitting = true);
     try {
-      final request = await _service.createRequest(from: _from!, to: _to!);
+      final request = await _service.createRequest(
+        from: _from!,
+        to: _to!,
+        paymentMethod: _paymentMethod,
+        payerCliqAlias: _paymentMethod == 'cliq'
+            ? _cliqAliasController.text.trim()
+            : null,
+      );
       if (!mounted) return;
       setState(() => _request = request);
       _startPolling();
@@ -1282,11 +1315,122 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
       if (duration != null) _formatMinutes(context, duration),
     ].join(' · ');
 
-    return _fareSummary(
-      context,
-      fare: quote.recommendedFare,
-      currency: quote.currency,
-      detail: detail,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _fareSummary(
+          context,
+          fare: quote.recommendedFare,
+          currency: quote.currency,
+          detail: detail,
+          paymentMethod: _paymentMethod,
+        ),
+        if (quote.allowsCliq) ...[
+          const SizedBox(height: 10),
+          _buildPaymentMethodPicker(context),
+        ],
+      ],
+    );
+  }
+
+  /// Cash or CliQ. CliQ pays the driver's alias directly at the end of the
+  /// ride, and only drivers who accept CliQ are offered the request.
+  Widget _buildPaymentMethodPicker(BuildContext context) {
+    final l10n = context.l10n;
+    Widget option(String method, IconData icon, String label) {
+      final selected = _paymentMethod == method;
+      return Expanded(
+        child: Semantics(
+          button: true,
+          selected: selected,
+          child: InkWell(
+            key: ValueKey('instant-pay-$method'),
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => setState(() => _paymentMethod = method),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: selected
+                    ? T.primary(context).withValues(alpha: 0.08)
+                    : T.surface(context),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: selected ? T.primary(context) : T.outline(context),
+                  width: selected ? 1.6 : 1,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    icon,
+                    size: 18,
+                    color: selected
+                        ? T.primary(context)
+                        : T.onSurfaceVariant(context),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: selected
+                          ? T.primary(context)
+                          : T.onSurface(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.instantPaymentMethodTitle,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: T.onSurfaceVariant(context),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            option('cash', Icons.payments_outlined, l10n.paymentMethodCash),
+            const SizedBox(width: 10),
+            option(
+              'cliq',
+              Icons.account_balance_outlined,
+              l10n.paymentMethodCliq,
+            ),
+          ],
+        ),
+        if (_paymentMethod == 'cliq') ...[
+          const SizedBox(height: 10),
+          TextField(
+            key: const ValueKey('instant-cliq-alias'),
+            controller: _cliqAliasController,
+            textDirection: TextDirection.ltr,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              labelText: l10n.cliqPayerAliasLabel,
+              hintText: l10n.cliqPayerAliasHint,
+              helperText: l10n.cliqPayerAliasHelp,
+              helperMaxLines: 2,
+              isDense: true,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -1297,6 +1441,7 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
     required double fare,
     required String currency,
     String detail = '',
+    String paymentMethod = 'cash',
   }) {
     final l10n = context.l10n;
     final muted = T.onSurfaceVariant(context);
@@ -1351,7 +1496,9 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
           ],
           const SizedBox(height: 6),
           Text(
-            l10n.instantFormFareNote,
+            paymentMethod == 'cliq'
+                ? l10n.instantFormFareNoteCliq
+                : l10n.instantFormFareNote,
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 11.5, color: muted),
           ),
@@ -1397,7 +1544,9 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
         _to != null &&
         !_submitting &&
         !_quoteLoading &&
-        _quote != null;
+        _quote != null &&
+        (_paymentMethod != 'cliq' ||
+            _cliqAliasController.text.trim().isNotEmpty);
 
     final label = needsDestination
         ? l10n.instantFormChooseDestinationCta
@@ -1546,7 +1695,12 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
   Widget _buildSearchFareCard(BuildContext context, InstantRequest request) {
     final fare = request.currentFare;
     if (fare == null) return const SizedBox.shrink();
-    return _fareSummary(context, fare: fare, currency: request.currency);
+    return _fareSummary(
+      context,
+      fare: fare,
+      currency: request.currency,
+      paymentMethod: request.paymentMethod,
+    );
   }
 
   Widget _buildSearchingView(BuildContext context, InstantRequest request) {
@@ -1926,10 +2080,15 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
       final number = await _service.initiateCall(bookingId);
       final launched = await launchUrl(Uri(scheme: 'tel', path: number));
       if (!launched) throw StateError('dialler unavailable');
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
+      final failure = ApiClient.mapError(e);
+      // The driver hides their number: say so, rather than "try again".
+      final message = failure.messageKey == 'errorsPhoneHidden'
+          ? ErrorLocalizations.resolveFailure(context, failure)
+          : context.l10n.instantMatchedCallFailed;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.instantMatchedCallFailed)),
+        SnackBar(content: Text(message)),
       );
     } finally {
       if (mounted) setState(() => _callBusy = false);

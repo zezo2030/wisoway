@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_endpoints.dart';
 import '../../../core/theme/colors.dart';
+import '../../../core/errors/failure.dart';
+import '../../../core/services/error_localizations.dart';
 import '../../../core/ui/error_surface.dart';
 import '../../l10n/l10n_extensions.dart';
 
@@ -50,7 +52,7 @@ class _AccountSecurityDevicesScreenState
   final _api = ApiClient();
   List<_DeviceRecord> _devices = [];
   bool _isLoading = true;
-  String? _error;
+  Failure? _error;
 
   @override
   void initState() {
@@ -65,17 +67,27 @@ class _AccountSecurityDevicesScreenState
     });
     try {
       final response = await _api.get(ApiEndpoints.devices);
-      final list = (response['data'] ?? response) as List<dynamic>;
-      setState(() {
-        _devices = list
-            .map((e) => _DeviceRecord.fromJson(e as Map<String, dynamic>))
-            .toList();
-      });
+      final devices = _deviceList(response)
+          .whereType<Map>()
+          .map((e) => _DeviceRecord.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+      if (!mounted) return;
+      setState(() => _devices = devices);
     } catch (e) {
-      setState(() => _error = ApiClient.mapError(e).displayMessage ?? ApiClient.mapError(e).messageKey);
+      if (!mounted) return;
+      setState(() => _error = ApiClient.mapError(e));
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  /// GET /auth/devices answers `{devices: [...]}`, possibly inside the
+  /// `{data: ...}` envelope; a bare list is accepted too.
+  static List<dynamic> _deviceList(dynamic response) {
+    var body = response;
+    if (body is Map && body['data'] != null) body = body['data'];
+    if (body is Map) body = body['devices'];
+    return body is List ? body : const [];
   }
 
   Future<void> _revokeDevice(_DeviceRecord device) async {
@@ -161,7 +173,10 @@ class _AccountSecurityDevicesScreenState
               Icon(Icons.error_outline_rounded,
                   size: 48, color: AppColors.error),
               const SizedBox(height: 16),
-              Text(_error!, textAlign: TextAlign.center),
+              Text(
+                ErrorLocalizations.resolveFailure(context, _error!),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: _loadDevices,

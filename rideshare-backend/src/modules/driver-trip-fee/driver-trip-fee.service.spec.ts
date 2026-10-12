@@ -21,18 +21,18 @@ import { DriverTripFeeService } from './driver-trip-fee.service';
 
 describe('DriverTripFeeService — quoting and publish guard', () => {
   let service: DriverTripFeeService;
-  let walletService: { getWalletSummary: jest.Mock };
-  let pricing: { getActiveFeeRow: jest.Mock };
+  let walletService: { getBalanceIn: jest.Mock };
+  let pricing: PlatformPricingService;
+  let feeRow: jest.SpyInstance;
 
   beforeEach(async () => {
-    walletService = { getWalletSummary: jest.fn() };
-    pricing = {
-      getActiveFeeRow: jest.fn().mockResolvedValue({
-        driverUnlockPercent: 10,
-        feeAmount: 0,
-        currency: 'JOD',
-      }),
-    };
+    walletService = { getBalanceIn: jest.fn() };
+    pricing = new PlatformPricingService({} as any);
+    feeRow = jest.spyOn(pricing, 'getFeeRowForCurrency').mockResolvedValue({
+      driverUnlockPercent: 10,
+      feeAmount: 0,
+      currency: 'JOD',
+    } as any);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -74,7 +74,7 @@ describe('DriverTripFeeService — quoting and publish guard', () => {
   });
 
   it('falls back to the legacy flat fee when the percent is zero', async () => {
-    pricing.getActiveFeeRow.mockResolvedValue({
+    feeRow.mockResolvedValue({
       driverUnlockPercent: 0,
       feeAmount: 0.75,
       currency: 'JOD',
@@ -86,28 +86,66 @@ describe('DriverTripFeeService — quoting and publish guard', () => {
     expect(quote.amount).toBe(0.75);
   });
 
-  it('allows publishing when the balance exactly equals the fee', async () => {
-    walletService.getWalletSummary.mockResolvedValue({
-      balance: 1.6,
+  it("quotes in the trip's currency on its country's schedule", async () => {
+    feeRow.mockResolvedValue({
+      countryCode: 'SA',
+      driverUnlockPercent: 5,
+      feeAmount: 0,
+      currency: 'SAR',
+    });
+    const quote = await service.computeExpectedFee({
+      seatPrice: 40,
+      totalSeats: 4,
+      currency: 'SAR',
+    });
+    expect(feeRow).toHaveBeenCalledWith('SAR');
+    expect(quote.amount).toBe(8);
+    expect(quote.currency).toBe('SAR');
+  });
+
+  it("applies the default schedule's percent in the trip's own currency", async () => {
+    // Saudi has no row of its own, so Jordan's 10% applies — in riyals.
+    const quote = await service.computeExpectedFee({
+      seatPrice: 40,
+      totalSeats: 4,
+      currency: 'SAR',
+    });
+    expect(quote.amount).toBe(16);
+    expect(quote.currency).toBe('SAR');
+  });
+
+  it('never charges a flat fee priced in another currency', async () => {
+    feeRow.mockResolvedValue({
+      driverUnlockPercent: 0,
+      feeAmount: 0.75,
       currency: 'JOD',
     });
+    const quote = await service.computeExpectedFee({
+      seatPrice: 40,
+      totalSeats: 4,
+      currency: 'SAR',
+    });
+    expect(quote.amount).toBe(0);
+    expect(quote.currency).toBe('SAR');
+  });
+
+  it('allows publishing when the balance exactly equals the fee', async () => {
+    walletService.getBalanceIn.mockResolvedValue(1.6);
     await expect(
       service.assertDriverCanCoverTripFee('driver-1', {
         seatPrice: 4,
         totalSeats: 4,
       }),
     ).resolves.toMatchObject({ amount: 1.6 });
-    expect(walletService.getWalletSummary).toHaveBeenCalledWith(
+    expect(walletService.getBalanceIn).toHaveBeenCalledWith(
       'driver-1',
       WalletAccountType.DRIVER,
+      'JOD',
     );
   });
 
   it('blocks publishing one fils below the fee', async () => {
-    walletService.getWalletSummary.mockResolvedValue({
-      balance: 1.59,
-      currency: 'JOD',
-    });
+    walletService.getBalanceIn.mockResolvedValue(1.59);
     await expect(
       service.assertDriverCanCoverTripFee('driver-1', {
         seatPrice: 4,
@@ -117,16 +155,27 @@ describe('DriverTripFeeService — quoting and publish guard', () => {
   });
 
   it('blocks publishing on a negative balance', async () => {
-    walletService.getWalletSummary.mockResolvedValue({
-      balance: -3,
-      currency: 'JOD',
-    });
+    walletService.getBalanceIn.mockResolvedValue(-3);
     await expect(
       service.assertDriverCanCoverTripFee('driver-1', {
         seatPrice: 4,
         totalSeats: 4,
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("checks the balance held in the trip's currency", async () => {
+    walletService.getBalanceIn.mockResolvedValue(20);
+    await service.assertDriverCanCoverTripFee('driver-1', {
+      seatPrice: 40,
+      totalSeats: 4,
+      currency: 'SAR',
+    });
+    expect(walletService.getBalanceIn).toHaveBeenCalledWith(
+      'driver-1',
+      WalletAccountType.DRIVER,
+      'SAR',
+    );
   });
 });
 
@@ -224,6 +273,11 @@ describe('DriverTripFeeService.chargeAtTripStart', () => {
       create: (_entity: any, data: any) => ({ ...data }),
       save: async (entity: any, obj?: any) => {
         const row = obj ?? entity;
+        if (entity === WalletAccountEntity) {
+          row.id ??= `acc-${row.currency}`;
+          if (!lockedAccounts.includes(row)) lockedAccounts.push(row);
+          return row;
+        }
         if (row?.type) {
           // wallet_tx_idempotency_idx is UNIQUE in the real schema — a replay
           // that reaches this point must blow up exactly as Postgres would.
@@ -268,18 +322,19 @@ describe('DriverTripFeeService.chargeAtTripStart', () => {
         {
           provide: WalletService,
           useValue: {
-            getWalletSummary: jest.fn(),
             syncUserLegacyWalletMirror: jest.fn().mockResolvedValue(undefined),
           },
         },
         {
           provide: PlatformPricingService,
-          useValue: {
-            getActiveFeeRow: jest.fn().mockResolvedValue({
+          useFactory: () => {
+            const pricing = new PlatformPricingService({} as any);
+            jest.spyOn(pricing, 'getFeeRowForCurrency').mockResolvedValue({
               driverUnlockPercent: 10,
               feeAmount: 0,
               currency: 'JOD',
-            }),
+            } as any);
+            return pricing;
           },
         },
         { provide: PendingChargesService, useValue: pendingCharges },
@@ -514,17 +569,50 @@ describe('DriverTripFeeService.chargeAtTripStart', () => {
     expect(result.reason).toBeUndefined();
   });
 
-  it('charges nothing when the driver has no wallet ledger account', async () => {
+  it('opens a ledger row for a driver without one and carries the whole fee', async () => {
     lockedAccounts = [];
     const result = await service.chargeAtTripStart(trip());
     expect(result.charged).toBe(0);
-    // Records nothing: with no account there is no audit row to dedupe a
-    // retry against, so recording here would double-record on the next sweep.
-    expect(result.pendingRemainder).toBe(0);
-    expect(pendingCharges.record).not.toHaveBeenCalled();
-    expect(loggedErrors).toHaveBeenCalledWith(
-      expect.stringContaining('has no DRIVER wallet account'),
-    );
+    expect(result.pendingRemainder).toBe(1.6);
+    expect(lockedAccounts).toEqual([
+      expect.objectContaining({ currency: 'JOD', balance: '0' }),
+    ]);
+    // The audit row lands on the new account, so a retry is still deduped.
+    expect(savedTxs[0].accountId).toBe('acc-JOD');
+  });
+
+  it("debits only the wallet in the trip's currency", async () => {
+    // 10 JOD on hand, but the trip is priced in riyals: the dinars are never
+    // touched, a riyal wallet is opened and the whole fee is carried.
+    const sarTrip = { ...trip(), price: 40, currency: 'SAR' };
+    const result = await service.chargeAtTripStart(sarTrip);
+    expect(account.balance).toBe('10.00');
+    expect(result.currency).toBe('SAR');
+    expect(result.charged).toBe(0);
+    expect(result.pendingRemainder).toBe(16);
+    expect(savedTxs[0]).toMatchObject({
+      accountId: 'acc-SAR',
+      currency: 'SAR',
+    });
+  });
+
+  it('pays from the trip-currency wallet when the driver holds several', async () => {
+    const sar = {
+      id: 'acc-sar',
+      userId: 'driver-1',
+      accountType: WalletAccountType.DRIVER,
+      currency: 'SAR',
+      balance: '50.00',
+    };
+    lockedAccounts = [account, sar];
+    const result = await service.chargeAtTripStart({
+      ...trip(),
+      price: 40,
+      currency: 'SAR',
+    });
+    expect(result.charged).toBe(16);
+    expect(sar.balance).toBe('34.00');
+    expect(account.balance).toBe('10.00');
   });
 
   it('records the shortfall once when two callers race past the existence check', async () => {

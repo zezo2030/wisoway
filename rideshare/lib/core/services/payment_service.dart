@@ -6,6 +6,7 @@ import '../../models/wallet_account_model.dart';
 import '../../models/wallet_transaction_model.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
+import 'location_service.dart';
 
 class PaymentService {
   final ApiClient _api = ApiClient();
@@ -151,8 +152,14 @@ class PaymentService {
   }
 
   /// Postgres wallet (driver or rider): balance from `wallet_accounts`.
+  /// Sends the device's country so an empty wallet shows the local currency;
+  /// without it the backend falls back to the phone number's country.
   Future<WalletAccountModel> getWalletAccountMe() async {
-    final response = await _api.get(ApiEndpoints.walletV2Me);
+    final country = await LocationService().currentCountryCode();
+    final response = await _api.get(
+      ApiEndpoints.walletV2Me,
+      queryParameters: country == null ? null : {'country': country},
+    );
     final raw = response is Map ? (response['data'] ?? response) : response;
     return WalletAccountModel.fromJson(
       Map<String, dynamic>.from(raw as Map),

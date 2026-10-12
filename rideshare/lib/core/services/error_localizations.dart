@@ -18,6 +18,8 @@ class ErrorLocalizations {
         'Your wallet balance is not enough to complete this booking. Please top up your wallet and try again.',
     'errorsUnknownGeneric':
         'An unexpected error occurred. Please try again.',
+    'errorsPhoneHidden':
+        'This person keeps their number private. Reach them through the in-app chat.',
     'errorsRouteUnavailable':
         "We couldn't load the route. Showing pickup and drop-off points.",
     'errorsOutstandingCharges':
@@ -50,6 +52,8 @@ class ErrorLocalizations {
     'errorsWalletInsufficientBalance':
         'رصيد المحفظة غير كافٍ لإتمام الحجز. يرجى شحن المحفظة ثم المحاولة مرة أخرى.',
     'errorsUnknownGeneric': 'حدث خطأ غير متوقع. حاول مرة أخرى.',
+    'errorsPhoneHidden':
+        'هذا المستخدم يُخفي رقم هاتفه. تواصل معه عبر المحادثة في التطبيق.',
     'errorsRouteUnavailable':
         'تعذّر تحميل المسار. نعرض نقاط الانطلاق والوصول.',
     'errorsOutstandingCharges':

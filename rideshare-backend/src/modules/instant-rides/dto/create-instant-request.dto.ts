@@ -1,4 +1,5 @@
 import {
+  IsIn,
   IsInt,
   IsNumber,
   IsOptional,
@@ -58,6 +59,20 @@ export class CreateInstantRequestDto {
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   passengerFare?: number;
+
+  /**
+   * `cash` (default) or `cliq`: a CliQ request-to-pay to the platform when
+   * the ride ends. CliQ is refused for rides starting outside Jordan.
+   */
+  @IsOptional()
+  @IsIn(['cash', 'cliq'])
+  paymentMethod?: 'cash' | 'cliq';
+
+  /** CliQ: the passenger's alias or mobile; defaults to the one on file. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  payerCliqAlias?: string;
 }
 
 export class QuoteInstantRequestDto {

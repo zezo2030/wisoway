@@ -53,4 +53,52 @@ describe('PlatformPricingService', () => {
     const u = svc.driverUnlockPricing(trip, row);
     expect(u.feeAmount).toBe(25);
   });
+
+  it("driverUnlockPricing charges a percent fee in the trip's currency", () => {
+    const trip = {
+      price: '40',
+      totalSeats: 4,
+      currency: 'SAR',
+    } as unknown as TripEntity;
+    const row = {
+      driverUnlockPercent: 10,
+      feeAmount: 0,
+      currency: 'JOD',
+    } as CommunicationFeeEntity;
+    const u = svc.driverUnlockPricing(trip, row);
+    expect(u.feeAmount).toBe(16);
+    expect(u.currency).toBe('SAR');
+  });
+
+  describe('getFeeRowForCurrency', () => {
+    const rows: Record<string, Partial<CommunicationFeeEntity>> = {
+      JO: { countryCode: 'JO', isActive: true, driverUnlockPercent: 10 },
+      SA: { countryCode: 'SA', isActive: true, driverUnlockPercent: 5 },
+      AE: { countryCode: 'AE', isActive: false, driverUnlockPercent: 7 },
+    };
+    const repo = {
+      findOne: jest.fn(
+        async ({ where }: any) =>
+          (rows[where.countryCode] &&
+          (where.isActive === undefined ||
+            rows[where.countryCode].isActive === where.isActive)
+            ? rows[where.countryCode]
+            : null) ?? null,
+      ),
+    };
+    const pricing = new PlatformPricingService(repo as any);
+
+    it("uses the currency's own country schedule", async () => {
+      await expect(pricing.getFeeRowForCurrency('SAR')).resolves.toBe(rows.SA);
+    });
+
+    it("falls back to Jordan's schedule for a country without one", async () => {
+      await expect(pricing.getFeeRowForCurrency('QAR')).resolves.toBe(rows.JO);
+      await expect(pricing.getFeeRowForCurrency(null)).resolves.toBe(rows.JO);
+    });
+
+    it('charges nothing in a country whose schedule is switched off', async () => {
+      await expect(pricing.getFeeRowForCurrency('AED')).resolves.toBeNull();
+    });
+  });
 });

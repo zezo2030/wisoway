@@ -1,7 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'dart:io';
 import '../core/services/trip_service.dart';
-import '../core/services/location_service.dart';
 import '../core/api/websocket_service.dart';
 import '../models/trip_model.dart';
 import 'dart:async';
@@ -11,7 +10,6 @@ import '../models/trip_meeting_point.dart';
 class TripProvider extends ChangeNotifier {
   final TripService _tripService = TripService();
   final WebSocketService _socket = WebSocketService();
-  final LocationService _locationService = LocationService();
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -22,6 +20,16 @@ class TripProvider extends ChangeNotifier {
   final _activeTripsController = StreamController<List<TripModel>>.broadcast();
   final Set<String> _loadedDriverTripsKeys = <String>{};
   final Set<String> _loadedActiveTripsKeys = <String>{};
+
+  List<TripModel> _nearbyTrips = [];
+  final _nearbyTripsController = StreamController<List<TripModel>>.broadcast();
+  String? _nearbyKey;
+  ({
+    LocationModel location,
+    String excludeDriverId,
+    double radiusKm,
+    int limit,
+  })? _nearbyQuery;
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -37,6 +45,7 @@ class TripProvider extends ChangeNotifier {
   void dispose() {
     _driverTripsController.close();
     _activeTripsController.close();
+    _nearbyTripsController.close();
     super.dispose();
   }
 
@@ -51,7 +60,10 @@ class TripProvider extends ChangeNotifier {
       if (index != -1) {
         // Here you would optimally parse the updated trip from data
         // For now, we'll just re-fetch the trips to ensure consistency
-        fetchActiveTrips();
+        _refetchActiveTrips();
+      }
+      if (_nearbyTrips.any((t) => t.id == tripId)) {
+        fetchNearbyTrips();
       }
 
       int driverIndex = _driverTrips.indexWhere((t) => t.id == tripId);
@@ -66,8 +78,11 @@ class TripProvider extends ChangeNotifier {
         // Re-fetch trips if one of our loaded trips was updated
         if (_activeTrips.any((t) => t.id == tripId) ||
             _driverTrips.any((t) => t.id == tripId)) {
-          fetchActiveTrips();
+          _refetchActiveTrips();
           fetchDriverTrips();
+        }
+        if (_nearbyTrips.any((t) => t.id == tripId)) {
+          fetchNearbyTrips();
         }
       }
     });
@@ -212,12 +227,13 @@ class TripProvider extends ChangeNotifier {
     LocationModel? from,
     LocationModel? to,
     DateTime? minDepartureTime,
+    String? country,
   }) async* {
-    final key = _buildActiveTripsKey(
+    final key = '${_buildActiveTripsKey(
       from: from,
       to: to,
       minDepartureTime: minDepartureTime,
-    );
+    )}|${country ?? ''}';
     if (!_loadedActiveTripsKeys.contains(key)) {
       _loadedActiveTripsKeys.add(key);
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -226,6 +242,7 @@ class TripProvider extends ChangeNotifier {
             from: from,
             to: to,
             minDepartureTime: minDepartureTime,
+            country: country,
           ),
         );
       });
@@ -270,13 +287,21 @@ class TripProvider extends ChangeNotifier {
     LocationModel? from,
     LocationModel? to,
     DateTime? minDepartureTime,
+    String? country,
   }) async {
+    _lastActiveQuery = (
+      from: from,
+      to: to,
+      minDepartureTime: minDepartureTime,
+      country: country,
+    );
     try {
       _setLoading(true);
       _activeTrips = await _tripService.searchActiveTrips(
         from: from,
         to: to,
         minDepartureTime: minDepartureTime,
+        country: country,
       );
       _activeTripsController.add(_activeTrips);
       _setError(null);
@@ -286,6 +311,24 @@ class TripProvider extends ChangeNotifier {
     } finally {
       _setLoading(false);
     }
+  }
+
+  ({
+    LocationModel? from,
+    LocationModel? to,
+    DateTime? minDepartureTime,
+    String? country,
+  })? _lastActiveQuery;
+
+  /// Socket-driven refresh: same filters as the list currently on screen.
+  Future<void> _refetchActiveTrips() {
+    final q = _lastActiveQuery;
+    return fetchActiveTrips(
+      from: q?.from,
+      to: q?.to,
+      minDepartureTime: q?.minDepartureTime,
+      country: q?.country,
+    );
   }
 
   // Hide trip
@@ -333,34 +376,53 @@ class TripProvider extends ChangeNotifier {
     }
   }
 
+  /// Trips leaving near [userLocation], nearest first. The radius is applied
+  /// by the backend over every upcoming trip — filtering a first page of the
+  /// global list here used to drop nearby trips that departed later than 20
+  /// trips elsewhere.
   Stream<List<TripModel>> getNearbyTripsStream({
     required String excludeDriverId,
     required LocationModel userLocation,
-    required DateTime minDepartureTime,
     double maxDistanceKm = 100,
     int limit = 5,
-  }) {
-    return getActiveTripsStream(minDepartureTime: minDepartureTime).map((
-      trips,
-    ) {
-      trips = trips.where((trip) => trip.driverId != excludeDriverId).toList();
-
-      final tripsWithDistance = trips.map((trip) {
-        final distance = _locationService.calculateDistanceBetweenLocations(
-          userLocation,
-          trip.from,
-        );
-        return MapEntry(trip, distance);
-      }).toList();
-
-      tripsWithDistance.sort((a, b) => a.value.compareTo(b.value));
-
-      tripsWithDistance.removeWhere((e) => e.value > maxDistanceKm);
-
-      return tripsWithDistance.take(limit).map((entry) => entry.key).toList();
-    });
+  }) async* {
+    final key =
+        '${userLocation.latitude},${userLocation.longitude}|$excludeDriverId|$maxDistanceKm|$limit';
+    if (_nearbyKey != key) {
+      _nearbyKey = key;
+      _nearbyQuery = (
+        location: userLocation,
+        excludeDriverId: excludeDriverId,
+        radiusKm: maxDistanceKm,
+        limit: limit,
+      );
+      _nearbyTrips = [];
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(fetchNearbyTrips());
+      });
+    }
+    yield _nearbyTrips;
+    yield* _nearbyTripsController.stream;
   }
 
+  /// Re-runs the last nearby query (pull-to-refresh, seat updates).
+  Future<void> fetchNearbyTrips() async {
+    final query = _nearbyQuery;
+    if (query == null) return;
+    final trips = await _tripService.getNearbyTrips(
+      riderLocation: query.location,
+      radiusKm: query.radiusKm,
+    );
+    // A newer location may have been set while this was in flight.
+    if (!identical(query, _nearbyQuery)) return;
+    _nearbyTrips = trips
+        .where((trip) => trip.driverId != query.excludeDriverId)
+        .take(query.limit)
+        .toList();
+    if (!_nearbyTripsController.isClosed) {
+      _nearbyTripsController.add(_nearbyTrips);
+    }
+  }
   // Subscribe to trip for real-time seat updates
   void subscribeToTrip(String tripId) {
     _socket.subscribeToTrip(tripId);
