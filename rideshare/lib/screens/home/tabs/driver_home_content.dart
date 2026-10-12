@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../../core/constants/route_names.dart';
@@ -63,6 +64,31 @@ class _DriverHomeContentState extends State<DriverHomeContent> {
   String _pendingRequestsKey = '';
   int _pendingRequests = 0;
 
+  /// When the shown place name was last re-resolved for a moving driver.
+  DateTime _lastRenamedAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// While online the card shows the position rides are dispatched by — the
+  /// one the server just accepted — not a fix taken when the screen opened.
+  /// The place name is looked up again once the driver has moved away.
+  void _onLocationSent(double latitude, double longitude) {
+    if (!mounted) return;
+    setState(() => _locationStampedAt = DateTime.now());
+    final shown = widget.userLocation;
+    if (shown == null || widget.isLoadingLocation) return;
+    final movedMeters = Geolocator.distanceBetween(
+      shown.latitude,
+      shown.longitude,
+      latitude,
+      longitude,
+    );
+    final now = DateTime.now();
+    if (movedMeters > 1000 &&
+        now.difference(_lastRenamedAt) > const Duration(minutes: 2)) {
+      _lastRenamedAt = now;
+      widget.onRefreshLocation();
+    }
+  }
+
   @override
   void didUpdateWidget(covariant DriverHomeContent oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -101,6 +127,7 @@ class _DriverHomeContentState extends State<DriverHomeContent> {
                       setState(() => _isOnline = value);
                     }
                   },
+                  onLocationSent: _onLocationSent,
                 ),
               ),
               SliverToBoxAdapter(child: _buildPublishTripCta(context)),

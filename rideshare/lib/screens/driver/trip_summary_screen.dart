@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
@@ -5,7 +7,9 @@ import 'package:intl/intl.dart' hide TextDirection;
 
 import '../../core/api/api_client.dart';
 import '../../core/constants/route_names.dart';
+import '../../core/services/active_ride_navigator.dart';
 import '../../core/services/booking_service.dart';
+import '../../core/services/ride_payment_service.dart';
 import '../../core/services/payment_service.dart';
 import '../../core/services/trip_service.dart';
 import '../../core/theme/colors.dart';
@@ -13,6 +17,7 @@ import '../../core/theme/text_styles.dart';
 import '../../core/ui/error_surface.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/booking_model.dart';
+import '../../models/ride_payment.dart';
 import '../../models/trip_fee_quote.dart';
 import '../../models/trip_model.dart';
 import '../../models/wallet_account_model.dart';
@@ -41,8 +46,9 @@ double? resolveTripSummaryFee({
 
   final captured = capturedFromSettlement ?? capturedOnTrip;
   if (captured != null) {
-    final parsed =
-        captured is num ? captured.toDouble() : double.tryParse('$captured');
+    final parsed = captured is num
+        ? captured.toDouble()
+        : double.tryParse('$captured');
     if (parsed != null) return round2(parsed);
   }
   if (quotedAmount != null) return round2(quotedAmount);
@@ -53,11 +59,7 @@ double? resolveTripSummaryFee({
 /// Matches the driver "انتهت الرحلة بنجاح" design: route stats, presence roster,
 /// fee breakdown, and wallet deduction / pay-now states.
 class TripSummaryScreen extends StatefulWidget {
-  const TripSummaryScreen({
-    super.key,
-    required this.tripId,
-    this.settlement,
-  });
+  const TripSummaryScreen({super.key, required this.tripId, this.settlement});
 
   final String tripId;
   final Map<String, dynamic>? settlement;
@@ -76,6 +78,10 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
   final TripService _tripService = TripService();
   final BookingService _bookingService = BookingService();
   final PaymentService _paymentService = PaymentService();
+  final RidePaymentService _ridePayments = RidePaymentService();
+  List<RidePayment> _payments = const [];
+  String? _settlingBookingId;
+  Timer? _paymentsPoll;
 
   TripModel? _trip;
   List<BookingModel> _bookings = const [];
@@ -89,6 +95,134 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
     super.initState();
     _settlement = widget.settlement;
     _load();
+  }
+
+  @override
+  void dispose() {
+    _paymentsPoll?.cancel();
+    ActiveRideNavigator.left(ActiveRideNavigator.paymentKey(widget.tripId));
+    super.dispose();
+  }
+
+  /// A cash fare still waits on the driver's answer: they can't leave until
+  /// they say whether they were paid — the passenger's screen waits on it.
+  /// CliQ fares settle with the bank and never hold the driver here.
+  bool get _awaitingPayment => _payments.any((p) => p.awaitsDriver);
+
+  Future<void> _loadPayments() async {
+    final trip = _trip;
+    if (trip == null || !trip.isCompleted) return;
+    try {
+      final payments = await _ridePayments.forTrip(widget.tripId);
+      if (!mounted) return;
+      setState(() => _payments = payments);
+      // Watch CliQ requests that are still out until the bank answers.
+      _paymentsPoll?.cancel();
+      if (payments.any((p) => p.isCliqRequested)) {
+        _paymentsPoll = Timer(const Duration(seconds: 8), _loadPayments);
+      }
+    } catch (_) {
+      // Shown again on the next refresh.
+    }
+  }
+
+  Future<void> _confirmCash(
+    RidePayment payment, {
+    required bool received,
+  }) async {
+    String? note;
+    if (!received) {
+      final answer = await _askNonPaymentNote();
+      if (answer == null) return; // cancelled
+      note = answer;
+    }
+    if (!mounted) return;
+    setState(() => _settlingBookingId = payment.bookingId);
+    try {
+      final updated = await _ridePayments.confirmCash(
+        payment.bookingId,
+        received: received,
+        note: note,
+      );
+      if (!mounted) return;
+      setState(() {
+        _payments = [
+          for (final p in _payments)
+            p.bookingId == updated.bookingId ? updated : p,
+        ];
+      });
+      if (!received) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.instantPaymentReportedToast)),
+        );
+      }
+    } catch (e) {
+      if (mounted) ErrorSurface.showFailure(context, ApiClient.mapError(e));
+    } finally {
+      if (mounted) setState(() => _settlingBookingId = null);
+    }
+  }
+
+  /// «لم يدفع الراكب»: confirm, with an optional note for the team. Returns
+  /// null when the driver backs out.
+  Future<String?> _askNonPaymentNote() {
+    final controller = TextEditingController();
+    final l10n = context.l10n;
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.instantPaymentNotPaidTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l10n.instantPaymentNotPaidBody),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              maxLines: 3,
+              maxLength: 1000,
+              decoration: InputDecoration(
+                hintText: l10n.instantPaymentNotPaidHint,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l10n.cancel),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _feeRed,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+            child: Text(l10n.instantPaymentNotPaidConfirm),
+          ),
+        ],
+      ),
+    ).whenComplete(controller.dispose);
+  }
+
+  /// Any trip: report a problem to the team (against the passenger on an
+  /// instant ride).
+  void _reportProblem() {
+    final trip = _trip;
+    if (trip == null) return;
+    final passengerId = trip.isInstant && _bookings.isNotEmpty
+        ? _bookings.first.userId
+        : null;
+    Navigator.pushNamed(
+      context,
+      RouteNames.complaint,
+      arguments: {
+        'tripId': trip.id,
+        if (passengerId != null) 'againstUserId': passengerId,
+      },
+    );
   }
 
   Future<void> _load() async {
@@ -120,7 +254,7 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
         _wallet = wallet;
         _loading = false;
       });
-      await _loadFeeQuote(trip);
+      await Future.wait([_loadFeeQuote(trip), _loadPayments()]);
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -135,6 +269,7 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
     final quote = await _tripService.getTripFeeQuote(
       seatPrice: trip.price,
       totalSeats: trip.totalSeats,
+      currency: trip.currency,
     );
     if (!mounted) return;
     setState(() => _feeQuote = quote);
@@ -149,18 +284,17 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
         (_settlement?['billableSeats'] as num?)?.toInt() ??
         _trip?.billableSeatCount;
     if (fromSettlement != null) return fromSettlement;
-    return _passengerRows.where((r) => r.confirmed).fold<int>(
-          0,
-          (sum, r) => sum + r.seatCount,
-        );
+    return _passengerRows
+        .where((r) => r.confirmed)
+        .fold<int>(0, (sum, r) => sum + r.seatCount);
   }
 
   /// What the platform actually took from the wallet at trip start.
   double? get _serviceFee => resolveTripSummaryFee(
-        capturedFromSettlement: _settlement?['captured'],
-        capturedOnTrip: _trip?.capturedFeeAmount,
-        quotedAmount: _feeQuote?.amount,
-      );
+    capturedFromSettlement: _settlement?['captured'],
+    capturedOnTrip: _trip?.capturedFeeAmount,
+    quotedAmount: _feeQuote?.amount,
+  );
 
   /// Whatever the fee actually was, for arithmetic that must not show a blank.
   double get _serviceFeeOrZero => _serviceFee ?? 0;
@@ -218,8 +352,7 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
     return rows;
   }
 
-  int get _confirmedCount =>
-      _passengerRows.where((r) => r.confirmed).length;
+  int get _confirmedCount => _passengerRows.where((r) => r.confirmed).length;
 
   String _money(double amount) {
     final formatted = amount.toStringAsFixed(2);
@@ -257,10 +390,9 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
   }
 
   void _goHome() {
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      RouteNames.home,
-      (route) => false,
-    );
+    Navigator.of(
+      context,
+    ).pushNamedAndRemoveUntil(RouteNames.home, (route) => false);
   }
 
   void _openHelp() {
@@ -283,6 +415,10 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return PopScope(canPop: !_awaitingPayment, child: _buildScaffold(context));
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -299,6 +435,10 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
                         padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                         children: [
                           _buildHeader(),
+                          if (_payments.isNotEmpty) ...[
+                            const SizedBox(height: 20),
+                            _buildPaymentsCard(),
+                          ],
                           const SizedBox(height: 20),
                           _buildRouteCard(_trip!),
                           const SizedBox(height: 16),
@@ -308,7 +448,11 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
                           const SizedBox(height: 12),
                           _buildWalletBanner(),
                           const SizedBox(height: 16),
-                          _buildChatButton(),
+                          if (!_trip!.isInstant) ...[
+                            _buildChatButton(),
+                            const SizedBox(height: 12),
+                          ],
+                          _buildReportButton(),
                           const SizedBox(height: 12),
                           _buildHomeButton(),
                         ],
@@ -327,7 +471,7 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
       child: Row(
         children: [
           IconButton(
-            onPressed: _goHome,
+            onPressed: _awaitingPayment ? null : _goHome,
             icon: const Icon(Icons.close, size: 24),
             color: const Color(0xFF111827),
           ),
@@ -477,9 +621,7 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
                   icon: IconsaxPlusLinear.routing_2,
                   value: distance != null
                       ? context.l10n.distanceKmValue(
-                          distance.toStringAsFixed(
-                            distance >= 10 ? 0 : 1,
-                          ),
+                          distance.toStringAsFixed(distance >= 10 ? 0 : 1),
                         )
                       : '—',
                 ),
@@ -487,9 +629,9 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
                 _statCell(
                   label: context.l10n.tripSummaryDuration,
                   icon: IconsaxPlusLinear.clock,
-                  value: _formatDuration(duration.isNegative
-                      ? Duration.zero
-                      : duration),
+                  value: _formatDuration(
+                    duration.isNegative ? Duration.zero : duration,
+                  ),
                 ),
                 _vDivider(),
                 _statCell(
@@ -973,7 +1115,7 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: _goHome,
+        onPressed: _awaitingPayment ? null : _goHome,
         style: ElevatedButton.styleFrom(
           backgroundColor: _brand,
           foregroundColor: Colors.white,
@@ -990,6 +1132,175 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
             fontWeight: FontWeight.w700,
           ),
         ),
+      ),
+    );
+  }
+}
+
+extension on _TripSummaryScreenState {
+  /// Every rider's fare: cash ones the driver confirms here (or reports as
+  /// unpaid); CliQ ones show how the bank side is going.
+  Widget _buildPaymentsCard() {
+    final l10n = context.l10n;
+    return Container(
+      key: const ValueKey('ride-payments-card'),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FDFA),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _TripSummaryScreenState._brand.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            l10n.ridePaymentsCardTitle,
+            style: AppTextStyles.titleSmall.copyWith(
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF111827),
+            ),
+          ),
+          for (final payment in _payments) ...[
+            const SizedBox(height: 12),
+            _buildPaymentRow(payment),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentRow(RidePayment payment) {
+    final l10n = context.l10n;
+    final busy = _settlingBookingId == payment.bookingId;
+    final (String status, Color color) = switch (payment.status) {
+      'paid' when payment.isCliq => (
+        l10n.ridePaymentDriverPaidCliq,
+        _TripSummaryScreenState._successGreen,
+      ),
+      'paid' => (
+        l10n.ridePaymentDriverPaidCash,
+        _TripSummaryScreenState._successGreen,
+      ),
+      'disputed' => (
+        l10n.instantPaymentReportedLabel,
+        _TripSummaryScreenState._feeRed,
+      ),
+      'requested' => (
+        l10n.ridePaymentDriverCliqPending,
+        _TripSummaryScreenState._muted,
+      ),
+      'failed' => (
+        l10n.ridePaymentDriverCliqFailed,
+        _TripSummaryScreenState._feeRed,
+      ),
+      _ => (l10n.instantPaymentCollectTitle, _TripSummaryScreenState._brand),
+    };
+
+    return Container(
+      key: ValueKey('ride-payment-${payment.bookingId}'),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _TripSummaryScreenState._cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  payment.passengerName ?? l10n.passengerFallback,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF111827),
+                  ),
+                ),
+              ),
+              Text(
+                _money(payment.amount),
+                style: AppTextStyles.bodyLarge.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF111827),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${payment.isCliq ? l10n.paymentMethodCliq : l10n.paymentMethodCash} · $status',
+            style: AppTextStyles.bodySmall.copyWith(color: color),
+          ),
+          if (payment.awaitsDriver) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    key: ValueKey('ride-payment-received-${payment.bookingId}'),
+                    onPressed: busy
+                        ? null
+                        : () => _confirmCash(payment, received: true),
+                    icon: busy
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(IconsaxPlusBold.tick_circle, size: 18),
+                    label: Text(l10n.instantPaymentReceivedAction),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _TripSummaryScreenState._successGreen,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  key: ValueKey('ride-payment-not-paid-${payment.bookingId}'),
+                  onPressed: busy
+                      ? null
+                      : () => _confirmCash(payment, received: false),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _TripSummaryScreenState._feeRed,
+                    side: const BorderSide(
+                      color: _TripSummaryScreenState._feeRed,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: Text(l10n.instantPaymentNotPaidAction),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReportButton() {
+    return TextButton.icon(
+      key: const ValueKey('trip-summary-report'),
+      onPressed: _reportProblem,
+      icon: const Icon(IconsaxPlusLinear.flag, size: 20),
+      label: Text(context.l10n.tripReportProblem),
+      style: TextButton.styleFrom(
+        foregroundColor: _TripSummaryScreenState._feeRed,
+        padding: const EdgeInsets.symmetric(vertical: 12),
       ),
     );
   }

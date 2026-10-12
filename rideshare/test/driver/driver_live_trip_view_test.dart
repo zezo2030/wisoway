@@ -12,7 +12,11 @@ import 'package:rideshare/models/user_model.dart';
 import 'package:rideshare/screens/driver/widgets/driver_live_trip_view.dart';
 
 void main() {
-  TripModel trip({String type = 'instant'}) => TripModel(
+  TripModel trip({
+    String type = 'instant',
+    bool arrived = false,
+    bool started = false,
+  }) => TripModel(
     id: 't-1',
     driverId: 'd-1',
     from: LocationModel(name: 'ساق، العلا', latitude: 26.6, longitude: 37.9),
@@ -24,7 +28,10 @@ void main() {
     availableSeats: 0,
     status: 'in_progress',
     tripType: type,
-    tripStartedAt: DateTime.now(),
+    // Shared trips are under way from the start; instant rides move on
+    // only when the driver presses «وصلت» / «بدء الرحلة».
+    driverArrivedAt: arrived || started ? DateTime.now() : null,
+    tripStartedAt: type != 'instant' || started ? DateTime.now() : null,
     seatLayout: SeatLayoutConfig(rows: 1, seatsPerRow: 1),
     seats: const <SeatData>[],
     distanceKm: 10.8,
@@ -64,6 +71,7 @@ void main() {
     List<BookingModel> bookings = const [],
     LatLng? driver,
     VoidCallback? onBack,
+    VoidCallback? onStartRide,
   }) async {
     // A phone-shaped screen: everything must fit without scrolling.
     tester.view.physicalSize = const Size(1080, 2400);
@@ -82,6 +90,8 @@ void main() {
             trackingActive: driver != null,
             markingArrived: false,
             onArrived: () {},
+            onArrivedAtPickup: () {},
+            onStartRide: onStartRide ?? () {},
             onEnableTracking: () {},
             onChatPassenger: (_) {},
             phoneOf: (_) => null,
@@ -123,7 +133,8 @@ void main() {
     expect(find.text('ayat'), findsOneWidget);
     expect(find.text('7.39 JOD'), findsOneWidget);
     expect(find.text('ملاحة'), findsOneWidget);
-    expect(find.text('تم الوصول للوجهة'), findsOneWidget);
+    expect(find.text('وصلت إلى الراكب'), findsOneWidget);
+    expect(find.text('تم الوصول للوجهة'), findsNothing);
     // Locked: no way back.
     expect(find.byType(BackButtonIcon), findsNothing);
   });
@@ -136,12 +147,74 @@ void main() {
     expect(find.text('فعّل الموقع حتى يرى الراكب مكانك'), findsOneWidget);
   });
 
-  testWidgets('instant ride: passenger on board once the driver is there', (
+  testWidgets('instant ride: being at the pickup does not board the passenger', (
     tester,
   ) async {
     await pump(tester, trip: trip(), driver: const LatLng(26.6001, 37.9001));
 
+    expect(find.text('الراكب معك — في الطريق إلى الوجهة'), findsNothing);
+    expect(find.text('وصلت إلى الراكب'), findsOneWidget);
+  });
+
+  testWidgets('instant ride: after «وصلت» the driver starts the ride', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      trip: trip(arrived: true),
+      driver: const LatLng(26.6001, 37.9001),
+    );
+
+    expect(find.text('بانتظار ركوب الراكب'), findsOneWidget);
+    expect(find.text('بدء الرحلة'), findsOneWidget);
+    expect(find.text('تم الوصول للوجهة'), findsNothing);
+  });
+
+  testWidgets('instant ride: once started, the passenger is on board', (
+    tester,
+  ) async {
+    await pump(tester, trip: trip(started: true));
+
     expect(find.text('الراكب معك — في الطريق إلى الوجهة'), findsOneWidget);
+    expect(find.text('تم الوصول للوجهة'), findsOneWidget);
+  });
+
+  testWidgets('instant ride: driving off without starting asks to start', (
+    tester,
+  ) async {
+    var started = 0;
+    final arrivedTrip = trip(arrived: true);
+    await pump(
+      tester,
+      trip: arrivedTrip,
+      driver: const LatLng(26.6001, 37.9001),
+      onStartRide: () => started++,
+    );
+    expect(find.text('هل بدأت الرحلة؟'), findsNothing);
+
+    // ~1 km down the road, still not started.
+    await pump(
+      tester,
+      trip: arrivedTrip,
+      driver: const LatLng(26.59, 37.9),
+      onStartRide: () => started++,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('هل بدأت الرحلة؟'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(ElevatedButton, 'بدء الرحلة').last);
+    await tester.pumpAndSettle();
+    expect(started, 1);
+  });
+
+  testWidgets('instant ride: no prompt before the driver reached the pickup', (
+    tester,
+  ) async {
+    await pump(tester, trip: trip(), driver: const LatLng(26.7, 37.9));
+    await pump(tester, trip: trip(), driver: const LatLng(26.65, 37.9));
+    await tester.pumpAndSettle();
+
+    expect(find.text('هل بدأت الرحلة؟'), findsNothing);
   });
 
   testWidgets('shared trip: passengers on board, revenue totals the bookings', (
@@ -179,6 +252,6 @@ void main() {
     await tester.pump();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('تم الوصول للوجهة'), findsOneWidget);
+    expect(find.text('وصلت إلى الراكب'), findsOneWidget);
   });
 }

@@ -81,6 +81,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       }
     }
 
-    return user;
+    // The device this session belongs to, so device endpoints can tell the
+    // caller's own device apart (read with @CurrentUser('currentDeviceId')).
+    return Object.assign(user, { currentDeviceId: (did as string) ?? null });
   }
 }

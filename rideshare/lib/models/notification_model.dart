@@ -22,6 +22,21 @@ class NotificationType {
   static const String instantMatched = 'instant_matched';
   static const String driverApproved = 'driver_approved';
   static const String driverRejected = 'driver_rejected';
+  static const String instantNoDrivers = 'instant_no_drivers';
+  static const String tripCompleted = 'trip_completed';
+  static const String tripAutoCompleted = 'trip_auto_completed';
+  static const String ridePaymentDue = 'ride_payment_due';
+  static const String ridePaymentRequested = 'ride_payment_requested';
+  static const String ridePaymentFailed = 'ride_payment_failed';
+  static const String ridePaymentCashSwitch = 'ride_payment_cash_switch';
+  static const String ridePaymentPaid = 'ride_payment_paid';
+  static const String ridePaymentDisputed = 'ride_payment_disputed';
+  static const String rideFareCredited = 'ride_fare_credited';
+  static const String tripFeeCharged = 'trip_fee_charged';
+  static const String tripPayment = 'trip_payment';
+  static const String settlementMarkedPaid = 'settlement_marked_paid';
+  static const String driverFineIssued = 'driver_fine_issued';
+  static const String penaltyCharged = 'penalty_charged';
 }
 
 class NotificationModel {

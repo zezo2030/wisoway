@@ -602,6 +602,7 @@ class AuthProvider extends ChangeNotifier {
     String? role,
     File? profileImage,
     bool? hidePhoneNumber,
+    String? cliqAlias,
   }) async {
     try {
       _setLoading(true);
@@ -621,6 +622,7 @@ class AuthProvider extends ChangeNotifier {
         gender: gender,
         profileImageUrl: profileImageUrl,
         hidePhoneNumber: hidePhoneNumber,
+        cliqAlias: cliqAlias,
       );
 
       // Update role explicitly if not passenger yet or if role is specifically provided

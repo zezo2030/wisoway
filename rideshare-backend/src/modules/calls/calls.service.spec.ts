@@ -27,6 +27,7 @@ describe('CallsService', () => {
   };
   const mockProxyPoolService = {
     allocate: jest.fn(),
+    isConfigured: true,
   };
 
   beforeEach(async () => {
@@ -83,6 +84,51 @@ describe('CallsService', () => {
     expect(result).toBeDefined();
     expect(result.callSessionId).toBe('session-1');
     expect(result.proxyNumberE164).toBe('+962790000001');
+  });
+
+  describe('without proxy numbers', () => {
+    beforeEach(() => {
+      mockProxyPoolService.isConfigured = false;
+      bookingRepo.findOne.mockResolvedValue({
+        id: 'b-1',
+        userId: 'rider-1',
+        status: 'confirmed',
+        trip: { driverId: 'driver-1' },
+      });
+    });
+    afterEach(() => {
+      mockProxyPoolService.isConfigured = true;
+    });
+
+    it("dials the other party's own number", async () => {
+      userRepo.findOne
+        .mockResolvedValueOnce({ id: 'driver-1', phoneNumber: '+962700000001' })
+        .mockResolvedValueOnce({
+          id: 'rider-1',
+          phoneNumber: '+962700000002',
+          hidePhoneNumber: false,
+        });
+
+      const result = await service.initiate('b-1', 'driver-1');
+
+      expect(result.proxyNumberE164).toBe('+962700000002');
+      expect(proxyPoolService.allocate).not.toHaveBeenCalled();
+      expect(callSessionRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses when the other party hides their number', async () => {
+      userRepo.findOne
+        .mockResolvedValueOnce({ id: 'driver-1', phoneNumber: '+962700000001' })
+        .mockResolvedValueOnce({
+          id: 'rider-1',
+          phoneNumber: '+962700000002',
+          hidePhoneNumber: true,
+        });
+
+      await expect(service.initiate('b-1', 'driver-1')).rejects.toMatchObject({
+        response: expect.objectContaining({ code: 'PHONE_HIDDEN' }),
+      });
+    });
   });
 
   it('throws NotFoundException when the booking does not exist', async () => {

@@ -120,6 +120,16 @@ export class InstantRideRequestEntity {
   @Column({ type: 'varchar', length: 5, default: 'JOD' })
   currency: string;
 
+  /**
+   * `cash` to the driver, or `cliq` — a CliQ request-to-pay to the platform
+   * at the end of the ride (to [payerCliqAlias]). Copied onto the booking.
+   */
+  @Column({ type: 'varchar', length: 10, default: 'cash' })
+  paymentMethod: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  payerCliqAlias: string | null;
+
   /** Current search radius in km; expands while searching. */
   @Column({ type: 'double precision', default: 3 })
   radiusKm: number;

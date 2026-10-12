@@ -72,6 +72,15 @@ class ApiClient {
     }
   }
 
+  Future<dynamic> put(String path, {dynamic data}) async {
+    try {
+      final response = await _dio.put(path, data: data);
+      return response.data;
+    } catch (e, st) {
+      throw ExceptionMapper.fromError(e, st);
+    }
+  }
+
   Future<dynamic> delete(String path, {dynamic data}) async {
     try {
       final response = await _dio.delete(path, data: data);

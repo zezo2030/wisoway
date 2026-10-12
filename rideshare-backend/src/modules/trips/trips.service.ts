@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, MoreThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 import {
@@ -42,6 +42,7 @@ import {
   TripPassengerSummaryService,
 } from '../bookings/trip-passenger-summary.service';
 import {
+  COUNTRY_CURRENCY,
   currencyForCountry,
   DEFAULT_CURRENCY,
 } from '../../common/currency/country-currency';
@@ -300,7 +301,7 @@ export class TripsService {
     return { min, max: max > min ? max : min + 1 };
   }
 
-  async getPricingPreview(tripId: string, countryCode: string = 'JO') {
+  async getPricingPreview(tripId: string, countryCode?: string) {
     const trip = await this.findById(tripId);
     return this.platformPricing.pricingPreviewForTrip(trip, countryCode);
   }
@@ -690,6 +691,17 @@ export class TripsService {
       qb.andWhere('trip.departureTime >= :startDate', { startDate });
       qb.andWhere('trip.departureTime < :endDate', { endDate });
     }
+    if (filters.departureAfter) {
+      qb.andWhere('trip.departureTime >= :departureAfter', {
+        departureAfter: new Date(filters.departureAfter),
+      });
+    }
+    const countryCode = filters.country?.trim().toUpperCase();
+    if (countryCode && COUNTRY_CURRENCY[countryCode]) {
+      qb.andWhere('trip.currency = :countryCurrency', {
+        countryCurrency: COUNTRY_CURRENCY[countryCode],
+      });
+    }
     if (filters.minPrice !== undefined) {
       qb.andWhere('trip.price >= :minPrice', {
         minPrice: String(filters.minPrice),
@@ -992,20 +1004,9 @@ export class TripsService {
     const skip = (page - 1) * limit;
     const now = new Date();
 
-    const candidates = await this.tripRepo.find({
-      where: {
-        status: TripStatus.PUBLISHED,
-        isVisible: true,
-      },
-      order: { departureTime: 'ASC' },
-      take: 300,
-    });
+    const candidates = await this.upcomingOpenTrips(now, 300);
 
     const withDistance = candidates
-      .filter(
-        (trip) =>
-          trip.availableSeats > 0 && new Date(trip.departureTime) >= now,
-      )
       .map((trip) => {
         const { lat, lng } = getFromLatLng(trip);
         return {
@@ -1040,18 +1041,9 @@ export class TripsService {
     const skip = (page - 1) * limit;
     const now = new Date();
 
-    const candidates = await this.tripRepo.find({
-      where: {
-        status: TripStatus.PUBLISHED,
-        isVisible: true,
-      },
-      order: { departureTime: 'ASC' },
-      take: 500,
-    });
+    const candidates = await this.upcomingOpenTrips(now, 500);
 
     const inRadius = candidates.filter((trip) => {
-      if (trip.availableSeats <= 0 || new Date(trip.departureTime) < now)
-        return false;
       const { lat, lng } = getFromLatLng(trip);
       return (
         this.calculateDistanceKm(latitude, longitude, lat, lng) <= radiusKm
@@ -1109,6 +1101,24 @@ export class TripsService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  /**
+   * Published trips still ahead with a free seat, soonest first. Departed and
+   * full trips are dropped in SQL so they never use up the [take] budget the
+   * distance filters run over.
+   */
+  private upcomingOpenTrips(now: Date, take: number): Promise<TripEntity[]> {
+    return this.tripRepo.find({
+      where: {
+        status: TripStatus.PUBLISHED,
+        isVisible: true,
+        availableSeats: MoreThan(0),
+        departureTime: MoreThanOrEqual(now),
+      },
+      order: { departureTime: 'ASC' },
+      take,
+    });
   }
 
   /**

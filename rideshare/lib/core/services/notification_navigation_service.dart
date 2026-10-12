@@ -93,6 +93,17 @@ class NotificationNavigationService {
         ActiveRideNavigator.resume();
         break;
 
+      // Fares at the end of a ride: back to the passenger's payment screen /
+      // the driver's trip summary, wherever the user is.
+      case 'ride_payment_due':
+      case 'ride_payment_requested':
+      case 'ride_payment_failed':
+        _openRidePayment(data, isDriver: false);
+        break;
+      case 'ride_payment_cash_switch':
+        _openRidePayment(data, isDriver: true);
+        break;
+
       case 'driver_approved':
       case 'driver_rejected':
         // Driver account review outcome → open the driver account status screen
@@ -100,9 +111,25 @@ class NotificationNavigationService {
         break;
 
       default:
-        // Navigate to notifications screen for unknown types
-        _navigateToRoute(RouteNames.notifications);
+        // Anything else about one trip (a rating, trip started or ended…)
+        // opens that trip; its details screen hands drivers on to trip
+        // management. The rest land on the notifications list.
+        final tripId = (data['tripId'] ?? data['entityId'])?.toString() ?? '';
+        if (tripId.isNotEmpty) {
+          _navigateToRoute(RouteNames.tripDetails, arguments: tripId);
+        } else {
+          _navigateToRoute(RouteNames.notifications);
+        }
     }
+  }
+
+  static void _openRidePayment(
+    Map<String, dynamic> data, {
+    required bool isDriver,
+  }) {
+    final tripId = data['tripId']?.toString() ?? '';
+    if (tripId.isEmpty) return;
+    ActiveRideNavigator.enterPayment(tripId, isDriver: isDriver);
   }
 
   static void _handleInstantOfferNotification(Map<String, dynamic> data) {

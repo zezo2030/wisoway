@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
+import '../../core/maps/poi_tap_listener.dart';
 import '../../core/services/location_service.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/text_styles.dart';
@@ -12,8 +13,9 @@ import '../../models/location_model.dart';
 
 /// Pick an exact point by moving the map under a fixed centre pin.
 ///
-/// The pin never moves and the map is not tappable — the user drags the map
-/// beneath it and confirms, which is the inDrive interaction. There is no
+/// The pin never moves — the user drags the map beneath it and confirms,
+/// which is the inDrive interaction. The one shortcut: tapping a place Google
+/// draws on the map (a restaurant, a school...) picks it at once. There is no
 /// search field here on purpose: text search lives in the route search screen,
 /// so a query only ever hits one code path.
 ///
@@ -62,6 +64,7 @@ class _MapPointPickerScreenState extends State<MapPointPickerScreen> {
       widget.locationService ?? LocationService();
 
   GoogleMapController? _mapController;
+  PoiTapListener? _poiTaps;
   Timer? _idleTimer;
   CancelToken? _addressRequest;
 
@@ -85,8 +88,29 @@ class _MapPointPickerScreenState extends State<MapPointPickerScreen> {
   void dispose() {
     _idleTimer?.cancel();
     _addressRequest?.cancel();
+    _poiTaps?.dispose();
     _mapController?.dispose();
     super.dispose();
+  }
+
+  void _onMapCreated(GoogleMapController controller) {
+    _mapController = controller;
+    _poiTaps = PoiTapListener(controller.mapId, _onPoiTap);
+  }
+
+  /// A tapped place is the answer: its own name and position, no drag and no
+  /// confirm needed.
+  void _onPoiTap(PoiTap poi) {
+    if (!mounted || poi.name.isEmpty) return;
+    _idleTimer?.cancel();
+    _addressRequest?.cancel();
+    Navigator.of(context).pop(
+      LocationModel(
+        name: poi.name,
+        latitude: poi.position.latitude,
+        longitude: poi.position.longitude,
+      ),
+    );
   }
 
   Future<void> _resolveInitialCamera() async {
@@ -249,7 +273,7 @@ class _MapPointPickerScreenState extends State<MapPointPickerScreen> {
         target: _center ?? _wideFallbackCenter,
         zoom: _initialZoom,
       ),
-      onMapCreated: (controller) => _mapController = controller,
+      onMapCreated: _onMapCreated,
       onCameraMoveStarted: _onCameraMoveStarted,
       onCameraMove: _onCameraMove,
       onCameraIdle: _onCameraIdle,

@@ -8,9 +8,13 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useLanguage } from "@/providers/language-provider"
+
+/** Markets with a fee schedule; each trip is charged on its departure country's. */
+const PRICING_COUNTRIES = ["JO", "SA", "AE", "QA", "KW", "BH", "OM", "EG", "IQ", "PS", "LB", "SY"] as const
 
 function num(v: number | string | undefined): number {
   if (v === undefined || v === null) return 0
@@ -22,14 +26,13 @@ function num(v: number | string | undefined): number {
 export default function PricingSettingsPage() {
   const qc = useQueryClient()
   const { t } = useLanguage()
-  const countryCode = "JO"
+  const [countryCode, setCountryCode] = useState<string>("JO")
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "pricing-settings", countryCode],
     queryFn: () => getPlatformPricingSettings(countryCode),
   })
 
   const [feeAmount, setFeeAmount] = useState("")
-  const [currency, setCurrency] = useState("JOD")
   const [passengerPct, setPassengerPct] = useState("")
   const [driverUnlockPct, setDriverUnlockPct] = useState("")
   const [isActive, setIsActive] = useState(true)
@@ -38,7 +41,6 @@ export default function PricingSettingsPage() {
   useEffect(() => {
     if (!data) return
     setFeeAmount(String(num(data.feeAmount)))
-    setCurrency(data.currency || "JOD")
     setPassengerPct(String(num(data.passengerPlatformPercent)))
     setDriverUnlockPct(String(num(data.driverUnlockPercent)))
     setIsActive(!!data.isActive)
@@ -49,7 +51,7 @@ export default function PricingSettingsPage() {
     mutationFn: () =>
       patchPlatformPricingSettings(countryCode, {
         feeAmount: parseFloat(feeAmount) || 0,
-        currency,
+        currency: data?.currency,
         isActive,
         passengerPlatformPercent: parseFloat(passengerPct) || 0,
         driverUnlockPercent: parseFloat(driverUnlockPct) || 0,
@@ -80,6 +82,26 @@ export default function PricingSettingsPage() {
         <p className="text-muted-foreground text-base">
           {t("pricingSubtitle")} <span className="font-semibold text-foreground">{countryCode}</span>.
         </p>
+        <div className="flex flex-wrap items-center gap-3 pt-2">
+          <Label htmlFor="pricingCountry">{t("pricingCountry")}</Label>
+          <Select value={countryCode} onValueChange={setCountryCode}>
+            <SelectTrigger id="pricingCountry" className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PRICING_COUNTRIES.map((code) => (
+                <SelectItem key={code} value={code}>
+                  {code}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {!data.id && (
+          <div className="bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-500 p-3 rounded-md text-sm font-medium border border-amber-200 dark:border-amber-900/50">
+            {t("pricingFallbackNote")}
+          </div>
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -173,13 +195,7 @@ export default function PricingSettingsPage() {
             <div className="grid gap-6 md:grid-cols-2">
               <div className="space-y-3">
                 <Label htmlFor="currency">{t("localCurrencyCode")}</Label>
-                <Input
-                  id="currency"
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value.toUpperCase())}
-                  maxLength={5}
-                  placeholder="e.g., JOD"
-                />
+                <Input id="currency" value={data.currency} readOnly disabled />
               </div>
 
               <div className="flex items-center gap-3 md:pt-8">

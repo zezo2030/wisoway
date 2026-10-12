@@ -3,6 +3,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import '../../../core/services/location_service.dart';
+import '../../../core/services/route_service.dart';
 import '../../../core/services/saved_places_service.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
@@ -12,6 +13,7 @@ import '../../location/route_search_screen.dart';
 import 'create_trip_stepper.dart';
 import 'create_trip_wizard_state.dart';
 import 'meeting_point_picker_screen.dart';
+import '../../../models/location_model.dart';
 import '../../../models/trip_meeting_point.dart';
 
 /// Wizard step 1 — pick the route: origin, destination and optional stops.
@@ -34,8 +36,6 @@ class Step1Route extends StatelessWidget {
 
   /// Backs the search screen's shortcuts and recent places.
   final SavedPlacesService savedPlaces;
-
-  static const double _avgHighwayKmh = 80;
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +63,7 @@ class Step1Route extends StatelessWidget {
           ],
           if (wizard.from != null && wizard.to != null) ...[
             const SizedBox(height: 16),
-            _buildRoutePreview(context),
+            _RoutePreviewCard(from: wizard.from!, to: wizard.to!),
           ],
         ],
       ),
@@ -87,7 +87,15 @@ class Step1Route extends StatelessWidget {
             previous == null ||
             from.latitude != previous.latitude ||
             from.longitude != previous.longitude) {
-          wizard.meetingPin = null;
+          // Start the pin at the origin itself so the card shows where
+          // passengers gather; the driver can still move it.
+          wizard.meetingPin = from == null
+              ? null
+              : TripMeetingPoint(
+                  latitude: from.latitude,
+                  longitude: from.longitude,
+                  address: from.address ?? from.name,
+                );
         }
         wizard.from = from;
         wizard.to = to;
@@ -369,12 +377,102 @@ class Step1Route extends StatelessWidget {
     );
   }
 
-  Widget _buildRoutePreview(BuildContext context) {
-    final from = wizard.from!;
-    final to = wizard.to!;
-    final km = LocationService().calculateDistanceBetweenLocations(from, to);
+  Future<void> _addStop(BuildContext context) async {
+    // Stops sit between the two endpoints, so open the map midway along the
+    // route when both are known rather than wherever the phone happens to be.
+    LatLng? fallback;
+    if (wizard.from != null && wizard.to != null) {
+      fallback = LatLng(
+        (wizard.from!.latitude + wizard.to!.latitude) / 2,
+        (wizard.from!.longitude + wizard.to!.longitude) / 2,
+      );
+    }
+
+    // A stop is searched for by name like any other place, with the map still
+    // one tap away inside the search screen.
+    final selection = await Navigator.push<RouteSelection>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RouteSearchScreen.singlePoint(
+          savedPlaces: savedPlaces,
+          title: context.l10n.selectStopNumber(wizard.stops.length + 1),
+          hint: context.l10n.routeSearchStopHint,
+          mapFallbackCenter: fallback,
+        ),
+      ),
+    );
+
+    final location = selection?.from;
+    if (location == null) return;
+    wizard.addStop(location);
+    onChanged();
+  }
+}
+
+/// Route preview: the road the trip will actually drive, with its distance and
+/// driving time. Until the road route arrives (or if it can't be loaded) it
+/// shows a straight line and a highway-speed estimate.
+class _RoutePreviewCard extends StatefulWidget {
+  const _RoutePreviewCard({required this.from, required this.to});
+
+  final LocationModel from;
+  final LocationModel to;
+
+  @override
+  State<_RoutePreviewCard> createState() => _RoutePreviewCardState();
+}
+
+class _RoutePreviewCardState extends State<_RoutePreviewCard> {
+  static const double _avgHighwayKmh = 80;
+
+  final RouteService _routeService = RouteService();
+  RouteOk? _route;
+  int _request = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRoute();
+  }
+
+  @override
+  void didUpdateWidget(covariant _RoutePreviewCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_samePoint(oldWidget.from, widget.from) ||
+        !_samePoint(oldWidget.to, widget.to)) {
+      _route = null;
+      _loadRoute();
+    }
+  }
+
+  static bool _samePoint(LocationModel a, LocationModel b) =>
+      a.latitude == b.latitude && a.longitude == b.longitude;
+
+  Future<void> _loadRoute() async {
+    final request = ++_request;
+    final result = await _routeService.fetchRoute(
+      origin: LatLng(widget.from.latitude, widget.from.longitude),
+      destination: LatLng(widget.to.latitude, widget.to.longitude),
+    );
+    // A newer origin/destination may have been picked meanwhile.
+    if (!mounted || request != _request) return;
+    if (result is RouteOk) setState(() => _route = result);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final from = widget.from;
+    final to = widget.to;
+    final route = _route;
+
+    final km = route?.distanceMeters != null
+        ? route!.distanceMeters! / 1000
+        : LocationService().calculateDistanceBetweenLocations(from, to);
     final distanceText = context.l10n.distanceKm('${km.round()}');
-    final minutesTotal = (km / _avgHighwayKmh * 60).round().clamp(1, 24 * 60);
+    final minutesTotal = (route?.durationSeconds != null
+            ? (route!.durationSeconds! / 60).round()
+            : (km / _avgHighwayKmh * 60).round())
+        .clamp(1, 24 * 60);
     final hours = minutesTotal ~/ 60;
     final minutes = minutesTotal % 60;
     final durationText = hours > 0
@@ -383,16 +481,8 @@ class Step1Route extends StatelessWidget {
 
     final fromLatLng = LatLng(from.latitude, from.longitude);
     final toLatLng = LatLng(to.latitude, to.longitude);
-    final bounds = LatLngBounds(
-      southwest: LatLng(
-        from.latitude < to.latitude ? from.latitude : to.latitude,
-        from.longitude < to.longitude ? from.longitude : to.longitude,
-      ),
-      northeast: LatLng(
-        from.latitude > to.latitude ? from.latitude : to.latitude,
-        from.longitude > to.longitude ? from.longitude : to.longitude,
-      ),
-    );
+    final points = route?.polyline ?? [fromLatLng, toLatLng];
+    final bounds = RouteService.computeBounds([fromLatLng, toLatLng, ...points]);
 
     return CreateTripCard(
       child: Column(
@@ -403,6 +493,9 @@ class Step1Route extends StatelessWidget {
               height: 180,
               width: double.infinity,
               child: GoogleMap(
+                // Lite mode renders a snapshot; rebuild it once the road
+                // route replaces the straight line.
+                key: ValueKey(route == null ? 'straight' : 'road'),
                 initialCameraPosition: CameraPosition(
                   target: LatLng(
                     (from.latitude + to.latitude) / 2,
@@ -429,9 +522,12 @@ class Step1Route extends StatelessWidget {
                 polylines: {
                   Polyline(
                     polylineId: const PolylineId('route'),
-                    points: [fromLatLng, toLatLng],
+                    points: points,
                     color: T.primary(context),
                     width: 4,
+                    patterns: route == null
+                        ? [PatternItem.dash(20), PatternItem.gap(12)]
+                        : const <PatternItem>[],
                   ),
                 },
                 liteModeEnabled: true,
@@ -441,7 +537,7 @@ class Step1Route extends StatelessWidget {
                 compassEnabled: false,
                 onMapCreated: (controller) {
                   controller.animateCamera(
-                    CameraUpdate.newLatLngBounds(bounds, 48),
+                    CameraUpdate.newLatLngBounds(bounds, 32),
                   );
                 },
               ),
@@ -502,36 +598,5 @@ class Step1Route extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  Future<void> _addStop(BuildContext context) async {
-    // Stops sit between the two endpoints, so open the map midway along the
-    // route when both are known rather than wherever the phone happens to be.
-    LatLng? fallback;
-    if (wizard.from != null && wizard.to != null) {
-      fallback = LatLng(
-        (wizard.from!.latitude + wizard.to!.latitude) / 2,
-        (wizard.from!.longitude + wizard.to!.longitude) / 2,
-      );
-    }
-
-    // A stop is searched for by name like any other place, with the map still
-    // one tap away inside the search screen.
-    final selection = await Navigator.push<RouteSelection>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => RouteSearchScreen.singlePoint(
-          savedPlaces: savedPlaces,
-          title: context.l10n.selectStopNumber(wizard.stops.length + 1),
-          hint: context.l10n.routeSearchStopHint,
-          mapFallbackCenter: fallback,
-        ),
-      ),
-    );
-
-    final location = selection?.from;
-    if (location == null) return;
-    wizard.addStop(location);
-    onChanged();
   }
 }

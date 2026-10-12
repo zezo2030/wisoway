@@ -234,6 +234,11 @@ export class NotificationsService {
       type: string;
       data?: Record<string, unknown>;
       targetPlatforms?: string[];
+      /**
+       * Drop the push instead of delivering it later than this (a ride offer
+       * that lands after it expired is only noise). Default: FCM's 4 weeks.
+       */
+      ttlSeconds?: number;
     },
   ): Promise<{ successCount: number; failureCount: number }> {
     this.ensureFirebase();
@@ -303,11 +308,26 @@ export class NotificationsService {
         ...(webpush ? { webpush } : {}),
         android: {
           priority: 'high',
+          ...(payload.ttlSeconds ? { ttl: payload.ttlSeconds * 1000 } : {}),
           ...(collapseKey ? { collapseKey } : {}),
           ...(isAndroidCustomRich ? {} : { notification: androidNotification }),
         },
         apns: {
-          ...(Object.keys(apnsHeaders).length ? { headers: apnsHeaders } : {}),
+          ...(Object.keys(apnsHeaders).length || payload.ttlSeconds
+            ? {
+                headers: {
+                  ...apnsHeaders,
+                  ...(payload.ttlSeconds
+                    ? {
+                        'apns-priority': '10',
+                        'apns-expiration': String(
+                          Math.floor(Date.now() / 1000) + payload.ttlSeconds,
+                        ),
+                      }
+                    : {}),
+                },
+              }
+            : {}),
           payload: {
             aps: {
               alert: { title: payload.title, body: payload.body },

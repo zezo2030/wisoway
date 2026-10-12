@@ -116,6 +116,13 @@ export class UserEntity {
   hidePhoneNumber: boolean;
 
   /**
+   * Passengers: their own CliQ alias or mobile (00962…), remembered from the
+   * last CliQ-paid ride so the next one is pre-filled.
+   */
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  cliqAlias: string | null;
+
+  /**
    * True for legacy social-login accounts that have not yet linked a phone
    * number.  Cleared once the user completes the phone-link migration flow.
    */

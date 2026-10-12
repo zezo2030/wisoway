@@ -29,10 +29,7 @@ import { PendingChargeKind } from '../../database/entities/pending-charge.entity
 import { ErrorCodes } from '../../common/errors/error-codes';
 import { PlatformPricingService } from '../payments/platform-pricing.service';
 import { PendingChargesService } from '../pending-charges/pending-charges.service';
-import {
-  pickPrimaryWalletLedgerAccount,
-  WalletService,
-} from '../wallet/wallet.service';
+import { WalletService } from '../wallet/wallet.service';
 
 export interface TripFeeBasis {
   seatPrice: number;
@@ -59,8 +56,6 @@ export interface TripFeeChargeResult {
   applied: boolean;
   reason?: 'already-charged' | 'no-bookings' | 'free-trip';
 }
-
-const PRICING_COUNTRY = 'JO';
 
 @Injectable()
 export class DriverTripFeeService {
@@ -91,22 +86,22 @@ export class DriverTripFeeService {
    * but accepts a plain basis so it can be quoted before a trip row exists.
    */
   async computeExpectedFee(basis: TripFeeBasis): Promise<TripFeeQuote> {
-    const row = await this.platformPricing.getActiveFeeRow(PRICING_COUNTRY);
+    const row = await this.platformPricing.getFeeRowForCurrency(basis.currency);
     const seatPrice = this.round2(Number(basis.seatPrice ?? 0));
     const totalSeats = Number(basis.totalSeats ?? 0);
-    const percent = Number(row?.driverUnlockPercent ?? 0);
-    const legacyFlat = Number(row?.feeAmount ?? 0);
-    const amount =
-      percent > 0
-        ? this.round2((seatPrice * totalSeats * percent) / 100)
-        : this.round2(legacyFlat);
-
-    return {
-      amount,
+    const fee = this.platformPricing.driverFee(
       seatPrice,
       totalSeats,
-      percent,
-      currency: row?.currency ?? basis.currency ?? 'JOD',
+      basis.currency,
+      row,
+    );
+
+    return {
+      amount: fee.amount,
+      seatPrice,
+      totalSeats,
+      percent: fee.percent,
+      currency: fee.currency,
     };
   }
 
@@ -119,16 +114,19 @@ export class DriverTripFeeService {
     basis: TripFeeBasis,
   ): Promise<TripFeeQuote> {
     const quote = await this.computeExpectedFee(basis);
-    const summary = await this.walletService.getWalletSummary(
+    // The fee is debited from the wallet in the trip's currency only, so that
+    // is the balance that has to cover it.
+    const balance = await this.walletService.getBalanceIn(
       driverId,
       WalletAccountType.DRIVER,
+      quote.currency,
     );
 
-    if (summary.balance < quote.amount) {
+    if (balance < quote.amount) {
       throw new ForbiddenException({
         code: ErrorCodes.INSUFFICIENT_BALANCE_FOR_TRIP_FEE,
-        message: `رصيد محفظتك (${summary.balance.toFixed(2)}) لا يغطي رسوم الرحلة (${quote.amount.toFixed(2)}). اشحن محفظتك قبل نشر الرحلة.`,
-        balance: summary.balance,
+        message: `رصيد محفظتك (${balance.toFixed(2)} ${quote.currency}) لا يغطي رسوم الرحلة (${quote.amount.toFixed(2)} ${quote.currency}). اشحن محفظتك قبل نشر الرحلة.`,
+        balance,
         requiredAmount: quote.amount,
         currency: quote.currency,
       });
@@ -213,11 +211,10 @@ export class DriverTripFeeService {
       });
 
       const writeAuditRow = async (
-        accountId: string | null,
+        accountId: string,
         amount: number,
         metadata: Record<string, unknown>,
       ) => {
-        if (!accountId) return;
         await manager.save(
           WalletTransactionEntity,
           manager.create(WalletTransactionEntity, {
@@ -244,10 +241,24 @@ export class DriverTripFeeService {
         })
         .orderBy('wa.id', 'ASC')
         .getMany();
-      const account = pickPrimaryWalletLedgerAccount(lockedAccounts);
+      // The fee is owed in the trip's currency and only that ledger row pays
+      // it; money held in another currency is never touched. A driver without
+      // one gets it opened at zero, so the shortfall is still recorded.
+      const account =
+        lockedAccounts.find((a) => a.currency === quote.currency) ??
+        (await manager.save(
+          WalletAccountEntity,
+          manager.create(WalletAccountEntity, {
+            userId: trip.driverId,
+            accountType: WalletAccountType.DRIVER,
+            currency: quote.currency,
+            balance: '0',
+            isActive: true,
+          }),
+        ));
 
       if (confirmedBookings.length === 0) {
-        await writeAuditRow(account?.id ?? null, 0, {
+        await writeAuditRow(account.id, 0, {
           ...metadataBase,
           reason: 'no-bookings',
         });
@@ -257,24 +268,12 @@ export class DriverTripFeeService {
       if (driver && !driver.hasUsedLifetimeFreeTrip) {
         driver.hasUsedLifetimeFreeTrip = true;
         await manager.save(UserEntity, driver);
-        await writeAuditRow(account?.id ?? null, 0, {
+        await writeAuditRow(account.id, 0, {
           ...metadataBase,
           freeTripApplied: true,
           discountPercent: 100,
         });
         return { charged: 0, remainder: 0, reason: 'free-trip' as const };
-      }
-
-      if (!account) {
-        // No ledger row means no audit row can be written (accountId is NOT
-        // NULL), so a retry could not be deduplicated. Recording a charge here
-        // would double-record on the next sweep, so we record nothing and
-        // shout instead.
-        this.logger.error(
-          `Trip ${trip.id}: driver ${trip.driverId} has no DRIVER wallet account; ` +
-            `fee of ${quote.amount.toFixed(2)} ${quote.currency} could not be charged`,
-        );
-        return { charged: 0, remainder: 0, reason: undefined };
       }
 
       const available = Math.max(Number(account.balance), 0);

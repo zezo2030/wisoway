@@ -107,6 +107,8 @@ class BookingService {
     required List<BookingSeatRequest> seats,
     bool sharePhoneWithDriver = false,
     bool isFamilyBooking = false,
+    String paymentMethod = 'cash',
+    String? payerCliqAlias,
   }) async {
     try {
       final payload = <String, dynamic>{
@@ -114,6 +116,9 @@ class BookingService {
         'seats': seats.map((s) => s.toJson()).toList(),
         'sharePhoneWithDriver': sharePhoneWithDriver,
         'isFamilyBooking': isFamilyBooking,
+        'paymentMethod': paymentMethod,
+        if (payerCliqAlias != null && payerCliqAlias.trim().isNotEmpty)
+          'payerCliqAlias': payerCliqAlias.trim(),
       };
       final response = await _api.post(ApiEndpoints.bookingsV2, data: payload);
       return _bookingFromResponse(
@@ -138,6 +143,8 @@ class BookingService {
     required List<BookingSeatRequest> passengers,
     bool sharePhoneWithDriver = false,
     bool isFamilyBooking = false,
+    String paymentMethod = 'cash',
+    String? payerCliqAlias,
   }) async {
     try {
       final payload = <String, dynamic>{
@@ -146,6 +153,9 @@ class BookingService {
         'passengers': passengers.map((p) => p.toJson()).toList(),
         'sharePhoneWithDriver': sharePhoneWithDriver,
         'isFamilyBooking': isFamilyBooking,
+        'paymentMethod': paymentMethod,
+        if (payerCliqAlias != null && payerCliqAlias.trim().isNotEmpty)
+          'payerCliqAlias': payerCliqAlias.trim(),
       };
       final response =
           await _api.post(ApiEndpoints.bookingsV2AutoPick, data: payload);

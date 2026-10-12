@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../screens/driver/trip_management_screen.dart';
+import '../../screens/driver/trip_summary_screen.dart';
+import '../../screens/passenger/ride_payment_due_screen.dart';
 import '../../screens/shared/trip_in_progress_screen.dart';
 import '../constants/route_names.dart';
 import 'instant_ride_service.dart';
@@ -36,12 +38,58 @@ class ActiveRideNavigator {
     if (_shownTripId == tripId) _shownTripId = null;
   }
 
+  /// Key under which a ride's payment screen is tracked, distinct from its
+  /// live screen so moving from one to the other isn't mistaken for a repeat.
+  static String paymentKey(String tripId) => 'payment:$tripId';
+
+  /// The ride is over but the fare not settled: the passenger waits on the
+  /// amount-due screen, the driver confirms on the trip summary.
+  static void enterPayment(String tripId, {required bool isDriver}) {
+    final key = paymentKey(tripId);
+    if (tripId.isEmpty || _shownTripId == key) return;
+    final navigator = NotificationNavigationService.navigatorKey.currentState;
+    if (navigator == null) return;
+    _shownTripId = key;
+
+    navigator.pushAndRemoveUntil(
+      MaterialPageRoute(
+        settings: RouteSettings(
+          name: isDriver ? RouteNames.tripSummary : RouteNames.ridePaymentDue,
+          arguments: {'tripId': tripId},
+        ),
+        builder: (_) => isDriver
+            ? TripSummaryScreen(tripId: tripId)
+            : RidePaymentDueScreen(tripId: tripId),
+      ),
+      (route) => route.isFirst,
+    );
+  }
+
+  /// Re-opens [tripId]'s payment screen when its fare is still open. False
+  /// when there's nothing left to settle on that trip.
+  static Future<bool> resumePaymentFor(String tripId) async {
+    try {
+      final ride = await _service.getActiveRide();
+      if (ride == null || ride.tripId != tripId || !ride.awaitingPayment) {
+        return false;
+      }
+      enterPayment(tripId, isDriver: ride.isDriver);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Asks the server whether the user is mid-ride and, if so, takes them back.
   static Future<void> resume() async {
     try {
       final ride = await _service.getActiveRide();
       if (ride == null) return;
-      _enter(ride.tripId, isDriver: ride.isDriver);
+      if (ride.awaitingPayment) {
+        enterPayment(ride.tripId, isDriver: ride.isDriver);
+      } else {
+        _enter(ride.tripId, isDriver: ride.isDriver);
+      }
     } catch (_) {
       // Offline or signed out — the next resume will try again.
     }

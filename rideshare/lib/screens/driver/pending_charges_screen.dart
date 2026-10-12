@@ -68,15 +68,15 @@ class _PendingChargesScreenState extends State<PendingChargesScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(context.l10n.amountDue(outstanding.toStringAsFixed(2))),
+            Text(context.l10n.amountDue(_money(outstanding, _currency))),
             const SizedBox(height: 4),
             Text(
-              context.l10n.currentWalletBalance(balance.toStringAsFixed(2)),
+              context.l10n.currentWalletBalance(_money(balance, _currency)),
             ),
             const SizedBox(height: 4),
             Text(
               context.l10n.balanceAfterPayment(
-                remaining.toStringAsFixed(2),
+                _money(remaining.toDouble(), _currency),
               ),
             ),
           ],
@@ -159,9 +159,23 @@ class _PendingChargesScreenState extends State<PendingChargesScreen> {
     }
   }
 
+  /// The wallet's currency — what the outstanding total is paid in.
+  String get _currency => _walletAccount?.currency ?? 'JOD';
+
+  /// A charge is owed in its trip's currency; one without a trip in the
+  /// wallet's.
+  String _chargeCurrency(Map<String, dynamic> charge) {
+    final trip = charge['trip'];
+    final currency = trip is Map ? trip['currency'] as String? : null;
+    return currency ?? _currency;
+  }
+
+  /// Pending charges payable from the wallet shown, i.e. those in its
+  /// currency; each card still shows any other charge in its own currency.
   double _totalOutstanding() {
     return _charges
         .where((c) => c['status'] == 'pending')
+        .where((c) => _chargeCurrency(c) == _currency)
         .fold<double>(
           0,
           (sum, c) =>
@@ -212,6 +226,7 @@ class _PendingChargesScreenState extends State<PendingChargesScreen> {
                           _OutstandingBanner(
                             total: outstanding,
                             walletBalance: balance,
+                            currency: _currency,
                             canPayFromWallet: canPayFromWallet,
                             settling: _settling,
                             onPay: () => _payFromWallet(outstanding),
@@ -223,6 +238,7 @@ class _PendingChargesScreenState extends State<PendingChargesScreen> {
                         const SizedBox(height: 12),
                         ..._charges.map((c) => _ChargeCard(
                               charge: c,
+                              currency: _chargeCurrency(c),
                               kindLabel:
                                   _kindLabel(context, c['kind'] as String?),
                               statusLabel: _statusLabel(
@@ -242,6 +258,7 @@ class _PendingChargesScreenState extends State<PendingChargesScreen> {
 class _OutstandingBanner extends StatelessWidget {
   final double total;
   final double walletBalance;
+  final String currency;
   final bool canPayFromWallet;
   final bool settling;
   final VoidCallback onPay;
@@ -250,6 +267,7 @@ class _OutstandingBanner extends StatelessWidget {
   const _OutstandingBanner({
     required this.total,
     required this.walletBalance,
+    required this.currency,
     required this.canPayFromWallet,
     required this.settling,
     required this.onPay,
@@ -285,12 +303,12 @@ class _OutstandingBanner extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            context.l10n.totalDue(total.toStringAsFixed(2)),
+            context.l10n.totalDue(_money(total, currency)),
             style: AppTextStyles.bodyLarge,
           ),
           const SizedBox(height: 4),
           Text(
-            context.l10n.walletBalanceAmount(walletBalance.toStringAsFixed(2)),
+            context.l10n.walletBalanceAmount(_money(walletBalance, currency)),
             style: AppTextStyles.bodySmall.copyWith(
               color: T.onSurfaceVariant(context),
             ),
@@ -347,12 +365,14 @@ class _OutstandingBanner extends StatelessWidget {
 
 class _ChargeCard extends StatelessWidget {
   final Map<String, dynamic> charge;
+  final String currency;
   final String kindLabel;
   final String statusLabel;
   final Color statusColor;
 
   const _ChargeCard({
     required this.charge,
+    required this.currency,
     required this.kindLabel,
     required this.statusLabel,
     required this.statusColor,
@@ -409,7 +429,7 @@ class _ChargeCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            context.l10n.amountAmount(amount.toStringAsFixed(2)),
+            context.l10n.amountAmount(_money(amount, currency)),
             style: AppTextStyles.bodyLarge,
           ),
           if (dateText.isNotEmpty) ...[
@@ -426,3 +446,6 @@ class _ChargeCard extends StatelessWidget {
     );
   }
 }
+
+String _money(double amount, String currency) =>
+    '${amount.toStringAsFixed(2)} $currency';

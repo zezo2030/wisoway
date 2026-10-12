@@ -15,28 +15,29 @@ import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
 import '../../l10n/l10n_extensions.dart';
 
-// Must mirror ComplaintCategory const-enum in complaint.entity.ts
+// Must mirror ComplaintCategory in complaint.entity.ts — the server rejects
+// anything else (these used to be upper-case codes it never accepted).
 const _kCategoryCodes = [
-  'SAFETY',
-  'PAYMENT',
-  'VEHICLE_CONDITION',
-  'DRIVER_BEHAVIOR',
-  'APP_ISSUE',
-  'OTHER',
+  'safety',
+  'payment',
+  'rude_behavior',
+  'no_show',
+  'vehicle_condition',
+  'other',
 ];
 
 String _categoryLabel(BuildContext context, String code) {
   switch (code) {
-    case 'SAFETY':
+    case 'safety':
       return context.l10n.complaintCategorySafety;
-    case 'PAYMENT':
+    case 'payment':
       return context.l10n.complaintCategoryPayment;
-    case 'VEHICLE_CONDITION':
+    case 'rude_behavior':
+      return context.l10n.complaintCategoryRudeBehavior;
+    case 'no_show':
+      return context.l10n.complaintCategoryNoShow;
+    case 'vehicle_condition':
       return context.l10n.complaintCategoryVehicleCondition;
-    case 'DRIVER_BEHAVIOR':
-      return context.l10n.complaintCategoryDriverBehavior;
-    case 'APP_ISSUE':
-      return context.l10n.complaintCategoryAppIssue;
     default:
       return context.l10n.complaintCategoryOther;
   }
@@ -46,10 +47,14 @@ class ComplaintScreen extends StatefulWidget {
   final String? againstUserId;
   final String? tripId;
 
+  /// Pre-selected category, e.g. payment when a driver reports a fare.
+  final String? initialCategory;
+
   const ComplaintScreen({
     super.key,
     this.againstUserId,
     this.tripId,
+    this.initialCategory,
   });
 
   @override
@@ -60,7 +65,9 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
   final _formKey = GlobalKey<FormState>();
   final _descController = TextEditingController();
 
-  String _category = _kCategoryCodes.first;
+  late String _category = _kCategoryCodes.contains(widget.initialCategory)
+      ? widget.initialCategory!
+      : _kCategoryCodes.first;
   bool _submitting = false;
 
   @override
@@ -76,7 +83,7 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
     try {
       final body = <String, dynamic>{
         'category': _category,
-        'description': _descController.text.trim(),
+        'body': _descController.text.trim(),
         if (widget.againstUserId != null) 'againstUserId': widget.againstUserId,
         if (widget.tripId != null) 'tripId': widget.tripId,
       };
@@ -170,8 +177,10 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                     value: _category,
                     decoration: const InputDecoration(
                       border: InputBorder.none,
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                     ),
                     items: _kCategoryCodes
                         .map(

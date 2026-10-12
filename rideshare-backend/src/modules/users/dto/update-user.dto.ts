@@ -3,6 +3,7 @@ import {
   IsOptional,
   IsBoolean,
   IsIn,
+  Matches,
   MinLength,
   MaxLength,
 } from 'class-validator';
@@ -36,4 +37,16 @@ export class UpdateUserDto {
   @IsOptional()
   @IsBoolean()
   hidePhoneNumber?: boolean;
+
+  /**
+   * The passenger's own CliQ alias (e.g. ahmad@cliq) or mobile, used for
+   * CliQ fare requests; empty clears it.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  @Matches(/^$|^[A-Za-z0-9._@\-+ ]{3,100}$/, {
+    message: 'cliqAlias must be a CliQ alias or mobile number',
+  })
+  cliqAlias?: string;
 }

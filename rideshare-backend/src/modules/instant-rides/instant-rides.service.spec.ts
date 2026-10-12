@@ -10,6 +10,7 @@ describe('InstantRidesService', () => {
   let offerRepo: any;
   let availabilityRepo: any;
   let tripRepo: any;
+  let unpaidBooking: jest.Mock;
   let users: any;
   let vehicles: any;
   let locations: any;
@@ -34,8 +35,31 @@ describe('InstantRidesService', () => {
       update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
     availabilityRepo = { update: jest.fn().mockResolvedValue({ affected: 1 }) };
-    tripRepo = {};
-    users = { findById: jest.fn() };
+    unpaidBooking = jest.fn().mockResolvedValue(null);
+    tripRepo = {
+      manager: {
+        getRepository: () => ({
+          createQueryBuilder: () => {
+            const qb: any = {};
+            for (const m of [
+              'innerJoin',
+              'where',
+              'andWhere',
+              'orderBy',
+              'select',
+            ]) {
+              qb[m] = () => qb;
+            }
+            qb.getOne = () => unpaidBooking();
+            return qb;
+          },
+        }),
+      },
+    };
+    users = {
+      findById: jest.fn(),
+      update: jest.fn().mockResolvedValue(undefined),
+    };
     vehicles = { findById: jest.fn(), findByDriver: jest.fn() };
     locations = { getDistance: jest.fn(), reverseGeocode: jest.fn() };
     notifications = {
@@ -197,6 +221,7 @@ describe('InstantRidesService', () => {
         tripId: 't1',
         role: 'driver',
         requestId: 'r1',
+        stage: 'ride',
       });
       expect(tripRepo.findOne).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -224,9 +249,31 @@ describe('InstantRidesService', () => {
         tripId: 't1',
         role: 'passenger',
         requestId: 'r1',
+        stage: 'ride',
       });
     });
 
+    it("returns a finished ride whose fare is still open", async () => {
+      tripRepo.findOne = jest
+        .fn()
+        .mockResolvedValueOnce(null) // not driving a live ride
+        .mockResolvedValueOnce({ id: 't1', status: 'completed' });
+      requestRepo.findOne.mockResolvedValue({
+        id: 'r1',
+        status: 'accepted',
+        tripId: 't1',
+      });
+      unpaidBooking
+        .mockResolvedValueOnce(null) // no cash fare waiting on this driver
+        .mockResolvedValueOnce({ tripId: 't1' }); // the passenger owes one
+
+      await expect(service.getActiveRide('p1')).resolves.toEqual({
+        tripId: 't1',
+        role: 'passenger',
+        requestId: 'r1',
+        stage: 'payment',
+      });
+    });
     it('returns null once the ride has finished', async () => {
       tripRepo.findOne = jest
         .fn()
@@ -485,6 +532,127 @@ describe('InstantRidesService', () => {
       expect(result).toEqual({ ok: true });
       expect(availabilityRepo.update).toHaveBeenCalled();
       expect(dispatch.dispatchNext).toHaveBeenCalledWith('r1');
+    });
+  });
+
+  describe('pickup stages', () => {
+    const liveTrip = (over: any = {}) => ({
+      id: 't1',
+      driverId: 'd1',
+      tripType: 'instant',
+      status: 'in_progress',
+      toName: 'B',
+      driverArrivedAt: null,
+      tripStartedAt: null,
+      ...over,
+    });
+
+    beforeEach(() => {
+      tripRepo.findOne = jest.fn();
+      tripRepo.save = jest.fn().mockImplementation(async (t: any) => t);
+      requestRepo.findOne.mockResolvedValue({ id: 'r1', passengerId: 'p1' });
+    });
+
+    it('records arrival once and tells the passenger', async () => {
+      tripRepo.findOne.mockResolvedValue(liveTrip());
+
+      const trip = await service.markArrivedAtPickup('t1', 'd1');
+
+      expect(trip.driverArrivedAt).toBeInstanceOf(Date);
+      expect(trip.tripStartedAt).toBeNull();
+      expect(notifications.sendPush).toHaveBeenCalledWith(
+        'p1',
+        expect.objectContaining({ type: 'instant_driver_arrived' }),
+      );
+    });
+
+    it('does not re-notify a repeated arrival', async () => {
+      tripRepo.findOne.mockResolvedValue(
+        liveTrip({ driverArrivedAt: new Date('2026-01-01') }),
+      );
+
+      await service.markArrivedAtPickup('t1', 'd1');
+
+      expect(tripRepo.save).not.toHaveBeenCalled();
+      expect(notifications.sendPush).not.toHaveBeenCalled();
+    });
+
+    it('starts the ride, implying arrival when it was skipped', async () => {
+      tripRepo.findOne.mockResolvedValue(liveTrip());
+
+      const trip = await service.startRide('t1', 'd1');
+
+      expect(trip.tripStartedAt).toBeInstanceOf(Date);
+      expect(trip.driverArrivedAt).toEqual(trip.tripStartedAt);
+      expect(notifications.sendPush).toHaveBeenCalledWith(
+        'p1',
+        expect.objectContaining({ type: 'instant_ride_started' }),
+      );
+    });
+
+    it("refuses another driver's ride", async () => {
+      tripRepo.findOne.mockResolvedValue(liveTrip({ driverId: 'd2' }));
+      await expect(service.startRide('t1', 'd1')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('refuses a ride that already ended', async () => {
+      tripRepo.findOne.mockResolvedValue(liveTrip({ status: 'completed' }));
+      await expect(service.markArrivedAtPickup('t1', 'd1')).rejects.toThrow(
+        ConflictException,
+      );
+    });
+  });
+  describe('payment method', () => {
+    it('refuses CliQ outside Jordan', async () => {
+      requestRepo.findOne.mockResolvedValue(null);
+      locations.getDistance.mockResolvedValue({
+        distanceKm: 5,
+        durationMinutes: 10,
+      });
+      locations.reverseGeocode.mockResolvedValue({ countryCode: 'SA' });
+
+      await expect(
+        service.createRequest('p1', { ...dto, paymentMethod: 'cliq' }),
+      ).rejects.toThrow('CliQ');
+    });
+
+    it('stores CliQ on a Jordanian request', async () => {
+      requestRepo.findOne.mockResolvedValue(null);
+      locations.getDistance.mockResolvedValue({
+        distanceKm: 5,
+        durationMinutes: 10,
+      });
+      locations.reverseGeocode.mockResolvedValue({ countryCode: 'JO' });
+
+      const view = await service.createRequest('p1', {
+        ...dto,
+        paymentMethod: 'cliq',
+        payerCliqAlias: '0791234567',
+      });
+
+      expect(view.paymentMethod).toBe('cliq');
+      // Normalized for uWallet and remembered for next time.
+      expect(requestRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ payerCliqAlias: '00962791234567' }),
+      );
+      expect(users.update).toHaveBeenCalledWith('p1', {
+        cliqAlias: '00962791234567',
+      });
+    });
+
+    it('asks for a CliQ alias when there is none on file', async () => {
+      requestRepo.findOne.mockResolvedValue(null);
+      locations.getDistance.mockResolvedValue({
+        distanceKm: 5,
+        durationMinutes: 10,
+      });
+      locations.reverseGeocode.mockResolvedValue({ countryCode: 'JO' });
+
+      await expect(
+        service.createRequest('p1', { ...dto, paymentMethod: 'cliq' }),
+      ).rejects.toThrow('CliQ');
     });
   });
 });

@@ -75,6 +75,16 @@ dev_dependencies:
   build_runner: ^2.4.9
   flutter_launcher_icons: ^0.14.4
 
+# Patched copies of the map's native implementations: they report taps on
+# Google's own places (shops, schools...) on `wisoway/poi_tap_<mapId>`, which
+# the upstream plugin does not expose. Look for "WISOWAY PATCH" in each; when
+# upgrading, copy the new upstream version and re-apply those blocks.
+dependency_overrides:
+  google_maps_flutter_android:
+    path: packages/google_maps_flutter_android
+  google_maps_flutter_ios:
+    path: packages/google_maps_flutter_ios
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 

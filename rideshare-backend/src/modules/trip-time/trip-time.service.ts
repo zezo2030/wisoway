@@ -8,14 +8,18 @@ import {
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import {
   BookingEntity,
   BookingStatus,
 } from '../../database/entities/booking.entity';
 import { BookingSeatEntity } from '../../database/entities/booking-seat.entity';
 import { TripEntity } from '../../database/entities/trip.entity';
-import { TripStatus, PgUserRole } from '../../database/entities/shared.enums';
+import {
+  TripStatus,
+  TripType,
+  PgUserRole,
+} from '../../database/entities/shared.enums';
 import { UserEntity } from '../../database/entities/user.entity';
 import { PassengerConfirmDto } from './dto/passenger-confirm.dto';
 import { DriverConfirmDto } from './dto/driver-confirm.dto';
@@ -31,6 +35,7 @@ import {
 import { AdminAlertsService } from '../admin/admin-alerts.service';
 import { TripEmergencyDto } from './dto/trip-emergency.dto';
 import { DriverTripFeeService } from '../driver-trip-fee/driver-trip-fee.service';
+import { RidePaymentsService } from '../ride-payments/ride-payments.service';
 
 @Injectable()
 export class TripTimeService {
@@ -55,6 +60,7 @@ export class TripTimeService {
     @InjectRepository(UserEntity)
     private readonly userRepo: Repository<UserEntity>,
     private readonly driverTripFee: DriverTripFeeService,
+    private readonly ridePayments: RidePaymentsService,
   ) {}
 
   async passengerConfirm(
@@ -241,6 +247,10 @@ export class TripTimeService {
         'Trip must be in progress to mark as arrived',
       );
     }
+    // An instant ride reaches its destination only after the passenger got in.
+    if (trip.tripType === TripType.INSTANT && !trip.tripStartedAt) {
+      throw new BadRequestException('ابدأ الرحلة أولاً قبل إنهائها.');
+    }
 
     const now = new Date();
     trip.status = TripStatus.COMPLETED;
@@ -329,13 +339,29 @@ export class TripTimeService {
       }
     }
 
+    // An instant ride's one booking is never moved to IN_PROGRESS — it goes
+    // straight from CONFIRMED to COMPLETED here.
     const activeBookings = await this.bookingRepo.find({
-      where: { tripId, status: BookingStatus.IN_PROGRESS },
+      where: {
+        tripId,
+        status:
+          trip.tripType === TripType.INSTANT
+            ? In([BookingStatus.IN_PROGRESS, BookingStatus.CONFIRMED])
+            : BookingStatus.IN_PROGRESS,
+      },
     });
     for (const booking of activeBookings) {
       booking.status = BookingStatus.COMPLETED;
       await this.bookingRepo.save(booking);
     }
+
+    // Fares: cash passengers are asked to pay the driver, CliQ passengers get
+    // a request-to-pay. Never blocks completion.
+    await this.ridePayments
+      .openForTrip(tripId)
+      .catch((err: Error) =>
+        this.logger.error(`Opening fare payments failed: ${err.message}`),
+      );
 
     // Bookkeeping only — no money moves here. Task 7 removed the wallet hold
     // this used to settle, and Task 3 moved the one platform-fee debit to

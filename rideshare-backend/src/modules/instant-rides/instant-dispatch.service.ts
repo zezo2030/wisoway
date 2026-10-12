@@ -25,6 +25,7 @@ import {
   INITIAL_RADIUS_KM,
   INSTANT_REQUEST_EXPIRY_QUEUE,
   MAX_RADIUS_KM,
+  NO_DRIVER_SEARCH_SECONDS,
   OFFER_TTL_SECONDS,
   offerTimeoutJobId,
 } from './instant-rides.constants';
@@ -134,22 +135,20 @@ export class InstantDispatchService {
 
   /**
    * How far this request may reach right now: [INITIAL_RADIUS_KM] at the
-   * moment it was created, widening linearly to [MAX_RADIUS_KM] by the time
-   * the search window closes.
-   *
-   * Tying the growth to the window rather than a fixed step means the reach
-   * always spreads over the whole wait, whatever the TTL is set to.
+   * moment it was created, widening linearly to [MAX_RADIUS_KM] by the end of
+   * the no-driver window ([NO_DRIVER_SEARCH_SECONDS]), so every driver in
+   * range has been tried before the passenger is told there is none.
    */
   private radiusForElapsed(
     request: InstantRideRequestEntity,
     now: number = Date.now(),
   ): number {
     const start = request.createdAt?.getTime();
-    const end = request.expiresAt?.getTime();
-    if (start == null || end == null || end <= start) {
+    if (start == null) {
       return Math.max(request.radiusKm ?? INITIAL_RADIUS_KM, INITIAL_RADIUS_KM);
     }
-    const progress = Math.min(1, Math.max(0, (now - start) / (end - start)));
+    const window = NO_DRIVER_SEARCH_SECONDS * 1000;
+    const progress = Math.min(1, Math.max(0, (now - start) / window));
     const grown =
       INITIAL_RADIUS_KM + (MAX_RADIUS_KM - INITIAL_RADIUS_KM) * progress;
     // Never shrink: a later wave must not undo an already-widened reach.
@@ -157,12 +156,19 @@ export class InstantDispatchService {
   }
 
   /**
-   * Nobody reachable yet: keep the request alive and schedule the next wave,
-   * which reaches further. The fare is fixed, so there is nothing to nudge.
+   * Nobody reachable yet. Before the reach is at its widest, keep the request
+   * alive and schedule the next, wider wave. Once the full reach has been
+   * swept and nobody (else) is available, end the search now — the passenger
+   * hears «لا يوجد سائق» after ~[NO_DRIVER_SEARCH_SECONDS], not minutes later.
    */
   private async handleEmptySweep(
     request: InstantRideRequestEntity,
   ): Promise<void> {
+    const elapsedMs = Date.now() - (request.createdAt?.getTime() ?? Date.now());
+    if (elapsedMs >= NO_DRIVER_SEARCH_SECONDS * 1000) {
+      await this.finalizeSearch(request.id);
+      return;
+    }
     await this.scheduleWave(request.id);
   }
 
@@ -262,6 +268,7 @@ export class InstantDispatchService {
         title: pushText.title,
         body: pushText.body,
         type: 'instant_offer',
+        ttlSeconds: OFFER_TTL_SECONDS,
         data: {
           offerId: offer.id,
           requestId: request.id,
@@ -270,6 +277,7 @@ export class InstantDispatchService {
           fareEstimate: request.fareEstimate ?? '',
           passengerFare: request.passengerFare ?? request.fareEstimate ?? '',
           currency: request.currency,
+          paymentMethod: request.paymentMethod ?? 'cash',
           expiresAt: offer.expiresAt.toISOString(),
           ...routeMetrics,
         },

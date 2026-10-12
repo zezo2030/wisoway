@@ -6,6 +6,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 import '../../providers/auth_provider.dart';
 import '../../models/trip_model.dart';
 import '../../models/location_model.dart';
+import '../../core/constants/countries.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/services/location_service.dart';
 import '../../core/services/trip_service.dart';
@@ -149,10 +150,17 @@ class _TripsListScreenState extends State<TripsListScreen> {
       return _tripService.getNearbyTrips(riderLocation: _userLocation!);
     }
 
+    // Without a searched place (or a known location) keep the list to the
+    // passenger's own country instead of every trip on the platform.
+    final browsing = _fromFilter == null && _toFilter == null;
+    final phone = context.read<AuthProvider>().userModel?.phoneNumber;
     return _tripService.searchActiveTrips(
       from: _fromFilter,
       to: _toFilter,
       minDepartureTime: DateTime.now(),
+      country: browsing && phone != null
+          ? Countries.fromPhoneNumber(phone)?.iso2
+          : null,
     );
   }
 

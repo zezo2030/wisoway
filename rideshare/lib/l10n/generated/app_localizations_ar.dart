@@ -529,7 +529,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get hidePhoneNumberToggle => 'إخفاء رقم هاتفي';
 
   @override
-  String get hidePhoneNumberSubtitle => 'سيُستخدم رقم وسيط عند الاتصال بك';
+  String get hidePhoneNumberSubtitle =>
+      'لن يظهر رقمك للطرف الآخر في الرحلة، ويتم التواصل معك عبر المحادثة في التطبيق';
 
   @override
   String get complaintScreenTitle => 'تقديم شكوى';
@@ -918,6 +919,56 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get vehicleColorRequired => 'اللون مطلوب';
+
+  @override
+  String get vehicleColorSelect => 'اختر لون السيارة';
+
+  @override
+  String get vehicleColorWhite => 'أبيض';
+
+  @override
+  String get vehicleColorBlack => 'أسود';
+
+  @override
+  String get vehicleColorSilver => 'فضي';
+
+  @override
+  String get vehicleColorGray => 'رمادي';
+
+  @override
+  String get vehicleColorRed => 'أحمر';
+
+  @override
+  String get vehicleColorBlue => 'أزرق';
+
+  @override
+  String get vehicleColorGreen => 'أخضر';
+
+  @override
+  String get vehicleColorBeige => 'بيج';
+
+  @override
+  String get vehicleColorBrown => 'بني';
+
+  @override
+  String get vehicleColorGold => 'ذهبي';
+
+  @override
+  String get vehicleColorYellow => 'أصفر';
+
+  @override
+  String get vehicleColorOrange => 'برتقالي';
+
+  @override
+  String get vehicleTypePickTitle => 'نوع المركبة';
+
+  @override
+  String get vehicleSeatMapHint =>
+      'هذه مقاعد مركبتك كما ستظهر للركاب. اضغط على الصورة لتكبيرها.';
+
+  @override
+  String get vehicleSeatMapUnavailable =>
+      'لا توجد صورة لهذا النوع بعد؛ سيُستخدم التخطيط المسجّل للمركبة.';
 
   @override
   String get vehiclePlateRequired => 'رقم اللوحة مطلوب';
@@ -2143,7 +2194,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get walletTopUpDescription =>
-      'تُستخدم لدفع تكلفة الحجز عند تفعيل الدفع من المحفظة. الشحن بالدينار الأردني (JOD) عبر CliQ أو تحويل يدوي مع إثبات؛ يُضاف الرصيد بعد التأكد أو موافقة الإدارة حسب الطريقة.';
+      'تُستخدم لدفع تكلفة الحجز عند تفعيل الدفع من المحفظة. الشحن بعملة بلدك عبر تحويل يدوي مع إثبات (أو عبر CliQ في الأردن)؛ يُضاف الرصيد بعد التأكد أو موافقة الإدارة حسب الطريقة.';
 
   @override
   String get walletTransactionHistory => 'سجل الحركات';
@@ -2699,17 +2750,17 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String amountDue(String amount) {
-    return 'المبلغ المستحق: $amount د.أ';
+    return 'المبلغ المستحق: $amount';
   }
 
   @override
   String currentWalletBalance(String amount) {
-    return 'رصيد المحفظة الحالي: $amount د.أ';
+    return 'رصيد المحفظة الحالي: $amount';
   }
 
   @override
   String balanceAfterPayment(String amount) {
-    return 'الرصيد بعد الدفع: $amount د.أ';
+    return 'الرصيد بعد الدفع: $amount';
   }
 
   @override
@@ -2754,12 +2805,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String totalDue(String amount) {
-    return 'الإجمالي المستحق: $amount د.أ';
+    return 'الإجمالي المستحق: $amount';
   }
 
   @override
   String walletBalanceAmount(String amount) {
-    return 'رصيد المحفظة: $amount د.أ';
+    return 'رصيد المحفظة: $amount';
   }
 
   @override
@@ -2777,7 +2828,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String amountAmount(String amount) {
-    return 'المبلغ: $amount د.أ';
+    return 'المبلغ: $amount';
   }
 
   @override
@@ -4138,7 +4189,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get tripInProgressRecenter => 'تمركز';
 
   @override
-  String get tripInProgressEmergencySent => 'تم إرسال تنبيه الطوارئ للدعم';
+  String get tripInProgressEmergencySent => 'أُرسل موقعك لفريق VisionWay';
 
   @override
   String get tripInProgressEmergencyError => 'تعذّر إرسال تنبيه الطوارئ';
@@ -4148,10 +4199,15 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get tripInProgressEmergencyConfirmMessage =>
-      'سيتم إشعار فريق الدعم بموقعك الحالي. هل تريد المتابعة؟';
+      'سنتصل بفريق VisionWay الآن ونرسل لهم موقعك الحالي.';
 
   @override
-  String get tripInProgressEmergencyConfirmAction => 'إرسال التنبيه';
+  String tripInProgressEmergencyCallFailed(String phone) {
+    return 'تعذّر فتح الاتصال. اتصل بفريق VisionWay على $phone';
+  }
+
+  @override
+  String get tripInProgressEmergencyConfirmAction => 'اتصال بـ VisionWay';
 
   @override
   String get tripInProgressEmergencyCancel => 'إلغاء';
@@ -4984,6 +5040,46 @@ class AppLocalizationsAr extends AppLocalizations {
   String get savedAddressesSubtitle => 'إدارة أماكن الانطلاق والوصول';
 
   @override
+  String get savedAddressesHint =>
+      'تظهر هذه العناوين كاختصارات عند اختيار مكان الانطلاق أو الوصول، وتُحفظ على هذا الجهاز.';
+
+  @override
+  String get savedAddressHome => 'المنزل';
+
+  @override
+  String get savedAddressWork => 'العمل';
+
+  @override
+  String get savedAddressNotSet => 'غير محدد — اضغط للإضافة';
+
+  @override
+  String get savedAddressOthers => 'عناوين أخرى';
+
+  @override
+  String get savedAddressAdd => 'إضافة عنوان';
+
+  @override
+  String get savedAddressNameTitle => 'اسم العنوان';
+
+  @override
+  String get savedAddressNameHint => 'مثلاً: الجامعة، النادي';
+
+  @override
+  String savedAddressPickTitle(String label) {
+    return 'اختر موقع $label';
+  }
+
+  @override
+  String get savedAddressChangeLocation => 'تغيير الموقع';
+
+  @override
+  String get savedAddressRename => 'إعادة التسمية';
+
+  @override
+  String get savedAddressSaveFailed =>
+      'تعذّر حفظ التغيير. تحقق من اتصالك وحاول مجدداً.';
+
+  @override
   String get pastTrips => 'الرحلات السابقة';
 
   @override
@@ -4991,6 +5087,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get cancelledTrips => 'الرحلات الملغاة';
+
+  @override
+  String get noPastTrips => 'لا توجد رحلات سابقة بعد.';
+
+  @override
+  String get noCancelledTrips => 'لا توجد رحلات ملغاة.';
 
   @override
   String get cancelledTripsSubtitle => 'عرض الرحلات التي تم إلغاؤها';
@@ -5009,6 +5111,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get contactUsSubtitle => 'تحتاج إلى مساعدة؟ نحن هنا من أجلك';
+
+  @override
+  String get termsOfServiceSubtitle => 'القواعد التي تنظم استخدامك للتطبيق';
+
+  @override
+  String get privacyPolicySubtitle => 'كيف نجمع بياناتك ونحميها';
 
   @override
   String get aboutAppSubtitle => 'الإصدار والشروط والسياسات';
@@ -5222,6 +5330,41 @@ class AppLocalizationsAr extends AppLocalizations {
   String get instantTripHeadingToPickup => 'في الطريق إلى الراكب';
 
   @override
+  String get instantTripWaitingForPassenger => 'بانتظار ركوب الراكب';
+
+  @override
+  String get instantTripArrivedAtPickupAction => 'وصلت إلى الراكب';
+
+  @override
+  String get instantTripStartAction => 'بدء الرحلة';
+
+  @override
+  String get instantTripMovedTitle => 'هل بدأت الرحلة؟';
+
+  @override
+  String get instantTripMovedBody =>
+      'تحرّكت من مكان الراكب ولم تبدأ الرحلة بعد. إذا كان الراكب معك فابدأ الرحلة الآن.';
+
+  @override
+  String get instantTripNotYet => 'ليس بعد';
+
+  @override
+  String get driverOnlineServiceTitle => 'أنت متصل';
+
+  @override
+  String get driverOnlineServiceText => 'تستقبل طلبات الرحلات المباشرة الآن';
+
+  @override
+  String get offersOverLockTitle => 'اسمح بظهور الطلبات على الشاشة المقفلة';
+
+  @override
+  String get offersOverLockBody =>
+      'حتى تظهر لك طلبات الرحلات فوراً وتوقظ الشاشة وهي مقفلة، فعّل «إشعارات ملء الشاشة» لـ VisionWay من الإعدادات.';
+
+  @override
+  String get offersOverLockAction => 'فتح الإعدادات';
+
+  @override
   String get instantTripPassengerOnBoard => 'الراكب معك — في الطريق إلى الوجهة';
 
   @override
@@ -5375,4 +5518,150 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get joinAsDriverSubtitle =>
       'سجّل سيارتك وابدأ باستقبال الركاب بنفس حسابك';
+
+  @override
+  String get cliqAliasInvalid =>
+      'أدخل اسم CliQ صحيحاً (حروف إنجليزية وأرقام ونقاط) أو رقم جوال';
+
+  @override
+  String get instantPaymentMethodTitle => 'طريقة الدفع';
+
+  @override
+  String get paymentMethodCash => 'نقداً';
+
+  @override
+  String get paymentMethodCliq => 'CliQ';
+
+  @override
+  String get instantFormFareNoteCliq =>
+      'السعر محسوب حسب المسافة. يصلك طلب دفع CliQ عند الوصول.';
+
+  @override
+  String get instantPaymentCollectTitle => 'حصّل الأجرة من الراكب';
+
+  @override
+  String get instantPaymentReportedLabel => 'تم الإبلاغ عن عدم الدفع';
+
+  @override
+  String get instantPaymentReceivedAction => 'استلمت المبلغ';
+
+  @override
+  String get instantPaymentNotPaidAction => 'لم يدفع الراكب';
+
+  @override
+  String get instantPaymentNotPaidTitle => 'الراكب لم يدفع؟';
+
+  @override
+  String get instantPaymentNotPaidBody =>
+      'سنسجّل بلاغاً لفريق VisionWay وننهي شاشة الدفع عند الراكب.';
+
+  @override
+  String get instantPaymentNotPaidHint => 'ماذا حدث؟ (اختياري)';
+
+  @override
+  String get instantPaymentNotPaidConfirm => 'إرسال البلاغ';
+
+  @override
+  String get instantPaymentReportedToast => 'تم إرسال البلاغ لفريق VisionWay';
+
+  @override
+  String get tripReportProblem => 'الإبلاغ عن مشكلة في الرحلة';
+
+  @override
+  String get complaintCategoryRudeBehavior => 'سلوك غير لائق';
+
+  @override
+  String get complaintCategoryNoShow => 'عدم الحضور';
+
+  @override
+  String get instantOfferCliqNote =>
+      'يدفع الراكب عبر CliQ · تُضاف الأجرة إلى محفظتك';
+
+  @override
+  String get instantTripCliqNote => 'CliQ · تُضاف إلى محفظتك';
+
+  @override
+  String get cliqPayerAliasLabel => 'اسم CliQ أو رقم جوالك';
+
+  @override
+  String get cliqPayerAliasHint => 'مثال: ahmad@cliq أو 0791234567';
+
+  @override
+  String get cliqPayerAliasHelp =>
+      'نرسل طلب الدفع إليه عند انتهاء الرحلة، فتوافق عليه من تطبيق البنك.';
+
+  @override
+  String get cliqPayerAliasRequired => 'أدخل اسم CliQ أو رقم جوالك';
+
+  @override
+  String get bookingPaymentCashNote => 'تدفع للسائق نقداً عند انتهاء الرحلة.';
+
+  @override
+  String get bookingPaymentCliqNote =>
+      'عند انتهاء الرحلة يصلك طلب دفع CliQ توافق عليه من تطبيق البنك.';
+
+  @override
+  String get ridePaymentArrivedTitle => 'وصلت إلى وجهتك';
+
+  @override
+  String get ridePaymentPayDriverTitle => 'الرجاء دفع تكلفة الرحلة للسائق';
+
+  @override
+  String get ridePaymentAmountDue => 'المبلغ المطلوب';
+
+  @override
+  String get ridePaymentCashInstruction =>
+      'ادفع المبلغ للسائق نقداً، وسيؤكد استلامه.';
+
+  @override
+  String get ridePaymentWaitingDriver => 'بانتظار تأكيد السائق لاستلام المبلغ…';
+
+  @override
+  String ridePaymentCliqRequested(String alias) {
+    return 'أرسلنا طلب دفع CliQ إلى $alias. افتح تطبيق البنك ووافق عليه.';
+  }
+
+  @override
+  String get ridePaymentCliqRequestedNoAlias =>
+      'أرسلنا طلب دفع CliQ. افتح تطبيق البنك ووافق عليه.';
+
+  @override
+  String get ridePaymentWaitingBank => 'بانتظار تأكيد البنك…';
+
+  @override
+  String get ridePaymentCliqFailed => 'لم يكتمل الدفع عبر CliQ.';
+
+  @override
+  String get ridePaymentRetryCliq => 'إعادة إرسال طلب الدفع';
+
+  @override
+  String get ridePaymentPayCashInstead => 'الدفع للسائق نقداً بدلاً من ذلك';
+
+  @override
+  String get ridePaymentDisputedTitle => 'لم يُسجَّل الدفع';
+
+  @override
+  String get ridePaymentDisputedBody =>
+      'أبلغ السائق أنه لم يستلم الأجرة. سيتواصل معك فريق VisionWay.';
+
+  @override
+  String get ridePaymentsCardTitle => 'أجرة الركاب';
+
+  @override
+  String get ridePaymentDriverPaidCash => 'استلمتها نقداً ✓';
+
+  @override
+  String get ridePaymentDriverPaidCliq =>
+      'دُفعت عبر CliQ · أُضيفت إلى محفظتك ✓';
+
+  @override
+  String get ridePaymentDriverCliqPending =>
+      'بانتظار موافقة الراكب على دفع CliQ';
+
+  @override
+  String get ridePaymentDriverCliqFailed => 'لم يكتمل دفع CliQ بعد';
+
+  @override
+  String get instantLocationNotReaching =>
+      'لا يصل موقعك إلى الخادم الآن، فلن تصلك طلبات الرحلات. تأكد من الإنترنت ومن تفعيل الموقع.';
 }

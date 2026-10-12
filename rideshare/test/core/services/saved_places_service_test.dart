@@ -57,7 +57,7 @@ void main() {
       await service.addRecent(_place('شارع المدينة', lat: 31.5));
 
       expect(await service.recents(), isEmpty);
-      expect((await service.shortcuts()).single.label, 'البيت');
+      expect((await service.shortcuts()).single.kind, SavedPlaceKind.home);
     });
 
     test('replaces rather than duplicates the home shortcut', () async {
@@ -98,10 +98,10 @@ void main() {
         location: _place('البيت', lat: 32.0),
       );
 
-      expect((await service.shortcuts()).map((p) => p.label), [
-        'البيت',
-        'العمل',
-        'النادي',
+      expect((await service.shortcuts()).map((p) => p.kind), [
+        SavedPlaceKind.home,
+        SavedPlaceKind.work,
+        SavedPlaceKind.custom,
       ]);
     });
 
@@ -140,6 +140,17 @@ void main() {
 
       expect(await service.recents(), isEmpty);
       expect((await service.shortcuts()).length, 1);
+    });
+
+    test('stores Home and Work without a label', () async {
+      final service = SavedPlacesService(userId: 'u1');
+      await service.saveShortcut(
+        kind: SavedPlaceKind.home,
+        label: 'البيت',
+        location: _place('البيت', lat: 32.0),
+      );
+      // The UI names Home and Work in the current language.
+      expect((await service.shortcuts()).single.label, isEmpty);
     });
 
     test('survives corrupted storage instead of blocking search', () async {

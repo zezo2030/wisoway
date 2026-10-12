@@ -36,6 +36,7 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { ErrorCodes } from '../../common/errors/error-codes';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -215,10 +216,23 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'List active device sessions' })
-  async listDevices(@CurrentUser('id') userId: string) {
+  async listDevices(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('currentDeviceId') currentDeviceId: string | null,
+  ) {
     const devices =
       await this.deviceFingerprintService.listActiveDevices(userId);
-    return { devices };
+    // Only what the screen shows — never the fingerprint hash or push token.
+    return {
+      devices: devices.map((d) => ({
+        id: d.id,
+        platform: d.platform,
+        label: d.label,
+        lastSeenAt: d.lastSeenAt,
+        createdAt: d.createdAt,
+        isCurrent: d.id === currentDeviceId,
+      })),
+    };
   }
 
   /**
@@ -235,8 +249,18 @@ export class AuthController {
   @ApiOperation({ summary: 'Revoke a device session' })
   async revokeDevice(
     @CurrentUser('id') userId: string,
+    @CurrentUser('currentDeviceId') currentDeviceId: string | null,
     @Param('deviceId') deviceId: string,
   ) {
+    if (deviceId === currentDeviceId) {
+      throw new HttpException(
+        {
+          message: 'Use sign out to end the session on this device',
+          code: ErrorCodes.SELF_REVOKE_USE_LOGOUT,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     // Ensure the device belongs to this user
     const device = await this.deviceFingerprintService['deviceRepo'].findOne({
       where: { id: deviceId, userId },
@@ -248,10 +272,6 @@ export class AuthController {
       );
     }
 
-    // Prevent self-revoke via this endpoint
-    // (The current device fingerprint is not directly available here without
-    //  request context, so we guard it at the mobile layer — if needed add a
-    //  currentDeviceId header in a follow-up.)
     const revoked = await this.deviceFingerprintService.revokeDevice(
       deviceId,
       'user_self_revoke',

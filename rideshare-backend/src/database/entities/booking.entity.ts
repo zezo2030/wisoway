@@ -134,6 +134,31 @@ export class BookingEntity {
   @Column({ type: 'uuid', nullable: true })
   passengerPaymentId: string | null;
 
+  // ── Fare payment (instant rides and shared trips) ───────────────────────
+  //
+  // Chosen when booking: `cash` is handed to the driver, who confirms it;
+  // `cliq` is a CliQ request-to-pay to the platform at the end of the ride,
+  // and the platform credits the driver's wallet. `settledAt` is when the
+  // fare was paid, `passengerPaymentId` the CliQ payment row.
+
+  @Column({ type: 'varchar', length: 10, default: 'cash' })
+  paymentMethod: string;
+
+  /**
+   * `pending` (cash owed / not yet asked), `requested` (CliQ request out),
+   * `failed` (CliQ declined or timed out), `paid`, `disputed` (the driver
+   * reported non-payment).
+   */
+  @Column({ type: 'varchar', length: 12, default: 'pending' })
+  paymentStatus: string;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  paymentDisputedAt: Date | null;
+
+  /** CliQ: the passenger's alias or mobile (00962…) the request is sent to. */
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  payerCliqAlias: string | null;
+
   // ── Relations ──────────────────────────────────────────────────────────────
 
   @OneToMany(() => BookingSeatEntity, (seat) => seat.booking, { eager: false })

@@ -246,6 +246,47 @@ class LocationService {
     }
   }
 
+  static String? _cachedCountryCode;
+  static DateTime? _cachedCountryAt;
+
+  /// ISO country code of where the device is now, or null. Never prompts for
+  /// permission and honours the location-sharing preference; cached for 30
+  /// minutes so wallet screens can call it on every load.
+  Future<String?> currentCountryCode() async {
+    final cachedAt = _cachedCountryAt;
+    if (cachedAt != null &&
+        DateTime.now().difference(cachedAt) < const Duration(minutes: 30)) {
+      return _cachedCountryCode;
+    }
+    try {
+      if (!await isLocationSharingEnabled()) return null;
+      final permission = await checkPermission();
+      if (permission != LocationPermission.always &&
+          permission != LocationPermission.whileInUse) {
+        return null;
+      }
+      final position =
+          await Geolocator.getLastKnownPosition() ??
+          await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.low,
+              timeLimit: Duration(seconds: 5),
+            ),
+          );
+      final code = await getCountryCodeFromCoordinates(
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
+      if (code != null) {
+        _cachedCountryCode = code;
+        _cachedCountryAt = DateTime.now();
+      }
+      return code;
+    } catch (_) {
+      return null;
+    }
+  }
+
   // Text → coordinates deliberately has no on-device path. All place search
   // goes through `autocomplete` + `placeDetail`, so a name can only ever
   // resolve one way and the list and the resolved point cannot disagree.

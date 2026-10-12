@@ -1161,6 +1161,23 @@ class Countries {
     return null;
   }
 
+  /// الدولة من رقم هاتف دولي (‎+9665…) — أطول رمز اتصال يطابق بداية الرقم.
+  static CountryData? fromPhoneNumber(String phone) {
+    final digits = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    final normalized = digits.startsWith('00')
+        ? '+${digits.substring(2)}'
+        : digits;
+    if (!normalized.startsWith('+')) return null;
+    CountryData? best;
+    for (final c in all) {
+      if (normalized.startsWith(c.dialCode) &&
+          (best == null || c.dialCode.length > best.dialCode.length)) {
+        best = c;
+      }
+    }
+    return best;
+  }
+
   /// الحصول على الدولة من كود ISO
   static CountryData? getByIso2(String iso2) {
     final upper = iso2.toUpperCase();

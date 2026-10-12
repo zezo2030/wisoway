@@ -255,11 +255,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               onRefreshData: _refreshHomeData,
             ),
             BookingsTab(user: user),
-            ProfileTab(
-              user: user,
-              onOpenBookings: () =>
-                  setState(() => _currentIndex = isDriver ? 1 : 2),
-            ),
+            ProfileTab(user: user),
           ]
         : [
             HomeTabContent(
@@ -273,10 +269,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
             const SearchTab(),
             BookingsTab(user: user),
-            ProfileTab(
-              user: user,
-              onOpenBookings: () => setState(() => _currentIndex = 2),
-            ),
+            ProfileTab(user: user),
           ];
 
     return Scaffold(
@@ -387,11 +380,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     onRefreshData: _refreshHomeData,
                   ),
                   BookingsTab(user: user),
-                  ProfileTab(
-                    user: user,
-                    onOpenBookings: () =>
-                        setState(() => _currentIndex = isDriver ? 1 : 2),
-                  ),
+                  ProfileTab(user: user),
                 ]
               : [
                   HomeTabContent(
@@ -406,10 +395,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                   const SearchTab(),
                   BookingsTab(user: user),
-                  ProfileTab(
-                    user: user,
-                    onOpenBookings: () => setState(() => _currentIndex = 2),
-                  ),
+                  ProfileTab(user: user),
                 ];
           return IndexedStack(index: safeIndex, children: pages);
         },

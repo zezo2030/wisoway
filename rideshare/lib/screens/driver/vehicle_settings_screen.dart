@@ -8,10 +8,16 @@ import '../../core/theme/colors.dart';
 import '../../core/theme/text_styles.dart';
 import '../../core/ui/error_surface.dart';
 import '../../models/seat_layout_config.dart';
+import '../../models/vehicle_art.dart';
 import '../../models/vehicle_type_template.dart';
 import '../../models/vehicle_model.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../widgets/expandable_cabin_view.dart';
+import '../../widgets/vehicle_color_dropdown.dart';
 
+/// The driver's vehicle: its type (which fixes the seat map), colour and the
+/// gender-separation rule. The seat map is the type's artwork — there is no
+/// row-by-row editing; changing the type is how the layout changes.
 class VehicleSettingsScreen extends StatefulWidget {
   const VehicleSettingsScreen({super.key});
 
@@ -27,27 +33,16 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
   String? _selectedVehicleType;
   bool _isLoading = true;
   bool _isSaving = false;
-
-  // Seat layout state
-  int _rows = 2;
-  int _seatsPerRow = 2;
-  bool _isCustomLayout = false;
-  List<int> _customRowConfigs = [1, 3];
   bool _preventGenderMixing = false;
 
-  /// Shown to instant-ride passengers so they can spot the car.
-  final TextEditingController _colorController = TextEditingController();
+  /// Colour key from the colour list (or an old free-text value). Shown to
+  /// passengers so they can spot the car.
+  String? _color;
 
   @override
   void initState() {
     super.initState();
     _loadVehicle();
-  }
-
-  @override
-  void dispose() {
-    _colorController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadVehicle() async {
@@ -64,25 +59,9 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
         _vehicle = vehicle;
         _vehicleTypes = vehicleTypes;
         _selectedVehicleType = vehicle?.vehicleType;
-        _colorController.text = vehicle?.color ?? '';
-        if (vehicle?.seatLayout != null) {
-          final layout = vehicle!.seatLayout!;
-          _rows = layout.rows;
-          _seatsPerRow = layout.seatsPerRow;
-          _preventGenderMixing = layout.preventGenderMixing;
-          if (layout.seatsPerRowList != null &&
-              layout.seatsPerRowList!.isNotEmpty) {
-            _isCustomLayout = true;
-            _customRowConfigs = List<int>.from(layout.seatsPerRowList!);
-          }
-        } else if (vehicle != null) {
-          final template = _templateForType(vehicle.vehicleType);
-          if (template != null) {
-            _applySeatLayoutTemplate(template.layout);
-          } else {
-            _applySeatLayoutTemplate(_fallbackLayoutForSeats(vehicle.seats));
-          }
-        }
+        _color = vehicle?.color;
+        _preventGenderMixing =
+            vehicle?.seatLayout?.preventGenderMixing ?? false;
         _isLoading = false;
       });
     } catch (e) {
@@ -92,25 +71,44 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
     }
   }
 
+  VehicleTypeTemplate? get _currentTemplate =>
+      _templateForType(_selectedVehicleType ?? _vehicle?.vehicleType);
+
+  VehicleTypeTemplate? _templateForType(String? type) {
+    if (type == null || type.isEmpty) return null;
+    for (final template in _vehicleTypes) {
+      if (template.type == type) return template;
+    }
+    return null;
+  }
+
+  /// The type's own layout; a vehicle whose type has no template keeps the
+  /// layout it was registered with.
+  SeatLayoutConfig? get _layout {
+    final base = _currentTemplate?.layout ?? _vehicle?.seatLayout;
+    return base?.copyWith(preventGenderMixing: _preventGenderMixing);
+  }
+
+  int get _seatCount => _currentTemplate?.seats ?? _vehicle?.seats ?? 0;
+
+  /// Artwork for the selected type, when it matches that type's seat count.
+  VehicleArt? get _art {
+    final art = vehicleArtFor(_selectedVehicleType ?? _vehicle?.vehicleType);
+    return art != null && art.seatCount == _seatCount ? art : null;
+  }
+
   Future<void> _save() async {
     final vehicle = _vehicle;
     if (vehicle == null) return;
-
-    final layout = SeatLayoutConfig(
-      rows: _rows,
-      seatsPerRow: _seatsPerRow,
-      seatsPerRowList: _isCustomLayout ? _customRowConfigs : null,
-      preventGenderMixing: _preventGenderMixing,
-    );
 
     setState(() => _isSaving = true);
     try {
       final updated = await _vehicleService.updateVehicle(
         vehicle.id,
         vehicleType: _selectedVehicleType,
-        color: _colorController.text.trim(),
+        color: _color?.trim(),
         seats: _currentTemplate?.seats,
-        seatLayout: layout,
+        seatLayout: _layout,
       );
       if (!mounted) return;
       setState(() => _vehicle = updated);
@@ -199,7 +197,9 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
           children: [
             _buildVehicleSummaryCard(),
             const SizedBox(height: 16),
-            _buildSeatLayoutCard(),
+            _buildVehicleTypeCard(),
+            const SizedBox(height: 16),
+            _buildSeatMapCard(),
             const SizedBox(height: 24),
             _buildSaveButton(),
           ],
@@ -214,149 +214,174 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            context.l10n.vehicleDataSection,
-            style: AppTextStyles.titleMedium.copyWith(
-              fontWeight: FontWeight.bold,
-              color: T.onSurface(context),
-            ),
-          ),
+          _cardTitle(context.l10n.vehicleDataSection),
           const SizedBox(height: 12),
           _summaryRow(context.l10n.vehicleModelLabel, vehicle.model),
-          _buildVehicleTypeDropdown(),
-          _summaryRow(context.l10n.vehiclePlateNumberLabel, vehicle.plateNumber),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: TextField(
-              controller: _colorController,
-              maxLength: 40,
-              textInputAction: TextInputAction.done,
-              decoration: InputDecoration(
-                labelText: context.l10n.vehicleColor,
-                prefixIcon: const Icon(Icons.palette_outlined),
-                counterText: '',
-                border: const OutlineInputBorder(),
-                isDense: true,
-              ),
-            ),
-          ),
           _summaryRow(
-            context.l10n.registeredSeatsCount,
-            '${_currentTemplate?.seats ?? vehicle.seats}',
+            context.l10n.vehiclePlateNumberLabel,
+            vehicle.plateNumber,
+          ),
+          const SizedBox(height: 12),
+          VehicleColorDropdown(
+            value: _color,
+            onChanged: (key) => setState(() => _color = key),
           ),
         ],
       ),
     );
   }
 
-  VehicleTypeTemplate? get _currentTemplate =>
-      _templateForType(_selectedVehicleType ?? _vehicle?.vehicleType);
+  Widget _buildVehicleTypeCard() {
+    final types = _vehicleTypes.isNotEmpty
+        ? _vehicleTypes.map((t) => t.type).toList()
+        : AppConstants.vehicleTypes;
 
-  VehicleTypeTemplate? _templateForType(String? type) {
-    if (type == null || type.isEmpty) return null;
-    for (final template in _vehicleTypes) {
-      if (template.type == type) return template;
-    }
-    return null;
-  }
-
-  SeatLayoutConfig _fallbackLayoutForSeats(int seats) {
-    final total = seats.clamp(1, 50);
-    final seatsPerRow = (total / 2).ceil().clamp(1, 10);
-    final rows = (total / seatsPerRow).ceil().clamp(1, 10);
-    return SeatLayoutConfig(
-      rows: rows,
-      seatsPerRow: seatsPerRow,
-      preventGenderMixing: _preventGenderMixing,
+    return _buildGlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _cardTitle(context.l10n.vehicleTypePickTitle),
+          const SizedBox(height: 12),
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: 0.95,
+            children: [for (final type in types) _buildTypeTile(type)],
+          ),
+        ],
+      ),
     );
   }
 
-  void _applySeatLayoutTemplate(SeatLayoutConfig layout) {
-    _rows = layout.rows;
-    _seatsPerRow = layout.seatsPerRow;
-    _preventGenderMixing = layout.preventGenderMixing;
-    if (layout.seatsPerRowList != null && layout.seatsPerRowList!.isNotEmpty) {
-      _isCustomLayout = true;
-      _customRowConfigs = List<int>.from(layout.seatsPerRowList!);
-    } else {
-      _isCustomLayout = false;
-      _customRowConfigs = List<int>.filled(layout.rows, layout.seatsPerRow);
-    }
-  }
-
-  void _onVehicleTypeChanged(String? type) {
-    if (type == null || type == _selectedVehicleType) return;
+  Widget _buildTypeTile(String type) {
     final template = _templateForType(type);
-    setState(() {
-      _selectedVehicleType = type;
-      if (template != null) {
-        _applySeatLayoutTemplate(template.layout);
-      }
-    });
-  }
+    final selected = type == _selectedVehicleType;
+    final art = vehicleArtFor(type);
+    final label = template != null
+        ? template.localizedLabel(Localizations.localeOf(context).languageCode)
+        : AppConstants.vehicleTypeLabels[type] ?? type;
 
-  String _vehicleTypeLabel(VehicleTypeTemplate template) {
-    return template.localizedLabel(Localizations.localeOf(context).languageCode);
-  }
-
-  Widget _buildVehicleTypeDropdown() {
-    final availableTypes = _vehicleTypes.isNotEmpty
-        ? _vehicleTypes.map((template) => template.type).toList()
-        : AppConstants.vehicleTypes;
-    final selectedType = availableTypes.contains(_selectedVehicleType)
-        ? _selectedVehicleType
-        : null;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              context.l10n.vehicleTypeLabel,
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: T.onSurfaceVariant(context),
-              ),
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => setState(() => _selectedVehicleType = type),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: selected
+                ? T.primary(context).withValues(alpha: 0.08)
+                : T.surface(context),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: selected ? T.primary(context) : T.outline(context),
+              width: selected ? 2 : 1,
             ),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: DropdownButtonFormField<String>(
-              initialValue: selectedType,
-              isExpanded: true,
-              decoration: InputDecoration(
-                isDense: true,
-                filled: true,
-                fillColor: T.surface(context),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: T.outline(context)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: T.outline(context)),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
+          child: Column(
+            children: [
+              Expanded(
+                child: art != null
+                    ? Image.asset(art.asset, fit: BoxFit.contain)
+                    : Icon(
+                        IconsaxPlusBold.car,
+                        size: 48,
+                        color: T.onSurfaceVariant(context),
+                      ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.labelLarge.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: selected ? T.primary(context) : T.onSurface(context),
                 ),
               ),
-              items: availableTypes.map((type) {
-                final template = _templateForType(type);
-                return DropdownMenuItem<String>(
-                  value: type,
-                  child: Text(
-                    template != null
-                        ? _vehicleTypeLabel(template)
-                        : AppConstants.vehicleTypeLabels[type] ?? type,
-                    overflow: TextOverflow.ellipsis,
+              if (template != null)
+                Text(
+                  context.l10n.seatsCount(template.seats),
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: T.onSurfaceVariant(context),
                   ),
-                );
-              }).toList(),
-              onChanged: _onVehicleTypeChanged,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSeatMapCard() {
+    final art = _art;
+    return _buildGlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _cardTitle(context.l10n.seatLayoutSection),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: T.primary(context).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  context.l10n.seatsCount(_seatCount),
+                  style: AppTextStyles.titleMedium.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: T.primary(context),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            art != null
+                ? context.l10n.vehicleSeatMapHint
+                : context.l10n.vehicleSeatMapUnavailable,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: T.onSurfaceVariant(context),
             ),
           ),
+          if (art != null) ...[
+            const SizedBox(height: 16),
+            Center(
+              child: ExpandableCabinView(
+                art: art,
+                title: context.l10n.seatLayoutSection,
+                thumbnailWidth: 200,
+                seatBuilder: (context, seatNumber, _) =>
+                    _SeatNumber(number: seatNumber),
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+          _buildMixingToggle(),
         ],
+      ),
+    );
+  }
+
+  Widget _cardTitle(String text) {
+    return Text(
+      text,
+      style: AppTextStyles.titleMedium.copyWith(
+        fontWeight: FontWeight.bold,
+        color: T.onSurface(context),
       ),
     );
   }
@@ -385,221 +410,6 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
     );
   }
 
-  Widget _buildSeatLayoutCard() {
-    final totalSeats = _isCustomLayout
-        ? _customRowConfigs.fold<int>(0, (sum, item) => sum + item)
-        : _rows * _seatsPerRow;
-
-    return _buildGlassCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                context.l10n.seatLayoutSection,
-                style: AppTextStyles.titleMedium.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: T.onSurface(context),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: T.primary(context).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  context.l10n.seatsCount(totalSeats),
-                  style: AppTextStyles.titleMedium.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: T.primary(context),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            context.l10n.seatLayoutUsedForAllTrips,
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: T.onSurfaceVariant(context),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: T.surfaceVariant(context),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildModeToggle(
-                    title: context.l10n.gridSystem,
-                    isActive: !_isCustomLayout,
-                    onTap: () => setState(() => _isCustomLayout = false),
-                  ),
-                ),
-                Expanded(
-                  child: _buildModeToggle(
-                    title: context.l10n.customLayout,
-                    isActive: _isCustomLayout,
-                    onTap: () => setState(() => _isCustomLayout = true),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          if (!_isCustomLayout)
-            Row(
-              children: [
-                Expanded(
-                  child: _buildCounter(
-                    label: context.l10n.rowsLabel,
-                    value: _rows,
-                    icon: IconsaxPlusBroken.row_vertical,
-                    onDecrease: _rows > 1
-                        ? () => setState(() => _rows--)
-                        : null,
-                    onIncrease: _rows < 10
-                        ? () => setState(() => _rows++)
-                        : null,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildCounter(
-                    label: context.l10n.perRowLabel,
-                    value: _seatsPerRow,
-                    icon: Icons.airline_seat_recline_normal_rounded,
-                    onDecrease: _seatsPerRow > 1
-                        ? () => setState(() => _seatsPerRow--)
-                        : null,
-                    onIncrease: _seatsPerRow < 10
-                        ? () => setState(() => _seatsPerRow++)
-                        : null,
-                  ),
-                ),
-              ],
-            )
-          else ...[
-            Text(
-              context.l10n.setSeatsPerRow,
-              style: AppTextStyles.labelLarge.copyWith(
-                color: T.onSurface(context).withValues(alpha: 0.54),
-              ),
-            ),
-            const SizedBox(height: 12),
-            ...List.generate(_customRowConfigs.length, (index) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: T.primary(context).withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          '${index + 1}',
-                          style: AppTextStyles.titleMedium.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: T.primary(context),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildCounter(
-                        label: index == 0
-                            ? context.l10n.nextToDriver
-                            : context.l10n.rowNumberLabel(index + 1),
-                        value: _customRowConfigs[index],
-                        icon: Icons.airline_seat_recline_normal_rounded,
-                        onDecrease: _customRowConfigs[index] > 1
-                            ? () => setState(() => _customRowConfigs[index]--)
-                            : null,
-                        onIncrease: _customRowConfigs[index] < 4
-                            ? () => setState(() => _customRowConfigs[index]++)
-                            : null,
-                      ),
-                    ),
-                    if (_customRowConfigs.length > 1)
-                      IconButton(
-                        icon: Icon(
-                          Icons.remove_circle_outline,
-                          color: T.error(context),
-                        ),
-                        onPressed: () =>
-                            setState(() => _customRowConfigs.removeAt(index)),
-                      ),
-                  ],
-                ),
-              );
-            }),
-            if (_customRowConfigs.length < 10)
-              TextButton.icon(
-                onPressed: () => setState(() => _customRowConfigs.add(3)),
-                icon: Icon(
-                  Icons.add_circle_outline,
-                  color: T.primary(context),
-                ),
-                label: Text(
-                  context.l10n.addNewRow,
-                  style: AppTextStyles.bodyLarge.copyWith(
-                    color: T.primary(context),
-                  ),
-                ),
-              ),
-          ],
-          const SizedBox(height: 16),
-          _buildMixingToggle(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildModeToggle({
-    required String title,
-    required bool isActive,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: isActive ? T.primary(context) : T.primary(context).withValues(alpha: 0.0),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Center(
-          child: Text(
-            title,
-            style: AppTextStyles.labelLarge.copyWith(
-              fontWeight: FontWeight.bold,
-              color: isActive
-                  ? T.onPrimary(context)
-                  : T.onSurfaceVariant(context),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildMixingToggle() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -609,137 +419,34 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
         border: Border.all(color: T.outline(context)),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: T.secondary(context).withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.people_outline,
-                  color: T.secondary(context),
-                  size: 20,
-                ),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: T.secondary(context).withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.people_outline,
+              color: T.secondary(context),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              context.l10n.preventGenderMixing,
+              style: AppTextStyles.bodyLarge.copyWith(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: T.onSurface(context),
               ),
-              const SizedBox(width: 12),
-              Text(
-                context.l10n.preventGenderMixing,
-                style: AppTextStyles.bodyLarge.copyWith(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: T.onSurface(context),
-                ),
-              ),
-            ],
+            ),
           ),
           Switch(
             value: _preventGenderMixing,
-            activeThumbColor: T.primary(context).withValues(alpha: 0.3),
+            activeThumbColor: T.primary(context),
             onChanged: (v) => setState(() => _preventGenderMixing = v),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCounter({
-    required String label,
-    required int value,
-    required IconData icon,
-    required VoidCallback? onDecrease,
-    required VoidCallback? onIncrease,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      decoration: BoxDecoration(
-        color: T.surface(context),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: T.outline(context)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: T.primary(context), size: 18),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  label,
-                  style: AppTextStyles.labelLarge.copyWith(
-                    fontSize: 13,
-                    color: T.onSurface(context),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              GestureDetector(
-                onTap: onDecrease,
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: onDecrease == null
-                        ? T.surfaceVariant(context)
-                        : T.surface(context),
-                    border: Border.all(color: T.outlineVariant(context)),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.remove,
-                    size: 18,
-                    color: onDecrease == null
-                        ? T.textDisabled(context)
-                        : T.onSurface(context),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text(
-                  '$value',
-                  style: AppTextStyles.titleSmall.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: T.onSurface(context),
-                  ),
-                ),
-              ),
-              GestureDetector(
-                onTap: onIncrease,
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: onIncrease == null
-                        ? T.surfaceVariant(context)
-                        : T.surface(context),
-                    border: Border.all(color: T.outlineVariant(context)),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.add,
-                    size: 18,
-                    color: onIncrease == null
-                        ? T.textDisabled(context)
-                        : T.onSurface(context),
-                  ),
-                ),
-              ),
-            ],
           ),
         ],
       ),
@@ -786,6 +493,35 @@ class _VehicleSettingsScreenState extends State<VehicleSettingsScreen> {
         border: Border.all(color: T.outline(context)),
       ),
       child: child,
+    );
+  }
+}
+
+/// A seat's number drawn on the artwork, matching what passengers book.
+class _SeatNumber extends StatelessWidget {
+  const _SeatNumber({required this.number});
+
+  final int number;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: FittedBox(
+        child: Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: T.primary(context).withValues(alpha: 0.85),
+            shape: BoxShape.circle,
+          ),
+          child: Text(
+            '$number',
+            style: AppTextStyles.labelLarge.copyWith(
+              color: T.onPrimary(context),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

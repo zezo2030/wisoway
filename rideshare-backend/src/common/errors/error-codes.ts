@@ -32,6 +32,9 @@ export const ErrorCodes = {
   /** Caller attempted to delete (revoke) their own current device session. */
   SELF_REVOKE_USE_LOGOUT: 'SELF_REVOKE_USE_LOGOUT',
 
+  /** The other party hides their phone number; contact goes through chat. */
+  PHONE_HIDDEN: 'PHONE_HIDDEN',
+
   // ── Booking lifecycle (US2 / 010-booking-lifecycle) ─────────────────────────
 
   /** One or more requested seats are already taken by another booking. */

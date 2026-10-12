@@ -8,8 +8,10 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api/api_client.dart';
+import '../../core/constants/support_constants.dart';
 import '../../core/api/websocket_service.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/services/active_ride_navigator.dart';
@@ -78,18 +80,21 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
   Timer? _statusPoll;
   bool _leaving = false;
 
+  /// The trip was seen still running here, so its end is this ride's end.
+  bool _sawTripLive = false;
+
   @override
   void initState() {
     super.initState();
     _loadCarIcon();
     _loadTrip();
     _initTracking();
-    if (widget.lockedUntilEnd) {
-      _statusPoll = Timer.periodic(
-        const Duration(seconds: 10),
-        (_) => _checkTripEnded(),
-      );
-    }
+    // Every ride ends on the payment screen: shared trips as well as the
+    // locked instant ones, so every trip screen watches for the end.
+    _statusPoll = Timer.periodic(
+      const Duration(seconds: 10),
+      (_) => _checkTripEnded(),
+    );
   }
 
   @override
@@ -231,8 +236,11 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
     };
   }
 
-  /// Locked mode only: once the driver ends the trip, release the passenger —
-  /// to rating when it completed, back home when it was cancelled.
+  /// Once the driver ends the trip, move the passenger on — to the payment
+  /// screen when it completed, back home when it was cancelled.
+  ///
+  /// A shared trip opened after it already ended (from history, say) is left
+  /// alone: only an end this screen witnessed counts.
   Future<void> _checkTripEnded() async {
     if (_leaving || !mounted) return;
     try {
@@ -241,20 +249,24 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
         listen: false,
       ).getTrip(widget.tripId);
       if (!mounted || trip == null) return;
-      if (!trip.isCompleted && !trip.isCancelled) return;
+      if (!trip.isCompleted && !trip.isCancelled) {
+        _sawTripLive = true;
+        return;
+      }
+      if (!widget.lockedUntilEnd && !_sawTripLive) {
+        _statusPoll?.cancel();
+        return;
+      }
       _leaving = true;
       _statusPoll?.cancel();
       final navigator = Navigator.of(context);
       if (trip.isCompleted) {
+        // Pay first: the amount-due screen holds the passenger until the fare
+        // is settled, and moves straight on to rating when it already is.
         navigator.pushNamedAndRemoveUntil(
-          RouteNames.rating,
+          RouteNames.ridePaymentDue,
           (route) => route.isFirst,
-          arguments: {
-            'tripId': trip.id,
-            'trip': trip,
-            'driverId': trip.driverId,
-            'driverName': trip.driverName ?? '',
-          },
+          arguments: {'tripId': trip.id, 'trip': trip},
         );
       } else {
         ScaffoldMessenger.of(
@@ -404,7 +416,40 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
       ),
     );
     if (confirmed != true || !mounted) return;
-    await _sendEmergency();
+    // The alert goes out alongside the call, never in its way: the dialer
+    // opens at once and the team gets the location in the background.
+    unawaited(_sendEmergency());
+    await _callSupport();
+  }
+
+  /// Opens the dialer on VisionWay's support line, the same number the
+  /// support screen shows (the server's configured one when it has it).
+  Future<void> _callSupport() async {
+    var number = SupportConstants.supportPhone;
+    try {
+      final config = await ApiClient()
+          .get('/support/config')
+          .timeout(const Duration(seconds: 2));
+      final configured = config is Map ? config['whatsappE164'] : null;
+      if (configured is String && configured.trim().isNotEmpty) {
+        number = configured.trim();
+      }
+    } catch (_) {
+      // Offline or slow — the built-in number is just as good.
+    }
+    final phone = number.replaceAll(RegExp(r'[^0-9+]'), '');
+    final opened = await launchUrl(Uri(scheme: 'tel', path: phone));
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.l10n.tripInProgressEmergencyCallFailed(
+              SupportConstants.supportPhoneDisplay,
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _sendEmergency() async {
@@ -413,12 +458,16 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
       double? lat = _liveDriverLocation?.latitude;
       double? lng = _liveDriverLocation?.longitude;
       try {
-        final pos = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 4),
-          ),
-        );
+        // Last known fix first: the dialer is about to take the foreground,
+        // and a fresh fix may no longer be granted once it does.
+        final pos =
+            await Geolocator.getLastKnownPosition() ??
+            await Geolocator.getCurrentPosition(
+              locationSettings: const LocationSettings(
+                accuracy: LocationAccuracy.high,
+                timeLimit: Duration(seconds: 4),
+              ),
+            );
         lat = pos.latitude;
         lng = pos.longitude;
       } catch (_) {

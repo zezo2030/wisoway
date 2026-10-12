@@ -20,6 +20,7 @@ import {
   PendingChargeStatus,
 } from '../../database/entities/pending-charge.entity';
 import {
+  TripEntity,
   WalletAccountEntity,
   WalletTransactionEntity,
   WalletAccountType,
@@ -28,6 +29,7 @@ import {
   WalletTransactionType,
 } from '../../database/entities';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
+import { DEFAULT_CURRENCY } from '../../common/currency/country-currency';
 import {
   pickPrimaryWalletLedgerAccount,
   WalletService,
@@ -101,6 +103,7 @@ export class PendingChargesService {
         amount,
         saved.id,
         kind,
+        await this.currencyOfTrip(tripId),
       );
       if (result) {
         saved.status = PendingChargeStatus.APPLIED;
@@ -147,6 +150,7 @@ export class PendingChargesService {
           Number(charge.amount),
           charge.id,
           charge.kind,
+          await this.currencyOfTrip(charge.tripId),
         );
         if (tx) {
           charge.status = PendingChargeStatus.APPLIED;
@@ -180,8 +184,11 @@ export class PendingChargesService {
     const { page = 1, limit = 20, status } = options;
     const skip = (page - 1) * limit;
 
+    // `trip.currency` tells the app which currency each charge is owed in.
     const qb = this.chargeRepo
       .createQueryBuilder('pc')
+      .leftJoin('pc.trip', 'trip')
+      .addSelect(['trip.id', 'trip.currency'])
       .where('pc.userId = :userId', { userId })
       .orderBy('pc.createdAt', 'DESC');
 
@@ -235,17 +242,30 @@ export class PendingChargesService {
 
   // ── Internal helpers ──────────────────────────────────────────────────────
 
+  /** A charge is owed in its trip's currency; null when it has no trip. */
+  private async currencyOfTrip(tripId: string | null): Promise<string | null> {
+    if (!tripId) return null;
+    const trip = await this.dataSource.getRepository(TripEntity).findOne({
+      where: { id: tripId },
+      select: { id: true, currency: true },
+    });
+    return trip?.currency ?? null;
+  }
+
   /**
    * Attempt to deduct `amount` from the user's wallet — DRIVER wallet for
-   * driver_no_show charges, RIDER wallet for passenger charges. Returns the
-   * created WalletTransactionEntity on success, or null if the wallet balance
-   * is insufficient (no exception — caller decides).
+   * driver_no_show charges, RIDER wallet for passenger charges. With a
+   * [currency] only the ledger row in that currency pays; without one (a
+   * charge with no trip) the primary row does. Returns the created
+   * WalletTransactionEntity on success, or null if the balance is
+   * insufficient (no exception — caller decides).
    */
   private async deductFromWallet(
     userId: string,
     amount: number,
     chargeId: string,
     kind: PendingChargeKind,
+    currency: string | null = null,
   ): Promise<WalletTransactionEntity | null> {
     const accountType = walletAccountTypeForCharge(kind);
     return this.dataSource.transaction(async (manager) => {
@@ -261,7 +281,7 @@ export class PendingChargesService {
         const created = manager.create(WalletAccountEntity, {
           userId,
           accountType,
-          currency: 'JOD',
+          currency: currency ?? DEFAULT_CURRENCY,
           balance: '0.00',
           isActive: true,
         });
@@ -269,7 +289,9 @@ export class PendingChargesService {
         return null;
       }
 
-      const account = pickPrimaryWalletLedgerAccount(lockedRows);
+      const account = currency
+        ? (lockedRows.find((a) => a.currency === currency) ?? null)
+        : pickPrimaryWalletLedgerAccount(lockedRows);
       if (!account) return null;
 
       const current = Number(account.balance);

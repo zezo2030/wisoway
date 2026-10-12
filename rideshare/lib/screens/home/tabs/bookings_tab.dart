@@ -18,10 +18,40 @@ import '../../../widgets/common/empty_state.dart';
 import '../../../core/ui/error_surface.dart';
 import '../../../core/api/api_client.dart';
 
+/// Which trips the list shows.
+enum BookingsFilter {
+  /// Everything — the "My trips" tab.
+  all,
+
+  /// Trips that are over, excluding cancelled ones.
+  past,
+
+  /// Cancelled trips only.
+  cancelled,
+}
+
 class BookingsTab extends StatefulWidget {
   final UserModel? user;
+  final BookingsFilter filter;
 
-  const BookingsTab({super.key, this.user});
+  /// Pushed as its own page (from the profile) rather than shown as a home
+  /// tab, so back pops to wherever it was opened from.
+  final bool standalone;
+
+  const BookingsTab({
+    super.key,
+    this.user,
+    this.filter = BookingsFilter.all,
+    this.standalone = false,
+  });
+
+  /// The past or cancelled list as a page of its own.
+  static Route<void> route({
+    required UserModel? user,
+    required BookingsFilter filter,
+  }) => MaterialPageRoute(
+    builder: (_) => BookingsTab(user: user, filter: filter, standalone: true),
+  );
 
   @override
   State<BookingsTab> createState() => _BookingsTabState();
@@ -40,6 +70,61 @@ class _BookingsTabState extends State<BookingsTab> {
       const Duration(days: 1),
     );
     _bookingsFuture = _bookingService.getUserBookings();
+  }
+
+  /// A page title for a filtered list, or null for the plain tab.
+  String? _filterTitle(BuildContext context) {
+    switch (widget.filter) {
+      case BookingsFilter.all:
+        return null;
+      case BookingsFilter.past:
+        return context.l10n.pastTrips;
+      case BookingsFilter.cancelled:
+        return context.l10n.cancelledTrips;
+    }
+  }
+
+  /// A home tab returns to the home tab; a pushed page pops normally.
+  Widget? _leading() => widget.standalone ? null : const BackToHomeButton();
+
+  String _filteredEmptyMessage(BuildContext context) =>
+      widget.filter == BookingsFilter.cancelled
+      ? context.l10n.noCancelledTrips
+      : context.l10n.noPastTrips;
+
+  Widget _buildFilteredEmptyState(BuildContext context) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.6,
+          child: EmptyState(
+            icon: widget.filter == BookingsFilter.cancelled
+                ? Icons.close_rounded
+                : IconsaxPlusBold.clock,
+            title: _filterTitle(context)!,
+            subtitle: _filteredEmptyMessage(context),
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<TripModel> _filterDriverTrips(List<TripModel> trips) {
+    switch (widget.filter) {
+      case BookingsFilter.all:
+        return trips;
+      case BookingsFilter.past:
+        return trips
+            .where(
+              (t) =>
+                  !t.isCancelled &&
+                  (t.isCompleted || t.isExpired || t.isPast),
+            )
+            .toList();
+      case BookingsFilter.cancelled:
+        return trips.where((t) => t.isCancelled).toList();
+    }
   }
 
   void _refreshBookings() {
@@ -75,11 +160,11 @@ class _BookingsTabState extends State<BookingsTab> {
       backgroundColor: T.surface(context),
       appBar: AppBar(
         title: Text(
-          context.l10n.myTripsTitle,
+          _filterTitle(context) ?? context.l10n.myTripsTitle,
           style: GoogleFonts.tajawal(fontWeight: FontWeight.bold),
         ),
-        automaticallyImplyLeading: false,
-        leading: const BackToHomeButton(),
+        automaticallyImplyLeading: widget.standalone,
+        leading: _leading(),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -128,10 +213,12 @@ class _BookingsTabState extends State<BookingsTab> {
             return _buildErrorState(context, snapshot.error.toString());
           }
 
-          final trips = snapshot.data ?? [];
+          final trips = _filterDriverTrips(snapshot.data ?? []);
 
           if (trips.isEmpty) {
-            return _buildEmptyTripsState(context);
+            return widget.filter == BookingsFilter.all
+                ? _buildEmptyTripsState(context)
+                : _buildFilteredEmptyState(context);
           }
 
           return RefreshIndicator(
@@ -170,11 +257,11 @@ class _BookingsTabState extends State<BookingsTab> {
         backgroundColor: T.surface(context),
         appBar: AppBar(
           title: Text(
-            context.l10n.myBookings,
+            _filterTitle(context) ?? context.l10n.myBookings,
             style: GoogleFonts.tajawal(fontWeight: FontWeight.bold),
           ),
-          automaticallyImplyLeading: false,
-          leading: const BackToHomeButton(),
+          automaticallyImplyLeading: widget.standalone,
+          leading: _leading(),
           elevation: 0,
           actions: [
             Padding(
@@ -194,11 +281,11 @@ class _BookingsTabState extends State<BookingsTab> {
       backgroundColor: T.surface(context),
       appBar: AppBar(
         title: Text(
-          context.l10n.myBookings,
+          _filterTitle(context) ?? context.l10n.myBookings,
           style: GoogleFonts.tajawal(fontWeight: FontWeight.bold),
         ),
-        automaticallyImplyLeading: false,
-        leading: const BackToHomeButton(),
+        automaticallyImplyLeading: widget.standalone,
+        leading: _leading(),
         elevation: 0,
       ),
       body: FutureBuilder<List<BookingModel>>(
@@ -216,7 +303,20 @@ class _BookingsTabState extends State<BookingsTab> {
             return _buildErrorState(context, bookingsSnapshot.error.toString());
           }
 
-          final bookings = bookingsSnapshot.data ?? [];
+          final allBookings = bookingsSnapshot.data ?? [];
+          final bookings = widget.filter == BookingsFilter.cancelled
+              ? allBookings.where((b) => b.isCancelled).toList()
+              : widget.filter == BookingsFilter.past
+              ? allBookings.where((b) => !b.isCancelled).toList()
+              : allBookings;
+
+          if (bookings.isEmpty && widget.filter != BookingsFilter.all) {
+            return RefreshIndicator(
+              onRefresh: () async => _refreshBookings(),
+              color: T.primary(context),
+              child: _buildFilteredEmptyState(context),
+            );
+          }
 
           if (bookings.isEmpty) {
             return EmptyState(
@@ -261,10 +361,28 @@ class _BookingsTabState extends State<BookingsTab> {
                 tripsMap.putIfAbsent(trip.id, () => trip);
               }
 
-              final (:upcoming, :past) = BookingModel.categorizeBookings(
+              final categorized = BookingModel.categorizeBookings(
                 bookings,
                 tripsMap,
               );
+              // The past list has no upcoming section; the cancelled list
+              // shows every cancelled booking, whenever its trip runs.
+              final upcoming = widget.filter == BookingsFilter.all
+                  ? categorized.upcoming
+                  : <BookingModel>[];
+              final past = widget.filter == BookingsFilter.cancelled
+                  ? bookings
+                  : categorized.past;
+
+              if (upcoming.isEmpty &&
+                  past.isEmpty &&
+                  widget.filter != BookingsFilter.all) {
+                return RefreshIndicator(
+                  onRefresh: () async => _refreshBookings(),
+                  color: T.primary(context),
+                  child: _buildFilteredEmptyState(context),
+                );
+              }
 
               return RefreshIndicator(
                 onRefresh: () async {
@@ -303,8 +421,10 @@ class _BookingsTabState extends State<BookingsTab> {
                     ],
                     if (past.isNotEmpty) ...[
                       if (upcoming.isNotEmpty) const SizedBox(height: 24),
-                      _buildSectionTitle(context.l10n.past),
-                      const SizedBox(height: 12),
+                      if (widget.filter == BookingsFilter.all) ...[
+                        _buildSectionTitle(context.l10n.past),
+                        const SizedBox(height: 12),
+                      ],
                       ...past.map((booking) {
                         final trip =
                             tripsMap[booking.tripId] ?? booking.tripPopulated;

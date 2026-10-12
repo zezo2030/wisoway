@@ -19,16 +19,28 @@ class BookingCreateMultiSeat extends BookingEvent {
   /// Exempts this booking from the trip's gender-mixing rules (2+ seats only).
   final bool isFamilyBooking;
 
+  /// `cash` or `cliq` (request-to-pay to [payerCliqAlias] when the trip ends).
+  final String paymentMethod;
+  final String? payerCliqAlias;
+
   const BookingCreateMultiSeat({
     required this.tripId,
     required this.seats,
     this.sharePhoneWithDriver = false,
     this.isFamilyBooking = false,
+    this.paymentMethod = 'cash',
+    this.payerCliqAlias,
   });
 
   @override
-  List<Object?> get props =>
-      [tripId, seats, sharePhoneWithDriver, isFamilyBooking];
+  List<Object?> get props => [
+    tripId,
+    seats,
+    sharePhoneWithDriver,
+    isFamilyBooking,
+    paymentMethod,
+    payerCliqAlias,
+  ];
 }
 
 /// Auto-pick seats on behalf of the user.
@@ -41,17 +53,30 @@ class BookingAutoPick extends BookingEvent {
   /// Exempts this booking from the trip's gender-mixing rules (2+ seats only).
   final bool isFamilyBooking;
 
+  /// `cash` or `cliq` (request-to-pay to [payerCliqAlias] when the trip ends).
+  final String paymentMethod;
+  final String? payerCliqAlias;
+
   const BookingAutoPick({
     required this.tripId,
     required this.seatCount,
     required this.passengers,
     this.sharePhoneWithDriver = false,
     this.isFamilyBooking = false,
+    this.paymentMethod = 'cash',
+    this.payerCliqAlias,
   });
 
   @override
-  List<Object?> get props =>
-      [tripId, seatCount, passengers, sharePhoneWithDriver, isFamilyBooking];
+  List<Object?> get props => [
+    tripId,
+    seatCount,
+    passengers,
+    sharePhoneWithDriver,
+    isFamilyBooking,
+    paymentMethod,
+    payerCliqAlias,
+  ];
 }
 
 // ── Driver actions ────────────────────────────────────────────────────────────

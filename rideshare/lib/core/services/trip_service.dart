@@ -124,14 +124,20 @@ class TripService {
   /// configured `driverUnlockPercent` — never hardcode it client-side.
   /// Returns null on failure; the caller keeps the fee line in a neutral
   /// unavailable state rather than blocking publish.
+  /// [currency] is the trip's; it picks that country's fee schedule.
   Future<TripFeeQuote?> getTripFeeQuote({
     required double seatPrice,
     required int totalSeats,
+    String? currency,
   }) async {
     try {
       final response = await _api.get(
         ApiEndpoints.feeQuote,
-        queryParameters: {'seatPrice': seatPrice, 'totalSeats': totalSeats},
+        queryParameters: {
+          'seatPrice': seatPrice,
+          'totalSeats': totalSeats,
+          if (currency != null) 'currency': currency,
+        },
       );
       final data = response is Map ? (response['data'] ?? response) : response;
       if (data is Map) {
@@ -250,6 +256,7 @@ class TripService {
     LocationModel? from,
     LocationModel? to,
     DateTime? minDepartureTime,
+    String? country,
   }) async {
     try {
       // No explicit status filter — backend defaults to PUBLISHED, which is
@@ -265,8 +272,13 @@ class TripService {
         query['toLatitude'] = to.latitude;
         query['toLongitude'] = to.longitude;
       }
+      // `departureAfter`, not `departureDate`: the latter is one calendar day
+      // on the backend, which hid every trip beyond the next 24 hours.
       if (minDepartureTime != null) {
-        query['departureDate'] = minDepartureTime.toIso8601String();
+        query['departureAfter'] = minDepartureTime.toUtc().toIso8601String();
+      }
+      if (country != null && country.isNotEmpty) {
+        query['country'] = country;
       }
 
       final response = await _api.get(
@@ -341,6 +353,16 @@ class TripService {
   /// The trip auto-transitions to IN_PROGRESS at departureTime server-side, so
   /// there is no longer a manual "Start Trip" action.
   /// Returns the completed trip payload including optional `settlement`.
+  /// Instant ride: the driver reached the passenger.
+  Future<void> markArrivedAtPickup(String tripId) async {
+    await _api.post(ApiEndpoints.instantTripArrivedAtPickup(tripId));
+  }
+
+  /// Instant ride: the passenger is in the car — the ride starts.
+  Future<void> startInstantRide(String tripId) async {
+    await _api.post(ApiEndpoints.instantTripStart(tripId));
+  }
+
   Future<Map<String, dynamic>> markTripArrived(String tripId) async {
     final response = await _api.post(ApiEndpoints.arriveTrip(tripId));
     final raw = response is Map ? (response['data'] ?? response) : response;

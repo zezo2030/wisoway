@@ -81,6 +81,9 @@ class BookingModel {
   // Privacy
   final bool sharePhoneWithDriver;
 
+  /// `cash` (to the driver) or `cliq` (request-to-pay when the ride ends).
+  final String paymentMethod;
+
   // Contact
   final bool hasDriverPaidToContact;
 
@@ -110,6 +113,7 @@ class BookingModel {
     this.expiresAt,
     this.seats = const [],
     this.sharePhoneWithDriver = true,
+    this.paymentMethod = 'cash',
     this.hasDriverPaidToContact = false,
     this.chatEnabled = false,
     this.callEnabled = false,
@@ -185,6 +189,7 @@ class BookingModel {
       expiresAt: _dateOrNull(json['expiresAt']),
       seats: parsedSeats,
       sharePhoneWithDriver: json['sharePhoneWithDriver'] ?? true,
+      paymentMethod: json['paymentMethod']?.toString() ?? 'cash',
       hasDriverPaidToContact: json['hasDriverPaidToContact'] ?? false,
       chatEnabled: json['chatEnabled'] ?? false,
       callEnabled: json['callEnabled'] ?? false,
@@ -206,6 +211,7 @@ class BookingModel {
       'seatCount': seatCount,
       if (totalAmount != null) 'totalAmount': totalAmount,
       'sharePhoneWithDriver': sharePhoneWithDriver,
+      'paymentMethod': paymentMethod,
       'hasDriverPaidToContact': hasDriverPaidToContact,
       'status': status,
       'createdAt': createdAt.toIso8601String(),
@@ -230,6 +236,7 @@ class BookingModel {
     DateTime? expiresAt,
     List<BookingSeatModel>? seats,
     bool? sharePhoneWithDriver,
+    String? paymentMethod,
     bool? hasDriverPaidToContact,
     bool? chatEnabled,
     bool? callEnabled,
@@ -252,6 +259,7 @@ class BookingModel {
       expiresAt: expiresAt ?? this.expiresAt,
       seats: seats ?? this.seats,
       sharePhoneWithDriver: sharePhoneWithDriver ?? this.sharePhoneWithDriver,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
       hasDriverPaidToContact:
           hasDriverPaidToContact ?? this.hasDriverPaidToContact,
       chatEnabled: chatEnabled ?? this.chatEnabled,

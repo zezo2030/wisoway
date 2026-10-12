@@ -148,7 +148,56 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
 
     expect(service.createdRequests, 1);
+    expect(service.lastPaymentMethod, 'cash');
     expect(find.text('Finding the nearest driver...'), findsOneWidget);
+    await _disposeScreen(tester);
+  });
+
+  testWidgets('no payment choice where CliQ is not offered', (tester) async {
+    final service = _FakeInstantRideService();
+    await _pumpForm(tester, service);
+
+    expect(find.text('Payment method'), findsNothing);
+    expect(find.byKey(const ValueKey('instant-pay-cliq')), findsNothing);
+    await _disposeScreen(tester);
+  });
+
+  testWidgets('in Jordan the passenger can pick CliQ and requests with it', (
+    tester,
+  ) async {
+    final service = _FakeInstantRideService(
+      paymentMethods: const ['cash', 'cliq'],
+    );
+    await _pumpForm(tester, service);
+
+    final cliq = find.byKey(const ValueKey('instant-pay-cliq'));
+    await tester.ensureVisible(cliq);
+    await tester.tap(cliq);
+    await tester.pump();
+    expect(
+      find.text(
+        "Priced by distance. You'll get a CliQ payment request on arrival.",
+      ),
+      findsOneWidget,
+    );
+
+    // CliQ needs somewhere to send the request: no alias, no request.
+    final cta = find.widgetWithText(ElevatedButton, 'Request now');
+    expect(tester.widget<ElevatedButton>(cta).onPressed, isNull);
+    await tester.enterText(
+      find.byKey(const ValueKey('instant-cliq-alias')),
+      '0791234567',
+    );
+    await tester.pump();
+
+    await tester.ensureVisible(cta);
+    await tester.pump();
+    await tester.tap(cta);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(service.lastPaymentMethod, 'cliq');
+    expect(service.lastPayerAlias, '0791234567');
     await _disposeScreen(tester);
   });
 
@@ -445,12 +494,18 @@ class _FakeInstantRideService extends InstantRideService {
   final List<String> cancelledIds = [];
   int quoteCalls = 0;
   int createdRequests = 0;
+  String? lastPaymentMethod;
+  String? lastPayerAlias;
+
+  /// What the quote allows paying with (['cash'] outside Jordan).
+  List<String> paymentMethods;
 
   _FakeInstantRideService({
     this.retryResult,
     this.retryError,
     this.retryDelay = Duration.zero,
     this.quoteFailures = 0,
+    this.paymentMethods = const ['cash'],
   });
 
   @override
@@ -476,13 +531,14 @@ class _FakeInstantRideService extends InstantRideService {
         developerDetail: 'offline',
       );
     }
-    return const InstantQuote(
+    return InstantQuote(
       recommendedFare: 4.5,
       minFare: 4.5,
       maxFare: 4.5,
       currency: 'JOD',
       distanceKm: 12.3,
       durationMinutes: 18,
+      paymentMethods: paymentMethods,
     );
   }
 
@@ -491,8 +547,12 @@ class _FakeInstantRideService extends InstantRideService {
     required LocationModel from,
     required LocationModel to,
     int seatCount = 1,
+    String paymentMethod = 'cash',
+    String? payerCliqAlias,
   }) async {
     createdRequests++;
+    lastPaymentMethod = paymentMethod;
+    lastPayerAlias = payerCliqAlias;
     return _request('searching', id: 'req-new', passengerFare: '4.50');
   }
 

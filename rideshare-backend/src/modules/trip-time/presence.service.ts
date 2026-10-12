@@ -175,7 +175,7 @@ export class PresenceService {
     seatPrice: number;
     currency: string;
   }> {
-    const row = await this.platformPricing.getActiveFeeRow('JO');
+    const row = await this.platformPricing.getFeeRowForCurrency(trip.currency);
     const pricing = this.platformPricing.driverUnlockPricing(trip, row);
     return {
       percent: pricing.driverUnlockPercent,

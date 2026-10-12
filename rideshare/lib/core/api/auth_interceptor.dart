@@ -70,36 +70,56 @@ class AuthInterceptor extends Interceptor {
     // ── 401: attempt token refresh ────────────────────────────────────────
     if (err.response?.statusCode == 401 &&
         !err.requestOptions.path.contains(ApiEndpoints.refresh)) {
-      try {
-        final refreshToken = await _tokenStorage.getRefreshToken();
-        if (refreshToken != null) {
-          final dio = Dio(BaseOptions(baseUrl: ApiEndpoints.baseUrl));
-          final response = await dio.post(
-            ApiEndpoints.refresh,
-            data: {'refreshToken': refreshToken},
-          );
-
-          final data = response.data['data'] ?? response.data;
-          final newAccess = data['accessToken'];
-          final newRefresh = data['refreshToken'];
-
-          if (newAccess != null && newRefresh != null) {
-            await _tokenStorage.saveTokens(
-              accessToken: newAccess,
-              refreshToken: newRefresh,
-            );
-
-            err.requestOptions.headers['Authorization'] = 'Bearer $newAccess';
-
-            final retryDio = Dio(BaseOptions(baseUrl: ApiEndpoints.baseUrl));
-            final retryResponse = await retryDio.fetch(err.requestOptions);
-            return handler.resolve(retryResponse);
-          }
+      final newAccess = await _refreshOnce();
+      if (newAccess != null) {
+        err.requestOptions.headers['Authorization'] = 'Bearer $newAccess';
+        try {
+          final retryDio = Dio(BaseOptions(baseUrl: ApiEndpoints.baseUrl));
+          final retryResponse = await retryDio.fetch(err.requestOptions);
+          return handler.resolve(retryResponse);
+        } on DioException catch (retryErr) {
+          return handler.next(retryErr);
         }
-      } catch (e) {
-        await _tokenStorage.clearAll(); // تسجيل خروج عند فشل التجديد
       }
     }
     handler.next(err);
+  }
+
+  /// The refresh in flight, shared by every request that hits a 401 while it
+  /// runs. A screen loading several endpoints at once used to start one
+  /// refresh per request; the first to fail wiped the tokens the others had
+  /// just saved, leaving the app signed out mid-screen.
+  static Future<String?>? _refreshing;
+
+  Future<String?> _refreshOnce() {
+    return _refreshing ??= _refresh().whenComplete(() => _refreshing = null);
+  }
+
+  /// A new access token, or null when the session cannot be renewed (the
+  /// tokens are then cleared and the caller sees the 401).
+  Future<String?> _refresh() async {
+    try {
+      final refreshToken = await _tokenStorage.getRefreshToken();
+      if (refreshToken == null) return null;
+      final dio = Dio(BaseOptions(baseUrl: ApiEndpoints.baseUrl));
+      final response = await dio.post(
+        ApiEndpoints.refresh,
+        data: {'refreshToken': refreshToken},
+      );
+
+      final data = response.data['data'] ?? response.data;
+      final newAccess = data['accessToken'];
+      final newRefresh = data['refreshToken'];
+      if (newAccess == null || newRefresh == null) return null;
+
+      await _tokenStorage.saveTokens(
+        accessToken: newAccess,
+        refreshToken: newRefresh,
+      );
+      return newAccess as String;
+    } catch (e) {
+      await _tokenStorage.clearAll(); // تسجيل خروج عند فشل التجديد
+      return null;
+    }
   }
 }

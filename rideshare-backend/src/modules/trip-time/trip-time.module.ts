@@ -13,6 +13,7 @@ import { TripTimeController } from './trip-time.controller';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PlatformPricingService } from '../payments/platform-pricing.service';
 import { DriverTripFeeModule } from '../driver-trip-fee/driver-trip-fee.module';
+import { RidePaymentsModule } from '../ride-payments/ride-payments.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { DriverTripFeeModule } from '../driver-trip-fee/driver-trip-fee.module';
     ]),
     forwardRef(() => NotificationsModule),
     DriverTripFeeModule,
+    RidePaymentsModule,
   ],
   controllers: [TripTimeController],
   providers: [TripTimeService, PresenceService, PlatformPricingService],

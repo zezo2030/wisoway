@@ -14,6 +14,7 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { TripsService } from './trips.service';
 import { CreateTripDto } from './dto/create-trip.dto';
@@ -100,13 +101,22 @@ export class TripsController {
     summary: 'Platform fee a driver will be charged for a trip of this shape',
   })
   @ApiResponse({ status: 200, description: 'Fee quote' })
+  @ApiQuery({
+    name: 'currency',
+    required: false,
+    example: 'SAR',
+    description:
+      "The trip's currency; picks that country's fee schedule. Defaults to Jordan's.",
+  })
   async feeQuote(
     @Query('seatPrice') seatPrice: string,
     @Query('totalSeats') totalSeats: string,
+    @Query('currency') currency?: string,
   ) {
     return this.driverTripFee.computeExpectedFee({
       seatPrice: Number(seatPrice ?? 0),
       totalSeats: Number(totalSeats ?? 0),
+      currency: currency?.trim().toUpperCase() || null,
     });
   }
 

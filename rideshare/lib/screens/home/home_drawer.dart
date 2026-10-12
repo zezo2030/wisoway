@@ -245,14 +245,6 @@ class HomeDrawer extends StatelessWidget {
                   ),
                 ],
                 DrawerMenuItem(
-                  icon: IconsaxPlusLinear.receipt_2,
-                  title: context.l10n.pendingChargesTitle,
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushNamed(context, RouteNames.pendingCharges);
-                  },
-                ),
-                DrawerMenuItem(
                   icon: IconsaxPlusLinear.profile,
                   title: context.l10n.profileTitle,
                   onTap: () {

@@ -10,6 +10,10 @@ import '../../../core/services/localization_service.dart';
 import '../../../core/theme/colors.dart';
 import '../../../models/user_model.dart';
 import '../widgets/home_tab_scope.dart';
+import 'bookings_tab.dart';
+import '../../profile/saved_addresses_screen.dart';
+import '../../legal/legal_content.dart';
+import '../../legal/legal_document_screen.dart';
 import '../../../models/wallet_account_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../widgets/notification_icon_button.dart';
@@ -42,9 +46,7 @@ const List<double> _greyscaleMatrix = <double>[
 
 class ProfileTab extends StatefulWidget {
   final UserModel? user;
-  final VoidCallback? onOpenBookings;
-
-  const ProfileTab({super.key, this.user, this.onOpenBookings});
+  const ProfileTab({super.key, this.user});
 
   @override
   State<ProfileTab> createState() => _ProfileTabState();
@@ -130,14 +132,9 @@ class _ProfileTabState extends State<ProfileTab> {
     });
   }
 
-  void _openBookings() {
-    if (widget.onOpenBookings != null) {
-      widget.onOpenBookings!();
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.l10n.comingSoon)));
-    }
+  /// Opened as a page on top of the profile, so back returns here.
+  void _openTrips(BookingsFilter filter) {
+    Navigator.push(context, BookingsTab.route(user: user, filter: filter));
   }
 
   void _showLanguageBottomSheet() {
@@ -259,13 +256,12 @@ class _ProfileTabState extends State<ProfileTab> {
                               icon: IconsaxPlusLinear.location,
                               title: context.l10n.savedAddresses,
                               subtitle: context.l10n.savedAddressesSubtitle,
-                              onTap: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(context.l10n.comingSoon),
-                                  ),
-                                );
-                              },
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const SavedAddressesScreen(),
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -279,7 +275,7 @@ class _ProfileTabState extends State<ProfileTab> {
                               icon: IconsaxPlusLinear.clock,
                               title: context.l10n.pastTrips,
                               subtitle: context.l10n.pastTripsSubtitle,
-                              onTap: _openBookings,
+                              onTap: () => _openTrips(BookingsFilter.past),
                             ),
                             _divider(context),
                             _buildMenuRow(
@@ -287,7 +283,8 @@ class _ProfileTabState extends State<ProfileTab> {
                               icon: Icons.close_rounded,
                               title: context.l10n.cancelledTrips,
                               subtitle: context.l10n.cancelledTripsSubtitle,
-                              onTap: _openBookings,
+                              onTap: () =>
+                                  _openTrips(BookingsFilter.cancelled),
                             ),
                           ],
                         ),
@@ -361,9 +358,9 @@ class _ProfileTabState extends State<ProfileTab> {
                           rows: [
                             _buildMenuRow(
                               context,
-                              icon: IconsaxPlusLinear.headphone,
-                              title: context.l10n.helpAndSupport,
-                              subtitle: context.l10n.helpSupportSubtitle,
+                              icon: IconsaxPlusLinear.message_text,
+                              title: context.l10n.contactUs,
+                              subtitle: context.l10n.contactUsSubtitle,
                               onTap: () {
                                 Navigator.pushNamed(
                                   context,
@@ -374,15 +371,28 @@ class _ProfileTabState extends State<ProfileTab> {
                             _divider(context),
                             _buildMenuRow(
                               context,
-                              icon: IconsaxPlusLinear.message_text,
-                              title: context.l10n.contactUs,
-                              subtitle: context.l10n.contactUsSubtitle,
-                              onTap: () {
-                                Navigator.pushNamed(
-                                  context,
-                                  RouteNames.support,
-                                );
-                              },
+                              icon: IconsaxPlusLinear.document_text,
+                              title: context.l10n.termsOfService,
+                              subtitle: context.l10n.termsOfServiceSubtitle,
+                              onTap: () => Navigator.push(
+                                context,
+                                LegalDocumentScreen.route(
+                                  LegalDocumentKind.terms,
+                                ),
+                              ),
+                            ),
+                            _divider(context),
+                            _buildMenuRow(
+                              context,
+                              icon: IconsaxPlusLinear.shield_security,
+                              title: context.l10n.privacyPolicy,
+                              subtitle: context.l10n.privacyPolicySubtitle,
+                              onTap: () => Navigator.push(
+                                context,
+                                LegalDocumentScreen.route(
+                                  LegalDocumentKind.privacy,
+                                ),
+                              ),
                             ),
                             _divider(context),
                             _buildMenuRow(

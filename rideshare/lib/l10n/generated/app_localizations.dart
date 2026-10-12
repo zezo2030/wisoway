@@ -1091,7 +1091,7 @@ abstract class AppLocalizations {
   /// Description for the hide-phone-number toggle
   ///
   /// In ar, this message translates to:
-  /// **'سيُستخدم رقم وسيط عند الاتصال بك'**
+  /// **'لن يظهر رقمك للطرف الآخر في الرحلة، ويتم التواصل معك عبر المحادثة في التطبيق'**
   String get hidePhoneNumberSubtitle;
 
   /// Title for the complaint filing screen
@@ -1843,6 +1843,102 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'اللون مطلوب'**
   String get vehicleColorRequired;
+
+  /// No description provided for @vehicleColorSelect.
+  ///
+  /// In ar, this message translates to:
+  /// **'اختر لون السيارة'**
+  String get vehicleColorSelect;
+
+  /// No description provided for @vehicleColorWhite.
+  ///
+  /// In ar, this message translates to:
+  /// **'أبيض'**
+  String get vehicleColorWhite;
+
+  /// No description provided for @vehicleColorBlack.
+  ///
+  /// In ar, this message translates to:
+  /// **'أسود'**
+  String get vehicleColorBlack;
+
+  /// No description provided for @vehicleColorSilver.
+  ///
+  /// In ar, this message translates to:
+  /// **'فضي'**
+  String get vehicleColorSilver;
+
+  /// No description provided for @vehicleColorGray.
+  ///
+  /// In ar, this message translates to:
+  /// **'رمادي'**
+  String get vehicleColorGray;
+
+  /// No description provided for @vehicleColorRed.
+  ///
+  /// In ar, this message translates to:
+  /// **'أحمر'**
+  String get vehicleColorRed;
+
+  /// No description provided for @vehicleColorBlue.
+  ///
+  /// In ar, this message translates to:
+  /// **'أزرق'**
+  String get vehicleColorBlue;
+
+  /// No description provided for @vehicleColorGreen.
+  ///
+  /// In ar, this message translates to:
+  /// **'أخضر'**
+  String get vehicleColorGreen;
+
+  /// No description provided for @vehicleColorBeige.
+  ///
+  /// In ar, this message translates to:
+  /// **'بيج'**
+  String get vehicleColorBeige;
+
+  /// No description provided for @vehicleColorBrown.
+  ///
+  /// In ar, this message translates to:
+  /// **'بني'**
+  String get vehicleColorBrown;
+
+  /// No description provided for @vehicleColorGold.
+  ///
+  /// In ar, this message translates to:
+  /// **'ذهبي'**
+  String get vehicleColorGold;
+
+  /// No description provided for @vehicleColorYellow.
+  ///
+  /// In ar, this message translates to:
+  /// **'أصفر'**
+  String get vehicleColorYellow;
+
+  /// No description provided for @vehicleColorOrange.
+  ///
+  /// In ar, this message translates to:
+  /// **'برتقالي'**
+  String get vehicleColorOrange;
+
+  /// No description provided for @vehicleTypePickTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'نوع المركبة'**
+  String get vehicleTypePickTitle;
+
+  /// No description provided for @vehicleSeatMapHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'هذه مقاعد مركبتك كما ستظهر للركاب. اضغط على الصورة لتكبيرها.'**
+  String get vehicleSeatMapHint;
+
+  /// No description provided for @vehicleSeatMapUnavailable.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا توجد صورة لهذا النوع بعد؛ سيُستخدم التخطيط المسجّل للمركبة.'**
+  String get vehicleSeatMapUnavailable;
 
   /// No description provided for @vehiclePlateRequired.
   ///
@@ -4127,7 +4223,7 @@ abstract class AppLocalizations {
   /// No description provided for @walletTopUpDescription.
   ///
   /// In ar, this message translates to:
-  /// **'تُستخدم لدفع تكلفة الحجز عند تفعيل الدفع من المحفظة. الشحن بالدينار الأردني (JOD) عبر CliQ أو تحويل يدوي مع إثبات؛ يُضاف الرصيد بعد التأكد أو موافقة الإدارة حسب الطريقة.'**
+  /// **'تُستخدم لدفع تكلفة الحجز عند تفعيل الدفع من المحفظة. الشحن بعملة بلدك عبر تحويل يدوي مع إثبات (أو عبر CliQ في الأردن)؛ يُضاف الرصيد بعد التأكد أو موافقة الإدارة حسب الطريقة.'**
   String get walletTopUpDescription;
 
   /// No description provided for @walletTransactionHistory.
@@ -5159,19 +5255,19 @@ abstract class AppLocalizations {
   /// No description provided for @amountDue.
   ///
   /// In ar, this message translates to:
-  /// **'المبلغ المستحق: {amount} د.أ'**
+  /// **'المبلغ المستحق: {amount}'**
   String amountDue(String amount);
 
   /// No description provided for @currentWalletBalance.
   ///
   /// In ar, this message translates to:
-  /// **'رصيد المحفظة الحالي: {amount} د.أ'**
+  /// **'رصيد المحفظة الحالي: {amount}'**
   String currentWalletBalance(String amount);
 
   /// No description provided for @balanceAfterPayment.
   ///
   /// In ar, this message translates to:
-  /// **'الرصيد بعد الدفع: {amount} د.أ'**
+  /// **'الرصيد بعد الدفع: {amount}'**
   String balanceAfterPayment(String amount);
 
   /// No description provided for @confirmAndPay.
@@ -5255,13 +5351,13 @@ abstract class AppLocalizations {
   /// No description provided for @totalDue.
   ///
   /// In ar, this message translates to:
-  /// **'الإجمالي المستحق: {amount} د.أ'**
+  /// **'الإجمالي المستحق: {amount}'**
   String totalDue(String amount);
 
   /// No description provided for @walletBalanceAmount.
   ///
   /// In ar, this message translates to:
-  /// **'رصيد المحفظة: {amount} د.أ'**
+  /// **'رصيد المحفظة: {amount}'**
   String walletBalanceAmount(String amount);
 
   /// No description provided for @balanceEnoughForFine.
@@ -5291,7 +5387,7 @@ abstract class AppLocalizations {
   /// No description provided for @amountAmount.
   ///
   /// In ar, this message translates to:
-  /// **'المبلغ: {amount} د.أ'**
+  /// **'المبلغ: {amount}'**
   String amountAmount(String amount);
 
   /// No description provided for @walletTitle.
@@ -7613,7 +7709,7 @@ abstract class AppLocalizations {
   /// No description provided for @tripInProgressEmergencySent.
   ///
   /// In ar, this message translates to:
-  /// **'تم إرسال تنبيه الطوارئ للدعم'**
+  /// **'أُرسل موقعك لفريق VisionWay'**
   String get tripInProgressEmergencySent;
 
   /// No description provided for @tripInProgressEmergencyError.
@@ -7631,13 +7727,19 @@ abstract class AppLocalizations {
   /// No description provided for @tripInProgressEmergencyConfirmMessage.
   ///
   /// In ar, this message translates to:
-  /// **'سيتم إشعار فريق الدعم بموقعك الحالي. هل تريد المتابعة؟'**
+  /// **'سنتصل بفريق VisionWay الآن ونرسل لهم موقعك الحالي.'**
   String get tripInProgressEmergencyConfirmMessage;
+
+  /// No description provided for @tripInProgressEmergencyCallFailed.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذّر فتح الاتصال. اتصل بفريق VisionWay على {phone}'**
+  String tripInProgressEmergencyCallFailed(String phone);
 
   /// No description provided for @tripInProgressEmergencyConfirmAction.
   ///
   /// In ar, this message translates to:
-  /// **'إرسال التنبيه'**
+  /// **'اتصال بـ VisionWay'**
   String get tripInProgressEmergencyConfirmAction;
 
   /// No description provided for @tripInProgressEmergencyCancel.
@@ -9128,6 +9230,78 @@ abstract class AppLocalizations {
   /// **'إدارة أماكن الانطلاق والوصول'**
   String get savedAddressesSubtitle;
 
+  /// No description provided for @savedAddressesHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'تظهر هذه العناوين كاختصارات عند اختيار مكان الانطلاق أو الوصول، وتُحفظ على هذا الجهاز.'**
+  String get savedAddressesHint;
+
+  /// No description provided for @savedAddressHome.
+  ///
+  /// In ar, this message translates to:
+  /// **'المنزل'**
+  String get savedAddressHome;
+
+  /// No description provided for @savedAddressWork.
+  ///
+  /// In ar, this message translates to:
+  /// **'العمل'**
+  String get savedAddressWork;
+
+  /// No description provided for @savedAddressNotSet.
+  ///
+  /// In ar, this message translates to:
+  /// **'غير محدد — اضغط للإضافة'**
+  String get savedAddressNotSet;
+
+  /// No description provided for @savedAddressOthers.
+  ///
+  /// In ar, this message translates to:
+  /// **'عناوين أخرى'**
+  String get savedAddressOthers;
+
+  /// No description provided for @savedAddressAdd.
+  ///
+  /// In ar, this message translates to:
+  /// **'إضافة عنوان'**
+  String get savedAddressAdd;
+
+  /// No description provided for @savedAddressNameTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'اسم العنوان'**
+  String get savedAddressNameTitle;
+
+  /// No description provided for @savedAddressNameHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'مثلاً: الجامعة، النادي'**
+  String get savedAddressNameHint;
+
+  /// No description provided for @savedAddressPickTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'اختر موقع {label}'**
+  String savedAddressPickTitle(String label);
+
+  /// No description provided for @savedAddressChangeLocation.
+  ///
+  /// In ar, this message translates to:
+  /// **'تغيير الموقع'**
+  String get savedAddressChangeLocation;
+
+  /// No description provided for @savedAddressRename.
+  ///
+  /// In ar, this message translates to:
+  /// **'إعادة التسمية'**
+  String get savedAddressRename;
+
+  /// No description provided for @savedAddressSaveFailed.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذّر حفظ التغيير. تحقق من اتصالك وحاول مجدداً.'**
+  String get savedAddressSaveFailed;
+
   /// No description provided for @pastTrips.
   ///
   /// In ar, this message translates to:
@@ -9145,6 +9319,18 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'الرحلات الملغاة'**
   String get cancelledTrips;
+
+  /// No description provided for @noPastTrips.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا توجد رحلات سابقة بعد.'**
+  String get noPastTrips;
+
+  /// No description provided for @noCancelledTrips.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا توجد رحلات ملغاة.'**
+  String get noCancelledTrips;
 
   /// No description provided for @cancelledTripsSubtitle.
   ///
@@ -9181,6 +9367,18 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'تحتاج إلى مساعدة؟ نحن هنا من أجلك'**
   String get contactUsSubtitle;
+
+  /// No description provided for @termsOfServiceSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'القواعد التي تنظم استخدامك للتطبيق'**
+  String get termsOfServiceSubtitle;
+
+  /// No description provided for @privacyPolicySubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'كيف نجمع بياناتك ونحميها'**
+  String get privacyPolicySubtitle;
 
   /// No description provided for @aboutAppSubtitle.
   ///
@@ -9554,6 +9752,72 @@ abstract class AppLocalizations {
   /// **'في الطريق إلى الراكب'**
   String get instantTripHeadingToPickup;
 
+  /// No description provided for @instantTripWaitingForPassenger.
+  ///
+  /// In ar, this message translates to:
+  /// **'بانتظار ركوب الراكب'**
+  String get instantTripWaitingForPassenger;
+
+  /// No description provided for @instantTripArrivedAtPickupAction.
+  ///
+  /// In ar, this message translates to:
+  /// **'وصلت إلى الراكب'**
+  String get instantTripArrivedAtPickupAction;
+
+  /// No description provided for @instantTripStartAction.
+  ///
+  /// In ar, this message translates to:
+  /// **'بدء الرحلة'**
+  String get instantTripStartAction;
+
+  /// No description provided for @instantTripMovedTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'هل بدأت الرحلة؟'**
+  String get instantTripMovedTitle;
+
+  /// No description provided for @instantTripMovedBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'تحرّكت من مكان الراكب ولم تبدأ الرحلة بعد. إذا كان الراكب معك فابدأ الرحلة الآن.'**
+  String get instantTripMovedBody;
+
+  /// No description provided for @instantTripNotYet.
+  ///
+  /// In ar, this message translates to:
+  /// **'ليس بعد'**
+  String get instantTripNotYet;
+
+  /// No description provided for @driverOnlineServiceTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'أنت متصل'**
+  String get driverOnlineServiceTitle;
+
+  /// No description provided for @driverOnlineServiceText.
+  ///
+  /// In ar, this message translates to:
+  /// **'تستقبل طلبات الرحلات المباشرة الآن'**
+  String get driverOnlineServiceText;
+
+  /// No description provided for @offersOverLockTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'اسمح بظهور الطلبات على الشاشة المقفلة'**
+  String get offersOverLockTitle;
+
+  /// No description provided for @offersOverLockBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'حتى تظهر لك طلبات الرحلات فوراً وتوقظ الشاشة وهي مقفلة، فعّل «إشعارات ملء الشاشة» لـ VisionWay من الإعدادات.'**
+  String get offersOverLockBody;
+
+  /// No description provided for @offersOverLockAction.
+  ///
+  /// In ar, this message translates to:
+  /// **'فتح الإعدادات'**
+  String get offersOverLockAction;
+
   /// No description provided for @instantTripPassengerOnBoard.
   ///
   /// In ar, this message translates to:
@@ -9835,6 +10099,270 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'سجّل سيارتك وابدأ باستقبال الركاب بنفس حسابك'**
   String get joinAsDriverSubtitle;
+
+  /// No description provided for @cliqAliasInvalid.
+  ///
+  /// In ar, this message translates to:
+  /// **'أدخل اسم CliQ صحيحاً (حروف إنجليزية وأرقام ونقاط) أو رقم جوال'**
+  String get cliqAliasInvalid;
+
+  /// No description provided for @instantPaymentMethodTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'طريقة الدفع'**
+  String get instantPaymentMethodTitle;
+
+  /// No description provided for @paymentMethodCash.
+  ///
+  /// In ar, this message translates to:
+  /// **'نقداً'**
+  String get paymentMethodCash;
+
+  /// No description provided for @paymentMethodCliq.
+  ///
+  /// In ar, this message translates to:
+  /// **'CliQ'**
+  String get paymentMethodCliq;
+
+  /// No description provided for @instantFormFareNoteCliq.
+  ///
+  /// In ar, this message translates to:
+  /// **'السعر محسوب حسب المسافة. يصلك طلب دفع CliQ عند الوصول.'**
+  String get instantFormFareNoteCliq;
+
+  /// No description provided for @instantPaymentCollectTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'حصّل الأجرة من الراكب'**
+  String get instantPaymentCollectTitle;
+
+  /// No description provided for @instantPaymentReportedLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم الإبلاغ عن عدم الدفع'**
+  String get instantPaymentReportedLabel;
+
+  /// No description provided for @instantPaymentReceivedAction.
+  ///
+  /// In ar, this message translates to:
+  /// **'استلمت المبلغ'**
+  String get instantPaymentReceivedAction;
+
+  /// No description provided for @instantPaymentNotPaidAction.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم يدفع الراكب'**
+  String get instantPaymentNotPaidAction;
+
+  /// No description provided for @instantPaymentNotPaidTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'الراكب لم يدفع؟'**
+  String get instantPaymentNotPaidTitle;
+
+  /// No description provided for @instantPaymentNotPaidBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'سنسجّل بلاغاً لفريق VisionWay وننهي شاشة الدفع عند الراكب.'**
+  String get instantPaymentNotPaidBody;
+
+  /// No description provided for @instantPaymentNotPaidHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'ماذا حدث؟ (اختياري)'**
+  String get instantPaymentNotPaidHint;
+
+  /// No description provided for @instantPaymentNotPaidConfirm.
+  ///
+  /// In ar, this message translates to:
+  /// **'إرسال البلاغ'**
+  String get instantPaymentNotPaidConfirm;
+
+  /// No description provided for @instantPaymentReportedToast.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم إرسال البلاغ لفريق VisionWay'**
+  String get instantPaymentReportedToast;
+
+  /// No description provided for @tripReportProblem.
+  ///
+  /// In ar, this message translates to:
+  /// **'الإبلاغ عن مشكلة في الرحلة'**
+  String get tripReportProblem;
+
+  /// No description provided for @complaintCategoryRudeBehavior.
+  ///
+  /// In ar, this message translates to:
+  /// **'سلوك غير لائق'**
+  String get complaintCategoryRudeBehavior;
+
+  /// No description provided for @complaintCategoryNoShow.
+  ///
+  /// In ar, this message translates to:
+  /// **'عدم الحضور'**
+  String get complaintCategoryNoShow;
+
+  /// No description provided for @instantOfferCliqNote.
+  ///
+  /// In ar, this message translates to:
+  /// **'يدفع الراكب عبر CliQ · تُضاف الأجرة إلى محفظتك'**
+  String get instantOfferCliqNote;
+
+  /// No description provided for @instantTripCliqNote.
+  ///
+  /// In ar, this message translates to:
+  /// **'CliQ · تُضاف إلى محفظتك'**
+  String get instantTripCliqNote;
+
+  /// No description provided for @cliqPayerAliasLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'اسم CliQ أو رقم جوالك'**
+  String get cliqPayerAliasLabel;
+
+  /// No description provided for @cliqPayerAliasHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'مثال: ahmad@cliq أو 0791234567'**
+  String get cliqPayerAliasHint;
+
+  /// No description provided for @cliqPayerAliasHelp.
+  ///
+  /// In ar, this message translates to:
+  /// **'نرسل طلب الدفع إليه عند انتهاء الرحلة، فتوافق عليه من تطبيق البنك.'**
+  String get cliqPayerAliasHelp;
+
+  /// No description provided for @cliqPayerAliasRequired.
+  ///
+  /// In ar, this message translates to:
+  /// **'أدخل اسم CliQ أو رقم جوالك'**
+  String get cliqPayerAliasRequired;
+
+  /// No description provided for @bookingPaymentCashNote.
+  ///
+  /// In ar, this message translates to:
+  /// **'تدفع للسائق نقداً عند انتهاء الرحلة.'**
+  String get bookingPaymentCashNote;
+
+  /// No description provided for @bookingPaymentCliqNote.
+  ///
+  /// In ar, this message translates to:
+  /// **'عند انتهاء الرحلة يصلك طلب دفع CliQ توافق عليه من تطبيق البنك.'**
+  String get bookingPaymentCliqNote;
+
+  /// No description provided for @ridePaymentArrivedTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'وصلت إلى وجهتك'**
+  String get ridePaymentArrivedTitle;
+
+  /// No description provided for @ridePaymentPayDriverTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'الرجاء دفع تكلفة الرحلة للسائق'**
+  String get ridePaymentPayDriverTitle;
+
+  /// No description provided for @ridePaymentAmountDue.
+  ///
+  /// In ar, this message translates to:
+  /// **'المبلغ المطلوب'**
+  String get ridePaymentAmountDue;
+
+  /// No description provided for @ridePaymentCashInstruction.
+  ///
+  /// In ar, this message translates to:
+  /// **'ادفع المبلغ للسائق نقداً، وسيؤكد استلامه.'**
+  String get ridePaymentCashInstruction;
+
+  /// No description provided for @ridePaymentWaitingDriver.
+  ///
+  /// In ar, this message translates to:
+  /// **'بانتظار تأكيد السائق لاستلام المبلغ…'**
+  String get ridePaymentWaitingDriver;
+
+  /// No description provided for @ridePaymentCliqRequested.
+  ///
+  /// In ar, this message translates to:
+  /// **'أرسلنا طلب دفع CliQ إلى {alias}. افتح تطبيق البنك ووافق عليه.'**
+  String ridePaymentCliqRequested(String alias);
+
+  /// No description provided for @ridePaymentCliqRequestedNoAlias.
+  ///
+  /// In ar, this message translates to:
+  /// **'أرسلنا طلب دفع CliQ. افتح تطبيق البنك ووافق عليه.'**
+  String get ridePaymentCliqRequestedNoAlias;
+
+  /// No description provided for @ridePaymentWaitingBank.
+  ///
+  /// In ar, this message translates to:
+  /// **'بانتظار تأكيد البنك…'**
+  String get ridePaymentWaitingBank;
+
+  /// No description provided for @ridePaymentCliqFailed.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم يكتمل الدفع عبر CliQ.'**
+  String get ridePaymentCliqFailed;
+
+  /// No description provided for @ridePaymentRetryCliq.
+  ///
+  /// In ar, this message translates to:
+  /// **'إعادة إرسال طلب الدفع'**
+  String get ridePaymentRetryCliq;
+
+  /// No description provided for @ridePaymentPayCashInstead.
+  ///
+  /// In ar, this message translates to:
+  /// **'الدفع للسائق نقداً بدلاً من ذلك'**
+  String get ridePaymentPayCashInstead;
+
+  /// No description provided for @ridePaymentDisputedTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم يُسجَّل الدفع'**
+  String get ridePaymentDisputedTitle;
+
+  /// No description provided for @ridePaymentDisputedBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'أبلغ السائق أنه لم يستلم الأجرة. سيتواصل معك فريق VisionWay.'**
+  String get ridePaymentDisputedBody;
+
+  /// No description provided for @ridePaymentsCardTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'أجرة الركاب'**
+  String get ridePaymentsCardTitle;
+
+  /// No description provided for @ridePaymentDriverPaidCash.
+  ///
+  /// In ar, this message translates to:
+  /// **'استلمتها نقداً ✓'**
+  String get ridePaymentDriverPaidCash;
+
+  /// No description provided for @ridePaymentDriverPaidCliq.
+  ///
+  /// In ar, this message translates to:
+  /// **'دُفعت عبر CliQ · أُضيفت إلى محفظتك ✓'**
+  String get ridePaymentDriverPaidCliq;
+
+  /// No description provided for @ridePaymentDriverCliqPending.
+  ///
+  /// In ar, this message translates to:
+  /// **'بانتظار موافقة الراكب على دفع CliQ'**
+  String get ridePaymentDriverCliqPending;
+
+  /// No description provided for @ridePaymentDriverCliqFailed.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم يكتمل دفع CliQ بعد'**
+  String get ridePaymentDriverCliqFailed;
+
+  /// No description provided for @instantLocationNotReaching.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا يصل موقعك إلى الخادم الآن، فلن تصلك طلبات الرحلات. تأكد من الإنترنت ومن تفعيل الموقع.'**
+  String get instantLocationNotReaching;
 }
 
 class _AppLocalizationsDelegate

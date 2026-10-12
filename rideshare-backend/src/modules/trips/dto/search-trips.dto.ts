@@ -4,6 +4,8 @@ import {
   IsNumber,
   IsDateString,
   IsEnum,
+  IsString,
+  Length,
   Min,
   Max,
 } from 'class-validator';
@@ -41,6 +43,20 @@ export class SearchTripsDto extends PaginationDto {
   @IsOptional()
   @IsDateString()
   departureDate?: string;
+
+  /** Only trips leaving at or after this instant (every later day included). */
+  @IsOptional()
+  @IsDateString()
+  departureAfter?: string;
+
+  /**
+   * ISO 3166-1 alpha-2 country the trips depart from — matched through the
+   * trip's currency, which is resolved from its departure country.
+   */
+  @IsOptional()
+  @IsString()
+  @Length(2, 2)
+  country?: string;
 
   @IsOptional()
   @IsNumber()

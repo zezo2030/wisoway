@@ -199,4 +199,30 @@ export class InstantRidesController {
   ) {
     return this.instantRides.respondOffer(id, driverId, dto);
   }
+
+  // ── Driver: pickup stages ───────────────────────────────────────────────────
+
+  @Post('trips/:tripId/arrived-at-pickup')
+  @Roles('driver')
+  @ApiOperation({ summary: 'Driver reached the passenger (pickup point)' })
+  @ApiResponse({ status: 201, description: 'Arrival recorded' })
+  @ApiResponse({ status: 409, description: 'Trip is no longer in progress' })
+  arrivedAtPickup(
+    @Param('tripId') tripId: string,
+    @CurrentUser('id') driverId: string,
+  ) {
+    return this.instantRides.markArrivedAtPickup(tripId, driverId);
+  }
+
+  @Post('trips/:tripId/start')
+  @Roles('driver')
+  @ApiOperation({ summary: 'Passenger on board — the ride starts' })
+  @ApiResponse({ status: 201, description: 'Ride started' })
+  @ApiResponse({ status: 409, description: 'Trip is no longer in progress' })
+  startRide(
+    @Param('tripId') tripId: string,
+    @CurrentUser('id') driverId: string,
+  ) {
+    return this.instantRides.startRide(tripId, driverId);
+  }
 }

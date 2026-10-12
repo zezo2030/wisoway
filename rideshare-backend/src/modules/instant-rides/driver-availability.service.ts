@@ -112,7 +112,10 @@ export class DriverAvailabilityService {
     latitude: number,
     longitude: number,
     radiusMeters: number,
-    options: { excludeDriverIds?: string[]; limit?: number } = {},
+    options: {
+      excludeDriverIds?: string[];
+      limit?: number;
+    } = {},
   ): Promise<NearbyDriver[]> {
     const staleCutoff = new Date(Date.now() - this.staleThresholdMs);
     const qb = this.repo

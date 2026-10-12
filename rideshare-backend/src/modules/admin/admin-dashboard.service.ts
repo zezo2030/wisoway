@@ -35,6 +35,8 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { BookingsService } from '../bookings/bookings.service';
 import { AdminPatchPricingSettingsDto } from './dto/admin-pricing-settings.dto';
 import { WalletService } from '../wallet/wallet.service';
+import { DEFAULT_PRICING_COUNTRY } from '../payments/platform-pricing.service';
+import { currencyForCountry } from '../../common/currency/country-currency';
 
 export interface AdminUsersQuery {
   page?: number;
@@ -143,23 +145,33 @@ export class AdminDashboardService {
 
   private readonly logger = new Logger(AdminDashboardService.name);
 
+  /**
+   * The country's fee schedule. A country without a row of its own is charged
+   * on Jordan's percentages (see PlatformPricingService.getFeeRowForCurrency),
+   * so that is what is shown, in the country's own currency, until an admin
+   * saves one. Reading never creates a row: an empty row would silently switch
+   * that country's fees to zero.
+   */
   async getPlatformPricingSettings(countryCode: string = 'JO') {
-    let row = await this.communicationFeeRepo.findOne({
+    const row = await this.communicationFeeRepo.findOne({
       where: { countryCode },
     });
-    if (!row) {
-      row = this.communicationFeeRepo.create({
-        countryCode,
-        feeAmount: 0,
-        currency: 'JOD',
-        isActive: true,
-        passengerPlatformPercent: 0,
-        driverUnlockPercent: 0,
-        lifetimeFreeTripEnabled: true,
-      });
-      await this.communicationFeeRepo.save(row);
-    }
-    return row;
+    if (row) return row;
+    const fallback =
+      countryCode === DEFAULT_PRICING_COUNTRY
+        ? null
+        : await this.communicationFeeRepo.findOne({
+            where: { countryCode: DEFAULT_PRICING_COUNTRY },
+          });
+    return this.communicationFeeRepo.create({
+      countryCode,
+      feeAmount: 0,
+      currency: currencyForCountry(countryCode),
+      isActive: fallback?.isActive ?? true,
+      passengerPlatformPercent: fallback?.passengerPlatformPercent ?? 0,
+      driverUnlockPercent: fallback?.driverUnlockPercent ?? 0,
+      lifetimeFreeTripEnabled: fallback?.lifetimeFreeTripEnabled ?? true,
+    });
   }
 
   async patchPlatformPricingSettings(

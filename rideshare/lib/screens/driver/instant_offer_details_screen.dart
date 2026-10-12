@@ -193,7 +193,9 @@ class _InstantOfferDetailsScreenState extends State<InstantOfferDetailsScreen> {
             child: InstantFareHero(
               earnings: earnings,
               label: l10n.instantOfferExpectedEarnings,
-              note: l10n.instantOfferCashNote,
+              note: req?.isCliq == true
+                  ? l10n.instantOfferCliqNote
+                  : l10n.instantOfferCashNote,
             ),
           ),
           Container(

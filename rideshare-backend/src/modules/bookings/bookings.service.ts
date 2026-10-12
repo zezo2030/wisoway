@@ -19,6 +19,8 @@ import { BookingSeatEntity } from '../../database/entities/booking-seat.entity';
 import { PendingChargeEntity } from '../../database/entities/pending-charge.entity';
 import { TripEntity } from '../../database/entities/trip.entity';
 import { PaymentEntity } from '../../database/entities/payment.entity';
+import { UserEntity } from '../../database/entities/user.entity';
+import { resolvePaymentChoice } from '../ride-payments/cliq-payer';
 import { TripStatus } from '../../database/entities/shared.enums';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { CancelBookingDto } from './dto/cancel-booking.dto';
@@ -677,6 +679,14 @@ export class BookingsService {
     if (trip.status !== TripStatus.PUBLISHED)
       throw new BadRequestException('Trip is not available for booking');
 
+    // How the fare is paid when the trip ends (cash, or CliQ in Jordan).
+    const { method: paymentMethod, payerCliqAlias } = resolvePaymentChoice(
+      dto.paymentMethod,
+      trip.currency ?? 'JOD',
+      dto.payerCliqAlias ??
+        (dto.paymentMethod === 'cliq' ? await this.savedCliqAlias(userId) : null),
+    );
+
     // Duplicate booking check — any active booking by this user for this trip
     // Exactly one seat must be the main booker
     const mainSeats = seatDtos.filter((s) => s.isMainBooker);
@@ -780,6 +790,8 @@ export class BookingsService {
         platformAmount: String(seatPricing.platformAmount),
         driverAmount: String(seatPricing.driverAmount),
         expiresAt,
+        paymentMethod,
+        payerCliqAlias,
       });
       savedBooking = await qr.manager.save(BookingEntity, booking);
 
@@ -900,9 +912,24 @@ export class BookingsService {
     }));
 
     return this.createMultiSeat(
-      { tripId, seats, sharePhoneWithDriver, isFamilyBooking },
+      {
+        tripId,
+        seats,
+        sharePhoneWithDriver,
+        isFamilyBooking,
+        paymentMethod: dto.paymentMethod,
+        payerCliqAlias: dto.payerCliqAlias,
+      },
       userId,
     );
+  }
+
+  /** The CliQ alias the passenger used last, to pre-fill a CliQ booking. */
+  private async savedCliqAlias(userId: string): Promise<string | null> {
+    const user = await this.dataSource
+      .getRepository(UserEntity)
+      .findOne({ where: { id: userId }, select: ['id', 'cliqAlias'] });
+    return user?.cliqAlias ?? null;
   }
 
   /**

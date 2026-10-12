@@ -430,6 +430,30 @@ class PushNotificationService {
     }
   }
 
+  /// Android 14+ can withhold full-screen notifications; without them a ride
+  /// offer can't wake the phone and open over the lock screen. True elsewhere.
+  static Future<bool> canShowOffersOverLockScreen() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return true;
+    try {
+      return await _bookingNotificationChannel.invokeMethod<bool>(
+            'canUseFullScreenIntent',
+          ) ??
+          true;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /// Opens the system switch for full-screen notifications.
+  static Future<void> openOverLockScreenSettings() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+    try {
+      await _bookingNotificationChannel.invokeMethod(
+        'openFullScreenIntentSettings',
+      );
+    } catch (_) {}
+  }
+
   static Future<void> cancelAndroidInstantOfferNotification(
     String offerId,
   ) async {

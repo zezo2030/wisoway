@@ -23,6 +23,7 @@ class EditProfileScreen extends StatefulWidget {
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _cliqAliasController = TextEditingController();
   final _storageService = StorageService();
 
   String? _selectedGender;
@@ -39,6 +40,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _cliqAliasController.dispose();
     super.dispose();
   }
 
@@ -49,6 +51,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _selectedGender = user.gender;
       _currentPhotoUrl = user.photoUrl;
       _hidePhoneNumber = user.hidePhoneNumber;
+      _cliqAliasController.text = user.cliqAlias ?? '';
       setState(() {});
     }
   }
@@ -102,6 +105,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         role: authProvider.userModel?.role ?? AppConstants.rolePassenger,
         profileImage: _profileImage,
         hidePhoneNumber: _hidePhoneNumber,
+        // Passengers only (drivers are paid into their wallet).
+        cliqAlias: authProvider.userModel?.isDriver == true
+            ? null
+            : _cliqAliasController.text.trim(),
       );
 
       if (mounted) {
@@ -359,6 +366,35 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _buildGenderCards(),
         const SizedBox(height: 28),
         _buildHidePhoneToggle(),
+        // Where CliQ fare requests go when the passenger pays by CliQ.
+        if (user != null && !user.isDriver) ...[
+          const SizedBox(height: 28),
+          ModernInputField(
+            controller: _cliqAliasController,
+            label: context.l10n.cliqPayerAliasLabel,
+            hint: context.l10n.cliqPayerAliasHint,
+            icon: IconsaxPlusLinear.wallet_money,
+            textDirection: TextDirection.ltr,
+            validator: (v) {
+              final text = v?.trim() ?? '';
+              if (text.isEmpty) return null;
+              return RegExp(r'^[A-Za-z0-9._@\-+ ]{3,100}$').hasMatch(text)
+                  ? null
+                  : context.l10n.cliqAliasInvalid;
+            },
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(
+              context.l10n.cliqPayerAliasHelp,
+              style: TextStyle(
+                fontSize: 12,
+                color: T.onSurfaceVariant(context),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -406,10 +442,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
           subtitle: Text(
             context.l10n.hidePhoneNumberSubtitle,
-            style: TextStyle(
-              fontSize: 12,
-              color: T.onSurfaceVariant(context),
-            ),
+            style: TextStyle(fontSize: 12, color: T.onSurfaceVariant(context)),
           ),
           value: _hidePhoneNumber,
           onChanged: (val) => setState(() => _hidePhoneNumber = val),

@@ -52,6 +52,10 @@ class RouteNames {
   // Rating Routes
   static const String rating = '/rating';
 
+  /// Ride over (instant or shared): the passenger's amount-due screen, locked
+  /// until the fare is settled (driver confirms cash, or CliQ goes through).
+  static const String ridePaymentDue = '/ride-payment-due';
+
   // Profile
   static const String editProfile = '/edit-profile';
 
