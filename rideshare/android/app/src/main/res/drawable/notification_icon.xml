@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
-    android:gravity="center"
-    android:src="@mipmap/ic_launcher" />
+<!-- Status-bar icon: Android draws only the alpha channel, so this must be a
+     flat silhouette. Wrapping @mipmap/ic_launcher (an adaptive icon) in a
+     <bitmap> cannot be inflated, and the driver's foreground location service
+     then crashed the app with BadForegroundServiceNotificationException. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M7.2,16.5L12,6.8l4.8,9.7h-2.1l-1.1,-2.3H10.4l-1.1,2.3H7.2zM11.1,12.4h1.8L12,10.2 11.1,12.4z" />
+</vector>
