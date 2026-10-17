@@ -7,6 +7,10 @@ import { UsersService } from '../users/users.service';
 import { WalletService } from '../wallet/wallet.service';
 import { SetAvailabilityDto } from './dto/set-availability.dto';
 import { ErrorCodes } from '../../common/errors/error-codes';
+import {
+  DISPATCH_STALE_MINUTES,
+  lockIsFreeSql,
+} from './instant-rides.constants';
 
 export type DriverAvailabilityStatus = {
   driverId: string;
@@ -117,14 +121,16 @@ export class DriverAvailabilityService {
       limit?: number;
     } = {},
   ): Promise<NearbyDriver[]> {
-    const staleCutoff = new Date(Date.now() - this.staleThresholdMs);
+    const now = Date.now();
+    const freshCutoff = new Date(now - this.staleThresholdMs);
+    const dispatchCutoff = new Date(now - DISPATCH_STALE_MINUTES * 60_000);
     const qb = this.repo
       .createQueryBuilder('a')
       .where('a."isOnline" = true')
       .andWhere('a."acceptsInstant" = true')
-      .andWhere('a."currentRequestId" IS NULL')
+      .andWhere(lockIsFreeSql('a."currentRequestId"'))
       .andWhere('a."point" IS NOT NULL')
-      .andWhere('a."lastSeenAt" >= :staleCutoff', { staleCutoff })
+      .andWhere('a."lastSeenAt" >= :dispatchCutoff', { dispatchCutoff })
       .andWhere(
         `ST_DWithin(
           a."point",
@@ -140,7 +146,15 @@ export class DriverAvailabilityService {
         )`,
         'distance_meters',
       )
-      .orderBy('distance_meters', 'ASC')
+      // Drivers whose app is reporting now come first; one whose app was
+      // closed (still online, older location) is a fallback, nearest first.
+      .addSelect(
+        `CASE WHEN a."lastSeenAt" >= :freshCutoff THEN 0 ELSE 1 END`,
+        'stale_rank',
+      )
+      .setParameter('freshCutoff', freshCutoff)
+      .orderBy('stale_rank', 'ASC')
+      .addOrderBy('distance_meters', 'ASC')
       .limit(options.limit ?? 20);
 
     const excluded = options.excludeDriverIds ?? [];

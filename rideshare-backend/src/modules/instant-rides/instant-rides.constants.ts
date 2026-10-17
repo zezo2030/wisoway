@@ -55,6 +55,41 @@ export const NO_DRIVER_SEARCH_SECONDS = envKm('INSTANT_NO_DRIVER_SECONDS', 40);
 export const DISPATCH_RETRY_SECONDS = 10;
 /** Average urban approach speed used for pickup-ETA estimates. */
 export const PICKUP_ETA_SPEED_KMH = 25;
+/**
+ * How old an online driver's last location may be and still get offers.
+ * The app reports every ~12 s while it runs (screen off included), but once
+ * it is swiped away the reports stop while the driver stays online — and the
+ * offer push still reaches the closed app. A 60 s cut-off made those drivers
+ * invisible, so most requests found nobody. Fresh drivers are still asked
+ * first (see DriverAvailabilityService.findNearbyAvailableDrivers).
+ */
+export const DISPATCH_STALE_MINUTES = envKm(
+  'INSTANT_DISPATCH_STALE_MINUTES',
+  30,
+);
+
+/**
+ * SQL: the driver's `currentRequestId` (column [col]) holds no live claim.
+ * A lock is taken per offer and kept through an accepted ride, but nothing
+ * cleared it when that ride ended — the driver then never got another offer
+ * until they went offline and back. So a lock only counts while its request
+ * is still searching / offered, or accepted with its trip not yet over —
+ * and for at most 12 hours: an instant ride never runs that long, and one
+ * left open (an abandoned test ride) must not bench its driver for good.
+ */
+export function lockIsFreeSql(col: string): string {
+  return `(${col} IS NULL OR NOT EXISTS (
+    SELECT 1 FROM instant_ride_requests lr
+    LEFT JOIN trips lt ON lt.id = lr."tripId"
+    WHERE lr.id = ${col}
+      AND (
+        lr.status IN ('searching', 'offered')
+        OR (lr.status = 'accepted'
+            AND (lt.id IS NULL OR lt.status NOT IN ('completed', 'cancelled'))
+            AND lr."createdAt" > now() - interval '12 hours')
+      )
+  ))`;
+}
 
 // ── Fare ────────────────────────────────────────────────────────────────────
 /**

@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
-import { In, IsNull, Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import {
   DriverAvailabilityEntity,
   InstantOfferStatus,
@@ -24,6 +24,7 @@ import {
   INSTANT_OFFER_TIMEOUT_QUEUE,
   INITIAL_RADIUS_KM,
   INSTANT_REQUEST_EXPIRY_QUEUE,
+  lockIsFreeSql,
   MAX_RADIUS_KM,
   NO_DRIVER_SEARCH_SECONDS,
   OFFER_TTL_SECONDS,
@@ -203,10 +204,16 @@ export class InstantDispatchService {
     driverId: string,
     requestId: string,
   ): Promise<boolean> {
-    const result = await this.availabilityRepo.update(
-      { driverId, isOnline: true, currentRequestId: IsNull() },
-      { currentRequestId: requestId },
-    );
+    // Same "free" test as the candidate query, so a lock left over from a
+    // finished ride doesn't block the driver here either.
+    const result = await this.availabilityRepo
+      .createQueryBuilder()
+      .update()
+      .set({ currentRequestId: requestId })
+      .where('"driverId" = :driverId', { driverId })
+      .andWhere('"isOnline" = true')
+      .andWhere(lockIsFreeSql('"currentRequestId"'))
+      .execute();
     return result.affected === 1;
   }
 
