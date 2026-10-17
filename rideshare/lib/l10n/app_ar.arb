@@ -3364,7 +3364,7 @@
   "ridePaymentPayCashInstead": "الدفع للسائق نقداً بدلاً من ذلك",
   "ridePaymentDisputedTitle": "لم يُسجَّل الدفع",
   "ridePaymentDisputedBody": "أبلغ السائق أنه لم يستلم الأجرة. سيتواصل معك فريق VisionWay.",
-  "ridePaymentsCardTitle": "أجرة الركاب",
+  "ridePaymentsCardTitle": "أجرة الرحلة",
   "ridePaymentDriverPaidCash": "استلمتها نقداً ✓",
   "ridePaymentDriverPaidCliq": "دُفعت عبر CliQ · أُضيفت إلى محفظتك ✓",
   "ridePaymentDriverCliqPending": "بانتظار موافقة الراكب على دفع CliQ",

@@ -10409,7 +10409,7 @@ abstract class AppLocalizations {
   /// No description provided for @ridePaymentsCardTitle.
   ///
   /// In ar, this message translates to:
-  /// **'أجرة الركاب'**
+  /// **'أجرة الرحلة'**
   String get ridePaymentsCardTitle;
 
   /// No description provided for @ridePaymentDriverPaidCash.

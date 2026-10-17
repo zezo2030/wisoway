@@ -1238,9 +1238,13 @@ extension on _TripSummaryScreenState {
           ),
           if (payment.awaitsDriver) ...[
             const SizedBox(height: 10),
-            Row(
+            // Stacked full width: side by side, the labels wrapped onto
+            // three lines on a phone.
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
+                SizedBox(
+                  height: 48,
                   child: ElevatedButton.icon(
                     key: ValueKey('ride-payment-received-${payment.bookingId}'),
                     onPressed: busy
@@ -1267,22 +1271,25 @@ extension on _TripSummaryScreenState {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                OutlinedButton(
-                  key: ValueKey('ride-payment-not-paid-${payment.bookingId}'),
-                  onPressed: busy
-                      ? null
-                      : () => _confirmCash(payment, received: false),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: _TripSummaryScreenState._feeRed,
-                    side: const BorderSide(
-                      color: _TripSummaryScreenState._feeRed,
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 48,
+                  child: OutlinedButton(
+                    key: ValueKey('ride-payment-not-paid-${payment.bookingId}'),
+                    onPressed: busy
+                        ? null
+                        : () => _confirmCash(payment, received: false),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _TripSummaryScreenState._feeRed,
+                      side: const BorderSide(
+                        color: _TripSummaryScreenState._feeRed,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+                    child: Text(l10n.instantPaymentNotPaidAction),
                   ),
-                  child: Text(l10n.instantPaymentNotPaidAction),
                 ),
               ],
             ),

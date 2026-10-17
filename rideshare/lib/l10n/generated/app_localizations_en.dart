@@ -5736,7 +5736,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'The driver reported they weren\'t paid. The VisionWay team will contact you.';
 
   @override
-  String get ridePaymentsCardTitle => 'Passenger fares';
+  String get ridePaymentsCardTitle => 'Trip fare';
 
   @override
   String get ridePaymentDriverPaidCash => 'Received in cash ✓';

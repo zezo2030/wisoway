@@ -5688,7 +5688,7 @@ class AppLocalizationsAr extends AppLocalizations {
       'أبلغ السائق أنه لم يستلم الأجرة. سيتواصل معك فريق VisionWay.';
 
   @override
-  String get ridePaymentsCardTitle => 'أجرة الركاب';
+  String get ridePaymentsCardTitle => 'أجرة الرحلة';
 
   @override
   String get ridePaymentDriverPaidCash => 'استلمتها نقداً ✓';
