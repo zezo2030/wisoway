@@ -63,7 +63,7 @@ class TripService {
       final body = <String, dynamic>{
         'from': from.toMap(),
         'to': to.toMap(),
-        'departureTime': departureTime.toIso8601String(),
+        'departureTime': departureTime.toUtc().toIso8601String(),
         'price': price,
         'currency': currency,
         'carImageUrl': carImageUrl,

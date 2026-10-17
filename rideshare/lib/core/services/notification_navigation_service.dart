@@ -6,6 +6,7 @@ import '../constants/route_names.dart';
 import 'instant_offer_actions.dart';
 import 'active_ride_navigator.dart';
 import 'booking_request_actions.dart';
+import 'booking_service.dart';
 import '../../widgets/booking_request_dialog.dart';
 
 /// Service to handle navigation when user taps on notifications
@@ -133,23 +134,27 @@ class NotificationNavigationService {
   }
 
   static void _handleInstantOfferNotification(Map<String, dynamic> data) {
-    InstantOfferActions.handle({
-      ...data,
-      'action': data['action'] ?? 'open',
-    });
+    InstantOfferActions.handle({...data, 'action': data['action'] ?? 'open'});
   }
 
-  /// Handle booking-related notifications
-  static void _handleBookingNotification(Map<String, dynamic> data) {
+  /// A decision on the passenger's booking: the same trip page «حجوزاتي»
+  /// opens, carrying the booking.
+  static Future<void> _handleBookingNotification(
+    Map<String, dynamic> data,
+  ) async {
     final tripId = data['tripId'] as String?;
-
-    if (tripId != null) {
-      // Navigate to trip details or trip management based on user role
-      // For now, navigate to trip details
-      _navigateToRoute(RouteNames.tripDetails, arguments: tripId);
-    } else {
+    if (tripId == null) {
       _navigateToRoute(RouteNames.notifications);
+      return;
     }
+    final bookingId = data['bookingId']?.toString();
+    final booking = bookingId == null || bookingId.isEmpty
+        ? null
+        : await BookingService().getBooking(bookingId);
+    _navigateToRoute(
+      RouteNames.tripDetails,
+      arguments: {'tripId': tripId, 'booking': booking},
+    );
   }
 
   /// Handle payment-related notifications

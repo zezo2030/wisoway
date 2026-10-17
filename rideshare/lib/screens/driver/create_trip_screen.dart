@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../core/constants/countries.dart';
+import '../../core/constants/communication_fees.dart';
 import '../../providers/trip_provider.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/services/saved_places_scope.dart';
@@ -41,7 +43,15 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     with SingleTickerProviderStateMixin {
   static const String _defaultCurrency = 'JOD';
 
-  String _currency = _defaultCurrency;
+  /// Shown until the price suggestion returns the route's real currency:
+  /// the driver's phone country, as the backend falls back to it too.
+  late String _currency = _seedCurrency();
+
+  String _seedCurrency() {
+    final phone = context.read<AuthProvider>().userModel?.phoneNumber ?? '';
+    final iso2 = Countries.fromPhoneNumber(phone)?.iso2;
+    return CommunicationFees.currencyByCountry[iso2] ?? _defaultCurrency;
+  }
 
   final _formKey = GlobalKey<FormState>();
   final CreateTripWizardState _wizard = CreateTripWizardState();

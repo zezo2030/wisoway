@@ -17,16 +17,6 @@ class ChatService {
     }
   }
 
-  /// التحقق من إمكانية المحادثة (الغرفة متاحة عبر getOrCreateRoomForTrip).
-  Future<bool> checkIfChatEnabled(String tripId) async {
-    try {
-      await getOrCreateRoomForTrip(tripId);
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
   /// نفس getOrCreateRoomForTrip (للتوافق مع الشاشات).
   Future<ChatModel> getOrCreateChat(String tripId) =>
       getOrCreateRoomForTrip(tripId);

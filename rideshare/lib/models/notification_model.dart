@@ -184,6 +184,9 @@ class NotificationModel {
         return 'بدأت الرحلة';
       case NotificationType.tripCancelled:
         return isDriver == true ? 'تم إلغاء رحلتك' : 'تم إلغاء الرحلة';
+      case NotificationType.tripCompleted:
+      case NotificationType.tripAutoCompleted:
+        return 'انتهت الرحلة';
       case NotificationType.communicationActivated:
         return isDriver == true
             ? 'تم تفعيل التواصل مع الراكب'
@@ -276,6 +279,12 @@ class NotificationModel {
         return isDriver == true
             ? 'تم إلغاء رحلتك. يرجى مراجعة تفاصيل الرحلة.'
             : 'تم إلغاء الرحلة. يرجى مراجعة التفاصيل.';
+      case NotificationType.tripCompleted:
+      case NotificationType.tripAutoCompleted:
+        final completedTo = _stringFromData(data, ['toName']);
+        return completedTo != null
+            ? 'انتهت رحلتك إلى $completedTo. يمكنك الآن تقييم الرحلة.'
+            : 'انتهت رحلتك. يمكنك الآن تقييم الرحلة.';
       case NotificationType.communicationActivated:
         if (isDriver == true) {
           return passengerName != null

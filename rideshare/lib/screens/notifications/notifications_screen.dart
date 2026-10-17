@@ -10,6 +10,7 @@ import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/services/active_ride_navigator.dart';
+import '../../core/services/booking_service.dart';
 import '../../widgets/common/empty_state.dart';
 import '../../widgets/notification_card.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -114,6 +115,28 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case NotificationType.driverApproved:
       case NotificationType.driverRejected:
         Navigator.pushNamed(context, RouteNames.driverPendingApproval);
+        return;
+
+      // The passenger's own booking: the same trip page «حجوزاتي» opens,
+      // carrying the booking.
+      case NotificationType.bookingConfirmed:
+      case NotificationType.bookingCancelled:
+      case NotificationType.bookingRejected:
+      case NotificationType.bookingExpired:
+        if (tripId == null) break;
+        if (isDriver) {
+          _openTrip(tripId, isDriver: true);
+          return;
+        }
+        final booking = bookingId == null
+            ? null
+            : await BookingService().getBooking(bookingId);
+        if (!mounted) return;
+        Navigator.pushNamed(
+          context,
+          RouteNames.tripDetails,
+          arguments: {'tripId': tripId, 'booking': booking},
+        );
         return;
 
       // A ride offer or search that has long since ended has no screen to

@@ -9,6 +9,7 @@ import '../../core/theme/colors.dart';
 import '../../core/services/location_service.dart';
 import '../../core/services/active_ride_navigator.dart';
 import '../../core/services/booking_request_actions.dart';
+import '../../core/services/booking_service.dart';
 import '../../core/utils/responsive_layout.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../core/services/saved_places_scope.dart';
@@ -234,9 +235,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  void _goHome() {
-    if (_currentIndex != 0) setState(() => _currentIndex = 0);
+  void _goHome() => _selectTab(0);
+
+  /// The passenger's bookings tab; drivers have their trips there instead.
+  static const int _passengerBookingsTabIndex = 2;
+
+  void _selectTab(int index) {
+    if (index == _currentIndex) return;
+    setState(() => _currentIndex = index);
+    // The tabs are built once inside an IndexedStack, so a booking made
+    // elsewhere would never show; refetch whenever a passenger switches tabs
+    // (the home tab shows upcoming bookings too).
+    final isDriver = context.read<AuthProvider>().userModel?.isDriver == true;
+    if (!isDriver) BookingService.notifyChanged();
   }
+
+  void _openBookingsTab() => _selectTab(_passengerBookingsTabIndex);
 
   Widget _buildScaffoldWithNavigationRail(BuildContext context, user) {
     final bool isDriver = user?.isDriver == true;
@@ -260,6 +274,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         : [
             HomeTabContent(
               user: user,
+              onOpenBookings: _openBookingsTab,
               userLocation: _userLocation,
               isLoadingLocation: _isLoadingLocation,
               onOpenDrawer: () {},
@@ -277,11 +292,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         children: [
           NavigationRail(
             selectedIndex: safeIndex,
-            onDestinationSelected: (index) {
-              setState(() {
-                _currentIndex = index;
-              });
-            },
+            onDestinationSelected: _selectTab,
             labelType: NavigationRailLabelType.all,
             backgroundColor: T.surface(context),
             selectedIconTheme: IconThemeData(color: T.primary(context)),
@@ -385,6 +396,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               : [
                   HomeTabContent(
                     user: user,
+                    onOpenBookings: _openBookingsTab,
                     userLocation: _userLocation,
                     isLoadingLocation: _isLoadingLocation,
                     onOpenDrawer: () =>
@@ -403,9 +415,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       bottomNavigationBar: _buildBottomNavigationBar(user, isDriver, safeIndex),
       drawer: HomeDrawer(
         user: user,
-        onTabSelect: (index) {
-          setState(() => _currentIndex = index);
-        },
+        onTabSelect: _selectTab,
       ),
     );
   }
@@ -444,11 +454,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     return BottomNavigationBar(
       currentIndex: currentIndex,
-      onTap: (index) {
-        setState(() {
-          _currentIndex = index;
-        });
-      },
+      onTap: _selectTab,
       type: BottomNavigationBarType.fixed,
       selectedItemColor: T.primary(context),
       unselectedItemColor: T.onSurfaceVariant(context),

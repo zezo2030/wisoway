@@ -8,6 +8,8 @@ import '../../widgets/chat_bubble_widget.dart';
 import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
+import '../../core/errors/failure.dart';
+import '../../core/services/error_localizations.dart';
 import '../../widgets/common/empty_state.dart';
 import '../../l10n/l10n_extensions.dart';
 
@@ -40,7 +42,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isLoading = true;
   bool _isSending = false;
   bool _chatEnabled = false;
-  // 0 = none, 1 = must sign in, 2 = chat not enabled, 3 = load error
+  // 0 = none, 1 = must sign in, 2 = not booked on the trip, 3 = load error
   int _errorCode = 0;
   String? _loadErrorDetail;
   bool _readOnly = false;
@@ -75,17 +77,6 @@ class _ChatScreenState extends State<ChatScreen> {
         return;
       }
 
-      final chatEnabled = await _chatService.checkIfChatEnabled(widget.tripId);
-
-      if (!chatEnabled) {
-        setState(() {
-          _isLoading = false;
-          _chatEnabled = false;
-          _errorCode = 2;
-        });
-        return;
-      }
-
       final chat = await _chatService.getOrCreateChat(widget.tripId);
 
       setState(() {
@@ -95,10 +86,20 @@ class _ChatScreenState extends State<ChatScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
+      final failure = ApiClient.mapError(e);
       setState(() {
         _isLoading = false;
-        _errorCode = 3;
-        _loadErrorDetail = e.toString();
+        // 403: no pending/confirmed booking on the trip.
+        if (failure.category == FailureCategory.permission) {
+          _errorCode = 2;
+        } else {
+          _errorCode = 3;
+          _loadErrorDetail = ErrorLocalizations.resolveFailure(
+            context,
+            failure,
+          );
+        }
       });
     }
   }
@@ -170,8 +171,8 @@ class _ChatScreenState extends State<ChatScreen> {
       final errorText = _errorCode == 1
           ? context.l10n.errorMustSignInFirst
           : _errorCode == 2
-              ? context.l10n.chatNotEnabledYet
-              : context.l10n.chatLoadError(_loadErrorDetail ?? '');
+          ? context.l10n.chatRequiresBooking
+          : _loadErrorDetail ?? context.l10n.chatLoadErrorShort;
       return Scaffold(
         appBar: AppBar(
           title: Text(context.l10n.chatTitleWithDriver(widget.driverName)),
@@ -289,8 +290,8 @@ class _ChatScreenState extends State<ChatScreen> {
                 context.l10n.chatClosedForSending,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: T.onSurfaceVariant(context),
-                    ),
+                  color: T.onSurfaceVariant(context),
+                ),
               ),
             ),
           Container(
@@ -338,9 +339,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      onPressed: _isSending || readOnly
-                          ? null
-                          : _sendMessage,
+                      onPressed: _isSending || readOnly ? null : _sendMessage,
                       icon: _isSending
                           ? const SizedBox(
                               width: 20,

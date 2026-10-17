@@ -70,6 +70,17 @@ class _BookingsTabState extends State<BookingsTab> {
       const Duration(days: 1),
     );
     _bookingsFuture = _bookingService.getUserBookings();
+    BookingService.changes.addListener(_onBookingsChanged);
+  }
+
+  @override
+  void dispose() {
+    BookingService.changes.removeListener(_onBookingsChanged);
+    super.dispose();
+  }
+
+  void _onBookingsChanged() {
+    if (mounted) _refreshBookings();
   }
 
   /// A page title for a filtered list, or null for the plain tab.
@@ -291,7 +302,9 @@ class _BookingsTabState extends State<BookingsTab> {
       body: FutureBuilder<List<BookingModel>>(
         future: _bookingsFuture,
         builder: (context, bookingsSnapshot) {
-          if (bookingsSnapshot.connectionState == ConnectionState.waiting) {
+          // A refetch keeps the previous list on screen instead of a spinner.
+          if (bookingsSnapshot.connectionState == ConnectionState.waiting &&
+              !bookingsSnapshot.hasData) {
             return Center(
               child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(T.primary(context)),
@@ -613,7 +626,6 @@ class _BookingsTabState extends State<BookingsTab> {
           backgroundColor: AppColors.success,
         ),
       );
-      _refreshBookings();
     } catch (e) {
       if (!mounted) return;
       ErrorSurface.showFailure(context, ApiClient.mapError(e));

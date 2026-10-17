@@ -161,7 +161,9 @@ class NotificationCard extends StatelessWidget {
                             Text(
                               timeago.format(
                                 notification.createdAt,
-                                locale: 'ar',
+                                locale: Localizations.localeOf(
+                                  context,
+                                ).languageCode,
                               ),
                               style: GoogleFonts.tajawal(
                                 fontSize: 12,

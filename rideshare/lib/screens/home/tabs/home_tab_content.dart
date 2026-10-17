@@ -4,14 +4,17 @@ import 'package:provider/provider.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../../core/constants/countries.dart';
 import '../../../core/constants/route_names.dart';
+import '../../../core/services/booking_service.dart';
 import '../../../core/theme/colors.dart';
 import '../../../l10n/l10n_extensions.dart';
+import '../../../models/booking_model.dart';
 import '../../../models/location_model.dart';
 import '../../../models/trip_model.dart';
 import '../../../models/user_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/trip_provider.dart';
 import '../../../widgets/notification_icon_button.dart';
+import '../widgets/booking_card.dart';
 import '../widgets/default_avatar.dart';
 import '../widgets/ride_mode_card.dart';
 import '../widgets/suggested_trips_carousel.dart';
@@ -28,6 +31,9 @@ class HomeTabContent extends StatefulWidget {
   final VoidCallback onChangeLocation;
   final Future<void> Function()? onRefreshData;
 
+  /// Switches to the bookings tab (the "view all" of the bookings section).
+  final VoidCallback? onOpenBookings;
+
   const HomeTabContent({
     super.key,
     this.user,
@@ -37,6 +43,7 @@ class HomeTabContent extends StatefulWidget {
     required this.onRefreshLocation,
     required this.onChangeLocation,
     this.onRefreshData,
+    this.onOpenBookings,
   });
 
   @override
@@ -47,12 +54,30 @@ class _HomeTabContentState extends State<HomeTabContent> {
   /// How many suggested trips the carousel carries before "view all" takes over.
   static const int _maxSuggestedTrips = 8;
 
+  /// How many upcoming bookings the home tab lists before "view all".
+  static const int _maxHomeBookings = 3;
+
   late final DateTime _activeTripsMinDepartureTime;
+  final BookingService _bookingService = BookingService();
+  late Future<List<BookingModel>> _bookingsFuture;
 
   @override
   void initState() {
     super.initState();
     _activeTripsMinDepartureTime = DateTime.now();
+    _bookingsFuture = _bookingService.getUserBookings();
+    BookingService.changes.addListener(_reloadBookings);
+  }
+
+  @override
+  void dispose() {
+    BookingService.changes.removeListener(_reloadBookings);
+    super.dispose();
+  }
+
+  void _reloadBookings() {
+    if (!mounted) return;
+    setState(() => _bookingsFuture = _bookingService.getUserBookings());
   }
 
   Future<void> _handleRefresh() async {
@@ -69,6 +94,8 @@ class _HomeTabContentState extends State<HomeTabContent> {
         ),
       if (widget.onRefreshData != null) widget.onRefreshData!(),
     ]);
+    _reloadBookings();
+    await _bookingsFuture;
   }
 
   @override
@@ -85,6 +112,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
               SliverToBoxAdapter(child: _buildHeader(context)),
               SliverToBoxAdapter(child: _buildRideModes(context)),
               SliverToBoxAdapter(child: _buildLocationSection(context)),
+              SliverToBoxAdapter(child: _buildMyBookingsSection(context)),
               SliverToBoxAdapter(child: _buildSuggestedTripsSection(context)),
               const SliverToBoxAdapter(
                 child: Padding(
@@ -381,6 +409,74 @@ class _HomeTabContentState extends State<HomeTabContent> {
           ),
         ),
       ),
+    );
+  }
+
+  /// The passenger's upcoming bookings; hidden while there are none.
+  Widget _buildMyBookingsSection(BuildContext context) {
+    return FutureBuilder<List<BookingModel>>(
+      future: _bookingsFuture,
+      builder: (context, snapshot) {
+        final upcoming = (snapshot.data ?? const <BookingModel>[])
+            .where((b) => !BookingModel.isPastBooking(b, b.tripPopulated))
+            .toList()
+          ..sort((a, b) {
+            final ta = a.tripPopulated?.departureTime;
+            final tb = b.tripPopulated?.departureTime;
+            if (ta == null || tb == null) return 0;
+            return ta.compareTo(tb);
+          });
+        if (upcoming.isEmpty) return const SizedBox.shrink();
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    context.l10n.myBookings,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: T.onSurface(context),
+                    ),
+                  ),
+                  if (widget.onOpenBookings != null)
+                    TextButton(
+                      onPressed: widget.onOpenBookings,
+                      child: Text(
+                        context.l10n.viewAll,
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: T.primary(context),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ...upcoming.take(_maxHomeBookings).map((booking) {
+                final trip = booking.tripPopulated;
+                return BookingCard(
+                  booking: booking,
+                  trip: trip,
+                  onTap: trip != null
+                      ? () => Navigator.pushNamed(
+                          context,
+                          RouteNames.tripDetails,
+                          arguments: {'tripId': trip.id, 'booking': booking},
+                        )
+                      : null,
+                );
+              }),
+            ],
+          ),
+        );
+      },
     );
   }
 

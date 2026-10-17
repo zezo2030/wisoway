@@ -1083,6 +1083,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get bookSeatButton => 'احجز مقعدًا';
 
   @override
+  String get bookAnotherSeatButton => 'احجز مقعدًا آخر';
+
+  @override
   String get selectSeats => 'اختر المقاعد';
 
   @override
@@ -1966,6 +1969,14 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get chatNotEnabledYet =>
       'لم يتم تفعيل التواصل بعد. يجب على السائق دفع رسوم التواصل أولاً.';
+
+  @override
+  String get chatRequiresBooking =>
+      'المحادثة مع السائق متاحة بعد حجزك في هذه الرحلة.';
+
+  @override
+  String get groupChatRequiresBooking =>
+      'المحادثة الجماعية متاحة بعد حجزك في هذه الرحلة.';
 
   @override
   String get rateLabel => 'تقييم';
@@ -3037,6 +3048,10 @@ class AppLocalizationsAr extends AppLocalizations {
       'هل أنت متأكد من حذف هذه الرحلة؟ لا يمكن التراجع عن هذا الإجراء.';
 
   @override
+  String get cannotDeleteTripWithin24Hours =>
+      'لا يمكن حذف رحلة فيها ركاب محجوزون قبل أقل من 24 ساعة من موعد انطلاقها.';
+
+  @override
   String get deleteAction => 'حذف';
 
   @override
@@ -4043,9 +4058,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get additionalDetailsTitle => 'تفاصيل إضافية';
 
   @override
-  String get publishTripNoticeTitle => 'الرحلة ستنتشر بعد المراجعة';
-
-  @override
   String get tripSummarySection => 'ملخص الرحلة';
 
   @override
@@ -4072,10 +4084,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get backToEdit => 'العودة للتعديل';
-
-  @override
-  String get publishTripNotice =>
-      'بمجرد نشر الرحلة سيتمكن الركاب من حجز المقاعد المتاحة';
 
   @override
   String createTripFeeNotice(String percent, String amount, String currency) {

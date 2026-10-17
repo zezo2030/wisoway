@@ -65,8 +65,6 @@ class Step3Review extends StatelessWidget {
             const SizedBox(height: _cardGap),
             _buildNotesCard(context),
           ],
-          const SizedBox(height: _cardGap),
-          _buildPublishNotice(context),
         ],
       ),
     );
@@ -586,23 +584,7 @@ class Step3Review extends StatelessWidget {
         : percent.toStringAsFixed(1);
   }
 
-  // --- publish notice ------------------------------------------------------
-
-  Widget _buildPublishNotice(BuildContext context) {
-    return _noticeCard(
-      context,
-      leading: Icon(
-        IconsaxPlusBold.shield_tick,
-        size: 20,
-        color: T.primary(context),
-      ),
-      title: context.l10n.publishTripNoticeTitle,
-      body: context.l10n.publishTripNotice,
-    );
-  }
-
-  /// Muted panel with a chipped icon: the mockup's closing notice, reused by
-  /// the fee line above it so the two read as one family.
+  /// Muted panel with a chipped icon, used by the fee line.
   Widget _noticeCard(
     BuildContext context, {
     required Widget leading,

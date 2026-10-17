@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:timeago/timeago.dart' as timeago;
 import 'package:firebase_core/firebase_core.dart';
 // import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:firebase_app_check/firebase_app_check.dart';
@@ -81,6 +82,8 @@ import 'screens/passenger/refund_request_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // timeago only ships English; notification times are shown in Arabic too.
+  timeago.setLocaleMessages('ar', timeago.ArMessages());
 
   // Lock to portrait orientation
   await SystemChrome.setPreferredOrientations([
@@ -341,10 +344,17 @@ class MyApp extends StatelessWidget {
                       );
                     }
                     if (settings.name == RouteNames.seatSelection) {
-                      final tripId = settings.arguments as String;
+                      // A trip id, or {tripId, isAdditionalBooking}.
+                      final args = settings.arguments;
+                      final map = args is Map ? args : null;
                       return MaterialPageRoute(
-                        builder: (context) =>
-                            SeatSelectionScreen(tripId: tripId),
+                        builder: (context) => SeatSelectionScreen(
+                          tripId: map != null
+                              ? map['tripId'] as String
+                              : args as String,
+                          isAdditionalBooking:
+                              map?['isAdditionalBooking'] == true,
+                        ),
                       );
                     }
                     if (settings.name == RouteNames.tripRouteMap) {
