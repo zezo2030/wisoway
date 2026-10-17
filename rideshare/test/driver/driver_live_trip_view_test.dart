@@ -72,6 +72,7 @@ void main() {
     LatLng? driver,
     VoidCallback? onBack,
     VoidCallback? onStartRide,
+    void Function(LatLng target)? onNavigate,
   }) async {
     // A phone-shaped screen: everything must fit without scrolling.
     tester.view.physicalSize = const Size(1080, 2400);
@@ -96,7 +97,7 @@ void main() {
             onChatPassenger: (_) {},
             phoneOf: (_) => null,
             onCall: (_) {},
-            onNavigate: (_) {},
+            onNavigate: onNavigate ?? (_) {},
             onBack: onBack,
             onGroupChat: trip.isInstant ? null : () {},
             routeService: RouteService(
@@ -178,6 +179,31 @@ void main() {
     expect(find.text('الراكب معك — في الطريق إلى الوجهة'), findsOneWidget);
     expect(find.text('تم الوصول للوجهة'), findsOneWidget);
   });
+
+  for (final (stage, arrived, started, expected) in [
+    ('on the way', false, false, const LatLng(26.6, 37.9)),
+    ('waiting at the pickup', true, false, const LatLng(26.6, 37.9)),
+    ('ride started', false, true, const LatLng(26.5, 37.95)),
+  ]) {
+    testWidgets('instant ride: «ملاحة» while $stage goes to $expected', (
+      tester,
+    ) async {
+      LatLng? navigatedTo;
+      await pump(
+        tester,
+        trip: trip(arrived: arrived, started: started),
+        // Close to the pickup, so no «start the ride?» prompt pops up.
+        driver: const LatLng(26.6001, 37.9001),
+        onNavigate: (target) => navigatedTo = target,
+      );
+
+      await tester.tap(find.text('ملاحة'));
+      await tester.pump();
+
+      // The pickup until the passenger is in, then the destination.
+      expect(navigatedTo, expected);
+    });
+  }
 
   testWidgets('instant ride: driving off without starting asks to start', (
     tester,

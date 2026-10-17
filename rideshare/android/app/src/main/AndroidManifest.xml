@@ -113,5 +113,11 @@
         </intent>
         <package android:name="com.whatsapp" />
         <package android:name="com.whatsapp.w4b" />
+        <!-- «ملاحة»: start Google Maps turn-by-turn straight away. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="google.navigation" />
+        </intent>
+        <package android:name="com.google.android.apps.maps" />
     </queries>
 </manifest>

@@ -914,13 +914,19 @@ class _TripManagementScreenState extends State<TripManagementScreen>
   }
 
   /// Hands turn-by-turn navigation to Google Maps (or the browser fallback).
+  /// [target] is the passenger's pickup until the ride starts, then the
+  /// destination (see DriverLiveTripView).
   Future<void> _launchNavigation(LatLng target) async {
     final lat = target.latitude;
     final lng = target.longitude;
     final app = Uri.parse('google.navigation:q=$lat,$lng&mode=d');
-    if (await canLaunchUrl(app)) {
-      await launchUrl(app);
-      return;
+    try {
+      // Launch directly: canLaunchUrl reports false for an undeclared scheme
+      // on Android 11+, which used to drop drivers on a route preview instead
+      // of live navigation.
+      if (await launchUrl(app, mode: LaunchMode.externalApplication)) return;
+    } catch (_) {
+      // No Google Maps — fall through to the universal maps link.
     }
     await launchUrl(
       Uri.parse(
