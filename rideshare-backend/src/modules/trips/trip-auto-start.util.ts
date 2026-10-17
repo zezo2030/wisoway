@@ -15,13 +15,17 @@ export const TRIP_AUTO_START_JOB_ID_PREFIX = 'trip-auto-start-';
  * presses "Arrived". Defaults to 24h after departure; configurable via env.
  */
 export function computeTripAutoCompleteDelayMs(departureTime: Date): number {
+  const runAtMs =
+    new Date(departureTime).getTime() + tripAutoCompleteFallbackMs();
+  return Math.max(0, runAtMs - Date.now());
+}
+
+/** How long after departure a trip still in progress is auto-completed. */
+export function tripAutoCompleteFallbackMs(): number {
   const fallbackHours = process.env.TRIP_AUTO_COMPLETE_FALLBACK_HOURS
     ? Number(process.env.TRIP_AUTO_COMPLETE_FALLBACK_HOURS)
     : 24;
-  const runAtMs =
-    new Date(departureTime).getTime() +
-    Math.max(1, fallbackHours) * 60 * 60 * 1000;
-  return Math.max(0, runAtMs - Date.now());
+  return Math.max(1, fallbackHours) * 60 * 60 * 1000;
 }
 
 export const TRIP_AUTO_COMPLETE_JOB_ID_PREFIX = 'trip-auto-complete-';

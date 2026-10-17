@@ -8,6 +8,7 @@ import '../../widgets/chat_bubble_widget.dart';
 import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
+import '../../core/services/error_localizations.dart';
 import '../../widgets/common/empty_state.dart';
 import '../../l10n/l10n_extensions.dart';
 
@@ -78,9 +79,13 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = context.l10n.chatLoadError(e.toString());
+        _errorMessage = ErrorLocalizations.resolveFailure(
+          context,
+          ApiClient.mapError(e),
+        );
       });
     }
   }
@@ -88,9 +93,9 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
   Future<void> _sendMessage() async {
     if (_messageController.text.trim().isEmpty) return;
     if (_isReadOnly) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.chatClosedTripEnded)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.l10n.chatClosedTripEnded)));
       return;
     }
 
@@ -208,8 +213,9 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
     }
 
     final chatId = _chatId ?? '';
-    final readOnlyReason =
-        _isReadOnly ? context.l10n.chatClosedTripEnded : null;
+    final readOnlyReason = _isReadOnly
+        ? context.l10n.chatClosedTripEnded
+        : null;
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -253,9 +259,7 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
                       if (snapshot.hasError) {
                         return Center(
                           child: Text(
-                            context.l10n.errorWithDetail(
-                              '${snapshot.error}',
-                            ),
+                            context.l10n.errorWithDetail('${snapshot.error}'),
                           ),
                         );
                       }
@@ -303,8 +307,8 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
                 readOnlyReason,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: T.onSurfaceVariant(context),
-                    ),
+                  color: T.onSurfaceVariant(context),
+                ),
               ),
             ),
           Container(

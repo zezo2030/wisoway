@@ -9,6 +9,8 @@ import '../../widgets/chat_bubble_widget.dart';
 import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
+import '../../core/errors/failure.dart';
+import '../../core/services/error_localizations.dart';
 import '../../widgets/common/empty_state.dart';
 import '../../l10n/l10n_extensions.dart';
 
@@ -41,9 +43,9 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   bool _isLoading = true;
   bool _isSending = false;
   bool _chatEnabled = false;
-  // 0 = none, 1 = must sign in, 2 = chat not enabled, 3 = load error
+  // 0 = none, 1 = must sign in, 2 = not booked on the trip, 3 = load error
   int _errorCode = 0;
-  String? _loadErrorDetail;
+  Failure? _loadFailure;
   bool _readOnly = false;
 
   @override
@@ -77,16 +79,16 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      // A 403 (communication fee not paid) is surfaced as "not enabled yet".
-      final isFeeGate = e.toString().contains('COMMUNICATION_FEE_REQUIRED');
+      final failure = ApiClient.mapError(e);
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
-        if (isFeeGate) {
-          _chatEnabled = false;
+        // 403: a passenger without a pending/confirmed booking on the trip.
+        if (failure.category == FailureCategory.permission) {
           _errorCode = 2;
         } else {
           _errorCode = 3;
-          _loadErrorDetail = e.toString();
+          _loadFailure = failure;
         }
       });
     }
@@ -177,11 +179,14 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     }
 
     if (_errorCode != 0 && !_chatEnabled) {
-      final errorText = _errorCode == 1
-          ? context.l10n.errorMustSignInFirst
-          : _errorCode == 2
-              ? context.l10n.chatNotEnabledYet
-              : context.l10n.chatLoadError(_loadErrorDetail ?? '');
+      final errorText = switch (_errorCode) {
+        1 => context.l10n.errorMustSignInFirst,
+        2 => context.l10n.groupChatRequiresBooking,
+        _ =>
+          _loadFailure != null
+              ? ErrorLocalizations.resolveFailure(context, _loadFailure!)
+              : context.l10n.chatLoadErrorShort,
+      };
       return Scaffold(
         appBar: _buildAppBar(context),
         body: Center(
@@ -281,8 +286,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 context.l10n.chatClosedForSending,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: T.onSurfaceVariant(context),
-                    ),
+                  color: T.onSurfaceVariant(context),
+                ),
               ),
             ),
           Container(

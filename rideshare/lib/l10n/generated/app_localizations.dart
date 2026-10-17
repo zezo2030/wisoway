@@ -2162,6 +2162,12 @@ abstract class AppLocalizations {
   /// **'احجز مقعدًا'**
   String get bookSeatButton;
 
+  /// No description provided for @bookAnotherSeatButton.
+  ///
+  /// In ar, this message translates to:
+  /// **'احجز مقعدًا آخر'**
+  String get bookAnotherSeatButton;
+
   /// No description provided for @selectSeats.
   ///
   /// In ar, this message translates to:
@@ -3829,6 +3835,18 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'لم يتم تفعيل التواصل بعد. يجب على السائق دفع رسوم التواصل أولاً.'**
   String get chatNotEnabledYet;
+
+  /// No description provided for @chatRequiresBooking.
+  ///
+  /// In ar, this message translates to:
+  /// **'المحادثة مع السائق متاحة بعد حجزك في هذه الرحلة.'**
+  String get chatRequiresBooking;
+
+  /// No description provided for @groupChatRequiresBooking.
+  ///
+  /// In ar, this message translates to:
+  /// **'المحادثة الجماعية متاحة بعد حجزك في هذه الرحلة.'**
+  String get groupChatRequiresBooking;
 
   /// No description provided for @rateLabel.
   ///
@@ -5768,6 +5786,12 @@ abstract class AppLocalizations {
   /// **'هل أنت متأكد من حذف هذه الرحلة؟ لا يمكن التراجع عن هذا الإجراء.'**
   String get deleteTripConfirm;
 
+  /// No description provided for @cannotDeleteTripWithin24Hours.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا يمكن حذف رحلة فيها ركاب محجوزون قبل أقل من 24 ساعة من موعد انطلاقها.'**
+  String get cannotDeleteTripWithin24Hours;
+
   /// No description provided for @deleteAction.
   ///
   /// In ar, this message translates to:
@@ -7454,12 +7478,6 @@ abstract class AppLocalizations {
   /// **'تفاصيل إضافية'**
   String get additionalDetailsTitle;
 
-  /// No description provided for @publishTripNoticeTitle.
-  ///
-  /// In ar, this message translates to:
-  /// **'الرحلة ستنتشر بعد المراجعة'**
-  String get publishTripNoticeTitle;
-
   /// No description provided for @tripSummarySection.
   ///
   /// In ar, this message translates to:
@@ -7513,12 +7531,6 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'العودة للتعديل'**
   String get backToEdit;
-
-  /// No description provided for @publishTripNotice.
-  ///
-  /// In ar, this message translates to:
-  /// **'بمجرد نشر الرحلة سيتمكن الركاب من حجز المقاعد المتاحة'**
-  String get publishTripNotice;
 
   /// No description provided for @createTripFeeNotice.
   ///

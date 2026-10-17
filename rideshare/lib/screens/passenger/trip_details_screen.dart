@@ -12,7 +12,6 @@ import '../../models/trip_model.dart';
 import '../../models/vehicle_colors.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/services/booking_service.dart';
-import '../../core/services/chat_service.dart';
 import '../../core/services/rating_service.dart';
 import '../../core/api/websocket_service.dart';
 import '../../core/theme/colors.dart';
@@ -52,6 +51,11 @@ class TripDetailsScreen extends StatefulWidget {
 class _TripDetailsScreenState extends State<TripDetailsScreen> {
   TripModel? _trip;
   BookingModel? _activeBooking;
+
+  /// The passenger's own booking on this trip in any state but cancelled or
+  /// rejected — unlike [_activeBooking] it survives the trip ending, so it
+  /// decides whether rating is offered.
+  BookingModel? _tripBooking;
   bool _isLoading = true;
   GoogleMapController? _mapController;
   final WebSocketService _socketService = WebSocketService();
@@ -63,6 +67,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   void initState() {
     super.initState();
     _activeBooking = _isActiveTripBooking(widget.initialBooking)
+        ? widget.initialBooking
+        : null;
+    _tripBooking = _isOwnTripBooking(widget.initialBooking)
         ? widget.initialBooking
         : null;
     _loadTrip();
@@ -156,14 +163,41 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     await ShareTrackingSheet.show(context, trip.id);
   }
 
+  /// Seat selection pops with the new booking once it is sent. Show it here
+  /// (instead of the "book a seat" button) and reload the trip so the seat map
+  /// and free-seat count include it.
+  Future<void> _openSeatSelection(TripModel trip) async {
+    final booking = await Navigator.pushNamed(
+      context,
+      RouteNames.seatSelection,
+      arguments: {
+        'tripId': trip.id,
+        'isAdditionalBooking': _activeBooking != null,
+      },
+    );
+    if (!mounted || booking is! BookingModel) return;
+    setState(() {
+      _activeBooking = booking;
+      _tripBooking ??= booking;
+    });
+    await _loadTrip();
+  }
+
   bool _isActiveTripBooking(BookingModel? booking) {
     if (booking == null || booking.tripId != widget.tripId) return false;
     return booking.isPending || booking.isConfirmed;
   }
 
+  bool _isOwnTripBooking(BookingModel? booking) {
+    if (booking == null || booking.tripId != widget.tripId) return false;
+    return !booking.isCancelled && !booking.isRejected;
+  }
+
+  /// Also fills [_tripBooking] from the same list.
   Future<BookingModel?> _loadActiveBooking() async {
     try {
       final bookings = await BookingService().getMyBookings();
+      _tripBooking ??= bookings.where(_isOwnTripBooking).firstOrNull;
       for (final booking in bookings) {
         if (_isActiveTripBooking(booking)) return booking;
       }
@@ -256,6 +290,13 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     // Booking, chatting with the driver and rating are passenger actions; a
     // driver account only ever books through a passenger account.
     final isPassenger = userModel != null && !userModel.isDriver;
+    // Chat (direct and group) is for passengers booked on a shared trip;
+    // rating only once a trip they were booked on has ended.
+    final showChat = isPassenger && !trip.isInstant && _activeBooking != null;
+    final showRating =
+        isPassenger &&
+        trip.isCompleted &&
+        (_tripBooking != null || _activeBooking != null);
     // Weekday name, then the date, then a 12-hour clock with the wide
     // day-period word (مساءً / صباحًا) rather than a 24-hour time.
     final locale = Localizations.localeOf(context).toString();
@@ -656,13 +697,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   button: true,
                   label: context.l10n.bookSeatButton,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushNamed(
-                        context,
-                        RouteNames.seatSelection,
-                        arguments: trip.id,
-                      );
-                    },
+                    onPressed: () => _openSeatSelection(trip),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       minimumSize: const Size(double.infinity, 50),
@@ -671,6 +706,27 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       context.l10n.bookSeatButton,
                       style: const TextStyle(fontSize: 18),
                     ),
+                  ),
+                ),
+              )
+            // Already booked on a shared trip: more seats (for someone else)
+            // are still allowed, as a secondary action.
+            else if (isPassenger &&
+                _activeBooking != null &&
+                !trip.isInstant &&
+                trip.hasAvailableSeats &&
+                trip.isUpcoming)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: OutlinedButton(
+                  onPressed: () => _openSeatSelection(trip),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    minimumSize: const Size(double.infinity, 50),
+                  ),
+                  child: Text(
+                    context.l10n.bookAnotherSeatButton,
+                    style: const TextStyle(fontSize: 16),
                   ),
                 ),
               )
@@ -703,38 +759,21 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   ),
                 ),
               ),
-            if (isPassenger) ...[
+            if (showChat || showRating) ...[
               const SizedBox(height: 16),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    // Instant rides keep rating only: no chat or group chat.
-                    if (!trip.isInstant) ...[
+                    if (showChat) ...[
                       Expanded(
                         child: _ChatRatingButton(
                           icon: Icons.chat_bubble_outline,
                           label: context.l10n.chatLabel,
                           color: T.primary(context),
-                          onTap: () async {
-                            final chatService = ChatService();
-                            final chatEnabled = await chatService
-                                .checkIfChatEnabled(trip.id);
-
-                            if (!chatEnabled) {
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      context.l10n.chatNotEnabledYet,
-                                    ),
-                                    backgroundColor: AppColors.warning,
-                                  ),
-                                );
-                              }
-                              return;
-                            }
-
+                          // The chat screen opens the room itself and explains
+                          // any refusal; no pre-check here.
+                          onTap: () {
                             Navigator.pushNamed(
                               context,
                               RouteNames.chat,
@@ -748,71 +787,72 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                           },
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      if (showRating) const SizedBox(width: 12),
                     ],
-                    Expanded(
-                      child: _ChatRatingButton(
-                        icon: Icons.star_outline,
-                        label: context.l10n.rateLabel,
-                        color: AppColors.warning,
-                        onTap: () async {
-                          if (trip.isPast) {
-                            final ratingService = RatingService();
-                            final hasRated = await ratingService
-                                .hasUserRatedTrip(trip.id);
+                    if (showRating)
+                      Expanded(
+                        child: _ChatRatingButton(
+                          icon: Icons.star_outline,
+                          label: context.l10n.rateLabel,
+                          color: AppColors.warning,
+                          onTap: () async {
+                            if (trip.isCompleted) {
+                              final ratingService = RatingService();
+                              final hasRated = await ratingService
+                                  .hasUserRatedTrip(trip.id);
 
-                            if (hasRated) {
+                              if (hasRated) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        context.l10n.alreadyRatedTrip,
+                                      ),
+                                      backgroundColor: AppColors.warning,
+                                    ),
+                                  );
+                                }
+                                return;
+                              }
+
+                              final result = await Navigator.pushNamed(
+                                context,
+                                RouteNames.rating,
+                                arguments: {
+                                  'tripId': trip.id,
+                                  'trip': trip,
+                                  'driverId': trip.driverId,
+                                  'driverName': trip.driverName,
+                                },
+                              );
+
+                              if (result == true && mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(context.l10n.thanksForRating),
+                                    backgroundColor: AppColors.success,
+                                  ),
+                                );
+                              }
+                            } else {
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(
-                                      context.l10n.alreadyRatedTrip,
+                                      context.l10n.canRateAfterTripEnds,
                                     ),
                                     backgroundColor: AppColors.warning,
                                   ),
                                 );
                               }
-                              return;
                             }
-
-                            final result = await Navigator.pushNamed(
-                              context,
-                              RouteNames.rating,
-                              arguments: {
-                                'tripId': trip.id,
-                                'trip': trip,
-                                'driverId': trip.driverId,
-                                'driverName': trip.driverName,
-                              },
-                            );
-
-                            if (result == true && mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(context.l10n.thanksForRating),
-                                  backgroundColor: AppColors.success,
-                                ),
-                              );
-                            }
-                          } else {
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    context.l10n.canRateAfterTripEnds,
-                                  ),
-                                  backgroundColor: AppColors.warning,
-                                ),
-                              );
-                            }
-                          }
-                        },
+                          },
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
-              if (!trip.isInstant) ...[
+              if (showChat) ...[
                 const SizedBox(height: 12),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),

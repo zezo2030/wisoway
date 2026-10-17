@@ -18,7 +18,15 @@ import 'companion_picker_screen.dart';
 class SeatSelectionScreen extends StatefulWidget {
   final String tripId;
 
-  const SeatSelectionScreen({super.key, required this.tripId});
+  /// The passenger already has a booking on this trip; see
+  /// [CompanionPickerScreen.isAdditionalBooking].
+  final bool isAdditionalBooking;
+
+  const SeatSelectionScreen({
+    super.key,
+    required this.tripId,
+    this.isAdditionalBooking = false,
+  });
 
   @override
   State<SeatSelectionScreen> createState() => _SeatSelectionScreenState();
@@ -228,6 +236,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
             lockedSeatNumbers: backendSeatNumbers,
             autoPick: false,
             initialIsFamilyBooking: _isFamilyBooking,
+            isAdditionalBooking: widget.isAdditionalBooking,
           ),
         ),
       );

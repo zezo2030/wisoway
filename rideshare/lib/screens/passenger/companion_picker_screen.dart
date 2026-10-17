@@ -37,12 +37,18 @@ class CompanionPickerScreen extends StatefulWidget {
   /// this screen stays the last word before submitting.
   final bool initialIsFamilyBooking;
 
+  /// The passenger already has a booking on this trip, so these seats are most
+  /// likely for someone else: the first passenger's name starts empty instead
+  /// of the account holder's.
+  final bool isAdditionalBooking;
+
   const CompanionPickerScreen({
     super.key,
     required this.trip,
     this.lockedSeatNumbers = const [],
     this.autoPick = false,
     this.initialIsFamilyBooking = false,
+    this.isAdditionalBooking = false,
   });
 
   @override
@@ -73,8 +79,12 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
     _cliqAliasCtrl.text = user?.cliqAlias ?? '';
     _rows = [
       _PassengerRowData(
-        nameCtrl: TextEditingController(text: user?.name ?? ''),
-        gender: user?.gender ?? 'male',
+        nameCtrl: TextEditingController(
+          text: widget.isAdditionalBooking ? '' : user?.name ?? '',
+        ),
+        gender: widget.isAdditionalBooking
+            ? 'male'
+            : user?.gender ?? 'male',
         isMainBooker: true,
       ),
     ];
@@ -291,10 +301,14 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
                     return _PassengerFormRow(
                       index: i,
                       data: _rows[i],
-                      label: isMain
-                          ? context.l10n.mainBookerLabel
-                          : context.l10n.companionLabel(i),
-                      readOnlyName: isMain,
+                      // The first passenger is prefilled with the account
+                      // holder but stays editable: the seat may be for
+                      // someone else, especially on a second booking.
+                      label: !isMain
+                          ? context.l10n.companionLabel(i)
+                          : widget.isAdditionalBooking
+                          ? context.l10n.passengerLabel
+                          : context.l10n.mainBookerLabel,
                       onGenderChanged: (g) {
                         setState(() => _rows[i].gender = g);
                       },
@@ -387,7 +401,6 @@ class _PassengerFormRow extends StatelessWidget {
   final int index;
   final _PassengerRowData data;
   final String label;
-  final bool readOnlyName;
   final void Function(String gender) onGenderChanged;
 
   const _PassengerFormRow({
@@ -395,7 +408,6 @@ class _PassengerFormRow extends StatelessWidget {
     required this.data,
     required this.label,
     required this.onGenderChanged,
-    this.readOnlyName = false,
   });
 
   @override
@@ -412,7 +424,6 @@ class _PassengerFormRow extends StatelessWidget {
               const SizedBox(height: 8),
               TextFormField(
                 controller: data.nameCtrl,
-                readOnly: readOnlyName,
                 decoration: InputDecoration(
                   labelText: context.l10n.name,
                   isDense: true,
@@ -432,9 +443,7 @@ class _PassengerFormRow extends StatelessWidget {
                   ),
                 ],
                 selected: {data.gender},
-                onSelectionChanged: readOnlyName
-                    ? null
-                    : (s) => onGenderChanged(s.first),
+                onSelectionChanged: (s) => onGenderChanged(s.first),
               ),
             ],
           ),

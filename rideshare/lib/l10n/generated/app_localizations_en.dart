@@ -1098,6 +1098,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bookSeatButton => 'Book a seat';
 
   @override
+  String get bookAnotherSeatButton => 'Book another seat';
+
+  @override
   String get selectSeats => 'Select seats';
 
   @override
@@ -1995,6 +1998,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get chatNotEnabledYet =>
       'Communication is not enabled yet. The driver must pay the communication fee first.';
+
+  @override
+  String get chatRequiresBooking =>
+      'Chat with the driver opens once you have booked this trip.';
+
+  @override
+  String get groupChatRequiresBooking =>
+      'The group chat opens once you have booked this trip.';
 
   @override
   String get rateLabel => 'Rate';
@@ -3080,6 +3091,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Are you sure you want to delete this trip? This action cannot be undone.';
 
   @override
+  String get cannotDeleteTripWithin24Hours =>
+      'A trip with booked passengers can\'t be deleted less than 24 hours before it departs.';
+
+  @override
   String get deleteAction => 'Delete';
 
   @override
@@ -4071,9 +4086,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get additionalDetailsTitle => 'Additional details';
 
   @override
-  String get publishTripNoticeTitle => 'The trip goes live after review';
-
-  @override
   String get tripSummarySection => 'Trip summary';
 
   @override
@@ -4101,10 +4113,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get backToEdit => 'Back to edit';
-
-  @override
-  String get publishTripNotice =>
-      'Once the trip is published, passengers can book the available seats';
 
   @override
   String createTripFeeNotice(String percent, String amount, String currency) {

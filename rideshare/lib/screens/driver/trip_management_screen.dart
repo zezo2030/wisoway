@@ -493,7 +493,35 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     }
   }
 
+  /// Same window as the backend's `DELETE /trips/:id`, which only applies it
+  /// once passengers are booked (a seat is `booked` from the request on).
+  static const int _driverCancelCutoffHours = 24;
+
   Future<void> _deleteTrip() async {
+    final departure = _trip?.departureTime;
+    if (departure != null &&
+        _getBookedSeatsCount() > 0 &&
+        departure.difference(DateTime.now()).inMinutes <=
+            _driverCancelCutoffHours * 60) {
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(context.l10n.cannotCancel),
+          content: Text(context.l10n.cannotDeleteTripWithin24Hours),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(context.l10n.ok),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -519,9 +547,12 @@ class _TripManagementScreenState extends State<TripManagementScreen>
 
     if (confirmed == true && _trip != null) {
       final tripProvider = Provider.of<TripProvider>(context, listen: false);
-      final success = await tripProvider.deleteTrip(_trip!.id);
+      final failure = await tripProvider.deleteTrip(_trip!.id);
+      if (!mounted) return;
 
-      if (success && mounted) {
+      if (failure != null) {
+        ErrorSurface.showFailure(context, failure);
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(context.l10n.tripDeletedSuccess),

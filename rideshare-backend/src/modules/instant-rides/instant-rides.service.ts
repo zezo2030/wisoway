@@ -9,14 +9,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
-import {
-  EntityManager,
-  In,
-  IsNull,
-  MoreThan,
-  Not,
-  Repository,
-} from 'typeorm';
+import { EntityManager, In, IsNull, MoreThan, Not, Repository } from 'typeorm';
 import {
   BookingEntity,
   BookingStatus,
@@ -35,8 +28,10 @@ import { VehiclesService } from '../vehicles/vehicles.service';
 import { LocationsService } from '../locations/locations.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
+  countryForPhone,
   currencyForCountry,
   DEFAULT_CURRENCY,
+  knownCurrencyForCountry,
 } from '../../common/currency/country-currency';
 import { InstantDispatchService } from './instant-dispatch.service';
 import { resolvePaymentChoice } from '../ride-payments/cliq-payer';
@@ -96,8 +91,8 @@ export class InstantRidesService {
   // ── Passenger ──────────────────────────────────────────────────────────────
 
   /** The fixed, distance-based fare shown before the passenger orders. */
-  async getQuote(dto: QuoteInstantRequestDto) {
-    const quote = await this.computeQuote(dto.from, dto.to);
+  async getQuote(dto: QuoteInstantRequestDto, passengerId?: string) {
+    const quote = await this.computeQuote(dto.from, dto.to, passengerId);
     const fare = quote.fare.toFixed(2);
     return {
       recommendedFare: fare,
@@ -283,7 +278,7 @@ export class InstantRidesService {
     const seatCount = dto.seatCount ?? 1;
     // The platform sets the fare; a `passengerFare` sent by an older app is
     // ignored rather than rejected so those apps can still order.
-    const quote = await this.computeQuote(dto.from, dto.to);
+    const quote = await this.computeQuote(dto.from, dto.to, passengerId);
     const fare = quote.fare.toFixed(2);
     const { method: paymentMethod, payerCliqAlias } = resolvePaymentChoice(
       dto.paymentMethod,
@@ -481,6 +476,7 @@ export class InstantRidesService {
     const quote = await this.computeQuote(
       { latitude: fromLat, longitude: fromLng },
       { latitude: toLat, longitude: toLng },
+      passengerId,
     );
 
     // The fare is the platform's, so a retry simply uses the current one for
@@ -954,10 +950,10 @@ export class InstantRidesService {
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   /** The platform's fixed fare for a route, in the pickup country's currency. */
-  private async computeQuote(from: LatLng, to: LatLng) {
+  private async computeQuote(from: LatLng, to: LatLng, passengerId?: string) {
     const [{ distanceKm, durationMin }, currency] = await Promise.all([
       this.routeDistance(from, to),
-      this.currencyAt(from),
+      this.currencyAt(from, passengerId),
     ]);
     return {
       fare: computeFare(distanceKm, durationMin, currency),
@@ -1010,17 +1006,35 @@ export class InstantRidesService {
     };
   }
 
-  private async currencyAt(point: LatLng): Promise<string> {
+  /**
+   * Currency of the pickup country. When the lookup fails (Google, then the
+   * public Photon instance, both of which do fail in production), the
+   * passenger's phone country stands in before the platform default — else a
+   * rider in Saudi Arabia was quoted in dinars and offered CliQ.
+   */
+  private async currencyAt(
+    point: LatLng,
+    passengerId?: string,
+  ): Promise<string> {
     try {
       const geo = await this.locationsService.reverseGeocode(
         point.latitude,
         point.longitude,
       );
       const code = typeof geo.countryCode === 'string' ? geo.countryCode : '';
-      return code ? currencyForCountry(code) : DEFAULT_CURRENCY;
+      if (code) return currencyForCountry(code);
     } catch {
-      return DEFAULT_CURRENCY;
+      // fall back to the passenger's phone country
     }
+    let phone: string | null | undefined;
+    try {
+      if (passengerId) {
+        phone = (await this.usersService.findById(passengerId))?.phoneNumber;
+      }
+    } catch {
+      // no passenger to go by: the platform default
+    }
+    return knownCurrencyForCountry(countryForPhone(phone)) ?? DEFAULT_CURRENCY;
   }
 
   /** Release a driver's soft lock if still held for this request. */

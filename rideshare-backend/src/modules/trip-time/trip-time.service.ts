@@ -376,13 +376,18 @@ export class TripTimeService {
       where: { tripId },
     });
     for (const booking of allBookings) {
+      const ar =
+        (await this.notificationsService.getPreferredLocale(booking.userId)) ===
+        'ar';
       await this.notificationsService
         .create({
           userId: booking.userId,
           type: 'trip_completed',
-          title: 'Trip Completed',
-          body: `The trip to ${trip.toName} has been completed`,
-          data: { tripId },
+          title: ar ? 'انتهت الرحلة' : 'Trip Completed',
+          body: ar
+            ? `انتهت رحلتك إلى ${trip.toName}. يمكنك الآن تقييم الرحلة.`
+            : `The trip to ${trip.toName} has been completed`,
+          data: { tripId, toName: trip.toName },
         })
         .catch((err: Error) =>
           this.logger.warn(

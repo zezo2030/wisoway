@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../../models/booking_model.dart';
 import '../../models/booking_request.dart';
 import '../api/api_client.dart';
@@ -28,6 +29,14 @@ class BookingSeatRequest {
 
 class BookingService {
   final ApiClient _api = ApiClient();
+
+  /// Ticks whenever the passenger's bookings may have changed (a booking was
+  /// made or cancelled, or the bookings tab came into view). The home tabs
+  /// live in an IndexedStack and are built once, so they listen to this to
+  /// refetch rather than keep showing the list loaded at app start.
+  static final ValueNotifier<int> changes = ValueNotifier<int>(0);
+
+  static void notifyChanged() => changes.value++;
 
   Map<String, dynamic> _unwrapMap(dynamic response) {
     final raw = response is Map ? (response['data'] ?? response) : response;
@@ -84,6 +93,7 @@ class BookingService {
       }
 
       final response = await _api.post(ApiEndpoints.bookings, data: payload);
+      notifyChanged();
       final res = response['data'] ?? response;
       return res['_id'] ?? res['id'];
     } catch (e) {
@@ -121,6 +131,7 @@ class BookingService {
           'payerCliqAlias': payerCliqAlias.trim(),
       };
       final response = await _api.post(ApiEndpoints.bookingsV2, data: payload);
+      notifyChanged();
       return _bookingFromResponse(
         response,
         tripId: tripId,
@@ -159,6 +170,7 @@ class BookingService {
       };
       final response =
           await _api.post(ApiEndpoints.bookingsV2AutoPick, data: payload);
+      notifyChanged();
       return _bookingFromResponse(
         response,
         tripId: tripId,
@@ -228,6 +240,7 @@ class BookingService {
         ApiEndpoints.cancelBooking(bookingId),
         data: reason != null ? {'reason': reason} : null,
       );
+      notifyChanged();
     } catch (e) {
       print('Error cancelling booking: $e');
       rethrow;

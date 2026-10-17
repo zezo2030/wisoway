@@ -1,6 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'dart:io';
 import '../core/services/trip_service.dart';
+import '../core/api/api_client.dart';
+import '../core/errors/failure.dart';
 import '../core/api/websocket_service.dart';
 import '../models/trip_model.dart';
 import 'dart:async';
@@ -29,7 +31,8 @@ class TripProvider extends ChangeNotifier {
     String excludeDriverId,
     double radiusKm,
     int limit,
-  })? _nearbyQuery;
+  })?
+  _nearbyQuery;
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -229,11 +232,8 @@ class TripProvider extends ChangeNotifier {
     DateTime? minDepartureTime,
     String? country,
   }) async* {
-    final key = '${_buildActiveTripsKey(
-      from: from,
-      to: to,
-      minDepartureTime: minDepartureTime,
-    )}|${country ?? ''}';
+    final key =
+        '${_buildActiveTripsKey(from: from, to: to, minDepartureTime: minDepartureTime)}|${country ?? ''}';
     if (!_loadedActiveTripsKeys.contains(key)) {
       _loadedActiveTripsKeys.add(key);
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -272,9 +272,7 @@ class TripProvider extends ChangeNotifier {
     return '$fromKey|$toKey|$normalizedTime';
   }
 
-  Future<bool> deleteTrip(String tripId) async {
-    return cancelTrip(tripId);
-  }
+  Future<Failure?> deleteTrip(String tripId) => cancelTrip(tripId);
 
   Future<bool> updateTrip(String tripId, Map<String, dynamic> updates) async {
     // NOTE: Fallback stub for legacy api. Update your endpoint logic.
@@ -318,7 +316,8 @@ class TripProvider extends ChangeNotifier {
     LocationModel? to,
     DateTime? minDepartureTime,
     String? country,
-  })? _lastActiveQuery;
+  })?
+  _lastActiveQuery;
 
   /// Socket-driven refresh: same filters as the list currently on screen.
   Future<void> _refetchActiveTrips() {
@@ -362,17 +361,20 @@ class TripProvider extends ChangeNotifier {
   }
 
   // Cancel/Delete trip
-  Future<bool> cancelTrip(String tripId) async {
+  /// Null on success, or why the backend refused (e.g. within 24 hours of
+  /// departure) so the screen can say so.
+  Future<Failure?> cancelTrip(String tripId) async {
     try {
       _setLoading(true);
       await _tripService.cancelTrip(tripId);
       await fetchDriverTrips();
       _setLoading(false);
-      return true;
+      return null;
     } catch (e) {
-      _setError(e.toString());
+      final failure = ApiClient.mapError(e);
+      _setError(failure.developerDetail);
       _setLoading(false);
-      return false;
+      return failure;
     }
   }
 
@@ -423,6 +425,7 @@ class TripProvider extends ChangeNotifier {
       _nearbyTripsController.add(_nearbyTrips);
     }
   }
+
   // Subscribe to trip for real-time seat updates
   void subscribeToTrip(String tripId) {
     _socket.subscribeToTrip(tripId);
