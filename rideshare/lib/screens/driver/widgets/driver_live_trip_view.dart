@@ -35,6 +35,7 @@ class DriverLiveTripView extends StatefulWidget {
     required this.onArrived,
     this.onArrivedAtPickup,
     this.onStartRide,
+    this.onCancelRide,
     this.stageBusy = false,
     required this.onEnableTracking,
     required this.onChatPassenger,
@@ -61,6 +62,9 @@ class DriverLiveTripView extends StatefulWidget {
   /// Instant rides: «وصلت إلى الراكب» and «بدء الرحلة».
   final VoidCallback? onArrivedAtPickup;
   final VoidCallback? onStartRide;
+
+  /// Instant rides: «إلغاء», offered only until the passenger is in the car.
+  final VoidCallback? onCancelRide;
 
   /// One of the two pickup-stage calls is in flight.
   final bool stageBusy;
@@ -504,6 +508,27 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
             ),
           ),
         ),
+        if (widget.onCancelRide != null && !_passengersOnBoard) ...[
+          const SizedBox(width: 8),
+          SizedBox(
+            height: 44,
+            child: TextButton.icon(
+              onPressed: widget.stageBusy ? null : widget.onCancelRide,
+              icon: const Icon(Icons.close_rounded, size: 18),
+              label: Text(l10n.instantTripCancelAction),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.error,
+                backgroundColor: T.surface(context),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                elevation: 2,
+                shadowColor: T.shadow(context).withValues(alpha: 0.3),
+              ),
+            ),
+          ),
+        ],
         if (widget.onOpenDetails != null) ...[
           const SizedBox(width: 8),
           _RoundButton(

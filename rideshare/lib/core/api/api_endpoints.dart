@@ -173,6 +173,12 @@ class ApiEndpoints {
       '/instant-rides/trips/$tripId/arrived-at-pickup';
   static String instantTripStart(String tripId) =>
       '/instant-rides/trips/$tripId/start';
+  /// Driver backs out before pickup; the passenger is searched a new driver.
+  static String instantTripCancel(String tripId) =>
+      '/instant-rides/trips/$tripId/cancel';
+  /// The passenger's request still looking for a driver, or null.
+  static const String instantSearchingRequest =
+      '/instant-rides/requests/searching';
   // Ride fares (instant + shared): cash confirmed by the driver, or CliQ.
   static String ridePaymentMine(String tripId) =>
       '/ride-payments/trips/$tripId/mine';

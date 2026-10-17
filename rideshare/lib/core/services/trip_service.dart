@@ -363,6 +363,11 @@ class TripService {
     await _api.post(ApiEndpoints.instantTripStart(tripId));
   }
 
+  /// Instant ride: the driver cancels before the passenger is in the car.
+  Future<void> cancelInstantRide(String tripId) async {
+    await _api.post(ApiEndpoints.instantTripCancel(tripId));
+  }
+
   Future<Map<String, dynamic>> markTripArrived(String tripId) async {
     final response = await _api.post(ApiEndpoints.arriveTrip(tripId));
     final raw = response is Map ? (response['data'] ?? response) : response;

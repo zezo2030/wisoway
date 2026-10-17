@@ -5401,6 +5401,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get instantTripStartAction => 'Start trip';
 
   @override
+  String get instantTripCancelAction => 'Cancel';
+
+  @override
+  String get instantTripCancelTitle => 'Cancel this ride?';
+
+  @override
+  String get instantTripCancelBody =>
+      'The passenger will be told, and we\'ll look for another driver for them right away.';
+
+  @override
+  String get instantTripCancelConfirm => 'Cancel ride';
+
+  @override
+  String get instantTripCancelKeep => 'Keep ride';
+
+  @override
+  String get instantTripCancelled => 'Ride cancelled';
+
+  @override
+  String get instantDriverCancelledSearching =>
+      'Your driver cancelled — finding you another driver';
+
+  @override
   String get instantTripMovedTitle => 'Has the trip started?';
 
   @override

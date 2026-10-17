@@ -867,6 +867,9 @@ class _TripManagementScreenState extends State<TripManagementScreen>
                     () => _tripService.startInstantRide(trip.id),
                   )
                 : null,
+            onCancelRide: trip.isInstant
+                ? () => _cancelInstantRide(trip)
+                : null,
             onEnableTracking: () async {
               final ready = await _ensureTrackingReady();
               if (!ready) {
@@ -1897,6 +1900,52 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     } catch (e) {
       if (!mounted) return;
       ErrorSurface.showFailure(context, ApiClient.mapError(e));
+    } finally {
+      if (mounted) setState(() => _stageBusy = false);
+    }
+  }
+
+  /// Instant ride, before pickup: the driver backs out. The server cancels
+  /// the trip and finds the passenger another driver.
+  Future<void> _cancelInstantRide(TripModel trip) async {
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.instantTripCancelTitle),
+        content: Text(l10n.instantTripCancelBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.instantTripCancelKeep),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(l10n.instantTripCancelConfirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _stageBusy = true);
+    try {
+      await _tripService.cancelInstantRide(trip.id);
+      if (!mounted) return;
+      _liveStatusPoll?.cancel();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.instantTripCancelled)));
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } catch (e) {
+      if (!mounted) return;
+      ErrorSurface.showFailure(context, ApiClient.mapError(e));
+      // The ride may have started meanwhile — show its real stage.
+      await _reloadTrip();
     } finally {
       if (mounted) setState(() => _stageBusy = false);
     }

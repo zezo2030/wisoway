@@ -9806,6 +9806,48 @@ abstract class AppLocalizations {
   /// **'بدء الرحلة'**
   String get instantTripStartAction;
 
+  /// No description provided for @instantTripCancelAction.
+  ///
+  /// In ar, this message translates to:
+  /// **'إلغاء'**
+  String get instantTripCancelAction;
+
+  /// No description provided for @instantTripCancelTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'إلغاء الرحلة؟'**
+  String get instantTripCancelTitle;
+
+  /// No description provided for @instantTripCancelBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'سيُبلَّغ الراكب، ونبحث له فوراً عن سائق آخر.'**
+  String get instantTripCancelBody;
+
+  /// No description provided for @instantTripCancelConfirm.
+  ///
+  /// In ar, this message translates to:
+  /// **'إلغاء الرحلة'**
+  String get instantTripCancelConfirm;
+
+  /// No description provided for @instantTripCancelKeep.
+  ///
+  /// In ar, this message translates to:
+  /// **'تراجع'**
+  String get instantTripCancelKeep;
+
+  /// No description provided for @instantTripCancelled.
+  ///
+  /// In ar, this message translates to:
+  /// **'أُلغيت الرحلة'**
+  String get instantTripCancelled;
+
+  /// No description provided for @instantDriverCancelledSearching.
+  ///
+  /// In ar, this message translates to:
+  /// **'ألغى السائق الرحلة — نبحث لك عن سائق آخر'**
+  String get instantDriverCancelledSearching;
+
   /// No description provided for @instantTripMovedTitle.
   ///
   /// In ar, this message translates to:

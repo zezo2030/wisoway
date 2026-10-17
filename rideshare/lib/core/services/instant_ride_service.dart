@@ -132,6 +132,17 @@ class InstantRideService {
     return ActiveInstantRide.fromJson(Map<String, dynamic>.from(body));
   }
 
+  /// The passenger's request still looking for a driver — after their driver
+  /// cancelled, the server starts one on its own — or null.
+  Future<InstantRequest?> getSearchingRequest() async {
+    final response = await _api.get(ApiEndpoints.instantSearchingRequest);
+    final body = response is Map && response.containsKey('data')
+        ? response['data']
+        : response;
+    if (body is! Map || body.isEmpty) return null;
+    return InstantRequest.fromJson(Map<String, dynamic>.from(body));
+  }
+
   Future<InstantRequest> getRequest(String id) async {
     final response = await _api.get(ApiEndpoints.instantRequestById(id));
     return InstantRequest.fromJson(_unwrap(response));

@@ -327,6 +327,14 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
       }
       _leaving = true;
       _statusPoll?.cancel();
+      // The driver cancelled before pickup: the server is already searching
+      // for another one, so follow that search instead of going home.
+      if (trip.isCancelled &&
+          widget.lockedUntilEnd &&
+          await ActiveRideNavigator.followNewSearch()) {
+        return;
+      }
+      if (!mounted) return;
       final navigator = Navigator.of(context);
       if (trip.isCompleted) {
         // Pay first: the amount-due screen holds the passenger until the fare

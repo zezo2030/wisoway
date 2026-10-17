@@ -73,6 +73,7 @@ void main() {
     VoidCallback? onBack,
     VoidCallback? onStartRide,
     void Function(LatLng target)? onNavigate,
+    VoidCallback? onCancelRide,
   }) async {
     // A phone-shaped screen: everything must fit without scrolling.
     tester.view.physicalSize = const Size(1080, 2400);
@@ -93,6 +94,7 @@ void main() {
             onArrived: () {},
             onArrivedAtPickup: () {},
             onStartRide: onStartRide ?? () {},
+            onCancelRide: trip.isInstant ? onCancelRide ?? () {} : null,
             onEnableTracking: () {},
             onChatPassenger: (_) {},
             phoneOf: (_) => null,
@@ -204,6 +206,26 @@ void main() {
       expect(navigatedTo, expected);
     });
   }
+
+  testWidgets('instant ride: the driver can cancel until the passenger is in', (
+    tester,
+  ) async {
+    var cancelled = 0;
+    for (final arrived in [false, true]) {
+      await pump(
+        tester,
+        trip: trip(arrived: arrived),
+        driver: const LatLng(26.6001, 37.9001),
+        onCancelRide: () => cancelled++,
+      );
+      await tester.tap(find.text('إلغاء'));
+      await tester.pump();
+    }
+    expect(cancelled, 2);
+
+    await pump(tester, trip: trip(started: true), onCancelRide: () {});
+    expect(find.text('إلغاء'), findsNothing);
+  });
 
   testWidgets('instant ride: driving off without starting asks to start', (
     tester,

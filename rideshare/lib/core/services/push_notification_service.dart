@@ -166,6 +166,9 @@ class PushNotificationService {
       final type = message.data['type']?.toString();
       if (type == 'instant_matched') {
         ActiveRideNavigator.resume();
+      } else if (type == 'instant_driver_cancelled') {
+        // The driver backed out; the server is already finding another.
+        ActiveRideNavigator.followNewSearch();
       }
     });
 

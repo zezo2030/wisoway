@@ -5359,6 +5359,29 @@ class AppLocalizationsAr extends AppLocalizations {
   String get instantTripStartAction => 'بدء الرحلة';
 
   @override
+  String get instantTripCancelAction => 'إلغاء';
+
+  @override
+  String get instantTripCancelTitle => 'إلغاء الرحلة؟';
+
+  @override
+  String get instantTripCancelBody =>
+      'سيُبلَّغ الراكب، ونبحث له فوراً عن سائق آخر.';
+
+  @override
+  String get instantTripCancelConfirm => 'إلغاء الرحلة';
+
+  @override
+  String get instantTripCancelKeep => 'تراجع';
+
+  @override
+  String get instantTripCancelled => 'أُلغيت الرحلة';
+
+  @override
+  String get instantDriverCancelledSearching =>
+      'ألغى السائق الرحلة — نبحث لك عن سائق آخر';
+
+  @override
   String get instantTripMovedTitle => 'هل بدأت الرحلة؟';
 
   @override

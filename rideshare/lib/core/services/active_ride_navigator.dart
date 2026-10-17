@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n_extensions.dart';
 import '../../screens/driver/trip_management_screen.dart';
 import '../../screens/driver/trip_summary_screen.dart';
+import '../../screens/passenger/instant_ride_request_screen.dart';
 import '../../screens/passenger/ride_payment_due_screen.dart';
 import '../../screens/shared/trip_in_progress_screen.dart';
 import '../constants/route_names.dart';
@@ -74,6 +76,34 @@ class ActiveRideNavigator {
         return false;
       }
       enterPayment(tripId, isDriver: ride.isDriver);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// The passenger's driver cancelled before pickup and the server is already
+  /// searching again: leave the dead trip for the new search. False when no
+  /// search is running (nothing to follow).
+  static Future<bool> followNewSearch() async {
+    try {
+      final request = await _service.getSearchingRequest();
+      if (request == null) return false;
+      final navigator = NotificationNavigationService.navigatorKey.currentState;
+      if (navigator == null) return false;
+      _shownTripId = null;
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => InstantRideRequestScreen(initialRequest: request),
+        ),
+        (route) => route.isFirst,
+      );
+      final context = navigator.context;
+      if (context.mounted) {
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+          SnackBar(content: Text(context.l10n.instantDriverCancelledSearching)),
+        );
+      }
       return true;
     } catch (_) {
       return false;
