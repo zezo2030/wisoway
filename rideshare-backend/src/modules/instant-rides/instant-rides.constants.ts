@@ -31,23 +31,42 @@ export const INITIAL_RADIUS_KM = envKm('INSTANT_INITIAL_RADIUS_KM', 3);
 export const MAX_RADIUS_KM = envKm('INSTANT_MAX_RADIUS_KM', 20);
 
 /**
+ * The longest a passenger waits on «جاري البحث عن سائق»: the request's hard
+ * cap, offers in flight included. The owner asked for 30 s — a longer search
+ * just keeps the passenger watching a spinner.
+ */
+export const REQUEST_TTL_SECONDS = envKm('INSTANT_SEARCH_SECONDS', 30);
+/**
  * How long a single driver has to respond to an offer. 25 s proved too short
- * once delivery and reading the card ate into it.
+ * once delivery and reading the card ate into it. Never runs past the
+ * request's own end (see {@link offerTtlSeconds}).
  */
 export const OFFER_TTL_SECONDS = 40;
 /**
- * Hard cap on a request's life. Only reached while drivers are being offered
- * the ride one after another; with nobody around the search ends far sooner,
- * at {@link NO_DRIVER_SEARCH_SECONDS}.
+ * An offer with less time than this left on the request isn't worth sending:
+ * the driver couldn't get the card and answer before the search ends.
  */
-export const REQUEST_TTL_SECONDS = 180;
+export const MIN_OFFER_SECONDS = 8;
+/**
+ * How long the offer to one driver runs, given the time left on the request
+ * ([remainingMs]). Returns 0 when too little is left to make an offer.
+ */
+export function offerTtlSeconds(remainingMs: number): number {
+  const remaining = Math.floor(remainingMs / 1000);
+  if (remaining < MIN_OFFER_SECONDS) return 0;
+  return Math.min(OFFER_TTL_SECONDS, remaining);
+}
 /**
  * How long to look for a driver before telling the passenger there is none.
  * The reach widens from [INITIAL_RADIUS_KM] to [MAX_RADIUS_KM] over this
  * window; a sweep at full reach that still finds nobody ends the search
- * rather than leaving the passenger watching a spinner for minutes.
+ * rather than leaving the passenger watching a spinner. Kept inside the
+ * request's life so the widest sweep happens before it ends.
  */
-export const NO_DRIVER_SEARCH_SECONDS = envKm('INSTANT_NO_DRIVER_SECONDS', 40);
+export const NO_DRIVER_SEARCH_SECONDS = Math.min(
+  envKm('INSTANT_NO_DRIVER_SECONDS', 20),
+  REQUEST_TTL_SECONDS,
+);
 /**
  * When a full radius sweep finds no lockable driver, retry a new dispatch
  * wave after this interval (the request keeps searching until its TTL).

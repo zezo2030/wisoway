@@ -27,7 +27,7 @@ import {
   lockIsFreeSql,
   MAX_RADIUS_KM,
   NO_DRIVER_SEARCH_SECONDS,
-  OFFER_TTL_SECONDS,
+  offerTtlSeconds,
   offerTimeoutJobId,
 } from './instant-rides.constants';
 import {
@@ -72,7 +72,12 @@ export class InstantDispatchService {
     if (!request || request.status !== InstantRequestStatus.SEARCHING) {
       return;
     }
-    if (request.expiresAt.getTime() <= Date.now()) {
+    // An offer runs no longer than the request; with too little time left
+    // for a driver to answer, the search is over.
+    const ttlSeconds = offerTtlSeconds(
+      request.expiresAt.getTime() - Date.now(),
+    );
+    if (ttlSeconds === 0) {
       await this.finalizeSearch(request.id);
       return;
     }
@@ -124,7 +129,7 @@ export class InstantDispatchService {
 
     for (const candidate of candidates) {
       if (await this.tryLockDriver(candidate.driverId, requestId)) {
-        await this.makeOffer(request, candidate);
+        await this.makeOffer(request, candidate, ttlSeconds);
         return;
       }
       // Lost the race for this driver — skip and try the next one.
@@ -220,6 +225,7 @@ export class InstantDispatchService {
   private async makeOffer(
     request: InstantRideRequestEntity,
     candidate: NearbyDriver,
+    ttlSeconds: number,
   ): Promise<void> {
     const now = new Date();
     const offer = await this.offerRepo.save(
@@ -230,7 +236,7 @@ export class InstantDispatchService {
         status: InstantOfferStatus.OFFERED,
         fareRevision: request.fareRevision,
         offeredAt: now,
-        expiresAt: new Date(now.getTime() + OFFER_TTL_SECONDS * 1000),
+        expiresAt: new Date(now.getTime() + ttlSeconds * 1000),
       }),
     );
 
@@ -275,7 +281,7 @@ export class InstantDispatchService {
         title: pushText.title,
         body: pushText.body,
         type: 'instant_offer',
-        ttlSeconds: OFFER_TTL_SECONDS,
+        ttlSeconds,
         data: {
           offerId: offer.id,
           requestId: request.id,
@@ -296,7 +302,7 @@ export class InstantDispatchService {
         EXPIRE_OFFER_JOB,
         { offerId: offer.id },
         {
-          delay: OFFER_TTL_SECONDS * 1000,
+          delay: ttlSeconds * 1000,
           jobId: offerTimeoutJobId(offer.id),
           removeOnComplete: true,
           removeOnFail: true,
