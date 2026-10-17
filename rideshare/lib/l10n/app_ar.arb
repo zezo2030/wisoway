@@ -3082,6 +3082,14 @@
   "profileAppSection": "التطبيق",
   "profileTrustedAccount": "حساب موثوق",
   "profileUntrustedAccount": "حساب غير موثق",
+  "profileRatingCount": "({count} تقييم)",
+  "@profileRatingCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "profileNoRatingsYet": "لا توجد تقييمات بعد",
+  "driverRatingLabel": "التقييم",
   "editProfileSubtitle": "تحديث بياناتك وصورتك الشخصية",
   "paymentMethods": "طرق الدفع",
   "paymentMethodsSubtitle": "إدارة بطاقاتك ووسائل الدفع",

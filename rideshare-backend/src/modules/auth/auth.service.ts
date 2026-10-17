@@ -63,6 +63,8 @@ export interface AuthResponse {
     photoUrl: string | null;
     rating: number;
     totalRatings: number;
+    driverRating: number;
+    driverTotalRatings: number;
     isPhoneVerified: boolean;
     isEmailVerified: boolean;
     isDriverApproved: boolean;
@@ -977,6 +979,8 @@ export class AuthService {
       photoUrl: user.photoUrl,
       rating: Number(user.rating),
       totalRatings: Number(user.totalRatings),
+      driverRating: Number(user.driverRating ?? 0),
+      driverTotalRatings: Number(user.driverTotalRatings ?? 0),
       isPhoneVerified: user.isPhoneVerified,
       isEmailVerified: user.isEmailVerified,
       isDriverApproved: user.isDriverApproved,

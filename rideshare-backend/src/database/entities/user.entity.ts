@@ -68,7 +68,18 @@ export class UserEntity {
   totalRatings: number;
 
   /**
-   * Multiplies the average of received ratings into `rating`. Starts at 1;
+   * The rating passengers gave this user as a driver — what passengers see
+   * when booking or ordering. `rating` above mixes every rating received
+   * (as driver and as passenger); this one counts only ratedRole = driver.
+   */
+  @Column({ type: 'decimal', precision: 3, scale: 2, default: 0 })
+  driverRating: number;
+
+  @Column({ type: 'int', default: 0 })
+  driverTotalRatings: number;
+
+  /**
+   * Multiplies the average of driver ratings into `driverRating`. Starts at 1;
    * each late instant pickup lowers it by the admin-set percentage
    * (RatingsService.applyRatingPenalty).
    */

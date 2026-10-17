@@ -5045,6 +5045,17 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileUntrustedAccount => 'حساب غير موثق';
 
   @override
+  String profileRatingCount(int count) {
+    return '($count تقييم)';
+  }
+
+  @override
+  String get profileNoRatingsYet => 'لا توجد تقييمات بعد';
+
+  @override
+  String get driverRatingLabel => 'التقييم';
+
+  @override
   String get editProfileSubtitle => 'تحديث بياناتك وصورتك الشخصية';
 
   @override

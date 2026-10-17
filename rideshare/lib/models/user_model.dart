@@ -14,6 +14,11 @@ class UserModel {
   final bool isActive;
   final double rating;
   final int totalRatings;
+
+  /// Passengers' rating of this user as a driver (ratings received as a
+  /// driver only, after any late-pickup cuts). `rating` mixes both roles.
+  final double driverRating;
+  final int driverTotalRatings;
   final String? fcmToken;
   final String? photoUrl; // For social login profile picture
   final String? provider; // 'email', 'phone', 'google', 'facebook'
@@ -39,6 +44,8 @@ class UserModel {
     this.isActive = true,
     this.rating = 0.0,
     this.totalRatings = 0,
+    this.driverRating = 0.0,
+    this.driverTotalRatings = 0,
     this.fcmToken,
     this.photoUrl,
     this.provider,
@@ -72,6 +79,10 @@ class UserModel {
       isActive: json['isActive'] != false,
       rating: double.tryParse((json['rating'] ?? 0).toString()) ?? 0.0,
       totalRatings: int.tryParse((json['totalRatings'] ?? 0).toString()) ?? 0,
+      driverRating:
+          double.tryParse((json['driverRating'] ?? 0).toString()) ?? 0.0,
+      driverTotalRatings:
+          int.tryParse((json['driverTotalRatings'] ?? 0).toString()) ?? 0,
       fcmToken: json['fcmToken']?.toString(),
       photoUrl: BackendUrlResolver.normalize(json['photoUrl']?.toString()),
       provider: json['provider']?.toString(),
@@ -99,6 +110,8 @@ class UserModel {
       'isActive': isActive,
       'rating': rating,
       'totalRatings': totalRatings,
+      'driverRating': driverRating,
+      'driverTotalRatings': driverTotalRatings,
       'fcmToken': fcmToken,
       'photoUrl': photoUrl,
       'provider': provider,
@@ -126,6 +139,8 @@ class UserModel {
     bool? isActive,
     double? rating,
     int? totalRatings,
+    double? driverRating,
+    int? driverTotalRatings,
     String? fcmToken,
     String? photoUrl,
     String? provider,
@@ -147,6 +162,8 @@ class UserModel {
       isActive: isActive ?? this.isActive,
       rating: rating ?? this.rating,
       totalRatings: totalRatings ?? this.totalRatings,
+      driverRating: driverRating ?? this.driverRating,
+      driverTotalRatings: driverTotalRatings ?? this.driverTotalRatings,
       fcmToken: fcmToken ?? this.fcmToken,
       photoUrl: photoUrl ?? this.photoUrl,
       provider: provider ?? this.provider,

@@ -122,6 +122,7 @@ describe('RatingsService', () => {
       select: jest.fn().mockReturnThis(),
       addSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
       getRawOne: jest.fn().mockResolvedValue({ cnt: '1', sum: '5' }),
     });
 
@@ -199,6 +200,7 @@ describe('RatingsService', () => {
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
         getRawOne: jest.fn().mockResolvedValue({ cnt: '3', sum: '14' }),
       } as any);
       userRepo.update.mockResolvedValue({} as any);
@@ -219,6 +221,7 @@ describe('RatingsService', () => {
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
         getRawOne: jest.fn().mockResolvedValue({ cnt: '2', sum: '10' }),
       } as any);
       // Postgres decimals arrive as strings.
@@ -229,10 +232,36 @@ describe('RatingsService', () => {
 
       await service.updateUserAverage(uid.driver);
 
-      // 5.0 average after two 2% cuts: 5 × 0.98 × 0.98 ≈ 4.8.
+      // The overall rating is untouched by lateness…
       expect(userRepo.update).toHaveBeenCalledWith(uid.driver, {
-        rating: 4.8,
+        rating: 5,
         totalRatings: 2,
+      });
+      // …the driver rating takes it: 5 × 0.98 × 0.98 ≈ 4.8.
+      expect(userRepo.update).toHaveBeenCalledWith(uid.driver, {
+        driverRating: 4.8,
+        driverTotalRatings: 2,
+      });
+    });
+
+    it('builds the driver rating from ratings given to them as a driver', async () => {
+      const qb = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue({ cnt: '0', sum: '0' }),
+      };
+      ratingRepo.createQueryBuilder.mockReturnValue(qb as any);
+
+      await service.updateDriverRating(uid.driver);
+
+      expect(qb.andWhere).toHaveBeenCalledWith('r.ratedRole = :role', {
+        role: 'driver',
+      });
+      expect(userRepo.update).toHaveBeenCalledWith(uid.driver, {
+        driverRating: 0,
+        driverTotalRatings: 0,
       });
     });
 
@@ -241,6 +270,7 @@ describe('RatingsService', () => {
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
         getRawOne: jest.fn().mockResolvedValue({ cnt: '1', sum: '2' }),
       } as any);
       userRepo.findOne.mockResolvedValue({
@@ -248,11 +278,11 @@ describe('RatingsService', () => {
         ratingPenaltyFactor: '0.2',
       } as any);
 
-      await service.updateUserAverage(uid.driver);
+      await service.updateDriverRating(uid.driver);
 
       expect(userRepo.update).toHaveBeenCalledWith(uid.driver, {
-        rating: 1,
-        totalRatings: 1,
+        driverRating: 1,
+        driverTotalRatings: 1,
       });
     });
   });

@@ -349,8 +349,7 @@ class _TripsListScreenState extends State<TripsListScreen> {
                               )
                             else
                               Icon(
-                                Directionality.of(context) ==
-                                        TextDirection.rtl
+                                Directionality.of(context) == TextDirection.rtl
                                     ? IconsaxPlusLinear.arrow_left_2
                                     : IconsaxPlusLinear.arrow_right_2,
                                 size: 18,
@@ -395,9 +394,7 @@ class _TripsListScreenState extends State<TripsListScreen> {
                         horizontal: 16,
                         vertical: 6,
                       ),
-                      color: T.primaryContainer(
-                        context,
-                      ).withValues(alpha: 0.3),
+                      color: T.primaryContainer(context).withValues(alpha: 0.3),
                       child: Row(
                         children: [
                           Icon(
@@ -474,13 +471,9 @@ class _TripsListScreenState extends State<TripsListScreen> {
                           ),
                           const SizedBox(height: 20),
                           Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 32,
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 32),
                             child: Text(
-                              context.l10n.errorWithDetail(
-                                '${snapshot.error}',
-                              ),
+                              context.l10n.errorWithDetail('${snapshot.error}'),
                               style: GoogleFonts.tajawal(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
@@ -601,9 +594,7 @@ class _TripsListScreenState extends State<TripsListScreen> {
                           ),
                           const SizedBox(height: 6),
                           Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 32,
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 32),
                             child: Text(
                               locationRequired
                                   ? context.l10n.chooseLocationThenRetry
@@ -650,8 +641,7 @@ class _TripsListScreenState extends State<TripsListScreen> {
                   padding: const EdgeInsets.all(16),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
-                      (context, index) =>
-                          _TripCard(trip: filteredTrips[index]),
+                      (context, index) => _TripCard(trip: filteredTrips[index]),
                       childCount: filteredTrips.length,
                     ),
                   ),
@@ -708,12 +698,15 @@ class _FilterSheetState extends State<_FilterSheet> {
   late String _tmpCity = widget.initialCity;
   late DateTime? _tmpDate = widget.initialDate;
   late String _tmpSort = widget.initialSort;
-  late final TextEditingController _fromController =
-      TextEditingController(text: widget.initialFrom?.name ?? '');
-  late final TextEditingController _toController =
-      TextEditingController(text: widget.initialTo?.name ?? '');
-  late final TextEditingController _cityController =
-      TextEditingController(text: widget.initialCity);
+  late final TextEditingController _fromController = TextEditingController(
+    text: widget.initialFrom?.name ?? '',
+  );
+  late final TextEditingController _toController = TextEditingController(
+    text: widget.initialTo?.name ?? '',
+  );
+  late final TextEditingController _cityController = TextEditingController(
+    text: widget.initialCity,
+  );
 
   @override
   void dispose() {
@@ -1324,7 +1317,7 @@ class _TripCard extends StatelessWidget {
                             color: T.onSurfaceVariant(context),
                           ),
                           const SizedBox(width: 5),
-                          Expanded(
+                          Flexible(
                             child: Text(
                               driverName,
                               style: GoogleFonts.tajawal(
@@ -1336,6 +1329,26 @@ class _TripCard extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          // The driver's rating from past passengers.
+                          if ((trip.driverTotalRatings ?? 0) > 0 &&
+                              trip.driverRating != null) ...[
+                            const SizedBox(width: 6),
+                            const Icon(
+                              Icons.star_rounded,
+                              size: 15,
+                              color: AppColors.warning,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              trip.driverRating!.toStringAsFixed(1),
+                              style: GoogleFonts.tajawal(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: T.onSurface(context),
+                              ),
+                            ),
+                          ],
+                          const Spacer(),
                         ] else
                           const Spacer(),
                         Text(

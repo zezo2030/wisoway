@@ -2944,6 +2944,14 @@
   "profileAppSection": "App",
   "profileTrustedAccount": "Verified account",
   "profileUntrustedAccount": "Unverified account",
+  "profileRatingCount": "({count, plural, =1{1 rating} other{{count} ratings}})",
+  "@profileRatingCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "profileNoRatingsYet": "No ratings yet",
+  "driverRatingLabel": "Rating",
   "editProfileSubtitle": "Update your details and profile photo",
   "paymentMethods": "Payment methods",
   "paymentMethodsSubtitle": "Manage your cards and payment methods",

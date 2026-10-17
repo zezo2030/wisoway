@@ -9236,6 +9236,24 @@ abstract class AppLocalizations {
   /// **'حساب غير موثق'**
   String get profileUntrustedAccount;
 
+  /// No description provided for @profileRatingCount.
+  ///
+  /// In ar, this message translates to:
+  /// **'({count} تقييم)'**
+  String profileRatingCount(int count);
+
+  /// No description provided for @profileNoRatingsYet.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا توجد تقييمات بعد'**
+  String get profileNoRatingsYet;
+
+  /// No description provided for @driverRatingLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'التقييم'**
+  String get driverRatingLabel;
+
   /// No description provided for @editProfileSubtitle.
   ///
   /// In ar, this message translates to:

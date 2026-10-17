@@ -567,6 +567,17 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                     ),
                     const Divider(),
                     _DetailRow(
+                      icon: Icons.star_rounded,
+                      label: context.l10n.driverRatingLabel,
+                      value:
+                          (trip.driverTotalRatings ?? 0) > 0 &&
+                              trip.driverRating != null
+                          ? '${trip.driverRating!.toStringAsFixed(1)} '
+                                '${context.l10n.profileRatingCount(trip.driverTotalRatings!)}'
+                          : context.l10n.profileNoRatingsYet,
+                    ),
+                    const Divider(),
+                    _DetailRow(
                       icon: Icons.phone,
                       label: context.l10n.phoneLabel,
                       value: trip.driverPhone ?? '',

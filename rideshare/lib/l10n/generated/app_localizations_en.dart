@@ -5087,6 +5087,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileUntrustedAccount => 'Unverified account';
 
   @override
+  String profileRatingCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ratings',
+      one: '1 rating',
+    );
+    return '($_temp0)';
+  }
+
+  @override
+  String get profileNoRatingsYet => 'No ratings yet';
+
+  @override
+  String get driverRatingLabel => 'Rating';
+
+  @override
   String get editProfileSubtitle => 'Update your details and profile photo';
 
   @override

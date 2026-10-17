@@ -143,25 +143,52 @@ export class RatingsService {
 
     const sum = Number(raw?.sum ?? 0);
     const average = sum / totalRatings;
+
+    await this.userRepo.update(userId, {
+      rating: Math.round(average * 10) / 10,
+      totalRatings,
+    });
+    await this.updateDriverRating(userId);
+  }
+
+  /**
+   * The user's rating as a driver: passengers' ratings only, scaled by the
+   * late-pickup penalty factor, never below one star once rated.
+   */
+  async updateDriverRating(userId: string): Promise<void> {
+    const raw = await this.ratingRepo
+      .createQueryBuilder('r')
+      .select('COUNT(r.id)::int', 'cnt')
+      .addSelect('COALESCE(SUM(r.rating), 0)::float', 'sum')
+      .where('r.toUserId = :userId', { userId })
+      .andWhere('r.ratedRole = :role', { role: 'driver' })
+      .getRawOne<{ cnt: string; sum: string }>();
+    const count = Number(raw?.cnt ?? 0);
+    if (count === 0) {
+      await this.userRepo.update(userId, {
+        driverRating: 0,
+        driverTotalRatings: 0,
+      });
+      return;
+    }
+    const average = Number(raw?.sum ?? 0) / count;
     const user = await this.userRepo.findOne({
       where: { id: userId },
       select: ['id', 'ratingPenaltyFactor'],
     });
     // Late pickups scale the average down; never below one star.
     const factor = Number(user?.ratingPenaltyFactor ?? 1) || 1;
-    const rating = Math.max(1, Math.round(average * factor * 10) / 10);
-
     await this.userRepo.update(userId, {
-      rating,
-      totalRatings,
+      driverRating: Math.max(1, Math.round(average * factor * 10) / 10),
+      driverTotalRatings: count,
     });
   }
 
   /**
-   * Lowers [userId]'s rating by [percent]% of its current level — what a late
-   * instant pickup costs a driver. The cut is kept as a factor on the user,
-   * so ratings received later are scaled by it too. Floored at 0.2 (a
-   * five-star average then still shows one star).
+   * Lowers [userId]'s driver rating by [percent]% of its current level — what
+   * a late instant pickup costs. The cut is kept as a factor on the user, so
+   * ratings received later are scaled by it too. Floored at 0.2 (a five-star
+   * average then still shows one star).
    */
   async applyRatingPenalty(userId: string, percent: number): Promise<void> {
     if (!(percent > 0)) return;
@@ -175,7 +202,7 @@ export class RatingsService {
       .where('id = :userId', { userId })
       .setParameters({ percent })
       .execute();
-    await this.updateUserAverage(userId);
+    await this.updateDriverRating(userId);
   }
 
   async findByUser(

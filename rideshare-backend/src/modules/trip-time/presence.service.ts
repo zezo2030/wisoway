@@ -622,8 +622,8 @@ export class PresenceService {
             id: driver.id,
             name: driver.name,
             photoUrl: driver.photoUrl ?? null,
-            rating: driver.rating ?? null,
-            ratingCount: driver.totalRatings ?? 0,
+            rating: driver.driverRating ?? null,
+            ratingCount: driver.driverTotalRatings ?? 0,
           }
         : null,
       vehicle: vehicle
