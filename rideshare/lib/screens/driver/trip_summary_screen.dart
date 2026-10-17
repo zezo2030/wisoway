@@ -442,13 +442,16 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
                           const SizedBox(height: 20),
                           _buildRouteCard(_trip!),
                           const SizedBox(height: 16),
-                          _buildPassengersCard(),
-                          const SizedBox(height: 16),
-                          _buildFinanceCard(),
-                          const SizedBox(height: 12),
-                          _buildWalletBanner(),
-                          const SizedBox(height: 16),
+                          // Shared trips only: the boarding roll-call and the
+                          // seats-minus-fee breakdown. An instant ride has one
+                          // passenger whose fare is the card above.
                           if (!_trip!.isInstant) ...[
+                            _buildPassengersCard(),
+                            const SizedBox(height: 16),
+                            _buildFinanceCard(),
+                            const SizedBox(height: 12),
+                            _buildWalletBanner(),
+                            const SizedBox(height: 16),
                             _buildChatButton(),
                             const SizedBox(height: 12),
                           ],
