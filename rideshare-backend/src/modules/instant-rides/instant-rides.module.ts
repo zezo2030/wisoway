@@ -15,6 +15,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { WalletModule } from '../wallet/wallet.module';
 import { DriverAvailabilityService } from './driver-availability.service';
 import { InstantDispatchService } from './instant-dispatch.service';
+import { InstantPickupWatchService } from './instant-pickup-watch.service';
 import { InstantRidesService } from './instant-rides.service';
 import { InstantRidesController } from './instant-rides.controller';
 import { InstantOfferTimeoutProcessor } from './processors/instant-offer-timeout.processor';
@@ -55,6 +56,7 @@ import {
   providers: [
     DriverAvailabilityService,
     InstantDispatchService,
+    InstantPickupWatchService,
     InstantRidesService,
     InstantOfferTimeoutProcessor,
     InstantRequestExpiryProcessor,

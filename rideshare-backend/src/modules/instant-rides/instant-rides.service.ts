@@ -34,6 +34,7 @@ import {
   knownCurrencyForCountry,
 } from '../../common/currency/country-currency';
 import { InstantDispatchService } from './instant-dispatch.service';
+import { InstantPickupWatchService } from './instant-pickup-watch.service';
 import { resolvePaymentChoice } from '../ride-payments/cliq-payer';
 import {
   CreateInstantRequestDto,
@@ -82,6 +83,7 @@ export class InstantRidesService {
     private readonly locationsService: LocationsService,
     private readonly notifications: NotificationsService,
     private readonly dispatchService: InstantDispatchService,
+    private readonly pickupWatch: InstantPickupWatchService,
     @InjectQueue(INSTANT_OFFER_TIMEOUT_QUEUE)
     private readonly offerTimeoutQueue: Queue,
     @InjectQueue(INSTANT_REQUEST_EXPIRY_QUEUE)
@@ -368,6 +370,22 @@ export class InstantRidesService {
     }
     if (request.passengerId !== passengerId) {
       throw new ForbiddenException('غير مصرح.');
+    }
+    return this.toRequestView(request);
+  }
+
+  /**
+   * The passenger's request that is still looking for a driver, or null —
+   * how the app finds the new search after its driver cancelled.
+   */
+  async getSearchingRequest(passengerId: string) {
+    const request = await this.findLiveRequest(passengerId);
+    if (
+      !request ||
+      (request.status !== InstantRequestStatus.SEARCHING &&
+        request.status !== InstantRequestStatus.OFFERED)
+    ) {
+      return null;
     }
     return this.toRequestView(request);
   }
@@ -695,11 +713,12 @@ export class InstantRidesService {
     }
 
     const acceptedFare = request.passengerFare ?? request.fareEstimate ?? '0';
-    const { tripId, driverName } = await this.finalizeMatch(
+    const { tripId, driverName, pickupEtaSeconds } = await this.finalizeMatch(
       request,
       offer,
       acceptedFare,
     );
+    await this.pickupWatch.schedule(tripId, pickupEtaSeconds);
 
     this.notifications
       .sendPush(request.passengerId, {
@@ -722,7 +741,11 @@ export class InstantRidesService {
     request: InstantRideRequestEntity,
     offer: InstantRideOfferEntity,
     acceptedFare: string,
-  ): Promise<{ tripId: string; driverName: string }> {
+  ): Promise<{
+    tripId: string;
+    driverName: string;
+    pickupEtaSeconds: number | null;
+  }> {
     const driver = await this.usersService.findById(offer.driverId);
     const vehicle = offer.vehicleId
       ? await this.vehiclesService.findById(offer.vehicleId).catch(() => null)
@@ -824,7 +847,7 @@ export class InstantRidesService {
       dispatchWaveJobId(request.id),
     );
 
-    return { tripId, driverName: driver?.name ?? '' };
+    return { tripId, driverName: driver?.name ?? '', pickupEtaSeconds };
   }
 
   // ── Driver: pickup stages ──────────────────────────────────────────────────
@@ -865,6 +888,178 @@ export class InstantRidesService {
       type: 'instant_ride_started',
     });
     return trip;
+  }
+
+  /**
+   * The driver backs out of an accepted ride before the passenger is in the
+   * car. The trip and booking are cancelled, the driver is freed, and the
+   * passenger is put straight back into a search — for the same route and
+   * fare, skipping this driver — instead of being left with nothing.
+   */
+  async cancelByDriver(tripId: string, driverId: string) {
+    const trip = await this.liveInstantTripOf(tripId, driverId);
+    if (trip.tripStartedAt) {
+      throw new ConflictException({
+        statusCode: 409,
+        code: 'INSTANT_RIDE_ALREADY_STARTED',
+        message: 'بدأت الرحلة، لا يمكن إلغاؤها الآن.',
+      });
+    }
+    const request = await this.requestRepo.findOne({ where: { tripId } });
+    const now = new Date();
+
+    await this.tripRepo.manager.transaction(async (m) => {
+      const claim = await m.update(
+        TripEntity,
+        { id: tripId, status: TripStatus.IN_PROGRESS, tripStartedAt: IsNull() },
+        { status: TripStatus.CANCELLED },
+      );
+      if (claim.affected !== 1) {
+        throw new ConflictException('الرحلة لم تعد جارية.');
+      }
+      await m.update(
+        BookingEntity,
+        { tripId, status: BookingStatus.CONFIRMED },
+        {
+          status: BookingStatus.CANCELLED,
+          cancelledAt: now,
+          cancelledBy: driverId,
+          cancellationReason: 'driver_cancelled',
+        },
+      );
+      if (request) {
+        await m.update(
+          InstantRideRequestEntity,
+          { id: request.id },
+          {
+            status: InstantRequestStatus.CANCELLED,
+            terminalReason: InstantTerminalReason.DRIVER_CANCELLED,
+            endedAt: now,
+          },
+        );
+      }
+    });
+    if (request) await this.freeDriver(driverId, request.id);
+
+    const next = request
+      ? await this.searchAgainAfterDriverCancel(request, driverId).catch(
+          (err: Error) => {
+            this.logger.warn(`Re-search after cancel failed: ${err.message}`);
+            return null;
+          },
+        )
+      : null;
+
+    this.logger.log(
+      `instant_driver_cancelled ${JSON.stringify({
+        tripId,
+        driverId,
+        requestId: request?.id ?? null,
+        nextRequestId: next?.id ?? null,
+      })}`,
+    );
+
+    if (request) {
+      const data = {
+        tripId,
+        requestId: next?.id ?? request.id,
+        searching: next != null,
+      };
+      this.notifications.emitRealtime(
+        request.passengerId,
+        'instantDriverCancelled',
+        data,
+      );
+      this.notifications
+        .sendPush(request.passengerId, {
+          title: 'ألغى السائق الرحلة',
+          body: next
+            ? 'نبحث لك الآن عن سائق آخر.'
+            : 'يمكنك طلب رحلة جديدة الآن.',
+          type: 'instant_driver_cancelled',
+          data,
+        })
+        .catch(() => undefined);
+    }
+
+    return { cancelled: true, nextRequestId: next?.id ?? null };
+  }
+
+  /**
+   * A fresh search for a passenger whose driver cancelled: same route, seats,
+   * payment and fare they already agreed to. The cancelling driver gets a
+   * closed offer on it so the dispatch never picks them again.
+   */
+  private async searchAgainAfterDriverCancel(
+    original: InstantRideRequestEntity,
+    cancelledDriverId: string,
+  ): Promise<InstantRideRequestEntity | null> {
+    const now = new Date();
+    const fare =
+      original.acceptedFare ?? original.passengerFare ?? original.fareEstimate;
+    let created: InstantRideRequestEntity | null = null;
+
+    await this.requestRepo.manager.transaction(async (m) => {
+      if (await this.findLiveRequest(original.passengerId, m)) return;
+      const request = await m.save(
+        m.create(InstantRideRequestEntity, {
+          passengerId: original.passengerId,
+          retryOfRequestId: original.id,
+          fromName: original.fromName,
+          fromAddress: original.fromAddress,
+          fromPoint: original.fromPoint,
+          toName: original.toName,
+          toAddress: original.toAddress,
+          toPoint: original.toPoint,
+          seatCount: original.seatCount,
+          paymentMethod: original.paymentMethod,
+          payerCliqAlias: original.payerCliqAlias,
+          status: InstantRequestStatus.SEARCHING,
+          fareEstimate: fare,
+          recommendedFare: fare,
+          passengerFare: fare,
+          currency: original.currency,
+          radiusKm: INITIAL_RADIUS_KM,
+          expiresAt: new Date(now.getTime() + REQUEST_TTL_SECONDS * 1000),
+        }),
+      );
+      await m.save(
+        m.create(InstantRideOfferEntity, {
+          requestId: request.id,
+          driverId: cancelledDriverId,
+          status: InstantOfferStatus.CANCELLED,
+          fareRevision: request.fareRevision,
+          offeredAt: now,
+          respondedAt: now,
+          expiresAt: now,
+        }),
+      );
+      created = request;
+    });
+
+    const request = created as InstantRideRequestEntity | null;
+    if (!request) return null;
+
+    await this.requestExpiryQueue
+      .add(
+        EXPIRE_REQUEST_JOB,
+        { requestId: request.id },
+        {
+          delay: REQUEST_TTL_SECONDS * 1000,
+          jobId: requestExpiryJobId(request.id),
+          removeOnComplete: true,
+          removeOnFail: true,
+        },
+      )
+      .catch((err: Error) =>
+        this.logger.warn(`Failed to enqueue request expiry: ${err.message}`),
+      );
+    void this.dispatchService
+      .dispatchNext(request.id)
+      .catch((err: Error) =>
+        this.logger.warn(`dispatchNext after cancel failed: ${err.message}`),
+      );
+    return request;
   }
 
   private async liveInstantTripOf(tripId: string, driverId: string) {

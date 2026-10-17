@@ -119,6 +119,16 @@ export class InstantRidesController {
     return this.instantRides.getActiveRide(userId);
   }
 
+  // Declared before `requests/:id` so "searching" isn't taken for an id.
+  @Get('requests/searching')
+  @ApiOperation({
+    summary: "The caller's request still looking for a driver, or null",
+  })
+  @ApiResponse({ status: 200, description: 'Searching request, or null' })
+  getSearchingRequest(@CurrentUser('id') passengerId: string) {
+    return this.instantRides.getSearchingRequest(passengerId);
+  }
+
   @Get('requests/:id')
   @ApiOperation({ summary: 'Poll an instant request status' })
   @ApiResponse({ status: 200, description: 'Request status returned' })
@@ -227,5 +237,23 @@ export class InstantRidesController {
     @CurrentUser('id') driverId: string,
   ) {
     return this.instantRides.startRide(tripId, driverId);
+  }
+
+  @Post('trips/:tripId/cancel')
+  @Roles('driver')
+  @ApiOperation({
+    summary:
+      'Driver cancels an accepted ride before pickup; the passenger is searched a new driver',
+  })
+  @ApiResponse({ status: 201, description: 'Ride cancelled' })
+  @ApiResponse({
+    status: 409,
+    description: 'INSTANT_RIDE_ALREADY_STARTED, or no longer in progress',
+  })
+  cancelByDriver(
+    @Param('tripId') tripId: string,
+    @CurrentUser('id') driverId: string,
+  ) {
+    return this.instantRides.cancelByDriver(tripId, driverId);
   }
 }

@@ -16,6 +16,7 @@ describe('InstantRidesService', () => {
   let locations: any;
   let notifications: any;
   let dispatch: any;
+  let pickupWatch: any;
   let offerQueue: any;
   let requestQueue: any;
   let service: InstantRidesService;
@@ -67,6 +68,7 @@ describe('InstantRidesService', () => {
       emitRealtime: jest.fn(),
     };
     dispatch = { dispatchNext: jest.fn().mockResolvedValue(undefined) };
+    pickupWatch = { schedule: jest.fn().mockResolvedValue(undefined) };
     offerQueue = {
       add: jest.fn().mockResolvedValue(undefined),
       getJob: jest.fn().mockResolvedValue(null),
@@ -85,6 +87,7 @@ describe('InstantRidesService', () => {
       locations,
       notifications,
       dispatch,
+      pickupWatch,
       offerQueue,
       requestQueue,
     );
@@ -618,6 +621,124 @@ describe('InstantRidesService', () => {
       tripRepo.findOne.mockResolvedValue(liveTrip({ status: 'completed' }));
       await expect(service.markArrivedAtPickup('t1', 'd1')).rejects.toThrow(
         ConflictException,
+      );
+    });
+  });
+
+  describe('driver cancels before pickup', () => {
+    const accepted = {
+      id: 'r1',
+      passengerId: 'p1',
+      status: 'accepted',
+      tripId: 't1',
+      fromName: 'A',
+      toName: 'B',
+      fromPoint: { type: 'Point', coordinates: [37.9, 26.6] },
+      toPoint: { type: 'Point', coordinates: [37.95, 26.5] },
+      seatCount: 1,
+      paymentMethod: 'cash',
+      acceptedFare: '15.00',
+      passengerFare: '15.00',
+      currency: 'SAR',
+    };
+    let m: any;
+
+    beforeEach(() => {
+      tripRepo.findOne = jest.fn().mockResolvedValue({
+        id: 't1',
+        driverId: 'd1',
+        tripType: 'instant',
+        status: 'in_progress',
+        driverArrivedAt: null,
+        tripStartedAt: null,
+      });
+      requestRepo.findOne.mockResolvedValue(accepted);
+      m = {
+        update: jest.fn().mockResolvedValue({ affected: 1 }),
+        findOne: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockImplementation((_e: any, v: any) => v),
+        save: jest.fn().mockImplementation(async (v: any) => ({
+          fareRevision: 1,
+          ...v,
+          id: v.requestId ? 'o-x' : 'r2',
+        })),
+      };
+      const run = (fn: any) => fn(m);
+      tripRepo.manager.transaction = jest.fn().mockImplementation(run);
+      requestRepo.manager.transaction = jest.fn().mockImplementation(run);
+    });
+
+    it('cancels the trip and booking and searches again at the same fare', async () => {
+      const result = await service.cancelByDriver('t1', 'd1');
+
+      expect(m.update).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ id: 't1', status: 'in_progress' }),
+        { status: 'cancelled' },
+      );
+      expect(m.update).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ tripId: 't1', status: 'confirmed' }),
+        expect.objectContaining({ status: 'cancelled', cancelledBy: 'd1' }),
+      );
+      expect(m.update).toHaveBeenCalledWith(
+        expect.anything(),
+        { id: 'r1' },
+        expect.objectContaining({
+          status: 'cancelled',
+          terminalReason: 'driver_cancelled',
+        }),
+      );
+      // Same route and agreed fare, searching again.
+      expect(m.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          retryOfRequestId: 'r1',
+          status: 'searching',
+          passengerFare: '15.00',
+          currency: 'SAR',
+        }),
+      );
+      // The cancelling driver is never offered the new search.
+      expect(m.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requestId: 'r2',
+          driverId: 'd1',
+          status: 'cancelled',
+        }),
+      );
+      expect(availabilityRepo.update).toHaveBeenCalledWith(
+        { driverId: 'd1', currentRequestId: 'r1' },
+        { currentRequestId: null },
+      );
+      expect(dispatch.dispatchNext).toHaveBeenCalledWith('r2');
+      expect(notifications.sendPush).toHaveBeenCalledWith(
+        'p1',
+        expect.objectContaining({
+          type: 'instant_driver_cancelled',
+          data: expect.objectContaining({ requestId: 'r2', searching: true }),
+        }),
+      );
+      expect(result).toEqual({ cancelled: true, nextRequestId: 'r2' });
+    });
+
+    it('refuses once the passenger is on board', async () => {
+      tripRepo.findOne.mockResolvedValue({
+        id: 't1',
+        driverId: 'd1',
+        tripType: 'instant',
+        status: 'in_progress',
+        tripStartedAt: new Date(),
+      });
+
+      await expect(service.cancelByDriver('t1', 'd1')).rejects.toThrow(
+        ConflictException,
+      );
+      expect(tripRepo.manager.transaction).not.toHaveBeenCalled();
+    });
+
+    it("refuses another driver's ride", async () => {
+      await expect(service.cancelByDriver('t1', 'd2')).rejects.toThrow(
+        ForbiddenException,
       );
     });
   });

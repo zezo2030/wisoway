@@ -74,6 +74,35 @@ export const NO_DRIVER_SEARCH_SECONDS = Math.min(
 export const DISPATCH_RETRY_SECONDS = 10;
 /** Average urban approach speed used for pickup-ETA estimates. */
 export const PICKUP_ETA_SPEED_KMH = 25;
+
+// ── Late to the pickup ──────────────────────────────────────────────────────
+/** Pickup estimate used when the driver's position was unknown at match. */
+export const DEFAULT_PICKUP_ETA_SECONDS = 5 * 60;
+/** Slack past the pickup estimate before the driver counts as late. */
+export const PICKUP_LATE_GRACE_MINUTES = envKm(
+  'INSTANT_PICKUP_LATE_GRACE_MINUTES',
+  3,
+);
+/** Gap between «you're late» reminders while the driver still hasn't come. */
+export const PICKUP_LATE_REMIND_MINUTES = 3;
+/** Reminders per ride; after these the passenger can cancel or call. */
+export const PICKUP_LATE_MAX_WARNINGS = 3;
+/** Late rides in this window count towards «repeated lateness». */
+export const LATE_REPEAT_WINDOW_DAYS = 30;
+
+/**
+ * Delay before the [attempt]-th lateness check of a ride whose pickup was
+ * estimated at [pickupEtaSeconds]: the estimate plus the grace first, then
+ * every [PICKUP_LATE_REMIND_MINUTES].
+ */
+export function pickupLateDelayMs(
+  pickupEtaSeconds: number | null,
+  attempt: number,
+): number {
+  if (attempt > 1) return PICKUP_LATE_REMIND_MINUTES * 60_000;
+  const eta = pickupEtaSeconds ?? DEFAULT_PICKUP_ETA_SECONDS;
+  return eta * 1000 + PICKUP_LATE_GRACE_MINUTES * 60_000;
+}
 /**
  * How old an online driver's last location may be and still get offers.
  * The app reports every ~12 s while it runs (screen off included), but once
@@ -191,6 +220,8 @@ export const EXPIRE_OFFER_JOB = 'expire-offer';
 export const EXPIRE_REQUEST_JOB = 'expire-request';
 /** Delayed re-dispatch wave (runs on the request-expiry queue). */
 export const DISPATCH_WAVE_JOB = 'dispatch-wave';
+/** «Is the driver at the pickup yet?» check (runs on the request-expiry queue). */
+export const PICKUP_LATE_CHECK_JOB = 'pickup-late-check';
 
 export const offerTimeoutJobId = (offerId: string) =>
   `instant-offer:${offerId}`;
@@ -198,3 +229,5 @@ export const requestExpiryJobId = (requestId: string) =>
   `instant-request:${requestId}`;
 export const dispatchWaveJobId = (requestId: string) =>
   `instant-wave:${requestId}`;
+export const pickupLateJobId = (tripId: string, attempt: number) =>
+  `instant-late:${tripId}:${attempt}`;

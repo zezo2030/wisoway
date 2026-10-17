@@ -42,6 +42,8 @@ export const InstantTerminalReason = {
   TTL_EXPIRED: 'ttl_expired',
   /** The passenger cancelled explicitly. */
   PASSENGER_CANCELLED: 'passenger_cancelled',
+  /** The matched driver cancelled before pickup; a new search took over. */
+  DRIVER_CANCELLED: 'driver_cancelled',
 } as const;
 export type InstantTerminalReason =
   (typeof InstantTerminalReason)[keyof typeof InstantTerminalReason];
@@ -152,6 +154,14 @@ export class InstantRideRequestEntity {
 
   @Column({ type: 'uuid', nullable: true })
   matchedDriverId: string | null;
+
+  /** «You're late» reminders sent to the matched driver on the way to pickup. */
+  @Column({ type: 'int', default: 0 })
+  lateWarningCount: number;
+
+  /** When the driver was first warned for this ride; set = a late ride. */
+  @Column({ type: 'timestamptz', nullable: true })
+  lateWarnedAt: Date | null;
 
   @Column({ type: 'uuid', nullable: true })
   tripId: string | null;
