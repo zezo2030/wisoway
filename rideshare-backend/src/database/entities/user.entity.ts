@@ -67,6 +67,14 @@ export class UserEntity {
   @Column({ type: 'int', default: 0 })
   totalRatings: number;
 
+  /**
+   * Multiplies the average of received ratings into `rating`. Starts at 1;
+   * each late instant pickup lowers it by the admin-set percentage
+   * (RatingsService.applyRatingPenalty).
+   */
+  @Column({ type: 'decimal', precision: 6, scale: 4, default: 1 })
+  ratingPenaltyFactor: number;
+
   @Column({ type: 'boolean', default: false })
   isPhoneVerified: boolean;
 

@@ -10,6 +10,8 @@ import {
   TripType,
 } from '../../database/entities';
 import { NotificationsService } from '../notifications/notifications.service';
+import { RatingsService } from '../ratings/ratings.service';
+import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
 import {
   INSTANT_REQUEST_EXPIRY_QUEUE,
   LATE_REPEAT_WINDOW_DAYS,
@@ -24,8 +26,9 @@ export type PickupLateJob = { tripId: string; attempt: number };
 /**
  * Keeps a matched driver honest on the way to the passenger: once the pickup
  * estimate plus a grace period has passed and the driver still hasn't pressed
- * «وصلت إلى الراكب», they are told to head there now — and that repeated
- * lateness is fined. Reminders repeat a few times per ride.
+ * «وصلت إلى الراكب», they are told to head there now. The first warning of a
+ * ride also lowers their rating by the percentage the admin set on the
+ * dashboard (no fines). Reminders repeat a few times per ride.
  */
 @Injectable()
 export class InstantPickupWatchService {
@@ -37,6 +40,8 @@ export class InstantPickupWatchService {
     @InjectRepository(InstantRideRequestEntity)
     private readonly requestRepo: Repository<InstantRideRequestEntity>,
     private readonly notifications: NotificationsService,
+    private readonly ratings: RatingsService,
+    private readonly settings: PlatformSettingsService,
     @InjectQueue(INSTANT_REQUEST_EXPIRY_QUEUE)
     private readonly queue: Queue,
   ) {}
@@ -61,8 +66,8 @@ export class InstantPickupWatchService {
 
   /**
    * The check itself: warns the driver when they still haven't reached the
-   * passenger, and lines up the next reminder. A no-op once they arrived,
-   * started, or the ride ended.
+   * passenger, cuts their rating once per late ride, and lines up the next
+   * reminder. A no-op once they arrived, started, or the ride ended.
    */
   async check({ tripId, attempt }: PickupLateJob): Promise<void> {
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
@@ -79,13 +84,27 @@ export class InstantPickupWatchService {
     if (!request) return;
 
     const now = new Date();
+    const firstWarning = request.lateWarnedAt == null;
+    const penaltyPercent = firstWarning
+      ? await this.settings.getNumber('lateRatingPenaltyPercent')
+      : 0;
     await this.requestRepo.update(
       { id: request.id },
       {
         lateWarningCount: request.lateWarningCount + 1,
         lateWarnedAt: request.lateWarnedAt ?? now,
+        ...(penaltyPercent > 0
+          ? { ratingPenaltyPercent: penaltyPercent.toFixed(2) }
+          : {}),
       },
     );
+    if (penaltyPercent > 0) {
+      await this.ratings
+        .applyRatingPenalty(trip.driverId, penaltyPercent)
+        .catch((err: Error) =>
+          this.logger.warn(`Rating penalty failed: ${err.message}`),
+        );
+    }
 
     // This ride included: how many of the driver's rides ran late lately.
     const lateRides = await this.requestRepo.count({
@@ -98,7 +117,11 @@ export class InstantPickupWatchService {
     });
 
     const locale = await this.notifications.getPreferredLocale(trip.driverId);
-    const push = lateWarningText(locale, lateRides);
+    const push = lateWarningText(locale, {
+      lateRides,
+      firstWarning,
+      penaltyPercent,
+    });
     this.notifications.emitRealtime(trip.driverId, 'instantPickupLate', {
       tripId,
       lateRides,
@@ -117,6 +140,7 @@ export class InstantPickupWatchService {
         driverId: trip.driverId,
         attempt,
         lateRides,
+        penaltyPercent,
       })}`,
     );
 
@@ -127,27 +151,47 @@ export class InstantPickupWatchService {
 }
 
 /**
- * The driver's warning. A first late ride is a nudge; from the second within
- * [LATE_REPEAT_WINDOW_DAYS] days the count is spelled out.
+ * The driver's warning. The first one of a ride says what it cost (when the
+ * admin set a cut) and, from the second late ride within
+ * [LATE_REPEAT_WINDOW_DAYS] days, how many there have been; later reminders
+ * of the same ride just say to hurry.
  */
 export function lateWarningText(
   locale: 'ar' | 'en',
-  lateRides: number,
+  opts: { lateRides: number; firstWarning: boolean; penaltyPercent: number },
 ): { title: string; body: string } {
+  const { lateRides, firstWarning, penaltyPercent } = opts;
+  const pct = Number(penaltyPercent.toFixed(2));
   if (locale === 'en') {
+    if (!firstWarning) {
+      return {
+        title: 'Your passenger is still waiting',
+        body: 'Head to the pickup now.',
+      };
+    }
+    const count =
+      lateRides > 1
+        ? `Late ride #${lateRides} in ${LATE_REPEAT_WINDOW_DAYS} days. `
+        : '';
+    const cut = pct > 0 ? ` Your rating dropped ${pct}% for being late.` : '';
     return {
       title: 'You are late for your passenger',
-      body:
-        lateRides > 1
-          ? `Late ride #${lateRides} in ${LATE_REPEAT_WINDOW_DAYS} days. Head to the pickup now — repeated lateness is fined.`
-          : 'Your passenger is waiting. Head to the pickup now — repeated lateness is fined.',
+      body: `${count}Your passenger is waiting — head to the pickup now.${cut}`,
     };
   }
+  if (!firstWarning) {
+    return {
+      title: 'الراكب ما زال بانتظارك',
+      body: 'توجّه فوراً إلى نقطة الانطلاق.',
+    };
+  }
+  const count =
+    lateRides > 1
+      ? `هذا تأخرك رقم ${lateRides} خلال ${LATE_REPEAT_WINDOW_DAYS} يوماً. `
+      : '';
+  const cut = pct > 0 ? ` خُفِّض تقييمك ${pct}% بسبب التأخير.` : '';
   return {
     title: 'تأخرت على الراكب',
-    body:
-      lateRides > 1
-        ? `هذا تأخرك رقم ${lateRides} خلال ${LATE_REPEAT_WINDOW_DAYS} يوماً. توجّه فوراً إلى الراكب، فتكرار التأخير يعرّضك لمخالفة.`
-        : 'الراكب بانتظارك. توجّه فوراً إلى نقطة الانطلاق، فتكرار التأخير يعرّضك لمخالفة.',
+    body: `${count}الراكب بانتظارك، توجّه فوراً إلى نقطة الانطلاق.${cut}`,
   };
 }

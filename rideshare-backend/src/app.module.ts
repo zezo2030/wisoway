@@ -53,6 +53,7 @@ import { RidePaymentsModule } from './modules/ride-payments/ride-payments.module
 import { RefundsModule } from './modules/refunds/refunds.module';
 import { SupportModule } from './modules/support/support.module';
 import { InstantRidesModule } from './modules/instant-rides/instant-rides.module';
+import { PlatformSettingsModule } from './modules/platform-settings/platform-settings.module';
 
 @Module({
   imports: [
@@ -112,6 +113,7 @@ import { InstantRidesModule } from './modules/instant-rides/instant-rides.module
     RefundsModule,
     SupportModule,
     InstantRidesModule,
+    PlatformSettingsModule,
   ],
   controllers: [AppController],
   providers: [

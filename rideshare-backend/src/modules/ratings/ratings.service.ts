@@ -143,11 +143,39 @@ export class RatingsService {
 
     const sum = Number(raw?.sum ?? 0);
     const average = sum / totalRatings;
+    const user = await this.userRepo.findOne({
+      where: { id: userId },
+      select: ['id', 'ratingPenaltyFactor'],
+    });
+    // Late pickups scale the average down; never below one star.
+    const factor = Number(user?.ratingPenaltyFactor ?? 1) || 1;
+    const rating = Math.max(1, Math.round(average * factor * 10) / 10);
 
     await this.userRepo.update(userId, {
-      rating: Math.round(average * 10) / 10,
+      rating,
       totalRatings,
     });
+  }
+
+  /**
+   * Lowers [userId]'s rating by [percent]% of its current level — what a late
+   * instant pickup costs a driver. The cut is kept as a factor on the user,
+   * so ratings received later are scaled by it too. Floored at 0.2 (a
+   * five-star average then still shows one star).
+   */
+  async applyRatingPenalty(userId: string, percent: number): Promise<void> {
+    if (!(percent > 0)) return;
+    await this.userRepo
+      .createQueryBuilder()
+      .update(UserEntity)
+      .set({
+        ratingPenaltyFactor: () =>
+          `GREATEST(0.2, "ratingPenaltyFactor" * (1 - :percent / 100.0))`,
+      })
+      .where('id = :userId', { userId })
+      .setParameters({ percent })
+      .execute();
+    await this.updateUserAverage(userId);
   }
 
   async findByUser(

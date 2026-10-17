@@ -213,6 +213,48 @@ describe('RatingsService', () => {
         }),
       );
     });
+
+    it('scales the average by the late-pickup penalty factor', async () => {
+      ratingRepo.createQueryBuilder.mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue({ cnt: '2', sum: '10' }),
+      } as any);
+      // Postgres decimals arrive as strings.
+      userRepo.findOne.mockResolvedValue({
+        id: uid.driver,
+        ratingPenaltyFactor: '0.9604',
+      } as any);
+
+      await service.updateUserAverage(uid.driver);
+
+      // 5.0 average after two 2% cuts: 5 × 0.98 × 0.98 ≈ 4.8.
+      expect(userRepo.update).toHaveBeenCalledWith(uid.driver, {
+        rating: 4.8,
+        totalRatings: 2,
+      });
+    });
+
+    it('never shows less than one star', async () => {
+      ratingRepo.createQueryBuilder.mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue({ cnt: '1', sum: '2' }),
+      } as any);
+      userRepo.findOne.mockResolvedValue({
+        id: uid.driver,
+        ratingPenaltyFactor: '0.2',
+      } as any);
+
+      await service.updateUserAverage(uid.driver);
+
+      expect(userRepo.update).toHaveBeenCalledWith(uid.driver, {
+        rating: 1,
+        totalRatings: 1,
+      });
+    });
   });
 
   describe('findByUser', () => {

@@ -24,6 +24,7 @@ export const ROUTES = {
   CHAT: "/chat",
   REPORTS: "/reports",
   PRICING_SETTINGS: "/settings/pricing",
+  OPERATIONS_SETTINGS: "/settings/operations",
   ACCOUNT_FLAGS: "/account-flags",
   PENDING_CHARGES: "/pending-charges",
   COMPLAINTS: "/complaints",

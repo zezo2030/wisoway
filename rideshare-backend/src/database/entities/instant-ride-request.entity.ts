@@ -163,6 +163,10 @@ export class InstantRideRequestEntity {
   @Column({ type: 'timestamptz', nullable: true })
   lateWarnedAt: Date | null;
 
+  /** Rating cut (%) the driver took for being late on this ride, if any. */
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  ratingPenaltyPercent: string | null;
+
   @Column({ type: 'uuid', nullable: true })
   tripId: string | null;
 

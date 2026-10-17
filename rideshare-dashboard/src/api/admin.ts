@@ -857,3 +857,20 @@ export async function getPendingDrivers(
   )
   return response.data.data
 }
+
+// ─── Platform settings (operational knobs) ───────────────────────────────────
+
+export interface PlatformSettings {
+  /** Rating cut (%) for each instant ride the driver reaches the passenger late. */
+  lateRatingPenaltyPercent: number
+}
+
+export async function getPlatformSettings(): Promise<PlatformSettings> {
+  const response = await apiClient.get<ApiResponse<PlatformSettings>>("/admin/platform-settings")
+  return response.data.data
+}
+
+export async function patchPlatformSettings(body: Partial<PlatformSettings>): Promise<PlatformSettings> {
+  const response = await apiClient.patch<ApiResponse<PlatformSettings>>("/admin/platform-settings", body)
+  return response.data.data
+}

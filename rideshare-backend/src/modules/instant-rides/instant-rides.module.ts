@@ -13,6 +13,8 @@ import { UsersModule } from '../users/users.module';
 import { LocationsModule } from '../locations/locations.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { WalletModule } from '../wallet/wallet.module';
+import { RatingsModule } from '../ratings/ratings.module';
+import { PlatformSettingsModule } from '../platform-settings/platform-settings.module';
 import { DriverAvailabilityService } from './driver-availability.service';
 import { InstantDispatchService } from './instant-dispatch.service';
 import { InstantPickupWatchService } from './instant-pickup-watch.service';
@@ -51,6 +53,8 @@ import {
     LocationsModule,
     NotificationsModule,
     WalletModule,
+    RatingsModule,
+    PlatformSettingsModule,
   ],
   controllers: [InstantRidesController],
   providers: [

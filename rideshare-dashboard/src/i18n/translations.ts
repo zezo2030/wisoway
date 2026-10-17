@@ -28,6 +28,7 @@ export const translations = {
     nav_chat: "Chat",
     nav_reports: "Reports",
     nav_pricing: "Pricing",
+    nav_operations: "Operations",
 
     // Common Actions / General
     save: "Save",
@@ -474,6 +475,16 @@ export const translations = {
     enablePricing: "Enable pricing & active status for this country",
     saveSettings: "Save Settings",
 
+    // Operations settings
+    operationsTitle: "Operations Settings",
+    operationsSubtitle: "Rules for how rides run. Changes apply to the next ride, no app update needed.",
+    latePickupTitle: "Late to the passenger (instant rides)",
+    latePickupDesc: "When a driver hasn't reached the passenger 3 minutes after the expected pickup time, they are told to hurry. On the first warning of a ride their rating is also lowered by this percentage. No money is charged.",
+    latePenaltyPercent: "Rating cut per late ride (%)",
+    latePenaltyRange: "Enter a number from 0 to 50.",
+    latePenaltyOff: "At 0, late drivers are only warned; their rating is not touched.",
+    latePenaltyExample: "Example: a driver rated 4.80 drops to {rating} after one late pickup.",
+
     // Login
     loginTitle: "Admin Login",
     loginSubtitle: "Enter your credentials to access the administrative dashboard",
@@ -744,6 +755,7 @@ export const translations = {
     nav_chat: "المحادثات",
     nav_reports: "التقارير",
     nav_pricing: "الأسعار",
+    nav_operations: "إعدادات التشغيل",
 
     // Common Actions / General
     save: "حفظ",
@@ -1189,6 +1201,16 @@ export const translations = {
     pricingFallbackNote: "لا توجد إعدادات رسوم خاصة بهذه الدولة بعد، لذا تُحتسب رسوم رحلاتها بنسب الأردن (المعروضة أدناه) وبعملتها المحلية. احفظ لتعيين إعدادات خاصة بها.",
     enablePricing: "تفعيل التسعير والحالة النشطة لهذا البلد",
     saveSettings: "حفظ الإعدادات",
+
+    // Operations settings
+    operationsTitle: "إعدادات التشغيل",
+    operationsSubtitle: "قواعد سير الرحلات. التغيير يسري على الرحلة التالية دون تحديث التطبيق.",
+    latePickupTitle: "التأخر على الراكب (الرحلات المباشرة)",
+    latePickupDesc: "إذا لم يصل السائق إلى الراكب بعد 3 دقائق من وقت الوصول المتوقع، يصله تنبيه بالإسراع. ومع أول تنبيه في الرحلة يُخفَّض تقييمه بهذه النسبة. لا تُخصم أي مبالغ.",
+    latePenaltyPercent: "نسبة تخفيض التقييم لكل رحلة متأخرة (%)",
+    latePenaltyRange: "أدخل رقماً من 0 إلى 50.",
+    latePenaltyOff: "عند 0 يُنبَّه السائق المتأخر فقط، ولا يتغير تقييمه.",
+    latePenaltyExample: "مثال: سائق تقييمه 4.80 يصبح {rating} بعد تأخر واحد.",
 
     // Login
     loginTitle: "تسجيل دخول المسؤول",
