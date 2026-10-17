@@ -10,6 +10,9 @@ class BookingSeatModel {
   final String gender;
   final bool isMainBooker;
   final DateTime? markedAbsentAt;
+
+  /// The driver vouched «معي في السيارة» for this seat.
+  final DateTime? presenceConfirmedAt;
   final DateTime? passengerSelfConfirmedAt;
   final String? passengerDeclaredStatus;
   final bool? billableOverride;
@@ -23,6 +26,7 @@ class BookingSeatModel {
     required this.gender,
     required this.isMainBooker,
     this.markedAbsentAt,
+    this.presenceConfirmedAt,
     this.passengerSelfConfirmedAt,
     this.passengerDeclaredStatus,
     this.billableOverride,
@@ -51,6 +55,9 @@ class BookingSeatModel {
       gender: json['gender']?.toString() ?? '',
       isMainBooker: json['isMainBooker'] ?? false,
       markedAbsentAt: BookingModel._dateOrNull(json['markedAbsentAt']),
+      presenceConfirmedAt: BookingModel._dateOrNull(
+        json['presenceConfirmedAt'],
+      ),
       passengerSelfConfirmedAt: BookingModel._dateOrNull(
         json['passengerSelfConfirmedAt'],
       ),
@@ -283,10 +290,12 @@ class BookingModel {
   /// On the trip: confirmed before it starts, in progress once it has.
   bool get isRiding => isConfirmed || isInProgress;
 
-  /// The passenger said «أنا في السيارة» (for any of their seats).
+  /// The passenger said «أنا في السيارة», or the driver vouched for them
+  /// (any of their seats). Only they are asked for a fare at the end.
   bool get hasConfirmedBoarding => seats.any(
     (s) =>
         s.passengerSelfConfirmedAt != null ||
+        s.presenceConfirmedAt != null ||
         s.passengerDeclaredStatus == 'in_vehicle',
   );
   bool get isCancelled => status == 'cancelled';

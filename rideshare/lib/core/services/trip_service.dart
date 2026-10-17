@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../models/booking_model.dart';
 import '../../models/trip_model.dart';
 import '../../models/location_model.dart';
 import '../../models/trip_fee_quote.dart';
@@ -367,6 +368,27 @@ class TripService {
   /// confirmed (otherwise it starts with the first confirmation).
   Future<void> startSharedTrip(String tripId) async {
     await _api.post(ApiEndpoints.startTrip(tripId));
+  }
+
+  /// Shared trip: the driver vouches «معي في السيارة» for [booking]'s seats —
+  /// for a passenger who rode but didn't confirm. It counts as boarding: the
+  /// fare is asked of them at the end, and a waiting trip starts.
+  Future<void> confirmPassengerAboard(BookingModel booking) async {
+    final seats = booking.seats;
+    if (seats.isEmpty) return;
+    await _api.post(
+      ApiEndpoints.presenceConfirm(booking.tripId),
+      data: {
+        'entries': [
+          for (final s in seats)
+            {
+              'bookingId': booking.id,
+              'seatNumber': s.seatNumber,
+              'present': true,
+            },
+        ],
+      },
+    );
   }
 
   /// Instant ride: the driver cancels before the passenger is in the car.

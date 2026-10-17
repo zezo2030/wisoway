@@ -5646,6 +5646,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get boardingStarted => 'Trip started';
 
   @override
+  String get boardingVouchAction => 'In my car';
+
+  @override
   String get bookingCompanionTag => 'Companion';
 
   @override

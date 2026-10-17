@@ -5593,6 +5593,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get boardingStarted => 'بدأت الرحلة';
 
   @override
+  String get boardingVouchAction => 'معي في السيارة';
+
+  @override
   String get bookingCompanionTag => 'مرافق';
 
   @override

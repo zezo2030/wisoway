@@ -10232,6 +10232,12 @@ abstract class AppLocalizations {
   /// **'بدأت الرحلة'**
   String get boardingStarted;
 
+  /// No description provided for @boardingVouchAction.
+  ///
+  /// In ar, this message translates to:
+  /// **'معي في السيارة'**
+  String get boardingVouchAction;
+
   /// No description provided for @bookingCompanionTag.
   ///
   /// In ar, this message translates to:

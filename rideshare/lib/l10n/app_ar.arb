@@ -3336,6 +3336,7 @@
   "boardingStartConfirmTitle": "بدء الرحلة؟",
   "boardingStartConfirmBody": "تأكد أن الركاب في السيارة قبل البدء.",
   "boardingStarted": "بدأت الرحلة",
+  "boardingVouchAction": "معي في السيارة",
   "bookingCompanionTag": "مرافق",
   "bookingSeatOccupant": "مقعد {seat} · {name}",
   "@bookingSeatOccupant": {

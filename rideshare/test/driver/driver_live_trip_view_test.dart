@@ -74,6 +74,7 @@ void main() {
     VoidCallback? onStartRide,
     void Function(LatLng target)? onNavigate,
     VoidCallback? onCancelRide,
+    void Function(BookingModel booking)? onConfirmAboard,
   }) async {
     // A phone-shaped screen: everything must fit without scrolling.
     tester.view.physicalSize = const Size(1080, 2400);
@@ -95,6 +96,7 @@ void main() {
             onArrivedAtPickup: () {},
             onStartRide: onStartRide ?? () {},
             onCancelRide: trip.isInstant ? onCancelRide ?? () {} : null,
+            onConfirmAboard: onConfirmAboard,
             onEnableTracking: () {},
             onChatPassenger: (_) {},
             phoneOf: (_) => null,
@@ -150,14 +152,15 @@ void main() {
     expect(find.text('فعّل الموقع حتى يرى الراكب مكانك'), findsOneWidget);
   });
 
-  testWidgets('instant ride: being at the pickup does not board the passenger', (
-    tester,
-  ) async {
-    await pump(tester, trip: trip(), driver: const LatLng(26.6001, 37.9001));
+  testWidgets(
+    'instant ride: being at the pickup does not board the passenger',
+    (tester) async {
+      await pump(tester, trip: trip(), driver: const LatLng(26.6001, 37.9001));
 
-    expect(find.text('الراكب معك — في الطريق إلى الوجهة'), findsNothing);
-    expect(find.text('وصلت إلى الراكب'), findsOneWidget);
-  });
+      expect(find.text('الراكب معك — في الطريق إلى الوجهة'), findsNothing);
+      expect(find.text('وصلت إلى الراكب'), findsOneWidget);
+    },
+  );
 
   testWidgets('instant ride: after «وصلت» the driver starts the ride', (
     tester,
@@ -293,6 +296,28 @@ void main() {
     expect(find.text('sara'), findsOneWidget);
     expect(find.text('لم يؤكد ركوبه بعد'), findsNWidgets(2));
   });
+
+  testWidgets(
+    'shared trip: the driver vouches for a passenger who did not confirm',
+    (tester) async {
+      BookingModel? vouched;
+      await pump(
+        tester,
+        trip: trip(type: 'scheduled'),
+        bookings: [booking('b1', 'ayat', '10.00')],
+        driver: const LatLng(26.58, 37.91),
+        onBack: () {},
+        onConfirmAboard: (b) => vouched = b,
+      );
+
+      await tester.tap(find.text('الركاب: 1 · أكّد 0 من 1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('معي في السيارة'));
+      await tester.pumpAndSettle();
+
+      expect(vouched?.id, 'b1');
+    },
+  );
 
   testWidgets('fits a small phone without overflowing', (tester) async {
     await pump(tester, trip: trip(), bookings: [booking('b1', 'ayat', '7.39')]);

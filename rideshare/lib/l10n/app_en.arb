@@ -3198,6 +3198,7 @@
   "boardingStartConfirmTitle": "Start the trip?",
   "boardingStartConfirmBody": "Make sure your passengers are in the car first.",
   "boardingStarted": "Trip started",
+  "boardingVouchAction": "In my car",
   "bookingCompanionTag": "Companion",
   "bookingSeatOccupant": "Seat {seat} · {name}",
   "@bookingSeatOccupant": {

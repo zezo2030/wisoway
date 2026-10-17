@@ -37,6 +37,7 @@ class DriverLiveTripView extends StatefulWidget {
     this.onArrivedAtPickup,
     this.onStartRide,
     this.onCancelRide,
+    this.onConfirmAboard,
     this.stageBusy = false,
     required this.onEnableTracking,
     required this.onChatPassenger,
@@ -66,6 +67,10 @@ class DriverLiveTripView extends StatefulWidget {
 
   /// Instant rides: «إلغاء», offered only until the passenger is in the car.
   final VoidCallback? onCancelRide;
+
+  /// Shared trips: «معي في السيارة» for a passenger who rode but didn't
+  /// confirm boarding, so they are asked for the fare at the end.
+  final void Function(BookingModel booking)? onConfirmAboard;
 
   /// One of the two pickup-stage calls is in flight.
   final bool stageBusy;
@@ -888,6 +893,21 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
                                 BoardingStatusChip(
                                   boarded: b.hasConfirmedBoarding,
                                 ),
+                                if (!b.hasConfirmedBoarding &&
+                                    widget.onConfirmAboard != null)
+                                  TextButton(
+                                    style: TextButton.styleFrom(
+                                      visualDensity: VisualDensity.compact,
+                                      padding: EdgeInsets.zero,
+                                    ),
+                                    onPressed: () {
+                                      Navigator.pop(sheetContext);
+                                      widget.onConfirmAboard!(b);
+                                    },
+                                    child: Text(
+                                      context.l10n.boardingVouchAction,
+                                    ),
+                                  ),
                               ],
                             ),
                           ),

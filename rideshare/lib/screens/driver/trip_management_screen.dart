@@ -883,6 +883,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
             onCancelRide: trip.isInstant
                 ? () => _cancelInstantRide(trip)
                 : null,
+            onConfirmAboard: trip.isInstant ? null : _confirmAboard,
             onEnableTracking: () async {
               final ready = await _ensureTrackingReady();
               if (!ready) {
@@ -1931,6 +1932,23 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     );
   }
 
+  /// «معي في السيارة»: the driver vouches for a passenger who rode but didn't
+  /// confirm — so they are asked for the fare, and a waiting trip starts.
+  Future<void> _confirmAboard(BookingModel booking) async {
+    try {
+      await _tripService.confirmPassengerAboard(booking);
+      if (!mounted) return;
+      await _loadTrip();
+      if (!mounted) return;
+      setState(() {
+        _liveBookingsFuture = _bookingService.getTripBookings(widget.tripId);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ErrorSurface.showFailure(context, ApiClient.mapError(e));
+    }
+  }
+
   /// «بدء الرحلة» on a shared trip whose passengers are in but didn't confirm.
   Future<void> _startSharedTrip(TripModel trip) async {
     final l10n = context.l10n;
@@ -2041,7 +2059,10 @@ class _TripManagementScreenState extends State<TripManagementScreen>
                     ),
                   ),
                 ),
-                BoardingStatusChip(boarded: b.hasConfirmedBoarding),
+                if (b.hasConfirmedBoarding)
+                  const BoardingStatusChip(boarded: true)
+                else
+                  _ConfirmAboardButton(onPressed: () => _confirmAboard(b)),
               ],
             ),
           ],
@@ -3052,6 +3073,29 @@ class _CompanionTag extends StatelessWidget {
           fontWeight: FontWeight.w700,
           color: T.primary(context),
         ),
+      ),
+    );
+  }
+}
+
+/// «معي في السيارة» next to a passenger who hasn't confirmed boarding.
+class _ConfirmAboardButton extends StatelessWidget {
+  const _ConfirmAboardButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        visualDensity: VisualDensity.compact,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      ),
+      child: Text(
+        context.l10n.boardingVouchAction,
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
       ),
     );
   }
