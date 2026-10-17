@@ -16,6 +16,7 @@ import {
 } from '../../../database/entities/booking.entity';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { PresenceService } from '../../trip-time/presence.service';
+import { hasBoarded } from '../../trip-time/trip-time.service';
 import { DriverTripFeeService } from '../../driver-trip-fee/driver-trip-fee.service';
 
 @Processor('trip-auto-complete')
@@ -91,9 +92,13 @@ export class TripAutoCompleteProcessor {
 
     const activeBookings = await this.bookingRepo.find({
       where: { tripId, status: BookingStatus.IN_PROGRESS },
+      relations: ['seats'],
     });
+    // Same rule as the driver's «تم الوصول»: only those who rode completed it.
     for (const booking of activeBookings) {
-      booking.status = BookingStatus.COMPLETED;
+      booking.status = hasBoarded(booking)
+        ? BookingStatus.COMPLETED
+        : BookingStatus.NO_SHOW;
       await this.bookingRepo.save(booking);
     }
 

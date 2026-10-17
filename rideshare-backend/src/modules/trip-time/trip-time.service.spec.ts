@@ -269,11 +269,48 @@ describe('TripTimeService.completeTrip — fee reconciliation sweep', () => {
   it('still completes the bookings after the charge', async () => {
     trip.driverWalletChargeApplied = false;
     bookings = [
-      { id: 'b-1', tripId: 'trip-1', status: BookingStatus.IN_PROGRESS },
+      {
+        id: 'b-1',
+        tripId: 'trip-1',
+        status: BookingStatus.IN_PROGRESS,
+        passengerPresenceConfirmedAt: new Date(),
+      },
     ];
 
     await service.completeTrip('trip-1', 'driver-1', {});
 
     expect(bookings[0].status).toBe(BookingStatus.COMPLETED);
+  });
+
+  it('asks a fare only of passengers who rode — not of one who never confirmed boarding', async () => {
+    bookings = [
+      {
+        id: 'b-rode',
+        tripId: 'trip-1',
+        status: BookingStatus.IN_PROGRESS,
+        passengerPresenceConfirmedAt: new Date(),
+      },
+      {
+        id: 'b-vouched',
+        tripId: 'trip-1',
+        status: BookingStatus.IN_PROGRESS,
+        // The driver tapped «معي في السيارة».
+        seats: [{ presenceConfirmedAt: new Date() }],
+      },
+      {
+        id: 'b-silent',
+        tripId: 'trip-1',
+        status: BookingStatus.IN_PROGRESS,
+        seats: [{ passengerSelfConfirmedAt: null, presenceConfirmedAt: null }],
+      },
+    ];
+
+    await service.completeTrip('trip-1', 'driver-1', {});
+
+    const status = (id: string) => bookings.find((b) => b.id === id)?.status;
+    expect(status('b-rode')).toBe(BookingStatus.COMPLETED);
+    expect(status('b-vouched')).toBe(BookingStatus.COMPLETED);
+    // Not COMPLETED, so openForTrip (which asks COMPLETED bookings) skips it.
+    expect(status('b-silent')).toBe(BookingStatus.NO_SHOW);
   });
 });

@@ -208,11 +208,26 @@ describe('TripAutoCompleteProcessor — fee reconciliation sweep', () => {
   it('still completes the bookings after the charge', async () => {
     trip.driverWalletChargeApplied = false;
     bookings = [
-      { id: 'b-1', tripId: 'trip-1', status: BookingStatus.IN_PROGRESS },
+      {
+        id: 'b-1',
+        tripId: 'trip-1',
+        status: BookingStatus.IN_PROGRESS,
+        passengerPresenceConfirmedAt: new Date(),
+      },
     ];
 
     await processor.handle({ data: { tripId: 'trip-1' } } as any);
 
     expect(bookings[0].status).toBe(BookingStatus.COMPLETED);
+  });
+
+  it('ends a booking whose passenger never confirmed boarding as a no-show', async () => {
+    bookings = [
+      { id: 'b-1', tripId: 'trip-1', status: BookingStatus.IN_PROGRESS },
+    ];
+
+    await processor.handle({ data: { tripId: 'trip-1' } } as any);
+
+    expect(bookings[0].status).toBe(BookingStatus.NO_SHOW);
   });
 });

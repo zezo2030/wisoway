@@ -341,17 +341,24 @@ export class TripTimeService {
 
     // An instant ride's one booking is never moved to IN_PROGRESS — it goes
     // straight from CONFIRMED to COMPLETED here.
+    const isInstant = trip.tripType === TripType.INSTANT;
     const activeBookings = await this.bookingRepo.find({
       where: {
         tripId,
-        status:
-          trip.tripType === TripType.INSTANT
-            ? In([BookingStatus.IN_PROGRESS, BookingStatus.CONFIRMED])
-            : BookingStatus.IN_PROGRESS,
+        status: isInstant
+          ? In([BookingStatus.IN_PROGRESS, BookingStatus.CONFIRMED])
+          : BookingStatus.IN_PROGRESS,
       },
+      relations: ['seats'],
     });
+    // On a shared trip only those who rode are done — and asked for a fare:
+    // the passenger confirmed «أنا في السيارة», or the driver vouched for
+    // them. Nobody else is charged; their booking ends as a no-show.
+    const notBoarded: BookingEntity[] = [];
     for (const booking of activeBookings) {
-      booking.status = BookingStatus.COMPLETED;
+      const rode = isInstant || hasBoarded(booking);
+      booking.status = rode ? BookingStatus.COMPLETED : BookingStatus.NO_SHOW;
+      if (!rode) notBoarded.push(booking);
       await this.bookingRepo.save(booking);
     }
 
@@ -372,21 +379,33 @@ export class TripTimeService {
     // review. Fines are no longer auto-applied; admin creates them manually via
     // POST /admin/fines after investigating.
 
+    // Those who rode are invited to rate; those who never confirmed boarding
+    // hear why nothing is asked of them.
+    const notBoardedIds = new Set(notBoarded.map((b) => b.id));
     const allBookings = await this.bookingRepo.find({
-      where: { tripId },
+      where: {
+        tripId,
+        status: In([BookingStatus.COMPLETED, BookingStatus.NO_SHOW]),
+      },
     });
     for (const booking of allBookings) {
       const ar =
         (await this.notificationsService.getPreferredLocale(booking.userId)) ===
         'ar';
+      const skipped = notBoardedIds.has(booking.id);
+      if (!skipped && booking.status !== BookingStatus.COMPLETED) continue;
       await this.notificationsService
         .create({
           userId: booking.userId,
           type: 'trip_completed',
-          title: ar ? 'انتهت الرحلة' : 'Trip Completed',
-          body: ar
-            ? `انتهت رحلتك إلى ${trip.toName}. يمكنك الآن تقييم الرحلة.`
-            : `The trip to ${trip.toName} has been completed`,
+          title: ar ? 'انتهت الرحلة' : 'Trip completed',
+          body: skipped
+            ? ar
+              ? `انتهت الرحلة إلى ${trip.toName}. لم تؤكد ركوبك فيها، فلم تُطلب منك أجرة.`
+              : `The trip to ${trip.toName} has ended. You didn't confirm you were on board, so no fare is due.`
+            : ar
+              ? `انتهت رحلتك إلى ${trip.toName}. يمكنك الآن تقييم الرحلة.`
+              : `The trip to ${trip.toName} has been completed`,
           data: { tripId, toName: trip.toName },
         })
         .catch((err: Error) =>
@@ -514,4 +533,16 @@ export class TripTimeService {
       notifiedAt: new Date().toISOString(),
     };
   }
+}
+
+/**
+ * Whether the passenger of a shared-trip booking rode: they confirmed
+ * «أنا في السيارة» (for the booking or any of its seats), or the driver
+ * vouched for one of its seats. Only such bookings are asked for a fare.
+ */
+export function hasBoarded(booking: BookingEntity): boolean {
+  if (booking.passengerPresenceConfirmedAt) return true;
+  return (booking.seats ?? []).some(
+    (s) => s.passengerSelfConfirmedAt != null || s.presenceConfirmedAt != null,
+  );
 }

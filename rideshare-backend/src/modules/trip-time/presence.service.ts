@@ -269,6 +269,16 @@ export class PresenceService {
       void this.notifyConflicts(trip, conflicts);
     }
 
+    // «معي في السيارة» from the driver counts as boarding: a trip waiting at
+    // departure starts, as it would on the passenger's own confirmation.
+    if (dto.entries.some((e) => e.present)) {
+      await this.tripStart
+        .onPassengerBoarded(trip.id, now)
+        .catch((err: Error) =>
+          this.logger.warn(`start on driver vouch failed: ${err.message}`),
+        );
+    }
+
     return this.buildRoster(trip);
   }
 
