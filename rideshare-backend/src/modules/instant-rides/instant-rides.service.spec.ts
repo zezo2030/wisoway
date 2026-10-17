@@ -214,6 +214,44 @@ describe('InstantRidesService', () => {
       expect(Number(view.fareEstimate)).toBeGreaterThanOrEqual(1.5);
     });
 
+    it('keeps the priced route on the request and shows it while searching', async () => {
+      requestRepo.findOne.mockResolvedValue(null);
+      locations.getDistance.mockResolvedValue({
+        distanceKm: 295.8,
+        durationMinutes: 203,
+      });
+      locations.reverseGeocode.mockResolvedValue({ countryCode: 'SA' });
+
+      const view = await service.createRequest('p1', dto);
+
+      expect(requestRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          routeDistanceKm: 295.8,
+          routeDurationMinutes: 203,
+        }),
+      );
+      // Road figures, not the 14 km straight line at city speed.
+      expect(view.distanceKm).toBe(295.8);
+      expect(view.durationMinutes).toBe(203);
+    });
+
+    it('does not price a routing-service detour far longer than the straight line', async () => {
+      requestRepo.findOne.mockResolvedValue(null);
+      locations.getDistance.mockRejectedValue(new Error('REQUEST_DENIED'));
+      // ~14 km apart; a 60 km "route" is a detour of the fallback router.
+      locations.getRoute = jest.fn().mockResolvedValue({
+        distanceMeters: 60_000,
+        durationSeconds: 3_600,
+      });
+      locations.reverseGeocode.mockResolvedValue({ countryCode: 'SA' });
+
+      await service.createRequest('p1', dto);
+
+      const saved = requestRepo.create.mock.calls[0][0];
+      expect(saved.routeDistanceKm).toBeGreaterThan(14);
+      expect(saved.routeDistanceKm).toBeLessThan(25);
+    });
+
     it("quotes in the passenger's phone currency when geocoding is unavailable", async () => {
       locations.getDistance.mockResolvedValue({
         distanceKm: 2.1,

@@ -5,6 +5,7 @@ import {
   computeFare,
   DEFAULT_FARE_TARIFF,
   fareTariffFor,
+  straightLineRoute,
 } from './instant-rides.constants';
 import { RespondOfferDto } from './dto/respond-offer.dto';
 
@@ -43,5 +44,20 @@ describe('RespondOfferDto', () => {
 
   it('rejects a counter-offer — fares are fixed', async () => {
     expect(await errorsFor('counter')).not.toHaveLength(0);
+  });
+});
+
+describe('straightLineRoute (no routing service answered)', () => {
+  it('drives a short hop at city speed', () => {
+    const r = straightLineRoute(5);
+    expect(r.distanceKm).toBeCloseTo(6.5);
+    expect(r.durationMin).toBe(Math.ceil((6.5 / 40) * 60));
+  });
+
+  it('drives between cities at highway speed', () => {
+    // AlUla → Tabuk is ~236 km in a straight line.
+    const r = straightLineRoute(236);
+    expect(r.distanceKm).toBeCloseTo(306.8);
+    expect(r.durationMin).toBeLessThan(4 * 60);
   });
 });

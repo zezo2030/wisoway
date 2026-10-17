@@ -163,6 +163,17 @@ export class InstantRideRequestEntity {
   @Column({ type: 'timestamptz', nullable: true })
   lateWarnedAt: Date | null;
 
+  /**
+   * Driving distance / time of the route the fare was priced on, so the
+   * passenger's search sheet and the driver's offer card show the same road
+   * figures as the price — not a straight line. Null on older requests.
+   */
+  @Column({ type: 'double precision', nullable: true })
+  routeDistanceKm: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  routeDurationMinutes: number | null;
+
   /** Rating cut (%) the driver took for being late on this ride, if any. */
   @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
   ratingPenaltyPercent: string | null;

@@ -252,6 +252,8 @@ export class InstantDispatchService {
     const routeMetrics = buildInstantOfferRouteMetrics({
       fromPoint: request.fromPoint,
       toPoint: request.toPoint,
+      routeDistanceKm: request.routeDistanceKm,
+      routeDurationMinutes: request.routeDurationMinutes,
       passengerFare: request.passengerFare,
       fareEstimate: request.fareEstimate,
       currency: request.currency,

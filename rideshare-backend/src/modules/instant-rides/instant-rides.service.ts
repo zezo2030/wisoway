@@ -44,8 +44,8 @@ import { OfferResponseType, RespondOfferDto } from './dto/respond-offer.dto';
 import {
   dispatchWaveJobId,
   EXPIRE_REQUEST_JOB,
-  FALLBACK_ROAD_FACTOR,
-  FALLBACK_ROUTE_SPEED_KMH,
+  MAX_ROUTE_DETOUR_FACTOR,
+  straightLineRoute,
   computeFare,
   INITIAL_RADIUS_KM,
   MAX_RADIUS_KM,
@@ -61,6 +61,7 @@ import {
   buildInstantOfferRouteMetrics,
   haversineKm,
   OfferLocale,
+  tripRouteMetrics,
 } from './instant-offer-labels';
 
 type LatLng = { latitude: number; longitude: number };
@@ -322,6 +323,8 @@ export class InstantRidesService {
         currency: quote.currency,
         paymentMethod,
         payerCliqAlias,
+        routeDistanceKm: quote.distanceKm,
+        routeDurationMinutes: Math.round(quote.durationMin),
         radiusKm: INITIAL_RADIUS_KM,
         expiresAt: new Date(now.getTime() + REQUEST_TTL_SECONDS * 1000),
       }),
@@ -556,6 +559,8 @@ export class InstantRidesService {
           recommendedFare: fare,
           passengerFare: fare,
           currency: quote.currency,
+          routeDistanceKm: quote.distanceKm,
+          routeDurationMinutes: Math.round(quote.durationMin),
           radiusKm: INITIAL_RADIUS_KM,
           expiresAt: new Date(now.getTime() + REQUEST_TTL_SECONDS * 1000),
         }),
@@ -1019,6 +1024,8 @@ export class InstantRidesService {
           recommendedFare: fare,
           passengerFare: fare,
           currency: original.currency,
+          routeDistanceKm: original.routeDistanceKm,
+          routeDurationMinutes: original.routeDurationMinutes,
           radiusKm: INITIAL_RADIUS_KM,
           expiresAt: new Date(now.getTime() + REQUEST_TTL_SECONDS * 1000),
         }),
@@ -1175,9 +1182,12 @@ export class InstantRidesService {
         to.longitude,
       );
       return { distanceKm: d.distanceKm, durationMin: d.durationMinutes };
-    } catch {
-      // try the route service next
+    } catch (err) {
+      this.logger.warn(
+        `instant_route_google_failed ${(err as Error).message} — trying the route service`,
+      );
     }
+    const straightKm = haversineKm(from, to);
     try {
       const r = await this.locationsService.getRoute(
         from.latitude,
@@ -1186,19 +1196,27 @@ export class InstantRidesService {
         to.longitude,
       );
       if (r.distanceMeters != null && r.durationSeconds != null) {
-        return {
-          distanceKm: r.distanceMeters / 1000,
-          durationMin: Math.ceil(r.durationSeconds / 60),
-        };
+        const routeKm = r.distanceMeters / 1000;
+        // The public OSRM fallback can pick a long detour (AlUla → Tabuk:
+        // 441 km against 296 by Google), and the fare is fixed by it. A route
+        // that much longer than the straight line isn't trusted.
+        if (routeKm <= straightKm * MAX_ROUTE_DETOUR_FACTOR) {
+          return {
+            distanceKm: routeKm,
+            durationMin: Math.ceil(r.durationSeconds / 60),
+          };
+        }
+        this.logger.warn(
+          `instant_route_detour_rejected ${JSON.stringify({
+            routeKm: Math.round(routeKm),
+            straightKm: Math.round(straightKm),
+          })}`,
+        );
       }
     } catch {
       // fall through to the straight line
     }
-    const distanceKm = haversineKm(from, to) * FALLBACK_ROAD_FACTOR;
-    return {
-      distanceKm,
-      durationMin: Math.ceil((distanceKm / FALLBACK_ROUTE_SPEED_KMH) * 60),
-    };
+    return straightLineRoute(straightKm);
   }
 
   /**
@@ -1281,28 +1299,18 @@ export class InstantRidesService {
   }
 
   /**
-   * Straight-line distance + duration for the searching sheet. The request
-   * stores no route, so this mirrors the quote fallback (haversine at the
-   * urban approach speed) — good enough for the "~ km / ~ min" strip.
+   * Road distance + driving time for the searching sheet: the route the fare
+   * was priced on. It used to be the straight line at city approach speed,
+   * which put AlUla → Tabuk at 236 km and 9½ hours.
    */
   private routeMetricsFor(request: InstantRideRequestEntity) {
-    const fromCoords = request.fromPoint?.coordinates;
-    const toCoords = request.toPoint?.coordinates;
-    if (!fromCoords || !toCoords) {
+    if (!request.fromPoint?.coordinates || !request.toPoint?.coordinates) {
       return { distanceKm: null, durationMinutes: null };
     }
-    const [fromLng, fromLat] = fromCoords;
-    const [toLng, toLat] = toCoords;
-    const distanceKm = haversineKm(
-      { latitude: fromLat, longitude: fromLng },
-      { latitude: toLat, longitude: toLng },
-    );
+    const { distanceKm, durationMinutes } = tripRouteMetrics(request);
     return {
       distanceKm: Math.round(distanceKm * 10) / 10,
-      durationMinutes: Math.max(
-        1,
-        Math.round((distanceKm / PICKUP_ETA_SPEED_KMH) * 60),
-      ),
+      durationMinutes,
     };
   }
 
@@ -1372,6 +1380,8 @@ export class InstantRidesService {
     const routeMetrics = buildInstantOfferRouteMetrics({
       fromPoint: request.fromPoint,
       toPoint: request.toPoint,
+      routeDistanceKm: request.routeDistanceKm,
+      routeDurationMinutes: request.routeDurationMinutes,
       passengerFare: request.passengerFare,
       fareEstimate: request.fareEstimate,
       currency: request.currency,

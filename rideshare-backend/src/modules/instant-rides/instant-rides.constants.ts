@@ -204,6 +204,32 @@ export function computeFare(
  */
 export const FALLBACK_ROAD_FACTOR = 1.3;
 export const FALLBACK_ROUTE_SPEED_KMH = 40;
+/** Past this length the fallback assumes highway driving, not city streets. */
+export const FALLBACK_INTERCITY_KM = 30;
+export const FALLBACK_INTERCITY_SPEED_KMH = 80;
+/**
+ * A fallback route longer than the straight line × this is taken for a
+ * detour of the routing service, and the stretched straight line is used.
+ */
+export const MAX_ROUTE_DETOUR_FACTOR = 1.6;
+
+/**
+ * Road distance and driving time estimated from the straight line, when no
+ * routing service gave a usable answer. Within a city the stretched line is
+ * driven at city speed; between cities at highway speed — else AlUla →
+ * Tabuk came out at over 7 hours.
+ */
+export function straightLineRoute(straightKm: number): {
+  distanceKm: number;
+  durationMin: number;
+} {
+  const distanceKm = straightKm * FALLBACK_ROAD_FACTOR;
+  const speed =
+    distanceKm > FALLBACK_INTERCITY_KM
+      ? FALLBACK_INTERCITY_SPEED_KMH
+      : FALLBACK_ROUTE_SPEED_KMH;
+  return { distanceKm, durationMin: Math.ceil((distanceKm / speed) * 60) };
+}
 
 // ── Payment ───────────────────────────────────────────────────────────────────
 /** CliQ (Jordan only) is offered where the fare is in JOD; elsewhere cash. */

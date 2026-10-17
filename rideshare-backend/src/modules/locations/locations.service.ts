@@ -1008,11 +1008,19 @@ export class LocationsService {
       );
 
       if (response.data.status !== 'OK') {
+        // Say why: a key/billing/API restriction shows up here as
+        // REQUEST_DENIED with Google's own message.
+        this.logger.warn(
+          `Distance Matrix failed with status=${response.data.status}, message=${response.data.error_message ?? 'n/a'}`,
+        );
         throw new BadRequestException('Failed to calculate distance');
       }
 
       const element = response.data.rows[0].elements[0];
       if (element.status !== 'OK') {
+        this.logger.warn(
+          `Distance Matrix element status=${element.status} for ${fromLatitude},${fromLongitude} → ${toLatitude},${toLongitude}`,
+        );
         throw new BadRequestException('Failed to calculate distance');
       }
 
@@ -1026,6 +1034,10 @@ export class LocationsService {
       if (error instanceof BadRequestException) {
         throw error;
       }
+      // Network error, timeout, or no key configured.
+      this.logger.warn(
+        `Distance Matrix request failed: ${(error as Error)?.message ?? error}`,
+      );
       throw new BadRequestException('Failed to calculate distance');
     }
   }

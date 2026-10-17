@@ -9,8 +9,42 @@ type LatLng = { latitude: number; longitude: number };
 
 export type OfferLocale = 'ar' | 'en';
 
-/** Average trip speed for duration estimate on the offer card. */
+/**
+ * Average trip speed for the duration estimate when a request has no stored
+ * route (older requests); see [tripRouteMetrics].
+ */
 export const OFFER_TRIP_AVG_SPEED_KMH = 50;
+/** Straight line → road length, for the same fallback. */
+export const OFFER_ROAD_FACTOR = 1.3;
+
+/**
+ * The trip's road distance and driving time: the route the fare was priced
+ * on when the request stored it, else the straight line stretched to road
+ * length at an average inter-city speed.
+ */
+export function tripRouteMetrics(input: {
+  fromPoint: { coordinates: [number, number] };
+  toPoint: { coordinates: [number, number] };
+  routeDistanceKm?: number | null;
+  routeDurationMinutes?: number | null;
+}): { distanceKm: number; durationMinutes: number } {
+  if (input.routeDistanceKm != null && input.routeDurationMinutes != null) {
+    return {
+      distanceKm: Number(input.routeDistanceKm),
+      durationMinutes: Math.max(1, Math.round(input.routeDurationMinutes)),
+    };
+  }
+  const distanceKm =
+    haversineKm(pointToLatLng(input.fromPoint), pointToLatLng(input.toPoint)) *
+    OFFER_ROAD_FACTOR;
+  return {
+    distanceKm,
+    durationMinutes: Math.max(
+      1,
+      Math.round((distanceKm / OFFER_TRIP_AVG_SPEED_KMH) * 60),
+    ),
+  };
+}
 
 /** Normalize any locale-ish string ("en-US", "EN", null) to 'ar' | 'en'. */
 export function normalizeOfferLocale(raw?: string | null): OfferLocale {
@@ -151,6 +185,9 @@ export function buildInstantOfferPushText(input: {
 export function buildInstantOfferRouteMetrics(input: {
   fromPoint: { coordinates: [number, number] };
   toPoint: { coordinates: [number, number] };
+  /** The priced route, when the request stored it (see [tripRouteMetrics]). */
+  routeDistanceKm?: number | null;
+  routeDurationMinutes?: number | null;
   passengerFare?: string | null;
   fareEstimate?: string | null;
   currency: string;
@@ -178,13 +215,7 @@ export function buildInstantOfferRouteMetrics(input: {
   locale: OfferLocale;
 } {
   const locale = input.locale ?? 'ar';
-  const from = pointToLatLng(input.fromPoint);
-  const to = pointToLatLng(input.toPoint);
-  const distanceKm = haversineKm(from, to);
-  const durationMinutes = Math.max(
-    1,
-    Math.round((distanceKm / OFFER_TRIP_AVG_SPEED_KMH) * 60),
-  );
+  const { distanceKm, durationMinutes } = tripRouteMetrics(input);
   const fare = input.passengerFare ?? input.fareEstimate ?? '';
   const seats = input.seatCount ?? 1;
   const pickupMeters = input.pickupDistanceMeters;
