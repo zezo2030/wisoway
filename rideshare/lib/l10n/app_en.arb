@@ -3181,7 +3181,23 @@
   "liveTripRevenueLabel": "Revenue",
   "liveTripPassengersSheetTitle": "Passengers",
   "liveTripDetails": "Details",
-  "liveTripNoPassengers": "No confirmed passengers",
+  "liveTripNoPassengers": "No passengers on this trip",
+  "boardingConfirmed": "On board",
+  "boardingNotConfirmed": "Not confirmed yet",
+  "boardingConfirmedCount": "{boarded} of {total} on board",
+  "@boardingConfirmedCount": {
+    "placeholders": {
+      "boarded": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "boardingCardTitle": "Passengers boarding",
+  "boardingCardBody": "The trip starts when the first passenger confirms they're in the car. If your passengers are with you but haven't confirmed, tap Start trip.",
+  "boardingStartAction": "Start trip",
+  "boardingStartOpensHint": "You can start the trip up to 30 minutes before departure.",
+  "boardingStartConfirmTitle": "Start the trip?",
+  "boardingStartConfirmBody": "Make sure your passengers are in the car first.",
+  "boardingStarted": "Trip started",
   "bookingCompanionTag": "Companion",
   "bookingSeatOccupant": "Seat {seat} · {name}",
   "@bookingSeatOccupant": {

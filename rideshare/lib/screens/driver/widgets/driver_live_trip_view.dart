@@ -13,6 +13,7 @@ import '../../../core/theme/text_styles.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/booking_model.dart';
 import '../../../models/trip_model.dart';
+import 'boarding_status_chip.dart';
 
 /// The driver's page for a trip that is under way — instant or shared.
 ///
@@ -117,6 +118,7 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
   List<LatLng> _pickupLeg = const [];
   LatLng? _pickupLegOrigin;
   bool _fetchingPickupLeg = false;
+
   /// The driver has been at the pickup (by GPS or by pressing «وصلت»).
   bool _beenAtPickup = false;
   bool _startPromptOpen = false;
@@ -227,11 +229,7 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        icon: Icon(
-          IconsaxPlusBold.routing,
-          color: T.primary(ctx),
-          size: 32,
-        ),
+        icon: Icon(IconsaxPlusBold.routing, color: T.primary(ctx), size: 32),
         title: Text(l10n.instantTripMovedTitle),
         content: Text(l10n.instantTripMovedBody),
         actions: [
@@ -547,7 +545,11 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
     );
   }
 
-  Widget _buildPanel(BuildContext context, MediaQueryData media, LatLng target) {
+  Widget _buildPanel(
+    BuildContext context,
+    MediaQueryData media,
+    LatLng target,
+  ) {
     final l10n = context.l10n;
     final car = widget.driverPosition;
     final stageText = switch (_stage) {
@@ -752,6 +754,7 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
     final bookings = widget.bookings;
     final seats = bookings.fold<int>(0, (sum, b) => sum + b.seatCount);
     final shown = bookings.take(4).toList();
+    final boarded = bookings.where((b) => b.hasConfirmedBoarding).length;
 
     return Material(
       color: T.surfaceVariant(context),
@@ -794,7 +797,8 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
                 child: Text(
                   bookings.isEmpty
                       ? context.l10n.liveTripNoPassengers
-                      : context.l10n.liveTripPassengersCount(seats),
+                      : '${context.l10n.liveTripPassengersCount(seats)}'
+                            ' · ${context.l10n.boardingConfirmedCount(boarded, bookings.length)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.titleSmall.copyWith(
@@ -880,6 +884,9 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
                                   style: AppTextStyles.bodySmall.copyWith(
                                     color: T.textSecondary(context),
                                   ),
+                                ),
+                                BoardingStatusChip(
+                                  boarded: b.hasConfirmedBoarding,
                                 ),
                               ],
                             ),
@@ -1024,29 +1031,33 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
     final l10n = context.l10n;
     // The primary action follows the ride: arrive at the passenger, start the
     // ride once they're in, and only then arrive at the destination.
-    final (VoidCallback? onPrimary, String label, IconData icon, bool busy) =
-        switch (_stage) {
-          _Stage.toPickup => (
-            widget.onArrivedAtPickup,
-            l10n.instantTripArrivedAtPickupAction,
-            IconsaxPlusBold.location_tick,
-            widget.stageBusy,
-          ),
-          _Stage.atPickup => (
-            widget.onStartRide,
-            l10n.instantTripStartAction,
-            IconsaxPlusBold.play_circle,
-            widget.stageBusy,
-          ),
-          _Stage.onBoard => (
-            widget.onArrived,
-            widget.markingArrived
-                ? l10n.endingInProgress
-                : l10n.arrivedAtDestination,
-            IconsaxPlusBold.tick_circle,
-            widget.markingArrived,
-          ),
-        };
+    final (
+      VoidCallback? onPrimary,
+      String label,
+      IconData icon,
+      bool busy,
+    ) = switch (_stage) {
+      _Stage.toPickup => (
+        widget.onArrivedAtPickup,
+        l10n.instantTripArrivedAtPickupAction,
+        IconsaxPlusBold.location_tick,
+        widget.stageBusy,
+      ),
+      _Stage.atPickup => (
+        widget.onStartRide,
+        l10n.instantTripStartAction,
+        IconsaxPlusBold.play_circle,
+        widget.stageBusy,
+      ),
+      _Stage.onBoard => (
+        widget.onArrived,
+        widget.markingArrived
+            ? l10n.endingInProgress
+            : l10n.arrivedAtDestination,
+        IconsaxPlusBold.tick_circle,
+        widget.markingArrived,
+      ),
+    };
 
     return Row(
       children: [

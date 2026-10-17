@@ -3319,7 +3319,23 @@
   "liveTripRevenueLabel": "الإيرادات",
   "liveTripPassengersSheetTitle": "ركاب الرحلة",
   "liveTripDetails": "التفاصيل",
-  "liveTripNoPassengers": "لا يوجد ركاب مؤكَّدون",
+  "liveTripNoPassengers": "لا يوجد ركاب في هذه الرحلة",
+  "boardingConfirmed": "أكّد ركوبه",
+  "boardingNotConfirmed": "لم يؤكد ركوبه بعد",
+  "boardingConfirmedCount": "أكّد {boarded} من {total}",
+  "@boardingConfirmedCount": {
+    "placeholders": {
+      "boarded": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "boardingCardTitle": "ركوب الركاب",
+  "boardingCardBody": "تبدأ الرحلة عندما يؤكد أول راكب أنه في السيارة. إذا كان الركاب معك ولم يؤكدوا، اضغط «بدء الرحلة».",
+  "boardingStartAction": "بدء الرحلة",
+  "boardingStartOpensHint": "يمكنك بدء الرحلة قبل موعدها بـ 30 دقيقة.",
+  "boardingStartConfirmTitle": "بدء الرحلة؟",
+  "boardingStartConfirmBody": "تأكد أن الركاب في السيارة قبل البدء.",
+  "boardingStarted": "بدأت الرحلة",
   "bookingCompanionTag": "مرافق",
   "bookingSeatOccupant": "مقعد {seat} · {name}",
   "@bookingSeatOccupant": {

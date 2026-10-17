@@ -5556,7 +5556,41 @@ class AppLocalizationsAr extends AppLocalizations {
   String get liveTripDetails => 'التفاصيل';
 
   @override
-  String get liveTripNoPassengers => 'لا يوجد ركاب مؤكَّدون';
+  String get liveTripNoPassengers => 'لا يوجد ركاب في هذه الرحلة';
+
+  @override
+  String get boardingConfirmed => 'أكّد ركوبه';
+
+  @override
+  String get boardingNotConfirmed => 'لم يؤكد ركوبه بعد';
+
+  @override
+  String boardingConfirmedCount(int boarded, int total) {
+    return 'أكّد $boarded من $total';
+  }
+
+  @override
+  String get boardingCardTitle => 'ركوب الركاب';
+
+  @override
+  String get boardingCardBody =>
+      'تبدأ الرحلة عندما يؤكد أول راكب أنه في السيارة. إذا كان الركاب معك ولم يؤكدوا، اضغط «بدء الرحلة».';
+
+  @override
+  String get boardingStartAction => 'بدء الرحلة';
+
+  @override
+  String get boardingStartOpensHint =>
+      'يمكنك بدء الرحلة قبل موعدها بـ 30 دقيقة.';
+
+  @override
+  String get boardingStartConfirmTitle => 'بدء الرحلة؟';
+
+  @override
+  String get boardingStartConfirmBody => 'تأكد أن الركاب في السيارة قبل البدء.';
+
+  @override
+  String get boardingStarted => 'بدأت الرحلة';
 
   @override
   String get bookingCompanionTag => 'مرافق';

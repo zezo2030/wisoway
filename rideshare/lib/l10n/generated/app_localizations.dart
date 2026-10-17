@@ -10169,8 +10169,68 @@ abstract class AppLocalizations {
   /// No description provided for @liveTripNoPassengers.
   ///
   /// In ar, this message translates to:
-  /// **'لا يوجد ركاب مؤكَّدون'**
+  /// **'لا يوجد ركاب في هذه الرحلة'**
   String get liveTripNoPassengers;
+
+  /// No description provided for @boardingConfirmed.
+  ///
+  /// In ar, this message translates to:
+  /// **'أكّد ركوبه'**
+  String get boardingConfirmed;
+
+  /// No description provided for @boardingNotConfirmed.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم يؤكد ركوبه بعد'**
+  String get boardingNotConfirmed;
+
+  /// No description provided for @boardingConfirmedCount.
+  ///
+  /// In ar, this message translates to:
+  /// **'أكّد {boarded} من {total}'**
+  String boardingConfirmedCount(int boarded, int total);
+
+  /// No description provided for @boardingCardTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'ركوب الركاب'**
+  String get boardingCardTitle;
+
+  /// No description provided for @boardingCardBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'تبدأ الرحلة عندما يؤكد أول راكب أنه في السيارة. إذا كان الركاب معك ولم يؤكدوا، اضغط «بدء الرحلة».'**
+  String get boardingCardBody;
+
+  /// No description provided for @boardingStartAction.
+  ///
+  /// In ar, this message translates to:
+  /// **'بدء الرحلة'**
+  String get boardingStartAction;
+
+  /// No description provided for @boardingStartOpensHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'يمكنك بدء الرحلة قبل موعدها بـ 30 دقيقة.'**
+  String get boardingStartOpensHint;
+
+  /// No description provided for @boardingStartConfirmTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'بدء الرحلة؟'**
+  String get boardingStartConfirmTitle;
+
+  /// No description provided for @boardingStartConfirmBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'تأكد أن الركاب في السيارة قبل البدء.'**
+  String get boardingStartConfirmBody;
+
+  /// No description provided for @boardingStarted.
+  ///
+  /// In ar, this message translates to:
+  /// **'بدأت الرحلة'**
+  String get boardingStarted;
 
   /// No description provided for @bookingCompanionTag.
   ///

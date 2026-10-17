@@ -51,8 +51,9 @@ class BookingSeatModel {
       gender: json['gender']?.toString() ?? '',
       isMainBooker: json['isMainBooker'] ?? false,
       markedAbsentAt: BookingModel._dateOrNull(json['markedAbsentAt']),
-      passengerSelfConfirmedAt:
-          BookingModel._dateOrNull(json['passengerSelfConfirmedAt']),
+      passengerSelfConfirmedAt: BookingModel._dateOrNull(
+        json['passengerSelfConfirmedAt'],
+      ),
       passengerDeclaredStatus: json['passengerDeclaredStatus']?.toString(),
       billableOverride: json['billableOverride'] as bool?,
       createdAt: BookingModel._dateOrNow(json['createdAt']),
@@ -88,7 +89,8 @@ class BookingModel {
   final bool hasDriverPaidToContact;
 
   // Status
-  final String status; // 'pending' | 'confirmed' | 'cancelled' | 'rejected' | 'completed' | 'no_show'
+  final String
+  status; // 'pending' | 'confirmed' | 'cancelled' | 'rejected' | 'completed' | 'no_show'
 
   /// Whether chat/call contact is allowed (post-settlement reveal).
   final bool chatEnabled;
@@ -172,9 +174,9 @@ class BookingModel {
     final seatsJson = json['seats'];
     final List<BookingSeatModel> parsedSeats = seatsJson is List
         ? seatsJson
-            .whereType<Map<String, dynamic>>()
-            .map(BookingSeatModel.fromJson)
-            .toList()
+              .whereType<Map<String, dynamic>>()
+              .map(BookingSeatModel.fromJson)
+              .toList()
         : [];
 
     return BookingModel(
@@ -276,6 +278,17 @@ class BookingModel {
   // Helper getters
   bool get isPending => status == 'pending';
   bool get isConfirmed => status == 'confirmed';
+  bool get isInProgress => status == 'in_progress';
+
+  /// On the trip: confirmed before it starts, in progress once it has.
+  bool get isRiding => isConfirmed || isInProgress;
+
+  /// The passenger said «أنا في السيارة» (for any of their seats).
+  bool get hasConfirmedBoarding => seats.any(
+    (s) =>
+        s.passengerSelfConfirmedAt != null ||
+        s.passengerDeclaredStatus == 'in_vehicle',
+  );
   bool get isCancelled => status == 'cancelled';
   bool get isCompleted => status == 'completed';
   bool get isRejected => status == 'rejected';

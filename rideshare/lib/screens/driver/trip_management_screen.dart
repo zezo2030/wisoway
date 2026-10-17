@@ -33,6 +33,7 @@ import '../../core/services/trip_service.dart';
 import '../../l10n/l10n_extensions.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' show LatLng;
+import 'widgets/boarding_status_chip.dart';
 import 'widgets/driver_live_trip_view.dart';
 import '../../models/vehicle_art.dart';
 import '../../widgets/expandable_cabin_view.dart';
@@ -97,6 +98,11 @@ class _TripManagementScreenState extends State<TripManagementScreen>
   /// cancellation, an admin, auto-complete) so the live page lets go.
   Timer? _liveStatusPoll;
 
+  /// Shared trip around departure: picks up passengers confirming they're
+  /// on board, and the trip starting with the first of them.
+  Timer? _boardingPoll;
+  bool _startingTrip = false;
+
   /// Fee preview for the pre-departure fare card. `percent` and `amount` both
   /// come from `GET /trips/fee-quote` — never a client-side literal.
   TripFeeQuote? _feeQuote;
@@ -126,6 +132,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     WidgetsBinding.instance.removeObserver(this);
     _locationTrackingTimer?.cancel();
     _liveStatusPoll?.cancel();
+    _boardingPoll?.cancel();
     ActiveRideNavigator.left(widget.tripId);
     super.dispose();
   }
@@ -275,9 +282,17 @@ class _TripManagementScreenState extends State<TripManagementScreen>
         });
         _syncLiveTrackingState();
         if (trip != null && _isLive(trip)) {
+          _boardingPoll?.cancel();
+          _boardingPoll = null;
           _liveStatusPoll ??= Timer.periodic(
             const Duration(seconds: 15),
             (_) => _checkInstantEnded(),
+          );
+        } else if (trip != null && _awaitingBoarding(trip)) {
+          // Watch for passengers confirming and the trip starting.
+          _boardingPoll ??= Timer.periodic(
+            const Duration(seconds: 15),
+            (_) => _loadTrip(),
           );
         }
         _loadFeeQuote();
@@ -718,9 +733,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
         builder: (context, bookingsSnapshot) {
           final bookings = bookingsSnapshot.data ?? [];
           final pendingBookings = bookings.where((b) => b.isPending).toList();
-          final confirmedBookings = bookings
-              .where((b) => b.isConfirmed)
-              .toList();
+          final confirmedBookings = bookings.where((b) => b.isRiding).toList();
 
           return RefreshIndicator(
             onRefresh: _loadTrip,
@@ -846,7 +859,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
         future: _previewBookingsFuture ?? _liveBookingsFuture,
         builder: (context, snapshot) {
           final bookings = (snapshot.data ?? const <BookingModel>[])
-              .where((b) => b.isConfirmed)
+              .where((b) => b.isRiding)
               .toList();
 
           return DriverLiveTripView(
@@ -1052,8 +1065,11 @@ class _TripManagementScreenState extends State<TripManagementScreen>
       _buildContactBar(trip),
       const SizedBox(height: 20),
 
-      // 9 — Presence reminder
-      _buildPresenceReminder(),
+      // 9 — Boarding: who is in the car, and «بدء الرحلة»
+      if (trip.isInstant)
+        _buildPresenceReminder()
+      else
+        _buildBoardingCard(trip, confirmedBookings),
       const SizedBox(height: 24),
     ];
   }
@@ -1903,6 +1919,163 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     } finally {
       if (mounted) setState(() => _stageBusy = false);
     }
+  }
+
+  /// A shared trip from 30 minutes before departure until it starts: the
+  /// window in which passengers confirm boarding and the driver may start.
+  static bool _awaitingBoarding(TripModel trip) {
+    if (trip.isInstant || trip.tripStartedAt != null) return false;
+    if (trip.isCancelled || trip.isCompleted) return false;
+    return DateTime.now().isAfter(
+      trip.departureTime.subtract(const Duration(minutes: 30)),
+    );
+  }
+
+  /// «بدء الرحلة» on a shared trip whose passengers are in but didn't confirm.
+  Future<void> _startSharedTrip(TripModel trip) async {
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.boardingStartConfirmTitle),
+        content: Text(l10n.boardingStartConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.boardingStartAction),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _startingTrip = true);
+    try {
+      await _tripService.startSharedTrip(trip.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.boardingStarted)));
+      await _loadTrip();
+    } catch (e) {
+      if (!mounted) return;
+      ErrorSurface.showFailure(context, ApiClient.mapError(e));
+    } finally {
+      if (mounted) setState(() => _startingTrip = false);
+    }
+  }
+
+  /// Section 9 for shared trips: each passenger's boarding, and «بدء الرحلة».
+  /// The trip starts with the first passenger who confirms they're in the
+  /// car; the button covers riders who are in but didn't tap.
+  Widget _buildBoardingCard(TripModel trip, List<BookingModel> riders) {
+    final l10n = context.l10n;
+    final canStart = _awaitingBoarding(trip);
+    return Container(
+      key: const ValueKey('boarding-card'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: T.primaryContainer(context),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(
+                IconsaxPlusLinear.profile_tick,
+                size: 20,
+                color: T.primary(context),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  l10n.boardingCardTitle,
+                  style: AppTextStyles.titleSmall.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: T.onPrimaryContainer(context),
+                  ),
+                ),
+              ),
+              if (riders.isNotEmpty)
+                Text(
+                  l10n.boardingConfirmedCount(
+                    riders.where((b) => b.hasConfirmedBoarding).length,
+                    riders.length,
+                  ),
+                  style: AppTextStyles.bodySmall.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: T.primary(context),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            l10n.boardingCardBody,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: T.onPrimaryContainer(context),
+              height: 1.5,
+            ),
+          ),
+          for (final b in riders) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    b.userPopulated?.name.trim().isNotEmpty == true
+                        ? b.userPopulated!.name
+                        : l10n.passengerFallback,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: T.onSurface(context),
+                    ),
+                  ),
+                ),
+                BoardingStatusChip(boarded: b.hasConfirmedBoarding),
+              ],
+            ),
+          ],
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 48,
+            child: ElevatedButton.icon(
+              key: const ValueKey('boarding-start'),
+              onPressed: canStart && !_startingTrip
+                  ? () => _startSharedTrip(trip)
+                  : null,
+              icon: _startingTrip
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(IconsaxPlusBold.play_circle, size: 20),
+              label: Text(l10n.boardingStartAction),
+            ),
+          ),
+          if (!canStart) ...[
+            const SizedBox(height: 6),
+            Text(
+              l10n.boardingStartOpensHint,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: T.textSecondary(context),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   /// Instant ride, before pickup: the driver backs out. The server cancels

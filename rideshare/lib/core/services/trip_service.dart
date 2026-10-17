@@ -363,6 +363,12 @@ class TripService {
     await _api.post(ApiEndpoints.instantTripStart(tripId));
   }
 
+  /// Shared trip: the driver starts it — when the passengers are in but none
+  /// confirmed (otherwise it starts with the first confirmation).
+  Future<void> startSharedTrip(String tripId) async {
+    await _api.post(ApiEndpoints.startTrip(tripId));
+  }
+
   /// Instant ride: the driver cancels before the passenger is in the car.
   Future<void> cancelInstantRide(String tripId) async {
     await _api.post(ApiEndpoints.instantTripCancel(tripId));

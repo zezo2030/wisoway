@@ -281,15 +281,17 @@ void main() {
 
     expect(find.byType(Scrollable), findsNothing);
     expect(find.text('في الطريق إلى الوجهة'), findsOneWidget);
-    expect(find.text('الركاب: 3'), findsOneWidget);
+    // Nobody has confirmed boarding in these fixtures.
+    expect(find.text('الركاب: 3 · أكّد 0 من 2'), findsOneWidget);
     expect(find.text('15.00 JOD'), findsOneWidget);
     expect(find.text('الإيرادات'), findsOneWidget);
     expect(find.byType(BackButtonIcon), findsOneWidget);
 
-    await tester.tap(find.text('الركاب: 3'));
+    await tester.tap(find.text('الركاب: 3 · أكّد 0 من 2'));
     await tester.pumpAndSettle();
     expect(find.text('ركاب الرحلة'), findsOneWidget);
     expect(find.text('sara'), findsOneWidget);
+    expect(find.text('لم يؤكد ركوبه بعد'), findsNWidgets(2));
   });
 
   testWidgets('fits a small phone without overflowing', (tester) async {

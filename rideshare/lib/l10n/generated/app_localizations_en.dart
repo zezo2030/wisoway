@@ -5608,7 +5608,42 @@ class AppLocalizationsEn extends AppLocalizations {
   String get liveTripDetails => 'Details';
 
   @override
-  String get liveTripNoPassengers => 'No confirmed passengers';
+  String get liveTripNoPassengers => 'No passengers on this trip';
+
+  @override
+  String get boardingConfirmed => 'On board';
+
+  @override
+  String get boardingNotConfirmed => 'Not confirmed yet';
+
+  @override
+  String boardingConfirmedCount(int boarded, int total) {
+    return '$boarded of $total on board';
+  }
+
+  @override
+  String get boardingCardTitle => 'Passengers boarding';
+
+  @override
+  String get boardingCardBody =>
+      'The trip starts when the first passenger confirms they\'re in the car. If your passengers are with you but haven\'t confirmed, tap Start trip.';
+
+  @override
+  String get boardingStartAction => 'Start trip';
+
+  @override
+  String get boardingStartOpensHint =>
+      'You can start the trip up to 30 minutes before departure.';
+
+  @override
+  String get boardingStartConfirmTitle => 'Start the trip?';
+
+  @override
+  String get boardingStartConfirmBody =>
+      'Make sure your passengers are in the car first.';
+
+  @override
+  String get boardingStarted => 'Trip started';
 
   @override
   String get bookingCompanionTag => 'Companion';
