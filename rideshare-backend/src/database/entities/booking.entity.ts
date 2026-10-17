@@ -87,6 +87,13 @@ export class BookingEntity {
   @Column({ type: 'timestamp', nullable: true })
   passengerPresenceConfirmedAt: Date | null;
 
+  /**
+   * The hour-before reminder reached this booking. Per booking, so a seat
+   * booked after the trip's reminder went out still gets one.
+   */
+  @Column({ type: 'timestamptz', nullable: true })
+  preTripReminderSentAt: Date | null;
+
   @Column({ type: 'timestamp', nullable: true })
   driverConfirmedPassengerAt: Date | null;
 

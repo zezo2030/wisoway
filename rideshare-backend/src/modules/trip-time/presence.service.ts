@@ -15,6 +15,7 @@ import {
   PassengerDeclaredStatus,
   SeatAbsenceReason,
   TripEntity,
+  TripStatus,
   UserEntity,
   VehicleEntity,
   PgUserRole,
@@ -22,6 +23,7 @@ import {
 import { ErrorCodes } from '../../common/errors/error-codes';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PlatformPricingService } from '../payments/platform-pricing.service';
+import { TripStartService } from './trip-start.service';
 import {
   DriverPresenceConfirmDto,
   PassengerDeclareDto,
@@ -77,6 +79,7 @@ export class PresenceService {
     private readonly seatRepo: Repository<BookingSeatEntity>,
     private readonly notifications: NotificationsService,
     private readonly platformPricing: PlatformPricingService,
+    private readonly tripStart: TripStartService,
   ) {}
 
   private round2(n: number): number {
@@ -384,11 +387,7 @@ export class PresenceService {
     }
 
     const now = new Date();
-    const departure = new Date(trip.departureTime).getTime();
-    if (
-      now.getTime() < departure - PASSENGER_WINDOW_BEFORE_MS ||
-      now.getTime() > departure + PASSENGER_WINDOW_AFTER_MS
-    ) {
+    if (!this.passengerWindow(trip, now.getTime()).isOpen) {
       throw new ConflictException({
         statusCode: 409,
         code: ErrorCodes.PRESENCE_WINDOW_CLOSED,
@@ -442,6 +441,15 @@ export class PresenceService {
     booking.passengerPresenceConfirmedAt =
       dto.status === PassengerDeclaredStatus.IN_VEHICLE ? now : null;
     await this.bookingRepo.save(booking);
+
+    // A trip waiting at departure starts with its first rider on board.
+    if (dto.status === PassengerDeclaredStatus.IN_VEHICLE) {
+      await this.tripStart
+        .onPassengerBoarded(trip.id, now)
+        .catch((err: Error) =>
+          this.logger.warn(`start on boarding failed: ${err.message}`),
+        );
+    }
 
     if (raisedConflicts.length > 0) {
       trip.presenceReviewFlagged = true;
@@ -660,13 +668,36 @@ export class PresenceService {
         declaredStatus: s.passengerDeclaredStatus,
         selfConfirmedAt: s.passengerSelfConfirmedAt,
       })),
-      window: {
-        opensAt: new Date(departure - PASSENGER_WINDOW_BEFORE_MS),
-        closesAt: new Date(departure + PASSENGER_WINDOW_AFTER_MS),
-        isOpen:
-          now >= departure - PASSENGER_WINDOW_BEFORE_MS &&
-          now <= departure + PASSENGER_WINDOW_AFTER_MS,
-      },
+      window: this.passengerWindow(trip, now),
+    };
+  }
+
+  /**
+   * When the passenger may say whether they are in the car: from an hour
+   * before departure until 30 min after the trip started. A trip still
+   * waiting for its riders to board (it no longer starts on the clock alone)
+   * keeps it open, shown as 30 min from now.
+   */
+  private passengerWindow(
+    trip: TripEntity,
+    now: number,
+  ): { opensAt: Date; closesAt: Date; isOpen: boolean } {
+    const departure = new Date(trip.departureTime).getTime();
+    const opensAt = departure - PASSENGER_WINDOW_BEFORE_MS;
+    const waiting =
+      trip.tripStartedAt == null &&
+      trip.status !== TripStatus.COMPLETED &&
+      trip.status !== TripStatus.CANCELLED;
+    const closesAt = waiting
+      ? Math.max(departure, now) + PASSENGER_WINDOW_AFTER_MS
+      : Math.max(
+          departure,
+          new Date(trip.tripStartedAt ?? departure).getTime(),
+        ) + PASSENGER_WINDOW_AFTER_MS;
+    return {
+      opensAt: new Date(opensAt),
+      closesAt: new Date(closesAt),
+      isOpen: now >= opensAt && now <= closesAt,
     };
   }
 }

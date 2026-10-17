@@ -9,6 +9,7 @@ import {
   TripEntity,
 } from '../../database/entities';
 import { PresenceService } from './presence.service';
+import { TripStartService } from './trip-start.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PlatformPricingService } from '../payments/platform-pricing.service';
 
@@ -107,6 +108,10 @@ describe('PresenceService', () => {
           useValue: { create: jest.fn(async () => ({})) },
         },
         {
+          provide: TripStartService,
+          useValue: { onPassengerBoarded: jest.fn(async () => undefined) },
+        },
+        {
           provide: PlatformPricingService,
           useValue: {
             getFeeRowForCurrency: jest.fn(async () => null),
@@ -192,6 +197,51 @@ describe('PresenceService', () => {
       await service.passengerDeclare('b1', 'u-passenger', { status });
       return seat;
     }
+
+    it('hands «in the car» to the trip start, which may start a waiting trip', async () => {
+      await runDeclare(makeSeat(), PassengerDeclaredStatus.IN_VEHICLE);
+
+      const tripStart = (service as any).tripStart;
+      expect(tripStart.onPassengerBoarded).toHaveBeenCalledWith(
+        't1',
+        expect.any(Date),
+      );
+    });
+
+    it('keeps the window open past +30 min while the trip waits for riders', async () => {
+      const trip = makeTrip({
+        departureTime: new Date(Date.now() - 2 * 60 * 60 * 1000),
+        status: 'published' as any,
+        tripStartedAt: null,
+      });
+      const booking = makeBooking([makeSeat()]);
+      (booking as any).trip = trip;
+      bookingRepo.findOne.mockResolvedValue(booking);
+
+      await expect(
+        service.passengerDeclare('b1', 'u-passenger', {
+          status: PassengerDeclaredStatus.IN_VEHICLE,
+        }),
+      ).resolves.toMatchObject({ status: PassengerDeclaredStatus.IN_VEHICLE });
+    });
+
+    it('closes the window 30 min after a started trip began', async () => {
+      const longAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      const trip = makeTrip({
+        departureTime: longAgo,
+        status: 'in_progress' as any,
+        tripStartedAt: longAgo,
+      });
+      const booking = makeBooking([makeSeat()]);
+      (booking as any).trip = trip;
+      bookingRepo.findOne.mockResolvedValue(booking);
+
+      await expect(
+        service.passengerDeclare('b1', 'u-passenger', {
+          status: PassengerDeclaredStatus.IN_VEHICLE,
+        }),
+      ).rejects.toThrow();
+    });
 
     it('records self-confirmation as the billable presence signal', async () => {
       const seat = await runDeclare(

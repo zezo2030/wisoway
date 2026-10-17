@@ -28,6 +28,7 @@ describe('PreTripReminderJob', () => {
         { id: 'b1', userId: 'p1' },
         { id: 'b2', userId: 'p2' },
       ]),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
     notifications = {
       create: jest.fn().mockResolvedValue({}),
@@ -63,6 +64,7 @@ describe('PreTripReminderJob', () => {
 
   it('sends nothing when another tick already claimed the trip', async () => {
     execute.mockResolvedValue({ affected: 0 });
+    bookingRepo.update.mockResolvedValue({ affected: 0 });
 
     await expect(job.remind('t1')).resolves.toBe(false);
     expect(notifications.create).not.toHaveBeenCalled();
@@ -76,5 +78,45 @@ describe('PreTripReminderJob', () => {
     expect(notifications.create.mock.calls[0][0].title).toBe(
       'Reminder: your trip is in an hour',
     );
+  });
+});
+
+describe('PreTripReminderJob — per booking', () => {
+  it('reminds a passenger who booked after the trip was reminded', async () => {
+    const qb: any = {
+      update: () => qb,
+      set: () => qb,
+      where: () => qb,
+      andWhere: () => qb,
+      // The driver (and the earlier passengers) were reminded already.
+      execute: jest.fn().mockResolvedValue({ affected: 0 }),
+    };
+    const tripRepo: any = {
+      findOne: jest
+        .fn()
+        .mockResolvedValue({ id: 't1', driverId: 'd1', toName: 'العلا' }),
+      createQueryBuilder: () => qb,
+    };
+    const bookingRepo: any = {
+      find: jest.fn().mockResolvedValue([
+        { id: 'b1', userId: 'p1' },
+        { id: 'b2', userId: 'p2' },
+      ]),
+      // b1 was reminded before; b2 is the late booking.
+      update: jest.fn(async (where: { id: string }) => ({
+        affected: where.id === 'b2' ? 1 : 0,
+      })),
+    };
+    const notifications: any = {
+      create: jest.fn().mockResolvedValue({}),
+      getPreferredLocale: jest.fn().mockResolvedValue('ar'),
+    };
+    const job = new PreTripReminderJob(tripRepo, bookingRepo, notifications);
+
+    await expect(job.remind('t1')).resolves.toBe(true);
+
+    expect(
+      notifications.create.mock.calls.map((c: any[]) => c[0].userId),
+    ).toEqual(['p2']);
   });
 });
