@@ -4170,6 +4170,18 @@ class AppLocalizationsAr extends AppLocalizations {
   String get tripInProgressOnTheWay => 'أنت في الطريق';
 
   @override
+  String get rideApproachingTitle => 'السائق في طريقه إليك';
+
+  @override
+  String get rideApproachingSubtitle => 'انتظره في نقطة الانطلاق';
+
+  @override
+  String get rideArrivedTitle => 'وصل السائق';
+
+  @override
+  String get rideArrivedSubtitle => 'السائق بانتظارك في نقطة الانطلاق';
+
+  @override
   String get tripInProgressHelp => 'مساعدة';
 
   @override

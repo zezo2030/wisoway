@@ -26,6 +26,11 @@ import '../../models/trip_model.dart';
 import '../../providers/trip_provider.dart';
 import '../../widgets/trip/share_tracking_sheet.dart';
 
+/// Where an instant ride stands. The trip is `in_progress` from the moment a
+/// driver accepts, so the status alone can't tell the passenger whether the
+/// driver is still coming, waiting outside, or already driving them.
+enum _RidePhase { approaching, arrived, riding }
+
 class TripInProgressScreen extends StatefulWidget {
   final String tripId;
   final BookingModel? initialBooking;
@@ -82,6 +87,41 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
 
   /// The trip was seen still running here, so its end is this ride's end.
   bool _sawTripLive = false;
+
+  /// Approach speed for the driver→pickup estimate, matching the server's
+  /// PICKUP_ETA_SPEED_KMH; the straight line is stretched to road length.
+  static const double _approachSpeedKmh = 25;
+  static const double _roadFactor = 1.3;
+
+  _RidePhase get _phase {
+    final trip = _trip;
+    if (trip == null || !trip.isInstant || trip.tripStartedAt != null) {
+      return _RidePhase.riding;
+    }
+    return trip.driverArrivedAt != null
+        ? _RidePhase.arrived
+        : _RidePhase.approaching;
+  }
+
+  /// Road-ish distance from the driver to the pickup, while they approach.
+  double? get _approachKm {
+    final trip = _trip;
+    final car = _liveDriverLocation;
+    if (trip == null || car == null) return null;
+    final meters = Geolocator.distanceBetween(
+      car.latitude,
+      car.longitude,
+      trip.from.latitude,
+      trip.from.longitude,
+    );
+    return meters * _roadFactor / 1000;
+  }
+
+  int? get _approachSeconds {
+    final km = _approachKm;
+    if (km == null) return null;
+    return (km / _approachSpeedKmh * 3600).round();
+  }
 
   @override
   void initState() {
@@ -190,6 +230,25 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
   }
 
   Set<Polyline> _buildRoutePolylines(LatLng from, LatLng to, LatLng? car) {
+    if (_phase != _RidePhase.riding) {
+      // The car isn't on the trip route yet: show the whole route ahead and
+      // a dashed approach line from the car to the pickup.
+      return {
+        ..._tripRoutePolylines(from, to, null),
+        if (car != null && _phase == _RidePhase.approaching)
+          Polyline(
+            polylineId: const PolylineId('approach'),
+            points: [car, from],
+            color: AppColors.slate400,
+            width: 4,
+            patterns: [PatternItem.dash(18), PatternItem.gap(10)],
+          ),
+      };
+    }
+    return _tripRoutePolylines(from, to, car);
+  }
+
+  Set<Polyline> _tripRoutePolylines(LatLng from, LatLng to, LatLng? car) {
     final road = _roadRoute;
     if (road.length < 2) {
       final points = <LatLng>[from];
@@ -251,6 +310,15 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
       if (!mounted || trip == null) return;
       if (!trip.isCompleted && !trip.isCancelled) {
         _sawTripLive = true;
+        // The driver marked arrival or started the ride: move the header
+        // and the map on to the next stage.
+        final previous = _trip;
+        if (previous == null ||
+            previous.driverArrivedAt != trip.driverArrivedAt ||
+            previous.tripStartedAt != trip.tripStartedAt) {
+          setState(() => _trip = trip);
+          _rebuildMapOverlays();
+        }
         return;
       }
       if (!widget.lockedUntilEnd && !_sawTripLive) {
@@ -510,7 +578,9 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
   }
 
   String _formatRemaining(BuildContext context) {
-    final seconds = _remainingDurationSeconds;
+    final seconds = _phase == _RidePhase.approaching
+        ? _approachSeconds
+        : _remainingDurationSeconds;
     if (seconds == null) return '—';
     final totalMinutes = (seconds / 60).ceil();
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
@@ -526,14 +596,21 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
   }
 
   String _formatDistance() {
-    final km = _remainingDistanceKm ?? _trip?.distanceKm;
+    final km = _phase == _RidePhase.approaching
+        ? _approachKm
+        : _remainingDistanceKm ?? _trip?.distanceKm;
     if (km == null) return '—';
     if (km >= 10) return '${km.round()} كم';
     return '${km.toStringAsFixed(1)} كم';
   }
 
   String _formatEta(BuildContext context) {
-    final eta = _etaAt;
+    final approach = _approachSeconds;
+    final eta = _phase == _RidePhase.approaching
+        ? (approach == null
+              ? null
+              : DateTime.now().add(Duration(seconds: approach)))
+        : _etaAt;
     if (eta == null) return '—';
     final local = eta.toLocal();
     return DateFormat(
@@ -658,6 +735,25 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
+    final l10n = context.l10n;
+    final phase = _phase;
+    final (title, subtitle, dot) = switch (phase) {
+      _RidePhase.approaching => (
+        l10n.rideApproachingTitle,
+        l10n.rideApproachingSubtitle,
+        AppColors.warning,
+      ),
+      _RidePhase.arrived => (
+        l10n.rideArrivedTitle,
+        l10n.rideArrivedSubtitle,
+        AppColors.success,
+      ),
+      _RidePhase.riding => (
+        l10n.tripInProgressTitle,
+        l10n.tripInProgressOnTheWay,
+        AppColors.success,
+      ),
+    };
     return Row(
       children: [
         if (widget.lockedUntilEnd)
@@ -671,7 +767,7 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
           child: Column(
             children: [
               Text(
-                context.l10n.tripInProgressTitle,
+                title,
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -685,14 +781,14 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
                   Container(
                     width: 8,
                     height: 8,
-                    decoration: const BoxDecoration(
-                      color: AppColors.success,
+                    decoration: BoxDecoration(
+                      color: dot,
                       shape: BoxShape.circle,
                     ),
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    context.l10n.tripInProgressOnTheWay,
+                    subtitle,
                     style: const TextStyle(
                       fontSize: 13,
                       color: AppColors.slate600,
@@ -719,7 +815,11 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
   }
 
   Widget _buildProgressCard(BuildContext context, TripModel trip) {
-    final progress = (_progressPercent / 100).clamp(0.05, 0.95);
+    // Before pickup the car sits at the start: the trip hasn't begun, and
+    // the server's progress (driver vs. the trip route) means nothing yet.
+    final progress = _phase == _RidePhase.riding
+        ? (_progressPercent / 100).clamp(0.05, 0.95)
+        : 0.0;
 
     return Container(
       width: double.infinity,

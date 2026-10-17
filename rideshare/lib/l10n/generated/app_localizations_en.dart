@@ -4199,6 +4199,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tripInProgressOnTheWay => 'You are on the way';
 
   @override
+  String get rideApproachingTitle => 'Your driver is on the way';
+
+  @override
+  String get rideApproachingSubtitle => 'Wait at the pickup point';
+
+  @override
+  String get rideArrivedTitle => 'Your driver has arrived';
+
+  @override
+  String get rideArrivedSubtitle => 'The driver is waiting at the pickup point';
+
+  @override
   String get tripInProgressHelp => 'Help';
 
   @override

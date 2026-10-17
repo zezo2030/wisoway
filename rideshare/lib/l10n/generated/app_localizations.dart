@@ -7664,6 +7664,30 @@ abstract class AppLocalizations {
   /// **'أنت في الطريق'**
   String get tripInProgressOnTheWay;
 
+  /// No description provided for @rideApproachingTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'السائق في طريقه إليك'**
+  String get rideApproachingTitle;
+
+  /// No description provided for @rideApproachingSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'انتظره في نقطة الانطلاق'**
+  String get rideApproachingSubtitle;
+
+  /// No description provided for @rideArrivedTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'وصل السائق'**
+  String get rideArrivedTitle;
+
+  /// No description provided for @rideArrivedSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'السائق بانتظارك في نقطة الانطلاق'**
+  String get rideArrivedSubtitle;
+
   /// No description provided for @tripInProgressHelp.
   ///
   /// In ar, this message translates to:
