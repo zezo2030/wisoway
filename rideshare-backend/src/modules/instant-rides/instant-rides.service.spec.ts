@@ -210,6 +210,23 @@ describe('InstantRidesService', () => {
       expect(view.currency).toBe('JOD');
       expect(Number(view.fareEstimate)).toBeGreaterThanOrEqual(1.5);
     });
+
+    it("quotes in the passenger's phone currency when geocoding is unavailable", async () => {
+      locations.getDistance.mockResolvedValue({
+        distanceKm: 2.1,
+        durationMinutes: 3,
+      });
+      locations.reverseGeocode.mockRejectedValue(new Error('REQUEST_DENIED'));
+      users.findById.mockResolvedValue({
+        id: 'p1',
+        phoneNumber: '+966501234567',
+      });
+
+      const quote = await service.getQuote(dto, 'p1');
+
+      expect(quote.currency).toBe('SAR');
+      expect(quote.paymentMethods).not.toContain('cliq');
+    });
   });
 
   describe('getActiveRide', () => {
@@ -253,7 +270,7 @@ describe('InstantRidesService', () => {
       });
     });
 
-    it("returns a finished ride whose fare is still open", async () => {
+    it('returns a finished ride whose fare is still open', async () => {
       tripRepo.findOne = jest
         .fn()
         .mockResolvedValueOnce(null) // not driving a live ride

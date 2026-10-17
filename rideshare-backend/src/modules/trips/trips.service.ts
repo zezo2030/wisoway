@@ -43,8 +43,10 @@ import {
 } from '../bookings/trip-passenger-summary.service';
 import {
   COUNTRY_CURRENCY,
+  countryForPhone,
   currencyForCountry,
   DEFAULT_CURRENCY,
+  knownCurrencyForCountry,
 } from '../../common/currency/country-currency';
 import {
   computeTripAutoStartDelayMs,
@@ -128,13 +130,17 @@ export class TripsService {
 
   /**
    * Resolve the currency for a trip from its departure point's country, so
-   * fares are shown in the local currency of where the ride starts. Falls back
-   * to a client-supplied currency, then the platform default, if the country
-   * can't be determined (e.g. geocoding is unavailable).
+   * fares are shown in the local currency of where the ride starts.
+   *
+   * When geocoding is unavailable, falls back to the country of the driver's
+   * phone number, then a client-supplied currency, then the platform default.
+   * The phone step matters: without it one failed lookup published Saudi
+   * trips in dinars (the default), and the same route showed riyals on one
+   * phone and dinars on another.
    */
   private async resolveTripCurrency(
     from: { latitude: number; longitude: number },
-    fallbackCurrency?: string,
+    fallbacks: { driverPhone?: string | null; currency?: string } = {},
   ): Promise<string> {
     try {
       const { countryCode } = await this.locationsService.reverseGeocode(
@@ -151,7 +157,11 @@ export class TripsService {
         }`,
       );
     }
-    return fallbackCurrency ?? DEFAULT_CURRENCY;
+    return (
+      knownCurrencyForCountry(countryForPhone(fallbacks.driverPhone)) ??
+      fallbacks.currency ??
+      DEFAULT_CURRENCY
+    );
   }
 
   /**
@@ -164,11 +174,15 @@ export class TripsService {
    */
   async getPriceSuggestion(
     query: PriceSuggestionQueryDto,
+    driverId?: string,
   ): Promise<TripPriceSuggestion> {
-    const currency = await this.resolveTripCurrency({
-      latitude: query.fromLat,
-      longitude: query.fromLng,
-    });
+    const driver = driverId
+      ? await this.usersService.findById(driverId).catch(() => null)
+      : null;
+    const currency = await this.resolveTripCurrency(
+      { latitude: query.fromLat, longitude: query.fromLng },
+      { driverPhone: driver?.phoneNumber },
+    );
 
     const historical = await this.historicalPriceBand(query);
     if (historical) {
@@ -390,10 +404,10 @@ export class TripsService {
     // here (rather than down where the trip row is built) so the fee guard
     // below checks the driver's balance against the same currency the trip
     // is created — and later charged — in.
-    const currency = await this.resolveTripCurrency(
-      createTripDto.from,
-      createTripDto.currency,
-    );
+    const currency = await this.resolveTripCurrency(createTripDto.from, {
+      driverPhone: driver.phoneNumber,
+      currency: createTripDto.currency,
+    });
 
     // Nothing is reserved between publish and start, so the driver must be able
     // to cover the whole fee up front or the trip does not go live. Deliberately
@@ -677,12 +691,17 @@ export class TripsService {
     const { page = 1, limit = 20, ...filters } = searchTripsDto;
     const skip = (page - 1) * limit;
 
+    const status = filters.status || TripStatus.PUBLISHED;
     const qb = this.tripRepo
       .createQueryBuilder('trip')
-      .where('trip.status = :status', {
-        status: filters.status || TripStatus.PUBLISHED,
-      })
+      .where('trip.status = :status', { status })
       .andWhere('trip.isVisible = :isVisible', { isVisible: true });
+
+    // Bookable trips stay listed right up to departure and drop out the
+    // moment it arrives, whatever cut-off the client sent (or didn't).
+    if (status === TripStatus.PUBLISHED) {
+      qb.andWhere('trip.departureTime > :now', { now: new Date() });
+    }
 
     if (filters.departureDate) {
       const startDate = new Date(filters.departureDate);
@@ -941,9 +960,17 @@ export class TripsService {
       throw new BadRequestException('Cannot cancel a completed trip');
     }
 
+    // Read before cancelling: the query skips cancelled bookings, so reading
+    // afterwards found nobody to notify.
+    const activeBookings = (
+      await this.bookingsService.findByTripInternal(tripId)
+    ).filter((b) => b.status === 'pending' || b.status === 'confirmed');
+
+    // The 24-hour window protects booked passengers; a trip nobody has booked
+    // can be withdrawn at any time.
     const hoursUntilDeparture =
       (new Date(trip.departureTime).getTime() - Date.now()) / (1000 * 60 * 60);
-    if (hoursUntilDeparture <= 24) {
+    if (activeBookings.length > 0 && hoursUntilDeparture <= 24) {
       const windowSeconds = Math.max(
         0,
         Math.floor(
@@ -969,13 +996,17 @@ export class TripsService {
       tripId,
       'Trip cancelled by driver',
     );
-    const bookings = await this.bookingsService.findByTripInternal(tripId);
-    for (const booking of bookings) {
+    for (const booking of activeBookings) {
+      const ar =
+        (await this.notificationsService.getPreferredLocale(booking.userId)) ===
+        'ar';
       await this.notificationsService.create({
         userId: booking.userId,
         type: 'trip_cancelled',
-        title: 'Trip Cancelled',
-        body: `The trip to ${trip.toName} has been cancelled by the driver`,
+        title: ar ? 'تم إلغاء الرحلة' : 'Trip Cancelled',
+        body: ar
+          ? `ألغى السائق الرحلة إلى ${trip.toName}.`
+          : `The trip to ${trip.toName} has been cancelled by the driver`,
         data: { tripId },
       });
     }

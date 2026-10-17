@@ -127,8 +127,11 @@ export class TripsController {
     summary: 'Suggested per-seat price band for a route, in its own currency',
   })
   @ApiResponse({ status: 200, description: 'Suggested price band' })
-  async priceSuggestion(@Query() query: PriceSuggestionQueryDto) {
-    return this.tripsService.getPriceSuggestion(query);
+  async priceSuggestion(
+    @Query() query: PriceSuggestionQueryDto,
+    @CurrentUser('id') driverId: string,
+  ) {
+    return this.tripsService.getPriceSuggestion(query, driverId);
   }
 
   @Get(':id/pricing-preview')

@@ -91,8 +91,11 @@ export class InstantRidesController {
     status: 201,
     description: 'Recommended fare + bounds returned',
   })
-  getQuote(@Body() dto: QuoteInstantRequestDto) {
-    return this.instantRides.getQuote(dto);
+  getQuote(
+    @Body() dto: QuoteInstantRequestDto,
+    @CurrentUser('id') passengerId: string,
+  ) {
+    return this.instantRides.getQuote(dto, passengerId);
   }
 
   @Post('requests')

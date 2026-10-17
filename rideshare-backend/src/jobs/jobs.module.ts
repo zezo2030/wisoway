@@ -7,6 +7,7 @@ import { TripRecurrenceRuleEntity } from '../database/entities/trip-recurrence-r
 import { PreTripConfirmProcessor } from './processors/pre-trip-confirm.processor';
 import { RecurrenceSpawnProcessor } from './processors/recurrence-spawn.processor';
 import { PreTripReminderJob } from './pre-trip-reminder.job';
+import { TripLifecycleSweepJob } from './trip-lifecycle-sweep.job';
 import { NotificationsModule } from '../modules/notifications/notifications.module';
 
 @Module({
@@ -40,6 +41,7 @@ import { NotificationsModule } from '../modules/notifications/notifications.modu
     PreTripConfirmProcessor,
     PreTripReminderJob,
     RecurrenceSpawnProcessor,
+    TripLifecycleSweepJob,
   ],
   exports: [BullModule],
 })

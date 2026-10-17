@@ -661,6 +661,19 @@ describe('TripsService (TypeORM)', () => {
       );
     });
 
+    it("falls back to the driver's phone country when geocoding fails", async () => {
+      stubSample({ sampleSize: 12, p25: '14.2', p75: '17.8' });
+      locationsService.reverseGeocode.mockRejectedValue(new Error('offline'));
+      usersService.findById.mockResolvedValue({
+        id: DRIVER_ID,
+        phoneNumber: '+966501234567',
+      });
+
+      const suggestion = await service.getPriceSuggestion(route, DRIVER_ID);
+
+      expect(suggestion.currency).toBe('SAR');
+    });
+
     it('falls back to the platform default currency when geocoding fails', async () => {
       stubSample({ sampleSize: 12, p25: '14.2', p75: '17.8' });
       locationsService.reverseGeocode.mockRejectedValue(new Error('offline'));
@@ -801,6 +814,77 @@ describe('TripsService (TypeORM)', () => {
       expect(defaultClosedSeats(layout, 8)).toEqual([]);
       expect(defaultClosedSeats(layout, 6)).toEqual(['0-0', '0-1']);
       expect(defaultClosedSeats(layout, 5)).toEqual(['0-0', '0-1', '2-2']);
+    });
+  });
+
+  describe('cancel', () => {
+    let bookingsService: any;
+    let notificationsService: any;
+
+    const tripDepartingIn = (hours: number) => ({
+      id: 'trip-uuid',
+      driverId: DRIVER_ID,
+      status: 'published',
+      toName: 'Irbid',
+      departureTime: new Date(Date.now() + hours * 3600 * 1000),
+    });
+
+    beforeEach(() => {
+      bookingsService = Object.assign(service['bookingsService'], {
+        findByTripInternal: jest.fn().mockResolvedValue([]),
+        cancelAllForTrip: jest.fn().mockResolvedValue(undefined),
+      });
+      notificationsService = Object.assign(service['notificationsService'], {
+        create: jest.fn().mockResolvedValue(undefined),
+        getPreferredLocale: jest.fn().mockResolvedValue('ar'),
+      });
+      jest.spyOn(service, 'removeTripLifecycleJobs').mockResolvedValue();
+    });
+
+    it('lets the driver withdraw a trip nobody booked, even near departure', async () => {
+      jest
+        .spyOn(service, 'findById')
+        .mockResolvedValue(tripDepartingIn(2) as any);
+      bookingsService.findByTripInternal.mockResolvedValue([
+        { userId: 'p1', status: 'rejected' },
+      ]);
+
+      const saved = await service.cancel('trip-uuid', DRIVER_ID);
+
+      expect(saved.status).toBe('cancelled');
+      expect(notificationsService.create).not.toHaveBeenCalled();
+    });
+
+    it('keeps the 24-hour window when passengers are booked', async () => {
+      jest
+        .spyOn(service, 'findById')
+        .mockResolvedValue(tripDepartingIn(2) as any);
+      bookingsService.findByTripInternal.mockResolvedValue([
+        { userId: 'p1', status: 'confirmed' },
+      ]);
+
+      await expect(service.cancel('trip-uuid', DRIVER_ID)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(bookingsService.cancelAllForTrip).not.toHaveBeenCalled();
+    });
+
+    it('notifies the booked passengers when the trip is cancelled', async () => {
+      jest
+        .spyOn(service, 'findById')
+        .mockResolvedValue(tripDepartingIn(48) as any);
+      bookingsService.findByTripInternal.mockResolvedValue([
+        { userId: 'p1', status: 'pending' },
+        { userId: 'p2', status: 'confirmed' },
+      ]);
+
+      await service.cancel('trip-uuid', DRIVER_ID);
+
+      expect(bookingsService.cancelAllForTrip).toHaveBeenCalled();
+      expect(notificationsService.create).toHaveBeenCalledTimes(2);
+      expect(notificationsService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: 'p1', type: 'trip_cancelled' }),
+      );
     });
   });
 });

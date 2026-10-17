@@ -104,7 +104,10 @@ describe('TripTimeService.completeTrip — fee reconciliation sweep', () => {
         },
         {
           provide: NotificationsService,
-          useValue: { create: jest.fn().mockResolvedValue({}) },
+          useValue: {
+            create: jest.fn().mockResolvedValue({}),
+            getPreferredLocale: jest.fn().mockResolvedValue('ar'),
+          },
         },
         { provide: PresenceService, useValue: presenceService },
         {
