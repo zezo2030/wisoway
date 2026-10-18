@@ -5425,7 +5425,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get instantTripCancelBody =>
-      'The passenger will be told, and we\'ll look for another driver for them right away.';
+      'The passenger will be told, and we\'ll look for another driver for them right away. Note: cancelling an accepted ride lowers your rating.';
+
+  @override
+  String get notAtPickupTitle => 'Please head to the passenger';
+
+  @override
+  String notAtPickupBody(String distance) {
+    return 'You are $distance from the pickup point. You can tap \'Arrived at passenger\' once you\'re within 500 m.';
+  }
+
+  @override
+  String get passengerCancelRideAction => 'Cancel';
+
+  @override
+  String get passengerCancelRideTitle => 'Cancel this ride?';
+
+  @override
+  String get passengerCancelRideBody =>
+      'Your driver accepted and is on the way. Note: cancelling after a driver accepted lowers your rating.';
+
+  @override
+  String get passengerCancelRideConfirm => 'Cancel ride';
+
+  @override
+  String get passengerRideCancelled => 'Ride cancelled';
 
   @override
   String get instantTripCancelConfirm => 'Cancel ride';

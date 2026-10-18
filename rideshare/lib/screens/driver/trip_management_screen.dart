@@ -871,14 +871,32 @@ class _TripManagementScreenState extends State<TripManagementScreen>
             onArrived: () => _onPressArrived(trip),
             stageBusy: _stageBusy,
             onArrivedAtPickup: trip.isInstant
-                ? () => _advanceInstantStage(
-                    () => _tripService.markArrivedAtPickup(trip.id),
-                  )
+                ? () {
+                    if (!_nearPickupOrWarn(trip)) return;
+                    _advanceInstantStage(
+                      () => _tripService.markArrivedAtPickup(
+                        trip.id,
+                        latitude: _driverPosition?.latitude,
+                        longitude: _driverPosition?.longitude,
+                      ),
+                    );
+                  }
                 : null,
             onStartRide: trip.isInstant
-                ? () => _advanceInstantStage(
-                    () => _tripService.startInstantRide(trip.id),
-                  )
+                ? () {
+                    // Skipping «وصلت» doesn't skip being at the pickup.
+                    if (trip.driverArrivedAt == null &&
+                        !_nearPickupOrWarn(trip)) {
+                      return;
+                    }
+                    _advanceInstantStage(
+                      () => _tripService.startInstantRide(
+                        trip.id,
+                        latitude: _driverPosition?.latitude,
+                        longitude: _driverPosition?.longitude,
+                      ),
+                    );
+                  }
                 : null,
             onCancelRide: trip.isInstant
                 ? () => _cancelInstantRide(trip)
@@ -1920,6 +1938,51 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     } finally {
       if (mounted) setState(() => _stageBusy = false);
     }
+  }
+
+  /// How close to the pickup «وصلت إلى الراكب» may be pressed; the server
+  /// checks the same (INSTANT_ARRIVAL_RADIUS_METERS).
+  static const double _arrivalRadiusMeters = 500;
+
+  /// False — with «الرجاء التوجه إلى مكان الراكب» — when the driver's GPS
+  /// puts them beyond reach of the pickup. With no fix yet, the server
+  /// decides from the last tracked location.
+  bool _nearPickupOrWarn(TripModel trip) {
+    final here = _driverPosition;
+    if (here == null) return true;
+    final meters = Geolocator.distanceBetween(
+      here.latitude,
+      here.longitude,
+      trip.from.latitude,
+      trip.from.longitude,
+    );
+    if (meters <= _arrivalRadiusMeters) return true;
+    final l10n = context.l10n;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: Icon(
+          IconsaxPlusBold.location_cross,
+          color: AppColors.warning,
+          size: 32,
+        ),
+        title: Text(l10n.notAtPickupTitle),
+        content: Text(
+          l10n.notAtPickupBody(
+            meters < 1000
+                ? l10n.distanceMetersShort(meters.round().toString())
+                : l10n.distanceKmShort((meters / 1000).toStringAsFixed(1)),
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l10n.ok),
+          ),
+        ],
+      ),
+    );
+    return false;
   }
 
   /// A shared trip from 30 minutes before departure until it starts: the

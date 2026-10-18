@@ -3098,7 +3098,19 @@
   "instantTripStartAction": "Start trip",
   "instantTripCancelAction": "Cancel",
   "instantTripCancelTitle": "Cancel this ride?",
-  "instantTripCancelBody": "The passenger will be told, and we'll look for another driver for them right away.",
+  "instantTripCancelBody": "The passenger will be told, and we'll look for another driver for them right away. Note: cancelling an accepted ride lowers your rating.",
+  "notAtPickupTitle": "Please head to the passenger",
+  "notAtPickupBody": "You are {distance} from the pickup point. You can tap 'Arrived at passenger' once you're within 500 m.",
+  "@notAtPickupBody": {
+    "placeholders": {
+      "distance": { "type": "String" }
+    }
+  },
+  "passengerCancelRideAction": "Cancel",
+  "passengerCancelRideTitle": "Cancel this ride?",
+  "passengerCancelRideBody": "Your driver accepted and is on the way. Note: cancelling after a driver accepted lowers your rating.",
+  "passengerCancelRideConfirm": "Cancel ride",
+  "passengerRideCancelled": "Ride cancelled",
   "instantTripCancelConfirm": "Cancel ride",
   "instantTripCancelKeep": "Keep ride",
   "instantTripCancelled": "Ride cancelled",

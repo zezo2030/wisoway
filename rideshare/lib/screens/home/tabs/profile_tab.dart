@@ -651,8 +651,8 @@ class _ProfileTabState extends State<ProfileTab> {
     final u = user;
     if (u == null) return const SizedBox.shrink();
     final isDriver = u.isDriver;
-    final value = isDriver ? u.driverRating : u.rating;
-    final count = isDriver ? u.driverTotalRatings : u.totalRatings;
+    final value = isDriver ? u.driverRating : u.passengerRating;
+    final count = isDriver ? u.driverTotalRatings : u.passengerTotalRatings;
     final muted = T.onSurfaceVariant(context);
 
     return Row(

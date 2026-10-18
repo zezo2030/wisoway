@@ -132,6 +132,12 @@ class InstantRideService {
     return ActiveInstantRide.fromJson(Map<String, dynamic>.from(body));
   }
 
+  /// The passenger cancels a ride a driver already accepted, before it starts.
+  /// It costs the passenger the cancel rating cut set on the dashboard.
+  Future<void> cancelAcceptedRide(String tripId) async {
+    await _api.post(ApiEndpoints.instantTripCancelByPassenger(tripId));
+  }
+
   /// The passenger's request still looking for a driver — after their driver
   /// cancelled, the server starts one on its own — or null.
   Future<InstantRequest?> getSearchingRequest() async {

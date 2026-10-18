@@ -5377,7 +5377,31 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get instantTripCancelBody =>
-      'سيُبلَّغ الراكب، ونبحث له فوراً عن سائق آخر.';
+      'سيُبلَّغ الراكب، ونبحث له فوراً عن سائق آخر. تنبيه: إلغاء الرحلة بعد قبولها يخفّض تقييمك.';
+
+  @override
+  String get notAtPickupTitle => 'الرجاء التوجه إلى مكان الراكب';
+
+  @override
+  String notAtPickupBody(String distance) {
+    return 'أنت على بُعد $distance من نقطة الانطلاق. يمكنك الضغط على «وصلت إلى الراكب» عندما تكون على بُعد 500 متر أو أقل.';
+  }
+
+  @override
+  String get passengerCancelRideAction => 'إلغاء';
+
+  @override
+  String get passengerCancelRideTitle => 'إلغاء الرحلة؟';
+
+  @override
+  String get passengerCancelRideBody =>
+      'السائق قبل رحلتك وهو في طريقه إليك. تنبيه: إلغاء الرحلة بعد قبول السائق يخفّض تقييمك.';
+
+  @override
+  String get passengerCancelRideConfirm => 'إلغاء الرحلة';
+
+  @override
+  String get passengerRideCancelled => 'أُلغيت الرحلة';
 
   @override
   String get instantTripCancelConfirm => 'إلغاء الرحلة';

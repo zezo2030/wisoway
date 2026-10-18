@@ -273,6 +273,11 @@ class _InstantOfferDialogState extends State<InstantOfferDialog> {
                         toName: req?.toName ?? '—',
                         compact: true,
                       ),
+                      if (req?.passengerName != null ||
+                          req?.passengerRating != null) ...[
+                        const SizedBox(height: 12),
+                        _passengerLine(context, req!),
+                      ],
                       const SizedBox(height: 14),
                       _metricsStrip(context, req),
                       const SizedBox(height: 10),
@@ -292,6 +297,48 @@ class _InstantOfferDialogState extends State<InstantOfferDialog> {
           ),
         ),
       ),
+    );
+  }
+
+  /// Who is asking, and how drivers have rated them as a passenger.
+  Widget _passengerLine(BuildContext context, InstantRequestSummary req) {
+    final l10n = context.l10n;
+    final count = req.passengerTotalRatings ?? 0;
+    final rating = req.passengerRating;
+    final muted = T.onSurfaceVariant(context);
+    return Row(
+      key: const ValueKey('instant-offer-passenger'),
+      children: [
+        Icon(Icons.person_rounded, size: 18, color: muted),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            req.passengerName?.trim().isNotEmpty == true
+                ? req.passengerName!
+                : l10n.passengerFallback,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: T.onSurface(context),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Icon(
+          Icons.star_rounded,
+          size: 16,
+          color: count > 0 ? AppColors.warning : muted,
+        ),
+        const SizedBox(width: 2),
+        Text(
+          count > 0 && rating != null
+              ? '${rating.toStringAsFixed(1)} ${l10n.profileRatingCount(count)}'
+              : l10n.profileNoRatingsYet,
+          style: TextStyle(fontSize: 12, color: muted),
+        ),
+      ],
     );
   }
 

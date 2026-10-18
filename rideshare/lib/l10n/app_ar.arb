@@ -3236,7 +3236,19 @@
   "instantTripStartAction": "بدء الرحلة",
   "instantTripCancelAction": "إلغاء",
   "instantTripCancelTitle": "إلغاء الرحلة؟",
-  "instantTripCancelBody": "سيُبلَّغ الراكب، ونبحث له فوراً عن سائق آخر.",
+  "instantTripCancelBody": "سيُبلَّغ الراكب، ونبحث له فوراً عن سائق آخر. تنبيه: إلغاء الرحلة بعد قبولها يخفّض تقييمك.",
+  "notAtPickupTitle": "الرجاء التوجه إلى مكان الراكب",
+  "notAtPickupBody": "أنت على بُعد {distance} من نقطة الانطلاق. يمكنك الضغط على «وصلت إلى الراكب» عندما تكون على بُعد 500 متر أو أقل.",
+  "@notAtPickupBody": {
+    "placeholders": {
+      "distance": { "type": "String" }
+    }
+  },
+  "passengerCancelRideAction": "إلغاء",
+  "passengerCancelRideTitle": "إلغاء الرحلة؟",
+  "passengerCancelRideBody": "السائق قبل رحلتك وهو في طريقه إليك. تنبيه: إلغاء الرحلة بعد قبول السائق يخفّض تقييمك.",
+  "passengerCancelRideConfirm": "إلغاء الرحلة",
+  "passengerRideCancelled": "أُلغيت الرحلة",
   "instantTripCancelConfirm": "إلغاء الرحلة",
   "instantTripCancelKeep": "تراجع",
   "instantTripCancelled": "أُلغيت الرحلة",

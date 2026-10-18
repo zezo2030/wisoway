@@ -180,6 +180,10 @@ class ApiEndpoints {
   static String instantTripStart(String tripId) =>
       '/instant-rides/trips/$tripId/start';
 
+  /// Passenger cancels an accepted ride before it starts.
+  static String instantTripCancelByPassenger(String tripId) =>
+      '/instant-rides/trips/$tripId/cancel-by-passenger';
+
   /// Driver backs out before pickup; the passenger is searched a new driver.
   static String instantTripCancel(String tripId) =>
       '/instant-rides/trips/$tripId/cancel';

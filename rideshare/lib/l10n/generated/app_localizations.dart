@@ -9839,8 +9839,50 @@ abstract class AppLocalizations {
   /// No description provided for @instantTripCancelBody.
   ///
   /// In ar, this message translates to:
-  /// **'سيُبلَّغ الراكب، ونبحث له فوراً عن سائق آخر.'**
+  /// **'سيُبلَّغ الراكب، ونبحث له فوراً عن سائق آخر. تنبيه: إلغاء الرحلة بعد قبولها يخفّض تقييمك.'**
   String get instantTripCancelBody;
+
+  /// No description provided for @notAtPickupTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'الرجاء التوجه إلى مكان الراكب'**
+  String get notAtPickupTitle;
+
+  /// No description provided for @notAtPickupBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'أنت على بُعد {distance} من نقطة الانطلاق. يمكنك الضغط على «وصلت إلى الراكب» عندما تكون على بُعد 500 متر أو أقل.'**
+  String notAtPickupBody(String distance);
+
+  /// No description provided for @passengerCancelRideAction.
+  ///
+  /// In ar, this message translates to:
+  /// **'إلغاء'**
+  String get passengerCancelRideAction;
+
+  /// No description provided for @passengerCancelRideTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'إلغاء الرحلة؟'**
+  String get passengerCancelRideTitle;
+
+  /// No description provided for @passengerCancelRideBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'السائق قبل رحلتك وهو في طريقه إليك. تنبيه: إلغاء الرحلة بعد قبول السائق يخفّض تقييمك.'**
+  String get passengerCancelRideBody;
+
+  /// No description provided for @passengerCancelRideConfirm.
+  ///
+  /// In ar, this message translates to:
+  /// **'إلغاء الرحلة'**
+  String get passengerCancelRideConfirm;
+
+  /// No description provided for @passengerRideCancelled.
+  ///
+  /// In ar, this message translates to:
+  /// **'أُلغيت الرحلة'**
+  String get passengerRideCancelled;
 
   /// No description provided for @instantTripCancelConfirm.
   ///

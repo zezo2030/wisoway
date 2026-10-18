@@ -15,6 +15,7 @@ import '../../core/constants/support_constants.dart';
 import '../../core/api/websocket_service.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/services/active_ride_navigator.dart';
+import '../../core/services/instant_ride_service.dart';
 import '../../core/services/route_service.dart';
 import '../../core/services/share_link_service.dart';
 import '../../core/services/trip_emergency_service.dart';
@@ -63,6 +64,7 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
   bool _loading = true;
   bool _emergencyLoading = false;
   bool _shareLoading = false;
+  bool _cancelling = false;
   GoogleMapController? _mapController;
   BitmapDescriptor? _carIcon;
   LatLng? _liveDriverLocation;
@@ -581,6 +583,51 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
     );
   }
 
+  /// The passenger backs out before the ride starts — warned first that it
+  /// lowers their rating.
+  Future<void> _cancelRide() async {
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.passengerCancelRideTitle),
+        content: Text(l10n.passengerCancelRideBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.instantTripCancelKeep),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(l10n.passengerCancelRideConfirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _cancelling = true);
+    try {
+      await InstantRideService().cancelAcceptedRide(widget.tripId);
+      if (!mounted) return;
+      _leaving = true;
+      _statusPoll?.cancel();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.passengerRideCancelled)));
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } catch (e) {
+      if (!mounted) return;
+      ErrorSurface.showFailure(context, ApiClient.mapError(e));
+    } finally {
+      if (mounted) setState(() => _cancelling = false);
+    }
+  }
+
   void _openHelp() {
     Navigator.pushNamed(context, RouteNames.support);
   }
@@ -764,7 +811,15 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
     };
     return Row(
       children: [
-        if (widget.lockedUntilEnd)
+        // Until the ride starts the passenger may still cancel it.
+        if (widget.lockedUntilEnd && phase != _RidePhase.riding)
+          TextButton(
+            key: const ValueKey('passenger-cancel-ride'),
+            onPressed: _cancelling ? null : _cancelRide,
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: Text(l10n.passengerCancelRideAction),
+          )
+        else if (widget.lockedUntilEnd)
           const SizedBox(width: 48)
         else
           IconButton(

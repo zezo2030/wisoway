@@ -355,13 +355,35 @@ class TripService {
   /// there is no longer a manual "Start Trip" action.
   /// Returns the completed trip payload including optional `settlement`.
   /// Instant ride: the driver reached the passenger.
-  Future<void> markArrivedAtPickup(String tripId) async {
-    await _api.post(ApiEndpoints.instantTripArrivedAtPickup(tripId));
+  /// [latitude]/[longitude]: where the driver is now — the server only
+  /// accepts the press within reach of the pickup.
+  Future<void> markArrivedAtPickup(
+    String tripId, {
+    double? latitude,
+    double? longitude,
+  }) async {
+    await _api.post(
+      ApiEndpoints.instantTripArrivedAtPickup(tripId),
+      data: {
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+      },
+    );
   }
 
   /// Instant ride: the passenger is in the car — the ride starts.
-  Future<void> startInstantRide(String tripId) async {
-    await _api.post(ApiEndpoints.instantTripStart(tripId));
+  Future<void> startInstantRide(
+    String tripId, {
+    double? latitude,
+    double? longitude,
+  }) async {
+    await _api.post(
+      ApiEndpoints.instantTripStart(tripId),
+      data: {
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+      },
+    );
   }
 
   /// Shared trip: the driver starts it — when the passengers are in but none
