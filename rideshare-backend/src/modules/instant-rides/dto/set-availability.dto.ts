@@ -37,3 +37,24 @@ export class HeartbeatDto {
   @Max(180)
   longitude: number;
 }
+
+/**
+ * Where the driver is when pressing «وصلت إلى الراكب» / «بدء الرحلة»; both
+ * only count within reach of the pickup. Optional — without it the last
+ * tracked location is used.
+ */
+export class DriverPositionDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  latitude?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  longitude?: number;
+}

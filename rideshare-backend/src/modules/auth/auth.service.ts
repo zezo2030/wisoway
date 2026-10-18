@@ -65,6 +65,8 @@ export interface AuthResponse {
     totalRatings: number;
     driverRating: number;
     driverTotalRatings: number;
+    passengerRating: number;
+    passengerTotalRatings: number;
     isPhoneVerified: boolean;
     isEmailVerified: boolean;
     isDriverApproved: boolean;
@@ -981,6 +983,8 @@ export class AuthService {
       totalRatings: Number(user.totalRatings),
       driverRating: Number(user.driverRating ?? 0),
       driverTotalRatings: Number(user.driverTotalRatings ?? 0),
+      passengerRating: Number(user.passengerRating ?? 0),
+      passengerTotalRatings: Number(user.passengerTotalRatings ?? 0),
       isPhoneVerified: user.isPhoneVerified,
       isEmailVerified: user.isEmailVerified,
       isDriverApproved: user.isDriverApproved,

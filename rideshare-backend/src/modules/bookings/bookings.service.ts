@@ -684,7 +684,9 @@ export class BookingsService {
       dto.paymentMethod,
       trip.currency ?? 'JOD',
       dto.payerCliqAlias ??
-        (dto.paymentMethod === 'cliq' ? await this.savedCliqAlias(userId) : null),
+        (dto.paymentMethod === 'cliq'
+          ? await this.savedCliqAlias(userId)
+          : null),
     );
 
     // Duplicate booking check — any active booking by this user for this trip
@@ -1000,8 +1002,8 @@ export class BookingsService {
         name: b.user?.name ?? null,
         photoUrl: b.user?.photoUrl ?? null,
         gender: b.user?.gender ?? null,
-        rating: b.user?.rating != null ? Number(b.user.rating) : null,
-        totalRatings: b.user?.totalRatings ?? null,
+        rating: b.user != null ? Number(b.user.passengerRating) : null,
+        totalRatings: b.user?.passengerTotalRatings ?? null,
       },
       // Who sits where; companions are the seats not held by the booker.
       seats: (b.seats ?? []).map((seat) => ({

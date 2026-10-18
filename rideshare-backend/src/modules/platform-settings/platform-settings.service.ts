@@ -18,6 +18,16 @@ export const PLATFORM_SETTINGS = {
     min: 0,
     max: 50,
   },
+  /**
+   * How much (%) a rating drops when a driver or a passenger cancels an
+   * instant ride after it was accepted. 0 turns the cut off.
+   */
+  cancelRatingPenaltyPercent: {
+    key: 'instant.cancelRatingPenaltyPercent',
+    default: 2,
+    min: 0,
+    max: 50,
+  },
 } as const;
 
 export type PlatformSettingName = keyof typeof PLATFORM_SETTINGS;

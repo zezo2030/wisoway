@@ -35,14 +35,18 @@ import {
 } from '../../common/currency/country-currency';
 import { InstantDispatchService } from './instant-dispatch.service';
 import { InstantPickupWatchService } from './instant-pickup-watch.service';
+import { RatingsService } from '../ratings/ratings.service';
+import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
 import { resolvePaymentChoice } from '../ride-payments/cliq-payer';
 import {
   CreateInstantRequestDto,
   QuoteInstantRequestDto,
 } from './dto/create-instant-request.dto';
 import { OfferResponseType, RespondOfferDto } from './dto/respond-offer.dto';
+import { DriverPositionDto } from './dto/set-availability.dto';
 import {
   dispatchWaveJobId,
+  ARRIVAL_RADIUS_METERS,
   EXPIRE_REQUEST_JOB,
   MAX_ROUTE_DETOUR_FACTOR,
   straightLineRoute,
@@ -65,6 +69,12 @@ import {
 } from './instant-offer-labels';
 
 type LatLng = { latitude: number; longitude: number };
+type DriverPosition = DriverPositionDto;
+
+/** «350 متر» / «2.4 كم» for the not-at-pickup message. */
+function formatMeters(meters: number): string {
+  return meters < 1000 ? `${meters} متر` : `${(meters / 1000).toFixed(1)} كم`;
+}
 
 @Injectable()
 export class InstantRidesService {
@@ -85,6 +95,8 @@ export class InstantRidesService {
     private readonly notifications: NotificationsService,
     private readonly dispatchService: InstantDispatchService,
     private readonly pickupWatch: InstantPickupWatchService,
+    private readonly ratings: RatingsService,
+    private readonly settings: PlatformSettingsService,
     @InjectQueue(INSTANT_OFFER_TIMEOUT_QUEUE)
     private readonly offerTimeoutQueue: Queue,
     @InjectQueue(INSTANT_REQUEST_EXPIRY_QUEUE)
@@ -666,8 +678,8 @@ export class InstantRidesService {
         pickupDistanceMeters: this.pickupDistanceMeters(availability, request),
         passengerName: passenger?.name ?? null,
         passengerRating:
-          passenger?.rating != null ? Number(passenger.rating) : null,
-        passengerTotalRatings: passenger?.totalRatings ?? null,
+          passenger != null ? Number(passenger.passengerRating) : null,
+        passengerTotalRatings: passenger?.passengerTotalRatings ?? null,
         passengerPhotoUrl: passenger?.photoUrl ?? null,
       }),
     };
@@ -861,10 +873,15 @@ export class InstantRidesService {
    * The driver has reached the passenger («وصلت إلى الراكب»). Idempotent —
    * pressing it again keeps the first arrival time.
    */
-  async markArrivedAtPickup(tripId: string, driverId: string) {
+  async markArrivedAtPickup(
+    tripId: string,
+    driverId: string,
+    position?: DriverPosition,
+  ) {
     const trip = await this.liveInstantTripOf(tripId, driverId);
     if (trip.tripStartedAt) return trip;
     if (!trip.driverArrivedAt) {
+      await this.assertAtPickup(trip, position);
       trip.driverArrivedAt = new Date();
       await this.tripRepo.save(trip);
       await this.notifyPassenger(trip, {
@@ -880,9 +897,11 @@ export class InstantRidesService {
    * The passenger is in the car and the ride begins («بدء الرحلة»). Arrival is
    * implied if the driver skipped that step. Idempotent.
    */
-  async startRide(tripId: string, driverId: string) {
+  async startRide(tripId: string, driverId: string, position?: DriverPosition) {
     const trip = await this.liveInstantTripOf(tripId, driverId);
     if (trip.tripStartedAt) return trip;
+    // Skipping «وصلت» doesn't skip being there.
+    if (!trip.driverArrivedAt) await this.assertAtPickup(trip, position);
     const now = new Date();
     trip.driverArrivedAt ??= now;
     trip.tripStartedAt = now;
@@ -893,6 +912,51 @@ export class InstantRidesService {
       type: 'instant_ride_started',
     });
     return trip;
+  }
+
+  /**
+   * «وصلت إلى الراكب» only counts at the pickup: within
+   * [ARRIVAL_RADIUS_METERS]. The position is the one the app sends with the
+   * press; without it, the driver's last tracked or reported location.
+   */
+  private async assertAtPickup(trip: TripEntity, position?: DriverPosition) {
+    let here: LatLng | null =
+      position?.latitude != null && position?.longitude != null
+        ? { latitude: position.latitude, longitude: position.longitude }
+        : null;
+    if (!here && trip.lastDriverLocationLat != null) {
+      here = {
+        latitude: Number(trip.lastDriverLocationLat),
+        longitude: Number(trip.lastDriverLocationLng),
+      };
+    }
+    if (!here) {
+      const coords = (
+        await this.availabilityRepo.findOne({
+          where: { driverId: trip.driverId },
+        })
+      )?.point?.coordinates;
+      if (coords) here = { latitude: coords[1], longitude: coords[0] };
+    }
+    if (!here) {
+      throw new ConflictException({
+        statusCode: 409,
+        code: 'DRIVER_LOCATION_UNKNOWN',
+        message: 'فعّل الموقع حتى نتأكد من وصولك إلى الراكب.',
+      });
+    }
+    const [lng, lat] = trip.fromPoint.coordinates;
+    const meters = Math.round(
+      haversineKm(here, { latitude: lat, longitude: lng }) * 1000,
+    );
+    if (meters > ARRIVAL_RADIUS_METERS) {
+      throw new ConflictException({
+        statusCode: 409,
+        code: 'DRIVER_NOT_AT_PICKUP',
+        message: `الرجاء التوجه إلى مكان الراكب. أنت على بُعد ${formatMeters(meters)} من نقطة الانطلاق.`,
+        distanceMeters: meters,
+      });
+    }
   }
 
   /**
@@ -945,6 +1009,7 @@ export class InstantRidesService {
       }
     });
     if (request) await this.freeDriver(driverId, request.id);
+    const penaltyPercent = await this.cancelPenalty(driverId, 'driver');
 
     const next = request
       ? await this.searchAgainAfterDriverCancel(request, driverId).catch(
@@ -987,7 +1052,104 @@ export class InstantRidesService {
         .catch(() => undefined);
     }
 
-    return { cancelled: true, nextRequestId: next?.id ?? null };
+    return {
+      cancelled: true,
+      nextRequestId: next?.id ?? null,
+      ratingPenaltyPercent: penaltyPercent,
+    };
+  }
+
+  /**
+   * The passenger cancels an accepted ride before it starts (the driver is
+   * on the way or waiting). The trip and booking are cancelled, the driver is
+   * freed and told, and the passenger's rating takes the cancel cut.
+   */
+  async cancelByPassenger(tripId: string, passengerId: string) {
+    const request = await this.requestRepo.findOne({ where: { tripId } });
+    if (!request) throw new NotFoundException('الرحلة غير موجودة.');
+    if (request.passengerId !== passengerId) {
+      throw new ForbiddenException('هذه الرحلة ليست لك.');
+    }
+    const trip = await this.tripRepo.findOne({ where: { id: tripId } });
+    if (!trip || trip.status !== TripStatus.IN_PROGRESS) {
+      throw new ConflictException('الرحلة لم تعد جارية.');
+    }
+    if (trip.tripStartedAt) {
+      throw new ConflictException({
+        statusCode: 409,
+        code: 'INSTANT_RIDE_ALREADY_STARTED',
+        message: 'بدأت الرحلة، لا يمكن إلغاؤها الآن.',
+      });
+    }
+    const now = new Date();
+    await this.tripRepo.manager.transaction(async (m) => {
+      const claim = await m.update(
+        TripEntity,
+        { id: tripId, status: TripStatus.IN_PROGRESS, tripStartedAt: IsNull() },
+        { status: TripStatus.CANCELLED },
+      );
+      if (claim.affected !== 1) {
+        throw new ConflictException('الرحلة لم تعد جارية.');
+      }
+      await m.update(
+        BookingEntity,
+        { tripId, status: BookingStatus.CONFIRMED },
+        {
+          status: BookingStatus.CANCELLED,
+          cancelledAt: now,
+          cancelledBy: passengerId,
+          cancellationReason: 'passenger_cancelled',
+        },
+      );
+      await m.update(
+        InstantRideRequestEntity,
+        { id: request.id },
+        {
+          status: InstantRequestStatus.CANCELLED,
+          terminalReason: InstantTerminalReason.PASSENGER_CANCELLED,
+          endedAt: now,
+        },
+      );
+    });
+    await this.freeDriver(trip.driverId, request.id);
+    const penaltyPercent = await this.cancelPenalty(passengerId, 'passenger');
+
+    this.logger.log(
+      `instant_passenger_cancelled ${JSON.stringify({ tripId, passengerId })}`,
+    );
+    const data = { tripId, requestId: request.id };
+    this.notifications.emitRealtime(
+      trip.driverId,
+      'instantPassengerCancelled',
+      data,
+    );
+    this.notifications
+      .sendPush(trip.driverId, {
+        title: 'ألغى الراكب الرحلة',
+        body: 'لم تعد بحاجة للتوجه إلى الراكب. أنت متاح لطلبات جديدة.',
+        type: 'instant_passenger_cancelled',
+        data,
+      })
+      .catch(() => undefined);
+
+    return { cancelled: true, ratingPenaltyPercent: penaltyPercent };
+  }
+
+  /** The cancel cut set on the dashboard, applied to [userId] in [role]. */
+  private async cancelPenalty(
+    userId: string,
+    role: 'driver' | 'passenger',
+  ): Promise<number> {
+    try {
+      const percent = await this.settings.getNumber(
+        'cancelRatingPenaltyPercent',
+      );
+      await this.ratings.applyRatingPenalty(userId, percent, role);
+      return percent;
+    } catch (err) {
+      this.logger.warn(`cancel penalty failed: ${(err as Error).message}`);
+      return 0;
+    }
   }
 
   /**

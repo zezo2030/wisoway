@@ -75,6 +75,16 @@ export const DISPATCH_RETRY_SECONDS = 10;
 /** Average urban approach speed used for pickup-ETA estimates. */
 export const PICKUP_ETA_SPEED_KMH = 25;
 
+/**
+ * How close to the pickup the driver must be for «وصلت إلى الراكب» (and for
+ * «بدء الرحلة» when arrival was skipped). Pressing it from across town told
+ * the passenger the driver was outside.
+ */
+export const ARRIVAL_RADIUS_METERS = envKm(
+  'INSTANT_ARRIVAL_RADIUS_METERS',
+  500,
+);
+
 // ── Late to the pickup ──────────────────────────────────────────────────────
 /** Pickup estimate used when the driver's position was unknown at match. */
 export const DEFAULT_PICKUP_ETA_SECONDS = 5 * 60;

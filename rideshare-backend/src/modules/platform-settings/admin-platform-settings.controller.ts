@@ -26,6 +26,19 @@ export class AdminPatchPlatformSettingsDto {
   @Min(PLATFORM_SETTINGS.lateRatingPenaltyPercent.min)
   @Max(PLATFORM_SETTINGS.lateRatingPenaltyPercent.max)
   lateRatingPenaltyPercent?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Rating cut (%) for cancelling an instant ride after it was accepted (driver or passenger); 0 = off',
+    minimum: PLATFORM_SETTINGS.cancelRatingPenaltyPercent.min,
+    maximum: PLATFORM_SETTINGS.cancelRatingPenaltyPercent.max,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(PLATFORM_SETTINGS.cancelRatingPenaltyPercent.min)
+  @Max(PLATFORM_SETTINGS.cancelRatingPenaltyPercent.max)
+  cancelRatingPenaltyPercent?: number;
 }
 
 @ApiTags('Admin')

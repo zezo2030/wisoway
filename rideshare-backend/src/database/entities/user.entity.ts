@@ -79,6 +79,21 @@ export class UserEntity {
   driverTotalRatings: number;
 
   /**
+   * The rating drivers gave this user as a passenger (ratedRole = passenger),
+   * scaled by [passengerRatingPenaltyFactor] — what a driver sees on a ride
+   * request or a booking.
+   */
+  @Column({ type: 'decimal', precision: 3, scale: 2, default: 0 })
+  passengerRating: number;
+
+  @Column({ type: 'int', default: 0 })
+  passengerTotalRatings: number;
+
+  /** Like [ratingPenaltyFactor], for the passenger side (late cancels). */
+  @Column({ type: 'decimal', precision: 6, scale: 4, default: 1 })
+  passengerRatingPenaltyFactor: number;
+
+  /**
    * Multiplies the average of driver ratings into `driverRating`. Starts at 1;
    * each late instant pickup lowers it by the admin-set percentage
    * (RatingsService.applyRatingPenalty).

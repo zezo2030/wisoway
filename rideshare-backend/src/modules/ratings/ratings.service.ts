@@ -25,6 +25,22 @@ const PASSENGER_BOOKING_STATUSES: BookingStatus[] = [
   BookingStatus.IN_PROGRESS,
 ];
 
+export type RatedRole = 'driver' | 'passenger';
+
+/** Where each role's rating, count and penalty factor live on the user. */
+const ROLE_COLUMNS = {
+  driver: {
+    rating: 'driverRating',
+    count: 'driverTotalRatings',
+    factor: 'ratingPenaltyFactor',
+  },
+  passenger: {
+    rating: 'passengerRating',
+    count: 'passengerTotalRatings',
+    factor: 'passengerRatingPenaltyFactor',
+  },
+} as const;
+
 @Injectable()
 export class RatingsService {
   private readonly logger = new Logger(RatingsService.name);
@@ -149,60 +165,75 @@ export class RatingsService {
       totalRatings,
     });
     await this.updateDriverRating(userId);
+    await this.updatePassengerRating(userId);
   }
 
   /**
    * The user's rating as a driver: passengers' ratings only, scaled by the
-   * late-pickup penalty factor, never below one star once rated.
+   * late-pickup / cancel penalty factor, never below one star once rated.
    */
-  async updateDriverRating(userId: string): Promise<void> {
+  updateDriverRating(userId: string): Promise<void> {
+    return this.updateRoleRating(userId, 'driver');
+  }
+
+  /** The same for the user as a passenger: what drivers gave them. */
+  updatePassengerRating(userId: string): Promise<void> {
+    return this.updateRoleRating(userId, 'passenger');
+  }
+
+  private async updateRoleRating(
+    userId: string,
+    role: RatedRole,
+  ): Promise<void> {
+    const cols = ROLE_COLUMNS[role];
     const raw = await this.ratingRepo
       .createQueryBuilder('r')
       .select('COUNT(r.id)::int', 'cnt')
       .addSelect('COALESCE(SUM(r.rating), 0)::float', 'sum')
       .where('r.toUserId = :userId', { userId })
-      .andWhere('r.ratedRole = :role', { role: 'driver' })
+      .andWhere('r.ratedRole = :role', { role })
       .getRawOne<{ cnt: string; sum: string }>();
     const count = Number(raw?.cnt ?? 0);
     if (count === 0) {
-      await this.userRepo.update(userId, {
-        driverRating: 0,
-        driverTotalRatings: 0,
-      });
+      await this.userRepo.update(userId, { [cols.rating]: 0, [cols.count]: 0 });
       return;
     }
     const average = Number(raw?.sum ?? 0) / count;
     const user = await this.userRepo.findOne({
       where: { id: userId },
-      select: ['id', 'ratingPenaltyFactor'],
+      select: ['id', cols.factor],
     });
-    // Late pickups scale the average down; never below one star.
-    const factor = Number(user?.ratingPenaltyFactor ?? 1) || 1;
+    // Penalties scale the average down; never below one star.
+    const factor = Number(user?.[cols.factor] ?? 1) || 1;
     await this.userRepo.update(userId, {
-      driverRating: Math.max(1, Math.round(average * factor * 10) / 10),
-      driverTotalRatings: count,
+      [cols.rating]: Math.max(1, Math.round(average * factor * 10) / 10),
+      [cols.count]: count,
     });
   }
 
   /**
-   * Lowers [userId]'s driver rating by [percent]% of its current level — what
-   * a late instant pickup costs. The cut is kept as a factor on the user, so
-   * ratings received later are scaled by it too. Floored at 0.2 (a five-star
-   * average then still shows one star).
+   * Lowers [userId]'s rating in [role] by [percent]% of its current level —
+   * what a late instant pickup or cancelling an accepted ride costs. The cut
+   * is kept as a factor on the user, so ratings received later are scaled by
+   * it too. Floored at 0.2 (a five-star average then still shows one star).
    */
-  async applyRatingPenalty(userId: string, percent: number): Promise<void> {
+  async applyRatingPenalty(
+    userId: string,
+    percent: number,
+    role: RatedRole = 'driver',
+  ): Promise<void> {
     if (!(percent > 0)) return;
+    const factor = ROLE_COLUMNS[role].factor;
     await this.userRepo
       .createQueryBuilder()
       .update(UserEntity)
       .set({
-        ratingPenaltyFactor: () =>
-          `GREATEST(0.2, "ratingPenaltyFactor" * (1 - :percent / 100.0))`,
+        [factor]: () => `GREATEST(0.2, "${factor}" * (1 - :percent / 100.0))`,
       })
       .where('id = :userId', { userId })
       .setParameters({ percent })
       .execute();
-    await this.updateDriverRating(userId);
+    await this.updateRoleRating(userId, role);
   }
 
   async findByUser(
