@@ -484,6 +484,11 @@ export const translations = {
     latePenaltyRange: "Enter a number from 0 to 50.",
     latePenaltyOff: "At 0, late drivers are only warned; their rating is not touched.",
     latePenaltyExample: "Example: a driver rated 4.80 drops to {rating} after one late pickup.",
+    cancelPenaltyTitle: "Cancelling an accepted ride (instant rides)",
+    cancelPenaltyDesc: "When the driver or the passenger cancels an instant ride after a driver accepted it, their rating (as a driver or as a passenger) drops by this percentage. Both are warned before they confirm.",
+    cancelPenaltyPercent: "Rating cut per cancellation (%)",
+    cancelPenaltyOff: "At 0, cancelling is allowed with no effect on the rating.",
+    cancelPenaltyExample: "Example: a rating of 4.80 drops to {rating} after one cancellation.",
 
     // Login
     loginTitle: "Admin Login",
@@ -1211,6 +1216,11 @@ export const translations = {
     latePenaltyRange: "أدخل رقماً من 0 إلى 50.",
     latePenaltyOff: "عند 0 يُنبَّه السائق المتأخر فقط، ولا يتغير تقييمه.",
     latePenaltyExample: "مثال: سائق تقييمه 4.80 يصبح {rating} بعد تأخر واحد.",
+    cancelPenaltyTitle: "إلغاء رحلة بعد قبولها (الرحلات المباشرة)",
+    cancelPenaltyDesc: "إذا ألغى السائق أو الراكب رحلة مباشرة بعد أن قبلها السائق، يُخفَّض تقييمه (كسائق أو كراكب) بهذه النسبة. يظهر للطرفين تنبيه بذلك قبل تأكيد الإلغاء.",
+    cancelPenaltyPercent: "نسبة تخفيض التقييم لكل إلغاء (%)",
+    cancelPenaltyOff: "عند 0 يُسمح بالإلغاء دون أي أثر على التقييم.",
+    cancelPenaltyExample: "مثال: تقييم 4.80 يصبح {rating} بعد إلغاء واحد.",
 
     // Login
     loginTitle: "تسجيل دخول المسؤول",

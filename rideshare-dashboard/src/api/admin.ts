@@ -863,6 +863,8 @@ export async function getPendingDrivers(
 export interface PlatformSettings {
   /** Rating cut (%) for each instant ride the driver reaches the passenger late. */
   lateRatingPenaltyPercent: number
+  /** Rating cut (%) for cancelling an instant ride after it was accepted. */
+  cancelRatingPenaltyPercent: number
 }
 
 export async function getPlatformSettings(): Promise<PlatformSettings> {
