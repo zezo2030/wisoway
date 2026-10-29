@@ -151,6 +151,7 @@ class ApiEndpoints {
 
   // Tracking
   static String trackingLatest(String tripId) => '/tracking/$tripId/latest';
+  static const String trackingLocation = '/tracking/location';
   static String trackingHistory(String tripId) => '/tracking/$tripId/history';
   static const String trackingNearbyTrips = '/tracking/nearby/trips';
 

@@ -1,3 +1,4 @@
+import '../../core/navigation/shared_trip_navigation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -191,10 +192,7 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                     action: _selectedStatus == 'active'
                         ? ElevatedButton.icon(
                             onPressed: () {
-                              Navigator.pushNamed(
-                                context,
-                                RouteNames.createTrip,
-                              );
+                              SharedTripNavigation.open(context);
                             },
                             icon: const Icon(IconsaxPlusBold.add_circle),
                             label: Text(context.l10n.createTripShort),
@@ -229,7 +227,7 @@ class _MyTripsScreenState extends State<MyTripsScreen>
         label: context.l10n.createNewTripSemantic,
         child: FloatingActionButton.extended(
           onPressed: () {
-            Navigator.pushNamed(context, RouteNames.createTrip);
+            SharedTripNavigation.open(context);
           },
           tooltip: context.l10n.newTrip,
           backgroundColor: T.primary(context),

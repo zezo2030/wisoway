@@ -7,10 +7,19 @@ import '../../models/trip_fee_quote.dart';
 import '../../models/trip_price_suggestion.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
+import 'location_service.dart';
 import '../../models/trip_meeting_point.dart';
 
 class TripService {
   final ApiClient _api = ApiClient();
+
+  Future<void> assertCanCreateTrip() async {
+    final country = await LocationService().currentCountryCode();
+    await _api.get(
+      '/wallet/driver/trip-eligibility',
+      queryParameters: country == null ? null : {'country': country},
+    );
+  }
 
   List<TripModel> _extractTrips(dynamic response) {
     dynamic payload = response;
@@ -130,6 +139,7 @@ class TripService {
     required double seatPrice,
     required int totalSeats,
     String? currency,
+    String? tripType,
   }) async {
     try {
       final response = await _api.get(
@@ -137,6 +147,7 @@ class TripService {
         queryParameters: {
           'seatPrice': seatPrice,
           'totalSeats': totalSeats,
+          if (tripType != null) 'tripType': tripType,
           if (currency != null) 'currency': currency,
         },
       );

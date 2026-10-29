@@ -20,11 +20,11 @@ class BookingSeatRequest {
   });
 
   Map<String, dynamic> toJson() => {
-        'seatNumber': seatNumber,
-        'displayName': displayName,
-        'gender': gender,
-        'isMainBooker': isMainBooker,
-      };
+    'seatNumber': seatNumber,
+    'displayName': displayName,
+    'gender': gender,
+    'isMainBooker': isMainBooker,
+  };
 }
 
 class BookingService {
@@ -119,6 +119,7 @@ class BookingService {
     bool isFamilyBooking = false,
     String paymentMethod = 'cash',
     String? payerCliqAlias,
+    String? promoCode,
   }) async {
     try {
       final payload = <String, dynamic>{
@@ -127,6 +128,7 @@ class BookingService {
         'sharePhoneWithDriver': sharePhoneWithDriver,
         'isFamilyBooking': isFamilyBooking,
         'paymentMethod': paymentMethod,
+        if (promoCode != null) 'promoCode': promoCode,
         if (payerCliqAlias != null && payerCliqAlias.trim().isNotEmpty)
           'payerCliqAlias': payerCliqAlias.trim(),
       };
@@ -156,6 +158,7 @@ class BookingService {
     bool isFamilyBooking = false,
     String paymentMethod = 'cash',
     String? payerCliqAlias,
+    String? promoCode,
   }) async {
     try {
       final payload = <String, dynamic>{
@@ -165,11 +168,14 @@ class BookingService {
         'sharePhoneWithDriver': sharePhoneWithDriver,
         'isFamilyBooking': isFamilyBooking,
         'paymentMethod': paymentMethod,
+        if (promoCode != null) 'promoCode': promoCode,
         if (payerCliqAlias != null && payerCliqAlias.trim().isNotEmpty)
           'payerCliqAlias': payerCliqAlias.trim(),
       };
-      final response =
-          await _api.post(ApiEndpoints.bookingsV2AutoPick, data: payload);
+      final response = await _api.post(
+        ApiEndpoints.bookingsV2AutoPick,
+        data: payload,
+      );
       notifyChanged();
       return _bookingFromResponse(
         response,
@@ -186,8 +192,7 @@ class BookingService {
   /// Driver accepts a booking via PATCH /v2/bookings/:id/accept.
   Future<BookingModel> acceptBooking(String bookingId) async {
     try {
-      final response =
-          await _api.patch(ApiEndpoints.acceptBooking(bookingId));
+      final response = await _api.patch(ApiEndpoints.acceptBooking(bookingId));
       final res = response['data'] ?? response;
       return BookingModel.fromJson(res as Map<String, dynamic>);
     } catch (e) {
@@ -349,5 +354,4 @@ class BookingService {
       return [];
     }
   }
-
 }

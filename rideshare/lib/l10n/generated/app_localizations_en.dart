@@ -3320,7 +3320,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pendingBookingHint =>
-      'Confirming the booking unlocks the passenger\'s details (a free trip or a one-time wallet deduction for the trip)';
+      'Passenger details are available without an unlocking fee. App commission is deducted from your wallet at trip completion for passengers who confirmed their presence.';
 
   @override
   String get pendingConfirmation => 'Pending confirmation';
@@ -4116,7 +4116,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String createTripFeeNotice(String percent, String amount, String currency) {
-    return 'Trip fee ($percent%): $amount $currency — deducted from your wallet when the trip starts.';
+    return 'Commission is $percent% of completed fares, charged at trip completion. Estimated at full capacity: $amount $currency.';
   }
 
   @override
@@ -4221,6 +4221,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tripInProgressRemainingTime => 'Time remaining';
+
+  @override
+  String get tripInProgressDriverArrivesIn => 'Driver arrives in';
+
+  @override
+  String get tripLiveLocationTitle => 'Trip tracking';
+
+  @override
+  String get tripLiveLocationBody =>
+      'Your location is shared with this trip\'s passengers during pickup and the ride.';
 
   @override
   String get tripInProgressTripDetails => 'Trip details';
@@ -4652,11 +4662,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get negativeWalletBalanceBlocked =>
-      'Your wallet balance is negative. Settle it before creating shared trips or receiving instant rides.';
+      'Top up your wallet with at least JOD 5, SAR 25, or the equivalent and settle any outstanding dues to continue receiving and creating trips.';
 
   @override
   String get negativeWalletGoOnlineBlocked =>
-      'Your wallet balance is negative. Settle it before receiving instant rides.';
+      'Top up your wallet with at least JOD 5, SAR 25, or the equivalent and settle any outstanding dues to continue receiving and creating trips.';
 
   @override
   String authStepOf(int current, int total) {
@@ -4950,12 +4960,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String tripFeeOfSeatsLabel(String percent, int seats) {
-    return 'Trip fee ($percent% of $seats seats)';
+    return 'Trip commission ($percent%, capacity $seats seats)';
   }
 
   @override
   String get tripFeeChargedAtStartNotice =>
-      'The trip fee will be deducted from your wallet when the trip starts. Keep a balance in your wallet so you can keep creating new trips.';
+      'Commission is charged on completed booking fares when the trip ends and credited to the platform wallet.';
 
   @override
   String get contactPassengersTitle => 'Contact passengers';
@@ -5835,4 +5845,43 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get instantLocationNotReaching =>
       'Your location isn\'t reaching us right now, so ride requests can\'t reach you. Check your internet and location.';
+
+  @override
+  String get rideChimeArrivedTitle => 'You arrived at the passenger';
+
+  @override
+  String get rideChimeArrivedBody => 'We let the passenger know you are here.';
+
+  @override
+  String get rideChimeStartedTitle => 'Ride started';
+
+  @override
+  String get rideChimeStartedBody => 'Have a good ride!';
+
+  @override
+  String get forgotStartTitle => 'Did you forget to start the ride?';
+
+  @override
+  String get forgotStartBody =>
+      'You left the pickup without starting the ride. Tap “Start ride” now.';
+
+  @override
+  String get forgotStartAction => 'Start ride';
+
+  @override
+  String get offersBatteryTitle => 'Let the app run in the background';
+
+  @override
+  String get offersBatteryBody =>
+      'To get ride requests while the app is closed or the screen is locked, let VisionWay ignore battery optimization. Otherwise your phone may stop the app and requests won\'t reach you.';
+
+  @override
+  String get offersBatteryAction => 'Allow';
+
+  @override
+  String get offersNotificationsTitle => 'Turn on notifications';
+
+  @override
+  String get offersNotificationsBody =>
+      'Notifications are off for VisionWay, so ride requests can\'t reach you. Turn them on in Settings.';
 }

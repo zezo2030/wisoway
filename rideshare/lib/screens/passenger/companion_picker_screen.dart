@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../widgets/promo_code_field.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:provider/provider.dart';
 
 import '../../bloc/booking/booking_bloc.dart';
 import '../../bloc/booking/booking_event.dart';
@@ -64,6 +64,7 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
   /// `cash` to the driver, or `cliq` — a request-to-pay when the trip ends
   /// (Jordanian trips only).
   String _paymentMethod = 'cash';
+  String? _promoCode;
   final _cliqAliasCtrl = TextEditingController();
 
   bool get _cliqAvailable => widget.trip.currency.toUpperCase() == 'JOD';
@@ -82,9 +83,7 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
         nameCtrl: TextEditingController(
           text: widget.isAdditionalBooking ? '' : user?.name ?? '',
         ),
-        gender: widget.isAdditionalBooking
-            ? 'male'
-            : user?.gender ?? 'male',
+        gender: widget.isAdditionalBooking ? 'male' : user?.gender ?? 'male',
         isMainBooker: true,
       ),
     ];
@@ -182,6 +181,7 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
           sharePhoneWithDriver: _sharePhone,
           isFamilyBooking: isFamilyBooking,
           paymentMethod: _paymentMethod,
+          promoCode: _promoCode,
           payerCliqAlias: _payerAlias,
         ),
       );
@@ -193,6 +193,7 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
           sharePhoneWithDriver: _sharePhone,
           isFamilyBooking: isFamilyBooking,
           paymentMethod: _paymentMethod,
+          promoCode: _promoCode,
           payerCliqAlias: _payerAlias,
         ),
       );
@@ -333,6 +334,12 @@ class _CompanionPickerScreenState extends State<CompanionPickerScreen> {
                   ],
 
                   // ── Payment method ─────────────────────────────────────
+                  PromoCodeField(
+                    amount: widget.trip.price * _seatCount,
+                    currency: widget.trip.currency,
+                    tripType: 'shared',
+                    onChanged: (code) => _promoCode = code,
+                  ),
                   _PaymentMethodCard(
                     method: _paymentMethod,
                     cliqAvailable: _cliqAvailable,
@@ -485,6 +492,11 @@ class _PaymentMethodCard extends StatelessWidget {
             SegmentedButton<String>(
               segments: [
                 ButtonSegment(
+                  value: 'wallet',
+                  icon: const Icon(Icons.account_balance_wallet_outlined),
+                  label: Text(l10n.walletTitle),
+                ),
+                ButtonSegment(
                   value: 'cash',
                   icon: const Icon(Icons.payments_outlined),
                   label: Text(l10n.paymentMethodCash),
@@ -501,7 +513,11 @@ class _PaymentMethodCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              method == 'cliq'
+              method == 'wallet'
+                  ? (Localizations.localeOf(context).languageCode == 'ar'
+                        ? 'تُخصم الأجرة من محفظتك عند انتهاء الرحلة.'
+                        : 'The fare is deducted from your wallet when the trip ends.')
+                  : method == 'cliq'
                   ? l10n.bookingPaymentCliqNote
                   : l10n.bookingPaymentCashNote,
               style: TextStyle(

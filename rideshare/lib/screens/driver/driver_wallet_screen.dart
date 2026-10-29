@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/route_names.dart';
 import '../../core/services/payment_service.dart';
@@ -9,7 +10,6 @@ import '../../core/theme/text_styles.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
 import '../../models/wallet_account_model.dart';
-import '../../models/wallet_model.dart';
 import '../../models/wallet_transaction_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/common/empty_state.dart';
@@ -24,11 +24,12 @@ class DriverWalletScreen extends StatefulWidget {
 
 class _DriverWalletScreenState extends State<DriverWalletScreen> {
   final PaymentService _paymentService = PaymentService();
-  WalletModel? _wallet;
   WalletAccountModel? _walletAccount;
   List<WalletTransactionModel> _transactions = [];
   bool _loading = true;
   bool _loadingTransactions = false;
+  List<Map<String, dynamic>> _payouts = [];
+  bool _payoutBusy = false;
 
   @override
   void initState() {
@@ -39,20 +40,25 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final results = await Future.wait([
-        _paymentService.getWalletMe(),
-        _paymentService.getWalletAccountMe(),
-      ]);
+      final account = await _paymentService.getWalletAccountMe();
 
       if (mounted) {
         setState(() {
-          _wallet = results[0] as WalletModel;
-          _walletAccount = results[1] as WalletAccountModel;
+          _walletAccount = account;
           _loading = false;
         });
       }
 
       _loadTransactions();
+      final response = await ApiClient().get('/wallet/driver/payout-requests');
+      final rows = response is Map ? response['data'] : response;
+      if (mounted && rows is List)
+        setState(
+          () => _payouts = rows
+              .whereType<Map>()
+              .map((r) => Map<String, dynamic>.from(r))
+              .toList(),
+        );
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
@@ -76,10 +82,11 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
     }
   }
 
-  Future<void> _openTopUp() async {
+  Future<void> _openTopUp({bool viaCliq = false}) async {
     final result = await Navigator.pushNamed(
       context,
       RouteNames.driverWalletTopup,
+      arguments: viaCliq ? 'cliq' : null,
     );
     if (result == true && mounted) _load();
   }
@@ -146,10 +153,23 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildBalanceCard(),
+                    if (_walletAccount?.currency == 'JOD') ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: () => _openTopUp(viaCliq: true),
+                          icon: const Icon(IconsaxPlusLinear.flash),
+                          label: Text(
+                            _ar ? 'شحن عبر كليك' : 'Top up with CliQ',
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     _buildPendingChargesShortcut(context),
                     const SizedBox(height: 16),
-                    _buildFreeTripCard(),
+                    _buildEarningsCard(),
                     const SizedBox(height: 24),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -332,42 +352,162 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
     );
   }
 
-  Widget _buildFreeTripCard() {
-    final used = _wallet?.hasUsedLifetimeFreeTrip ?? false;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: used
-            ? AppColors.slate200
-            : AppColors.success.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: used
-              ? AppColors.slate400
-              : AppColors.success.withValues(alpha: 0.2),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            used ? IconsaxPlusLinear.tick_circle : IconsaxPlusBold.gift,
-            color: used ? T.onSurfaceVariant(context) : AppColors.success,
-            size: 32,
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              used
-                  ? context.l10n.freeTripUsed
-                  : context.l10n.freeTripAvailableDriver,
-              style: AppTextStyles.labelLarge.copyWith(
-                color: used ? AppColors.slate700 : AppColors.successDark,
+  bool get _ar => Localizations.localeOf(context).languageCode == 'ar';
+
+  Widget _buildEarningsCard() {
+    final a = _walletAccount;
+    final currency = a?.currency ?? 'JOD';
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              _ar ? 'الأرباح والسحب' : 'Earnings and withdrawals',
+              style: AppTextStyles.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _ar
+                  ? 'رصيد ترحيبي عند اعتماد السائق: 5 دنانير أو 25 ريالاً أو ما يعادل 5 دنانير للعملات الأخرى. تُخصم العمولة من المحفظة عند انتهاء الرحلة.'
+                  : 'Approved drivers receive 5 JOD, 25 SAR, or the equivalent of 5 JOD in other currencies. Commission is charged at trip completion.',
+            ),
+            Text(
+              '${_ar ? 'الحد الأدنى للشحن والرصيد المتبقي بعد السحب' : 'Minimum top-up and retained balance'}: ${a?.minimumRetainedBalance.toStringAsFixed(2) ?? '—'} $currency',
+            ),
+            Text(
+              '${_ar ? 'محجوز للسحب' : 'Reserved'}: ${a?.reservedBalance.toStringAsFixed(2) ?? '0'} $currency',
+            ),
+            Text(
+              '${_ar ? 'متاح للسحب' : 'Available to withdraw'}: ${a?.withdrawableBalance.toStringAsFixed(2) ?? '0'} $currency',
+            ),
+            if (a?.rechargeRequired == true)
+              Text(
+                _ar
+                    ? 'اشحن المحفظة بالحد الأدنى وسدد أي مستحقات لاستقبال الرحلات وإنشائها.'
+                    : 'Top up at least the minimum and clear any debt to receive or create rides.',
+                style: const TextStyle(color: Colors.red),
+              ),
+            if (a?.exchangeRateProvider != null)
+              TextButton(
+                onPressed: () =>
+                    launchUrl(Uri.parse('https://www.exchangerate-api.com')),
+                child: const Text('Rates by ExchangeRate-API'),
+              ),
+            const SizedBox(height: 8),
+            FilledButton(
+              onPressed: _payoutBusy || (a?.withdrawableBalance ?? 0) <= 0
+                  ? null
+                  : _requestPayout,
+              child: Text(
+                _ar ? 'طلب سحب الأرباح عبر CliQ' : 'Request a CliQ withdrawal',
               ),
             ),
+            for (final p in _payouts)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text('${p['amount']} ${p['currency']}'),
+                subtitle: Text('${p['bankAccountRef'] ?? ''}'),
+                trailing: Text(
+                  _ar
+                      ? ({
+                              'pending': 'قيد المراجعة',
+                              'approved': 'تمت الموافقة',
+                              'paid': 'تم التحويل',
+                              'rejected': 'مرفوض',
+                            }[p['status']] ??
+                            '${p['status']}')
+                      : '${p['status']}',
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _requestPayout() async {
+    var amountText = '';
+    var accountText = '';
+    final formKey = GlobalKey<FormState>();
+    final max = _walletAccount!.withdrawableBalance;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(_ar ? 'طلب سحب الأرباح' : 'Withdraw earnings'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                onChanged: (value) => amountText = value,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText:
+                      '${_ar ? 'المبلغ — الحد الأقصى' : 'Amount — maximum'} $max',
+                ),
+                validator: (s) {
+                  final n = double.tryParse(s ?? '');
+                  return n == null || !n.isFinite || n <= 0 || n > max
+                      ? (_ar
+                            ? 'أدخل مبلغاً ضمن الرصيد المتاح'
+                            : 'Enter an amount within your available balance')
+                      : null;
+                },
+              ),
+              TextFormField(
+                onChanged: (value) => accountText = value,
+                decoration: InputDecoration(
+                  labelText: _ar
+                      ? 'حساب CliQ أو رقم الهاتف'
+                      : 'CliQ alias or phone',
+                ),
+                validator: (s) => s == null || s.trim().isEmpty
+                    ? (_ar
+                          ? 'أدخل حساب الاستلام'
+                          : 'Enter the receiving account')
+                    : null,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(_ar ? 'إلغاء' : 'Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) Navigator.pop(ctx, true);
+            },
+            child: Text(_ar ? 'إرسال الطلب' : 'Submit'),
           ),
         ],
       ),
     );
+    final requestedAmount = double.tryParse(amountText);
+    final bankAccountRef = accountText.trim();
+    if (result != true || !mounted) return;
+    setState(() => _payoutBusy = true);
+    try {
+      await ApiClient().post(
+        '/wallet/driver/payout-requests',
+        data: {
+          'amount': requestedAmount,
+          'currency': _walletAccount!.currency,
+          'bankAccountRef': bankAccountRef,
+        },
+      );
+      if (mounted) await _load();
+    } catch (e) {
+      if (mounted) ErrorSurface.showFailure(context, ApiClient.mapError(e));
+    } finally {
+      if (mounted) setState(() => _payoutBusy = false);
+    }
   }
 
   Widget _buildTransactionTile(WalletTransactionModel tx) {

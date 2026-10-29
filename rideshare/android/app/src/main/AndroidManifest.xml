@@ -8,6 +8,8 @@
     <!-- Ride offers: wake the screen and open over the lock screen. -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <!-- Drivers: ride requests must reach a closed app (driver_availability_card). -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
     <!-- While online, keep reporting the driver's location from a foreground
          service so offers still reach a locked / backgrounded phone. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>

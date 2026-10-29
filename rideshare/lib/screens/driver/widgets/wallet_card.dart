@@ -53,9 +53,9 @@ class WalletCard extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    wallet.hasUsedLifetimeFreeTrip
-                        ? context.l10n.freeTripUsed
-                        : context.l10n.freeTripAvailable,
+                    Localizations.localeOf(context).languageCode == 'ar'
+                        ? 'تُخصم العمولة عند انتهاء الرحلة'
+                        : 'Commission is charged at trip completion',
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.slate500,
                     ),

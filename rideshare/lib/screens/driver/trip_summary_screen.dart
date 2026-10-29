@@ -269,6 +269,7 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
     final quote = await _tripService.getTripFeeQuote(
       seatPrice: trip.price,
       totalSeats: trip.totalSeats,
+      tripType: trip.tripType,
       currency: trip.currency,
     );
     if (!mounted) return;
@@ -1236,7 +1237,11 @@ extension on _TripSummaryScreenState {
           ),
           const SizedBox(height: 4),
           Text(
-            '${payment.isCliq ? l10n.paymentMethodCliq : l10n.paymentMethodCash} · $status',
+            '${payment.isWallet
+                ? l10n.walletTitle
+                : payment.isCliq
+                ? l10n.paymentMethodCliq
+                : l10n.paymentMethodCash} · $status',
             style: AppTextStyles.bodySmall.copyWith(color: color),
           ),
           if (payment.awaitsDriver) ...[

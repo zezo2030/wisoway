@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import '../../widgets/promo_code_field.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 
@@ -101,6 +102,7 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
 
   /// `cash` or `cliq` (offered only where the quote allows it — Jordan).
   String _paymentMethod = 'cash';
+  String? _promoCode;
 
   /// CliQ: where the request-to-pay goes when the ride ends — the
   /// passenger's alias or mobile, pre-filled from the last CliQ ride.
@@ -442,7 +444,8 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
         _quote = quote;
         _quoteLoading = false;
         // A route outside Jordan can't be paid by CliQ.
-        if (!quote.allowsCliq) _paymentMethod = 'cash';
+        if (!quote.allowsCliq && _paymentMethod == 'cliq')
+          _paymentMethod = 'cash';
       });
     } catch (_) {
       if (!mounted || seq != _quoteSeq) return;
@@ -493,6 +496,7 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
         from: _from!,
         to: _to!,
         paymentMethod: _paymentMethod,
+        promoCode: _promoCode,
         payerCliqAlias: _paymentMethod == 'cliq'
             ? _cliqAliasController.text.trim()
             : null,
@@ -965,7 +969,7 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
                           _buildRouteCard(context),
                           const SizedBox(height: 10),
                           _buildFareCard(context),
-                          if (_quote?.allowsCliq == true) ...[
+                          if (_quote != null) ...[
                             const SizedBox(height: 10),
                             _buildPaymentMethodPicker(context),
                           ],
@@ -1274,7 +1278,11 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
           if (quote != null) ...[
             const SizedBox(height: 6),
             Text(
-              _paymentMethod == 'cliq'
+              _paymentMethod == 'wallet'
+                  ? (Localizations.localeOf(context).languageCode == 'ar'
+                        ? 'تُخصم الأجرة من محفظتك عند انتهاء الرحلة.'
+                        : 'The fare is deducted from your wallet when the trip ends.')
+                  : _paymentMethod == 'cliq'
                   ? l10n.instantFormFareNoteCliq
                   : l10n.instantFormFareNote,
               style: TextStyle(fontSize: 11.5, color: muted),
@@ -1355,14 +1363,27 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
         Row(
           children: [
             option('cash', Icons.payments_outlined, l10n.paymentMethodCash),
-            const SizedBox(width: 10),
             option(
-              'cliq',
-              Icons.account_balance_outlined,
-              l10n.paymentMethodCliq,
+              'wallet',
+              Icons.account_balance_wallet_outlined,
+              l10n.walletTitle,
             ),
+            const SizedBox(width: 10),
+            if (_quote?.allowsCliq == true)
+              option(
+                'cliq',
+                Icons.account_balance_outlined,
+                l10n.paymentMethodCliq,
+              ),
           ],
         ),
+        if (_quote != null)
+          PromoCodeField(
+            amount: _quote!.recommendedFare,
+            currency: _quote!.currency,
+            tripType: 'instant',
+            onChanged: (code) => _promoCode = code,
+          ),
         if (_paymentMethod == 'cliq') ...[
           const SizedBox(height: 10),
           TextField(
@@ -1448,7 +1469,11 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
           ],
           const SizedBox(height: 6),
           Text(
-            paymentMethod == 'cliq'
+            paymentMethod == 'wallet'
+                ? (Localizations.localeOf(context).languageCode == 'ar'
+                      ? 'الدفع من محفظة الراكب عند انتهاء الرحلة.'
+                      : 'Payment from your wallet when the ride ends.')
+                : paymentMethod == 'cliq'
                 ? l10n.instantFormFareNoteCliq
                 : l10n.instantFormFareNote,
             textAlign: TextAlign.center,

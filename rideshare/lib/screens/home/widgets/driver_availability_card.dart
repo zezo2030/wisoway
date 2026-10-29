@@ -3,8 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/websocket_service.dart';
+import '../../../core/errors/failure.dart';
 import '../../../core/services/instant_offer_actions.dart';
 import '../../../core/services/push_notification_service.dart';
 import '../../../core/services/instant_ride_service.dart';
@@ -101,7 +103,7 @@ class _DriverAvailabilityCardState extends State<DriverAvailabilityCard>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Back from the background or the lock screen: an offer that rang in the
     // tray meanwhile should be on screen now, not up to a poll interval later.
-    if (state == AppLifecycleState.resumed && _isOnline) _pollForOffer();
+    if (state == AppLifecycleState.resumed) unawaited(_loadStatus());
   }
 
   Future<void> _loadStatus() async {
@@ -113,7 +115,14 @@ class _DriverAvailabilityCardState extends State<DriverAvailabilityCard>
         _busy = false;
       });
       widget.onOnlineChanged?.call(_isOnline);
-      if (status.isOnline) _startTimers();
+      if (status.isOnline) {
+        _startTimers();
+        unawaited(_pollForOffer());
+        // Drivers who stay online never toggle: check once per app run.
+        if (!_offerDeliveryChecked) unawaited(_checkOfferDelivery());
+      } else {
+        _stopTimers();
+      }
     } catch (_) {
       if (mounted) setState(() => _busy = false);
     }
@@ -125,7 +134,7 @@ class _DriverAvailabilityCardState extends State<DriverAvailabilityCard>
     try {
       if (value) {
         final pos = await _location.getCurrentPosition();
-        await _service.setAvailability(
+        final status = await _service.setAvailability(
           isOnline: true,
           latitude: pos.latitude,
           longitude: pos.longitude,
@@ -134,10 +143,14 @@ class _DriverAvailabilityCardState extends State<DriverAvailabilityCard>
         // Going online carried a location too.
         _lastLocationSentAt = DateTime.now();
         widget.onLocationSent?.call(pos.latitude, pos.longitude);
-        setState(() => _isOnline = true);
-        widget.onOnlineChanged?.call(true);
-        _startTimers();
-        unawaited(_checkOverLockScreen());
+        setState(() => _isOnline = status.isOnline);
+        widget.onOnlineChanged?.call(status.isOnline);
+        if (status.isOnline) {
+          _startTimers();
+          unawaited(_checkOfferDelivery());
+        } else {
+          _stopTimers();
+        }
       } else {
         _stopTimers();
         await _service.setAvailability(isOnline: false);
@@ -147,7 +160,13 @@ class _DriverAvailabilityCardState extends State<DriverAvailabilityCard>
       }
     } catch (e) {
       if (mounted) {
-        ErrorSurface.showFailure(context, ApiClient.mapError(e));
+        final failure = ApiClient.mapError(e);
+        if (failure.nextAction == FailureAction.topUpWallet) {
+          _stopTimers();
+          setState(() => _isOnline = false);
+          widget.onOnlineChanged?.call(false);
+        }
+        ErrorSurface.showFailure(context, failure);
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -234,13 +253,21 @@ class _DriverAvailabilityCardState extends State<DriverAvailabilityCard>
       // (needs the app in the foreground) is only the fallback.
       final last = _lastPosition;
       final fresh =
-          last != null && DateTime.now().difference(last.timestamp).inSeconds < 60;
+          last != null &&
+          DateTime.now().difference(last.timestamp).inSeconds < 60;
       final pos = fresh ? last : await _location.getCurrentPosition();
       _lastHeartbeatAt = DateTime.now();
-      await _service.heartbeat(
+      final status = await _service.heartbeat(
         latitude: pos.latitude,
         longitude: pos.longitude,
       );
+      if (!mounted) return;
+      if (!status.isOnline) {
+        _stopTimers();
+        setState(() => _isOnline = false);
+        widget.onOnlineChanged?.call(false);
+        return;
+      }
       _lastLocationSentAt = DateTime.now();
       widget.onLocationSent?.call(pos.latitude, pos.longitude);
     } catch (_) {
@@ -263,6 +290,76 @@ class _DriverAvailabilityCardState extends State<DriverAvailabilityCard>
 
   /// Android 14+: without full-screen notifications an offer can't wake a
   /// locked phone. Ask the driver to allow it when they go online.
+  /// Everything a ride request needs to reach a driver whose app is closed:
+  /// notifications on, no battery optimization (Android otherwise puts the
+  /// app to sleep and drops its pushes), and full-screen notifications.
+  static bool _offerDeliveryChecked = false;
+
+  Future<void> _checkOfferDelivery() async {
+    _offerDeliveryChecked = true;
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      await _checkNotificationsAllowed();
+      await _checkBatteryOptimization();
+    }
+    await _checkOverLockScreen();
+  }
+
+  Future<void> _checkNotificationsAllowed() async {
+    try {
+      var status = await Permission.notification.status;
+      if (status.isGranted) return;
+      status = await Permission.notification.request();
+      if (status.isGranted || !mounted) return;
+      final l10n = context.l10n;
+      final open = await _askToFix(
+        title: l10n.offersNotificationsTitle,
+        body: l10n.offersNotificationsBody,
+        action: l10n.offersOverLockAction,
+      );
+      if (open) await openAppSettings();
+    } catch (_) {}
+  }
+
+  Future<void> _checkBatteryOptimization() async {
+    try {
+      if (await Permission.ignoreBatteryOptimizations.isGranted) return;
+      if (!mounted) return;
+      final l10n = context.l10n;
+      final allow = await _askToFix(
+        title: l10n.offersBatteryTitle,
+        body: l10n.offersBatteryBody,
+        action: l10n.offersBatteryAction,
+      );
+      if (allow) await Permission.ignoreBatteryOptimizations.request();
+    } catch (_) {}
+  }
+
+  Future<bool> _askToFix({
+    required String title,
+    required String body,
+    required String action,
+  }) async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(IconsaxPlusBold.notification_bing, size: 32),
+        title: Text(title),
+        content: Text(body),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(ctx.l10n.close),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(action),
+          ),
+        ],
+      ),
+    );
+    return yes == true;
+  }
+
   Future<void> _checkOverLockScreen() async {
     if (await PushNotificationService.canShowOffersOverLockScreen()) return;
     if (!mounted) return;
@@ -285,7 +382,8 @@ class _DriverAvailabilityCardState extends State<DriverAvailabilityCard>
         ],
       ),
     );
-    if (open == true) await PushNotificationService.openOverLockScreenSettings();
+    if (open == true)
+      await PushNotificationService.openOverLockScreenSettings();
   }
 
   Future<void> _pollForOffer() async {

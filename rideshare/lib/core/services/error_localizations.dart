@@ -9,15 +9,15 @@ class ErrorLocalizations {
     'errorsNetworkTimeout': 'Connection timed out. Please try again.',
     'errorsServerGeneric':
         'Something went wrong on our end. Please try again later.',
-    'errorsAuthSessionExpired': 'Your session has expired. Please sign in again.',
+    'errorsAuthSessionExpired':
+        'Your session has expired. Please sign in again.',
     'errorsAuthInvalidCredentials': 'Invalid email or password.',
     'errorsPermissionDenied': 'Permission denied. Check your app settings.',
     'errorsValidationGeneric':
         'Invalid input. Please check your data and try again.',
     'errorsWalletInsufficientBalance':
         'Your wallet balance is not enough to complete this booking. Please top up your wallet and try again.',
-    'errorsUnknownGeneric':
-        'An unexpected error occurred. Please try again.',
+    'errorsUnknownGeneric': 'An unexpected error occurred. Please try again.',
     'errorsPhoneHidden':
         'This person keeps their number private. Reach them through the in-app chat.',
     'errorsRouteUnavailable':
@@ -25,7 +25,7 @@ class ErrorLocalizations {
     'errorsOutstandingCharges':
         'You have {count} unpaid charge(s) totaling {total} JOD. Settle them before publishing a new trip.',
     'errorsNegativeWalletBalance':
-        'Your wallet balance is negative. Settle it before creating shared trips or receiving instant rides.',
+        'Top up your wallet with at least JOD 5, SAR 25, or the equivalent and settle any outstanding dues to continue receiving and creating trips.',
     'errorsInsufficientBalanceForTripFee':
         'Your wallet balance is not enough to cover the trip fee. Top up your wallet before publishing.',
     'errorsActionRetry': 'Retry',
@@ -54,12 +54,11 @@ class ErrorLocalizations {
     'errorsUnknownGeneric': 'حدث خطأ غير متوقع. حاول مرة أخرى.',
     'errorsPhoneHidden':
         'هذا المستخدم يُخفي رقم هاتفه. تواصل معه عبر المحادثة في التطبيق.',
-    'errorsRouteUnavailable':
-        'تعذّر تحميل المسار. نعرض نقاط الانطلاق والوصول.',
+    'errorsRouteUnavailable': 'تعذّر تحميل المسار. نعرض نقاط الانطلاق والوصول.',
     'errorsOutstandingCharges':
         'لديك {count} رسوم مستحقة بإجمالي {total} د.أ. يجب تسويتها قبل نشر رحلة جديدة.',
     'errorsNegativeWalletBalance':
-        'رصيد محفظتك سالب. سدد المستحقات قبل إنشاء رحلات مشتركة أو تلقي رحلات مباشرة.',
+        'اشحن محفظتك بحد أدنى 5 دنانير أو 25 ريالاً أو ما يعادلها وسدد أي مستحقات للاستمرار في استقبال الرحلات وإنشائها.',
     'errorsInsufficientBalanceForTripFee':
         'رصيد محفظتك لا يكفي لتغطية رسوم الرحلة. اشحن محفظتك قبل نشر الرحلة.',
     'errorsActionRetry': 'إعادة المحاولة',
@@ -75,8 +74,7 @@ class ErrorLocalizations {
     // Keyed off the app's locale, not the ambient text direction: a subtree
     // that opts out of RTL for layout reasons (the vehicle cabin does) would
     // otherwise show English errors inside an Arabic app.
-    final isAr =
-        Localizations.maybeLocaleOf(context)?.languageCode == 'ar';
+    final isAr = Localizations.maybeLocaleOf(context)?.languageCode == 'ar';
     final map = isAr ? _ar : _en;
     return map[key] ?? _en[key] ?? key;
   }

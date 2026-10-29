@@ -18,6 +18,7 @@ import '../api/api_endpoints.dart';
 import '../constants/app_constants.dart';
 import 'active_ride_navigator.dart';
 import 'booking_request_actions.dart';
+import 'ride_sounds.dart';
 
 class PushNotificationService {
   PushNotificationService._();
@@ -107,6 +108,8 @@ class PushNotificationService {
           AndroidFlutterLocalNotificationsPlugin
         >()
         ?.createNotificationChannel(_androidChannel);
+    // Before any push names them: arrival / start chimes, forgot-start alarm.
+    await RideSounds.createChannels();
 
     _isInitialized = true;
 
@@ -198,12 +201,11 @@ class PushNotificationService {
 
   static Future<void> onTokenRefresh(Function(String) onNewToken) async {
     await _tokenRefreshSubscription?.cancel();
-    _tokenRefreshSubscription = FirebaseMessaging.instance.onTokenRefresh.listen(
-      (token) {
-        _currentToken = token;
-        onNewToken(token);
-      },
-    );
+    _tokenRefreshSubscription = FirebaseMessaging.instance.onTokenRefresh
+        .listen((token) {
+          _currentToken = token;
+          onNewToken(token);
+        });
   }
 
   /// The language the app is currently using ('ar' | 'en'), as persisted by
@@ -250,11 +252,13 @@ class PushNotificationService {
   /// silently does nothing when there is no token or the user is signed out.
   static Future<void> syncLanguage(String languageCode) async {
     try {
-      final token = _currentToken ?? await FirebaseMessaging.instance.getToken();
+      final token =
+          _currentToken ?? await FirebaseMessaging.instance.getToken();
       if (token == null || token.isEmpty) return;
       _currentToken = token;
-      final platform =
-          defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
+      final platform = defaultTargetPlatform == TargetPlatform.iOS
+          ? 'ios'
+          : 'android';
       await registerDevice(
         token: token,
         platform: platform,
@@ -321,11 +325,14 @@ class PushNotificationService {
             data.map((k, v) => MapEntry(k, v?.toString() ?? '')),
           );
         } catch (e) {
-          if (kDebugMode) print('Failed to show instant offer notification: $e');
+          if (kDebugMode)
+            print('Failed to show instant offer notification: $e');
         }
         return;
       }
-      unawaited(InstantOfferActions.openOfferDialog(offerId: offerId, seed: data));
+      unawaited(
+        InstantOfferActions.openOfferDialog(offerId: offerId, seed: data),
+      );
       return;
     }
 
@@ -397,7 +404,11 @@ class PushNotificationService {
     String offerId,
     DateTime until,
   ) async {
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+    if (kIsWeb ||
+        (defaultTargetPlatform != TargetPlatform.android &&
+            defaultTargetPlatform != TargetPlatform.iOS)) {
+      return;
+    }
     try {
       await _bookingNotificationChannel.invokeMethod('startInstantOfferRing', {
         'offerId': offerId,
@@ -423,7 +434,11 @@ class PushNotificationService {
   }
 
   static Future<void> stopInstantOfferRing(String offerId) async {
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+    if (kIsWeb ||
+        (defaultTargetPlatform != TargetPlatform.android &&
+            defaultTargetPlatform != TargetPlatform.iOS)) {
+      return;
+    }
     try {
       await _bookingNotificationChannel.invokeMethod('stopInstantOfferRing', {
         'offerId': offerId,

@@ -6185,7 +6185,7 @@ abstract class AppLocalizations {
   /// No description provided for @pendingBookingHint.
   ///
   /// In ar, this message translates to:
-  /// **'تأكيد الحجز يفتح بيانات الراكب (رحلة مجانية أو خصم من المحفظة مرة واحدة للرحلة)'**
+  /// **'بيانات الراكب متاحة دون رسوم فتح. تُخصم عمولة التطبيق من محفظتك في نهاية الرحلة عن الركاب الذين أكدوا حضورهم.'**
   String get pendingBookingHint;
 
   /// No description provided for @pendingConfirmation.
@@ -7535,7 +7535,7 @@ abstract class AppLocalizations {
   /// No description provided for @createTripFeeNotice.
   ///
   /// In ar, this message translates to:
-  /// **'رسوم الرحلة ({percent}%): {amount} {currency} — تُخصم من محفظتك عند انطلاق الرحلة.'**
+  /// **'العمولة {percent}% من أجرة الركاب الذين أكملوا الرحلة، وتُخصم عند انتهائها. التقدير عند امتلاء المقاعد: {amount} {currency}.'**
   String createTripFeeNotice(String percent, String amount, String currency);
 
   /// No description provided for @insufficientBalanceForTripFee.
@@ -7711,6 +7711,24 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'تبقى للوصول'**
   String get tripInProgressRemainingTime;
+
+  /// No description provided for @tripInProgressDriverArrivesIn.
+  ///
+  /// In ar, this message translates to:
+  /// **'وصول السائق خلال'**
+  String get tripInProgressDriverArrivesIn;
+
+  /// No description provided for @tripLiveLocationTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تتبع الرحلة'**
+  String get tripLiveLocationTitle;
+
+  /// No description provided for @tripLiveLocationBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'تتم مشاركة موقعك مع ركاب الرحلة أثناء التوجه إليهم وخلال الرحلة.'**
+  String get tripLiveLocationBody;
 
   /// No description provided for @tripInProgressTripDetails.
   ///
@@ -8471,13 +8489,13 @@ abstract class AppLocalizations {
   /// No description provided for @negativeWalletBalanceBlocked.
   ///
   /// In ar, this message translates to:
-  /// **'رصيد محفظتك سالب. سدد المستحقات قبل إنشاء رحلات مشتركة أو تلقي رحلات مباشرة.'**
+  /// **'اشحن محفظتك بحد أدنى 5 دنانير أو 25 ريالاً أو ما يعادلها وسدد أي مستحقات للاستمرار في استقبال الرحلات وإنشائها.'**
   String get negativeWalletBalanceBlocked;
 
   /// No description provided for @negativeWalletGoOnlineBlocked.
   ///
   /// In ar, this message translates to:
-  /// **'رصيد محفظتك سالب. سدد المستحقات قبل تلقي الرحلات المباشرة.'**
+  /// **'اشحن محفظتك بحد أدنى 5 دنانير أو 25 ريالاً أو ما يعادلها وسدد أي مستحقات للاستمرار في استقبال الرحلات وإنشائها.'**
   String get negativeWalletGoOnlineBlocked;
 
   /// Step counter shown on the auth wizard screens
@@ -8999,13 +9017,13 @@ abstract class AppLocalizations {
   /// No description provided for @tripFeeOfSeatsLabel.
   ///
   /// In ar, this message translates to:
-  /// **'رسوم الرحلة ({percent}% من {seats} مقاعد)'**
+  /// **'عمولة الرحلة ({percent}%، سعة الرحلة {seats} مقاعد)'**
   String tripFeeOfSeatsLabel(String percent, int seats);
 
   /// No description provided for @tripFeeChargedAtStartNotice.
   ///
   /// In ar, this message translates to:
-  /// **'سيتم خصم رسوم الرحلة من محفظتك عند انطلاق الرحلة. حافظ على وجود رصيد في محفظتك لضمان قدرتك على إنشاء رحلات جديدة.'**
+  /// **'تُخصم العمولة عند انتهاء الرحلة من أجرة الحجوزات المكتملة، وتُضاف إلى محفظة التطبيق.'**
   String get tripFeeChargedAtStartNotice;
 
   /// No description provided for @contactPassengersTitle.
@@ -10567,6 +10585,78 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'لا يصل موقعك إلى الخادم الآن، فلن تصلك طلبات الرحلات. تأكد من الإنترنت ومن تفعيل الموقع.'**
   String get instantLocationNotReaching;
+
+  /// No description provided for @rideChimeArrivedTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'وصلت إلى الراكب'**
+  String get rideChimeArrivedTitle;
+
+  /// No description provided for @rideChimeArrivedBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'أبلغنا الراكب بوصولك.'**
+  String get rideChimeArrivedBody;
+
+  /// No description provided for @rideChimeStartedTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'بدأت الرحلة'**
+  String get rideChimeStartedTitle;
+
+  /// No description provided for @rideChimeStartedBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'رحلة موفقة!'**
+  String get rideChimeStartedBody;
+
+  /// No description provided for @forgotStartTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'هل نسيت بدء الرحلة؟'**
+  String get forgotStartTitle;
+
+  /// No description provided for @forgotStartBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'تحرّكت من مكان الراكب ولم تبدأ الرحلة. اضغط «بدء الرحلة» الآن.'**
+  String get forgotStartBody;
+
+  /// No description provided for @forgotStartAction.
+  ///
+  /// In ar, this message translates to:
+  /// **'بدء الرحلة'**
+  String get forgotStartAction;
+
+  /// No description provided for @offersBatteryTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'اسمح للتطبيق بالعمل في الخلفية'**
+  String get offersBatteryTitle;
+
+  /// No description provided for @offersBatteryBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'حتى تصلك طلبات الرحلات والتطبيق مغلق أو الشاشة مقفلة، اسمح لـ VisionWay بتجاهل «تحسين البطارية». بدون ذلك قد يوقف الهاتف التطبيق ولا تصلك الطلبات.'**
+  String get offersBatteryBody;
+
+  /// No description provided for @offersBatteryAction.
+  ///
+  /// In ar, this message translates to:
+  /// **'السماح'**
+  String get offersBatteryAction;
+
+  /// No description provided for @offersNotificationsTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'فعّل الإشعارات'**
+  String get offersNotificationsTitle;
+
+  /// No description provided for @offersNotificationsBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'الإشعارات متوقفة لـ VisionWay، فلن تصلك طلبات الرحلات. فعّلها من الإعدادات.'**
+  String get offersNotificationsBody;
 }
 
 class _AppLocalizationsDelegate

@@ -105,6 +105,7 @@ class InstantRideService {
     int seatCount = 1,
     String paymentMethod = 'cash',
     String? payerCliqAlias,
+    String? promoCode,
   }) async {
     // No fare in the body: the server always charges its own quote.
     final response = await _api.post(
@@ -114,6 +115,7 @@ class InstantRideService {
         'to': _pointJson(to),
         'seatCount': seatCount,
         'paymentMethod': paymentMethod,
+        if (promoCode != null) 'promoCode': promoCode,
         if (payerCliqAlias != null && payerCliqAlias.trim().isNotEmpty)
           'payerCliqAlias': payerCliqAlias.trim(),
       },

@@ -26,6 +26,7 @@ import '../../utils/seat_layout_helpers.dart';
 import '../../../widgets/common/section_card.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
+import '../../core/api/api_endpoints.dart';
 import '../../core/errors/failure.dart';
 import '../../core/services/location_service.dart';
 import '../../core/api/websocket_service.dart';
@@ -38,6 +39,7 @@ import 'widgets/driver_live_trip_view.dart';
 import '../../models/vehicle_art.dart';
 import '../../widgets/expandable_cabin_view.dart';
 import '../../core/services/active_ride_navigator.dart';
+import '../../core/services/ride_sounds.dart';
 import '../../utils/booking_seat_formatter.dart';
 
 class TripManagementScreen extends StatefulWidget {
@@ -76,6 +78,15 @@ class _TripManagementScreenState extends State<TripManagementScreen>
   String _confirmingBookingId = '';
   String _rejectingBookingId = '';
   Timer? _locationTrackingTimer;
+  StreamSubscription<Position>? _driverLocationStream;
+  DateTime? _lastLocationPublished;
+  DateTime? _lastLocationPosted;
+
+  /// The driver came within reach of the pickup on this ride.
+  bool _reachedPickup = false;
+  DateTime? _forgotStartAlertedAt;
+  bool _forgotStartDialogOpen = false;
+  DateTime? _lastDriverFixTimestamp;
   bool _locationDialogOpen = false;
   bool _markingArrived = false;
 
@@ -131,6 +142,8 @@ class _TripManagementScreenState extends State<TripManagementScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _locationTrackingTimer?.cancel();
+    _driverLocationStream?.cancel();
+    _webSocketService.unsubscribeFromTripTracking(widget.tripId);
     _liveStatusPoll?.cancel();
     _boardingPoll?.cancel();
     ActiveRideNavigator.left(widget.tripId);
@@ -149,6 +162,8 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     if (trip == null || !trip.isDriverLiveTrackingRequired) {
       _locationTrackingTimer?.cancel();
       _locationTrackingTimer = null;
+      _driverLocationStream?.cancel();
+      _driverLocationStream = null;
       if (_liveTrackingActive && mounted) {
         setState(() => _liveTrackingActive = false);
       } else {
@@ -178,6 +193,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     }
 
     final ready = await _ensureTrackingReady();
+    if (!mounted) return;
     if (!ready) {
       await _showEnableLocationDialog();
       if (mounted && _liveTrackingActive) {
@@ -187,30 +203,104 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     }
 
     try {
+      await _webSocketService.connect();
+      if (!mounted) return;
+      _startDriverLocationStream();
+      if (_lastLocationPublished != null &&
+          DateTime.now().difference(_lastLocationPublished!).inSeconds < 6)
+        return;
       final position = await _locationService.getCurrentPosition(
         checkPrivacyPreference: false,
       );
-      _webSocketService.updateDriverLocation(
-        tripId: trip.id,
-        latitude: position.latitude,
-        longitude: position.longitude,
-        speedKph: position.speed > 0 ? position.speed * 3.6 : null,
-        heading: position.heading >= 0 ? position.heading : null,
-        accuracyMeters: position.accuracy,
-      );
-      if (mounted && _isLive(trip)) {
-        setState(() {
-          _driverPosition = LatLng(position.latitude, position.longitude);
-          _liveTrackingActive = true;
-        });
-      } else if (mounted && !_liveTrackingActive) {
-        setState(() => _liveTrackingActive = true);
-      }
+      _publishDriverPosition(position);
     } catch (_) {
       if (mounted && _liveTrackingActive) {
         setState(() => _liveTrackingActive = false);
       }
       await _showEnableLocationDialog();
+    }
+  }
+
+  void _startDriverLocationStream() {
+    if (_driverLocationStream != null) return;
+    final settings = Theme.of(context).platform == TargetPlatform.android
+        ? AndroidSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 10,
+            intervalDuration: const Duration(seconds: 5),
+            foregroundNotificationConfig: ForegroundNotificationConfig(
+              notificationTitle: context.l10n.tripLiveLocationTitle,
+              notificationText: context.l10n.tripLiveLocationBody,
+              notificationChannelName: context.l10n.tripLiveLocationTitle,
+              enableWakeLock: true,
+              setOngoing: true,
+            ),
+          )
+        : const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 10,
+          );
+    _driverLocationStream =
+        Geolocator.getPositionStream(locationSettings: settings).listen(
+          (position) {
+            if (_lastLocationPublished == null ||
+                DateTime.now().difference(_lastLocationPublished!).inSeconds >=
+                    2) {
+              _publishDriverPosition(position);
+            }
+          },
+          onError: (_) {
+            _driverLocationStream?.cancel();
+            _driverLocationStream = null;
+          },
+        );
+  }
+
+  void _publishDriverPosition(Position position) {
+    final trip = _trip;
+    if (!mounted || trip == null || !trip.isDriverLiveTrackingRequired) return;
+    if (_lastDriverFixTimestamp != null &&
+        position.timestamp.isBefore(_lastDriverFixTimestamp!))
+      return;
+    _lastDriverFixTimestamp = position.timestamp;
+    _lastLocationPublished = DateTime.now();
+    _webSocketService.updateDriverLocation(
+      tripId: trip.id,
+      latitude: position.latitude,
+      longitude: position.longitude,
+      speedKph: position.speed > 0 ? position.speed * 3.6 : null,
+      heading: position.heading >= 0 ? position.heading : null,
+      accuracyMeters: position.accuracy,
+    );
+    // The socket drops updates silently once its token expires; every few
+    // seconds send the fix over HTTP too, so the passenger always sees it.
+    if (_lastLocationPosted == null ||
+        DateTime.now().difference(_lastLocationPosted!).inSeconds >= 5) {
+      _lastLocationPosted = DateTime.now();
+      unawaited(
+        ApiClient()
+            .post(
+              ApiEndpoints.trackingLocation,
+              data: {
+                'tripId': trip.id,
+                'latitude': position.latitude,
+                'longitude': position.longitude,
+                if (position.speed > 0) 'speedKph': position.speed * 3.6,
+                if (position.heading >= 0) 'heading': position.heading,
+                'accuracyMeters': position.accuracy,
+              },
+            )
+            .catchError((_) => null),
+      );
+    }
+    _checkForgotToStart(trip, position);
+    if (mounted && _isLive(trip)) {
+      setState(() {
+        _driverPosition = LatLng(position.latitude, position.longitude);
+        _liveTrackingActive = true;
+      });
+    } else if (mounted && !_liveTrackingActive) {
+      setState(() => _liveTrackingActive = true);
     }
   }
 
@@ -314,6 +404,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     final quote = await _tripService.getTripFeeQuote(
       seatPrice: trip.price,
       totalSeats: trip.totalSeats,
+      tripType: trip.tripType,
       currency: trip.currency,
     );
     if (!mounted) return;
@@ -783,7 +874,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
                             const SizedBox(height: 16),
                           ],
 
-                          // Pending bookings (confirm to unlock passenger data / use free trip or wallet)
+                          // Pending bookings; accepting does not charge an access fee.
                           if (pendingBookings.isNotEmpty) ...[
                             _buildPendingBookingsCard(pendingBookings),
                             const SizedBox(height: 16),
@@ -874,6 +965,8 @@ class _TripManagementScreenState extends State<TripManagementScreen>
                 ? () {
                     if (!_nearPickupOrWarn(trip)) return;
                     _advanceInstantStage(
+                      chimeTitle: context.l10n.rideChimeArrivedTitle,
+                      chimeBody: context.l10n.rideChimeArrivedBody,
                       () => _tripService.markArrivedAtPickup(
                         trip.id,
                         latitude: _driverPosition?.latitude,
@@ -890,6 +983,8 @@ class _TripManagementScreenState extends State<TripManagementScreen>
                       return;
                     }
                     _advanceInstantStage(
+                      chimeTitle: context.l10n.rideChimeStartedTitle,
+                      chimeBody: context.l10n.rideChimeStartedBody,
                       () => _tripService.startInstantRide(
                         trip.id,
                         latitude: _driverPosition?.latitude,
@@ -1926,11 +2021,18 @@ class _TripManagementScreenState extends State<TripManagementScreen>
 
   /// Instant ride: records the next pickup stage, then reloads the trip so
   /// the live view moves on to it.
-  Future<void> _advanceInstantStage(Future<void> Function() call) async {
+  Future<void> _advanceInstantStage(
+    Future<void> Function() call, {
+    String? chimeTitle,
+    String? chimeBody,
+  }) async {
     if (_stageBusy) return;
     setState(() => _stageBusy = true);
     try {
       await call();
+      if (chimeTitle != null) {
+        unawaited(RideSounds.chime(title: chimeTitle, body: chimeBody ?? ''));
+      }
       await _reloadTrip();
     } catch (e) {
       if (!mounted) return;
@@ -1938,6 +2040,78 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     } finally {
       if (mounted) setState(() => _stageBusy = false);
     }
+  }
+
+  /// How far from the pickup an unstarted ride sets off «هل نسيت بدء الرحلة؟».
+  static const double _forgotStartMeters = 1000;
+
+  /// The driver reached the passenger, then drove off without «بدء الرحلة»:
+  /// alarm them (again every two minutes) and offer to start it. The fare
+  /// is fixed from the pickup when the ride was requested, so a late start
+  /// doesn't change it.
+  void _checkForgotToStart(TripModel trip, Position position) {
+    if (!trip.isInstant ||
+        trip.status != 'in_progress' ||
+        trip.tripStartedAt != null) {
+      return;
+    }
+    final meters = Geolocator.distanceBetween(
+      position.latitude,
+      position.longitude,
+      trip.from.latitude,
+      trip.from.longitude,
+    );
+    if (meters <= _arrivalRadiusMeters) _reachedPickup = true;
+    if (!(_reachedPickup || trip.driverArrivedAt != null) ||
+        meters < _forgotStartMeters) {
+      return;
+    }
+    final last = _forgotStartAlertedAt;
+    if (last != null && DateTime.now().difference(last).inMinutes < 2) return;
+    _forgotStartAlertedAt = DateTime.now();
+    if (!mounted) return;
+    final l10n = context.l10n;
+    unawaited(
+      RideSounds.forgotToStart(
+        tripId: trip.id,
+        title: l10n.forgotStartTitle,
+        body: l10n.forgotStartBody,
+      ),
+    );
+    unawaited(_showForgotStartDialog(trip));
+  }
+
+  Future<void> _showForgotStartDialog(TripModel trip) async {
+    if (_forgotStartDialogOpen || !mounted) return;
+    _forgotStartDialogOpen = true;
+    final start = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(ctx.l10n.forgotStartTitle),
+        content: Text(ctx.l10n.forgotStartBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(ctx.l10n.later),
+          ),
+          FilledButton(
+            key: const Key('forgot-start-ride'),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(ctx.l10n.forgotStartAction),
+          ),
+        ],
+      ),
+    );
+    _forgotStartDialogOpen = false;
+    if (start != true || !mounted) return;
+    unawaited(RideSounds.clearForgotToStart());
+    // Away from the pickup on purpose: the server accepts the start because
+    // the driver already arrived, or was there.
+    await _advanceInstantStage(
+      chimeTitle: context.l10n.rideChimeStartedTitle,
+      chimeBody: context.l10n.rideChimeStartedBody,
+      () => _tripService.startInstantRide(trip.id),
+    );
   }
 
   /// How close to the pickup «وصلت إلى الراكب» may be pressed; the server

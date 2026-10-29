@@ -941,7 +941,8 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
   }
 
   Widget _buildRouteLine(BuildContext context) {
-    Widget stop(Color color, String name, {bool done = false}) {
+    // «من» / «إلى» over each name, so which end is the pickup is never a guess.
+    Widget stop(Color color, String label, String name, {bool done = false}) {
       return Row(
         children: [
           Icon(
@@ -951,14 +952,28 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.bodyMedium.copyWith(
-                fontWeight: FontWeight.w600,
-                color: done ? T.textSecondary(context) : T.onSurface(context),
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: T.textSecondary(context),
+                  ),
+                ),
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: done
+                        ? T.textSecondary(context)
+                        : T.onSurface(context),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -969,6 +984,7 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
       children: [
         stop(
           AppColors.success,
+          context.l10n.fromLabel,
           widget.trip.from.name,
           done: _passengersOnBoard,
         ),
@@ -979,7 +995,7 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
             child: Container(width: 2, height: 10, color: T.outline(context)),
           ),
         ),
-        stop(AppColors.error, widget.trip.to.name),
+        stop(AppColors.error, context.l10n.toLabel, widget.trip.to.name),
       ],
     );
   }

@@ -1,3 +1,4 @@
+import '../../../core/navigation/shared_trip_navigation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -197,7 +198,7 @@ class _BookingsTabState extends State<BookingsTab> {
                 icon: const Icon(IconsaxPlusBold.add_circle),
                 color: T.primary(context),
                 onPressed: () {
-                  Navigator.pushNamed(context, RouteNames.createTrip);
+                  SharedTripNavigation.open(context);
                 },
                 tooltip: context.l10n.createNewTrip,
               ),
@@ -678,7 +679,7 @@ class _BookingsTabState extends State<BookingsTab> {
             ),
             child: ElevatedButton.icon(
               onPressed: () {
-                Navigator.pushNamed(context, RouteNames.createTrip);
+                SharedTripNavigation.open(context);
               },
               icon: const Icon(
                 IconsaxPlusBold.add_circle,

@@ -2081,7 +2081,7 @@
       }
     }
   },
-  "pendingBookingHint": "تأكيد الحجز يفتح بيانات الراكب (رحلة مجانية أو خصم من المحفظة مرة واحدة للرحلة)",
+  "pendingBookingHint": "بيانات الراكب متاحة دون رسوم فتح. تُخصم عمولة التطبيق من محفظتك في نهاية الرحلة عن الركاب الذين أكدوا حضورهم.",
   "pendingConfirmation": "قيد التأكيد",
   "confirmingBooking": "جاري التأكيد...",
   "quickActions": "إجراءات سريعة",
@@ -2534,7 +2534,7 @@
   "reviewTripSubtitle": "تحقق من تفاصيل رحلتك قبل نشرها للركاب",
   "publishTrip": "نشر الرحلة",
   "backToEdit": "العودة للتعديل",
-  "createTripFeeNotice": "رسوم الرحلة ({percent}%): {amount} {currency} — تُخصم من محفظتك عند انطلاق الرحلة.",
+  "createTripFeeNotice": "العمولة {percent}% من أجرة الركاب الذين أكملوا الرحلة، وتُخصم عند انتهائها. التقدير عند امتلاء المقاعد: {amount} {currency}.",
   "@createTripFeeNotice": {
     "placeholders": {
       "percent": {
@@ -2628,6 +2628,9 @@
   "tripInProgressEtaLabel": "وقت الوصول المتوقع",
   "tripInProgressRemainingDistance": "المسافة المتبقية",
   "tripInProgressRemainingTime": "تبقى للوصول",
+  "tripInProgressDriverArrivesIn": "وصول السائق خلال",
+  "tripLiveLocationTitle": "تتبع الرحلة",
+  "tripLiveLocationBody": "تتم مشاركة موقعك مع ركاب الرحلة أثناء التوجه إليهم وخلال الرحلة.",
   "tripInProgressTripDetails": "تفاصيل الرحلة",
   "tripInProgressShareTracking": "مشاركة التتبع",
   "tripInProgressEmergency": "الطوارئ",
@@ -2885,8 +2888,8 @@
   "tripSummaryChatSubtitle": "تواصل مع ركاب هذه الرحلة",
   "tripSummaryBackHome": "العودة إلى الصفحة الرئيسية",
   "currencyJodShort": "د.أ",
-  "negativeWalletBalanceBlocked": "رصيد محفظتك سالب. سدد المستحقات قبل إنشاء رحلات مشتركة أو تلقي رحلات مباشرة.",
-  "negativeWalletGoOnlineBlocked": "رصيد محفظتك سالب. سدد المستحقات قبل تلقي الرحلات المباشرة.",
+  "negativeWalletBalanceBlocked": "اشحن محفظتك بحد أدنى 5 دنانير أو 25 ريالاً أو ما يعادلها وسدد أي مستحقات للاستمرار في استقبال الرحلات وإنشائها.",
+  "negativeWalletGoOnlineBlocked": "اشحن محفظتك بحد أدنى 5 دنانير أو 25 ريالاً أو ما يعادلها وسدد أي مستحقات للاستمرار في استقبال الرحلات وإنشائها.",
   "authStepOf": "خطوة {current} من {total}",
   "@authStepOf": {
     "description": "Step counter shown on the auth wizard screens",
@@ -3025,7 +3028,7 @@
       }
     }
   },
-  "tripFeeOfSeatsLabel": "رسوم الرحلة ({percent}% من {seats} مقاعد)",
+  "tripFeeOfSeatsLabel": "عمولة الرحلة ({percent}%، سعة الرحلة {seats} مقاعد)",
   "@tripFeeOfSeatsLabel": {
     "placeholders": {
       "percent": {
@@ -3036,7 +3039,7 @@
       }
     }
   },
-  "tripFeeChargedAtStartNotice": "سيتم خصم رسوم الرحلة من محفظتك عند انطلاق الرحلة. حافظ على وجود رصيد في محفظتك لضمان قدرتك على إنشاء رحلات جديدة.",
+  "tripFeeChargedAtStartNotice": "تُخصم العمولة عند انتهاء الرحلة من أجرة الحجوزات المكتملة، وتُضاف إلى محفظة التطبيق.",
   "contactPassengersTitle": "التواصل مع الركاب",
   "contactPassengersSubtitle": "اتصال أو دردشة حية",
   "confirmYourPresenceCta": "قم بتأكيد تواجدك في الوقت والمكان المحدد",
@@ -3413,5 +3416,17 @@
       }
     }
   },
-  "instantLocationNotReaching": "لا يصل موقعك إلى الخادم الآن، فلن تصلك طلبات الرحلات. تأكد من الإنترنت ومن تفعيل الموقع."
+  "instantLocationNotReaching": "لا يصل موقعك إلى الخادم الآن، فلن تصلك طلبات الرحلات. تأكد من الإنترنت ومن تفعيل الموقع.",
+  "rideChimeArrivedTitle": "وصلت إلى الراكب",
+  "rideChimeArrivedBody": "أبلغنا الراكب بوصولك.",
+  "rideChimeStartedTitle": "بدأت الرحلة",
+  "rideChimeStartedBody": "رحلة موفقة!",
+  "forgotStartTitle": "هل نسيت بدء الرحلة؟",
+  "forgotStartBody": "تحرّكت من مكان الراكب ولم تبدأ الرحلة. اضغط «بدء الرحلة» الآن.",
+  "forgotStartAction": "بدء الرحلة",
+  "offersBatteryTitle": "اسمح للتطبيق بالعمل في الخلفية",
+  "offersBatteryBody": "حتى تصلك طلبات الرحلات والتطبيق مغلق أو الشاشة مقفلة، اسمح لـ VisionWay بتجاهل «تحسين البطارية». بدون ذلك قد يوقف الهاتف التطبيق ولا تصلك الطلبات.",
+  "offersBatteryAction": "السماح",
+  "offersNotificationsTitle": "فعّل الإشعارات",
+  "offersNotificationsBody": "الإشعارات متوقفة لـ VisionWay، فلن تصلك طلبات الرحلات. فعّلها من الإعدادات."
 }

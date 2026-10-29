@@ -22,6 +22,7 @@ class BookingCreateMultiSeat extends BookingEvent {
   /// `cash` or `cliq` (request-to-pay to [payerCliqAlias] when the trip ends).
   final String paymentMethod;
   final String? payerCliqAlias;
+  final String? promoCode;
 
   const BookingCreateMultiSeat({
     required this.tripId,
@@ -30,6 +31,7 @@ class BookingCreateMultiSeat extends BookingEvent {
     this.isFamilyBooking = false,
     this.paymentMethod = 'cash',
     this.payerCliqAlias,
+    this.promoCode,
   });
 
   @override
@@ -40,6 +42,7 @@ class BookingCreateMultiSeat extends BookingEvent {
     isFamilyBooking,
     paymentMethod,
     payerCliqAlias,
+    promoCode,
   ];
 }
 
@@ -56,6 +59,7 @@ class BookingAutoPick extends BookingEvent {
   /// `cash` or `cliq` (request-to-pay to [payerCliqAlias] when the trip ends).
   final String paymentMethod;
   final String? payerCliqAlias;
+  final String? promoCode;
 
   const BookingAutoPick({
     required this.tripId,
@@ -65,6 +69,7 @@ class BookingAutoPick extends BookingEvent {
     this.isFamilyBooking = false,
     this.paymentMethod = 'cash',
     this.payerCliqAlias,
+    this.promoCode,
   });
 
   @override
@@ -76,6 +81,7 @@ class BookingAutoPick extends BookingEvent {
     isFamilyBooking,
     paymentMethod,
     payerCliqAlias,
+    promoCode,
   ];
 }
 
