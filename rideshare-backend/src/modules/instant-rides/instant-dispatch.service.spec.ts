@@ -3,6 +3,9 @@ import {
   INITIAL_RADIUS_KM,
   MAX_RADIUS_KM,
   NO_DRIVER_SEARCH_SECONDS,
+  OFFER_TTL_SECONDS,
+  REQUEST_TTL_SECONDS,
+  offerTtlSeconds,
 } from './instant-rides.constants';
 
 describe('InstantDispatchService.finalizeSearch', () => {
@@ -121,7 +124,7 @@ describe('InstantDispatchService.finalizeSearch', () => {
 });
 
 describe('InstantDispatchService.dispatchNext radius growth', () => {
-  const TTL_MS = 180_000;
+  const TTL_MS = REQUEST_TTL_SECONDS * 1000;
   /** The reach grows over the no-driver window, not the whole TTL. */
   const WINDOW_MS = NO_DRIVER_SEARCH_SECONDS * 1000;
 
@@ -234,7 +237,7 @@ describe('InstantDispatchService.dispatchNext radius growth', () => {
 
     await service.dispatchNext('r1');
 
-    // Told «لا يوجد سائق» now, not at the 3-minute TTL.
+    // Told «لا يوجد سائق» now, not at the request TTL.
     expect(requestRepo.update).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'r1' }),
       expect.objectContaining({
@@ -243,5 +246,67 @@ describe('InstantDispatchService.dispatchNext radius growth', () => {
       }),
     );
     expect(requestQueue.add).not.toHaveBeenCalled();
+  });
+});
+
+describe('instant search length', () => {
+  it('caps the whole search at 60 seconds by default', () => {
+    expect(REQUEST_TTL_SECONDS).toBe(60);
+    expect(NO_DRIVER_SEARCH_SECONDS).toBeLessThanOrEqual(REQUEST_TTL_SECONDS);
+  });
+
+  it('never lets an offer outlive the request', () => {
+    expect(offerTtlSeconds(120_000)).toBe(OFFER_TTL_SECONDS);
+    expect(offerTtlSeconds(30_000)).toBe(30);
+    expect(offerTtlSeconds(24_400)).toBe(24);
+  });
+
+  it('sends no offer a driver could not answer in time', () => {
+    expect(offerTtlSeconds(19_900)).toBe(0);
+    expect(offerTtlSeconds(-1_000)).toBe(0);
+  });
+
+  it('ends the search instead of offering with seconds to spare', async () => {
+    const now = Date.now();
+    const request = {
+      id: 'r1',
+      passengerId: 'p1',
+      status: 'searching',
+      fareRevision: 0,
+      radiusKm: 20,
+      createdAt: new Date(now - 25_000),
+      expiresAt: new Date(now + 5_000),
+      fromPoint: { type: 'Point', coordinates: [35.9, 31.9] },
+    };
+    const requestRepo: any = {
+      findOne: jest.fn().mockResolvedValue(request),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+    const availabilityService: any = {
+      findNearbyAvailableDrivers: jest.fn(),
+    };
+    const service = new InstantDispatchService(
+      requestRepo,
+      { find: jest.fn().mockResolvedValue([]), count: jest.fn() } as any,
+      { update: jest.fn() } as any,
+      availabilityService,
+      {
+        sendPush: jest.fn().mockResolvedValue(undefined),
+        emitRealtime: jest.fn(),
+        getPreferredLocale: jest.fn().mockResolvedValue('ar'),
+      } as any,
+      { add: jest.fn(), getJob: jest.fn() } as any,
+      { add: jest.fn(), getJob: jest.fn() } as any,
+    );
+
+    await service.dispatchNext('r1');
+
+    expect(
+      availabilityService.findNearbyAvailableDrivers,
+    ).not.toHaveBeenCalled();
+    expect(requestRepo.update).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'r1' }),
+      expect.objectContaining({ status: 'expired' }),
+    );
   });
 });

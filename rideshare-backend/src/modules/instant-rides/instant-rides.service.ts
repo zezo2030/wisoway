@@ -1,3 +1,4 @@
+import { pricePromotion } from '../promotions/promotions.module';
 import {
   BadRequestException,
   ConflictException,
@@ -5,7 +6,9 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { InstantFareTariffService } from './instant-fare-tariff.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
@@ -34,18 +37,26 @@ import {
   knownCurrencyForCountry,
 } from '../../common/currency/country-currency';
 import { InstantDispatchService } from './instant-dispatch.service';
+import { InstantPickupWatchService } from './instant-pickup-watch.service';
+import { RatingsService } from '../ratings/ratings.service';
+import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
+import { WalletService } from '../wallet/wallet.service';
 import { resolvePaymentChoice } from '../ride-payments/cliq-payer';
 import {
   CreateInstantRequestDto,
   QuoteInstantRequestDto,
 } from './dto/create-instant-request.dto';
 import { OfferResponseType, RespondOfferDto } from './dto/respond-offer.dto';
+import { DriverPositionDto } from './dto/set-availability.dto';
 import {
   dispatchWaveJobId,
+  ARRIVAL_RADIUS_METERS,
   EXPIRE_REQUEST_JOB,
-  FALLBACK_ROAD_FACTOR,
-  FALLBACK_ROUTE_SPEED_KMH,
+  MAX_ROUTE_DETOUR_FACTOR,
+  straightLineRoute,
   computeFare,
+  FareTariff,
+  fareTariffFor,
   INITIAL_RADIUS_KM,
   MAX_RADIUS_KM,
   INSTANT_OFFER_TIMEOUT_QUEUE,
@@ -60,9 +71,16 @@ import {
   buildInstantOfferRouteMetrics,
   haversineKm,
   OfferLocale,
+  tripRouteMetrics,
 } from './instant-offer-labels';
 
 type LatLng = { latitude: number; longitude: number };
+type DriverPosition = DriverPositionDto;
+
+/** «350 متر» / «2.4 كم» for the not-at-pickup message. */
+function formatMeters(meters: number): string {
+  return meters < 1000 ? `${meters} متر` : `${(meters / 1000).toFixed(1)} كم`;
+}
 
 @Injectable()
 export class InstantRidesService {
@@ -82,11 +100,23 @@ export class InstantRidesService {
     private readonly locationsService: LocationsService,
     private readonly notifications: NotificationsService,
     private readonly dispatchService: InstantDispatchService,
+    private readonly pickupWatch: InstantPickupWatchService,
+    private readonly ratings: RatingsService,
+    private readonly settings: PlatformSettingsService,
     @InjectQueue(INSTANT_OFFER_TIMEOUT_QUEUE)
     private readonly offerTimeoutQueue: Queue,
     @InjectQueue(INSTANT_REQUEST_EXPIRY_QUEUE)
     private readonly requestExpiryQueue: Queue,
+    private readonly wallet: WalletService,
+    @Optional() private readonly tariffs?: InstantFareTariffService,
   ) {}
+
+  /** The admin's tariff for this currency, else the built-in default. */
+  private tariffFor(currency: string): Promise<FareTariff> {
+    return this.tariffs
+      ? this.tariffs.tariffFor(currency)
+      : Promise.resolve(fareTariffFor(currency));
+  }
 
   // ── Passenger ──────────────────────────────────────────────────────────────
 
@@ -280,6 +310,12 @@ export class InstantRidesService {
     // ignored rather than rejected so those apps can still order.
     const quote = await this.computeQuote(dto.from, dto.to, passengerId);
     const fare = quote.fare.toFixed(2);
+    const promotion = await pricePromotion(
+      this.requestRepo.manager,
+      dto.promoCode,
+      Number(fare),
+      'instant',
+    );
     const { method: paymentMethod, payerCliqAlias } = resolvePaymentChoice(
       dto.paymentMethod,
       quote.currency,
@@ -301,6 +337,7 @@ export class InstantRidesService {
       this.requestRepo.create({
         passengerId,
         fromName: dto.from.name,
+        ...promotion,
         fromAddress: dto.from.address ?? null,
         fromPoint: {
           type: 'Point',
@@ -320,6 +357,8 @@ export class InstantRidesService {
         currency: quote.currency,
         paymentMethod,
         payerCliqAlias,
+        routeDistanceKm: quote.distanceKm,
+        routeDurationMinutes: Math.round(quote.durationMin),
         radiusKm: INITIAL_RADIUS_KM,
         expiresAt: new Date(now.getTime() + REQUEST_TTL_SECONDS * 1000),
       }),
@@ -368,6 +407,22 @@ export class InstantRidesService {
     }
     if (request.passengerId !== passengerId) {
       throw new ForbiddenException('غير مصرح.');
+    }
+    return this.toRequestView(request);
+  }
+
+  /**
+   * The passenger's request that is still looking for a driver, or null —
+   * how the app finds the new search after its driver cancelled.
+   */
+  async getSearchingRequest(passengerId: string) {
+    const request = await this.findLiveRequest(passengerId);
+    if (
+      !request ||
+      (request.status !== InstantRequestStatus.SEARCHING &&
+        request.status !== InstantRequestStatus.OFFERED)
+    ) {
+      return null;
     }
     return this.toRequestView(request);
   }
@@ -533,11 +588,19 @@ export class InstantRidesService {
           seatCount: original.seatCount,
           paymentMethod: original.paymentMethod,
           payerCliqAlias: original.payerCliqAlias,
+          ...(await pricePromotion(
+            m,
+            original.promoCode ?? undefined,
+            Number(fare),
+            'instant',
+          )),
           status: InstantRequestStatus.SEARCHING,
           fareEstimate: fare,
           recommendedFare: fare,
           passengerFare: fare,
           currency: quote.currency,
+          routeDistanceKm: quote.distanceKm,
+          routeDurationMinutes: Math.round(quote.durationMin),
           radiusKm: INITIAL_RADIUS_KM,
           expiresAt: new Date(now.getTime() + REQUEST_TTL_SECONDS * 1000),
         }),
@@ -643,8 +706,8 @@ export class InstantRidesService {
         pickupDistanceMeters: this.pickupDistanceMeters(availability, request),
         passengerName: passenger?.name ?? null,
         passengerRating:
-          passenger?.rating != null ? Number(passenger.rating) : null,
-        passengerTotalRatings: passenger?.totalRatings ?? null,
+          passenger != null ? Number(passenger.passengerRating) : null,
+        passengerTotalRatings: passenger?.passengerTotalRatings ?? null,
         passengerPhotoUrl: passenger?.photoUrl ?? null,
       }),
     };
@@ -678,6 +741,7 @@ export class InstantRidesService {
   }
 
   async acceptOffer(offerId: string, driverId: string) {
+    await this.wallet.assertNonNegativeDriverBalance(driverId);
     const offer = await this.offerRepo.findOne({
       where: { id: offerId, driverId },
     });
@@ -695,11 +759,16 @@ export class InstantRidesService {
     }
 
     const acceptedFare = request.passengerFare ?? request.fareEstimate ?? '0';
-    const { tripId, driverName } = await this.finalizeMatch(
+    await this.wallet.assertNonNegativeDriverBalance(
+      driverId,
+      request.currency,
+    );
+    const { tripId, driverName, pickupEtaSeconds } = await this.finalizeMatch(
       request,
       offer,
       acceptedFare,
     );
+    await this.pickupWatch.schedule(tripId, pickupEtaSeconds);
 
     this.notifications
       .sendPush(request.passengerId, {
@@ -722,7 +791,11 @@ export class InstantRidesService {
     request: InstantRideRequestEntity,
     offer: InstantRideOfferEntity,
     acceptedFare: string,
-  ): Promise<{ tripId: string; driverName: string }> {
+  ): Promise<{
+    tripId: string;
+    driverName: string;
+    pickupEtaSeconds: number | null;
+  }> {
     const driver = await this.usersService.findById(offer.driverId);
     const vehicle = offer.vehicleId
       ? await this.vehiclesService.findById(offer.vehicleId).catch(() => null)
@@ -798,7 +871,13 @@ export class InstantRidesService {
         userId: request.passengerId,
         status: BookingStatus.CONFIRMED,
         seatCount: request.seatCount,
-        totalAmount: acceptedFare,
+        originalAmount: acceptedFare,
+        promoCode: request.promoCode,
+        discountAmount: request.discountAmount ?? '0.00',
+        totalAmount: Math.max(
+          0,
+          Number(acceptedFare) - Number(request.discountAmount ?? 0),
+        ).toFixed(2),
         seatPriceAtBooking: seatPrice,
         expiresAt: null,
         // Settled when the ride ends: cash to the driver, or CliQ to us.
@@ -824,7 +903,7 @@ export class InstantRidesService {
       dispatchWaveJobId(request.id),
     );
 
-    return { tripId, driverName: driver?.name ?? '' };
+    return { tripId, driverName: driver?.name ?? '', pickupEtaSeconds };
   }
 
   // ── Driver: pickup stages ──────────────────────────────────────────────────
@@ -833,10 +912,15 @@ export class InstantRidesService {
    * The driver has reached the passenger («وصلت إلى الراكب»). Idempotent —
    * pressing it again keeps the first arrival time.
    */
-  async markArrivedAtPickup(tripId: string, driverId: string) {
+  async markArrivedAtPickup(
+    tripId: string,
+    driverId: string,
+    position?: DriverPosition,
+  ) {
     const trip = await this.liveInstantTripOf(tripId, driverId);
     if (trip.tripStartedAt) return trip;
     if (!trip.driverArrivedAt) {
+      await this.assertAtPickup(trip, position);
       trip.driverArrivedAt = new Date();
       await this.tripRepo.save(trip);
       await this.notifyPassenger(trip, {
@@ -852,9 +936,14 @@ export class InstantRidesService {
    * The passenger is in the car and the ride begins («بدء الرحلة»). Arrival is
    * implied if the driver skipped that step. Idempotent.
    */
-  async startRide(tripId: string, driverId: string) {
+  async startRide(tripId: string, driverId: string, position?: DriverPosition) {
     const trip = await this.liveInstantTripOf(tripId, driverId);
     if (trip.tripStartedAt) return trip;
+    // Skipping «وصلت» doesn't skip being there — now, or earlier on this
+    // ride (the driver drove off and was reminded to start it).
+    if (!trip.driverArrivedAt && !(await this.wasAtPickup(trip))) {
+      await this.assertAtPickup(trip, position);
+    }
     const now = new Date();
     trip.driverArrivedAt ??= now;
     trip.tripStartedAt = now;
@@ -865,6 +954,344 @@ export class InstantRidesService {
       type: 'instant_ride_started',
     });
     return trip;
+  }
+
+  /** Whether the driver's tracked path on this ride came within reach of the pickup. */
+  private async wasAtPickup(trip: TripEntity): Promise<boolean> {
+    const [lng, lat] = trip.fromPoint?.coordinates ?? [];
+    if (lng == null || lat == null) return false;
+    try {
+      const rows: unknown[] = await this.tripRepo.query(
+        `SELECT 1 FROM driver_locations
+          WHERE "tripId" = $1
+            AND ST_DWithin(point, ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography, $4)
+          LIMIT 1`,
+        [trip.id, lng, lat, ARRIVAL_RADIUS_METERS],
+      );
+      return Array.isArray(rows) && rows.length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * «وصلت إلى الراكب» only counts at the pickup: within
+   * [ARRIVAL_RADIUS_METERS]. The position is the one the app sends with the
+   * press; without it, the driver's last tracked or reported location.
+   */
+  private async assertAtPickup(trip: TripEntity, position?: DriverPosition) {
+    let here: LatLng | null =
+      position?.latitude != null && position?.longitude != null
+        ? { latitude: position.latitude, longitude: position.longitude }
+        : null;
+    if (!here && trip.lastDriverLocationLat != null) {
+      here = {
+        latitude: Number(trip.lastDriverLocationLat),
+        longitude: Number(trip.lastDriverLocationLng),
+      };
+    }
+    if (!here) {
+      const coords = (
+        await this.availabilityRepo.findOne({
+          where: { driverId: trip.driverId },
+        })
+      )?.point?.coordinates;
+      if (coords) here = { latitude: coords[1], longitude: coords[0] };
+    }
+    if (!here) {
+      throw new ConflictException({
+        statusCode: 409,
+        code: 'DRIVER_LOCATION_UNKNOWN',
+        message: 'فعّل الموقع حتى نتأكد من وصولك إلى الراكب.',
+      });
+    }
+    const [lng, lat] = trip.fromPoint.coordinates;
+    const meters = Math.round(
+      haversineKm(here, { latitude: lat, longitude: lng }) * 1000,
+    );
+    if (meters > ARRIVAL_RADIUS_METERS) {
+      throw new ConflictException({
+        statusCode: 409,
+        code: 'DRIVER_NOT_AT_PICKUP',
+        message: `الرجاء التوجه إلى مكان الراكب. أنت على بُعد ${formatMeters(meters)} من نقطة الانطلاق.`,
+        distanceMeters: meters,
+      });
+    }
+  }
+
+  /**
+   * The driver backs out of an accepted ride before the passenger is in the
+   * car. The trip and booking are cancelled, the driver is freed, and the
+   * passenger is put straight back into a search — for the same route and
+   * fare, skipping this driver — instead of being left with nothing.
+   */
+  async cancelByDriver(tripId: string, driverId: string) {
+    const trip = await this.liveInstantTripOf(tripId, driverId);
+    if (trip.tripStartedAt) {
+      throw new ConflictException({
+        statusCode: 409,
+        code: 'INSTANT_RIDE_ALREADY_STARTED',
+        message: 'بدأت الرحلة، لا يمكن إلغاؤها الآن.',
+      });
+    }
+    const request = await this.requestRepo.findOne({ where: { tripId } });
+    const now = new Date();
+
+    await this.tripRepo.manager.transaction(async (m) => {
+      const claim = await m.update(
+        TripEntity,
+        { id: tripId, status: TripStatus.IN_PROGRESS, tripStartedAt: IsNull() },
+        { status: TripStatus.CANCELLED },
+      );
+      if (claim.affected !== 1) {
+        throw new ConflictException('الرحلة لم تعد جارية.');
+      }
+      await m.update(
+        BookingEntity,
+        { tripId, status: BookingStatus.CONFIRMED },
+        {
+          status: BookingStatus.CANCELLED,
+          cancelledAt: now,
+          cancelledBy: driverId,
+          cancellationReason: 'driver_cancelled',
+        },
+      );
+      if (request) {
+        await m.update(
+          InstantRideRequestEntity,
+          { id: request.id },
+          {
+            status: InstantRequestStatus.CANCELLED,
+            terminalReason: InstantTerminalReason.DRIVER_CANCELLED,
+            endedAt: now,
+          },
+        );
+      }
+    });
+    if (request) await this.freeDriver(driverId, request.id);
+    const penaltyPercent = await this.cancelPenalty(driverId, 'driver');
+
+    const next = request
+      ? await this.searchAgainAfterDriverCancel(request, driverId).catch(
+          (err: Error) => {
+            this.logger.warn(`Re-search after cancel failed: ${err.message}`);
+            return null;
+          },
+        )
+      : null;
+
+    this.logger.log(
+      `instant_driver_cancelled ${JSON.stringify({
+        tripId,
+        driverId,
+        requestId: request?.id ?? null,
+        nextRequestId: next?.id ?? null,
+      })}`,
+    );
+
+    if (request) {
+      const data = {
+        tripId,
+        requestId: next?.id ?? request.id,
+        searching: next != null,
+      };
+      this.notifications.emitRealtime(
+        request.passengerId,
+        'instantDriverCancelled',
+        data,
+      );
+      this.notifications
+        .sendPush(request.passengerId, {
+          title: 'ألغى السائق الرحلة',
+          body: next
+            ? 'نبحث لك الآن عن سائق آخر.'
+            : 'يمكنك طلب رحلة جديدة الآن.',
+          type: 'instant_driver_cancelled',
+          data,
+        })
+        .catch(() => undefined);
+    }
+
+    return {
+      cancelled: true,
+      nextRequestId: next?.id ?? null,
+      ratingPenaltyPercent: penaltyPercent,
+    };
+  }
+
+  /**
+   * The passenger cancels an accepted ride before it starts (the driver is
+   * on the way or waiting). The trip and booking are cancelled, the driver is
+   * freed and told, and the passenger's rating takes the cancel cut.
+   */
+  async cancelByPassenger(tripId: string, passengerId: string) {
+    const request = await this.requestRepo.findOne({ where: { tripId } });
+    if (!request) throw new NotFoundException('الرحلة غير موجودة.');
+    if (request.passengerId !== passengerId) {
+      throw new ForbiddenException('هذه الرحلة ليست لك.');
+    }
+    const trip = await this.tripRepo.findOne({ where: { id: tripId } });
+    if (!trip || trip.status !== TripStatus.IN_PROGRESS) {
+      throw new ConflictException('الرحلة لم تعد جارية.');
+    }
+    if (trip.tripStartedAt) {
+      throw new ConflictException({
+        statusCode: 409,
+        code: 'INSTANT_RIDE_ALREADY_STARTED',
+        message: 'بدأت الرحلة، لا يمكن إلغاؤها الآن.',
+      });
+    }
+    const now = new Date();
+    await this.tripRepo.manager.transaction(async (m) => {
+      const claim = await m.update(
+        TripEntity,
+        { id: tripId, status: TripStatus.IN_PROGRESS, tripStartedAt: IsNull() },
+        { status: TripStatus.CANCELLED },
+      );
+      if (claim.affected !== 1) {
+        throw new ConflictException('الرحلة لم تعد جارية.');
+      }
+      await m.update(
+        BookingEntity,
+        { tripId, status: BookingStatus.CONFIRMED },
+        {
+          status: BookingStatus.CANCELLED,
+          cancelledAt: now,
+          cancelledBy: passengerId,
+          cancellationReason: 'passenger_cancelled',
+        },
+      );
+      await m.update(
+        InstantRideRequestEntity,
+        { id: request.id },
+        {
+          status: InstantRequestStatus.CANCELLED,
+          terminalReason: InstantTerminalReason.PASSENGER_CANCELLED,
+          endedAt: now,
+        },
+      );
+    });
+    await this.freeDriver(trip.driverId, request.id);
+    const penaltyPercent = await this.cancelPenalty(passengerId, 'passenger');
+
+    this.logger.log(
+      `instant_passenger_cancelled ${JSON.stringify({ tripId, passengerId })}`,
+    );
+    const data = { tripId, requestId: request.id };
+    this.notifications.emitRealtime(
+      trip.driverId,
+      'instantPassengerCancelled',
+      data,
+    );
+    this.notifications
+      .sendPush(trip.driverId, {
+        title: 'ألغى الراكب الرحلة',
+        body: 'لم تعد بحاجة للتوجه إلى الراكب. أنت متاح لطلبات جديدة.',
+        type: 'instant_passenger_cancelled',
+        data,
+      })
+      .catch(() => undefined);
+
+    return { cancelled: true, ratingPenaltyPercent: penaltyPercent };
+  }
+
+  /** The cancel cut set on the dashboard, applied to [userId] in [role]. */
+  private async cancelPenalty(
+    userId: string,
+    role: 'driver' | 'passenger',
+  ): Promise<number> {
+    try {
+      const percent = await this.settings.getNumber(
+        'cancelRatingPenaltyPercent',
+      );
+      await this.ratings.applyRatingPenalty(userId, percent, role);
+      return percent;
+    } catch (err) {
+      this.logger.warn(`cancel penalty failed: ${(err as Error).message}`);
+      return 0;
+    }
+  }
+
+  /**
+   * A fresh search for a passenger whose driver cancelled: same route, seats,
+   * payment and fare they already agreed to. The cancelling driver gets a
+   * closed offer on it so the dispatch never picks them again.
+   */
+  private async searchAgainAfterDriverCancel(
+    original: InstantRideRequestEntity,
+    cancelledDriverId: string,
+  ): Promise<InstantRideRequestEntity | null> {
+    const now = new Date();
+    const fare =
+      original.acceptedFare ?? original.passengerFare ?? original.fareEstimate;
+    let created: InstantRideRequestEntity | null = null;
+
+    await this.requestRepo.manager.transaction(async (m) => {
+      if (await this.findLiveRequest(original.passengerId, m)) return;
+      const request = await m.save(
+        m.create(InstantRideRequestEntity, {
+          passengerId: original.passengerId,
+          retryOfRequestId: original.id,
+          fromName: original.fromName,
+          fromAddress: original.fromAddress,
+          fromPoint: original.fromPoint,
+          toName: original.toName,
+          toAddress: original.toAddress,
+          toPoint: original.toPoint,
+          seatCount: original.seatCount,
+          paymentMethod: original.paymentMethod,
+          payerCliqAlias: original.payerCliqAlias,
+          promoCode: original.promoCode,
+          originalAmount: original.originalAmount,
+          discountAmount: original.discountAmount,
+          status: InstantRequestStatus.SEARCHING,
+          fareEstimate: fare,
+          recommendedFare: fare,
+          passengerFare: fare,
+          currency: original.currency,
+          routeDistanceKm: original.routeDistanceKm,
+          routeDurationMinutes: original.routeDurationMinutes,
+          radiusKm: INITIAL_RADIUS_KM,
+          expiresAt: new Date(now.getTime() + REQUEST_TTL_SECONDS * 1000),
+        }),
+      );
+      await m.save(
+        m.create(InstantRideOfferEntity, {
+          requestId: request.id,
+          driverId: cancelledDriverId,
+          status: InstantOfferStatus.CANCELLED,
+          fareRevision: request.fareRevision,
+          offeredAt: now,
+          respondedAt: now,
+          expiresAt: now,
+        }),
+      );
+      created = request;
+    });
+
+    const request = created as InstantRideRequestEntity | null;
+    if (!request) return null;
+
+    await this.requestExpiryQueue
+      .add(
+        EXPIRE_REQUEST_JOB,
+        { requestId: request.id },
+        {
+          delay: REQUEST_TTL_SECONDS * 1000,
+          jobId: requestExpiryJobId(request.id),
+          removeOnComplete: true,
+          removeOnFail: true,
+        },
+      )
+      .catch((err: Error) =>
+        this.logger.warn(`Failed to enqueue request expiry: ${err.message}`),
+      );
+    void this.dispatchService
+      .dispatchNext(request.id)
+      .catch((err: Error) =>
+        this.logger.warn(`dispatchNext after cancel failed: ${err.message}`),
+      );
+    return request;
   }
 
   private async liveInstantTripOf(tripId: string, driverId: string) {
@@ -955,8 +1382,9 @@ export class InstantRidesService {
       this.routeDistance(from, to),
       this.currencyAt(from, passengerId),
     ]);
+    const tariff = await this.tariffFor(currency);
     return {
-      fare: computeFare(distanceKm, durationMin, currency),
+      fare: computeFare(distanceKm, durationMin, currency, tariff),
       currency,
       distanceKm,
       durationMin,
@@ -980,9 +1408,12 @@ export class InstantRidesService {
         to.longitude,
       );
       return { distanceKm: d.distanceKm, durationMin: d.durationMinutes };
-    } catch {
-      // try the route service next
+    } catch (err) {
+      this.logger.warn(
+        `instant_route_google_failed ${(err as Error).message} — trying the route service`,
+      );
     }
+    const straightKm = haversineKm(from, to);
     try {
       const r = await this.locationsService.getRoute(
         from.latitude,
@@ -991,19 +1422,27 @@ export class InstantRidesService {
         to.longitude,
       );
       if (r.distanceMeters != null && r.durationSeconds != null) {
-        return {
-          distanceKm: r.distanceMeters / 1000,
-          durationMin: Math.ceil(r.durationSeconds / 60),
-        };
+        const routeKm = r.distanceMeters / 1000;
+        // The public OSRM fallback can pick a long detour (AlUla → Tabuk:
+        // 441 km against 296 by Google), and the fare is fixed by it. A route
+        // that much longer than the straight line isn't trusted.
+        if (routeKm <= straightKm * MAX_ROUTE_DETOUR_FACTOR) {
+          return {
+            distanceKm: routeKm,
+            durationMin: Math.ceil(r.durationSeconds / 60),
+          };
+        }
+        this.logger.warn(
+          `instant_route_detour_rejected ${JSON.stringify({
+            routeKm: Math.round(routeKm),
+            straightKm: Math.round(straightKm),
+          })}`,
+        );
       }
     } catch {
       // fall through to the straight line
     }
-    const distanceKm = haversineKm(from, to) * FALLBACK_ROAD_FACTOR;
-    return {
-      distanceKm,
-      durationMin: Math.ceil((distanceKm / FALLBACK_ROUTE_SPEED_KMH) * 60),
-    };
+    return straightLineRoute(straightKm);
   }
 
   /**
@@ -1067,8 +1506,18 @@ export class InstantRidesService {
       seatCount: request.seatCount,
       fareEstimate: request.fareEstimate,
       recommendedFare: request.recommendedFare,
-      passengerFare: request.passengerFare,
-      acceptedFare: request.acceptedFare,
+      promoCode: request.promoCode ?? null,
+      originalAmount: request.originalAmount ?? request.passengerFare,
+      discountAmount: request.discountAmount ?? '0.00',
+      passengerFare: (
+        Number(request.passengerFare) - Number(request.discountAmount ?? 0)
+      ).toFixed(2),
+      acceptedFare:
+        request.acceptedFare == null
+          ? null
+          : (
+              Number(request.acceptedFare) - Number(request.discountAmount ?? 0)
+            ).toFixed(2),
       currency: request.currency,
       paymentMethod: request.paymentMethod ?? 'cash',
       matchedDriverId: request.matchedDriverId,
@@ -1086,28 +1535,18 @@ export class InstantRidesService {
   }
 
   /**
-   * Straight-line distance + duration for the searching sheet. The request
-   * stores no route, so this mirrors the quote fallback (haversine at the
-   * urban approach speed) — good enough for the "~ km / ~ min" strip.
+   * Road distance + driving time for the searching sheet: the route the fare
+   * was priced on. It used to be the straight line at city approach speed,
+   * which put AlUla → Tabuk at 236 km and 9½ hours.
    */
   private routeMetricsFor(request: InstantRideRequestEntity) {
-    const fromCoords = request.fromPoint?.coordinates;
-    const toCoords = request.toPoint?.coordinates;
-    if (!fromCoords || !toCoords) {
+    if (!request.fromPoint?.coordinates || !request.toPoint?.coordinates) {
       return { distanceKm: null, durationMinutes: null };
     }
-    const [fromLng, fromLat] = fromCoords;
-    const [toLng, toLat] = toCoords;
-    const distanceKm = haversineKm(
-      { latitude: fromLat, longitude: fromLng },
-      { latitude: toLat, longitude: toLng },
-    );
+    const { distanceKm, durationMinutes } = tripRouteMetrics(request);
     return {
       distanceKm: Math.round(distanceKm * 10) / 10,
-      durationMinutes: Math.max(
-        1,
-        Math.round((distanceKm / PICKUP_ETA_SPEED_KMH) * 60),
-      ),
+      durationMinutes,
     };
   }
 
@@ -1146,15 +1585,20 @@ export class InstantRidesService {
     return {
       tripId: request.tripId,
       bookingId: booking?.id ?? null,
-      acceptedFare: request.acceptedFare,
+      acceptedFare:
+        request.acceptedFare == null
+          ? null
+          : (
+              Number(request.acceptedFare) - Number(request.discountAmount ?? 0)
+            ).toFixed(2),
       currency: request.currency,
       paymentMethod: request.paymentMethod ?? 'cash',
       pickupEtaSeconds: request.pickupEtaSeconds,
       driverId: request.matchedDriverId,
       driverName: driver?.name ?? null,
       driverPhotoUrl: driver?.photoUrl ?? null,
-      driverRating: driver?.rating != null ? Number(driver.rating) : null,
-      driverTotalRatings: driver?.totalRatings ?? null,
+      driverRating: driver != null ? Number(driver.driverRating) : null,
+      driverTotalRatings: driver?.driverTotalRatings ?? null,
       vehicleModel: vehicle?.model ?? null,
       plateNumber: vehicle?.plateNumber ?? null,
       carImageUrl: vehicle?.carImageUrl ?? null,
@@ -1177,6 +1621,8 @@ export class InstantRidesService {
     const routeMetrics = buildInstantOfferRouteMetrics({
       fromPoint: request.fromPoint,
       toPoint: request.toPoint,
+      routeDistanceKm: request.routeDistanceKm,
+      routeDurationMinutes: request.routeDurationMinutes,
       passengerFare: request.passengerFare,
       fareEstimate: request.fareEstimate,
       currency: request.currency,

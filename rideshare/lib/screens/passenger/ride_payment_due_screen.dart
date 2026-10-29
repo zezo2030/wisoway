@@ -208,18 +208,8 @@ class _RidePaymentDueScreenState extends State<RidePaymentDueScreen> {
             color: T.onSurface(context),
           ),
         ),
-        if (_trip != null) ...[
-          const SizedBox(height: 4),
-          Text(
-            _trip!.to.name,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: T.textSecondary(context),
-            ),
-          ),
-        ],
+        // No destination name: the passenger may have changed their mind on
+        // the way, so the requested one can be wrong.
       ],
     );
   }
@@ -239,7 +229,7 @@ class _RidePaymentDueScreenState extends State<RidePaymentDueScreen> {
       child: Column(
         children: [
           Text(
-            payment.isCliq
+            payment.isCliq || payment.isWallet
                 ? l10n.ridePaymentAmountDue
                 : l10n.ridePaymentPayDriverTitle,
             textAlign: TextAlign.center,
@@ -258,7 +248,12 @@ class _RidePaymentDueScreenState extends State<RidePaymentDueScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          _MethodChip(isCliq: payment.isCliq),
+          if (payment.discountAmount > 0)
+            Text(
+              '${Localizations.localeOf(context).languageCode == 'ar' ? 'السعر قبل الخصم' : 'Original fare'}: ${payment.originalAmount?.toStringAsFixed(2)} ${payment.currency}\n${payment.promoCode}: -${payment.discountAmount.toStringAsFixed(2)} ${payment.currency}',
+              textAlign: TextAlign.center,
+            ),
+          _MethodChip(isCliq: payment.isCliq, isWallet: payment.isWallet),
         ],
       ),
     );
@@ -266,6 +261,27 @@ class _RidePaymentDueScreenState extends State<RidePaymentDueScreen> {
 
   List<Widget> _buildState(BuildContext context, RidePayment payment) {
     final l10n = context.l10n;
+
+    if (payment.isWallet) {
+      final ar = Localizations.localeOf(context).languageCode == 'ar';
+      return [
+        Text(
+          ar
+              ? 'اشحن محفظتك إذا كان الرصيد غير كافٍ، ثم أعد محاولة الدفع.'
+              : 'Top up your wallet if needed, then retry payment.',
+        ),
+        FilledButton(
+          onPressed: _busy
+              ? null
+              : () => _act(() => _service.payFromWallet(widget.tripId)),
+          child: Text(ar ? 'الدفع من المحفظة' : 'Pay from wallet'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pushNamed(context, '/passenger-wallet'),
+          child: Text(l10n.walletTitle),
+        ),
+      ];
+    }
 
     if (payment.isCliqFailed) {
       return [
@@ -336,9 +352,10 @@ class _RidePaymentDueScreenState extends State<RidePaymentDueScreen> {
 }
 
 class _MethodChip extends StatelessWidget {
-  const _MethodChip({required this.isCliq});
+  const _MethodChip({required this.isCliq, this.isWallet = false});
 
   final bool isCliq;
+  final bool isWallet;
 
   @override
   Widget build(BuildContext context) {
@@ -358,7 +375,9 @@ class _MethodChip extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            isCliq
+            isWallet
+                ? context.l10n.walletTitle
+                : isCliq
                 ? context.l10n.paymentMethodCliq
                 : context.l10n.paymentMethodCash,
             style: AppTextStyles.labelLarge.copyWith(

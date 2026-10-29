@@ -40,7 +40,7 @@ object InstantOfferNotificationHelper {
      * it is created, and the shared channel uses the default sound. Bump the id
      * to change the sound on installed apps.
      */
-    const val CHANNEL_ID = "instant_offers_ring_v1"
+    const val CHANNEL_ID = "instant_offers_ring_v2"
 
     private val VIBRATION = longArrayOf(0, 400, 250, 400, 900)
 

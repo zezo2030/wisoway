@@ -398,12 +398,12 @@ describe('TripsService (TypeORM)', () => {
       expect(trip.seatLayout.preventGenderMixing).toBe(false);
     });
 
-    it('rejects a departure time in the past', async () => {
+    it('rejects an unreadable departure time', async () => {
       await expect(
         service.create(
           {
             ...baseDto(),
-            departureTime: new Date(Date.now() - 1000).toISOString(),
+            departureTime: 'not-a-date',
           },
           DRIVER_ID,
           DRIVER_NAME,
@@ -413,7 +413,7 @@ describe('TripsService (TypeORM)', () => {
 
     it('rejects an invalid departure time before resolving currency or checking the fee guard', async () => {
       // Pins the order: outstanding-charges -> departure-time -> seat-count ->
-      // resolveTripCurrency -> fee-guard. A driver who submits both a past
+      // resolveTripCurrency -> fee-guard. A driver who submits both an unreadable
       // departure time and an unaffordable trip must see the departure-time
       // error, and the request must never pay for the geocode or wallet read
       // behind the later checks.
@@ -427,7 +427,7 @@ describe('TripsService (TypeORM)', () => {
         service.create(
           {
             ...baseDto(),
-            departureTime: new Date(Date.now() - 1000).toISOString(),
+            departureTime: 'not-a-date',
           },
           DRIVER_ID,
           DRIVER_NAME,

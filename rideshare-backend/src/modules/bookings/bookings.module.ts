@@ -20,6 +20,7 @@ import { PaymentsModule } from '../payments/payments.module';
 import { UsersModule } from '../users/users.module';
 import { TripTimeModule } from '../trip-time/trip-time.module';
 import { DriverTripFeeModule } from '../driver-trip-fee/driver-trip-fee.module';
+import { RidePaymentsModule } from '../ride-payments/ride-payments.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { DriverTripFeeModule } from '../driver-trip-fee/driver-trip-fee.module';
     // TripAutoCompleteProcessor settles the wallet hold via PresenceService.
     forwardRef(() => TripTimeModule),
     DriverTripFeeModule,
+    RidePaymentsModule,
   ],
   controllers: [BookingsController, BookingsV2Controller],
   providers: [

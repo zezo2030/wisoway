@@ -108,6 +108,31 @@ export default function NotificationsPage() {
             title: t("feePaymentAlerts"),
             description: t("feePaymentAlertsDesc"),
         },
+        {
+            alertType: "wallet_topup",
+            title: t("walletTopupAlerts"),
+            description: t("walletTopupAlertsDesc"),
+        },
+        {
+            alertType: "payout_request",
+            title: t("payoutRequestAlerts"),
+            description: t("payoutRequestAlertsDesc"),
+        },
+        {
+            alertType: "refund_request",
+            title: t("refundRequestAlerts"),
+            description: t("refundRequestAlertsDesc"),
+        },
+        {
+            alertType: "complaint",
+            title: t("complaintAlerts"),
+            description: t("complaintAlertsDesc"),
+        },
+        {
+            alertType: "trip_emergency",
+            title: t("tripEmergencyAlerts"),
+            description: t("tripEmergencyAlertsDesc"),
+        },
     ]
 
     const handlePageChange = (newPage: number) => {

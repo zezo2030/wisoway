@@ -1,4 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { InstantFareModule } from '../instant-rides/instant-fare.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
 import { BookingEntity } from '../../database/entities/booking.entity';
@@ -9,6 +10,7 @@ import { CommunicationFeeEntity } from '../../database/entities/communication-fe
 import { UserEntity } from '../../database/entities/user.entity';
 import { TripTimeService } from './trip-time.service';
 import { PresenceService } from './presence.service';
+import { TripStartService } from './trip-start.service';
 import { TripTimeController } from './trip-time.controller';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PlatformPricingService } from '../payments/platform-pricing.service';
@@ -32,9 +34,15 @@ import { RidePaymentsModule } from '../ride-payments/ride-payments.module';
     forwardRef(() => NotificationsModule),
     DriverTripFeeModule,
     RidePaymentsModule,
+    InstantFareModule,
   ],
   controllers: [TripTimeController],
-  providers: [TripTimeService, PresenceService, PlatformPricingService],
-  exports: [TripTimeService, PresenceService],
+  providers: [
+    TripTimeService,
+    PresenceService,
+    PlatformPricingService,
+    TripStartService,
+  ],
+  exports: [TripTimeService, PresenceService, TripStartService],
 })
 export class TripTimeModule {}

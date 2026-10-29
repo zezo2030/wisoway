@@ -26,6 +26,8 @@ export class TrackingService {
       select: [
         'id',
         'driverId',
+        'tripType',
+        'tripStartedAt',
         'toPoint',
         'fromPoint',
         'etaComputedAt',
@@ -88,6 +90,8 @@ export class TrackingService {
     trip: Pick<
       TripEntity,
       | 'id'
+      | 'tripType'
+      | 'tripStartedAt'
       | 'toPoint'
       | 'fromPoint'
       | 'etaComputedAt'
@@ -108,14 +112,16 @@ export class TrackingService {
     const last = trip.etaComputedAt
       ? new Date(trip.etaComputedAt).getTime()
       : 0;
-    if (last && now - last < ETA_REFRESH_MS) {
+    const justStarted = trip.tripStartedAt && last < new Date(trip.tripStartedAt).getTime();
+    if (last && now - last < ETA_REFRESH_MS && !justStarted) {
       return null;
     }
     if (this.etaInFlight.has(trip.id)) {
       return null;
     }
 
-    const dest = trip.toPoint?.coordinates;
+    const approaching = trip.tripType === 'instant' && !trip.tripStartedAt;
+    const dest = approaching ? trip.fromPoint?.coordinates : trip.toPoint?.coordinates;
     if (!dest || dest.length < 2) {
       return null;
     }
@@ -138,7 +144,7 @@ export class TrackingService {
       const remainingDistanceKm = Number((distanceMeters / 1000).toFixed(2));
       const remainingDurationSeconds = Math.max(0, Math.round(durationSeconds));
       const etaAt = new Date(now + remainingDurationSeconds * 1000);
-      const routeProgressPercent = this.computeProgressPercent(
+      const routeProgressPercent = approaching ? 0 : this.computeProgressPercent(
         trip.fromPoint?.coordinates,
         dest,
         [longitude, latitude],

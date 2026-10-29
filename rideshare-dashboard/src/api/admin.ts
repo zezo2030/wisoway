@@ -326,7 +326,14 @@ export async function broadcastNotification(data: BroadcastNotificationRequest):
   return response.data.data
 }
 
-export type AdminAlertType = "driver_registration" | "fee_payment"
+export type AdminAlertType =
+  | "driver_registration"
+  | "fee_payment"
+  | "trip_emergency"
+  | "wallet_topup"
+  | "payout_request"
+  | "refund_request"
+  | "complaint"
 
 export interface AlertPreference {
   alertType: AdminAlertType
@@ -855,5 +862,57 @@ export async function getPendingDrivers(
     "/admin/users",
     { params: { ...params, role: "driver", isDriverApproved: false } },
   )
+  return response.data.data
+}
+
+// ─── Platform settings (operational knobs) ───────────────────────────────────
+
+export interface PlatformSettings {
+  instantCommissionPercent: number
+  sharedCommissionPercent: number
+  /** Rating cut (%) for each instant ride the driver reaches the passenger late. */
+  lateRatingPenaltyPercent: number
+  /** Rating cut (%) for cancelling an instant ride after it was accepted. */
+  cancelRatingPenaltyPercent: number
+}
+
+export async function getPlatformSettings(): Promise<PlatformSettings> {
+  const response = await apiClient.get<ApiResponse<PlatformSettings>>("/admin/platform-settings")
+  return response.data.data
+}
+
+export async function patchPlatformSettings(body: Partial<PlatformSettings>): Promise<PlatformSettings> {
+  const response = await apiClient.patch<ApiResponse<PlatformSettings>>("/admin/platform-settings", body)
+  return response.data.data
+}
+
+/** One currency's instant-ride tariff; amounts in its main unit (JOD, not qirsh). */
+export interface FareTariff {
+  currency: string
+  base: number
+  perKm: number
+  perMin: number
+  waitPerMin: number
+  freeWaitMin: number
+  minimum: number
+  step: number
+  /** Saved by an admin; false while on the built-in defaults. */
+  customized: boolean
+}
+
+export type FareTariffPatch = Partial<Omit<FareTariff, "currency" | "customized">>
+
+export async function getFareTariffs(): Promise<FareTariff[]> {
+  const response = await apiClient.get<ApiResponse<FareTariff[]>>("/admin/instant-fare-tariffs")
+  return response.data.data
+}
+
+export async function patchFareTariff(currency: string, body: FareTariffPatch): Promise<FareTariff> {
+  const response = await apiClient.patch<ApiResponse<FareTariff>>(`/admin/instant-fare-tariffs/${currency}`, body)
+  return response.data.data
+}
+
+export async function resetFareTariff(currency: string): Promise<FareTariff> {
+  const response = await apiClient.delete<ApiResponse<FareTariff>>(`/admin/instant-fare-tariffs/${currency}`)
   return response.data.data
 }

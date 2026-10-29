@@ -16,6 +16,9 @@ describe('InstantRidesService', () => {
   let locations: any;
   let notifications: any;
   let dispatch: any;
+  let pickupWatch: any;
+  let ratings: any;
+  let settings: any;
   let offerQueue: any;
   let requestQueue: any;
   let service: InstantRidesService;
@@ -67,6 +70,9 @@ describe('InstantRidesService', () => {
       emitRealtime: jest.fn(),
     };
     dispatch = { dispatchNext: jest.fn().mockResolvedValue(undefined) };
+    pickupWatch = { schedule: jest.fn().mockResolvedValue(undefined) };
+    ratings = { applyRatingPenalty: jest.fn().mockResolvedValue(undefined) };
+    settings = { getNumber: jest.fn().mockResolvedValue(2) };
     offerQueue = {
       add: jest.fn().mockResolvedValue(undefined),
       getJob: jest.fn().mockResolvedValue(null),
@@ -85,8 +91,14 @@ describe('InstantRidesService', () => {
       locations,
       notifications,
       dispatch,
+      pickupWatch,
+      ratings,
+      settings,
       offerQueue,
       requestQueue,
+      {
+        assertNonNegativeDriverBalance: jest.fn().mockResolvedValue(undefined),
+      } as any,
     );
   });
 
@@ -147,10 +159,10 @@ describe('InstantRidesService', () => {
 
       expect(view.status).toBe('searching');
       expect(view.currency).toBe('JOD');
-      // JOD: 0.5 + 5*0.28 + 10*0.04 = 2.30, rounded up to the 0.25 step.
-      expect(view.fareEstimate).toBe('2.50');
-      expect(view.passengerFare).toBe('2.50');
-      expect(view.maxFare).toBe('2.50');
+      // JOD: 0.45 + 5*0.316 = 2.03, rounded up to the 0.05 step.
+      expect(view.fareEstimate).toBe('2.05');
+      expect(view.passengerFare).toBe('2.05');
+      expect(view.maxFare).toBe('2.05');
       expect(dispatch.dispatchNext).toHaveBeenCalledWith('r1');
     });
 
@@ -182,7 +194,7 @@ describe('InstantRidesService', () => {
         passengerFare: 1.75,
       });
 
-      expect(view.passengerFare).toBe('2.50');
+      expect(view.passengerFare).toBe('2.05');
     });
 
     it('uses the routed road distance when Google distance is unavailable', async () => {
@@ -209,6 +221,44 @@ describe('InstantRidesService', () => {
 
       expect(view.currency).toBe('JOD');
       expect(Number(view.fareEstimate)).toBeGreaterThanOrEqual(1.5);
+    });
+
+    it('keeps the priced route on the request and shows it while searching', async () => {
+      requestRepo.findOne.mockResolvedValue(null);
+      locations.getDistance.mockResolvedValue({
+        distanceKm: 295.8,
+        durationMinutes: 203,
+      });
+      locations.reverseGeocode.mockResolvedValue({ countryCode: 'SA' });
+
+      const view = await service.createRequest('p1', dto);
+
+      expect(requestRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          routeDistanceKm: 295.8,
+          routeDurationMinutes: 203,
+        }),
+      );
+      // Road figures, not the 14 km straight line at city speed.
+      expect(view.distanceKm).toBe(295.8);
+      expect(view.durationMinutes).toBe(203);
+    });
+
+    it('does not price a routing-service detour far longer than the straight line', async () => {
+      requestRepo.findOne.mockResolvedValue(null);
+      locations.getDistance.mockRejectedValue(new Error('REQUEST_DENIED'));
+      // ~14 km apart; a 60 km "route" is a detour of the fallback router.
+      locations.getRoute = jest.fn().mockResolvedValue({
+        distanceMeters: 60_000,
+        durationSeconds: 3_600,
+      });
+      locations.reverseGeocode.mockResolvedValue({ countryCode: 'SA' });
+
+      await service.createRequest('p1', dto);
+
+      const saved = requestRepo.create.mock.calls[0][0];
+      expect(saved.routeDistanceKm).toBeGreaterThan(14);
+      expect(saved.routeDistanceKm).toBeLessThan(25);
     });
 
     it("quotes in the passenger's phone currency when geocoding is unavailable", async () => {
@@ -398,7 +448,7 @@ describe('InstantRidesService', () => {
         expect(view.retryOfRequestId).toBe('r0');
         expect(view.seatCount).toBe(2);
         // Priced at the route's current fare (JOD 5 km / 10 min).
-        expect(view.passengerFare).toBe('2.50');
+        expect(view.passengerFare).toBe('2.05');
         expect(dispatch.dispatchNext).toHaveBeenCalledWith('r2');
         expect(requestQueue.add).toHaveBeenCalled();
       },
@@ -470,7 +520,7 @@ describe('InstantRidesService', () => {
 
       const view = await service.retryRequest('r0', 'p1');
 
-      expect(view.passengerFare).toBe('2.50');
+      expect(view.passengerFare).toBe('2.05');
       expect(dispatch.dispatchNext).toHaveBeenCalledWith('r2');
     });
   });
@@ -559,21 +609,87 @@ describe('InstantRidesService', () => {
       tripType: 'instant',
       status: 'in_progress',
       toName: 'B',
+      fromPoint: { type: 'Point', coordinates: [37.9, 26.6] },
       driverArrivedAt: null,
       tripStartedAt: null,
       ...over,
     });
 
+    /** ~15 m from the pickup at [37.9, 26.6]. */
+    const atPickup = { latitude: 26.6001, longitude: 37.9001 };
+
     beforeEach(() => {
       tripRepo.findOne = jest.fn();
       tripRepo.save = jest.fn().mockImplementation(async (t: any) => t);
       requestRepo.findOne.mockResolvedValue({ id: 'r1', passengerId: 'p1' });
+      availabilityRepo.findOne = jest.fn().mockResolvedValue(null);
+    });
+
+    it('refuses «وصلت» from far away and says how far', async () => {
+      tripRepo.findOne.mockResolvedValue(liveTrip());
+
+      // ~2.2 km north of the pickup.
+      await expect(
+        service.markArrivedAtPickup('t1', 'd1', {
+          latitude: 26.62,
+          longitude: 37.9,
+        }),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({ code: 'DRIVER_NOT_AT_PICKUP' }),
+      });
+      expect(tripRepo.save).not.toHaveBeenCalled();
+      expect(notifications.sendPush).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the last tracked location when the app sends none', async () => {
+      tripRepo.findOne.mockResolvedValue(
+        liveTrip({ lastDriverLocationLat: 26.62, lastDriverLocationLng: 37.9 }),
+      );
+
+      await expect(service.markArrivedAtPickup('t1', 'd1')).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it('asks for location when the driver has none at all', async () => {
+      tripRepo.findOne.mockResolvedValue(liveTrip());
+
+      await expect(
+        service.markArrivedAtPickup('t1', 'd1'),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({
+          code: 'DRIVER_LOCATION_UNKNOWN',
+        }),
+      });
+    });
+
+    it('refuses «بدء الرحلة» from far away when arrival was skipped', async () => {
+      tripRepo.findOne.mockResolvedValue(liveTrip());
+
+      await expect(
+        service.startRide('t1', 'd1', { latitude: 26.62, longitude: 37.9 }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('starts away from the pickup when the driver was there earlier', async () => {
+      tripRepo.findOne.mockResolvedValue(liveTrip());
+      // The tracked path passed the pickup, then the driver drove off.
+      (tripRepo as any).query = jest
+        .fn()
+        .mockResolvedValue([{ '?column?': 1 }]);
+
+      const trip = await service.startRide('t1', 'd1', {
+        latitude: 26.62,
+        longitude: 37.9,
+      });
+
+      expect(trip.tripStartedAt).toBeInstanceOf(Date);
     });
 
     it('records arrival once and tells the passenger', async () => {
       tripRepo.findOne.mockResolvedValue(liveTrip());
 
-      const trip = await service.markArrivedAtPickup('t1', 'd1');
+      const trip = await service.markArrivedAtPickup('t1', 'd1', atPickup);
 
       expect(trip.driverArrivedAt).toBeInstanceOf(Date);
       expect(trip.tripStartedAt).toBeNull();
@@ -597,7 +713,7 @@ describe('InstantRidesService', () => {
     it('starts the ride, implying arrival when it was skipped', async () => {
       tripRepo.findOne.mockResolvedValue(liveTrip());
 
-      const trip = await service.startRide('t1', 'd1');
+      const trip = await service.startRide('t1', 'd1', atPickup);
 
       expect(trip.tripStartedAt).toBeInstanceOf(Date);
       expect(trip.driverArrivedAt).toEqual(trip.tripStartedAt);
@@ -621,6 +737,210 @@ describe('InstantRidesService', () => {
       );
     });
   });
+
+  describe('driver cancels before pickup', () => {
+    const accepted = {
+      id: 'r1',
+      passengerId: 'p1',
+      status: 'accepted',
+      tripId: 't1',
+      fromName: 'A',
+      toName: 'B',
+      fromPoint: { type: 'Point', coordinates: [37.9, 26.6] },
+      toPoint: { type: 'Point', coordinates: [37.95, 26.5] },
+      seatCount: 1,
+      paymentMethod: 'cash',
+      acceptedFare: '15.00',
+      passengerFare: '15.00',
+      currency: 'SAR',
+    };
+    let m: any;
+
+    beforeEach(() => {
+      tripRepo.findOne = jest.fn().mockResolvedValue({
+        id: 't1',
+        driverId: 'd1',
+        tripType: 'instant',
+        status: 'in_progress',
+        driverArrivedAt: null,
+        tripStartedAt: null,
+      });
+      requestRepo.findOne.mockResolvedValue(accepted);
+      m = {
+        update: jest.fn().mockResolvedValue({ affected: 1 }),
+        findOne: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockImplementation((_e: any, v: any) => v),
+        save: jest.fn().mockImplementation(async (v: any) => ({
+          fareRevision: 1,
+          ...v,
+          id: v.requestId ? 'o-x' : 'r2',
+        })),
+      };
+      const run = (fn: any) => fn(m);
+      tripRepo.manager.transaction = jest.fn().mockImplementation(run);
+      requestRepo.manager.transaction = jest.fn().mockImplementation(run);
+    });
+
+    it('cancels the trip and booking and searches again at the same fare', async () => {
+      const result = await service.cancelByDriver('t1', 'd1');
+
+      expect(m.update).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ id: 't1', status: 'in_progress' }),
+        { status: 'cancelled' },
+      );
+      expect(m.update).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ tripId: 't1', status: 'confirmed' }),
+        expect.objectContaining({ status: 'cancelled', cancelledBy: 'd1' }),
+      );
+      expect(m.update).toHaveBeenCalledWith(
+        expect.anything(),
+        { id: 'r1' },
+        expect.objectContaining({
+          status: 'cancelled',
+          terminalReason: 'driver_cancelled',
+        }),
+      );
+      // Same route and agreed fare, searching again.
+      expect(m.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          retryOfRequestId: 'r1',
+          status: 'searching',
+          passengerFare: '15.00',
+          currency: 'SAR',
+        }),
+      );
+      // The cancelling driver is never offered the new search.
+      expect(m.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requestId: 'r2',
+          driverId: 'd1',
+          status: 'cancelled',
+        }),
+      );
+      expect(availabilityRepo.update).toHaveBeenCalledWith(
+        { driverId: 'd1', currentRequestId: 'r1' },
+        { currentRequestId: null },
+      );
+      expect(dispatch.dispatchNext).toHaveBeenCalledWith('r2');
+      expect(notifications.sendPush).toHaveBeenCalledWith(
+        'p1',
+        expect.objectContaining({
+          type: 'instant_driver_cancelled',
+          data: expect.objectContaining({ requestId: 'r2', searching: true }),
+        }),
+      );
+      expect(result).toEqual({
+        cancelled: true,
+        nextRequestId: 'r2',
+        ratingPenaltyPercent: 2,
+      });
+      // Cancelling an accepted ride costs the driver the dashboard cut.
+      expect(ratings.applyRatingPenalty).toHaveBeenCalledWith(
+        'd1',
+        2,
+        'driver',
+      );
+    });
+
+    it('refuses once the passenger is on board', async () => {
+      tripRepo.findOne.mockResolvedValue({
+        id: 't1',
+        driverId: 'd1',
+        tripType: 'instant',
+        status: 'in_progress',
+        tripStartedAt: new Date(),
+      });
+
+      await expect(service.cancelByDriver('t1', 'd1')).rejects.toThrow(
+        ConflictException,
+      );
+      expect(tripRepo.manager.transaction).not.toHaveBeenCalled();
+    });
+
+    it("refuses another driver's ride", async () => {
+      await expect(service.cancelByDriver('t1', 'd2')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+  });
+
+  describe('passenger cancels before the ride starts', () => {
+    let m: any;
+
+    beforeEach(() => {
+      requestRepo.findOne.mockResolvedValue({
+        id: 'r1',
+        passengerId: 'p1',
+        tripId: 't1',
+      });
+      tripRepo.findOne = jest.fn().mockResolvedValue({
+        id: 't1',
+        driverId: 'd1',
+        tripType: 'instant',
+        status: 'in_progress',
+        tripStartedAt: null,
+      });
+      m = { update: jest.fn().mockResolvedValue({ affected: 1 }) };
+      tripRepo.manager.transaction = jest
+        .fn()
+        .mockImplementation((fn: any) => fn(m));
+    });
+
+    it('cancels, frees and tells the driver, and cuts the passenger rating', async () => {
+      const result = await service.cancelByPassenger('t1', 'p1');
+
+      expect(m.update).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ id: 't1', status: 'in_progress' }),
+        { status: 'cancelled' },
+      );
+      expect(m.update).toHaveBeenCalledWith(
+        expect.anything(),
+        { id: 'r1' },
+        expect.objectContaining({
+          status: 'cancelled',
+          terminalReason: 'passenger_cancelled',
+        }),
+      );
+      expect(availabilityRepo.update).toHaveBeenCalledWith(
+        { driverId: 'd1', currentRequestId: 'r1' },
+        { currentRequestId: null },
+      );
+      expect(notifications.sendPush).toHaveBeenCalledWith(
+        'd1',
+        expect.objectContaining({ type: 'instant_passenger_cancelled' }),
+      );
+      expect(ratings.applyRatingPenalty).toHaveBeenCalledWith(
+        'p1',
+        2,
+        'passenger',
+      );
+      expect(result).toEqual({ cancelled: true, ratingPenaltyPercent: 2 });
+    });
+
+    it('refuses once the ride has started', async () => {
+      tripRepo.findOne.mockResolvedValue({
+        id: 't1',
+        driverId: 'd1',
+        status: 'in_progress',
+        tripStartedAt: new Date(),
+      });
+
+      await expect(service.cancelByPassenger('t1', 'p1')).rejects.toThrow(
+        ConflictException,
+      );
+      expect(ratings.applyRatingPenalty).not.toHaveBeenCalled();
+    });
+
+    it("refuses someone else's ride", async () => {
+      await expect(service.cancelByPassenger('t1', 'p2')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+  });
+
   describe('payment method', () => {
     it('refuses CliQ outside Jordan', async () => {
       requestRepo.findOne.mockResolvedValue(null);

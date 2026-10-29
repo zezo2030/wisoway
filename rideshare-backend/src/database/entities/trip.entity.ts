@@ -166,6 +166,13 @@ export class TripEntity {
   @Column({ type: 'timestamptz', nullable: true })
   preTripConfirmSentAt: Date | null;
 
+  /**
+   * Departure came with nobody confirmed on board, so the trip waits and the
+   * passengers were asked «هل أنت في السيارة؟» (once). See TripStartService.
+   */
+  @Column({ type: 'timestamptz', nullable: true })
+  boardingPromptSentAt: Date | null;
+
   /** FK to the recurrence rule that spawned this trip, null for one-off trips. */
   @Column({ type: 'uuid', nullable: true })
   recurrenceRuleId: string | null;

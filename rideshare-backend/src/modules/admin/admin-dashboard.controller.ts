@@ -17,6 +17,8 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { AdminDashboardService } from './admin-dashboard.service';
+import { AdminAlertsService } from './admin-alerts.service';
+import { UpdateAlertPreferenceDto } from './dto/alert-preferences.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { PgUserRole } from '../../database/entities/shared.enums';
@@ -44,7 +46,10 @@ import { AdminPatchPricingSettingsDto } from './dto/admin-pricing-settings.dto';
 @Controller('admin')
 @Roles('admin')
 export class AdminDashboardController {
-  constructor(private readonly adminDashboardService: AdminDashboardService) {}
+  constructor(
+    private readonly adminDashboardService: AdminDashboardService,
+    private readonly adminAlertsService: AdminAlertsService,
+  ) {}
 
   /**
    * PATCH /admin/users/:id/confirm
@@ -513,5 +518,28 @@ export class AdminDashboardController {
   })
   async getDashboardStats() {
     return this.adminDashboardService.getDashboardStats();
+  }
+
+  // AdminController declared these too, but it is not registered anywhere,
+  // so the dashboard's alert settings never loaded or saved.
+  @Get('alert-preferences')
+  @ApiOperation({ summary: 'Get admin alert preferences' })
+  async getAlertPreferences(@CurrentUser('id') userId: string) {
+    return {
+      preferences: await this.adminAlertsService.getPreferences(userId),
+    };
+  }
+
+  @Patch('alert-preferences')
+  @ApiOperation({ summary: 'Update one admin alert preference' })
+  async updateAlertPreference(
+    @CurrentUser('id') userId: string,
+    @Body() dto: UpdateAlertPreferenceDto,
+  ) {
+    return this.adminAlertsService.setPreference(
+      userId,
+      dto.alertType,
+      dto.enabled,
+    );
   }
 }

@@ -202,7 +202,11 @@ class MyApp extends StatelessWidget {
                     RouteNames.driverWallet: (context) =>
                         const DriverWalletScreen(),
                     RouteNames.driverWalletTopup: (context) =>
-                        const WalletTopupRequestScreen(),
+                        WalletTopupRequestScreen(
+                          preferCliq:
+                              ModalRoute.of(context)?.settings.arguments ==
+                              'cliq',
+                        ),
                     RouteNames.passengerWallet: (context) =>
                         const PassengerWalletScreen(),
                     RouteNames.notifications: (context) =>

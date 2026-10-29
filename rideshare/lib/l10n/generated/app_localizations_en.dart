@@ -3320,7 +3320,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pendingBookingHint =>
-      'Confirming the booking unlocks the passenger\'s details (a free trip or a one-time wallet deduction for the trip)';
+      'Passenger details are available without an unlocking fee. App commission is deducted from your wallet at trip completion for passengers who confirmed their presence.';
 
   @override
   String get pendingConfirmation => 'Pending confirmation';
@@ -4116,7 +4116,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String createTripFeeNotice(String percent, String amount, String currency) {
-    return 'Trip fee ($percent%): $amount $currency — deducted from your wallet when the trip starts.';
+    return 'Commission is $percent% of completed fares, charged at trip completion. Estimated at full capacity: $amount $currency.';
   }
 
   @override
@@ -4199,6 +4199,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tripInProgressOnTheWay => 'You are on the way';
 
   @override
+  String get rideApproachingTitle => 'Your driver is on the way';
+
+  @override
+  String get rideApproachingSubtitle => 'Wait at the pickup point';
+
+  @override
+  String get rideArrivedTitle => 'Your driver has arrived';
+
+  @override
+  String get rideArrivedSubtitle => 'The driver is waiting at the pickup point';
+
+  @override
   String get tripInProgressHelp => 'Help';
 
   @override
@@ -4209,6 +4221,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tripInProgressRemainingTime => 'Time remaining';
+
+  @override
+  String get tripInProgressDriverArrivesIn => 'Driver arrives in';
+
+  @override
+  String get tripLiveLocationTitle => 'Trip tracking';
+
+  @override
+  String get tripLiveLocationBody =>
+      'Your location is shared with this trip\'s passengers during pickup and the ride.';
 
   @override
   String get tripInProgressTripDetails => 'Trip details';
@@ -4640,11 +4662,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get negativeWalletBalanceBlocked =>
-      'Your wallet balance is negative. Settle it before creating shared trips or receiving instant rides.';
+      'Top up your wallet with at least JOD 5, SAR 25, or the equivalent and settle any outstanding dues to continue receiving and creating trips.';
 
   @override
   String get negativeWalletGoOnlineBlocked =>
-      'Your wallet balance is negative. Settle it before receiving instant rides.';
+      'Top up your wallet with at least JOD 5, SAR 25, or the equivalent and settle any outstanding dues to continue receiving and creating trips.';
 
   @override
   String authStepOf(int current, int total) {
@@ -4938,12 +4960,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String tripFeeOfSeatsLabel(String percent, int seats) {
-    return 'Trip fee ($percent% of $seats seats)';
+    return 'Trip commission ($percent%, capacity $seats seats)';
   }
 
   @override
   String get tripFeeChargedAtStartNotice =>
-      'The trip fee will be deducted from your wallet when the trip starts. Keep a balance in your wallet so you can keep creating new trips.';
+      'Commission is charged on completed booking fares when the trip ends and credited to the platform wallet.';
 
   @override
   String get contactPassengersTitle => 'Contact passengers';
@@ -5073,6 +5095,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileUntrustedAccount => 'Unverified account';
+
+  @override
+  String profileRatingCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ratings',
+      one: '1 rating',
+    );
+    return '($_temp0)';
+  }
+
+  @override
+  String get profileNoRatingsYet => 'No ratings yet';
+
+  @override
+  String get driverRatingLabel => 'Rating';
 
   @override
   String get editProfileSubtitle => 'Update your details and profile photo';
@@ -5389,6 +5428,53 @@ class AppLocalizationsEn extends AppLocalizations {
   String get instantTripStartAction => 'Start trip';
 
   @override
+  String get instantTripCancelAction => 'Cancel';
+
+  @override
+  String get instantTripCancelTitle => 'Cancel this ride?';
+
+  @override
+  String get instantTripCancelBody =>
+      'The passenger will be told, and we\'ll look for another driver for them right away. Note: cancelling an accepted ride lowers your rating.';
+
+  @override
+  String get notAtPickupTitle => 'Please head to the passenger';
+
+  @override
+  String notAtPickupBody(String distance) {
+    return 'You are $distance from the pickup point. You can tap \'Arrived at passenger\' once you\'re within 500 m.';
+  }
+
+  @override
+  String get passengerCancelRideAction => 'Cancel';
+
+  @override
+  String get passengerCancelRideTitle => 'Cancel this ride?';
+
+  @override
+  String get passengerCancelRideBody =>
+      'Your driver accepted and is on the way. Note: cancelling after a driver accepted lowers your rating.';
+
+  @override
+  String get passengerCancelRideConfirm => 'Cancel ride';
+
+  @override
+  String get passengerRideCancelled => 'Ride cancelled';
+
+  @override
+  String get instantTripCancelConfirm => 'Cancel ride';
+
+  @override
+  String get instantTripCancelKeep => 'Keep ride';
+
+  @override
+  String get instantTripCancelled => 'Ride cancelled';
+
+  @override
+  String get instantDriverCancelledSearching =>
+      'Your driver cancelled — finding you another driver';
+
+  @override
   String get instantTripMovedTitle => 'Has the trip started?';
 
   @override
@@ -5556,7 +5642,45 @@ class AppLocalizationsEn extends AppLocalizations {
   String get liveTripDetails => 'Details';
 
   @override
-  String get liveTripNoPassengers => 'No confirmed passengers';
+  String get liveTripNoPassengers => 'No passengers on this trip';
+
+  @override
+  String get boardingConfirmed => 'On board';
+
+  @override
+  String get boardingNotConfirmed => 'Not confirmed yet';
+
+  @override
+  String boardingConfirmedCount(int boarded, int total) {
+    return '$boarded of $total on board';
+  }
+
+  @override
+  String get boardingCardTitle => 'Passengers boarding';
+
+  @override
+  String get boardingCardBody =>
+      'The trip starts when the first passenger confirms they\'re in the car. If your passengers are with you but haven\'t confirmed, tap Start trip.';
+
+  @override
+  String get boardingStartAction => 'Start trip';
+
+  @override
+  String get boardingStartOpensHint =>
+      'You can start the trip up to 30 minutes before departure.';
+
+  @override
+  String get boardingStartConfirmTitle => 'Start the trip?';
+
+  @override
+  String get boardingStartConfirmBody =>
+      'Make sure your passengers are in the car first.';
+
+  @override
+  String get boardingStarted => 'Trip started';
+
+  @override
+  String get boardingVouchAction => 'In my car';
 
   @override
   String get bookingCompanionTag => 'Companion';
@@ -5701,7 +5825,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'The driver reported they weren\'t paid. The VisionWay team will contact you.';
 
   @override
-  String get ridePaymentsCardTitle => 'Passenger fares';
+  String get ridePaymentsCardTitle => 'Trip fare';
 
   @override
   String get ridePaymentDriverPaidCash => 'Received in cash ✓';
@@ -5721,4 +5845,43 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get instantLocationNotReaching =>
       'Your location isn\'t reaching us right now, so ride requests can\'t reach you. Check your internet and location.';
+
+  @override
+  String get rideChimeArrivedTitle => 'You arrived at the passenger';
+
+  @override
+  String get rideChimeArrivedBody => 'We let the passenger know you are here.';
+
+  @override
+  String get rideChimeStartedTitle => 'Ride started';
+
+  @override
+  String get rideChimeStartedBody => 'Have a good ride!';
+
+  @override
+  String get forgotStartTitle => 'Did you forget to start the ride?';
+
+  @override
+  String get forgotStartBody =>
+      'You left the pickup without starting the ride. Tap “Start ride” now.';
+
+  @override
+  String get forgotStartAction => 'Start ride';
+
+  @override
+  String get offersBatteryTitle => 'Let the app run in the background';
+
+  @override
+  String get offersBatteryBody =>
+      'To get ride requests while the app is closed or the screen is locked, let VisionWay ignore battery optimization. Otherwise your phone may stop the app and requests won\'t reach you.';
+
+  @override
+  String get offersBatteryAction => 'Allow';
+
+  @override
+  String get offersNotificationsTitle => 'Turn on notifications';
+
+  @override
+  String get offersNotificationsBody =>
+      'Notifications are off for VisionWay, so ride requests can\'t reach you. Turn them on in Settings.';
 }

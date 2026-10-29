@@ -26,6 +26,7 @@ import '../../utils/seat_layout_helpers.dart';
 import '../../../widgets/common/section_card.dart';
 import '../../core/ui/error_surface.dart';
 import '../../core/api/api_client.dart';
+import '../../core/api/api_endpoints.dart';
 import '../../core/errors/failure.dart';
 import '../../core/services/location_service.dart';
 import '../../core/api/websocket_service.dart';
@@ -33,10 +34,12 @@ import '../../core/services/trip_service.dart';
 import '../../l10n/l10n_extensions.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' show LatLng;
+import 'widgets/boarding_status_chip.dart';
 import 'widgets/driver_live_trip_view.dart';
 import '../../models/vehicle_art.dart';
 import '../../widgets/expandable_cabin_view.dart';
 import '../../core/services/active_ride_navigator.dart';
+import '../../core/services/ride_sounds.dart';
 import '../../utils/booking_seat_formatter.dart';
 
 class TripManagementScreen extends StatefulWidget {
@@ -75,6 +78,15 @@ class _TripManagementScreenState extends State<TripManagementScreen>
   String _confirmingBookingId = '';
   String _rejectingBookingId = '';
   Timer? _locationTrackingTimer;
+  StreamSubscription<Position>? _driverLocationStream;
+  DateTime? _lastLocationPublished;
+  DateTime? _lastLocationPosted;
+
+  /// The driver came within reach of the pickup on this ride.
+  bool _reachedPickup = false;
+  DateTime? _forgotStartAlertedAt;
+  bool _forgotStartDialogOpen = false;
+  DateTime? _lastDriverFixTimestamp;
   bool _locationDialogOpen = false;
   bool _markingArrived = false;
 
@@ -96,6 +108,11 @@ class _TripManagementScreenState extends State<TripManagementScreen>
   /// Live trips: notices the trip ending from elsewhere (a passenger
   /// cancellation, an admin, auto-complete) so the live page lets go.
   Timer? _liveStatusPoll;
+
+  /// Shared trip around departure: picks up passengers confirming they're
+  /// on board, and the trip starting with the first of them.
+  Timer? _boardingPoll;
+  bool _startingTrip = false;
 
   /// Fee preview for the pre-departure fare card. `percent` and `amount` both
   /// come from `GET /trips/fee-quote` — never a client-side literal.
@@ -125,7 +142,10 @@ class _TripManagementScreenState extends State<TripManagementScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _locationTrackingTimer?.cancel();
+    _driverLocationStream?.cancel();
+    _webSocketService.unsubscribeFromTripTracking(widget.tripId);
     _liveStatusPoll?.cancel();
+    _boardingPoll?.cancel();
     ActiveRideNavigator.left(widget.tripId);
     super.dispose();
   }
@@ -142,6 +162,8 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     if (trip == null || !trip.isDriverLiveTrackingRequired) {
       _locationTrackingTimer?.cancel();
       _locationTrackingTimer = null;
+      _driverLocationStream?.cancel();
+      _driverLocationStream = null;
       if (_liveTrackingActive && mounted) {
         setState(() => _liveTrackingActive = false);
       } else {
@@ -171,6 +193,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     }
 
     final ready = await _ensureTrackingReady();
+    if (!mounted) return;
     if (!ready) {
       await _showEnableLocationDialog();
       if (mounted && _liveTrackingActive) {
@@ -180,30 +203,104 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     }
 
     try {
+      await _webSocketService.connect();
+      if (!mounted) return;
+      _startDriverLocationStream();
+      if (_lastLocationPublished != null &&
+          DateTime.now().difference(_lastLocationPublished!).inSeconds < 6)
+        return;
       final position = await _locationService.getCurrentPosition(
         checkPrivacyPreference: false,
       );
-      _webSocketService.updateDriverLocation(
-        tripId: trip.id,
-        latitude: position.latitude,
-        longitude: position.longitude,
-        speedKph: position.speed > 0 ? position.speed * 3.6 : null,
-        heading: position.heading >= 0 ? position.heading : null,
-        accuracyMeters: position.accuracy,
-      );
-      if (mounted && _isLive(trip)) {
-        setState(() {
-          _driverPosition = LatLng(position.latitude, position.longitude);
-          _liveTrackingActive = true;
-        });
-      } else if (mounted && !_liveTrackingActive) {
-        setState(() => _liveTrackingActive = true);
-      }
+      _publishDriverPosition(position);
     } catch (_) {
       if (mounted && _liveTrackingActive) {
         setState(() => _liveTrackingActive = false);
       }
       await _showEnableLocationDialog();
+    }
+  }
+
+  void _startDriverLocationStream() {
+    if (_driverLocationStream != null) return;
+    final settings = Theme.of(context).platform == TargetPlatform.android
+        ? AndroidSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 10,
+            intervalDuration: const Duration(seconds: 5),
+            foregroundNotificationConfig: ForegroundNotificationConfig(
+              notificationTitle: context.l10n.tripLiveLocationTitle,
+              notificationText: context.l10n.tripLiveLocationBody,
+              notificationChannelName: context.l10n.tripLiveLocationTitle,
+              enableWakeLock: true,
+              setOngoing: true,
+            ),
+          )
+        : const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 10,
+          );
+    _driverLocationStream =
+        Geolocator.getPositionStream(locationSettings: settings).listen(
+          (position) {
+            if (_lastLocationPublished == null ||
+                DateTime.now().difference(_lastLocationPublished!).inSeconds >=
+                    2) {
+              _publishDriverPosition(position);
+            }
+          },
+          onError: (_) {
+            _driverLocationStream?.cancel();
+            _driverLocationStream = null;
+          },
+        );
+  }
+
+  void _publishDriverPosition(Position position) {
+    final trip = _trip;
+    if (!mounted || trip == null || !trip.isDriverLiveTrackingRequired) return;
+    if (_lastDriverFixTimestamp != null &&
+        position.timestamp.isBefore(_lastDriverFixTimestamp!))
+      return;
+    _lastDriverFixTimestamp = position.timestamp;
+    _lastLocationPublished = DateTime.now();
+    _webSocketService.updateDriverLocation(
+      tripId: trip.id,
+      latitude: position.latitude,
+      longitude: position.longitude,
+      speedKph: position.speed > 0 ? position.speed * 3.6 : null,
+      heading: position.heading >= 0 ? position.heading : null,
+      accuracyMeters: position.accuracy,
+    );
+    // The socket drops updates silently once its token expires; every few
+    // seconds send the fix over HTTP too, so the passenger always sees it.
+    if (_lastLocationPosted == null ||
+        DateTime.now().difference(_lastLocationPosted!).inSeconds >= 5) {
+      _lastLocationPosted = DateTime.now();
+      unawaited(
+        ApiClient()
+            .post(
+              ApiEndpoints.trackingLocation,
+              data: {
+                'tripId': trip.id,
+                'latitude': position.latitude,
+                'longitude': position.longitude,
+                if (position.speed > 0) 'speedKph': position.speed * 3.6,
+                if (position.heading >= 0) 'heading': position.heading,
+                'accuracyMeters': position.accuracy,
+              },
+            )
+            .catchError((_) => null),
+      );
+    }
+    _checkForgotToStart(trip, position);
+    if (mounted && _isLive(trip)) {
+      setState(() {
+        _driverPosition = LatLng(position.latitude, position.longitude);
+        _liveTrackingActive = true;
+      });
+    } else if (mounted && !_liveTrackingActive) {
+      setState(() => _liveTrackingActive = true);
     }
   }
 
@@ -275,9 +372,17 @@ class _TripManagementScreenState extends State<TripManagementScreen>
         });
         _syncLiveTrackingState();
         if (trip != null && _isLive(trip)) {
+          _boardingPoll?.cancel();
+          _boardingPoll = null;
           _liveStatusPoll ??= Timer.periodic(
             const Duration(seconds: 15),
             (_) => _checkInstantEnded(),
+          );
+        } else if (trip != null && _awaitingBoarding(trip)) {
+          // Watch for passengers confirming and the trip starting.
+          _boardingPoll ??= Timer.periodic(
+            const Duration(seconds: 15),
+            (_) => _loadTrip(),
           );
         }
         _loadFeeQuote();
@@ -299,6 +404,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     final quote = await _tripService.getTripFeeQuote(
       seatPrice: trip.price,
       totalSeats: trip.totalSeats,
+      tripType: trip.tripType,
       currency: trip.currency,
     );
     if (!mounted) return;
@@ -718,9 +824,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
         builder: (context, bookingsSnapshot) {
           final bookings = bookingsSnapshot.data ?? [];
           final pendingBookings = bookings.where((b) => b.isPending).toList();
-          final confirmedBookings = bookings
-              .where((b) => b.isConfirmed)
-              .toList();
+          final confirmedBookings = bookings.where((b) => b.isRiding).toList();
 
           return RefreshIndicator(
             onRefresh: _loadTrip,
@@ -770,7 +874,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
                             const SizedBox(height: 16),
                           ],
 
-                          // Pending bookings (confirm to unlock passenger data / use free trip or wallet)
+                          // Pending bookings; accepting does not charge an access fee.
                           if (pendingBookings.isNotEmpty) ...[
                             _buildPendingBookingsCard(pendingBookings),
                             const SizedBox(height: 16),
@@ -846,7 +950,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
         future: _previewBookingsFuture ?? _liveBookingsFuture,
         builder: (context, snapshot) {
           final bookings = (snapshot.data ?? const <BookingModel>[])
-              .where((b) => b.isConfirmed)
+              .where((b) => b.isRiding)
               .toList();
 
           return DriverLiveTripView(
@@ -858,15 +962,41 @@ class _TripManagementScreenState extends State<TripManagementScreen>
             onArrived: () => _onPressArrived(trip),
             stageBusy: _stageBusy,
             onArrivedAtPickup: trip.isInstant
-                ? () => _advanceInstantStage(
-                    () => _tripService.markArrivedAtPickup(trip.id),
-                  )
+                ? () {
+                    if (!_nearPickupOrWarn(trip)) return;
+                    _advanceInstantStage(
+                      chimeTitle: context.l10n.rideChimeArrivedTitle,
+                      chimeBody: context.l10n.rideChimeArrivedBody,
+                      () => _tripService.markArrivedAtPickup(
+                        trip.id,
+                        latitude: _driverPosition?.latitude,
+                        longitude: _driverPosition?.longitude,
+                      ),
+                    );
+                  }
                 : null,
             onStartRide: trip.isInstant
-                ? () => _advanceInstantStage(
-                    () => _tripService.startInstantRide(trip.id),
-                  )
+                ? () {
+                    // Skipping «وصلت» doesn't skip being at the pickup.
+                    if (trip.driverArrivedAt == null &&
+                        !_nearPickupOrWarn(trip)) {
+                      return;
+                    }
+                    _advanceInstantStage(
+                      chimeTitle: context.l10n.rideChimeStartedTitle,
+                      chimeBody: context.l10n.rideChimeStartedBody,
+                      () => _tripService.startInstantRide(
+                        trip.id,
+                        latitude: _driverPosition?.latitude,
+                        longitude: _driverPosition?.longitude,
+                      ),
+                    );
+                  }
                 : null,
+            onCancelRide: trip.isInstant
+                ? () => _cancelInstantRide(trip)
+                : null,
+            onConfirmAboard: trip.isInstant ? null : _confirmAboard,
             onEnableTracking: () async {
               final ready = await _ensureTrackingReady();
               if (!ready) {
@@ -914,13 +1044,19 @@ class _TripManagementScreenState extends State<TripManagementScreen>
   }
 
   /// Hands turn-by-turn navigation to Google Maps (or the browser fallback).
+  /// [target] is the passenger's pickup until the ride starts, then the
+  /// destination (see DriverLiveTripView).
   Future<void> _launchNavigation(LatLng target) async {
     final lat = target.latitude;
     final lng = target.longitude;
     final app = Uri.parse('google.navigation:q=$lat,$lng&mode=d');
-    if (await canLaunchUrl(app)) {
-      await launchUrl(app);
-      return;
+    try {
+      // Launch directly: canLaunchUrl reports false for an undeclared scheme
+      // on Android 11+, which used to drop drivers on a route preview instead
+      // of live navigation.
+      if (await launchUrl(app, mode: LaunchMode.externalApplication)) return;
+    } catch (_) {
+      // No Google Maps — fall through to the universal maps link.
     }
     await launchUrl(
       Uri.parse(
@@ -1043,8 +1179,11 @@ class _TripManagementScreenState extends State<TripManagementScreen>
       _buildContactBar(trip),
       const SizedBox(height: 20),
 
-      // 9 — Presence reminder
-      _buildPresenceReminder(),
+      // 9 — Boarding: who is in the car, and «بدء الرحلة»
+      if (trip.isInstant)
+        _buildPresenceReminder()
+      else
+        _buildBoardingCard(trip, confirmedBookings),
       const SizedBox(height: 24),
     ];
   }
@@ -1882,15 +2021,362 @@ class _TripManagementScreenState extends State<TripManagementScreen>
 
   /// Instant ride: records the next pickup stage, then reloads the trip so
   /// the live view moves on to it.
-  Future<void> _advanceInstantStage(Future<void> Function() call) async {
+  Future<void> _advanceInstantStage(
+    Future<void> Function() call, {
+    String? chimeTitle,
+    String? chimeBody,
+  }) async {
     if (_stageBusy) return;
     setState(() => _stageBusy = true);
     try {
       await call();
+      if (chimeTitle != null) {
+        unawaited(RideSounds.chime(title: chimeTitle, body: chimeBody ?? ''));
+      }
       await _reloadTrip();
     } catch (e) {
       if (!mounted) return;
       ErrorSurface.showFailure(context, ApiClient.mapError(e));
+    } finally {
+      if (mounted) setState(() => _stageBusy = false);
+    }
+  }
+
+  /// How far from the pickup an unstarted ride sets off «هل نسيت بدء الرحلة؟».
+  static const double _forgotStartMeters = 1000;
+
+  /// The driver reached the passenger, then drove off without «بدء الرحلة»:
+  /// alarm them (again every two minutes) and offer to start it. The fare
+  /// is fixed from the pickup when the ride was requested, so a late start
+  /// doesn't change it.
+  void _checkForgotToStart(TripModel trip, Position position) {
+    if (!trip.isInstant ||
+        trip.status != 'in_progress' ||
+        trip.tripStartedAt != null) {
+      return;
+    }
+    final meters = Geolocator.distanceBetween(
+      position.latitude,
+      position.longitude,
+      trip.from.latitude,
+      trip.from.longitude,
+    );
+    if (meters <= _arrivalRadiusMeters) _reachedPickup = true;
+    if (!(_reachedPickup || trip.driverArrivedAt != null) ||
+        meters < _forgotStartMeters) {
+      return;
+    }
+    final last = _forgotStartAlertedAt;
+    if (last != null && DateTime.now().difference(last).inMinutes < 2) return;
+    _forgotStartAlertedAt = DateTime.now();
+    if (!mounted) return;
+    final l10n = context.l10n;
+    unawaited(
+      RideSounds.forgotToStart(
+        tripId: trip.id,
+        title: l10n.forgotStartTitle,
+        body: l10n.forgotStartBody,
+      ),
+    );
+    unawaited(_showForgotStartDialog(trip));
+  }
+
+  Future<void> _showForgotStartDialog(TripModel trip) async {
+    if (_forgotStartDialogOpen || !mounted) return;
+    _forgotStartDialogOpen = true;
+    final start = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(ctx.l10n.forgotStartTitle),
+        content: Text(ctx.l10n.forgotStartBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(ctx.l10n.later),
+          ),
+          FilledButton(
+            key: const Key('forgot-start-ride'),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(ctx.l10n.forgotStartAction),
+          ),
+        ],
+      ),
+    );
+    _forgotStartDialogOpen = false;
+    if (start != true || !mounted) return;
+    unawaited(RideSounds.clearForgotToStart());
+    // Away from the pickup on purpose: the server accepts the start because
+    // the driver already arrived, or was there.
+    await _advanceInstantStage(
+      chimeTitle: context.l10n.rideChimeStartedTitle,
+      chimeBody: context.l10n.rideChimeStartedBody,
+      () => _tripService.startInstantRide(trip.id),
+    );
+  }
+
+  /// How close to the pickup «وصلت إلى الراكب» may be pressed; the server
+  /// checks the same (INSTANT_ARRIVAL_RADIUS_METERS).
+  static const double _arrivalRadiusMeters = 500;
+
+  /// False — with «الرجاء التوجه إلى مكان الراكب» — when the driver's GPS
+  /// puts them beyond reach of the pickup. With no fix yet, the server
+  /// decides from the last tracked location.
+  bool _nearPickupOrWarn(TripModel trip) {
+    final here = _driverPosition;
+    if (here == null) return true;
+    final meters = Geolocator.distanceBetween(
+      here.latitude,
+      here.longitude,
+      trip.from.latitude,
+      trip.from.longitude,
+    );
+    if (meters <= _arrivalRadiusMeters) return true;
+    final l10n = context.l10n;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: Icon(
+          IconsaxPlusBold.location_cross,
+          color: AppColors.warning,
+          size: 32,
+        ),
+        title: Text(l10n.notAtPickupTitle),
+        content: Text(
+          l10n.notAtPickupBody(
+            meters < 1000
+                ? l10n.distanceMetersShort(meters.round().toString())
+                : l10n.distanceKmShort((meters / 1000).toStringAsFixed(1)),
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l10n.ok),
+          ),
+        ],
+      ),
+    );
+    return false;
+  }
+
+  /// A shared trip from 30 minutes before departure until it starts: the
+  /// window in which passengers confirm boarding and the driver may start.
+  static bool _awaitingBoarding(TripModel trip) {
+    if (trip.isInstant || trip.tripStartedAt != null) return false;
+    if (trip.isCancelled || trip.isCompleted) return false;
+    return DateTime.now().isAfter(
+      trip.departureTime.subtract(const Duration(minutes: 30)),
+    );
+  }
+
+  /// «معي في السيارة»: the driver vouches for a passenger who rode but didn't
+  /// confirm — so they are asked for the fare, and a waiting trip starts.
+  Future<void> _confirmAboard(BookingModel booking) async {
+    try {
+      await _tripService.confirmPassengerAboard(booking);
+      if (!mounted) return;
+      await _loadTrip();
+      if (!mounted) return;
+      setState(() {
+        _liveBookingsFuture = _bookingService.getTripBookings(widget.tripId);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ErrorSurface.showFailure(context, ApiClient.mapError(e));
+    }
+  }
+
+  /// «بدء الرحلة» on a shared trip whose passengers are in but didn't confirm.
+  Future<void> _startSharedTrip(TripModel trip) async {
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.boardingStartConfirmTitle),
+        content: Text(l10n.boardingStartConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.boardingStartAction),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _startingTrip = true);
+    try {
+      await _tripService.startSharedTrip(trip.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.boardingStarted)));
+      await _loadTrip();
+    } catch (e) {
+      if (!mounted) return;
+      ErrorSurface.showFailure(context, ApiClient.mapError(e));
+    } finally {
+      if (mounted) setState(() => _startingTrip = false);
+    }
+  }
+
+  /// Section 9 for shared trips: each passenger's boarding, and «بدء الرحلة».
+  /// The trip starts with the first passenger who confirms they're in the
+  /// car; the button covers riders who are in but didn't tap.
+  Widget _buildBoardingCard(TripModel trip, List<BookingModel> riders) {
+    final l10n = context.l10n;
+    final canStart = _awaitingBoarding(trip);
+    return Container(
+      key: const ValueKey('boarding-card'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: T.primaryContainer(context),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(
+                IconsaxPlusLinear.profile_tick,
+                size: 20,
+                color: T.primary(context),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  l10n.boardingCardTitle,
+                  style: AppTextStyles.titleSmall.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: T.onPrimaryContainer(context),
+                  ),
+                ),
+              ),
+              if (riders.isNotEmpty)
+                Text(
+                  l10n.boardingConfirmedCount(
+                    riders.where((b) => b.hasConfirmedBoarding).length,
+                    riders.length,
+                  ),
+                  style: AppTextStyles.bodySmall.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: T.primary(context),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            l10n.boardingCardBody,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: T.onPrimaryContainer(context),
+              height: 1.5,
+            ),
+          ),
+          for (final b in riders) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    b.userPopulated?.name.trim().isNotEmpty == true
+                        ? b.userPopulated!.name
+                        : l10n.passengerFallback,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: T.onSurface(context),
+                    ),
+                  ),
+                ),
+                if (b.hasConfirmedBoarding)
+                  const BoardingStatusChip(boarded: true)
+                else
+                  _ConfirmAboardButton(onPressed: () => _confirmAboard(b)),
+              ],
+            ),
+          ],
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 48,
+            child: ElevatedButton.icon(
+              key: const ValueKey('boarding-start'),
+              onPressed: canStart && !_startingTrip
+                  ? () => _startSharedTrip(trip)
+                  : null,
+              icon: _startingTrip
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(IconsaxPlusBold.play_circle, size: 20),
+              label: Text(l10n.boardingStartAction),
+            ),
+          ),
+          if (!canStart) ...[
+            const SizedBox(height: 6),
+            Text(
+              l10n.boardingStartOpensHint,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: T.textSecondary(context),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Instant ride, before pickup: the driver backs out. The server cancels
+  /// the trip and finds the passenger another driver.
+  Future<void> _cancelInstantRide(TripModel trip) async {
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.instantTripCancelTitle),
+        content: Text(l10n.instantTripCancelBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.instantTripCancelKeep),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(l10n.instantTripCancelConfirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _stageBusy = true);
+    try {
+      await _tripService.cancelInstantRide(trip.id);
+      if (!mounted) return;
+      _liveStatusPoll?.cancel();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.instantTripCancelled)));
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } catch (e) {
+      if (!mounted) return;
+      ErrorSurface.showFailure(context, ApiClient.mapError(e));
+      // The ride may have started meanwhile — show its real stage.
+      await _reloadTrip();
     } finally {
       if (mounted) setState(() => _stageBusy = false);
     }
@@ -2824,6 +3310,29 @@ class _CompanionTag extends StatelessWidget {
           fontWeight: FontWeight.w700,
           color: T.primary(context),
         ),
+      ),
+    );
+  }
+}
+
+/// «معي في السيارة» next to a passenger who hasn't confirmed boarding.
+class _ConfirmAboardButton extends StatelessWidget {
+  const _ConfirmAboardButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        visualDensity: VisualDensity.compact,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      ),
+      child: Text(
+        context.l10n.boardingVouchAction,
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
       ),
     );
   }

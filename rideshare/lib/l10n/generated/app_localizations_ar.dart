@@ -3277,7 +3277,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get pendingBookingHint =>
-      'تأكيد الحجز يفتح بيانات الراكب (رحلة مجانية أو خصم من المحفظة مرة واحدة للرحلة)';
+      'بيانات الراكب متاحة دون رسوم فتح. تُخصم عمولة التطبيق من محفظتك في نهاية الرحلة عن الركاب الذين أكدوا حضورهم.';
 
   @override
   String get pendingConfirmation => 'قيد التأكيد';
@@ -4087,7 +4087,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String createTripFeeNotice(String percent, String amount, String currency) {
-    return 'رسوم الرحلة ($percent%): $amount $currency — تُخصم من محفظتك عند انطلاق الرحلة.';
+    return 'العمولة $percent% من أجرة الركاب الذين أكملوا الرحلة، وتُخصم عند انتهائها. التقدير عند امتلاء المقاعد: $amount $currency.';
   }
 
   @override
@@ -4170,6 +4170,18 @@ class AppLocalizationsAr extends AppLocalizations {
   String get tripInProgressOnTheWay => 'أنت في الطريق';
 
   @override
+  String get rideApproachingTitle => 'السائق في طريقه إليك';
+
+  @override
+  String get rideApproachingSubtitle => 'انتظره في نقطة الانطلاق';
+
+  @override
+  String get rideArrivedTitle => 'وصل السائق';
+
+  @override
+  String get rideArrivedSubtitle => 'السائق بانتظارك في نقطة الانطلاق';
+
+  @override
   String get tripInProgressHelp => 'مساعدة';
 
   @override
@@ -4180,6 +4192,16 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get tripInProgressRemainingTime => 'تبقى للوصول';
+
+  @override
+  String get tripInProgressDriverArrivesIn => 'وصول السائق خلال';
+
+  @override
+  String get tripLiveLocationTitle => 'تتبع الرحلة';
+
+  @override
+  String get tripLiveLocationBody =>
+      'تتم مشاركة موقعك مع ركاب الرحلة أثناء التوجه إليهم وخلال الرحلة.';
 
   @override
   String get tripInProgressTripDetails => 'تفاصيل الرحلة';
@@ -4605,11 +4627,11 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get negativeWalletBalanceBlocked =>
-      'رصيد محفظتك سالب. سدد المستحقات قبل إنشاء رحلات مشتركة أو تلقي رحلات مباشرة.';
+      'اشحن محفظتك بحد أدنى 5 دنانير أو 25 ريالاً أو ما يعادلها وسدد أي مستحقات للاستمرار في استقبال الرحلات وإنشائها.';
 
   @override
   String get negativeWalletGoOnlineBlocked =>
-      'رصيد محفظتك سالب. سدد المستحقات قبل تلقي الرحلات المباشرة.';
+      'اشحن محفظتك بحد أدنى 5 دنانير أو 25 ريالاً أو ما يعادلها وسدد أي مستحقات للاستمرار في استقبال الرحلات وإنشائها.';
 
   @override
   String authStepOf(int current, int total) {
@@ -4894,12 +4916,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String tripFeeOfSeatsLabel(String percent, int seats) {
-    return 'رسوم الرحلة ($percent% من $seats مقاعد)';
+    return 'عمولة الرحلة ($percent%، سعة الرحلة $seats مقاعد)';
   }
 
   @override
   String get tripFeeChargedAtStartNotice =>
-      'سيتم خصم رسوم الرحلة من محفظتك عند انطلاق الرحلة. حافظ على وجود رصيد في محفظتك لضمان قدرتك على إنشاء رحلات جديدة.';
+      'تُخصم العمولة عند انتهاء الرحلة من أجرة الحجوزات المكتملة، وتُضاف إلى محفظة التطبيق.';
 
   @override
   String get contactPassengersTitle => 'التواصل مع الركاب';
@@ -5031,6 +5053,17 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get profileUntrustedAccount => 'حساب غير موثق';
+
+  @override
+  String profileRatingCount(int count) {
+    return '($count تقييم)';
+  }
+
+  @override
+  String get profileNoRatingsYet => 'لا توجد تقييمات بعد';
+
+  @override
+  String get driverRatingLabel => 'التقييم';
 
   @override
   String get editProfileSubtitle => 'تحديث بياناتك وصورتك الشخصية';
@@ -5347,6 +5380,53 @@ class AppLocalizationsAr extends AppLocalizations {
   String get instantTripStartAction => 'بدء الرحلة';
 
   @override
+  String get instantTripCancelAction => 'إلغاء';
+
+  @override
+  String get instantTripCancelTitle => 'إلغاء الرحلة؟';
+
+  @override
+  String get instantTripCancelBody =>
+      'سيُبلَّغ الراكب، ونبحث له فوراً عن سائق آخر. تنبيه: إلغاء الرحلة بعد قبولها يخفّض تقييمك.';
+
+  @override
+  String get notAtPickupTitle => 'الرجاء التوجه إلى مكان الراكب';
+
+  @override
+  String notAtPickupBody(String distance) {
+    return 'أنت على بُعد $distance من نقطة الانطلاق. يمكنك الضغط على «وصلت إلى الراكب» عندما تكون على بُعد 500 متر أو أقل.';
+  }
+
+  @override
+  String get passengerCancelRideAction => 'إلغاء';
+
+  @override
+  String get passengerCancelRideTitle => 'إلغاء الرحلة؟';
+
+  @override
+  String get passengerCancelRideBody =>
+      'السائق قبل رحلتك وهو في طريقه إليك. تنبيه: إلغاء الرحلة بعد قبول السائق يخفّض تقييمك.';
+
+  @override
+  String get passengerCancelRideConfirm => 'إلغاء الرحلة';
+
+  @override
+  String get passengerRideCancelled => 'أُلغيت الرحلة';
+
+  @override
+  String get instantTripCancelConfirm => 'إلغاء الرحلة';
+
+  @override
+  String get instantTripCancelKeep => 'تراجع';
+
+  @override
+  String get instantTripCancelled => 'أُلغيت الرحلة';
+
+  @override
+  String get instantDriverCancelledSearching =>
+      'ألغى السائق الرحلة — نبحث لك عن سائق آخر';
+
+  @override
   String get instantTripMovedTitle => 'هل بدأت الرحلة؟';
 
   @override
@@ -5510,7 +5590,44 @@ class AppLocalizationsAr extends AppLocalizations {
   String get liveTripDetails => 'التفاصيل';
 
   @override
-  String get liveTripNoPassengers => 'لا يوجد ركاب مؤكَّدون';
+  String get liveTripNoPassengers => 'لا يوجد ركاب في هذه الرحلة';
+
+  @override
+  String get boardingConfirmed => 'أكّد ركوبه';
+
+  @override
+  String get boardingNotConfirmed => 'لم يؤكد ركوبه بعد';
+
+  @override
+  String boardingConfirmedCount(int boarded, int total) {
+    return 'أكّد $boarded من $total';
+  }
+
+  @override
+  String get boardingCardTitle => 'ركوب الركاب';
+
+  @override
+  String get boardingCardBody =>
+      'تبدأ الرحلة عندما يؤكد أول راكب أنه في السيارة. إذا كان الركاب معك ولم يؤكدوا، اضغط «بدء الرحلة».';
+
+  @override
+  String get boardingStartAction => 'بدء الرحلة';
+
+  @override
+  String get boardingStartOpensHint =>
+      'يمكنك بدء الرحلة قبل موعدها بـ 30 دقيقة.';
+
+  @override
+  String get boardingStartConfirmTitle => 'بدء الرحلة؟';
+
+  @override
+  String get boardingStartConfirmBody => 'تأكد أن الركاب في السيارة قبل البدء.';
+
+  @override
+  String get boardingStarted => 'بدأت الرحلة';
+
+  @override
+  String get boardingVouchAction => 'معي في السيارة';
 
   @override
   String get bookingCompanionTag => 'مرافق';
@@ -5653,7 +5770,7 @@ class AppLocalizationsAr extends AppLocalizations {
       'أبلغ السائق أنه لم يستلم الأجرة. سيتواصل معك فريق VisionWay.';
 
   @override
-  String get ridePaymentsCardTitle => 'أجرة الركاب';
+  String get ridePaymentsCardTitle => 'أجرة الرحلة';
 
   @override
   String get ridePaymentDriverPaidCash => 'استلمتها نقداً ✓';
@@ -5672,4 +5789,43 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get instantLocationNotReaching =>
       'لا يصل موقعك إلى الخادم الآن، فلن تصلك طلبات الرحلات. تأكد من الإنترنت ومن تفعيل الموقع.';
+
+  @override
+  String get rideChimeArrivedTitle => 'وصلت إلى الراكب';
+
+  @override
+  String get rideChimeArrivedBody => 'أبلغنا الراكب بوصولك.';
+
+  @override
+  String get rideChimeStartedTitle => 'بدأت الرحلة';
+
+  @override
+  String get rideChimeStartedBody => 'رحلة موفقة!';
+
+  @override
+  String get forgotStartTitle => 'هل نسيت بدء الرحلة؟';
+
+  @override
+  String get forgotStartBody =>
+      'تحرّكت من مكان الراكب ولم تبدأ الرحلة. اضغط «بدء الرحلة» الآن.';
+
+  @override
+  String get forgotStartAction => 'بدء الرحلة';
+
+  @override
+  String get offersBatteryTitle => 'اسمح للتطبيق بالعمل في الخلفية';
+
+  @override
+  String get offersBatteryBody =>
+      'حتى تصلك طلبات الرحلات والتطبيق مغلق أو الشاشة مقفلة، اسمح لـ VisionWay بتجاهل «تحسين البطارية». بدون ذلك قد يوقف الهاتف التطبيق ولا تصلك الطلبات.';
+
+  @override
+  String get offersBatteryAction => 'السماح';
+
+  @override
+  String get offersNotificationsTitle => 'فعّل الإشعارات';
+
+  @override
+  String get offersNotificationsBody =>
+      'الإشعارات متوقفة لـ VisionWay، فلن تصلك طلبات الرحلات. فعّلها من الإعدادات.';
 }

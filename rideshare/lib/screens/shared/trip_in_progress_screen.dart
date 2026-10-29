@@ -15,6 +15,7 @@ import '../../core/constants/support_constants.dart';
 import '../../core/api/websocket_service.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/services/active_ride_navigator.dart';
+import '../../core/services/instant_ride_service.dart';
 import '../../core/services/route_service.dart';
 import '../../core/services/share_link_service.dart';
 import '../../core/services/trip_emergency_service.dart';
@@ -25,6 +26,12 @@ import '../../models/booking_model.dart';
 import '../../models/trip_model.dart';
 import '../../providers/trip_provider.dart';
 import '../../widgets/trip/share_tracking_sheet.dart';
+import '../../utils/live_route_geometry.dart';
+
+/// Where an instant ride stands. The trip is `in_progress` from the moment a
+/// driver accepts, so the status alone can't tell the passenger whether the
+/// driver is still coming, waiting outside, or already driving them.
+enum _RidePhase { approaching, arrived, riding }
 
 class TripInProgressScreen extends StatefulWidget {
   final String tripId;
@@ -47,7 +54,8 @@ class TripInProgressScreen extends StatefulWidget {
   State<TripInProgressScreen> createState() => _TripInProgressScreenState();
 }
 
-class _TripInProgressScreenState extends State<TripInProgressScreen> {
+class _TripInProgressScreenState extends State<TripInProgressScreen>
+    with SingleTickerProviderStateMixin {
   static const _vehicleFallback =
       'assets/images/trip_in_progress/vehicle_fallback.png';
   static const _avatarFallback =
@@ -58,6 +66,7 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
   bool _loading = true;
   bool _emergencyLoading = false;
   bool _shareLoading = false;
+  bool _cancelling = false;
   GoogleMapController? _mapController;
   BitmapDescriptor? _carIcon;
   LatLng? _liveDriverLocation;
@@ -70,6 +79,24 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
   // Road-following route from the directions API; empty until it arrives
   // (or when it is unavailable, in which case straight segments are drawn).
   List<LatLng> _roadRoute = const [];
+  DateTime? _roadRequestedAt;
+  bool _roadRequestInFlight = false;
+  LatLng? _latestDriverFix;
+  List<LatLng> _approachRoute = const [];
+  double? _approachRouteMeters;
+  int? _approachRouteSeconds;
+  double? _roadRouteMeters;
+  int? _roadRouteSeconds;
+  LatLng? _approachOrigin;
+  DateTime? _approachRequestedAt;
+  bool _approachRequestInFlight = false;
+  bool _trackingRequestInFlight = false;
+  DateTime? _lastTrackingAt;
+  late final AnimationController _carMotion;
+  List<LatLng> _carMovementPath = const [];
+  double _carHeading = 45;
+  int _lastCarPaintMs = -100;
+  Timer? _trackingPoll;
   MapType _mapType = MapType.normal;
 
   final WebSocketService _socketService = WebSocketService();
@@ -83,12 +110,94 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
   /// The trip was seen still running here, so its end is this ride's end.
   bool _sawTripLive = false;
 
+  _RidePhase get _phase {
+    final trip = _trip;
+    if (trip == null || !trip.isInstant || trip.tripStartedAt != null) {
+      return _RidePhase.riding;
+    }
+    return trip.driverArrivedAt != null
+        ? _RidePhase.arrived
+        : _RidePhase.approaching;
+  }
+
+  double get _approachRemainingFraction {
+    final car = _liveDriverLocation;
+    if (car == null || _approachRoute.length < 2) return 1;
+    final total = LiveRouteGeometry.length(_approachRoute);
+    if (total == 0) return 0;
+    return (LiveRouteGeometry.length(
+              LiveRouteGeometry.remaining(_approachRoute, car),
+            ) /
+            total)
+        .clamp(0.0, 1.0);
+  }
+
+  /// Road distance and duration from the driver to the passenger's pickup.
+  double? get _approachKm {
+    return _approachRouteMeters == null
+        ? null
+        : _approachRouteMeters! * _approachRemainingFraction / 1000;
+  }
+
+  int? get _approachSeconds {
+    return _approachRouteSeconds == null
+        ? null
+        : (_approachRouteSeconds! * _approachRemainingFraction).ceil();
+  }
+
+  /// Share of the road route to the destination still ahead of the car.
+  /// Before the ride starts the car isn't on it yet, so all of it.
+  double get _rideRemainingFraction {
+    final car = _liveDriverLocation;
+    if (_phase != _RidePhase.riding || car == null || _roadRoute.length < 2) {
+      return 1;
+    }
+    final total = LiveRouteGeometry.length(_roadRoute);
+    if (total == 0) return 0;
+    return (LiveRouteGeometry.length(
+              LiveRouteGeometry.remaining(_roadRoute, car),
+            ) /
+            total)
+        .clamp(0.0, 1.0);
+  }
+
+  /// Road distance and duration to the destination, following the car as it
+  /// moves; the server's figures only when no road route was loaded.
+  double? get _rideKm => _roadRouteMeters == null
+      ? _remainingDistanceKm ?? _trip?.distanceKm
+      : _roadRouteMeters! * _rideRemainingFraction / 1000;
+
+  int? get _rideSeconds => _roadRouteSeconds == null
+      ? _remainingDurationSeconds
+      : (_roadRouteSeconds! * _rideRemainingFraction).ceil();
+
   @override
   void initState() {
     super.initState();
+    _carMotion =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 900),
+        )..addListener(() {
+          if (!mounted || _carMovementPath.length < 2) return;
+          final elapsed = _carMotion.lastElapsedDuration?.inMilliseconds ?? 0;
+          if (!_carMotion.isCompleted && elapsed - _lastCarPaintMs < 30) return;
+          _lastCarPaintMs = elapsed;
+          final sample = LiveRouteGeometry.sample(
+            _carMovementPath,
+            _carMotion.value,
+          );
+          _liveDriverLocation = sample.$1;
+          _carHeading = sample.$2;
+          _rebuildMapOverlays(updateRoute: _carMotion.isCompleted);
+        });
     _loadCarIcon();
     _loadTrip();
     _initTracking();
+    _trackingPoll = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _pollTracking(),
+    );
     // Every ride ends on the payment screen: shared trips as well as the
     // locked instant ones, so every trip screen watches for the end.
     _statusPoll = Timer.periodic(
@@ -100,6 +209,8 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
   @override
   void dispose() {
     _statusPoll?.cancel();
+    _trackingPoll?.cancel();
+    _carMotion.dispose();
     ActiveRideNavigator.left(widget.tripId);
     _trackingSubscription?.cancel();
     _socketService.unsubscribeFromTripTracking(widget.tripId);
@@ -136,7 +247,8 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
         _remainingDurationSeconds = loaded.remainingDurationSeconds;
         _etaAt = loaded.etaAt;
         _progressPercent = loaded.routeProgressPercent ?? 0;
-        if (loaded.lastDriverLocationLat != null &&
+        if (_liveDriverLocation == null &&
+            loaded.lastDriverLocationLat != null &&
             loaded.lastDriverLocationLng != null) {
           _liveDriverLocation = LatLng(
             loaded.lastDriverLocationLat!,
@@ -148,6 +260,8 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
       _rebuildMapOverlays();
       _fitBounds();
       _loadRoadRoute(loaded);
+      unawaited(_refreshApproachRoute());
+      unawaited(_pollTracking());
       if (widget.showTrackingShare) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) ShareTrackingSheet.show(context, loaded.id);
@@ -161,51 +275,164 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
   }
 
   Future<void> _loadRoadRoute(TripModel trip) async {
-    final result = await _routeService.fetchRoute(
-      origin: LatLng(trip.from.latitude, trip.from.longitude),
-      destination: LatLng(trip.to.latitude, trip.to.longitude),
-    );
-    if (!mounted) return;
-    if (result is RouteOk && result.polyline.length >= 2) {
-      _roadRoute = result.polyline;
-      _rebuildMapOverlays();
+    if (_roadRequestInFlight) return;
+    _roadRequestInFlight = true;
+    _roadRequestedAt = DateTime.now();
+    try {
+      final result = await _routeService.fetchRoute(
+        origin: _phase == _RidePhase.riding && _latestDriverFix != null
+            ? _latestDriverFix!
+            : LatLng(trip.from.latitude, trip.from.longitude),
+        destination: LatLng(trip.to.latitude, trip.to.longitude),
+      );
+      if (!mounted) return;
+      if (result is RouteOk && result.polyline.length >= 2) {
+        setState(() {
+          _roadRoute = result.polyline;
+          _roadRouteMeters = result.distanceMeters;
+          _roadRouteSeconds = result.durationSeconds;
+        });
+        _rebuildMapOverlays();
+      }
+    } finally {
+      _roadRequestInFlight = false;
     }
   }
 
-  /// Index of the route vertex closest to [p] (planar distance is plenty at
-  /// this scale).
-  static int _nearestIndex(List<LatLng> route, LatLng p) {
-    var best = 0;
-    var bestD = double.infinity;
-    for (var i = 0; i < route.length; i++) {
-      final dLat = route[i].latitude - p.latitude;
-      final dLng = route[i].longitude - p.longitude;
-      final d = dLat * dLat + dLng * dLng;
-      if (d < bestD) {
-        bestD = d;
-        best = i;
+  Future<void> _refreshApproachRoute() async {
+    final trip = _trip;
+    final car = _latestDriverFix ?? _liveDriverLocation;
+    if (trip == null ||
+        car == null ||
+        _phase != _RidePhase.approaching ||
+        _approachRequestInFlight)
+      return;
+    final age = _approachRequestedAt == null
+        ? const Duration(days: 1)
+        : DateTime.now().difference(_approachRequestedAt!);
+    final moved = _approachOrigin == null
+        ? double.infinity
+        : LiveRouteGeometry.distance(_approachOrigin!, car);
+    final offRoad =
+        LiveRouteGeometry.project(_approachRoute, car)?.offsetMeters ??
+        double.infinity;
+    if (age.inSeconds < 15 ||
+        (age.inSeconds < 45 && moved < 80 && offRoad < 60))
+      return;
+    _approachRequestInFlight = true;
+    _approachRequestedAt = DateTime.now();
+    try {
+      final result = await _routeService.fetchRoute(
+        origin: car,
+        destination: LatLng(trip.from.latitude, trip.from.longitude),
+      );
+      if (!mounted || _phase != _RidePhase.approaching) return;
+      if (result is RouteOk && result.polyline.length >= 2) {
+        final firstRoute = _approachRoute.isEmpty;
+        _approachOrigin = car;
+        _approachRoute = result.polyline;
+        _approachRouteMeters = result.distanceMeters;
+        _approachRouteSeconds = result.durationSeconds;
+        _rebuildMapOverlays();
+        if (firstRoute) unawaited(_fitBounds());
       }
+    } finally {
+      _approachRequestInFlight = false;
     }
-    return best;
+  }
+
+  Future<void> _pollTracking() async {
+    if (_trackingRequestInFlight || !mounted || _leaving) return;
+    _trackingRequestInFlight = true;
+    try {
+      final response = await ApiClient().get(
+        '/tracking/${widget.tripId}/latest',
+      );
+      if (mounted) unawaited(_socketService.connect());
+      final data = response is Map ? (response['data'] ?? response) : null;
+      if (mounted && data is Map)
+        _applyTracking(Map<String, dynamic>.from(data));
+    } catch (_) {
+      // The live socket remains primary; this also recovers missed updates.
+    } finally {
+      _trackingRequestInFlight = false;
+    }
+  }
+
+  void _applyTracking(Map<String, dynamic> payload) {
+    if (!mounted || payload['tripId']?.toString() != widget.tripId) return;
+    final lat = payload['latitude'], lng = payload['longitude'];
+    if (lat is! num || lng is! num) return;
+    final recorded = DateTime.tryParse(payload['recordedAt']?.toString() ?? '');
+    if (recorded != null &&
+        _lastTrackingAt != null &&
+        !recorded.isAfter(_lastTrackingAt!))
+      return;
+    _lastTrackingAt = recorded ?? _lastTrackingAt;
+    setState(() {
+      final km = payload['remainingDistanceKm'],
+          seconds = payload['remainingDurationSeconds'];
+      if (km is num) _remainingDistanceKm = km.toDouble();
+      if (seconds is num) _remainingDurationSeconds = seconds.toInt();
+      if (payload['etaAt'] != null)
+        _etaAt = DateTime.tryParse(payload['etaAt'].toString());
+      if (payload['routeProgressPercent'] is num)
+        _progressPercent = (payload['routeProgressPercent'] as num).toDouble();
+    });
+    final raw = LatLng(lat.toDouble(), lng.toDouble());
+    _latestDriverFix = raw;
+    final road = _phase == _RidePhase.approaching ? _approachRoute : _roadRoute;
+    final snap = LiveRouteGeometry.project(road, raw);
+    final next = snap != null && snap.offsetMeters < 60 ? snap.point : raw;
+    final previous = _liveDriverLocation;
+    if (previous != null &&
+        LiveRouteGeometry.distance(previous, next) < 1500 &&
+        LiveRouteGeometry.distance(previous, next) > 1) {
+      _carMovementPath = LiveRouteGeometry.movement(road, previous, next);
+      _lastCarPaintMs = -100;
+      _carMotion.forward(from: 0);
+    } else {
+      _carMotion.stop();
+      _liveDriverLocation = next;
+      if (payload['heading'] is num)
+        _carHeading = (payload['heading'] as num).toDouble();
+      _rebuildMapOverlays();
+    }
+    unawaited(_refreshApproachRoute());
+    if (_phase == _RidePhase.riding &&
+        (snap == null || snap.offsetMeters > 60) &&
+        (_roadRequestedAt == null ||
+            DateTime.now().difference(_roadRequestedAt!).inSeconds >= 15)) {
+      final trip = _trip;
+      if (trip != null) unawaited(_loadRoadRoute(trip));
+    }
   }
 
   Set<Polyline> _buildRoutePolylines(LatLng from, LatLng to, LatLng? car) {
-    final road = _roadRoute;
-    if (road.length < 2) {
-      final points = <LatLng>[from];
-      if (car != null) points.add(car);
-      points.add(to);
+    if (_phase != _RidePhase.riding) {
+      // The driver's pickup leg follows roads too; never draw a shortcut
+      // across buildings while waiting for directions.
       return {
-        Polyline(
-          polylineId: const PolylineId('route'),
-          points: points,
-          color: AppColors.teal600,
-          width: 5,
-        ),
+        ..._tripRoutePolylines(from, to, null),
+        if (car != null &&
+            _phase == _RidePhase.approaching &&
+            _approachRoute.length >= 2)
+          Polyline(
+            polylineId: const PolylineId('approach'),
+            points: LiveRouteGeometry.remaining(_approachRoute, car),
+            color: AppColors.teal600,
+            width: 5,
+          ),
       };
     }
+    return _tripRoutePolylines(from, to, car);
+  }
 
-    if (car == null) {
+  Set<Polyline> _tripRoutePolylines(LatLng from, LatLng to, LatLng? car) {
+    final road = _roadRoute;
+    if (road.length < 2) return {};
+    final snap = car == null ? null : LiveRouteGeometry.project(road, car);
+    if (snap == null || snap.offsetMeters > 60) {
       return {
         Polyline(
           polylineId: const PolylineId('route'),
@@ -215,21 +442,17 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
         ),
       };
     }
-
-    // Split the road at the car: the stretch already driven is muted, the
-    // remainder stays in the brand colour.
-    final split = _nearestIndex(road, car);
     return {
-      if (split > 0)
+      if (snap.segment > 0)
         Polyline(
           polylineId: const PolylineId('route_done'),
-          points: [...road.sublist(0, split + 1), car],
+          points: [...road.sublist(0, snap.segment + 1), snap.point],
           color: AppColors.slate400,
           width: 5,
         ),
       Polyline(
         polylineId: const PolylineId('route'),
-        points: [car, ...road.sublist(split)],
+        points: [snap.point, ...road.sublist(snap.segment + 1)],
         color: AppColors.teal600,
         width: 5,
       ),
@@ -251,6 +474,16 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
       if (!mounted || trip == null) return;
       if (!trip.isCompleted && !trip.isCancelled) {
         _sawTripLive = true;
+        // The driver marked arrival or started the ride: move the header
+        // and the map on to the next stage.
+        final previous = _trip;
+        if (previous == null ||
+            previous.driverArrivedAt != trip.driverArrivedAt ||
+            previous.tripStartedAt != trip.tripStartedAt) {
+          setState(() => _trip = trip);
+          unawaited(_loadRoadRoute(trip));
+          _rebuildMapOverlays();
+        }
         return;
       }
       if (!widget.lockedUntilEnd && !_sawTripLive) {
@@ -259,6 +492,14 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
       }
       _leaving = true;
       _statusPoll?.cancel();
+      // The driver cancelled before pickup: the server is already searching
+      // for another one, so follow that search instead of going home.
+      if (trip.isCancelled &&
+          widget.lockedUntilEnd &&
+          await ActiveRideNavigator.followNewSearch()) {
+        return;
+      }
+      if (!mounted) return;
       final navigator = Navigator.of(context);
       if (trip.isCompleted) {
         // Pay first: the amount-due screen holds the passenger until the fare
@@ -280,32 +521,16 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
   }
 
   Future<void> _initTracking() async {
+    _trackingSubscription = _socketService.onTrackingUpdate.listen(
+      _applyTracking,
+    );
     await _socketService.connect();
+    if (!mounted) return;
     _socketService.subscribeToTripTracking(widget.tripId);
-    _trackingSubscription = _socketService.onTrackingUpdate.listen((payload) {
-      final payloadTripId = payload['tripId']?.toString();
-      if (payloadTripId != widget.tripId) return;
-
-      final lat = payload['latitude'];
-      final lng = payload['longitude'];
-      if (lat is! num || lng is! num) return;
-
-      setState(() {
-        _liveDriverLocation = LatLng(lat.toDouble(), lng.toDouble());
-        final remKm = payload['remainingDistanceKm'];
-        final remSec = payload['remainingDurationSeconds'];
-        final eta = payload['etaAt'];
-        final progress = payload['routeProgressPercent'];
-        if (remKm is num) _remainingDistanceKm = remKm.toDouble();
-        if (remSec is num) _remainingDurationSeconds = remSec.toInt();
-        if (eta != null) _etaAt = DateTime.tryParse(eta.toString());
-        if (progress is num) _progressPercent = progress.toDouble();
-      });
-      _rebuildMapOverlays();
-    });
+    unawaited(_pollTracking());
   }
 
-  void _rebuildMapOverlays() {
+  void _rebuildMapOverlays({bool updateRoute = true}) {
     final trip = _trip;
     if (trip == null) return;
 
@@ -336,13 +561,15 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
               _carIcon ??
               BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
           anchor: const Offset(0.5, 0.5),
+          flat: true,
+          rotation: (_carHeading - 45 + 360) % 360,
         ),
       );
     }
 
     setState(() {
       _markers = markers;
-      _polylines = _buildRoutePolylines(from, to, car);
+      if (updateRoute) _polylines = _buildRoutePolylines(from, to, car);
     });
   }
 
@@ -356,6 +583,7 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
       LatLng(trip.to.latitude, trip.to.longitude),
       if (_liveDriverLocation != null) _liveDriverLocation!,
       ..._roadRoute,
+      ..._approachRoute,
     ];
 
     double minLat = points.first.latitude;
@@ -493,6 +721,19 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
     }
   }
 
+  void _openDriverChat(TripModel trip) {
+    Navigator.pushNamed(
+      context,
+      RouteNames.chat,
+      arguments: {
+        'tripId': widget.tripId,
+        'trip': trip,
+        'driverId': trip.driverId,
+        'driverName': trip.driverName ?? '',
+      },
+    );
+  }
+
   void _openTripDetails() {
     Navigator.pushNamed(
       context,
@@ -505,16 +746,64 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
     );
   }
 
+  /// The passenger backs out before the ride starts — warned first that it
+  /// lowers their rating.
+  Future<void> _cancelRide() async {
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.passengerCancelRideTitle),
+        content: Text(l10n.passengerCancelRideBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.instantTripCancelKeep),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(l10n.passengerCancelRideConfirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _cancelling = true);
+    try {
+      await InstantRideService().cancelAcceptedRide(widget.tripId);
+      if (!mounted) return;
+      _leaving = true;
+      _statusPoll?.cancel();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.passengerRideCancelled)));
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } catch (e) {
+      if (!mounted) return;
+      ErrorSurface.showFailure(context, ApiClient.mapError(e));
+    } finally {
+      if (mounted) setState(() => _cancelling = false);
+    }
+  }
+
   void _openHelp() {
     Navigator.pushNamed(context, RouteNames.support);
   }
 
   String _formatRemaining(BuildContext context) {
-    final seconds = _remainingDurationSeconds;
+    // Waiting at the pickup, what's left is the whole ride ahead.
+    final seconds = _phase == _RidePhase.approaching
+        ? _approachSeconds
+        : _rideSeconds;
     if (seconds == null) return '—';
     final totalMinutes = (seconds / 60).ceil();
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
-    if (totalMinutes < 60) {
+    if (_phase != _RidePhase.riding || totalMinutes < 60) {
       return isAr ? '$totalMinutes دقيقة' : '$totalMinutes min';
     }
     final hours = totalMinutes ~/ 60;
@@ -526,14 +815,19 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
   }
 
   String _formatDistance() {
-    final km = _remainingDistanceKm ?? _trip?.distanceKm;
+    final km = _phase == _RidePhase.approaching ? _approachKm : _rideKm;
     if (km == null) return '—';
     if (km >= 10) return '${km.round()} كم';
     return '${km.toStringAsFixed(1)} كم';
   }
 
   String _formatEta(BuildContext context) {
-    final eta = _etaAt;
+    final seconds = _phase == _RidePhase.approaching
+        ? _approachSeconds
+        : _rideSeconds;
+    final eta = seconds == null
+        ? _etaAt
+        : DateTime.now().add(Duration(seconds: seconds));
     if (eta == null) return '—';
     final local = eta.toLocal();
     return DateFormat(
@@ -658,9 +952,36 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
+    final l10n = context.l10n;
+    final phase = _phase;
+    final (title, subtitle, dot) = switch (phase) {
+      _RidePhase.approaching => (
+        l10n.rideApproachingTitle,
+        l10n.rideApproachingSubtitle,
+        AppColors.warning,
+      ),
+      _RidePhase.arrived => (
+        l10n.rideArrivedTitle,
+        l10n.rideArrivedSubtitle,
+        AppColors.success,
+      ),
+      _RidePhase.riding => (
+        l10n.tripInProgressTitle,
+        l10n.tripInProgressOnTheWay,
+        AppColors.success,
+      ),
+    };
     return Row(
       children: [
-        if (widget.lockedUntilEnd)
+        // Until the ride starts the passenger may still cancel it.
+        if (widget.lockedUntilEnd && phase != _RidePhase.riding)
+          TextButton(
+            key: const ValueKey('passenger-cancel-ride'),
+            onPressed: _cancelling ? null : _cancelRide,
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: Text(l10n.passengerCancelRideAction),
+          )
+        else if (widget.lockedUntilEnd)
           const SizedBox(width: 48)
         else
           IconButton(
@@ -671,7 +992,7 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
           child: Column(
             children: [
               Text(
-                context.l10n.tripInProgressTitle,
+                title,
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -685,14 +1006,14 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
                   Container(
                     width: 8,
                     height: 8,
-                    decoration: const BoxDecoration(
-                      color: AppColors.success,
+                    decoration: BoxDecoration(
+                      color: dot,
                       shape: BoxShape.circle,
                     ),
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    context.l10n.tripInProgressOnTheWay,
+                    subtitle,
                     style: const TextStyle(
                       fontSize: 13,
                       color: AppColors.slate600,
@@ -719,7 +1040,14 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
   }
 
   Widget _buildProgressCard(BuildContext context, TripModel trip) {
-    final progress = (_progressPercent / 100).clamp(0.05, 0.95);
+    // Before pickup the car sits at the start: the trip hasn't begun, and
+    // the server's progress (driver vs. the trip route) means nothing yet.
+    final total = trip.distanceKm, left = _rideKm;
+    final progress = _phase != _RidePhase.riding
+        ? 0.0
+        : total != null && total > 0 && left != null
+        ? (1 - left / total).clamp(0.05, 0.95)
+        : (_progressPercent / 100).clamp(0.05, 0.95);
 
     return Container(
       width: double.infinity,
@@ -795,7 +1123,7 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
           const SizedBox(height: 10),
           LayoutBuilder(
             builder: (context, constraints) {
-              final carLeft = (constraints.maxWidth - 28) * progress;
+              final carOffset = (constraints.maxWidth - 28) * progress;
               return SizedBox(
                 height: 22,
                 child: Stack(
@@ -813,9 +1141,9 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
                         ),
                       ),
                     ),
-                    Positioned(
-                      left: 0,
-                      width: carLeft + 14,
+                    PositionedDirectional(
+                      start: 0,
+                      width: carOffset + 14,
                       top: 9,
                       child: Container(
                         height: 4,
@@ -825,8 +1153,8 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
                         ),
                       ),
                     ),
-                    Positioned(
-                      left: carLeft,
+                    PositionedDirectional(
+                      start: carOffset,
                       top: 0,
                       child: const Icon(
                         Icons.directions_car_filled,
@@ -858,7 +1186,9 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
               ),
               Expanded(
                 child: _MetricColumn(
-                  label: context.l10n.tripInProgressRemainingTime,
+                  label: _phase == _RidePhase.approaching
+                      ? context.l10n.tripInProgressDriverArrivesIn
+                      : context.l10n.tripInProgressRemainingTime,
                   value: _formatRemaining(context),
                   emphasize: true,
                 ),
@@ -905,7 +1235,7 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
                 color: AppColors.teal50,
                 borderRadius: BorderRadius.circular(14),
                 child: InkWell(
-                  onTap: _openTripDetails,
+                  onTap: () => _openDriverChat(trip),
                   borderRadius: BorderRadius.circular(14),
                   child: const SizedBox(
                     width: 52,
@@ -919,7 +1249,7 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                context.l10n.tripInProgressTripDetails,
+                context.l10n.chatLabel,
                 style: const TextStyle(fontSize: 11, color: AppColors.slate500),
               ),
             ],
@@ -985,6 +1315,15 @@ class _TripInProgressScreenState extends State<TripInProgressScreen> {
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.3,
                     ),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: _openTripDetails,
+                  icon: const Icon(Icons.receipt_long_outlined, size: 18),
+                  label: Text(context.l10n.tripInProgressTripDetails),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.teal700,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
                   ),
                 ),
               ],

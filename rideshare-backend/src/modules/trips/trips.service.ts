@@ -14,6 +14,7 @@ import {
   TripMeetingPoint,
 } from '../../database/entities/trip.entity';
 import { TripStatus, TripType } from '../../database/entities/shared.enums';
+import { UserEntity } from '../../database/entities/user.entity';
 import { CreateTripDto, MeetingPointDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { SearchTripsDto } from './dto/search-trips.dto';
@@ -363,15 +364,17 @@ export class TripsService {
       });
     }
 
-    // Local form validation runs before any network call: departure time,
+    // Local form validation runs before any network call: a readable departure,
     // then the seat-count range, then (below) the geocode behind
     // resolveTripCurrency and the fee guard. That way an obviously invalid
     // request never pays for a geocode round-trip, and the fee guard — the
     // most expensive check, and the least likely to be the driver's actual
     // mistake — runs last.
+    // Any departure time is accepted (the owner's call): the trip is listed
+    // until that time and drops out of search the moment it arrives.
     const departureTime = new Date(createTripDto.departureTime);
-    if (departureTime <= new Date()) {
-      throw new BadRequestException('Departure time must be in the future');
+    if (Number.isNaN(departureTime.getTime())) {
+      throw new BadRequestException('Departure time is not a valid date');
     }
 
     // The trip carries its own copy of the layout so a per-trip
@@ -524,6 +527,7 @@ export class TripsService {
       distanceKm?: number;
       driverPhotoUrl?: string | null;
       driverRating?: number | null;
+      driverTotalRatings?: number;
       vehicleType?: string | null;
       vehicleTypeLabel?: { en: string; ar: string } | null;
       vehicleModel?: string | null;
@@ -553,7 +557,8 @@ export class TripsService {
       ...trip,
       distanceKm: distanceKm != null ? Number(distanceKm) : undefined,
       driverPhotoUrl: driver?.photoUrl ?? null,
-      driverRating: driver?.rating != null ? Number(driver.rating) : null,
+      driverRating: driver != null ? Number(driver.driverRating) : null,
+      driverTotalRatings: driver?.driverTotalRatings ?? 0,
       // Clients choose the cabin artwork by type; two types can share a seat
       // layout, so the layout alone cannot identify the vehicle.
       vehicleType: vehicle?.vehicleType ?? null,
@@ -780,7 +785,7 @@ export class TripsService {
     }
 
     return {
-      data,
+      data: await this.withDriverRatings(data),
       meta: {
         page,
         limit,
@@ -788,6 +793,32 @@ export class TripsService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  /**
+   * Adds each trip's driver rating (as a driver), so a passenger browsing
+   * trips can weigh drivers before opening one. One query per page.
+   */
+  private async withDriverRatings(
+    trips: TripEntity[],
+  ): Promise<
+    Array<TripEntity & { driverRating: number; driverTotalRatings: number }>
+  > {
+    const ids = [...new Set(trips.map((t) => t.driverId).filter(Boolean))];
+    const drivers = ids.length
+      ? await this.tripRepo.manager.find(UserEntity, {
+          where: { id: In(ids) },
+          select: ['id', 'driverRating', 'driverTotalRatings'],
+        })
+      : [];
+    const byId = new Map(drivers.map((d) => [d.id, d]));
+    return trips.map((trip) => {
+      const d = byId.get(trip.driverId);
+      return Object.assign(trip, {
+        driverRating: Number(d?.driverRating ?? 0),
+        driverTotalRatings: d?.driverTotalRatings ?? 0,
+      });
+    });
   }
 
   /**

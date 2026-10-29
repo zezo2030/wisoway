@@ -15,6 +15,10 @@ const ADMIN_ALERT_TYPES = [
   AdminAlertType.DRIVER_REGISTRATION,
   AdminAlertType.FEE_PAYMENT,
   AdminAlertType.TRIP_EMERGENCY,
+  AdminAlertType.WALLET_TOPUP,
+  AdminAlertType.PAYOUT_REQUEST,
+  AdminAlertType.REFUND_REQUEST,
+  AdminAlertType.COMPLAINT,
 ] as const;
 
 export interface AdminAlertPreferenceView {
@@ -132,6 +136,75 @@ export class AdminAlertsService {
         latitude: payload.latitude,
         longitude: payload.longitude,
       },
+    });
+  }
+
+  /** A wallet top-up waiting for review, or one CliQ already settled. */
+  async notifyWalletTopup(
+    payment: {
+      id: string;
+      amount: number | string;
+      currency?: string | null;
+      method?: string | null;
+      status?: string | null;
+    },
+    user: { name?: string | null; phoneNumber?: string | null } | null,
+  ): Promise<void> {
+    const who = user?.name?.trim() || user?.phoneNumber || 'مستخدم';
+    const amount = `${payment.amount} ${payment.currency ?? ''}`.trim();
+    const pending = payment.status === 'pending';
+    await this.dispatch(AdminAlertType.WALLET_TOPUP, {
+      title: pending ? 'طلب شحن محفظة بانتظار المراجعة' : 'تم شحن محفظة',
+      body: pending
+        ? `${who} طلب شحن ${amount} — راجع الإثبات واعتمده.`
+        : `${who} شحن محفظته بمبلغ ${amount} عبر CliQ.`,
+      notificationType: 'admin_wallet_topup',
+      data: {
+        link: pending ? '/payments/pending' : '/payments',
+        paymentId: payment.id,
+      },
+    });
+  }
+
+  async notifyPayoutRequest(payout: {
+    id: string;
+    amount: number | string;
+    currency?: string | null;
+    driverName?: string | null;
+  }): Promise<void> {
+    await this.dispatch(AdminAlertType.PAYOUT_REQUEST, {
+      title: 'طلب سحب رصيد',
+      body: `${payout.driverName?.trim() || 'سائق'} طلب سحب ${payout.amount} ${payout.currency ?? ''}`.trim(),
+      notificationType: 'admin_payout_request',
+      data: { link: '/wallets', payoutId: payout.id },
+    });
+  }
+
+  async notifyRefundRequest(refund: {
+    id: string;
+    reason?: string | null;
+  }): Promise<void> {
+    await this.dispatch(AdminAlertType.REFUND_REQUEST, {
+      title: 'طلب استرداد جديد',
+      body: refund.reason?.trim() || 'راكب طلب استرداد مبلغ.',
+      notificationType: 'admin_refund_request',
+      data: { link: '/refunds', refundId: refund.id },
+    });
+  }
+
+  async notifyComplaint(complaint: {
+    id: string;
+    category?: string | null;
+    body?: string | null;
+  }): Promise<void> {
+    await this.dispatch(AdminAlertType.COMPLAINT, {
+      title: 'شكوى جديدة',
+      body:
+        complaint.body?.trim().slice(0, 200) ||
+        complaint.category ||
+        'وصلت شكوى جديدة.',
+      notificationType: 'admin_complaint',
+      data: { link: '/complaints', complaintId: complaint.id },
     });
   }
 

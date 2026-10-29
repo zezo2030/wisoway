@@ -10,6 +10,9 @@ class RidePayment {
   final String passengerId;
   final String? passengerName;
   final double amount;
+  final double? originalAmount;
+  final double discountAmount;
+  final String? promoCode;
   final String currency;
 
   /// `cash` or `cliq`.
@@ -24,6 +27,9 @@ class RidePayment {
     required this.tripId,
     required this.passengerId,
     required this.amount,
+    this.originalAmount,
+    this.discountAmount = 0,
+    this.promoCode,
     required this.currency,
     required this.method,
     required this.status,
@@ -32,6 +38,7 @@ class RidePayment {
   });
 
   bool get isCliq => method == 'cliq';
+  bool get isWallet => method == 'wallet';
   bool get isPaid => status == 'paid';
   bool get isDisputed => status == 'disputed';
   bool get isCliqRequested => isCliq && status == 'requested';
@@ -41,7 +48,7 @@ class RidePayment {
   bool get isSettled => isPaid || isDisputed;
 
   /// A cash fare the driver still has to confirm.
-  bool get awaitsDriver => !isCliq && status == 'pending';
+  bool get awaitsDriver => method == 'cash' && status == 'pending';
 
   factory RidePayment.fromJson(Map<String, dynamic> json) {
     String? text(dynamic v) {
@@ -55,6 +62,10 @@ class RidePayment {
       passengerId: json['passengerId']?.toString() ?? '',
       passengerName: text(json['passengerName']),
       amount: double.tryParse(json['amount']?.toString() ?? '') ?? 0,
+      originalAmount: double.tryParse(json['originalAmount']?.toString() ?? ''),
+      discountAmount:
+          double.tryParse(json['discountAmount']?.toString() ?? '') ?? 0,
+      promoCode: text(json['promoCode']),
       currency: text(json['currency']) ?? 'JOD',
       method: text(json['method']) ?? 'cash',
       status: text(json['status']) ?? 'pending',

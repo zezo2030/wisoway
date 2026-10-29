@@ -2081,7 +2081,7 @@
       }
     }
   },
-  "pendingBookingHint": "تأكيد الحجز يفتح بيانات الراكب (رحلة مجانية أو خصم من المحفظة مرة واحدة للرحلة)",
+  "pendingBookingHint": "بيانات الراكب متاحة دون رسوم فتح. تُخصم عمولة التطبيق من محفظتك في نهاية الرحلة عن الركاب الذين أكدوا حضورهم.",
   "pendingConfirmation": "قيد التأكيد",
   "confirmingBooking": "جاري التأكيد...",
   "quickActions": "إجراءات سريعة",
@@ -2534,7 +2534,7 @@
   "reviewTripSubtitle": "تحقق من تفاصيل رحلتك قبل نشرها للركاب",
   "publishTrip": "نشر الرحلة",
   "backToEdit": "العودة للتعديل",
-  "createTripFeeNotice": "رسوم الرحلة ({percent}%): {amount} {currency} — تُخصم من محفظتك عند انطلاق الرحلة.",
+  "createTripFeeNotice": "العمولة {percent}% من أجرة الركاب الذين أكملوا الرحلة، وتُخصم عند انتهائها. التقدير عند امتلاء المقاعد: {amount} {currency}.",
   "@createTripFeeNotice": {
     "placeholders": {
       "percent": {
@@ -2620,10 +2620,17 @@
   "shareTripTrackingError": "تعذّر إنشاء رابط المشاركة",
   "tripInProgressTitle": "الرحلة جارية",
   "tripInProgressOnTheWay": "أنت في الطريق",
+  "rideApproachingTitle": "السائق في طريقه إليك",
+  "rideApproachingSubtitle": "انتظره في نقطة الانطلاق",
+  "rideArrivedTitle": "وصل السائق",
+  "rideArrivedSubtitle": "السائق بانتظارك في نقطة الانطلاق",
   "tripInProgressHelp": "مساعدة",
   "tripInProgressEtaLabel": "وقت الوصول المتوقع",
   "tripInProgressRemainingDistance": "المسافة المتبقية",
   "tripInProgressRemainingTime": "تبقى للوصول",
+  "tripInProgressDriverArrivesIn": "وصول السائق خلال",
+  "tripLiveLocationTitle": "تتبع الرحلة",
+  "tripLiveLocationBody": "تتم مشاركة موقعك مع ركاب الرحلة أثناء التوجه إليهم وخلال الرحلة.",
   "tripInProgressTripDetails": "تفاصيل الرحلة",
   "tripInProgressShareTracking": "مشاركة التتبع",
   "tripInProgressEmergency": "الطوارئ",
@@ -2881,8 +2888,8 @@
   "tripSummaryChatSubtitle": "تواصل مع ركاب هذه الرحلة",
   "tripSummaryBackHome": "العودة إلى الصفحة الرئيسية",
   "currencyJodShort": "د.أ",
-  "negativeWalletBalanceBlocked": "رصيد محفظتك سالب. سدد المستحقات قبل إنشاء رحلات مشتركة أو تلقي رحلات مباشرة.",
-  "negativeWalletGoOnlineBlocked": "رصيد محفظتك سالب. سدد المستحقات قبل تلقي الرحلات المباشرة.",
+  "negativeWalletBalanceBlocked": "اشحن محفظتك بحد أدنى 5 دنانير أو 25 ريالاً أو ما يعادلها وسدد أي مستحقات للاستمرار في استقبال الرحلات وإنشائها.",
+  "negativeWalletGoOnlineBlocked": "اشحن محفظتك بحد أدنى 5 دنانير أو 25 ريالاً أو ما يعادلها وسدد أي مستحقات للاستمرار في استقبال الرحلات وإنشائها.",
   "authStepOf": "خطوة {current} من {total}",
   "@authStepOf": {
     "description": "Step counter shown on the auth wizard screens",
@@ -3021,7 +3028,7 @@
       }
     }
   },
-  "tripFeeOfSeatsLabel": "رسوم الرحلة ({percent}% من {seats} مقاعد)",
+  "tripFeeOfSeatsLabel": "عمولة الرحلة ({percent}%، سعة الرحلة {seats} مقاعد)",
   "@tripFeeOfSeatsLabel": {
     "placeholders": {
       "percent": {
@@ -3032,7 +3039,7 @@
       }
     }
   },
-  "tripFeeChargedAtStartNotice": "سيتم خصم رسوم الرحلة من محفظتك عند انطلاق الرحلة. حافظ على وجود رصيد في محفظتك لضمان قدرتك على إنشاء رحلات جديدة.",
+  "tripFeeChargedAtStartNotice": "تُخصم العمولة عند انتهاء الرحلة من أجرة الحجوزات المكتملة، وتُضاف إلى محفظة التطبيق.",
   "contactPassengersTitle": "التواصل مع الركاب",
   "contactPassengersSubtitle": "اتصال أو دردشة حية",
   "confirmYourPresenceCta": "قم بتأكيد تواجدك في الوقت والمكان المحدد",
@@ -3078,6 +3085,14 @@
   "profileAppSection": "التطبيق",
   "profileTrustedAccount": "حساب موثوق",
   "profileUntrustedAccount": "حساب غير موثق",
+  "profileRatingCount": "({count} تقييم)",
+  "@profileRatingCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "profileNoRatingsYet": "لا توجد تقييمات بعد",
+  "driverRatingLabel": "التقييم",
   "editProfileSubtitle": "تحديث بياناتك وصورتك الشخصية",
   "paymentMethods": "طرق الدفع",
   "paymentMethodsSubtitle": "إدارة بطاقاتك ووسائل الدفع",
@@ -3222,6 +3237,25 @@
   "instantTripWaitingForPassenger": "بانتظار ركوب الراكب",
   "instantTripArrivedAtPickupAction": "وصلت إلى الراكب",
   "instantTripStartAction": "بدء الرحلة",
+  "instantTripCancelAction": "إلغاء",
+  "instantTripCancelTitle": "إلغاء الرحلة؟",
+  "instantTripCancelBody": "سيُبلَّغ الراكب، ونبحث له فوراً عن سائق آخر. تنبيه: إلغاء الرحلة بعد قبولها يخفّض تقييمك.",
+  "notAtPickupTitle": "الرجاء التوجه إلى مكان الراكب",
+  "notAtPickupBody": "أنت على بُعد {distance} من نقطة الانطلاق. يمكنك الضغط على «وصلت إلى الراكب» عندما تكون على بُعد 500 متر أو أقل.",
+  "@notAtPickupBody": {
+    "placeholders": {
+      "distance": { "type": "String" }
+    }
+  },
+  "passengerCancelRideAction": "إلغاء",
+  "passengerCancelRideTitle": "إلغاء الرحلة؟",
+  "passengerCancelRideBody": "السائق قبل رحلتك وهو في طريقه إليك. تنبيه: إلغاء الرحلة بعد قبول السائق يخفّض تقييمك.",
+  "passengerCancelRideConfirm": "إلغاء الرحلة",
+  "passengerRideCancelled": "أُلغيت الرحلة",
+  "instantTripCancelConfirm": "إلغاء الرحلة",
+  "instantTripCancelKeep": "تراجع",
+  "instantTripCancelled": "أُلغيت الرحلة",
+  "instantDriverCancelledSearching": "ألغى السائق الرحلة — نبحث لك عن سائق آخر",
   "instantTripMovedTitle": "هل بدأت الرحلة؟",
   "instantTripMovedBody": "تحرّكت من مكان الراكب ولم تبدأ الرحلة بعد. إذا كان الراكب معك فابدأ الرحلة الآن.",
   "instantTripNotYet": "ليس بعد",
@@ -3300,7 +3334,24 @@
   "liveTripRevenueLabel": "الإيرادات",
   "liveTripPassengersSheetTitle": "ركاب الرحلة",
   "liveTripDetails": "التفاصيل",
-  "liveTripNoPassengers": "لا يوجد ركاب مؤكَّدون",
+  "liveTripNoPassengers": "لا يوجد ركاب في هذه الرحلة",
+  "boardingConfirmed": "أكّد ركوبه",
+  "boardingNotConfirmed": "لم يؤكد ركوبه بعد",
+  "boardingConfirmedCount": "أكّد {boarded} من {total}",
+  "@boardingConfirmedCount": {
+    "placeholders": {
+      "boarded": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "boardingCardTitle": "ركوب الركاب",
+  "boardingCardBody": "تبدأ الرحلة عندما يؤكد أول راكب أنه في السيارة. إذا كان الركاب معك ولم يؤكدوا، اضغط «بدء الرحلة».",
+  "boardingStartAction": "بدء الرحلة",
+  "boardingStartOpensHint": "يمكنك بدء الرحلة قبل موعدها بـ 30 دقيقة.",
+  "boardingStartConfirmTitle": "بدء الرحلة؟",
+  "boardingStartConfirmBody": "تأكد أن الركاب في السيارة قبل البدء.",
+  "boardingStarted": "بدأت الرحلة",
+  "boardingVouchAction": "معي في السيارة",
   "bookingCompanionTag": "مرافق",
   "bookingSeatOccupant": "مقعد {seat} · {name}",
   "@bookingSeatOccupant": {
@@ -3353,7 +3404,7 @@
   "ridePaymentPayCashInstead": "الدفع للسائق نقداً بدلاً من ذلك",
   "ridePaymentDisputedTitle": "لم يُسجَّل الدفع",
   "ridePaymentDisputedBody": "أبلغ السائق أنه لم يستلم الأجرة. سيتواصل معك فريق VisionWay.",
-  "ridePaymentsCardTitle": "أجرة الركاب",
+  "ridePaymentsCardTitle": "أجرة الرحلة",
   "ridePaymentDriverPaidCash": "استلمتها نقداً ✓",
   "ridePaymentDriverPaidCliq": "دُفعت عبر CliQ · أُضيفت إلى محفظتك ✓",
   "ridePaymentDriverCliqPending": "بانتظار موافقة الراكب على دفع CliQ",
@@ -3365,5 +3416,17 @@
       }
     }
   },
-  "instantLocationNotReaching": "لا يصل موقعك إلى الخادم الآن، فلن تصلك طلبات الرحلات. تأكد من الإنترنت ومن تفعيل الموقع."
+  "instantLocationNotReaching": "لا يصل موقعك إلى الخادم الآن، فلن تصلك طلبات الرحلات. تأكد من الإنترنت ومن تفعيل الموقع.",
+  "rideChimeArrivedTitle": "وصلت إلى الراكب",
+  "rideChimeArrivedBody": "أبلغنا الراكب بوصولك.",
+  "rideChimeStartedTitle": "بدأت الرحلة",
+  "rideChimeStartedBody": "رحلة موفقة!",
+  "forgotStartTitle": "هل نسيت بدء الرحلة؟",
+  "forgotStartBody": "تحرّكت من مكان الراكب ولم تبدأ الرحلة. اضغط «بدء الرحلة» الآن.",
+  "forgotStartAction": "بدء الرحلة",
+  "offersBatteryTitle": "اسمح للتطبيق بالعمل في الخلفية",
+  "offersBatteryBody": "حتى تصلك طلبات الرحلات والتطبيق مغلق أو الشاشة مقفلة، اسمح لـ VisionWay بتجاهل «تحسين البطارية». بدون ذلك قد يوقف الهاتف التطبيق ولا تصلك الطلبات.",
+  "offersBatteryAction": "السماح",
+  "offersNotificationsTitle": "فعّل الإشعارات",
+  "offersNotificationsBody": "الإشعارات متوقفة لـ VisionWay، فلن تصلك طلبات الرحلات. فعّلها من الإعدادات."
 }

@@ -14,6 +14,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { TripTimeService } from './trip-time.service';
 import { PresenceService } from './presence.service';
+import { TripStartService } from './trip-start.service';
 import { PassengerConfirmDto } from './dto/passenger-confirm.dto';
 import { DriverConfirmDto } from './dto/driver-confirm.dto';
 import {
@@ -32,6 +33,7 @@ export class TripTimeController {
   constructor(
     private readonly tripTimeService: TripTimeService,
     private readonly presenceService: PresenceService,
+    private readonly tripStart: TripStartService,
   ) {}
 
   @Post('bookings/:id/passenger-confirm')
@@ -85,6 +87,19 @@ export class TripTimeController {
     @Body() dto: DriverPresenceConfirmDto,
   ) {
     return this.presenceService.driverConfirm(tripId, driverId, dto);
+  }
+
+  @Post('trips/:id/start')
+  @Roles('driver')
+  @ApiOperation({
+    summary:
+      'Driver starts a shared trip («بدء الرحلة») — from 30 min before departure; otherwise it starts with the first passenger who confirms boarding',
+  })
+  async startTrip(
+    @Param('id') tripId: string,
+    @CurrentUser('id') driverId: string,
+  ) {
+    return this.tripStart.startByDriver(tripId, driverId);
   }
 
   @Get('bookings/:id/presence-prompt')

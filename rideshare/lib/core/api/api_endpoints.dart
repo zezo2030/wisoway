@@ -22,6 +22,7 @@ class ApiEndpoints {
   static const String driverRegister = '/auth/driver/register';
   // Edit the submitted driver details/documents while approval is pending.
   static const String driverPendingRegistration = '/auth/driver/registration';
+
   /// A signed-in passenger turns their own account into a driver account.
   static const String driverBecome = '/auth/driver/become';
   static const String linkPhone = '/auth/link-phone';
@@ -55,6 +56,9 @@ class ApiEndpoints {
   static String tripSeatLock(String id) => '/trips/$id/seats/lock';
   static String hideTrip(String id) => '/trips/$id/hide';
   static String showTrip(String id) => '/trips/$id/show';
+
+  /// Shared trip: the driver starts it («بدء الرحلة»).
+  static String startTrip(String tripId) => '/trips/$tripId/start';
   static String arriveTrip(String id) => '/trips/$id/arrived';
   static String shareLink(String tripId) => '/trips/$tripId/share-link';
   static String publicShare(String token) => '/share/$token';
@@ -147,6 +151,7 @@ class ApiEndpoints {
 
   // Tracking
   static String trackingLatest(String tripId) => '/tracking/$tripId/latest';
+  static const String trackingLocation = '/tracking/location';
   static String trackingHistory(String tripId) => '/tracking/$tripId/history';
   static const String trackingNearbyTrips = '/tracking/nearby/trips';
 
@@ -155,8 +160,10 @@ class ApiEndpoints {
   static const String locationsAutocomplete = '/locations/autocomplete';
   static String locationsPlace(String placeId) =>
       '/locations/place/${Uri.encodeComponent(placeId)}';
+
   /// Point → address for the map picker's centre pin.
   static const String locationsReverse = '/locations/reverse';
+
   /// City catalog behind the city-first route pickers.
 
   // Instant (on-demand) rides
@@ -173,6 +180,18 @@ class ApiEndpoints {
       '/instant-rides/trips/$tripId/arrived-at-pickup';
   static String instantTripStart(String tripId) =>
       '/instant-rides/trips/$tripId/start';
+
+  /// Passenger cancels an accepted ride before it starts.
+  static String instantTripCancelByPassenger(String tripId) =>
+      '/instant-rides/trips/$tripId/cancel-by-passenger';
+
+  /// Driver backs out before pickup; the passenger is searched a new driver.
+  static String instantTripCancel(String tripId) =>
+      '/instant-rides/trips/$tripId/cancel';
+
+  /// The passenger's request still looking for a driver, or null.
+  static const String instantSearchingRequest =
+      '/instant-rides/requests/searching';
   // Ride fares (instant + shared): cash confirmed by the driver, or CliQ.
   static String ridePaymentMine(String tripId) =>
       '/ride-payments/trips/$tripId/mine';

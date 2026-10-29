@@ -1,19 +1,5 @@
-/**
- * Reconciliation sweep for the one platform-fee debit.
- *
- * The fee is charged when a trip flips to IN_PROGRESS, and for shared trips the
- * only thing that performs that flip is a delayed BullMQ job scheduled at
- * publish time. If that job is lost — a Redis restart without persistence, a
- * queue flush, a manual removal — the trip never starts, never completes and is
- * never charged. Both inline sweeps (TripTimeService.completeTrip and
- * TripAutoCompleteProcessor) are gated on the trip already being IN_PROGRESS,
- * so neither of them ever sees such a trip. Nothing else would.
- *
- * This job is the net under that hole: it looks for trips that are past their
- * departure time and still carry no fee stamp, and runs the same idempotent
- * charge. DriverTripFeeService.chargeAtTripStart short-circuits on the trip
- * stamp and on its `trip-fee:<tripId>` audit row, so overlapping with the
- * normal path — or with a previous run of this sweep — cannot double-charge.
+/** Reconciles completed trips whose atomic commission posting failed.
+ * Historical trips before the revenue-model cutover are excluded.
  */
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
@@ -88,6 +74,10 @@ export class DriverTripFeeReconciliationJob {
     const trips = await this.tripRepo
       .createQueryBuilder('trip')
       .where('trip.driverWalletChargeApplied IS NOT TRUE')
+      .andWhere('trip.status = :completed', { completed: TripStatus.COMPLETED })
+      .andWhere(
+        `trip."tripCompletedAt" >= (SELECT value::timestamptz FROM platform_settings WHERE key='commission.cutover')`,
+      )
       .andWhere('trip.departureTime < :graceCutoff', { graceCutoff })
       .andWhere('trip.departureTime >= :lookbackFloor', { lookbackFloor })
       .andWhere('trip.status NOT IN (:...excludedStatuses)', {

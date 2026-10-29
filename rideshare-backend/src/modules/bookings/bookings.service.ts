@@ -1,3 +1,4 @@
+import { pricePromotion } from '../promotions/promotions.module';
 import {
   Injectable,
   NotFoundException,
@@ -684,7 +685,9 @@ export class BookingsService {
       dto.paymentMethod,
       trip.currency ?? 'JOD',
       dto.payerCliqAlias ??
-        (dto.paymentMethod === 'cliq' ? await this.savedCliqAlias(userId) : null),
+        (dto.paymentMethod === 'cliq'
+          ? await this.savedCliqAlias(userId)
+          : null),
     );
 
     // Duplicate booking check — any active booking by this user for this trip
@@ -785,7 +788,12 @@ export class BookingsService {
         sharePhoneWithDriver,
         isFamilyBooking,
         seatCount,
-        totalAmount,
+        ...(await pricePromotion(
+          qr.manager,
+          dto.promoCode,
+          Number(totalAmount),
+          'shared',
+        )),
         seatPriceAtBooking: String(seatPricing.seatPrice),
         platformAmount: String(seatPricing.platformAmount),
         driverAmount: String(seatPricing.driverAmount),
@@ -919,6 +927,7 @@ export class BookingsService {
         isFamilyBooking,
         paymentMethod: dto.paymentMethod,
         payerCliqAlias: dto.payerCliqAlias,
+        promoCode: dto.promoCode,
       },
       userId,
     );
@@ -966,8 +975,7 @@ export class BookingsService {
 
   /**
    * Driver accepts (confirms) a pending booking.
-   * Charges the driver's wallet for the contact fee, marks the booking
-   * confirmed, and cancels the pending timeout job.
+   * Marks the booking confirmed without an access fee and cancels its timeout.
    */
   /**
    * Booking requests still waiting on this driver, oldest first. The app shows
@@ -1000,8 +1008,8 @@ export class BookingsService {
         name: b.user?.name ?? null,
         photoUrl: b.user?.photoUrl ?? null,
         gender: b.user?.gender ?? null,
-        rating: b.user?.rating != null ? Number(b.user.rating) : null,
-        totalRatings: b.user?.totalRatings ?? null,
+        rating: b.user != null ? Number(b.user.passengerRating) : null,
+        totalRatings: b.user?.passengerTotalRatings ?? null,
       },
       // Who sits where; companions are the seats not held by the booker.
       seats: (b.seats ?? []).map((seat) => ({

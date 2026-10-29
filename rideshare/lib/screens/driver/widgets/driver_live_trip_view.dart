@@ -13,6 +13,7 @@ import '../../../core/theme/text_styles.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/booking_model.dart';
 import '../../../models/trip_model.dart';
+import 'boarding_status_chip.dart';
 
 /// The driver's page for a trip that is under way — instant or shared.
 ///
@@ -35,6 +36,8 @@ class DriverLiveTripView extends StatefulWidget {
     required this.onArrived,
     this.onArrivedAtPickup,
     this.onStartRide,
+    this.onCancelRide,
+    this.onConfirmAboard,
     this.stageBusy = false,
     required this.onEnableTracking,
     required this.onChatPassenger,
@@ -61,6 +64,13 @@ class DriverLiveTripView extends StatefulWidget {
   /// Instant rides: «وصلت إلى الراكب» and «بدء الرحلة».
   final VoidCallback? onArrivedAtPickup;
   final VoidCallback? onStartRide;
+
+  /// Instant rides: «إلغاء», offered only until the passenger is in the car.
+  final VoidCallback? onCancelRide;
+
+  /// Shared trips: «معي في السيارة» for a passenger who rode but didn't
+  /// confirm boarding, so they are asked for the fare at the end.
+  final void Function(BookingModel booking)? onConfirmAboard;
 
   /// One of the two pickup-stage calls is in flight.
   final bool stageBusy;
@@ -113,6 +123,7 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
   List<LatLng> _pickupLeg = const [];
   LatLng? _pickupLegOrigin;
   bool _fetchingPickupLeg = false;
+
   /// The driver has been at the pickup (by GPS or by pressing «وصلت»).
   bool _beenAtPickup = false;
   bool _startPromptOpen = false;
@@ -223,11 +234,7 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        icon: Icon(
-          IconsaxPlusBold.routing,
-          color: T.primary(ctx),
-          size: 32,
-        ),
+        icon: Icon(IconsaxPlusBold.routing, color: T.primary(ctx), size: 32),
         title: Text(l10n.instantTripMovedTitle),
         content: Text(l10n.instantTripMovedBody),
         actions: [
@@ -504,6 +511,27 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
             ),
           ),
         ),
+        if (widget.onCancelRide != null && !_passengersOnBoard) ...[
+          const SizedBox(width: 8),
+          SizedBox(
+            height: 44,
+            child: TextButton.icon(
+              onPressed: widget.stageBusy ? null : widget.onCancelRide,
+              icon: const Icon(Icons.close_rounded, size: 18),
+              label: Text(l10n.instantTripCancelAction),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.error,
+                backgroundColor: T.surface(context),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                elevation: 2,
+                shadowColor: T.shadow(context).withValues(alpha: 0.3),
+              ),
+            ),
+          ),
+        ],
         if (widget.onOpenDetails != null) ...[
           const SizedBox(width: 8),
           _RoundButton(
@@ -522,7 +550,11 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
     );
   }
 
-  Widget _buildPanel(BuildContext context, MediaQueryData media, LatLng target) {
+  Widget _buildPanel(
+    BuildContext context,
+    MediaQueryData media,
+    LatLng target,
+  ) {
     final l10n = context.l10n;
     final car = widget.driverPosition;
     final stageText = switch (_stage) {
@@ -727,6 +759,7 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
     final bookings = widget.bookings;
     final seats = bookings.fold<int>(0, (sum, b) => sum + b.seatCount);
     final shown = bookings.take(4).toList();
+    final boarded = bookings.where((b) => b.hasConfirmedBoarding).length;
 
     return Material(
       color: T.surfaceVariant(context),
@@ -769,7 +802,8 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
                 child: Text(
                   bookings.isEmpty
                       ? context.l10n.liveTripNoPassengers
-                      : context.l10n.liveTripPassengersCount(seats),
+                      : '${context.l10n.liveTripPassengersCount(seats)}'
+                            ' · ${context.l10n.boardingConfirmedCount(boarded, bookings.length)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.titleSmall.copyWith(
@@ -856,6 +890,24 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
                                     color: T.textSecondary(context),
                                   ),
                                 ),
+                                BoardingStatusChip(
+                                  boarded: b.hasConfirmedBoarding,
+                                ),
+                                if (!b.hasConfirmedBoarding &&
+                                    widget.onConfirmAboard != null)
+                                  TextButton(
+                                    style: TextButton.styleFrom(
+                                      visualDensity: VisualDensity.compact,
+                                      padding: EdgeInsets.zero,
+                                    ),
+                                    onPressed: () {
+                                      Navigator.pop(sheetContext);
+                                      widget.onConfirmAboard!(b);
+                                    },
+                                    child: Text(
+                                      context.l10n.boardingVouchAction,
+                                    ),
+                                  ),
                               ],
                             ),
                           ),
@@ -889,7 +941,8 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
   }
 
   Widget _buildRouteLine(BuildContext context) {
-    Widget stop(Color color, String name, {bool done = false}) {
+    // «من» / «إلى» over each name, so which end is the pickup is never a guess.
+    Widget stop(Color color, String label, String name, {bool done = false}) {
       return Row(
         children: [
           Icon(
@@ -899,14 +952,28 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.bodyMedium.copyWith(
-                fontWeight: FontWeight.w600,
-                color: done ? T.textSecondary(context) : T.onSurface(context),
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: T.textSecondary(context),
+                  ),
+                ),
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: done
+                        ? T.textSecondary(context)
+                        : T.onSurface(context),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -917,6 +984,7 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
       children: [
         stop(
           AppColors.success,
+          context.l10n.fromLabel,
           widget.trip.from.name,
           done: _passengersOnBoard,
         ),
@@ -927,7 +995,7 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
             child: Container(width: 2, height: 10, color: T.outline(context)),
           ),
         ),
-        stop(AppColors.error, widget.trip.to.name),
+        stop(AppColors.error, context.l10n.toLabel, widget.trip.to.name),
       ],
     );
   }
@@ -999,29 +1067,33 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
     final l10n = context.l10n;
     // The primary action follows the ride: arrive at the passenger, start the
     // ride once they're in, and only then arrive at the destination.
-    final (VoidCallback? onPrimary, String label, IconData icon, bool busy) =
-        switch (_stage) {
-          _Stage.toPickup => (
-            widget.onArrivedAtPickup,
-            l10n.instantTripArrivedAtPickupAction,
-            IconsaxPlusBold.location_tick,
-            widget.stageBusy,
-          ),
-          _Stage.atPickup => (
-            widget.onStartRide,
-            l10n.instantTripStartAction,
-            IconsaxPlusBold.play_circle,
-            widget.stageBusy,
-          ),
-          _Stage.onBoard => (
-            widget.onArrived,
-            widget.markingArrived
-                ? l10n.endingInProgress
-                : l10n.arrivedAtDestination,
-            IconsaxPlusBold.tick_circle,
-            widget.markingArrived,
-          ),
-        };
+    final (
+      VoidCallback? onPrimary,
+      String label,
+      IconData icon,
+      bool busy,
+    ) = switch (_stage) {
+      _Stage.toPickup => (
+        widget.onArrivedAtPickup,
+        l10n.instantTripArrivedAtPickupAction,
+        IconsaxPlusBold.location_tick,
+        widget.stageBusy,
+      ),
+      _Stage.atPickup => (
+        widget.onStartRide,
+        l10n.instantTripStartAction,
+        IconsaxPlusBold.play_circle,
+        widget.stageBusy,
+      ),
+      _Stage.onBoard => (
+        widget.onArrived,
+        widget.markingArrived
+            ? l10n.endingInProgress
+            : l10n.arrivedAtDestination,
+        IconsaxPlusBold.tick_circle,
+        widget.markingArrived,
+      ),
+    };
 
     return Row(
       children: [

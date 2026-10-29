@@ -105,6 +105,7 @@ class InstantRideService {
     int seatCount = 1,
     String paymentMethod = 'cash',
     String? payerCliqAlias,
+    String? promoCode,
   }) async {
     // No fare in the body: the server always charges its own quote.
     final response = await _api.post(
@@ -114,6 +115,7 @@ class InstantRideService {
         'to': _pointJson(to),
         'seatCount': seatCount,
         'paymentMethod': paymentMethod,
+        if (promoCode != null) 'promoCode': promoCode,
         if (payerCliqAlias != null && payerCliqAlias.trim().isNotEmpty)
           'payerCliqAlias': payerCliqAlias.trim(),
       },
@@ -130,6 +132,23 @@ class InstantRideService {
         : response;
     if (body is! Map) return null;
     return ActiveInstantRide.fromJson(Map<String, dynamic>.from(body));
+  }
+
+  /// The passenger cancels a ride a driver already accepted, before it starts.
+  /// It costs the passenger the cancel rating cut set on the dashboard.
+  Future<void> cancelAcceptedRide(String tripId) async {
+    await _api.post(ApiEndpoints.instantTripCancelByPassenger(tripId));
+  }
+
+  /// The passenger's request still looking for a driver — after their driver
+  /// cancelled, the server starts one on its own — or null.
+  Future<InstantRequest?> getSearchingRequest() async {
+    final response = await _api.get(ApiEndpoints.instantSearchingRequest);
+    final body = response is Map && response.containsKey('data')
+        ? response['data']
+        : response;
+    if (body is! Map || body.isEmpty) return null;
+    return InstantRequest.fromJson(Map<String, dynamic>.from(body));
   }
 
   Future<InstantRequest> getRequest(String id) async {

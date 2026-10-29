@@ -36,6 +36,12 @@ export type BookingStatus = (typeof BookingStatus)[keyof typeof BookingStatus];
 @Index('idx_bookings_trip', ['tripId'])
 @Index('idx_bookings_user', ['userId'])
 export class BookingEntity {
+  @Column({ type: 'varchar', length: 32, nullable: true })
+  promoCode: string | null;
+  @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true })
+  originalAmount: string | null;
+  @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 })
+  discountAmount: string;
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -86,6 +92,13 @@ export class BookingEntity {
 
   @Column({ type: 'timestamp', nullable: true })
   passengerPresenceConfirmedAt: Date | null;
+
+  /**
+   * The hour-before reminder reached this booking. Per booking, so a seat
+   * booked after the trip's reminder went out still gets one.
+   */
+  @Column({ type: 'timestamptz', nullable: true })
+  preTripReminderSentAt: Date | null;
 
   @Column({ type: 'timestamp', nullable: true })
   driverConfirmedPassengerAt: Date | null;

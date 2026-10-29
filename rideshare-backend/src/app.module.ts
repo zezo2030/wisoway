@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { PromotionsModule } from './modules/promotions/promotions.module';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -53,9 +54,11 @@ import { RidePaymentsModule } from './modules/ride-payments/ride-payments.module
 import { RefundsModule } from './modules/refunds/refunds.module';
 import { SupportModule } from './modules/support/support.module';
 import { InstantRidesModule } from './modules/instant-rides/instant-rides.module';
+import { PlatformSettingsModule } from './modules/platform-settings/platform-settings.module';
 
 @Module({
   imports: [
+    PromotionsModule,
     ConfigModule.forRoot({
       isGlobal: true,
       load: [
@@ -112,6 +115,7 @@ import { InstantRidesModule } from './modules/instant-rides/instant-rides.module
     RefundsModule,
     SupportModule,
     InstantRidesModule,
+    PlatformSettingsModule,
   ],
   controllers: [AppController],
   providers: [

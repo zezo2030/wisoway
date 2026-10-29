@@ -133,147 +133,53 @@ describe('TripTimeService.completeTrip — fee reconciliation sweep', () => {
     service = module.get(TripTimeService);
   });
 
-  it('charges a trip whose start-time debit never landed', async () => {
-    trip.driverWalletChargeApplied = false;
-
+  it('opens settlement only after completed/no-show bookings are finalized', async () => {
+    bookings = [
+      {
+        id: 'b',
+        tripId: 'trip-1',
+        status: BookingStatus.IN_PROGRESS,
+        passengerPresenceConfirmedAt: new Date(),
+      },
+    ];
+    const payments = (service as any).ridePayments;
+    payments.openForTrip.mockImplementation(async () => {
+      expect(bookings[0].status).toBe(BookingStatus.COMPLETED);
+    });
     await service.completeTrip('trip-1', 'driver-1', {});
-
-    expect(driverTripFee.chargeAtTripStart).toHaveBeenCalledWith(trip);
-  });
-
-  it('does not re-charge a trip already stamped', async () => {
-    trip.driverWalletChargeApplied = true;
-
-    await service.completeTrip('trip-1', 'driver-1', {});
-
+    expect(payments.openForTrip).toHaveBeenCalledWith('trip-1');
     expect(driverTripFee.chargeAtTripStart).not.toHaveBeenCalled();
   });
 
-  it('still settles presence when the recovered charge throws', async () => {
-    trip.driverWalletChargeApplied = false;
-    driverTripFee.chargeAtTripStart.mockRejectedValue(new Error('ledger down'));
-
-    await expect(
-      service.completeTrip('trip-1', 'driver-1', {}),
-    ).resolves.toBeDefined();
-
-    expect(presenceService.settleTripPresence).toHaveBeenCalledWith('trip-1');
-  });
-
-  it('logs a distinguishable recovery message when the sweep charges a trip trip-start missed', async () => {
-    trip.driverWalletChargeApplied = false;
-    const logSpy = jest.spyOn((service as any).logger, 'log');
-
-    await service.completeTrip('trip-1', 'driver-1', {});
-
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('RECOVERED'));
-  });
-
-  it('logs at error level, with the trip id and error, when the sweep charge attempt fails', async () => {
-    trip.driverWalletChargeApplied = false;
-    driverTripFee.chargeAtTripStart.mockRejectedValue(new Error('ledger down'));
-    const errorSpy = jest.spyOn((service as any).logger, 'error');
-
-    await service.completeTrip('trip-1', 'driver-1', {});
-
-    const call = errorSpy.mock.calls.find((c) =>
-      String(c[0]).includes('reconcil'),
-    );
-    expect(call).toBeDefined();
-    expect(String(call?.[0])).toContain('trip-1');
-    expect(String(call?.[0])).toContain('ledger down');
-  });
-  // Regression: the sweep used to run AFTER the no-show pass and the
-  // IN_PROGRESS -> COMPLETED pass. chargeAtTripStart decides whether a fee is
-  // owed by counting bookings In([CONFIRMED, IN_PROGRESS]), so by then there
-  // were none: it took the 'no-bookings' branch, wrote a 0.00 audit row and
-  // stamped the trip, which also hid it from the reconciliation cron
-  // (driverWalletChargeApplied IS NOT TRUE). The rescue path permanently zeroed
-  // the fee it exists to recover.
-  it('charges before the booking flip — a real fee, not a no-bookings 0.00', async () => {
-    trip.driverWalletChargeApplied = false;
-    bookings = [
-      { id: 'b-1', tripId: 'trip-1', status: BookingStatus.IN_PROGRESS },
-    ];
-
-    let outcome: any;
-    let statusesWhenCharged: string[] = [];
-    driverTripFee.chargeAtTripStart.mockImplementation(async (t: any) => {
-      // Mirrors DriverTripFeeService: no CONFIRMED/IN_PROGRESS booking at the
-      // moment of the call means no fee is owed at all.
-      statusesWhenCharged = bookings.map((b) => b.status);
-      const active = bookings.filter(
-        (b) =>
-          b.status === BookingStatus.CONFIRMED ||
-          b.status === BookingStatus.IN_PROGRESS,
-      );
-      outcome =
-        active.length === 0
-          ? {
-              tripId: t.id,
-              charged: 0,
-              pendingRemainder: 0,
-              currency: 'JOD',
-              applied: true,
-              reason: 'no-bookings',
-            }
-          : {
-              tripId: t.id,
-              charged: 1.6,
-              pendingRemainder: 0,
-              currency: 'JOD',
-              applied: true,
-            };
-      return outcome;
-    });
-
-    await service.completeTrip('trip-1', 'driver-1', {});
-
-    expect(outcome.charged).toBeGreaterThan(0);
-    expect(outcome.reason).not.toBe('no-bookings');
-    expect(statusesWhenCharged).toContain(BookingStatus.IN_PROGRESS);
-  });
-
-  // The fee is charged on totalSeats, so a driver who marks everyone absent
-  // still owes it — the no-show pass must not be able to zero it either.
-  it('charges before the no-show pass empties the billable set', async () => {
-    trip.driverWalletChargeApplied = false;
+  it('asks a fare only of passengers who rode — not of one who never confirmed boarding', async () => {
     bookings = [
       {
-        id: 'b-1',
+        id: 'b-rode',
         tripId: 'trip-1',
         status: BookingStatus.IN_PROGRESS,
-        seats: [],
+        passengerPresenceConfirmedAt: new Date(),
+      },
+      {
+        id: 'b-vouched',
+        tripId: 'trip-1',
+        status: BookingStatus.IN_PROGRESS,
+        // The driver tapped «معي في السيارة».
+        seats: [{ presenceConfirmedAt: new Date() }],
+      },
+      {
+        id: 'b-silent',
+        tripId: 'trip-1',
+        status: BookingStatus.IN_PROGRESS,
+        seats: [{ passengerSelfConfirmedAt: null, presenceConfirmedAt: null }],
       },
     ];
 
-    let statusesWhenCharged: string[] = [];
-    driverTripFee.chargeAtTripStart.mockImplementation(async () => {
-      statusesWhenCharged = bookings.map((b) => b.status);
-      return {
-        tripId: 'trip-1',
-        charged: 1.6,
-        pendingRemainder: 0,
-        currency: 'JOD',
-        applied: true,
-      };
-    });
-
-    await service.completeTrip('trip-1', 'driver-1', {
-      noShowSeats: [{ bookingId: 'b-1', seatNumber: '1A' }],
-    } as any);
-
-    expect(statusesWhenCharged).not.toContain(BookingStatus.NO_SHOW);
-  });
-
-  it('still completes the bookings after the charge', async () => {
-    trip.driverWalletChargeApplied = false;
-    bookings = [
-      { id: 'b-1', tripId: 'trip-1', status: BookingStatus.IN_PROGRESS },
-    ];
-
     await service.completeTrip('trip-1', 'driver-1', {});
 
-    expect(bookings[0].status).toBe(BookingStatus.COMPLETED);
+    const status = (id: string) => bookings.find((b) => b.id === id)?.status;
+    expect(status('b-rode')).toBe(BookingStatus.COMPLETED);
+    expect(status('b-vouched')).toBe(BookingStatus.COMPLETED);
+    // Not COMPLETED, so openForTrip (which asks COMPLETED bookings) skips it.
+    expect(status('b-silent')).toBe(BookingStatus.NO_SHOW);
   });
 });

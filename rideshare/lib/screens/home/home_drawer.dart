@@ -1,3 +1,4 @@
+import '../../core/navigation/shared_trip_navigation.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -214,7 +215,7 @@ class HomeDrawer extends StatelessWidget {
                     title: context.l10n.createTripTitle,
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.pushNamed(context, RouteNames.createTrip);
+                      SharedTripNavigation.open(context);
                     },
                   ),
                   DrawerMenuItem(

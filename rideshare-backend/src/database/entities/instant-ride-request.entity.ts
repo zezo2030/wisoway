@@ -42,6 +42,8 @@ export const InstantTerminalReason = {
   TTL_EXPIRED: 'ttl_expired',
   /** The passenger cancelled explicitly. */
   PASSENGER_CANCELLED: 'passenger_cancelled',
+  /** The matched driver cancelled before pickup; a new search took over. */
+  DRIVER_CANCELLED: 'driver_cancelled',
 } as const;
 export type InstantTerminalReason =
   (typeof InstantTerminalReason)[keyof typeof InstantTerminalReason];
@@ -50,6 +52,12 @@ export type InstantTerminalReason =
 @Entity({ name: 'instant_ride_requests' })
 @Index('instant_requests_passenger_status_idx', ['passengerId', 'status'])
 export class InstantRideRequestEntity {
+  @Column({ type: 'varchar', length: 32, nullable: true })
+  promoCode: string | null;
+  @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true })
+  originalAmount: string | null;
+  @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 })
+  discountAmount: string;
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -152,6 +160,29 @@ export class InstantRideRequestEntity {
 
   @Column({ type: 'uuid', nullable: true })
   matchedDriverId: string | null;
+
+  /** «You're late» reminders sent to the matched driver on the way to pickup. */
+  @Column({ type: 'int', default: 0 })
+  lateWarningCount: number;
+
+  /** When the driver was first warned for this ride; set = a late ride. */
+  @Column({ type: 'timestamptz', nullable: true })
+  lateWarnedAt: Date | null;
+
+  /**
+   * Driving distance / time of the route the fare was priced on, so the
+   * passenger's search sheet and the driver's offer card show the same road
+   * figures as the price — not a straight line. Null on older requests.
+   */
+  @Column({ type: 'double precision', nullable: true })
+  routeDistanceKm: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  routeDurationMinutes: number | null;
+
+  /** Rating cut (%) the driver took for being late on this ride, if any. */
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  ratingPenaltyPercent: string | null;
 
   @Column({ type: 'uuid', nullable: true })
   tripId: string | null;

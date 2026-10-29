@@ -96,4 +96,24 @@ describe('TrackingService', () => {
     expect(result.remainingDurationSeconds).toBe(900);
     expect(locationsService.getRoute).toHaveBeenCalled();
   });
+
+  it('routes to the pickup before an instant ride starts', async () => {
+    tripRepo.findOne.mockResolvedValue({ id: 't1', driverId: 'd1', tripType: 'instant', tripStartedAt: null,
+      fromPoint: { coordinates: [35, 31] }, toPoint: { coordinates: [36, 32] } } as any);
+    locationRepo.create.mockImplementation((data: any) => ({ id: 'l1', ...data }));
+    locationRepo.save.mockImplementation(async (entity: any) => entity);
+    const result = await service.updateDriverLocation('d1', { tripId: 't1', latitude: 30, longitude: 34 });
+    expect(locationsService.getRoute).toHaveBeenCalledWith(30, 34, 31, 35);
+    expect(result.routeProgressPercent).toBe(0);
+  });
+
+  it('refreshes the destination ETA immediately when the passenger ride starts', async () => {
+    tripRepo.findOne.mockResolvedValue({ id: 't1', driverId: 'd1', tripType: 'instant',
+      tripStartedAt: new Date(Date.now() - 100), etaComputedAt: new Date(Date.now() - 500),
+      fromPoint: { coordinates: [35, 31] }, toPoint: { coordinates: [36, 32] } } as any);
+    locationRepo.create.mockImplementation((data: any) => ({ id: 'l1', ...data }));
+    locationRepo.save.mockImplementation(async (entity: any) => entity);
+    await service.updateDriverLocation('d1', { tripId: 't1', latitude: 31, longitude: 35 });
+    expect(locationsService.getRoute).toHaveBeenCalledWith(31, 35, 32, 36);
+  });
 });

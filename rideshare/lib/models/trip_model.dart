@@ -73,6 +73,9 @@ class TripModel {
   final String? driverPhotoUrl;
   final double? driverRating;
 
+  /// How many passengers rated the driver; 0 = not rated yet.
+  final int? driverTotalRatings;
+
   /// Backend vehicle type key (`standard_car`, `large_bus`, ...). Drives which
   /// cabin artwork the seat map draws; null for trips whose driver has no
   /// vehicle on file, which fall back to the plain seat grid.
@@ -143,6 +146,7 @@ class TripModel {
     this.lastDriverLocationLng,
     this.driverPhotoUrl,
     this.driverRating,
+    this.driverTotalRatings,
     this.vehicleType,
     this.vehicleModel,
     this.vehicleTypeLabel,
@@ -296,6 +300,9 @@ class TripModel {
       driverRating: json['driverRating'] != null
           ? _parseDouble(json['driverRating'])
           : null,
+      driverTotalRatings: int.tryParse(
+        json['driverTotalRatings']?.toString() ?? '',
+      ),
       vehicleType: json['vehicleType']?.toString(),
       vehicleModel: json['vehicleModel']?.toString(),
       vehicleTypeLabel: json['vehicleTypeLabel'] is Map
@@ -375,6 +382,7 @@ class TripModel {
         'lastDriverLocationLng': lastDriverLocationLng,
       if (driverPhotoUrl != null) 'driverPhotoUrl': driverPhotoUrl,
       if (driverRating != null) 'driverRating': driverRating,
+      if (driverTotalRatings != null) 'driverTotalRatings': driverTotalRatings,
       if (vehicleType != null) 'vehicleType': vehicleType,
       if (vehicleModel != null) 'vehicleModel': vehicleModel,
       if (vehicleTypeLabel != null) 'vehicleTypeLabel': vehicleTypeLabel,
@@ -431,6 +439,7 @@ class TripModel {
     double? lastDriverLocationLng,
     String? driverPhotoUrl,
     double? driverRating,
+    int? driverTotalRatings,
     String? vehicleType,
     String? vehicleModel,
     String? vehiclePlateNumber,
@@ -480,6 +489,7 @@ class TripModel {
           lastDriverLocationLng ?? this.lastDriverLocationLng,
       driverPhotoUrl: driverPhotoUrl ?? this.driverPhotoUrl,
       driverRating: driverRating ?? this.driverRating,
+      driverTotalRatings: driverTotalRatings ?? this.driverTotalRatings,
       vehicleType: vehicleType ?? this.vehicleType,
       vehicleModel: vehicleModel ?? this.vehicleModel,
       vehiclePlateNumber: vehiclePlateNumber ?? this.vehiclePlateNumber,

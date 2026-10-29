@@ -67,6 +67,40 @@ export class UserEntity {
   @Column({ type: 'int', default: 0 })
   totalRatings: number;
 
+  /**
+   * The rating passengers gave this user as a driver — what passengers see
+   * when booking or ordering. `rating` above mixes every rating received
+   * (as driver and as passenger); this one counts only ratedRole = driver.
+   */
+  @Column({ type: 'decimal', precision: 3, scale: 2, default: 0 })
+  driverRating: number;
+
+  @Column({ type: 'int', default: 0 })
+  driverTotalRatings: number;
+
+  /**
+   * The rating drivers gave this user as a passenger (ratedRole = passenger),
+   * scaled by [passengerRatingPenaltyFactor] — what a driver sees on a ride
+   * request or a booking.
+   */
+  @Column({ type: 'decimal', precision: 3, scale: 2, default: 0 })
+  passengerRating: number;
+
+  @Column({ type: 'int', default: 0 })
+  passengerTotalRatings: number;
+
+  /** Like [ratingPenaltyFactor], for the passenger side (late cancels). */
+  @Column({ type: 'decimal', precision: 6, scale: 4, default: 1 })
+  passengerRatingPenaltyFactor: number;
+
+  /**
+   * Multiplies the average of driver ratings into `driverRating`. Starts at 1;
+   * each late instant pickup lowers it by the admin-set percentage
+   * (RatingsService.applyRatingPenalty).
+   */
+  @Column({ type: 'decimal', precision: 6, scale: 4, default: 1 })
+  ratingPenaltyFactor: number;
+
   @Column({ type: 'boolean', default: false })
   isPhoneVerified: boolean;
 

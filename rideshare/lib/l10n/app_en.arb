@@ -2081,7 +2081,7 @@
       }
     }
   },
-  "pendingBookingHint": "Confirming the booking unlocks the passenger's details (a free trip or a one-time wallet deduction for the trip)",
+  "pendingBookingHint": "Passenger details are available without an unlocking fee. App commission is deducted from your wallet at trip completion for passengers who confirmed their presence.",
   "pendingConfirmation": "Pending confirmation",
   "confirmingBooking": "Confirming...",
   "quickActions": "Quick Actions",
@@ -2496,7 +2496,7 @@
   "reviewTripSubtitle": "Check your trip details before publishing it to passengers",
   "publishTrip": "Publish trip",
   "backToEdit": "Back to edit",
-  "createTripFeeNotice": "Trip fee ({percent}%): {amount} {currency} — deducted from your wallet when the trip starts.",
+  "createTripFeeNotice": "Commission is {percent}% of completed fares, charged at trip completion. Estimated at full capacity: {amount} {currency}.",
   "@createTripFeeNotice": {
     "placeholders": {
       "percent": {
@@ -2568,10 +2568,17 @@
   "shareTripTrackingError": "Could not create the share link",
   "tripInProgressTitle": "Trip in progress",
   "tripInProgressOnTheWay": "You are on the way",
+  "rideApproachingTitle": "Your driver is on the way",
+  "rideApproachingSubtitle": "Wait at the pickup point",
+  "rideArrivedTitle": "Your driver has arrived",
+  "rideArrivedSubtitle": "The driver is waiting at the pickup point",
   "tripInProgressHelp": "Help",
   "tripInProgressEtaLabel": "Expected arrival",
   "tripInProgressRemainingDistance": "Remaining distance",
   "tripInProgressRemainingTime": "Time remaining",
+  "tripInProgressDriverArrivesIn": "Driver arrives in",
+  "tripLiveLocationTitle": "Trip tracking",
+  "tripLiveLocationBody": "Your location is shared with this trip's passengers during pickup and the ride.",
   "tripInProgressTripDetails": "Trip details",
   "tripInProgressShareTracking": "Share tracking",
   "tripInProgressEmergency": "Emergency",
@@ -2795,8 +2802,8 @@
   "tripSummaryChatSubtitle": "Message the passengers of this trip",
   "tripSummaryBackHome": "Return to home",
   "currencyJodShort": "JOD",
-  "negativeWalletBalanceBlocked": "Your wallet balance is negative. Settle it before creating shared trips or receiving instant rides.",
-  "negativeWalletGoOnlineBlocked": "Your wallet balance is negative. Settle it before receiving instant rides.",
+  "negativeWalletBalanceBlocked": "Top up your wallet with at least JOD 5, SAR 25, or the equivalent and settle any outstanding dues to continue receiving and creating trips.",
+  "negativeWalletGoOnlineBlocked": "Top up your wallet with at least JOD 5, SAR 25, or the equivalent and settle any outstanding dues to continue receiving and creating trips.",
   "authStepOf": "Step {current} of {total}",
   "authSecurityNotice": "All your data is kept secure and will not be shared with any party",
   "authNeedHelp": "Help",
@@ -2893,8 +2900,8 @@
   "seatChipLabel": "Seat {number}",
   "passengerFareLabel": "Passenger fare",
   "passengersTotalLabel": "Total from passengers ({count})",
-  "tripFeeOfSeatsLabel": "Trip fee ({percent}% of {seats} seats)",
-  "tripFeeChargedAtStartNotice": "The trip fee will be deducted from your wallet when the trip starts. Keep a balance in your wallet so you can keep creating new trips.",
+  "tripFeeOfSeatsLabel": "Trip commission ({percent}%, capacity {seats} seats)",
+  "tripFeeChargedAtStartNotice": "Commission is charged on completed booking fares when the trip ends and credited to the platform wallet.",
   "contactPassengersTitle": "Contact passengers",
   "contactPassengersSubtitle": "Call or live chat",
   "confirmYourPresenceCta": "Please be present at the specified time and place",
@@ -2940,6 +2947,14 @@
   "profileAppSection": "App",
   "profileTrustedAccount": "Verified account",
   "profileUntrustedAccount": "Unverified account",
+  "profileRatingCount": "({count, plural, =1{1 rating} other{{count} ratings}})",
+  "@profileRatingCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "profileNoRatingsYet": "No ratings yet",
+  "driverRatingLabel": "Rating",
   "editProfileSubtitle": "Update your details and profile photo",
   "paymentMethods": "Payment methods",
   "paymentMethodsSubtitle": "Manage your cards and payment methods",
@@ -3084,6 +3099,25 @@
   "instantTripWaitingForPassenger": "Waiting for the passenger to get in",
   "instantTripArrivedAtPickupAction": "I've arrived",
   "instantTripStartAction": "Start trip",
+  "instantTripCancelAction": "Cancel",
+  "instantTripCancelTitle": "Cancel this ride?",
+  "instantTripCancelBody": "The passenger will be told, and we'll look for another driver for them right away. Note: cancelling an accepted ride lowers your rating.",
+  "notAtPickupTitle": "Please head to the passenger",
+  "notAtPickupBody": "You are {distance} from the pickup point. You can tap 'Arrived at passenger' once you're within 500 m.",
+  "@notAtPickupBody": {
+    "placeholders": {
+      "distance": { "type": "String" }
+    }
+  },
+  "passengerCancelRideAction": "Cancel",
+  "passengerCancelRideTitle": "Cancel this ride?",
+  "passengerCancelRideBody": "Your driver accepted and is on the way. Note: cancelling after a driver accepted lowers your rating.",
+  "passengerCancelRideConfirm": "Cancel ride",
+  "passengerRideCancelled": "Ride cancelled",
+  "instantTripCancelConfirm": "Cancel ride",
+  "instantTripCancelKeep": "Keep ride",
+  "instantTripCancelled": "Ride cancelled",
+  "instantDriverCancelledSearching": "Your driver cancelled — finding you another driver",
   "instantTripMovedTitle": "Has the trip started?",
   "instantTripMovedBody": "You've moved away from the pickup without starting the trip. If the passenger is with you, start it now.",
   "instantTripNotYet": "Not yet",
@@ -3162,7 +3196,24 @@
   "liveTripRevenueLabel": "Revenue",
   "liveTripPassengersSheetTitle": "Passengers",
   "liveTripDetails": "Details",
-  "liveTripNoPassengers": "No confirmed passengers",
+  "liveTripNoPassengers": "No passengers on this trip",
+  "boardingConfirmed": "On board",
+  "boardingNotConfirmed": "Not confirmed yet",
+  "boardingConfirmedCount": "{boarded} of {total} on board",
+  "@boardingConfirmedCount": {
+    "placeholders": {
+      "boarded": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "boardingCardTitle": "Passengers boarding",
+  "boardingCardBody": "The trip starts when the first passenger confirms they're in the car. If your passengers are with you but haven't confirmed, tap Start trip.",
+  "boardingStartAction": "Start trip",
+  "boardingStartOpensHint": "You can start the trip up to 30 minutes before departure.",
+  "boardingStartConfirmTitle": "Start the trip?",
+  "boardingStartConfirmBody": "Make sure your passengers are in the car first.",
+  "boardingStarted": "Trip started",
+  "boardingVouchAction": "In my car",
   "bookingCompanionTag": "Companion",
   "bookingSeatOccupant": "Seat {seat} · {name}",
   "@bookingSeatOccupant": {
@@ -3215,7 +3266,7 @@
   "ridePaymentPayCashInstead": "Pay the driver in cash instead",
   "ridePaymentDisputedTitle": "Payment not recorded",
   "ridePaymentDisputedBody": "The driver reported they weren't paid. The VisionWay team will contact you.",
-  "ridePaymentsCardTitle": "Passenger fares",
+  "ridePaymentsCardTitle": "Trip fare",
   "ridePaymentDriverPaidCash": "Received in cash ✓",
   "ridePaymentDriverPaidCliq": "Paid by CliQ · added to your wallet ✓",
   "ridePaymentDriverCliqPending": "Waiting for the passenger to approve CliQ",
@@ -3227,5 +3278,17 @@
       }
     }
   },
-  "instantLocationNotReaching": "Your location isn't reaching us right now, so ride requests can't reach you. Check your internet and location."
+  "instantLocationNotReaching": "Your location isn't reaching us right now, so ride requests can't reach you. Check your internet and location.",
+  "rideChimeArrivedTitle": "You arrived at the passenger",
+  "rideChimeArrivedBody": "We let the passenger know you are here.",
+  "rideChimeStartedTitle": "Ride started",
+  "rideChimeStartedBody": "Have a good ride!",
+  "forgotStartTitle": "Did you forget to start the ride?",
+  "forgotStartBody": "You left the pickup without starting the ride. Tap “Start ride” now.",
+  "forgotStartAction": "Start ride",
+  "offersBatteryTitle": "Let the app run in the background",
+  "offersBatteryBody": "To get ride requests while the app is closed or the screen is locked, let VisionWay ignore battery optimization. Otherwise your phone may stop the app and requests won't reach you.",
+  "offersBatteryAction": "Allow",
+  "offersNotificationsTitle": "Turn on notifications",
+  "offersNotificationsBody": "Notifications are off for VisionWay, so ride requests can't reach you. Turn them on in Settings."
 }

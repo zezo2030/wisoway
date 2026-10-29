@@ -131,14 +131,12 @@ void main() {
       expect(plate.dx, greaterThan(photo.dx));
     });
 
-    testWidgets('closes with a titled publish notice', (tester) async {
+    testWidgets('promises no review — trips publish straight away', (
+      tester,
+    ) async {
       await pumpReview(tester);
 
-      expect(find.text('الرحلة ستنتشر بعد المراجعة'), findsOneWidget);
-      expect(
-        find.text('بمجرد نشر الرحلة سيتمكن الركاب من حجز المقاعد المتاحة'),
-        findsOneWidget,
-      );
+      expect(find.text('الرحلة ستنتشر بعد المراجعة'), findsNothing);
     });
 
     testWidgets('lists each note line on its own row', (tester) async {

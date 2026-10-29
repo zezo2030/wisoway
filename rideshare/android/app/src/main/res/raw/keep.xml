@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Referenced only by name from notifications; keep them through resource shrinking. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@raw/ride_chime,@raw/forgot_start_alarm,@raw/instant_offer_ring" />

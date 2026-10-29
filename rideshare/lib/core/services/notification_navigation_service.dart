@@ -90,8 +90,15 @@ class NotificationNavigationService {
         break;
 
       case 'instant_matched':
+      // «You're late»: back to the driver's live trip screen.
+      case 'instant_pickup_late':
         // Matched ride: the server knows which side this user is on.
         ActiveRideNavigator.resume();
+        break;
+
+      case 'instant_driver_cancelled':
+        // Onto the new search when there is one; else the ride is gone.
+        ActiveRideNavigator.followNewSearch();
         break;
 
       // Fares at the end of a ride: back to the passenger's payment screen /

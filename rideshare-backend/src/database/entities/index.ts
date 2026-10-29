@@ -34,3 +34,4 @@ export * from './call-session.entity';
 export * from './settlement-audit.entity';
 export * from './complaint.entity';
 export * from './refund-request.entity';
+export * from './platform-setting.entity';

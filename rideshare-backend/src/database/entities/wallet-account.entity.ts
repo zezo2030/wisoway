@@ -21,11 +21,15 @@ import { WalletTransactionEntity } from './wallet-transaction.entity';
   'currency',
 ])
 @Index('wallet_accounts_user_idx', ['userId'])
+@Index('wallet_system_currency_unique', ['currency'], {
+  unique: true,
+  where: `"accountType" = 'system' AND "userId" IS NULL`,
+})
 export class WalletAccountEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'uuid', nullable: true })
   userId: string;
 
   @ManyToOne(() => UserEntity, { onDelete: 'CASCADE' })
@@ -48,6 +52,9 @@ export class WalletAccountEntity {
    */
   @Column({ type: 'numeric', precision: 14, scale: 2, default: '0' })
   reservedBalance: string;
+
+  @Column({ type: 'boolean', default: false })
+  rechargeRequired: boolean;
 
   @Column({ type: 'boolean', default: true })
   isActive: boolean;

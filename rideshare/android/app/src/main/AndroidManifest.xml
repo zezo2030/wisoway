@@ -8,6 +8,8 @@
     <!-- Ride offers: wake the screen and open over the lock screen. -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <!-- Drivers: ride requests must reach a closed app (driver_availability_card). -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
     <!-- While online, keep reporting the driver's location from a foreground
          service so offers still reach a locked / backgrounded phone. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
@@ -113,5 +115,11 @@
         </intent>
         <package android:name="com.whatsapp" />
         <package android:name="com.whatsapp.w4b" />
+        <!-- «ملاحة»: start Google Maps turn-by-turn straight away. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="google.navigation" />
+        </intent>
+        <package android:name="com.google.android.apps.maps" />
     </queries>
 </manifest>

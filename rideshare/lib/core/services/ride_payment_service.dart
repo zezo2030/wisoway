@@ -8,6 +8,11 @@ class RidePaymentService {
 
   final ApiClient _api;
 
+  Future<RidePayment> payFromWallet(String tripId) async {
+    await _api.post('/wallet/rider/pay-trip', data: {'tripId': tripId});
+    return getMine(tripId);
+  }
+
   /// Passenger: my fare on this trip.
   Future<RidePayment> getMine(String tripId) async {
     final response = await _api.get(ApiEndpoints.ridePaymentMine(tripId));

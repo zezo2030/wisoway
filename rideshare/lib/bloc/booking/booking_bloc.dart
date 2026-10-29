@@ -37,6 +37,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
         isFamilyBooking: event.isFamilyBooking,
         paymentMethod: event.paymentMethod,
         payerCliqAlias: event.payerCliqAlias,
+        promoCode: event.promoCode,
       );
       emit(BookingCreated(booking));
     } catch (e) {
@@ -58,6 +59,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
         isFamilyBooking: event.isFamilyBooking,
         paymentMethod: event.paymentMethod,
         payerCliqAlias: event.payerCliqAlias,
+        promoCode: event.promoCode,
       );
       emit(BookingCreated(booking));
     } catch (e) {
@@ -104,7 +106,10 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
   ) async {
     emit(const BookingLoading());
     try {
-      await _bookingService.cancelBooking(event.bookingId, reason: event.reason);
+      await _bookingService.cancelBooking(
+        event.bookingId,
+        reason: event.reason,
+      );
       emit(const BookingCancelled());
     } catch (e) {
       emit(_mapError(e, isCancellation: true));
@@ -134,7 +139,9 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
   ) async {
     emit(const BookingLoading());
     try {
-      final bookings = await _bookingService.getMyBookings(status: event.status);
+      final bookings = await _bookingService.getMyBookings(
+        status: event.status,
+      );
       emit(BookingListLoaded(bookings));
     } catch (e) {
       emit(_mapError(e));

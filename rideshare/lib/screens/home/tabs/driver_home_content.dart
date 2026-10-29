@@ -1,3 +1,4 @@
+import '../../../core/navigation/shared_trip_navigation.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geolocator/geolocator.dart';
@@ -282,7 +283,7 @@ class _DriverHomeContentState extends State<DriverHomeContent> {
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
-          onTap: () => Navigator.pushNamed(context, RouteNames.createTrip),
+          onTap: () => SharedTripNavigation.open(context),
           child: Ink(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
@@ -676,7 +677,7 @@ class _DriverHomeContentState extends State<DriverHomeContent> {
           else if (upcoming.isEmpty)
             DriverHomeNoTripsCard(
               onPublish: () =>
-                  Navigator.pushNamed(context, RouteNames.createTrip),
+                  SharedTripNavigation.open(context),
             )
           else
             ...upcoming

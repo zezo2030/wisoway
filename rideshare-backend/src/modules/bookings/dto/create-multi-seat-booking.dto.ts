@@ -75,6 +75,10 @@ export class AutoPickPassengerDto {
 }
 
 export class CreateMultiSeatBookingDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  promoCode?: string;
   @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000' })
   @IsUUID()
   tripId: string;
@@ -105,10 +109,10 @@ export class CreateMultiSeatBookingDto {
    * How the fare is paid when the trip ends: `cash` to the driver, or `cliq`
    * (a request-to-pay to the platform; Jordanian trips only).
    */
-  @ApiPropertyOptional({ enum: ['cash', 'cliq'], default: 'cash' })
+  @ApiPropertyOptional({ enum: ['cash', 'cliq', 'wallet'], default: 'cash' })
   @IsOptional()
-  @IsIn(['cash', 'cliq'])
-  paymentMethod?: 'cash' | 'cliq';
+  @IsIn(['cash', 'cliq', 'wallet'])
+  paymentMethod?: 'cash' | 'cliq' | 'wallet';
 
   /** CliQ: the passenger's alias or mobile; defaults to the one on file. */
   @ApiPropertyOptional({ example: 'ahmad@cliq' })
@@ -119,6 +123,10 @@ export class CreateMultiSeatBookingDto {
 }
 
 export class AutoPickBookingDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  promoCode?: string;
   @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000' })
   @IsUUID()
   tripId: string;
@@ -156,10 +164,10 @@ export class AutoPickBookingDto {
    * How the fare is paid when the trip ends: `cash` to the driver, or `cliq`
    * (a request-to-pay to the platform; Jordanian trips only).
    */
-  @ApiPropertyOptional({ enum: ['cash', 'cliq'], default: 'cash' })
+  @ApiPropertyOptional({ enum: ['cash', 'cliq', 'wallet'], default: 'cash' })
   @IsOptional()
-  @IsIn(['cash', 'cliq'])
-  paymentMethod?: 'cash' | 'cliq';
+  @IsIn(['cash', 'cliq', 'wallet'])
+  paymentMethod?: 'cash' | 'cliq' | 'wallet';
 
   /** CliQ: the passenger's alias or mobile; defaults to the one on file. */
   @ApiPropertyOptional({ example: 'ahmad@cliq' })

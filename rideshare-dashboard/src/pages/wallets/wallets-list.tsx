@@ -19,6 +19,7 @@ import { WalletAccountType } from "@/types/enums"
 import type { WalletAccount, UserSummary } from "@/types/models"
 import { useLanguage } from "@/providers/language-provider"
 import { Wallet, AlertCircle, Search } from "lucide-react"
+import { RevenuePanel } from "./revenue-panel"
 
 function isPopulatedUser(userId: string | UserSummary): userId is UserSummary {
   return typeof userId === "object" && userId !== null && "name" in userId
@@ -179,6 +180,7 @@ export default function WalletsListPage() {
     return (
       <div className="space-y-4 animate-in fade-in duration-500">
         <h1 className="text-4xl font-extrabold tracking-tight">{t("walletsTitle")}</h1>
+        <RevenuePanel />
         <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-6 text-destructive flex items-center shadow-sm">
           <AlertCircle className={cn("w-6 h-6", language === "ar" ? "ml-3" : "mr-3")} />
           <span className="font-semibold text-lg">
@@ -191,6 +193,7 @@ export default function WalletsListPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 pb-10">
+      <RevenuePanel />
       <div className="flex flex-col gap-4 md:flex-row md:items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="bg-primary/10 p-3 rounded-2xl border border-primary/20 shadow-sm hidden sm:block">

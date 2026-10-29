@@ -73,4 +73,8 @@ export enum AdminAlertType {
   DRIVER_REGISTRATION = 'driver_registration',
   FEE_PAYMENT = 'fee_payment',
   TRIP_EMERGENCY = 'trip_emergency',
+  WALLET_TOPUP = 'wallet_topup',
+  PAYOUT_REQUEST = 'payout_request',
+  REFUND_REQUEST = 'refund_request',
+  COMPLAINT = 'complaint',
 }

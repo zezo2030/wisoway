@@ -1,15 +1,25 @@
 import 'package:flutter/foundation.dart';
 
+import '../../models/booking_model.dart';
 import '../../models/trip_model.dart';
 import '../../models/location_model.dart';
 import '../../models/trip_fee_quote.dart';
 import '../../models/trip_price_suggestion.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
+import 'location_service.dart';
 import '../../models/trip_meeting_point.dart';
 
 class TripService {
   final ApiClient _api = ApiClient();
+
+  Future<void> assertCanCreateTrip() async {
+    final country = await LocationService().currentCountryCode();
+    await _api.get(
+      '/wallet/driver/trip-eligibility',
+      queryParameters: country == null ? null : {'country': country},
+    );
+  }
 
   List<TripModel> _extractTrips(dynamic response) {
     dynamic payload = response;
@@ -129,6 +139,7 @@ class TripService {
     required double seatPrice,
     required int totalSeats,
     String? currency,
+    String? tripType,
   }) async {
     try {
       final response = await _api.get(
@@ -136,6 +147,7 @@ class TripService {
         queryParameters: {
           'seatPrice': seatPrice,
           'totalSeats': totalSeats,
+          if (tripType != null) 'tripType': tripType,
           if (currency != null) 'currency': currency,
         },
       );
@@ -354,13 +366,67 @@ class TripService {
   /// there is no longer a manual "Start Trip" action.
   /// Returns the completed trip payload including optional `settlement`.
   /// Instant ride: the driver reached the passenger.
-  Future<void> markArrivedAtPickup(String tripId) async {
-    await _api.post(ApiEndpoints.instantTripArrivedAtPickup(tripId));
+  /// [latitude]/[longitude]: where the driver is now — the server only
+  /// accepts the press within reach of the pickup.
+  Future<void> markArrivedAtPickup(
+    String tripId, {
+    double? latitude,
+    double? longitude,
+  }) async {
+    await _api.post(
+      ApiEndpoints.instantTripArrivedAtPickup(tripId),
+      data: {
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+      },
+    );
   }
 
   /// Instant ride: the passenger is in the car — the ride starts.
-  Future<void> startInstantRide(String tripId) async {
-    await _api.post(ApiEndpoints.instantTripStart(tripId));
+  Future<void> startInstantRide(
+    String tripId, {
+    double? latitude,
+    double? longitude,
+  }) async {
+    await _api.post(
+      ApiEndpoints.instantTripStart(tripId),
+      data: {
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+      },
+    );
+  }
+
+  /// Shared trip: the driver starts it — when the passengers are in but none
+  /// confirmed (otherwise it starts with the first confirmation).
+  Future<void> startSharedTrip(String tripId) async {
+    await _api.post(ApiEndpoints.startTrip(tripId));
+  }
+
+  /// Shared trip: the driver vouches «معي في السيارة» for [booking]'s seats —
+  /// for a passenger who rode but didn't confirm. It counts as boarding: the
+  /// fare is asked of them at the end, and a waiting trip starts.
+  Future<void> confirmPassengerAboard(BookingModel booking) async {
+    final seats = booking.seats;
+    if (seats.isEmpty) return;
+    await _api.post(
+      ApiEndpoints.presenceConfirm(booking.tripId),
+      data: {
+        'entries': [
+          for (final s in seats)
+            {
+              'bookingId': booking.id,
+              'seatNumber': s.seatNumber,
+              'present': true,
+            },
+        ],
+      },
+    );
+  }
+
+  /// Instant ride: the driver cancels before the passenger is in the car.
+  Future<void> cancelInstantRide(String tripId) async {
+    await _api.post(ApiEndpoints.instantTripCancel(tripId));
   }
 
   Future<Map<String, dynamic>> markTripArrived(String tripId) async {

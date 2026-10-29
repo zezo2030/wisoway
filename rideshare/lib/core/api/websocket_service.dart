@@ -12,6 +12,9 @@ class WebSocketService {
   IO.Socket? _tripsSocket;
   IO.Socket? _notificationsSocket;
   IO.Socket? _trackingSocket;
+  String? _trackingAccessToken;
+  final Set<String> _trackingTrips = {};
+  final Map<String, Map<String, dynamic>> _pendingDriverLocations = {};
   final TokenStorage _tokenStorage = TokenStorage();
 
   // Streams for real-time events
@@ -59,15 +62,20 @@ class WebSocketService {
 
   // Initialize socket connection
   Future<void> connect() async {
+    final token = await _tokenStorage.getAccessToken();
+    if (token == null) return;
+    if (_trackingSocket != null && _trackingAccessToken != token) {
+      _trackingSocket!.disconnect();
+      _trackingSocket!.dispose();
+      _trackingSocket = null;
+    }
+    _trackingAccessToken = token;
     if ((_chatSocket != null && _chatSocket!.connected) &&
         (_tripsSocket != null && _tripsSocket!.connected) &&
         (_notificationsSocket != null && _notificationsSocket!.connected) &&
         (_trackingSocket != null && _trackingSocket!.connected)) {
       return;
     }
-
-    final token = await _tokenStorage.getAccessToken();
-    if (token == null) return;
 
     // Use baseUrl but remove /api/v1 to get the root domain
     final baseUrl = ApiEndpoints.baseUrl.replaceAll('/api/v1', '');
@@ -93,13 +101,34 @@ class WebSocketService {
     _notificationsSocket!.connect();
     _trackingSocket!.connect();
 
+    // connect() is also called after token refresh and network recovery.
+    // Replace our handlers so the existing namespaces do not deliver twice.
+    _chatSocket!.off('connect');
+    _chatSocket!.off('newMessage');
+    _tripsSocket!.off('connect');
+    _tripsSocket!.off('tripUpdated');
+    _tripsSocket!.off('seatBooked');
+    _tripsSocket!.off('seatReleased');
+    _notificationsSocket!.off('connect');
+    _notificationsSocket!.off('newNotification');
+    _notificationsSocket!.off('instantOffer');
+    _notificationsSocket!.off('instantOfferClosed');
     _chatSocket!.onConnect((_) => print('✅ Connected to Chat WS'));
     _tripsSocket!.onConnect((_) => print('✅ Connected to Trips WS'));
     _notificationsSocket!.onConnect((_) {
       print('✅ Connected to Notifications WS');
       _notificationsSocket!.emit('subscribe');
     });
-    _trackingSocket!.onConnect((_) => print('✅ Connected to Tracking WS'));
+    _trackingSocket!.off('connect');
+    _trackingSocket!.onConnect((_) {
+      for (final tripId in _trackingTrips) {
+        _joinTrackingRoom(tripId);
+      }
+      for (final location in _pendingDriverLocations.values) {
+        _trackingSocket!.emit('driver:location:update', location);
+      }
+      _pendingDriverLocations.clear();
+    });
 
     // Listen to Chat events
     _chatSocket!.on('newMessage', (data) {
@@ -127,7 +156,8 @@ class WebSocketService {
 
     // Instant-ride offers reach an open driver app here first; FCM can lag.
     _notificationsSocket!.on('instantOffer', (data) {
-      if (data is Map) _instantOfferController.add(Map<String, dynamic>.from(data));
+      if (data is Map)
+        _instantOfferController.add(Map<String, dynamic>.from(data));
     });
     _notificationsSocket!.on('instantOfferClosed', (data) {
       if (data is Map) {
@@ -136,9 +166,11 @@ class WebSocketService {
     });
 
     // Listen to Tracking events
+    _trackingSocket!.off('trip:tracking:update');
     _trackingSocket!.on('trip:tracking:update', (data) {
       _trackingController.add(Map<String, dynamic>.from(data));
     });
+    _trackingSocket!.off('trip:tracking:snapshot');
     _trackingSocket!.on('trip:tracking:snapshot', (data) {
       _trackingController.add(Map<String, dynamic>.from(data));
     });
@@ -179,12 +211,28 @@ class WebSocketService {
   }
 
   void subscribeToTripTracking(String tripId) {
+    _trackingTrips.add(tripId);
+    _joinTrackingRoom(tripId);
+  }
+
+  void _joinTrackingRoom(String tripId) {
     if (_trackingSocket != null && _trackingSocket!.connected) {
-      _trackingSocket!.emit('trip:tracking:subscribe', {'tripId': tripId});
+      _trackingSocket!.emitWithAck(
+        'trip:tracking:subscribe',
+        {'tripId': tripId},
+        ack: (response) {
+          if (!_trackingTrips.contains(tripId)) return;
+          final snapshot = response is Map ? response['snapshot'] : null;
+          if (snapshot is Map)
+            _trackingController.add(Map<String, dynamic>.from(snapshot));
+        },
+      );
     }
   }
 
   void unsubscribeFromTripTracking(String tripId) {
+    _trackingTrips.remove(tripId);
+    _pendingDriverLocations.remove(tripId);
     if (_trackingSocket != null && _trackingSocket!.connected) {
       _trackingSocket!.emit('trip:tracking:unsubscribe', {'tripId': tripId});
     }
@@ -198,20 +246,26 @@ class WebSocketService {
     double? heading,
     double? accuracyMeters,
   }) {
+    final location = <String, dynamic>{
+      'tripId': tripId,
+      'latitude': latitude,
+      'longitude': longitude,
+      'speedKph': speedKph,
+      'heading': heading,
+      'accuracyMeters': accuracyMeters,
+    };
     if (_trackingSocket != null && _trackingSocket!.connected) {
-      _trackingSocket!.emit('driver:location:update', {
-        'tripId': tripId,
-        'latitude': latitude,
-        'longitude': longitude,
-        'speedKph': speedKph,
-        'heading': heading,
-        'accuracyMeters': accuracyMeters,
-      });
+      _trackingSocket!.emit('driver:location:update', location);
+    } else {
+      _pendingDriverLocations[tripId] = location;
     }
   }
 
   // Disconnect & cleanup
   void disconnect() {
+    _trackingAccessToken = null;
+    _trackingTrips.clear();
+    _pendingDriverLocations.clear();
     _chatSocket?.disconnect();
     _chatSocket?.dispose();
     _chatSocket = null;

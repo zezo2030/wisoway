@@ -13,9 +13,14 @@ import {
 } from '../../../database/entities';
 import { InstantDispatchService } from '../instant-dispatch.service';
 import {
+  InstantPickupWatchService,
+  PickupLateJob,
+} from '../instant-pickup-watch.service';
+import {
   DISPATCH_WAVE_JOB,
   EXPIRE_REQUEST_JOB,
   INSTANT_REQUEST_EXPIRY_QUEUE,
+  PICKUP_LATE_CHECK_JOB,
 } from '../instant-rides.constants';
 
 /**
@@ -35,12 +40,19 @@ export class InstantRequestExpiryProcessor {
     @InjectRepository(DriverAvailabilityEntity)
     private readonly availabilityRepo: Repository<DriverAvailabilityEntity>,
     private readonly dispatch: InstantDispatchService,
+    private readonly pickupWatch: InstantPickupWatchService,
   ) {}
 
   /** Delayed re-dispatch wave while the request is still searching. */
   @Process(DISPATCH_WAVE_JOB)
   async handleWave(job: Job<{ requestId: string }>): Promise<void> {
     await this.dispatch.dispatchNext(job.data.requestId);
+  }
+
+  /** The matched driver should be at the pickup by now — remind if not. */
+  @Process(PICKUP_LATE_CHECK_JOB)
+  async handlePickupLate(job: Job<PickupLateJob>): Promise<void> {
+    await this.pickupWatch.check(job.data);
   }
 
   @Process(EXPIRE_REQUEST_JOB)

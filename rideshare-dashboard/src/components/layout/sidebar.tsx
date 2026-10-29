@@ -26,6 +26,7 @@ import {
   AlertTriangle,
   FileText,
   BadgeCheck,
+  SlidersHorizontal,
 } from "lucide-react"
 import { useState } from "react"
 import { ROUTES } from "@/lib/constants"
@@ -61,6 +62,7 @@ const NAV_GROUPS: { labelKey: TranslationKey; items: { path: string; labelKey: T
       { path: ROUTES.NOTIFICATIONS, labelKey: "nav_notifications", icon: "Bell" },
       { path: ROUTES.CHAT, labelKey: "nav_chat", icon: "MessageSquare" },
       { path: ROUTES.PRICING_SETTINGS, labelKey: "nav_pricing", icon: "Percent" },
+      { path: ROUTES.OPERATIONS_SETTINGS, labelKey: "nav_operations", icon: "SlidersHorizontal" },
     ],
   },
   {
@@ -72,7 +74,7 @@ const NAV_GROUPS: { labelKey: TranslationKey; items: { path: string; labelKey: T
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard, Users, CreditCard, Wallet, Car, MapPin, BarChart3,
   BookOpen, Star, Bell, MessageSquare, Percent, ShieldAlert, Gavel,
-  AlertTriangle, FileText, BadgeCheck,
+  AlertTriangle, FileText, BadgeCheck, SlidersHorizontal,
 }
 
 interface SidebarProps {

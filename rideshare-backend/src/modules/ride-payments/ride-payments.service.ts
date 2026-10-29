@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Cron } from '@nestjs/schedule';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 import { randomUUID } from 'crypto';
@@ -17,10 +18,6 @@ import {
 } from '../../database/entities/booking.entity';
 import { PaymentEntity } from '../../database/entities/payment.entity';
 import { TripEntity } from '../../database/entities/trip.entity';
-import {
-  WalletAccountType,
-  WalletTransactionType,
-} from '../../database/entities';
 import { A2aCliqService } from '../payments/a2a-cliq.service';
 import { WalletService } from '../wallet/wallet.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -50,6 +47,9 @@ export interface RidePaymentView {
   passengerId: string;
   passengerName: string | null;
   amount: string;
+  originalAmount: string;
+  discountAmount: string;
+  promoCode: string | null;
   currency: string;
   method: string;
   status: PaymentStatus;
@@ -91,12 +91,37 @@ export class RidePaymentsService {
 
   // ── When the driver ends the ride ─────────────────────────────────────────
 
+  /** Recover verified receipts when a worker crashed before committing the ledger. */
+  @Cron('*/5 * * * *')
+  async recoverPendingReceipts(): Promise<void> {
+    const pending = await this.paymentRepo.find({
+      where: {
+        paymentType: 'ride_fare',
+        method: 'cliq_a2a',
+        status: 'pending',
+      },
+      order: { createdAt: 'ASC' },
+      take: 100,
+    });
+    for (const payment of pending) {
+      try {
+        const code = await this.inquire(payment);
+        if (code === '0' || code === '000') await this.onCliqPaid(payment);
+      } catch (error) {
+        this.logger.error(
+          `Receipt ${payment.id} awaits ledger recovery: ${(error as Error).message}`,
+        );
+      }
+    }
+  }
+
   /**
    * Called once the trip is completed: asks every CliQ passenger who rode for
    * their fare, and reminds cash passengers to pay the driver. Never throws —
    * a payment problem must not undo the trip's completion.
    */
   async openForTrip(tripId: string): Promise<void> {
+    await this.wallet.chargeCompletedTripCommission(tripId);
     const bookings = await this.bookingRepo.find({
       where: {
         tripId,
@@ -106,7 +131,19 @@ export class RidePaymentsService {
     });
     for (const booking of bookings) {
       try {
-        if (booking.paymentMethod === 'cliq') {
+        if (Number(booking.totalAmount) === 0) {
+          await this.wallet.settleCollectedFare(
+            booking.id,
+            booking.paymentMethod as 'cash' | 'cliq' | 'wallet',
+            booking.userId,
+          );
+        } else if (booking.paymentMethod === 'wallet') {
+          await this.wallet.settleCollectedFare(
+            booking.id,
+            'wallet',
+            booking.userId,
+          );
+        } else if (booking.paymentMethod === 'cliq') {
           await this.requestCliq(booking);
         } else {
           await this.push(booking.userId, {
@@ -196,6 +233,8 @@ export class RidePaymentsService {
         delay: RIDE_FARE_POLL_INTERVAL_MS,
         removeOnComplete: true,
         removeOnFail: true,
+        attempts: 10,
+        backoff: { type: 'exponential', delay: 10_000 },
       })
       .catch((err: Error) =>
         this.logger.warn(`Failed to enqueue ride fare poll: ${err.message}`),
@@ -246,6 +285,8 @@ export class RidePaymentsService {
 
   /** The bank confirmed: the fare is paid and the driver's wallet credited. */
   private async onCliqPaid(payment: PaymentEntity): Promise<void> {
+    // Keep pending until ledger settlement succeeds, so the poll can retry safely.
+    await this.wallet.settleCollectedFare(payment.bookingId!, 'cliq');
     payment.status = 'approved';
     await this.paymentRepo.save(payment);
 
@@ -256,27 +297,6 @@ export class RidePaymentsService {
       ? await this.tripRepo.findOne({ where: { id: booking.tripId } })
       : null;
     if (!booking || !trip) return;
-
-    try {
-      await this.wallet.creditPostedTopup({
-        userId: trip.driverId,
-        accountType: WalletAccountType.DRIVER,
-        amount: Number(booking.totalAmount),
-        currency: trip.currency,
-        idempotencyKey: `ride-fare:${booking.id}`,
-        note: `CliQ ride fare, booking ${booking.id}`,
-        type: WalletTransactionType.TRIP_PAYMENT,
-      });
-    } catch (err) {
-      // Paid at the bank but not credited: leave a trail for an admin.
-      payment.adminNote =
-        `Ride fare paid but driver wallet credit failed: ${(err as Error).message}`.slice(
-          0,
-          500,
-        );
-      await this.paymentRepo.save(payment);
-      this.logger.error(payment.adminNote);
-    }
 
     if (booking.paymentStatus !== 'paid') {
       booking.paymentStatus = 'paid';
@@ -317,7 +337,11 @@ export class RidePaymentsService {
       where: {
         tripId,
         userId: passengerId,
-        status: In([BookingStatus.COMPLETED, BookingStatus.IN_PROGRESS, BookingStatus.CONFIRMED]),
+        status: In([
+          BookingStatus.COMPLETED,
+          BookingStatus.IN_PROGRESS,
+          BookingStatus.CONFIRMED,
+        ]),
       },
       order: { createdAt: 'DESC' },
     });
@@ -329,7 +353,10 @@ export class RidePaymentsService {
   /** CliQ failed or was ignored: send the request again. */
   async retryCliq(bookingId: string, passengerId: string, payerAlias?: string) {
     const booking = await this.ownBooking(bookingId, passengerId);
-    if (booking.paymentMethod !== 'cliq' || booking.paymentStatus !== 'failed') {
+    if (
+      booking.paymentMethod !== 'cliq' ||
+      booking.paymentStatus !== 'failed'
+    ) {
       throw new ConflictException('لا يوجد دفع فاشل لإعادة إرساله.');
     }
     if (payerAlias) {
@@ -388,7 +415,10 @@ export class RidePaymentsService {
   // ── Driver ────────────────────────────────────────────────────────────────
 
   /** Every rider's fare on the driver's trip, for the trip summary. */
-  async getForTrip(tripId: string, driverId: string): Promise<RidePaymentView[]> {
+  async getForTrip(
+    tripId: string,
+    driverId: string,
+  ): Promise<RidePaymentView[]> {
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
     if (!trip) throw new NotFoundException('الرحلة غير موجودة.');
     if (trip.driverId !== driverId) {
@@ -437,6 +467,7 @@ export class RidePaymentsService {
 
     const now = new Date();
     if (dto.received) {
+      await this.wallet.chargeCompletedTripCommission(trip.id);
       booking.paymentStatus = 'paid';
       booking.settledAt = now;
     } else {
@@ -455,7 +486,9 @@ export class RidePaymentsService {
           body: dto.note?.trim() || 'لم يدفع الراكب أجرة الرحلة.',
         })
         .catch((err: Error) =>
-          this.logger.warn(`Failed to file non-payment complaint: ${err.message}`),
+          this.logger.warn(
+            `Failed to file non-payment complaint: ${err.message}`,
+          ),
         );
     }
 
@@ -481,7 +514,9 @@ export class RidePaymentsService {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   private async ownBooking(bookingId: string, passengerId: string) {
-    const booking = await this.bookingRepo.findOne({ where: { id: bookingId } });
+    const booking = await this.bookingRepo.findOne({
+      where: { id: bookingId },
+    });
     if (!booking) throw new NotFoundException('الحجز غير موجود.');
     if (booking.userId !== passengerId) {
       throw new ForbiddenException('هذا الحجز ليس لك.');
@@ -500,6 +535,9 @@ export class RidePaymentsService {
       passengerId: booking.userId,
       passengerName,
       amount: booking.totalAmount,
+      originalAmount: booking.originalAmount ?? booking.totalAmount,
+      discountAmount: booking.discountAmount ?? '0.00',
+      promoCode: booking.promoCode ?? null,
       currency,
       method: booking.paymentMethod ?? 'cash',
       status: (booking.paymentStatus ?? 'pending') as PaymentStatus,

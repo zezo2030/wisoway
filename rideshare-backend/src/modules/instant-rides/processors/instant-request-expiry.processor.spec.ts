@@ -31,6 +31,7 @@ describe('InstantRequestExpiryProcessor', () => {
       offerRepo,
       availabilityRepo,
       dispatch,
+      { check: jest.fn() } as any,
     );
   });
 

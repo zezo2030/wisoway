@@ -24,7 +24,7 @@ object BookingNotificationHelper {
     private const val CHANNEL_NAME = "إشعارات VisionWay"
 
     /** Booking requests chime on their own channel (a channel's sound is fixed). */
-    private const val REQUEST_CHANNEL_ID = "booking_requests_v1"
+    private const val REQUEST_CHANNEL_ID = "booking_requests_v2"
     private val REQUEST_VIBRATION = longArrayOf(0, 300, 200, 300)
 
     const val EXTRA_BOOKING_ACTION = "bookingAction"

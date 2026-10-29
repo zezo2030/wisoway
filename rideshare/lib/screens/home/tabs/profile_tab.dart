@@ -63,6 +63,12 @@ class _ProfileTabState extends State<ProfileTab> {
   void initState() {
     super.initState();
     _loadWallet();
+    // Ratings arrive after trips; show the current one, not the one cached
+    // at sign-in.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AuthProvider>().loadUserProfile(silent: true);
+    });
   }
 
   Future<void> _loadWallet() async {
@@ -283,8 +289,7 @@ class _ProfileTabState extends State<ProfileTab> {
                               icon: Icons.close_rounded,
                               title: context.l10n.cancelledTrips,
                               subtitle: context.l10n.cancelledTripsSubtitle,
-                              onTap: () =>
-                                  _openTrips(BookingsFilter.cancelled),
+                              onTap: () => _openTrips(BookingsFilter.cancelled),
                             ),
                           ],
                         ),
@@ -521,6 +526,8 @@ class _ProfileTabState extends State<ProfileTab> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    const SizedBox(height: 4),
+                    _buildRating(context),
                     const SizedBox(height: 8),
                     _buildRoleBadge(context),
                     const SizedBox(height: 6),
@@ -634,6 +641,49 @@ class _ProfileTabState extends State<ProfileTab> {
             ),
           ),
         ),
+      ],
+    );
+  }
+
+  /// ★ 4.8 (12 تقييم) under the name: a driver sees the rating passengers
+  /// gave them as a driver — the one passengers see when booking.
+  Widget _buildRating(BuildContext context) {
+    final u = user;
+    if (u == null) return const SizedBox.shrink();
+    final isDriver = u.isDriver;
+    final value = isDriver ? u.driverRating : u.passengerRating;
+    final count = isDriver ? u.driverTotalRatings : u.passengerTotalRatings;
+    final muted = T.onSurfaceVariant(context);
+
+    return Row(
+      key: const ValueKey('profile-rating'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.star_rounded,
+          size: 18,
+          color: count > 0 ? AppColors.warning : muted,
+        ),
+        const SizedBox(width: 4),
+        if (count > 0) ...[
+          Text(
+            value.toStringAsFixed(1),
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: T.onSurface(context),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            context.l10n.profileRatingCount(count),
+            style: TextStyle(fontSize: 12, color: muted),
+          ),
+        ] else
+          Text(
+            context.l10n.profileNoRatingsYet,
+            style: TextStyle(fontSize: 12, color: muted),
+          ),
       ],
     );
   }

@@ -10,6 +10,7 @@ import { DataSource } from 'typeorm';
 import { PaymentsService } from './payments.service';
 import { A2aCliqService } from './a2a-cliq.service';
 import { WalletService } from '../wallet/wallet.service';
+import { AdminAlertsService } from '../admin/admin-alerts.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PlatformPricingService } from './platform-pricing.service';
 import { PaymentEntity } from '../../database/entities/payment.entity';
@@ -44,6 +45,7 @@ describe('PaymentsService – CliQ wallet top-up', () => {
     } as unknown as jest.Mocked<A2aCliqService>;
     walletService = {
       creditPostedTopup: jest.fn(),
+      assertDriverTopup: jest.fn().mockResolvedValue(undefined),
     };
     cliqPollQueue = { add: jest.fn(), remove: jest.fn() };
 
@@ -61,10 +63,22 @@ describe('PaymentsService – CliQ wallet top-up', () => {
           useValue: { findOne: jest.fn(async () => mockUser) },
         },
         { provide: DataSource, useValue: { createQueryRunner: jest.fn() } },
-        { provide: NotificationsService, useValue: { sendToUser: jest.fn() } },
+        {
+          provide: NotificationsService,
+          useValue: {
+            sendToUser: jest.fn(),
+            create: jest.fn().mockResolvedValue({}),
+          },
+        },
         { provide: A2aCliqService, useValue: a2aCliqService },
         { provide: PlatformPricingService, useValue: {} },
         { provide: WalletService, useValue: walletService },
+        {
+          provide: AdminAlertsService,
+          useValue: {
+            notifyWalletTopup: jest.fn().mockResolvedValue(undefined),
+          },
+        },
         // PaymentsService enqueues CliQ polling jobs; the suites here never
         // reach that path, so an inert queue is enough.
         {

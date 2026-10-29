@@ -1,10 +1,17 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
   RefundRequestEntity,
   RefundRequestStatus,
 } from '../../database/entities/refund-request.entity';
+import { AdminAlertsService } from '../admin/admin-alerts.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export interface CreateRefundRequestDto {
   bookingId?: string;
@@ -23,6 +30,25 @@ export interface ListRefundsQuery {
   limit?: number;
   offset?: number;
 }
+
+/** What the passenger is told at each step of their refund request. */
+const REFUND_NOTICES: Record<
+  AdminUpdateRefundDto['status'],
+  { title: string; body: string }
+> = {
+  contacted: {
+    title: 'طلب الاسترداد قيد المراجعة',
+    body: 'استلمنا طلب الاسترداد وسنتواصل معك قريباً.',
+  },
+  resolved: {
+    title: 'تمت معالجة طلب الاسترداد',
+    body: 'تمت معالجة طلب الاسترداد الخاص بك.',
+  },
+  rejected: {
+    title: 'لم يُقبل طلب الاسترداد',
+    body: 'لم يُقبل طلب الاسترداد الخاص بك.',
+  },
+};
 
 const SUPPORT_WHATSAPP_E164 = (): string =>
   process.env.SUPPORT_WHATSAPP_E164 ?? '+962788883007';
@@ -43,9 +69,13 @@ const SUPPORT_WHATSAPP_NUMBER = (): string =>
  */
 @Injectable()
 export class RefundsService {
+  private readonly logger = new Logger(RefundsService.name);
+
   constructor(
     @InjectRepository(RefundRequestEntity)
     private readonly refundRepo: Repository<RefundRequestEntity>,
+    @Optional() private readonly adminAlerts?: AdminAlertsService,
+    @Optional() private readonly notifications?: NotificationsService,
   ) {}
 
   /** T169 — User submits a refund request. Returns the row + WA deep-link. */
@@ -66,6 +96,12 @@ export class RefundsService {
         whatsappContactedAt: now,
       }),
     );
+
+    this.adminAlerts
+      ?.notifyRefundRequest(refundRequest)
+      .catch((err: Error) =>
+        this.logger.warn(`Refund alert failed: ${err.message}`),
+      );
 
     const whatsappDeepLink = this._buildDeepLink(refundRequest, userId);
 
@@ -108,7 +144,22 @@ export class RefundsService {
       refund.resolvedAt = new Date();
     }
 
-    return this.refundRepo.save(refund);
+    const saved = await this.refundRepo.save(refund);
+    const notice = REFUND_NOTICES[dto.status];
+    this.notifications
+      ?.create({
+        userId: saved.userId,
+        type: `refund_${dto.status}`,
+        title: notice.title,
+        body: dto.adminNotes?.trim()
+          ? `${notice.body} ملاحظة الإدارة: ${dto.adminNotes.trim()}`
+          : notice.body,
+        data: { refundId: saved.id },
+      })
+      .catch((err: Error) =>
+        this.logger.warn(`Refund notice failed: ${err.message}`),
+      );
+    return saved;
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────────

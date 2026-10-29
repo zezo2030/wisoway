@@ -8,7 +8,6 @@ import '../../providers/trip_provider.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/services/saved_places_scope.dart';
 import '../../core/services/vehicle_service.dart';
-import '../../core/services/payment_service.dart';
 import '../../core/services/trip_service.dart';
 import '../../models/seat_layout_config.dart';
 import '../../models/trip_fee_quote.dart';
@@ -333,10 +332,6 @@ class _CreateTripScreenState extends State<CreateTripScreen>
       _showError(context.l10n.meetingPointRequired);
       return;
     }
-    if (_wizard.departureTime!.isBefore(DateTime.now())) {
-      _showError(context.l10n.departureTimeMustBeFuture);
-      return;
-    }
     final price = _wizard.price;
     if (price == null) {
       _showError(context.l10n.enterValidNumber);
@@ -345,27 +340,6 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     if (!_wizard.hasLayout || _wizard.availableSeatCount < 1) {
       _showError(context.l10n.noSeatLayoutSet);
       return;
-    }
-
-    try {
-      final wallet = await PaymentService().getWalletAccountMe();
-      if (!mounted) return;
-      if (wallet.balance < 0) {
-        ErrorSurface.showFailure(
-          context,
-          Failure(
-            category: FailureCategory.permission,
-            messageKey: 'errorsNegativeWalletBalance',
-            displayMessage: context.l10n.negativeWalletBalanceBlocked,
-            severity: FailureSeverity.error,
-            nextAction: FailureAction.topUpWallet,
-            developerDetail: 'wallet.balance=${wallet.balance}',
-          ),
-        );
-        return;
-      }
-    } catch (_) {
-      // Backend still enforces this; continue if wallet lookup fails.
     }
 
     setState(() => _isLoading = true);

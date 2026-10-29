@@ -103,7 +103,7 @@ services:
       args:
         # Dashboard talks to the API through the edge nginx, so relative paths
         # avoid hard-coding a hostname into the bundle.
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
         VITE_WS_URL: ${VITE_WS_URL:-/}
     image: rideshare-dashboard:latest
     container_name: rideshare-dashboard

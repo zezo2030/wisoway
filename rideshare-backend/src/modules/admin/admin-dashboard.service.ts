@@ -292,6 +292,11 @@ export class AdminDashboardService {
         vehicle.isVerified = approved;
         await manager.save(vehicle);
       }
+      if (approved) {
+        const currency =
+          (await this.walletService.resolveLocalCurrency(userId)) || 'JOD';
+        await this.walletService.grantDriverWelcome(userId, currency, manager);
+      }
     });
 
     await this.notificationsService.create({
@@ -628,11 +633,9 @@ export class AdminDashboardService {
    * Pending driver review queue with the driver's vehicle and documents
    * merged into a single row (one review covers account + vehicle).
    */
-  async getPendingDrivers(query: AdminUsersQuery): Promise<
-    PaginatedResult<
-      UserEntity & { vehicle: VehicleEntity | null }
-    >
-  > {
+  async getPendingDrivers(
+    query: AdminUsersQuery,
+  ): Promise<PaginatedResult<UserEntity & { vehicle: VehicleEntity | null }>> {
     const page = Math.max(1, query.page ?? 1);
     const limit = Math.min(100, Math.max(1, query.limit ?? 20));
     const skip = (page - 1) * limit;

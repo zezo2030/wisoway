@@ -13,7 +13,7 @@ COPY . .
 
 # Vite bakes env vars at build time. Defaults assume the dashboard is served
 # from the same origin as the API behind the nginx reverse proxy.
-ARG VITE_API_BASE_URL=/api
+ARG VITE_API_BASE_URL=/api/v1
 ARG VITE_WS_URL=/
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 ENV VITE_WS_URL=$VITE_WS_URL

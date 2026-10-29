@@ -1,7 +1,7 @@
+import '../../../core/navigation/shared_trip_navigation.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../../core/theme/colors.dart';
-import '../../../core/constants/route_names.dart';
 import '../../../widgets/notification_icon_button.dart';
 import '../../../widgets/common/empty_state.dart';
 
@@ -63,7 +63,7 @@ class MyTripsTab extends StatelessWidget {
         label: 'رحلة جديدة',
         child: FloatingActionButton.extended(
           onPressed: () {
-            Navigator.pushNamed(context, RouteNames.createTrip);
+            SharedTripNavigation.open(context);
           },
           tooltip: 'إنشاء رحلة جديدة',
           backgroundColor: T.primary(context),
@@ -123,7 +123,7 @@ class MyTripsTab extends StatelessWidget {
         iconSize: 64,
         action: ElevatedButton.icon(
           onPressed: () {
-            Navigator.pushNamed(context, RouteNames.createTrip);
+            SharedTripNavigation.open(context);
           },
           icon: const Icon(IconsaxPlusBold.add_circle),
           label: const Text('إنشاء رحلة'),

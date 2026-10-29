@@ -269,6 +269,7 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
     final quote = await _tripService.getTripFeeQuote(
       seatPrice: trip.price,
       totalSeats: trip.totalSeats,
+      tripType: trip.tripType,
       currency: trip.currency,
     );
     if (!mounted) return;
@@ -442,13 +443,16 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
                           const SizedBox(height: 20),
                           _buildRouteCard(_trip!),
                           const SizedBox(height: 16),
-                          _buildPassengersCard(),
-                          const SizedBox(height: 16),
-                          _buildFinanceCard(),
-                          const SizedBox(height: 12),
-                          _buildWalletBanner(),
-                          const SizedBox(height: 16),
+                          // Shared trips only: the boarding roll-call and the
+                          // seats-minus-fee breakdown. An instant ride has one
+                          // passenger whose fare is the card above.
                           if (!_trip!.isInstant) ...[
+                            _buildPassengersCard(),
+                            const SizedBox(height: 16),
+                            _buildFinanceCard(),
+                            const SizedBox(height: 12),
+                            _buildWalletBanner(),
+                            const SizedBox(height: 16),
                             _buildChatButton(),
                             const SizedBox(height: 12),
                           ],
@@ -1233,14 +1237,22 @@ extension on _TripSummaryScreenState {
           ),
           const SizedBox(height: 4),
           Text(
-            '${payment.isCliq ? l10n.paymentMethodCliq : l10n.paymentMethodCash} · $status',
+            '${payment.isWallet
+                ? l10n.walletTitle
+                : payment.isCliq
+                ? l10n.paymentMethodCliq
+                : l10n.paymentMethodCash} · $status',
             style: AppTextStyles.bodySmall.copyWith(color: color),
           ),
           if (payment.awaitsDriver) ...[
             const SizedBox(height: 10),
-            Row(
+            // Stacked full width: side by side, the labels wrapped onto
+            // three lines on a phone.
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
+                SizedBox(
+                  height: 48,
                   child: ElevatedButton.icon(
                     key: ValueKey('ride-payment-received-${payment.bookingId}'),
                     onPressed: busy
@@ -1267,22 +1279,25 @@ extension on _TripSummaryScreenState {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                OutlinedButton(
-                  key: ValueKey('ride-payment-not-paid-${payment.bookingId}'),
-                  onPressed: busy
-                      ? null
-                      : () => _confirmCash(payment, received: false),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: _TripSummaryScreenState._feeRed,
-                    side: const BorderSide(
-                      color: _TripSummaryScreenState._feeRed,
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 48,
+                  child: OutlinedButton(
+                    key: ValueKey('ride-payment-not-paid-${payment.bookingId}'),
+                    onPressed: busy
+                        ? null
+                        : () => _confirmCash(payment, received: false),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _TripSummaryScreenState._feeRed,
+                      side: const BorderSide(
+                        color: _TripSummaryScreenState._feeRed,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+                    child: Text(l10n.instantPaymentNotPaidAction),
                   ),
-                  child: Text(l10n.instantPaymentNotPaidAction),
                 ),
               ],
             ),

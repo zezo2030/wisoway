@@ -21,7 +21,11 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { DriverAvailabilityService } from './driver-availability.service';
 import { InstantRidesService } from './instant-rides.service';
-import { HeartbeatDto, SetAvailabilityDto } from './dto/set-availability.dto';
+import {
+  DriverPositionDto,
+  HeartbeatDto,
+  SetAvailabilityDto,
+} from './dto/set-availability.dto';
 import {
   CreateInstantRequestDto,
   QuoteInstantRequestDto,
@@ -119,6 +123,16 @@ export class InstantRidesController {
     return this.instantRides.getActiveRide(userId);
   }
 
+  // Declared before `requests/:id` so "searching" isn't taken for an id.
+  @Get('requests/searching')
+  @ApiOperation({
+    summary: "The caller's request still looking for a driver, or null",
+  })
+  @ApiResponse({ status: 200, description: 'Searching request, or null' })
+  getSearchingRequest(@CurrentUser('id') passengerId: string) {
+    return this.instantRides.getSearchingRequest(passengerId);
+  }
+
   @Get('requests/:id')
   @ApiOperation({ summary: 'Poll an instant request status' })
   @ApiResponse({ status: 200, description: 'Request status returned' })
@@ -213,8 +227,9 @@ export class InstantRidesController {
   arrivedAtPickup(
     @Param('tripId') tripId: string,
     @CurrentUser('id') driverId: string,
+    @Body() position: DriverPositionDto,
   ) {
-    return this.instantRides.markArrivedAtPickup(tripId, driverId);
+    return this.instantRides.markArrivedAtPickup(tripId, driverId, position);
   }
 
   @Post('trips/:tripId/start')
@@ -225,7 +240,43 @@ export class InstantRidesController {
   startRide(
     @Param('tripId') tripId: string,
     @CurrentUser('id') driverId: string,
+    @Body() position: DriverPositionDto,
   ) {
-    return this.instantRides.startRide(tripId, driverId);
+    return this.instantRides.startRide(tripId, driverId, position);
+  }
+
+  @Post('trips/:tripId/cancel-by-passenger')
+  @ApiOperation({
+    summary:
+      'Passenger cancels an accepted ride before it starts; costs the passenger the cancel rating cut',
+  })
+  @ApiResponse({ status: 201, description: 'Ride cancelled' })
+  @ApiResponse({
+    status: 409,
+    description: 'INSTANT_RIDE_ALREADY_STARTED, or no longer in progress',
+  })
+  cancelByPassenger(
+    @Param('tripId') tripId: string,
+    @CurrentUser('id') passengerId: string,
+  ) {
+    return this.instantRides.cancelByPassenger(tripId, passengerId);
+  }
+
+  @Post('trips/:tripId/cancel')
+  @Roles('driver')
+  @ApiOperation({
+    summary:
+      'Driver cancels an accepted ride before pickup; the passenger is searched a new driver',
+  })
+  @ApiResponse({ status: 201, description: 'Ride cancelled' })
+  @ApiResponse({
+    status: 409,
+    description: 'INSTANT_RIDE_ALREADY_STARTED, or no longer in progress',
+  })
+  cancelByDriver(
+    @Param('tripId') tripId: string,
+    @CurrentUser('id') driverId: string,
+  ) {
+    return this.instantRides.cancelByDriver(tripId, driverId);
   }
 }

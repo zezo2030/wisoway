@@ -11,7 +11,9 @@ import '../../l10n/l10n_extensions.dart';
 enum _TopupMethod { manual, cliqA2a }
 
 class WalletTopupRequestScreen extends StatefulWidget {
-  const WalletTopupRequestScreen({super.key});
+  const WalletTopupRequestScreen({super.key, this.preferCliq = false});
+
+  final bool preferCliq;
 
   @override
   State<WalletTopupRequestScreen> createState() =>
@@ -31,6 +33,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
   /// The wallet's currency — the local one where the user is. Top-ups are
   /// requested in it so they land in the wallet the screen shows.
   String _currency = 'JOD';
+  double _minimumTopup = 0.01;
 
   /// CliQ is a Jordanian rail, so it only funds a dinar wallet.
   bool get _cliqAvailable => _currency == 'JOD';
@@ -43,6 +46,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.preferCliq) _selectedMethod = _TopupMethod.cliqA2a;
     _loadCurrency();
   }
 
@@ -52,6 +56,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
       if (!mounted) return;
       setState(() {
         _currency = account.currency;
+        _minimumTopup = account.minimumTopup > 0 ? account.minimumTopup : 0.01;
         if (!_cliqAvailable) _selectedMethod = _TopupMethod.manual;
       });
     } catch (_) {
@@ -78,8 +83,11 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     final amount = double.tryParse(_amountController.text.trim());
-    if (amount == null || amount < 0.01) {
-      _showSnack(context.l10n.enterValidAmount, isError: true);
+    if (amount == null || !amount.isFinite || amount < _minimumTopup) {
+      _showSnack(
+        '${Localizations.localeOf(context).languageCode == 'ar' ? 'الحد الأدنى للشحن' : 'Minimum top-up'}: $_minimumTopup $_currency',
+        isError: true,
+      );
       return;
     }
 
@@ -107,10 +115,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
               : _walletRefController.text.trim(),
         );
         if (!mounted) return;
-        _showSnack(
-          context.l10n.topupRequestSent,
-          isSuccess: true,
-        );
+        _showSnack(context.l10n.topupRequestSent, isSuccess: true);
         Navigator.pop(context, true);
       } else {
         await _submitCliq(amount);
@@ -154,13 +159,16 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
       if (!mounted) return;
 
       setState(() {
-        _pollingStatus =
-            context.l10n.verifyingPaymentStatusProgress(attempt, maxAttempts);
+        _pollingStatus = context.l10n.verifyingPaymentStatusProgress(
+          attempt,
+          maxAttempts,
+        );
       });
 
       try {
-        final updated =
-            await _paymentService.refreshCliqPaymentStatus(paymentId);
+        final updated = await _paymentService.refreshCliqPaymentStatus(
+          paymentId,
+        );
         consecutiveErrors = 0;
         if (!mounted) return;
 
@@ -207,10 +215,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
 
     if (mounted) {
       setState(() => _isPolling = false);
-      _showSnack(
-        context.l10n.verificationTimedOut,
-        isWarning: true,
-      );
+      _showSnack(context.l10n.verificationTimedOut, isWarning: true);
       Navigator.pop(context, false);
     }
   }
@@ -230,9 +235,9 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
     } else {
       bg = AppColors.warning;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: bg),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message), backgroundColor: bg));
   }
 
   @override
@@ -327,7 +332,9 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
           ),
           if (_cliqAvailable)
             _buildMethodTab(
-              label: 'CliQ A2A',
+              label: Localizations.localeOf(context).languageCode == 'ar'
+                  ? 'كليك'
+                  : 'CliQ',
               icon: IconsaxPlusLinear.flash,
               value: _TopupMethod.cliqA2a,
             ),
@@ -351,8 +358,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
           onTap: () => setState(() => _selectedMethod = value),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            padding:
-                const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
             decoration: BoxDecoration(
               color: selected ? AppColors.teal700 : Colors.transparent,
               borderRadius: BorderRadius.circular(10),
@@ -363,16 +369,18 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
                 Icon(
                   icon,
                   size: 18,
-                  color: selected ? AppColors.white : T.onSurfaceVariant(context),
+                  color: selected
+                      ? AppColors.white
+                      : T.onSurfaceVariant(context),
                 ),
                 const SizedBox(width: 6),
                 Text(
                   label,
                   style: AppTextStyles.labelLarge.copyWith(
-                    color:
-                        selected ? AppColors.white : T.onSurfaceVariant(context),
-                    fontWeight:
-                        selected ? FontWeight.bold : FontWeight.normal,
+                    color: selected
+                        ? AppColors.white
+                        : T.onSurfaceVariant(context),
+                    fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                   ),
                 ),
               ],
@@ -399,13 +407,10 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
     final currency = _currency;
     return TextFormField(
       controller: _amountController,
-      keyboardType:
-          const TextInputType.numberWithOptions(decimal: true),
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
       decoration: InputDecoration(
         labelText: context.l10n.amountWithCurrency(currency),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         prefixIcon: const Icon(IconsaxPlusLinear.dollar_circle),
       ),
       validator: (v) {
@@ -422,9 +427,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
       decoration: InputDecoration(
         labelText: context.l10n.transactionReferenceOptional,
         hintText: context.l10n.ifAvailable,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         prefixIcon: const Icon(IconsaxPlusLinear.document_text),
       ),
     );
@@ -482,9 +485,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
       children: [
         Text(
           context.l10n.aliasType,
-          style: AppTextStyles.titleSmall.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+          style: AppTextStyles.titleSmall.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Row(
@@ -537,17 +538,18 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
             ),
             child: Column(
               children: [
-                Icon(icon,
-                    color: selected
-                        ? AppColors.teal700
-                        : T.onSurfaceVariant(context)),
+                Icon(
+                  icon,
+                  color: selected
+                      ? AppColors.teal700
+                      : T.onSurfaceVariant(context),
+                ),
                 const SizedBox(height: 6),
                 Text(
                   label,
                   style: AppTextStyles.labelLarge.copyWith(
                     color: selected ? AppColors.teal700 : T.onSurface(context),
-                    fontWeight:
-                        selected ? FontWeight.bold : FontWeight.normal,
+                    fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -570,9 +572,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
             ? context.l10n.mobileNumber
             : context.l10n.aliasNameLabel,
         hintText: hint,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         prefixIcon: Icon(
           _aliasType == 'MOBL'
               ? IconsaxPlusLinear.mobile

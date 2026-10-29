@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Optional,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -10,6 +11,7 @@ import {
   ComplaintStatus,
 } from '../../database/entities/complaint.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AdminAlertsService } from '../admin/admin-alerts.service';
 
 export interface CreateComplaintDto {
   againstUserId?: string;
@@ -49,6 +51,7 @@ export class ComplaintsService {
     private readonly complaintRepo: Repository<ComplaintEntity>,
 
     private readonly notificationsService: NotificationsService,
+    @Optional() private readonly adminAlerts?: AdminAlertsService,
   ) {}
 
   /** T167a — User files a complaint. At least one target field is required. */
@@ -72,7 +75,9 @@ export class ComplaintsService {
       status: ComplaintStatus.OPEN,
     });
 
-    return this.complaintRepo.save(complaint);
+    const saved = await this.complaintRepo.save(complaint);
+    this.adminAlerts?.notifyComplaint(saved).catch(() => undefined);
+    return saved;
   }
 
   /** T167b — List complaints filed by the caller. */

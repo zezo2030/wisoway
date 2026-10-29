@@ -1,8 +1,8 @@
+import '../../../core/navigation/shared_trip_navigation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import '../../../providers/auth_provider.dart';
-import '../../../core/constants/route_names.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/phone_text.dart';
@@ -102,10 +102,7 @@ class HomeTab extends StatelessWidget {
                               label: context.l10n.homeCreateTripButton,
                               child: ElevatedButton.icon(
                                 onPressed: () {
-                                  Navigator.pushNamed(
-                                    context,
-                                    RouteNames.createTrip,
-                                  );
+                                  SharedTripNavigation.open(context);
                                 },
                                 icon: const Icon(
                                   IconsaxPlusBold.add_circle,
