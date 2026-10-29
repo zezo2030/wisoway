@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Loader2 } from "lucide-react"
 import { useState } from "react"
+import { PromotionsPanel } from "./promotions-panel"
 import { useLanguage } from "@/providers/language-provider"
 import type { TranslationKey } from "@/i18n/translations"
 
@@ -60,6 +61,7 @@ export default function OperationsSettingsPage() {
 
   return (
     <div className="space-y-6 p-6 max-w-3xl mx-auto">
+      <PromotionsPanel />
       <div className="flex flex-col gap-2 mb-4">
         <h1 className="text-3xl font-bold tracking-tight">{t("operationsTitle")}</h1>
         <p className="text-muted-foreground text-base">{t("operationsSubtitle")}</p>
@@ -67,8 +69,32 @@ export default function OperationsSettingsPage() {
       {KNOBS.map((knob) => (
         <PenaltyCard key={knob.key} knob={knob} saved={data[knob.key]} />
       ))}
+      <CommissionCard setting="instantCommissionPercent" saved={data.instantCommissionPercent} />
+      <CommissionCard setting="sharedCommissionPercent" saved={data.sharedCommissionPercent} />
     </div>
   )
+}
+
+function CommissionCard({ setting, saved }: { setting: "instantCommissionPercent" | "sharedCommissionPercent"; saved: number }) {
+  const { language } = useLanguage()
+  const ar = language === "ar"
+  const [draft, setDraft] = useState<string | null>(null)
+  const value = draft ?? String(saved)
+  const percent = Number(value)
+  const qc = useQueryClient()
+  const mutation = useMutation({
+    mutationFn: () => patchPlatformSettings({ [setting]: percent }),
+    onSuccess: () => { setDraft(null); qc.invalidateQueries({ queryKey: ["admin", "platform-settings"] }); toast.success(ar ? "تم الحفظ" : "Saved") },
+    onError: (e: Error) => toast.error(e.message),
+  })
+  return <Card><CardHeader><CardTitle>{setting === "instantCommissionPercent"
+    ? (ar ? "عمولة الرحلات المباشرة" : "Instant ride commission")
+    : (ar ? "عمولة الرحلات المشتركة" : "Shared trip commission")}</CardTitle>
+    <CardDescription>{ar ? "تُخصم عند انتهاء الرحلة من قيمة الحجوزات المكتملة وتُضاف لمحفظة التطبيق." : "Charged on completed fares at trip completion and credited to the platform wallet."}</CardDescription></CardHeader>
+    <CardContent className="space-y-4"><Label htmlFor={setting}>{ar ? "النسبة المئوية" : "Percentage"}</Label>
+      <Input id={setting} type="number" min={0} max={100} step={0.1} value={value} onChange={e => setDraft(e.target.value)} />
+      <Button disabled={mutation.isPending || !value.trim() || !Number.isFinite(percent) || percent < 0 || percent > 100} onClick={() => mutation.mutate()}>{ar ? "حفظ" : "Save"}</Button>
+    </CardContent></Card>
 }
 
 function PenaltyCard({ knob, saved }: { knob: PenaltyKnob; saved: number }) {

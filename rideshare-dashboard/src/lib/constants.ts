@@ -1,4 +1,5 @@
 // Constants: Rideshare Admin Dashboard
+import { resolveApiBaseUrl } from "./api-base-url"
 
 // Route Paths
 export const ROUTES = {
@@ -157,7 +158,7 @@ export const STATUS_VARIANTS = {
 } as const
 
 // API Config
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api/v1"
+export const API_BASE_URL = resolveApiBaseUrl(import.meta.env.VITE_API_BASE_URL)
 export const WS_URL = import.meta.env.VITE_WS_URL || "http://localhost:3000"
 
 // Query Keys for TanStack Query

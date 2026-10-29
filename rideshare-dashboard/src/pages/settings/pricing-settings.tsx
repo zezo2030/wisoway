@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useLanguage } from "@/providers/language-provider"
+import { InstantFarePanel } from "./instant-fare-panel"
 
 /** Markets with a fee schedule; each trip is charged on its departure country's. */
 const PRICING_COUNTRIES = ["JO", "SA", "AE", "QA", "KW", "BH", "OM", "EG", "IQ", "PS", "LB", "SY"] as const
@@ -232,6 +233,8 @@ export default function PricingSettingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <InstantFarePanel />
     </div>
   )
 }
