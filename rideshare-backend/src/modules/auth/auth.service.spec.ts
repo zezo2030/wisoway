@@ -267,7 +267,12 @@ describe('AuthService — pending driver registration update', () => {
         { provide: DeviceFingerprintService, useValue: {} },
         { provide: AccountRiskService, useValue: {} },
         { provide: NotificationsService, useValue: {} },
-        { provide: AdminAlertsService, useValue: {} },
+        {
+          provide: AdminAlertsService,
+          useValue: {
+            notifyDriverRegistration: jest.fn().mockResolvedValue(undefined),
+          },
+        },
         { provide: getRepositoryToken(UserEntity), useValue: userRepo },
         {
           provide: getRepositoryToken(PasswordResetSessionEntity),
@@ -379,6 +384,85 @@ describe('AuthService — local OTP', () => {
   });
 });
 
+describe('AuthService — AMS SMS for Jordanian numbers', () => {
+  const env: Record<string, string> = {
+    OTP_PROVIDER: 'twilio',
+    AMS_SMS_ACCESS_KEY: 'key',
+    AMS_SMS_SENDER_ID: 'VisionWay',
+    AMS_SMS_BASE_URL: 'http://sms.test/websmpp',
+  };
+  let fetchMock: jest.SpyInstance;
+
+  beforeEach(() => {
+    fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(new Response('Response: 1507211343399277335'));
+  });
+  afterEach(() => fetchMock.mockRestore());
+
+  async function arrange() {
+    const usersService = {
+      createOtpCode: jest.fn().mockResolvedValue({ id: 'otp-1' }),
+      consumeOtpCode: jest.fn(),
+    };
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AuthService,
+        { provide: UsersService, useValue: usersService },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn((key: string) => env[key]) },
+        },
+        { provide: DeviceFingerprintService, useValue: {} },
+        { provide: AccountRiskService, useValue: {} },
+        { provide: NotificationsService, useValue: {} },
+        { provide: AdminAlertsService, useValue: {} },
+        { provide: getRepositoryToken(UserEntity), useValue: {} },
+        {
+          provide: getRepositoryToken(PasswordResetSessionEntity),
+          useValue: {},
+        },
+      ],
+    }).compile();
+    return { service: module.get<AuthService>(AuthService), usersService };
+  }
+
+  it('sends the stored code through AMS without the leading +', async () => {
+    const { service, usersService } = await arrange();
+
+    await service.sendOtp({ phoneNumber: '+962790000000' });
+
+    const code = usersService.createOtpCode.mock.calls[0][1];
+    const url = new URL(fetchMock.mock.calls[0][0]);
+    expect(url.origin + url.pathname).toBe('http://sms.test/websmpp/websms');
+    expect(url.searchParams.get('mno')).toBe('962790000000');
+    expect(url.searchParams.get('type')).toBe('4');
+    expect(url.searchParams.get('text')).toContain(code);
+  });
+
+  it('fails the request when the SMSC answers with an error', async () => {
+    fetchMock.mockResolvedValue(
+      new Response('ERROR - HTTP18 --> INSUFFICIENT'),
+    );
+    const { service } = await arrange();
+
+    await expect(
+      service.sendOtp({ phoneNumber: '+962790000000' }),
+    ).rejects.toThrow('Failed to send OTP');
+  });
+
+  it('leaves other countries on Twilio', async () => {
+    const { service, usersService } = await arrange();
+
+    // Twilio isn't configured in this test, so the Twilio path fails.
+    await expect(
+      service.sendOtp({ phoneNumber: '+966500000000' }),
+    ).rejects.toThrow('Failed to send OTP');
+    expect(usersService.createOtpCode).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
 /**
  * The app offers "sign in with your phone number" as a first-class action, so a
  * correct OTP has to be able to sign an existing account in. It previously
@@ -398,8 +482,7 @@ describe('AuthService — OTP sign-in for existing accounts', () => {
       update: jest.fn().mockResolvedValue(undefined),
     };
     const usersService = {
-      findOtpCode: jest.fn().mockResolvedValue({ id: 'otp-1' }),
-      markOtpCodeAsUsed: jest.fn().mockResolvedValue(undefined),
+      consumeOtpCode: jest.fn().mockResolvedValue(true),
       verifyOtpCode: jest.fn().mockResolvedValue(true),
       findById: jest.fn().mockResolvedValue(user),
       findByPhone: jest.fn().mockResolvedValue(user),

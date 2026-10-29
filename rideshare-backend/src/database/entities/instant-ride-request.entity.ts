@@ -52,6 +52,12 @@ export type InstantTerminalReason =
 @Entity({ name: 'instant_ride_requests' })
 @Index('instant_requests_passenger_status_idx', ['passengerId', 'status'])
 export class InstantRideRequestEntity {
+  @Column({ type: 'varchar', length: 32, nullable: true })
+  promoCode: string | null;
+  @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true })
+  originalAmount: string | null;
+  @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 })
+  discountAmount: string;
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

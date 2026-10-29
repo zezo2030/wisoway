@@ -6,7 +6,6 @@ import { VehiclesService } from '../vehicles/vehicles.service';
 import { UsersService } from '../users/users.service';
 import { WalletService } from '../wallet/wallet.service';
 import { SetAvailabilityDto } from './dto/set-availability.dto';
-import { ErrorCodes } from '../../common/errors/error-codes';
 import {
   DISPATCH_STALE_MINUTES,
   lockIsFreeSql,
@@ -33,6 +32,11 @@ export type NearbyDriverPin = {
   latitude: number;
   longitude: number;
 };
+
+const FUNDED_DRIVER_SQL = `EXISTS (SELECT 1 FROM wallet_accounts w WHERE w."userId"=a."driverId"
+  AND w."accountType"='driver' AND w."isActive"=true AND w.balance-w."reservedBalance">0)
+  AND NOT EXISTS (SELECT 1 FROM wallet_accounts w WHERE w."userId"=a."driverId"
+  AND w."accountType"='driver' AND (w.balance<0 OR w."rechargeRequired"=true))`;
 
 @Injectable()
 export class DriverAvailabilityService {
@@ -105,6 +109,17 @@ export class DriverAvailabilityService {
         lastSeenAt: null,
       };
     }
+    if (row.isOnline) {
+      try {
+        await this.walletService.assertNonNegativeDriverBalance(driverId);
+      } catch (error) {
+        if (!(error instanceof ForbiddenException)) throw error;
+        // Reconcile persisted presence on app entry and heartbeats. Keep any
+        // active request lock intact; an empty wallet does not cancel a ride.
+        await this.repo.update({ driverId }, { isOnline: false });
+        row.isOnline = false;
+      }
+    }
     return this.toStatus(row);
   }
 
@@ -119,6 +134,7 @@ export class DriverAvailabilityService {
     options: {
       excludeDriverIds?: string[];
       limit?: number;
+      currency?: string;
     } = {},
   ): Promise<NearbyDriver[]> {
     const now = Date.now();
@@ -129,6 +145,7 @@ export class DriverAvailabilityService {
       .where('a."isOnline" = true')
       .andWhere('a."acceptsInstant" = true')
       .andWhere(lockIsFreeSql('a."currentRequestId"'))
+      .andWhere(FUNDED_DRIVER_SQL)
       .andWhere('a."point" IS NOT NULL')
       .andWhere('a."lastSeenAt" >= :dispatchCutoff', { dispatchCutoff })
       .andWhere(
@@ -158,6 +175,14 @@ export class DriverAvailabilityService {
       .limit(options.limit ?? 20);
 
     const excluded = options.excludeDriverIds ?? [];
+    if (options.currency) {
+      qb.andWhere(
+        `EXISTS (SELECT 1 FROM wallet_accounts w WHERE w."userId"=a."driverId"
+        AND w."accountType"='driver' AND w.currency=:walletCurrency AND w."isActive"=true
+        AND w.balance-w."reservedBalance">0 AND w."rechargeRequired"=false)`,
+        { walletCurrency: options.currency },
+      );
+    }
     if (excluded.length > 0) {
       qb.andWhere('a."driverId" NOT IN (:...excluded)', { excluded });
     }
@@ -191,6 +216,7 @@ export class DriverAvailabilityService {
         .select('ST_Y(a."point"::geometry)', 'lat')
         .addSelect('ST_X(a."point"::geometry)', 'lng')
         .where('a."isOnline" = true')
+        .andWhere(FUNDED_DRIVER_SQL)
         .andWhere('a."point" IS NOT NULL')
         .andWhere('a."lastSeenAt" >= :staleCutoff', { staleCutoff })
         .andWhere(
@@ -237,17 +263,7 @@ export class DriverAvailabilityService {
         'مركبتك قيد مراجعة الإدارة. لا يمكنك استقبال الرحلات حتى يتم التحقق منها.',
       );
     }
-    try {
-      await this.walletService.assertNonNegativeDriverBalance(driverId);
-    } catch (error) {
-      if (error instanceof ForbiddenException) {
-        throw new ForbiddenException({
-          code: ErrorCodes.NEGATIVE_WALLET_BALANCE,
-          message: 'رصيد محفظتك سالب. سدد المستحقات قبل تلقي الرحلات المباشرة.',
-        });
-      }
-      throw error;
-    }
+    await this.walletService.assertNonNegativeDriverBalance(driverId);
     return vehicle.id;
   }
 

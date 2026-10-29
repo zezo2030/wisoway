@@ -5,7 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
+import { Repository, LessThan, MoreThan } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { UserEntity } from '../../database/entities/user.entity';
 import { OtpCodeEntity } from '../../database/entities/otp-code.entity';
@@ -188,17 +188,29 @@ export class UsersService {
     return this.otpCodeRepo.save(otpCode);
   }
 
-  async findOtpCode(
-    phoneNumber: string,
-    code: string,
-  ): Promise<OtpCodeEntity | null> {
-    return this.otpCodeRepo.findOne({
-      where: { phoneNumber, code, isUsed: false },
+  /**
+   * Checks `code` against the live code for the number and burns it on a
+   * match. Five wrong tries burn it too, so a 6-digit code can't be guessed.
+   */
+  async consumeOtpCode(phoneNumber: string, code: string): Promise<boolean> {
+    const otp = await this.otpCodeRepo.findOne({
+      where: {
+        phoneNumber,
+        isUsed: false,
+        expiresAt: MoreThan(new Date()),
+      },
+      order: { createdAt: 'DESC' },
     });
-  }
-
-  async markOtpCodeAsUsed(otpCodeId: string): Promise<void> {
-    await this.otpCodeRepo.update(otpCodeId, { isUsed: true });
+    if (!otp) return false;
+    if (otp.code !== code) {
+      await this.otpCodeRepo.update(otp.id, {
+        attempts: otp.attempts + 1,
+        isUsed: otp.attempts + 1 >= 5,
+      });
+      return false;
+    }
+    await this.otpCodeRepo.update(otp.id, { isUsed: true });
+    return true;
   }
 
   async cleanupExpiredOtpCodes(): Promise<void> {

@@ -26,6 +26,10 @@ export class OtpCodeEntity {
   @Column({ type: 'boolean', default: false })
   isUsed: boolean;
 
+  /** Wrong codes entered against this row; it is burnt at five. */
+  @Column({ type: 'int', default: 0 })
+  attempts: number;
+
   @CreateDateColumn()
   createdAt: Date;
 

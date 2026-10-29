@@ -6,6 +6,7 @@ import {
   DEFAULT_FARE_TARIFF,
   fareTariffFor,
   straightLineRoute,
+  waitingCharge,
 } from './instant-rides.constants';
 import { RespondOfferDto } from './dto/respond-offer.dto';
 
@@ -13,8 +14,8 @@ describe('instant fare', () => {
   it('applies base + per km + per minute, rounded up to the step', () => {
     // SAR: 6 + 3*1.4 + 8*0.3 = 12.6 → 13
     expect(computeFare(3, 8, 'SAR')).toBe(13);
-    // JOD: 0.5 + 12*0.28 + 20*0.04 = 4.66 → 4.75
-    expect(computeFare(12, 20, 'JOD')).toBe(4.75);
+    // JOD (Jordan's meter): 0.45 + 12*0.316 + 20*0 = 4.242 → 4.25
+    expect(computeFare(12, 20, 'JOD')).toBe(4.25);
   });
 
   it('never charges less than the minimum', () => {
@@ -30,6 +31,21 @@ describe('instant fare', () => {
   it('falls back to the default tariff for an unlisted currency', () => {
     expect(fareTariffFor('TRY')).toBe(DEFAULT_FARE_TARIFF);
     expect(fareTariffFor('sar')).not.toBe(DEFAULT_FARE_TARIFF);
+  });
+});
+
+describe('admin tariff', () => {
+  it('prices with the tariff it is given over the default', () => {
+    const tariff = { ...fareTariffFor('JOD'), base: 1, perKm: 0.5, step: 0.01 };
+    expect(computeFare(10, 0, 'JOD', tariff)).toBe(6);
+  });
+
+  it('charges waiting only past the free minutes, per started minute', () => {
+    const jod = fareTariffFor('JOD'); // 3 free minutes, 0.065 a minute
+    expect(waitingCharge(jod, 2 * 60_000)).toBe(0);
+    expect(waitingCharge(jod, 3 * 60_000)).toBe(0);
+    // 5 min 10 s → 6 started minutes → 3 charged
+    expect(waitingCharge(jod, 5 * 60_000 + 10_000)).toBe(0.2);
   });
 });
 

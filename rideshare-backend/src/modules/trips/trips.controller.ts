@@ -112,10 +112,12 @@ export class TripsController {
     @Query('seatPrice') seatPrice: string,
     @Query('totalSeats') totalSeats: string,
     @Query('currency') currency?: string,
+    @Query('tripType') tripType?: string,
   ) {
     return this.driverTripFee.computeExpectedFee({
       seatPrice: Number(seatPrice ?? 0),
       totalSeats: Number(totalSeats ?? 0),
+      tripType,
       currency: currency?.trim().toUpperCase() || null,
     });
   }

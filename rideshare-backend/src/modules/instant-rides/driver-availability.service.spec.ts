@@ -84,6 +84,73 @@ describe('DriverAvailabilityService', () => {
   });
 
   describe('getStatus', () => {
+    it('reconciles a saved online state when the wallet is blocked', async () => {
+      repo.findOne.mockResolvedValue({
+        driverId: 'd1',
+        isOnline: true,
+        currentRequestId: 'active-ride',
+        point: null,
+      });
+      wallet.assertNonNegativeDriverBalance.mockRejectedValue(
+        new ForbiddenException({
+          code: 'NEGATIVE_WALLET_BALANCE',
+          message:
+            'اشحن محفظتك بحد أدنى 5 دنانير أو 25 ريالاً أو ما يعادلها وسدد أي مستحقات للاستمرار في استقبال الرحلات وإنشائها.',
+        }),
+      );
+      expect((await service.getStatus('d1')).isOnline).toBe(false);
+      expect(repo.update).toHaveBeenCalledWith(
+        { driverId: 'd1' },
+        { isOnline: false },
+      );
+    });
+
+    it('keeps a funded driver online', async () => {
+      repo.findOne.mockResolvedValue({
+        driverId: 'd1',
+        isOnline: true,
+        point: null,
+      });
+      expect((await service.getStatus('d1')).isOnline).toBe(true);
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it('reports offline in a heartbeat response when funds have run out', async () => {
+      repo.findOne.mockResolvedValue({
+        driverId: 'd1',
+        isOnline: true,
+        point: null,
+      });
+      wallet.assertNonNegativeDriverBalance.mockRejectedValue(
+        new ForbiddenException('top up'),
+      );
+      expect((await service.heartbeat('d1', 31.9, 35.9)).isOnline).toBe(false);
+    });
+
+    it('preserves the wallet policy message when attempting to go online', async () => {
+      users.findById.mockResolvedValue({ isDriverApproved: true });
+      vehicles.findByDriver.mockResolvedValue({ id: 'v1', isVerified: true });
+      const error = new ForbiddenException({
+        code: 'NEGATIVE_WALLET_BALANCE',
+        message:
+          'اشحن محفظتك بحد أدنى 5 دنانير أو 25 ريالاً أو ما يعادلها وسدد أي مستحقات للاستمرار في استقبال الرحلات وإنشائها.',
+      });
+      wallet.assertNonNegativeDriverBalance.mockRejectedValue(error);
+      await expect(
+        service.setAvailability('d1', { isOnline: true }),
+      ).rejects.toBe(error);
+    });
+
+    it('does not silently treat a database failure as an empty wallet', async () => {
+      repo.findOne.mockResolvedValue({ driverId: 'd1', isOnline: true });
+      wallet.assertNonNegativeDriverBalance.mockRejectedValue(
+        new Error('database unavailable'),
+      );
+      await expect(service.getStatus('d1')).rejects.toThrow(
+        'database unavailable',
+      );
+    });
+
     it('returns an offline default when there is no row', async () => {
       repo.findOne.mockResolvedValue(null);
       const status = await service.getStatus('d1');

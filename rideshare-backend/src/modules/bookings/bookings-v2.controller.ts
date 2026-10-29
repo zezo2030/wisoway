@@ -104,7 +104,7 @@ export class BookingsV2Controller {
   @ApiOperation({
     summary: 'Accept (confirm) a pending booking (Driver only)',
     description:
-      'Charges the driver wallet for the contact fee, marks the booking confirmed, ' +
+      'Confirms the booking without charging for access to passenger details, ' +
       'and cancels the pending timeout job.',
   })
   @ApiResponse({ status: 200, description: 'Booking accepted' })

@@ -25,6 +25,13 @@ import { AuditService } from '../../common/audit/audit.service';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 
+/** Pushes that play the ride chime: the driver arrived, the ride began. */
+const RIDE_MILESTONE_TYPES = new Set([
+  'instant_driver_arrived',
+  'instant_ride_started',
+  'trip_started',
+]);
+
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
@@ -275,9 +282,13 @@ export class NotificationsService {
       const collapseKey = this.resolveCollapseKey(payload);
       const isAndroidCustomRich =
         payload.type === 'booking_created' || payload.type === 'instant_offer';
-      const androidNotification: admin.messaging.AndroidNotification = {
-        channelId: 'rideshare_notifications',
-      };
+      // The ride's milestones ring with the app's chime (res/raw/ride_chime);
+      // the app creates the ride_updates channel at start-up.
+      const isRideMilestone = RIDE_MILESTONE_TYPES.has(payload.type);
+      const androidNotification: admin.messaging.AndroidNotification =
+        isRideMilestone
+          ? { channelId: 'ride_updates', sound: 'ride_chime' }
+          : { channelId: 'rideshare_notifications' };
       if (collapseKey) {
         androidNotification.tag = collapseKey;
       }
@@ -331,7 +342,7 @@ export class NotificationsService {
           payload: {
             aps: {
               alert: { title: payload.title, body: payload.body },
-              sound: 'default',
+              sound: isAndroidCustomRich ? 'instant_offer_ring.wav' : 'default',
             },
           },
         },

@@ -1,3 +1,4 @@
+import { pricePromotion } from '../promotions/promotions.module';
 import {
   BadRequestException,
   ConflictException,
@@ -5,7 +6,9 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { InstantFareTariffService } from './instant-fare-tariff.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
@@ -37,6 +40,7 @@ import { InstantDispatchService } from './instant-dispatch.service';
 import { InstantPickupWatchService } from './instant-pickup-watch.service';
 import { RatingsService } from '../ratings/ratings.service';
 import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
+import { WalletService } from '../wallet/wallet.service';
 import { resolvePaymentChoice } from '../ride-payments/cliq-payer';
 import {
   CreateInstantRequestDto,
@@ -51,6 +55,8 @@ import {
   MAX_ROUTE_DETOUR_FACTOR,
   straightLineRoute,
   computeFare,
+  FareTariff,
+  fareTariffFor,
   INITIAL_RADIUS_KM,
   MAX_RADIUS_KM,
   INSTANT_OFFER_TIMEOUT_QUEUE,
@@ -101,7 +107,16 @@ export class InstantRidesService {
     private readonly offerTimeoutQueue: Queue,
     @InjectQueue(INSTANT_REQUEST_EXPIRY_QUEUE)
     private readonly requestExpiryQueue: Queue,
+    private readonly wallet: WalletService,
+    @Optional() private readonly tariffs?: InstantFareTariffService,
   ) {}
+
+  /** The admin's tariff for this currency, else the built-in default. */
+  private tariffFor(currency: string): Promise<FareTariff> {
+    return this.tariffs
+      ? this.tariffs.tariffFor(currency)
+      : Promise.resolve(fareTariffFor(currency));
+  }
 
   // ── Passenger ──────────────────────────────────────────────────────────────
 
@@ -295,6 +310,12 @@ export class InstantRidesService {
     // ignored rather than rejected so those apps can still order.
     const quote = await this.computeQuote(dto.from, dto.to, passengerId);
     const fare = quote.fare.toFixed(2);
+    const promotion = await pricePromotion(
+      this.requestRepo.manager,
+      dto.promoCode,
+      Number(fare),
+      'instant',
+    );
     const { method: paymentMethod, payerCliqAlias } = resolvePaymentChoice(
       dto.paymentMethod,
       quote.currency,
@@ -316,6 +337,7 @@ export class InstantRidesService {
       this.requestRepo.create({
         passengerId,
         fromName: dto.from.name,
+        ...promotion,
         fromAddress: dto.from.address ?? null,
         fromPoint: {
           type: 'Point',
@@ -566,6 +588,12 @@ export class InstantRidesService {
           seatCount: original.seatCount,
           paymentMethod: original.paymentMethod,
           payerCliqAlias: original.payerCliqAlias,
+          ...(await pricePromotion(
+            m,
+            original.promoCode ?? undefined,
+            Number(fare),
+            'instant',
+          )),
           status: InstantRequestStatus.SEARCHING,
           fareEstimate: fare,
           recommendedFare: fare,
@@ -713,6 +741,7 @@ export class InstantRidesService {
   }
 
   async acceptOffer(offerId: string, driverId: string) {
+    await this.wallet.assertNonNegativeDriverBalance(driverId);
     const offer = await this.offerRepo.findOne({
       where: { id: offerId, driverId },
     });
@@ -730,6 +759,10 @@ export class InstantRidesService {
     }
 
     const acceptedFare = request.passengerFare ?? request.fareEstimate ?? '0';
+    await this.wallet.assertNonNegativeDriverBalance(
+      driverId,
+      request.currency,
+    );
     const { tripId, driverName, pickupEtaSeconds } = await this.finalizeMatch(
       request,
       offer,
@@ -838,7 +871,13 @@ export class InstantRidesService {
         userId: request.passengerId,
         status: BookingStatus.CONFIRMED,
         seatCount: request.seatCount,
-        totalAmount: acceptedFare,
+        originalAmount: acceptedFare,
+        promoCode: request.promoCode,
+        discountAmount: request.discountAmount ?? '0.00',
+        totalAmount: Math.max(
+          0,
+          Number(acceptedFare) - Number(request.discountAmount ?? 0),
+        ).toFixed(2),
         seatPriceAtBooking: seatPrice,
         expiresAt: null,
         // Settled when the ride ends: cash to the driver, or CliQ to us.
@@ -900,8 +939,11 @@ export class InstantRidesService {
   async startRide(tripId: string, driverId: string, position?: DriverPosition) {
     const trip = await this.liveInstantTripOf(tripId, driverId);
     if (trip.tripStartedAt) return trip;
-    // Skipping «وصلت» doesn't skip being there.
-    if (!trip.driverArrivedAt) await this.assertAtPickup(trip, position);
+    // Skipping «وصلت» doesn't skip being there — now, or earlier on this
+    // ride (the driver drove off and was reminded to start it).
+    if (!trip.driverArrivedAt && !(await this.wasAtPickup(trip))) {
+      await this.assertAtPickup(trip, position);
+    }
     const now = new Date();
     trip.driverArrivedAt ??= now;
     trip.tripStartedAt = now;
@@ -912,6 +954,24 @@ export class InstantRidesService {
       type: 'instant_ride_started',
     });
     return trip;
+  }
+
+  /** Whether the driver's tracked path on this ride came within reach of the pickup. */
+  private async wasAtPickup(trip: TripEntity): Promise<boolean> {
+    const [lng, lat] = trip.fromPoint?.coordinates ?? [];
+    if (lng == null || lat == null) return false;
+    try {
+      const rows: unknown[] = await this.tripRepo.query(
+        `SELECT 1 FROM driver_locations
+          WHERE "tripId" = $1
+            AND ST_DWithin(point, ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography, $4)
+          LIMIT 1`,
+        [trip.id, lng, lat, ARRIVAL_RADIUS_METERS],
+      );
+      return Array.isArray(rows) && rows.length > 0;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -1181,6 +1241,9 @@ export class InstantRidesService {
           seatCount: original.seatCount,
           paymentMethod: original.paymentMethod,
           payerCliqAlias: original.payerCliqAlias,
+          promoCode: original.promoCode,
+          originalAmount: original.originalAmount,
+          discountAmount: original.discountAmount,
           status: InstantRequestStatus.SEARCHING,
           fareEstimate: fare,
           recommendedFare: fare,
@@ -1319,8 +1382,9 @@ export class InstantRidesService {
       this.routeDistance(from, to),
       this.currencyAt(from, passengerId),
     ]);
+    const tariff = await this.tariffFor(currency);
     return {
-      fare: computeFare(distanceKm, durationMin, currency),
+      fare: computeFare(distanceKm, durationMin, currency, tariff),
       currency,
       distanceKm,
       durationMin,
@@ -1442,8 +1506,18 @@ export class InstantRidesService {
       seatCount: request.seatCount,
       fareEstimate: request.fareEstimate,
       recommendedFare: request.recommendedFare,
-      passengerFare: request.passengerFare,
-      acceptedFare: request.acceptedFare,
+      promoCode: request.promoCode ?? null,
+      originalAmount: request.originalAmount ?? request.passengerFare,
+      discountAmount: request.discountAmount ?? '0.00',
+      passengerFare: (
+        Number(request.passengerFare) - Number(request.discountAmount ?? 0)
+      ).toFixed(2),
+      acceptedFare:
+        request.acceptedFare == null
+          ? null
+          : (
+              Number(request.acceptedFare) - Number(request.discountAmount ?? 0)
+            ).toFixed(2),
       currency: request.currency,
       paymentMethod: request.paymentMethod ?? 'cash',
       matchedDriverId: request.matchedDriverId,
@@ -1511,7 +1585,12 @@ export class InstantRidesService {
     return {
       tripId: request.tripId,
       bookingId: booking?.id ?? null,
-      acceptedFare: request.acceptedFare,
+      acceptedFare:
+        request.acceptedFare == null
+          ? null
+          : (
+              Number(request.acceptedFare) - Number(request.discountAmount ?? 0)
+            ).toFixed(2),
       currency: request.currency,
       paymentMethod: request.paymentMethod ?? 'cash',
       pickupEtaSeconds: request.pickupEtaSeconds,

@@ -15,6 +15,8 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { WalletModule } from '../wallet/wallet.module';
 import { RatingsModule } from '../ratings/ratings.module';
 import { PlatformSettingsModule } from '../platform-settings/platform-settings.module';
+import { InstantFareModule } from './instant-fare.module';
+import { AdminFareTariffsController } from './admin-fare-tariffs.controller';
 import { DriverAvailabilityService } from './driver-availability.service';
 import { InstantDispatchService } from './instant-dispatch.service';
 import { InstantPickupWatchService } from './instant-pickup-watch.service';
@@ -55,8 +57,9 @@ import {
     WalletModule,
     RatingsModule,
     PlatformSettingsModule,
+    InstantFareModule,
   ],
-  controllers: [InstantRidesController],
+  controllers: [InstantRidesController, AdminFareTariffsController],
   providers: [
     DriverAvailabilityService,
     InstantDispatchService,

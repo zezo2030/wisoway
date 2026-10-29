@@ -1,4 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { InstantFareModule } from '../instant-rides/instant-fare.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
 import { BookingEntity } from '../../database/entities/booking.entity';
@@ -33,6 +34,7 @@ import { RidePaymentsModule } from '../ride-payments/ride-payments.module';
     forwardRef(() => NotificationsModule),
     DriverTripFeeModule,
     RidePaymentsModule,
+    InstantFareModule,
   ],
   controllers: [TripTimeController],
   providers: [

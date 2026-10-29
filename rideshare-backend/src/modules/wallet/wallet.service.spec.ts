@@ -10,6 +10,9 @@ import {
 } from '../../database/entities';
 import { WalletService } from './wallet.service';
 import { PlatformPricingService } from '../payments/platform-pricing.service';
+import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
+import { DriverWalletPolicyService } from './driver-wallet-policy.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 describe('WalletService', () => {
   let service: WalletService;
@@ -18,6 +21,18 @@ describe('WalletService', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
+        {
+          provide: PlatformSettingsService,
+          useValue: { getNumber: jest.fn().mockResolvedValue(10) },
+        },
+        {
+          provide: DriverWalletPolicyService,
+          useValue: { minimum: jest.fn().mockResolvedValue(5) },
+        },
+        {
+          provide: NotificationsService,
+          useValue: { create: jest.fn().mockResolvedValue({}) },
+        },
         WalletService,
         {
           provide: DataSource,

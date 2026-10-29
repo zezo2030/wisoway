@@ -22,6 +22,8 @@ import { PgUserRole, WalletAccountType } from '../../../database/entities';
 import { A2aCliqService } from '../a2a-cliq.service';
 import { WalletService } from '../../wallet/wallet.service';
 import { AdminAlertsService } from '../../admin/admin-alerts.service';
+import { NotificationsService } from '../../notifications/notifications.service';
+import { topupCreditedNotice } from '../topup-notices';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 
@@ -48,6 +50,7 @@ export class CliqPollProcessor {
     private a2aCliqService: A2aCliqService,
     private walletService: WalletService,
     private adminAlertsService: AdminAlertsService,
+    private notificationsService: NotificationsService,
     @InjectQueue(CLIQ_POLL_QUEUE) private cliqPollQueue: Queue<CliqPollJobData>,
   ) {}
 
@@ -188,7 +191,16 @@ export class CliqPollProcessor {
       });
       payment.status = 'approved';
       await this.paymentRepo.save(payment);
-      await this.adminAlertsService.notifyFeePayment(payment);
+      await this.adminAlertsService
+        .notifyWalletTopup(payment, user)
+        .catch((err: Error) =>
+          this.logger.warn(`Admin top-up alert failed: ${err.message}`),
+        );
+      await this.notificationsService
+        .create(topupCreditedNotice(payment))
+        .catch((err: Error) =>
+          this.logger.warn(`Top-up notice failed: ${err.message}`),
+        );
     } catch (creditErr) {
       this.logger.error(
         `Wallet credit failed for payment ${payment.id} after CliQ success: ${creditErr instanceof Error ? creditErr.message : String(creditErr)}`,

@@ -364,15 +364,17 @@ export class TripsService {
       });
     }
 
-    // Local form validation runs before any network call: departure time,
+    // Local form validation runs before any network call: a readable departure,
     // then the seat-count range, then (below) the geocode behind
     // resolveTripCurrency and the fee guard. That way an obviously invalid
     // request never pays for a geocode round-trip, and the fee guard — the
     // most expensive check, and the least likely to be the driver's actual
     // mistake — runs last.
+    // Any departure time is accepted (the owner's call): the trip is listed
+    // until that time and drops out of search the moment it arrives.
     const departureTime = new Date(createTripDto.departureTime);
-    if (departureTime <= new Date()) {
-      throw new BadRequestException('Departure time must be in the future');
+    if (Number.isNaN(departureTime.getTime())) {
+      throw new BadRequestException('Departure time is not a valid date');
     }
 
     // The trip carries its own copy of the layout so a per-trip

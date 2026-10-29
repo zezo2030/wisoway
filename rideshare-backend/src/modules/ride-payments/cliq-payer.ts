@@ -13,7 +13,9 @@ export type CliqPayer = { type: 'ALIAS' | 'MOBL'; value: string };
 
 const ALIAS_PATTERN = /^[A-Za-z0-9._@-]{3,100}$/;
 
-export function parseCliqPayer(raw: string | null | undefined): CliqPayer | null {
+export function parseCliqPayer(
+  raw: string | null | undefined,
+): CliqPayer | null {
   const text = raw?.trim().replace(/[\s-]/g, '') ?? '';
   if (!text) return null;
 
@@ -39,7 +41,8 @@ export function resolvePaymentChoice(
   method: string | undefined,
   currency: string,
   payerAlias: string | null | undefined,
-): { method: 'cash' | 'cliq'; payerCliqAlias: string | null } {
+): { method: 'cash' | 'cliq' | 'wallet'; payerCliqAlias: string | null } {
+  if (method === 'wallet') return { method: 'wallet', payerCliqAlias: null };
   if (!method || method === 'cash') {
     return { method: 'cash', payerCliqAlias: null };
   }

@@ -35,6 +35,10 @@ export class InstantPointDto {
 }
 
 export class CreateInstantRequestDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  promoCode?: string;
   @ValidateNested()
   @Type(() => InstantPointDto)
   from: InstantPointDto;
@@ -65,8 +69,8 @@ export class CreateInstantRequestDto {
    * the ride ends. CliQ is refused for rides starting outside Jordan.
    */
   @IsOptional()
-  @IsIn(['cash', 'cliq'])
-  paymentMethod?: 'cash' | 'cliq';
+  @IsIn(['cash', 'cliq', 'wallet'])
+  paymentMethod?: 'cash' | 'cliq' | 'wallet';
 
   /** CliQ: the passenger's alias or mobile; defaults to the one on file. */
   @IsOptional()

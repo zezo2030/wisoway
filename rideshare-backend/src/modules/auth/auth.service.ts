@@ -10,7 +10,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
 import * as bcrypt from 'bcrypt';
-import { randomUUID } from 'crypto';
+import { randomInt, randomUUID } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, MoreThan, Repository } from 'typeorm';
 import { UsersService } from '../users/users.service';
@@ -47,6 +47,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { Twilio } from 'twilio';
+import { AmsSmsClient } from './ams-sms.client';
 import { DeviceFingerprintService } from './device-fingerprint.service';
 import { AccountRiskService } from './account-risk.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -89,6 +90,9 @@ export class AuthService {
   private twilioClient: Twilio;
   private twilioVerifyServiceSid: string | undefined;
   private otpProvider: OtpProvider;
+  /** Cheaper local SMSC for the countries in `amsCountryCodes`; Twilio for the rest. */
+  private amsSmsClient: AmsSmsClient | undefined;
+  private amsCountryCodes: string[] = [];
 
   private readonly logger = new Logger(AuthService.name);
 
@@ -115,6 +119,7 @@ export class AuthService {
       );
     } else {
       this.initTwilioClient();
+      this.initAmsSmsClient();
     }
   }
 
@@ -123,10 +128,24 @@ export class AuthService {
   ): Promise<{ message: string; expiresIn: number }> {
     const { phoneNumber } = sendOtpDto;
 
-    if (this.otpProvider === 'local') {
-      const code = String(Math.floor(100000 + Math.random() * 900000));
+    if (this.otpProvider === 'local' || this.usesAmsSms(phoneNumber)) {
+      const code = String(randomInt(100000, 1000000));
       await this.usersService.createOtpCode(phoneNumber, code);
-      this.logger.warn(`OTP for ${phoneNumber}: ${code} (SMS disabled)`);
+      if (this.otpProvider === 'local') {
+        this.logger.warn(`OTP for ${phoneNumber}: ${code} (SMS disabled)`);
+      } else {
+        try {
+          await this.amsSmsClient!.sendArabic(
+            phoneNumber,
+            `رمز التحقق الخاص بك: ${code} - لا تشاركه مع أحد`,
+          );
+        } catch (error) {
+          this.logger.error(
+            `Failed to send OTP via AMS SMS: ${(error as Error).message}`,
+          );
+          throw new BadRequestException('Failed to send OTP');
+        }
+      }
       return {
         message: 'OTP sent successfully',
         expiresIn: 300,
@@ -517,7 +536,7 @@ export class AuthService {
       throw new BadRequestException('At least one field is required');
     }
 
-    return this.userRepo.manager.transaction(async (em) => {
+    const result = await this.userRepo.manager.transaction(async (em) => {
       const userRepo = em.getRepository(UserEntity);
       const vehicleRepo = em.getRepository(VehicleEntity);
 
@@ -564,6 +583,14 @@ export class AuthService {
 
       return { user: this.sanitizeUser(user), vehicle };
     });
+
+    // The driver fixed their documents: the review is waiting again.
+    this.adminAlertsService.notifyDriverRegistration(user).catch((err) => {
+      this.logger.error(
+        `Failed to dispatch driver-registration alert ${user.id}: ${(err as Error).message}`,
+      );
+    });
+    return result;
   }
 
   async login(signInDto: SignInDto): Promise<AuthResponse> {
@@ -1084,16 +1111,39 @@ export class AuthService {
     }
   }
 
+  private initAmsSmsClient(): void {
+    const accessKey = this.configService.get<string>('AMS_SMS_ACCESS_KEY');
+    if (!accessKey) return;
+    this.amsSmsClient = new AmsSmsClient(
+      this.configService.get<string>('AMS_SMS_BASE_URL') ??
+        'http://82.212.81.40:8080/websmpp',
+      accessKey,
+      this.configService.get<string>('AMS_SMS_SENDER_ID') ?? 'VisionWay',
+    );
+    this.amsCountryCodes = (
+      this.configService.get<string>('AMS_SMS_COUNTRY_CODES') ?? '962'
+    )
+      .split(',')
+      .map((c) => c.trim().replace(/^\+/, ''))
+      .filter(Boolean);
+  }
+
+  /** Numbers in the AMS countries get a code we issue and check ourselves. */
+  private usesAmsSms(phoneNumber: string): boolean {
+    return (
+      !!this.amsSmsClient &&
+      this.amsCountryCodes.some((c) => phoneNumber.startsWith(`+${c}`))
+    );
+  }
+
   private async verifyPhoneOtp(
     phoneNumber: string,
     code: string,
   ): Promise<void> {
-    if (this.otpProvider === 'local') {
-      const otp = await this.usersService.findOtpCode(phoneNumber, code);
-      if (!otp) {
+    if (this.otpProvider === 'local' || this.usesAmsSms(phoneNumber)) {
+      if (!(await this.usersService.consumeOtpCode(phoneNumber, code))) {
         throw new UnauthorizedException('Invalid or expired OTP code');
       }
-      await this.usersService.markOtpCodeAsUsed(otp.id);
       return;
     }
 

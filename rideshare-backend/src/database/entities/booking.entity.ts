@@ -36,6 +36,12 @@ export type BookingStatus = (typeof BookingStatus)[keyof typeof BookingStatus];
 @Index('idx_bookings_trip', ['tripId'])
 @Index('idx_bookings_user', ['userId'])
 export class BookingEntity {
+  @Column({ type: 'varchar', length: 32, nullable: true })
+  promoCode: string | null;
+  @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true })
+  originalAmount: string | null;
+  @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 })
+  discountAmount: string;
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

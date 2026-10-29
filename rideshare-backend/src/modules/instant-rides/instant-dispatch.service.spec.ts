@@ -250,19 +250,19 @@ describe('InstantDispatchService.dispatchNext radius growth', () => {
 });
 
 describe('instant search length', () => {
-  it('caps the whole search at 30 seconds by default', () => {
-    expect(REQUEST_TTL_SECONDS).toBe(30);
+  it('caps the whole search at 60 seconds by default', () => {
+    expect(REQUEST_TTL_SECONDS).toBe(60);
     expect(NO_DRIVER_SEARCH_SECONDS).toBeLessThanOrEqual(REQUEST_TTL_SECONDS);
   });
 
   it('never lets an offer outlive the request', () => {
     expect(offerTtlSeconds(120_000)).toBe(OFFER_TTL_SECONDS);
     expect(offerTtlSeconds(30_000)).toBe(30);
-    expect(offerTtlSeconds(12_400)).toBe(12);
+    expect(offerTtlSeconds(24_400)).toBe(24);
   });
 
   it('sends no offer a driver could not answer in time', () => {
-    expect(offerTtlSeconds(7_900)).toBe(0);
+    expect(offerTtlSeconds(19_900)).toBe(0);
     expect(offerTtlSeconds(-1_000)).toBe(0);
   });
 

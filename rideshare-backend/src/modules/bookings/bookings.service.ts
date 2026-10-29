@@ -1,3 +1,4 @@
+import { pricePromotion } from '../promotions/promotions.module';
 import {
   Injectable,
   NotFoundException,
@@ -787,7 +788,12 @@ export class BookingsService {
         sharePhoneWithDriver,
         isFamilyBooking,
         seatCount,
-        totalAmount,
+        ...(await pricePromotion(
+          qr.manager,
+          dto.promoCode,
+          Number(totalAmount),
+          'shared',
+        )),
         seatPriceAtBooking: String(seatPricing.seatPrice),
         platformAmount: String(seatPricing.platformAmount),
         driverAmount: String(seatPricing.driverAmount),
@@ -921,6 +927,7 @@ export class BookingsService {
         isFamilyBooking,
         paymentMethod: dto.paymentMethod,
         payerCliqAlias: dto.payerCliqAlias,
+        promoCode: dto.promoCode,
       },
       userId,
     );
@@ -968,8 +975,7 @@ export class BookingsService {
 
   /**
    * Driver accepts (confirms) a pending booking.
-   * Charges the driver's wallet for the contact fee, marks the booking
-   * confirmed, and cancels the pending timeout job.
+   * Marks the booking confirmed without an access fee and cancels its timeout.
    */
   /**
    * Booking requests still waiting on this driver, oldest first. The app shows

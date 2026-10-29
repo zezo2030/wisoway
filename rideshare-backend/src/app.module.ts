@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { PromotionsModule } from './modules/promotions/promotions.module';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -57,6 +58,7 @@ import { PlatformSettingsModule } from './modules/platform-settings/platform-set
 
 @Module({
   imports: [
+    PromotionsModule,
     ConfigModule.forRoot({
       isGlobal: true,
       load: [

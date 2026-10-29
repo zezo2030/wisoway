@@ -96,6 +96,9 @@ describe('InstantRidesService', () => {
       settings,
       offerQueue,
       requestQueue,
+      {
+        assertNonNegativeDriverBalance: jest.fn().mockResolvedValue(undefined),
+      } as any,
     );
   });
 
@@ -156,10 +159,10 @@ describe('InstantRidesService', () => {
 
       expect(view.status).toBe('searching');
       expect(view.currency).toBe('JOD');
-      // JOD: 0.5 + 5*0.28 + 10*0.04 = 2.30, rounded up to the 0.25 step.
-      expect(view.fareEstimate).toBe('2.50');
-      expect(view.passengerFare).toBe('2.50');
-      expect(view.maxFare).toBe('2.50');
+      // JOD: 0.45 + 5*0.316 = 2.03, rounded up to the 0.05 step.
+      expect(view.fareEstimate).toBe('2.05');
+      expect(view.passengerFare).toBe('2.05');
+      expect(view.maxFare).toBe('2.05');
       expect(dispatch.dispatchNext).toHaveBeenCalledWith('r1');
     });
 
@@ -191,7 +194,7 @@ describe('InstantRidesService', () => {
         passengerFare: 1.75,
       });
 
-      expect(view.passengerFare).toBe('2.50');
+      expect(view.passengerFare).toBe('2.05');
     });
 
     it('uses the routed road distance when Google distance is unavailable', async () => {
@@ -445,7 +448,7 @@ describe('InstantRidesService', () => {
         expect(view.retryOfRequestId).toBe('r0');
         expect(view.seatCount).toBe(2);
         // Priced at the route's current fare (JOD 5 km / 10 min).
-        expect(view.passengerFare).toBe('2.50');
+        expect(view.passengerFare).toBe('2.05');
         expect(dispatch.dispatchNext).toHaveBeenCalledWith('r2');
         expect(requestQueue.add).toHaveBeenCalled();
       },
@@ -517,7 +520,7 @@ describe('InstantRidesService', () => {
 
       const view = await service.retryRequest('r0', 'p1');
 
-      expect(view.passengerFare).toBe('2.50');
+      expect(view.passengerFare).toBe('2.05');
       expect(dispatch.dispatchNext).toHaveBeenCalledWith('r2');
     });
   });
@@ -666,6 +669,21 @@ describe('InstantRidesService', () => {
       await expect(
         service.startRide('t1', 'd1', { latitude: 26.62, longitude: 37.9 }),
       ).rejects.toThrow(ConflictException);
+    });
+
+    it('starts away from the pickup when the driver was there earlier', async () => {
+      tripRepo.findOne.mockResolvedValue(liveTrip());
+      // The tracked path passed the pickup, then the driver drove off.
+      (tripRepo as any).query = jest
+        .fn()
+        .mockResolvedValue([{ '?column?': 1 }]);
+
+      const trip = await service.startRide('t1', 'd1', {
+        latitude: 26.62,
+        longitude: 37.9,
+      });
+
+      expect(trip.tripStartedAt).toBeInstanceOf(Date);
     });
 
     it('records arrival once and tells the passenger', async () => {

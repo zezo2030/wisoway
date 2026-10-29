@@ -124,7 +124,7 @@ export class InstantDispatchService {
         fromLat,
         fromLng,
         radiusKm * 1000,
-        { excludeDriverIds },
+        { excludeDriverIds, currency: request.currency },
       );
 
     for (const candidate of candidates) {

@@ -96,7 +96,13 @@ describe('RidePaymentsService', () => {
       purchase: jest.fn().mockResolvedValue({ errorCode: '0', MSGID: 'm1' }),
       paymentInquiry: jest.fn(),
     };
-    wallet = { creditPostedTopup: jest.fn().mockResolvedValue({}) };
+    wallet = {
+      creditPostedTopup: jest.fn().mockResolvedValue({}),
+      chargeCompletedTripCommission: jest
+        .fn()
+        .mockResolvedValue({ charged: 0.25 }),
+      settleCollectedFare: jest.fn().mockResolvedValue({}),
+    };
     notifications = { sendPush: jest.fn().mockResolvedValue(undefined) };
     complaints = { create: jest.fn().mockResolvedValue({ id: 'c1' }) };
     pollQueue = { add: jest.fn().mockResolvedValue(undefined) };
@@ -113,6 +119,43 @@ describe('RidePaymentsService', () => {
   });
 
   describe('openForTrip', () => {
+    it('settles a 100% promotion without sending a zero-value CliQ purchase', async () => {
+      bookingRepo.find.mockResolvedValue([
+        booking({
+          paymentMethod: 'cliq',
+          totalAmount: '0.00',
+          originalAmount: '10.00',
+          discountAmount: '10.00',
+        }),
+      ]);
+      await service.openForTrip('t1');
+      expect(wallet.settleCollectedFare).toHaveBeenCalledWith(
+        'b1',
+        'cliq',
+        'p1',
+      );
+      expect(cliq.purchase).not.toHaveBeenCalled();
+    });
+    it('asks CliQ for only the discounted fare', async () => {
+      bookingRepo.find.mockResolvedValue([
+        booking({
+          paymentMethod: 'cliq',
+          payerCliqAlias: 'ahmad@cliq',
+          totalAmount: '8.00',
+          originalAmount: '10.00',
+          discountAmount: '2.00',
+        }),
+      ]);
+      await service.openForTrip('t1');
+      expect(cliq.purchase).toHaveBeenCalledWith(
+        expect.objectContaining({ amount: 8 }),
+      );
+    });
+    it('deducts commission when a completed ride opens its payment flow', async () => {
+      bookingRepo.find.mockResolvedValue([booking()]);
+      await service.openForTrip('t1');
+      expect(wallet.chargeCompletedTripCommission).toHaveBeenCalledWith('t1');
+    });
     it('asks cash passengers to pay the driver', async () => {
       bookingRepo.find.mockResolvedValue([booking()]);
 
@@ -177,14 +220,7 @@ describe('RidePaymentsService', () => {
 
       await service.pollCliq({ paymentId: 'pay1', attempt: 3 });
 
-      expect(wallet.creditPostedTopup).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: 'd1',
-          amount: 2.5,
-          idempotencyKey: 'ride-fare:b1',
-          type: 'trip_payment',
-        }),
-      );
+      expect(wallet.settleCollectedFare).toHaveBeenCalledWith('b1', 'cliq');
       expect(b.paymentStatus).toBe('paid');
       expect(b.settledAt).toBeInstanceOf(Date);
     });

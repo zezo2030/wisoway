@@ -32,21 +32,23 @@ export const MAX_RADIUS_KM = envKm('INSTANT_MAX_RADIUS_KM', 20);
 
 /**
  * The longest a passenger waits on «جاري البحث عن سائق»: the request's hard
- * cap, offers in flight included. The owner asked for 30 s — a longer search
- * just keeps the passenger watching a spinner.
+ * cap, offers in flight included. Room for two drivers at a full
+ * [OFFER_TTL_SECONDS] each. With nobody around the search still ends after
+ * [NO_DRIVER_SEARCH_SECONDS] — the owner's «don't search for nothing».
  */
-export const REQUEST_TTL_SECONDS = envKm('INSTANT_SEARCH_SECONDS', 30);
+export const REQUEST_TTL_SECONDS = envKm('INSTANT_SEARCH_SECONDS', 60);
 /**
- * How long a single driver has to respond to an offer. 25 s proved too short
- * once delivery and reading the card ate into it. Never runs past the
- * request's own end (see {@link offerTtlSeconds}).
+ * How long a single driver has to respond to an offer: 30 seconds — the
+ * owner asked for 25 or more; the push and reading the card eat into it.
+ * Never runs past the request's own end (see {@link offerTtlSeconds}).
  */
-export const OFFER_TTL_SECONDS = 40;
+export const OFFER_TTL_SECONDS = 30;
 /**
  * An offer with less time than this left on the request isn't worth sending:
- * the driver couldn't get the card and answer before the search ends.
+ * the driver couldn't get the card and answer before the search ends. An
+ * offer the driver sees with 8 s left reads as a missed one.
  */
-export const MIN_OFFER_SECONDS = 8;
+export const MIN_OFFER_SECONDS = 20;
 /**
  * How long the offer to one driver runs, given the time left on the request
  * ([remainingMs]). Returns 0 when too little is left to make an offer.
@@ -120,10 +122,15 @@ export function pickupLateDelayMs(
  * offer push still reaches the closed app. A 60 s cut-off made those drivers
  * invisible, so most requests found nobody. Fresh drivers are still asked
  * first (see DriverAvailabilityService.findNearbyAvailableDrivers).
+ *
+ * 30 minutes was still too short: a driver who left the phone in a pocket
+ * for half an hour vanished from dispatch while the app still said
+ * «متاح», and only reappeared once they opened it. A shift's length keeps
+ * them reachable; a gone device only costs one unanswered offer.
  */
 export const DISPATCH_STALE_MINUTES = envKm(
   'INSTANT_DISPATCH_STALE_MINUTES',
-  30,
+  8 * 60,
 );
 
 /**
@@ -154,29 +161,81 @@ export function lockIsFreeSql(col: string): string {
  * Instant fares are fixed by the platform: base + per km + per minute of the
  * driving route, never below the minimum, rounded up to `step`. There is no
  * passenger pricing and no driver counter-offer — the passenger sees the
- * price before ordering and the driver accepts or declines it as-is.
+ * price before ordering and the driver accepts or declines it as-is. Waiting
+ * at the pickup past `freeWaitMin` is added when the ride starts.
  *
  * Amounts are in the currency of the pickup country, so each market needs its
- * own row; a currency without one uses {@link DEFAULT_FARE_TARIFF}.
+ * own row; a currency without one uses {@link DEFAULT_FARE_TARIFF}. These are
+ * the defaults: admins override them per currency from the dashboard
+ * (InstantFareTariffService).
  */
 export interface FareTariff {
+  /** Flag fall (فتحة العداد). */
   base: number;
   perKm: number;
+  /** Per minute of the driving route; 0 where only distance is charged. */
   perMin: number;
+  /** Per minute the driver waits at the pickup past `freeWaitMin`. */
+  waitPerMin: number;
+  freeWaitMin: number;
   minimum: number;
   /** The fare is rounded up to a multiple of this (no 17.43 SAR fares). */
   step: number;
 }
 
+const GULF = { perMin: 0.3, waitPerMin: 0.3, freeWaitMin: 3 };
+
 export const FARE_TARIFFS: Readonly<Record<string, FareTariff>> = {
-  SAR: { base: 6, perKm: 1.4, perMin: 0.3, minimum: 12, step: 1 },
-  JOD: { base: 0.5, perKm: 0.28, perMin: 0.04, minimum: 1.25, step: 0.25 },
-  AED: { base: 6, perKm: 1.4, perMin: 0.3, minimum: 12, step: 1 },
-  QAR: { base: 6, perKm: 1.4, perMin: 0.3, minimum: 12, step: 1 },
-  KWD: { base: 0.4, perKm: 0.12, perMin: 0.03, minimum: 1, step: 0.25 },
-  BHD: { base: 0.5, perKm: 0.15, perMin: 0.03, minimum: 1, step: 0.25 },
-  OMR: { base: 0.5, perKm: 0.15, perMin: 0.03, minimum: 1, step: 0.25 },
-  EGP: { base: 15, perKm: 7, perMin: 1.5, minimum: 35, step: 5 },
+  SAR: { base: 6, perKm: 1.4, ...GULF, minimum: 12, step: 1 },
+  // Jordan's ride-hailing meter: 45 qirsh flag fall, 31.6 qirsh per km,
+  // ~6.5 qirsh per minute of waiting, nothing for driving time.
+  JOD: {
+    base: 0.45,
+    perKm: 0.316,
+    perMin: 0,
+    waitPerMin: 0.065,
+    freeWaitMin: 3,
+    minimum: 1.25,
+    step: 0.05,
+  },
+  AED: { base: 6, perKm: 1.4, ...GULF, minimum: 12, step: 1 },
+  QAR: { base: 6, perKm: 1.4, ...GULF, minimum: 12, step: 1 },
+  KWD: {
+    base: 0.4,
+    perKm: 0.12,
+    perMin: 0.03,
+    waitPerMin: 0.03,
+    freeWaitMin: 3,
+    minimum: 1,
+    step: 0.25,
+  },
+  BHD: {
+    base: 0.5,
+    perKm: 0.15,
+    perMin: 0.03,
+    waitPerMin: 0.03,
+    freeWaitMin: 3,
+    minimum: 1,
+    step: 0.25,
+  },
+  OMR: {
+    base: 0.5,
+    perKm: 0.15,
+    perMin: 0.03,
+    waitPerMin: 0.03,
+    freeWaitMin: 3,
+    minimum: 1,
+    step: 0.25,
+  },
+  EGP: {
+    base: 15,
+    perKm: 7,
+    perMin: 1.5,
+    waitPerMin: 1.5,
+    freeWaitMin: 3,
+    minimum: 35,
+    step: 5,
+  },
 };
 
 /** Fallback for currencies without their own row (the original defaults). */
@@ -184,6 +243,8 @@ export const DEFAULT_FARE_TARIFF: FareTariff = {
   base: 1,
   perKm: 0.5,
   perMin: 0.1,
+  waitPerMin: 0.1,
+  freeWaitMin: 3,
   minimum: 1.5,
   step: 0.25,
 };
@@ -192,13 +253,23 @@ export function fareTariffFor(currency: string): FareTariff {
   return FARE_TARIFFS[currency?.toUpperCase()] ?? DEFAULT_FARE_TARIFF;
 }
 
+/**
+ * What waiting at the pickup adds: every started minute past the free ones,
+ * between «وصلت إلى الراكب» and «بدء الرحلة».
+ */
+export function waitingCharge(t: FareTariff, waitedMs: number): number {
+  const minutes = Math.ceil(Math.max(0, waitedMs) / 60_000 - 1e-9);
+  const charged = Math.max(0, minutes - t.freeWaitMin);
+  return Math.round(charged * t.waitPerMin * 100) / 100;
+}
+
 /** The fixed fare for a route of this length and driving time. */
 export function computeFare(
   distanceKm: number,
   durationMin: number,
   currency: string,
+  t: FareTariff = fareTariffFor(currency),
 ): number {
-  const t = fareTariffFor(currency);
   const raw = Math.max(
     t.minimum,
     t.base + distanceKm * t.perKm + durationMin * t.perMin,
@@ -243,10 +314,12 @@ export function straightLineRoute(straightKm: number): {
 
 // ── Payment ───────────────────────────────────────────────────────────────────
 /** CliQ (Jordan only) is offered where the fare is in JOD; elsewhere cash. */
-export function paymentMethodsFor(currency: string): Array<'cash' | 'cliq'> {
+export function paymentMethodsFor(
+  currency: string,
+): Array<'cash' | 'cliq' | 'wallet'> {
   return CLIQ_CURRENCIES.includes(currency?.toUpperCase())
-    ? ['cash', 'cliq']
-    : ['cash'];
+    ? ['cash', 'cliq', 'wallet']
+    : ['cash', 'wallet'];
 }
 
 // ── Queue names ─────────────────────────────────────────────────────────────

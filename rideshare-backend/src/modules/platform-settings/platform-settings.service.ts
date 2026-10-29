@@ -8,6 +8,18 @@ import { PlatformSettingEntity } from '../../database/entities';
  * with no row reads as its default, so a fresh database behaves sensibly.
  */
 export const PLATFORM_SETTINGS = {
+  instantCommissionPercent: {
+    key: 'commission.instantPercent',
+    default: 10,
+    min: 0,
+    max: 100,
+  },
+  sharedCommissionPercent: {
+    key: 'commission.sharedPercent',
+    default: 10,
+    min: 0,
+    max: 100,
+  },
   /**
    * How much (%) a driver's rating drops for each instant ride they reach the
    * passenger late. 0 turns the cut off; drivers are still warned to hurry.

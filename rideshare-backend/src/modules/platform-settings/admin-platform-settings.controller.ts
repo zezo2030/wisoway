@@ -14,6 +14,20 @@ import {
 } from './platform-settings.service';
 
 export class AdminPatchPlatformSettingsDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  instantCommissionPercent?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  sharedCommissionPercent?: number;
+
   @ApiPropertyOptional({
     description:
       'Rating cut (%) for each instant ride the driver reaches the passenger late; 0 = warn only',

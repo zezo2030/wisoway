@@ -1,4 +1,24 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { PayoutStatus } from '../../database/entities';
+
+class ProcessPayoutDto {
+  @IsEnum(PayoutStatus)
+  status: PayoutStatus;
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  note?: string;
+}
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -18,6 +38,46 @@ import { CreatePayoutRequestDto } from './dto/create-payout-request.dto';
 @Controller('wallet')
 export class WalletController {
   constructor(private readonly walletService: WalletService) {}
+
+  @Get('driver/trip-eligibility')
+  @Roles('driver')
+  @ApiOperation({ summary: 'Check wallet eligibility before opening shared-trip creation' })
+  async tripEligibility(
+    @CurrentUser('id') id: string,
+    @Query('country') country?: string,
+  ) {
+    const currency = (await this.walletService.resolveLocalCurrency(id, country)) || 'JOD';
+    await this.walletService.assertNonNegativeDriverBalance(id, currency);
+    return { eligible: true, currency };
+  }
+
+  @Get('driver/payout-requests')
+  @Roles('driver')
+  listMine(@CurrentUser('id') id: string) {
+    return this.walletService.listPayouts(id);
+  }
+
+  @Get('admin/payout-requests')
+  @Roles('admin')
+  listPayouts() {
+    return this.walletService.listPayouts();
+  }
+
+  @Patch('admin/payout-requests/:id')
+  @Roles('admin')
+  processPayout(
+    @Param('id') id: string,
+    @CurrentUser('id') adminId: string,
+    @Body() dto: ProcessPayoutDto,
+  ) {
+    return this.walletService.processPayout(id, adminId, dto.status, dto.note);
+  }
+
+  @Get('admin/platform-balances')
+  @Roles('admin')
+  platformBalances() {
+    return this.walletService.platformBalances();
+  }
 
   @Get('me')
   @ApiOperation({

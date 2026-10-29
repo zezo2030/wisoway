@@ -2,7 +2,7 @@
  * BookingViewerSerializer
  *
  * Contact details are no longer gated behind a driver payment — the platform
- * fee is charged at trip start and unlocks nothing. This serializer is kept as
+ * commission is charged at trip completion and unlocks nothing. This serializer is kept as
  * the single seam where a future access rule would live; today it only asserts
  * that chat and call are enabled for every viewer.
  */

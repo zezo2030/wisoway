@@ -23,8 +23,11 @@ import {
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 import { A2aCliqService } from './a2a-cliq.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import type { CreateNotificationDto } from '../notifications/dto/create-notification.dto';
 import { PlatformPricingService } from './platform-pricing.service';
 import { WalletService } from '../wallet/wallet.service';
+import { AdminAlertsService } from '../admin/admin-alerts.service';
+import { topupCreditedNotice, topupRejectedNotice } from './topup-notices';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 import {
@@ -63,6 +66,7 @@ export class PaymentsService {
     private a2aCliqService: A2aCliqService,
     private platformPricing: PlatformPricingService,
     private walletService: WalletService,
+    private adminAlerts: AdminAlertsService,
     @InjectQueue(CLIQ_POLL_QUEUE)
     private cliqPollQueue: Queue<CliqPollJobData>,
   ) {}
@@ -151,6 +155,8 @@ export class PaymentsService {
       });
       payment.status = 'approved';
       await this.paymentRepo.save(payment);
+      this.tellUser(topupCreditedNotice(payment));
+      this.alertAdmins(payment);
     } else {
       // StatusCode "310" = Rejected, "306" = error; "300" = processing — keep pending
       const failureCodes = ['310', '306', 'FAILED', 'REJECTED'];
@@ -208,6 +214,7 @@ export class PaymentsService {
       payment.status = 'approved';
       payment.adminNote = approveDto.adminNote ?? null;
       await this.paymentRepo.save(payment);
+      this.tellUser(topupCreditedNotice(payment));
       return payment;
     }
 
@@ -232,7 +239,11 @@ export class PaymentsService {
     }
     payment.status = 'rejected';
     payment.adminNote = rejectDto.adminNote ?? null;
-    return this.paymentRepo.save(payment);
+    const rejected = await this.paymentRepo.save(payment);
+    if (rejected.paymentType === 'wallet_topup') {
+      this.tellUser(topupRejectedNotice(rejected, rejected.adminNote));
+    }
+    return rejected;
   }
 
   /**
@@ -438,6 +449,11 @@ export class PaymentsService {
     userId: string,
     dto: CreateWalletTopupDto,
   ): Promise<PaymentEntity> {
+    await this.walletService.assertDriverTopup(
+      userId,
+      dto.amount,
+      dto.currency || 'JOD',
+    );
     if (dto.method === 'manual' && !dto.proofImageUrl?.trim()) {
       throw new BadRequestException(
         'Proof image URL is required for manual top-up',
@@ -512,6 +528,8 @@ export class PaymentsService {
               });
               saved.status = 'approved';
               await this.paymentRepo.save(saved);
+              this.tellUser(topupCreditedNotice(saved));
+              this.alertAdmins(saved);
               this.logger.log(
                 `CliQ payment ${saved.id} succeeded immediately (StatusCode=0)`,
               );
@@ -603,7 +621,33 @@ export class PaymentsService {
       proofImageUrl: dto.proofImageUrl ?? null,
       walletNumber: dto.walletNumber ?? null,
     });
-    return this.paymentRepo.save(p);
+    const pending = await this.paymentRepo.save(p);
+    this.alertAdmins(pending);
+    return pending;
+  }
+
+  /** Tell the user how their payment went; never fails the payment. */
+  private tellUser(notice: CreateNotificationDto): void {
+    this.notificationsService
+      .create(notice)
+      .catch((err: Error) =>
+        this.logger.warn(
+          `Payment notice to ${notice.userId} failed: ${err.message}`,
+        ),
+      );
+  }
+
+  /** Alert admins to a top-up waiting on them (or one CliQ settled). */
+  private alertAdmins(payment: PaymentEntity): void {
+    void this.userRepo
+      .findOne({
+        where: { id: payment.userId },
+        select: ['id', 'name', 'phoneNumber'],
+      })
+      .then((user) => this.adminAlerts.notifyWalletTopup(payment, user))
+      .catch((err: Error) =>
+        this.logger.warn(`Admin top-up alert failed: ${err.message}`),
+      );
   }
 
   async getPendingPaymentsCount(): Promise<number> {
