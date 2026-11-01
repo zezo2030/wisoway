@@ -105,6 +105,14 @@ services:
         # avoid hard-coding a hostname into the bundle.
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
         VITE_WS_URL: ${VITE_WS_URL:-/}
+        # The Firebase web app (public client config, as in the mobile app's
+        # firebase_options.dart). The VAPID key comes from the Firebase console:
+        # Project settings → Cloud Messaging → Web Push certificates.
+        VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY:-AIzaSyD1KS8J4CKop_tqTGdM-gk1e7GsxCS-sJ4}
+        VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID:-rideshare-5f785}
+        VITE_FIREBASE_MESSAGING_SENDER_ID: ${VITE_FIREBASE_MESSAGING_SENDER_ID:-907014658060}
+        VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID:-1:907014658060:web:1ffb633f83fa23e31f7629}
+        VITE_FIREBASE_VAPID_KEY: ${VITE_FIREBASE_VAPID_KEY:-BObB-MOedXTxzXa0rTfFA2gR_DK2FIfMLcbUjERcE5phaX91Qy5bJHIfEFoRvZ5T8LarJ6wCHeErrUF9N6wy6JY}
     image: rideshare-dashboard:latest
     container_name: rideshare-dashboard
     restart: unless-stopped
