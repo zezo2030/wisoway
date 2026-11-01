@@ -14,7 +14,8 @@ import '../../core/ui/error_surface.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/ride_payment.dart';
 import '../../models/trip_model.dart';
-import '../../providers/trip_provider.dart';
+import '../../providers/trip_provider.dart';
+import '../../widgets/trip/metered_fare_card.dart';
 
 /// The passenger's end of a ride — instant or shared: the fare and how it is
 /// being paid.
@@ -182,6 +183,12 @@ class _RidePaymentDueScreenState extends State<RidePaymentDueScreen> {
                       _buildAmountCard(context, payment),
                       const SizedBox(height: 16),
                       ..._buildState(context, payment),
+                      // How the metered fare was reached, so the amount
+                      // explains itself.
+                      if (_trip?.fareBreakdown != null) ...[
+                        const SizedBox(height: 16),
+                        MeteredFareCard(breakdown: _trip!.fareBreakdown!),
+                      ],
                     ],
                   ),
                 ),

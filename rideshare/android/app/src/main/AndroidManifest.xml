@@ -8,6 +8,9 @@
     <!-- Ride offers: wake the screen and open over the lock screen. -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <!-- Ride offers: bring the app forward with the full offer card while the
+         driver is in another app (InstantOfferNotificationHelper). -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
     <!-- Drivers: ride requests must reach a closed app (driver_availability_card). -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
     <!-- While online, keep reporting the driver's location from a foreground
@@ -74,10 +77,6 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
-
-        <receiver
-            android:name=".InstantOfferActionReceiver"
-            android:exported="false" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

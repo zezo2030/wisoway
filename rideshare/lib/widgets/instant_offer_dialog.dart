@@ -37,6 +37,16 @@ class InstantOfferDialog extends StatefulWidget {
 
   static _InstantOfferDialogState? _visible;
 
+  /// Reserves the card slot for [offerId] right before `showDialog`.
+  /// [visibleOfferId] is only set in initState, a frame later, so the push
+  /// tap and the home poll could both open a card for the same offer — and
+  /// the second card's start silenced the first card's ring.
+  static bool claim(String offerId) {
+    if (visibleOfferId != null) return false;
+    visibleOfferId = offerId;
+    return true;
+  }
+
   /// Closes the card for [offerId] if it is up — the offer died elsewhere
   /// (the passenger cancelled, another driver took it).
   static void dismissOffer(String offerId) {
@@ -72,8 +82,10 @@ class _InstantOfferDialogState extends State<InstantOfferDialog> {
     InstantOfferDialog._visible = this;
     PushNotificationService.cancelAndroidInstantOfferNotification(
       widget.offer.id,
+      keepRing: true,
     );
-    // Ring until the driver decides or the window closes.
+    // Ring until the driver decides or the window closes; carries on the
+    // music if the notification already started it.
     PushNotificationService.startInstantOfferRing(
       widget.offer.id,
       widget.offer.deadline ??
@@ -111,7 +123,17 @@ class _InstantOfferDialogState extends State<InstantOfferDialog> {
     try {
       final pending = await widget.service.getPendingOffer();
       if (!mounted || _busy || _closed) return;
-      if (pending == null || pending.id != widget.offer.id) _closeDead();
+      if (pending == null || pending.id != widget.offer.id) {
+        _closeDead();
+        return;
+      }
+      // Still waiting on us: make sure it is still ringing. A no-op while the
+      // ring plays; restarts it if a stray stop cut it off.
+      PushNotificationService.startInstantOfferRing(
+        widget.offer.id,
+        widget.offer.deadline ??
+            DateTime.now().add(Duration(seconds: _secondsLeft)),
+      );
     } catch (_) {
       // Offline for a moment — the countdown still bounds the card.
     }
@@ -135,7 +157,16 @@ class _InstantOfferDialogState extends State<InstantOfferDialog> {
     _closed = true;
     _ticker?.cancel();
     _liveness?.cancel();
-    Navigator.of(context).pop();
+    // Close this card only. Accepting from the details screen has already
+    // opened the trip screen (clearing the stack, this card included) by the
+    // time we get here; a plain pop would close the trip screen instead.
+    final route = ModalRoute.of(context);
+    final navigator = Navigator.of(context);
+    if (route == null || route.isCurrent) {
+      navigator.pop();
+    } else if (route.isActive) {
+      navigator.removeRoute(route);
+    }
   }
 
   /// Hands the decision to the details screen. The countdown keeps running

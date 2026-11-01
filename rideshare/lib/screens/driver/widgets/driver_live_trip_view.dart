@@ -43,6 +43,7 @@ class DriverLiveTripView extends StatefulWidget {
     required this.onChatPassenger,
     required this.phoneOf,
     required this.onCall,
+    this.onCallBooking,
     required this.onNavigate,
     this.onGroupChat,
     this.onBack,
@@ -80,6 +81,11 @@ class DriverLiveTripView extends StatefulWidget {
   /// The passenger's number, or null when they keep it private.
   final String? Function(BookingModel booking) phoneOf;
   final void Function(String phone) onCall;
+
+  /// Instant ride: calls go through the server (POST calls/initiate), which
+  /// knows whether the passenger's number may be dialled — there is no
+  /// "share my number" opt-in on an instant booking.
+  final void Function(BookingModel booking)? onCallBooking;
   final void Function(LatLng target) onNavigate;
 
   /// Shared trips only.
@@ -746,7 +752,13 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
           _CircleAction(
             icon: IconsaxPlusBold.call,
             tooltip: context.l10n.call,
-            onTap: phone == null ? null : () => widget.onCall(phone),
+            onTap: booking == null
+                ? null
+                : widget.onCallBooking != null
+                ? () => widget.onCallBooking!(booking)
+                : phone == null
+                ? null
+                : () => widget.onCall(phone),
           ),
         ],
       ),

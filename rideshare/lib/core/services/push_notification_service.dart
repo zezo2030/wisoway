@@ -16,6 +16,7 @@ import 'notification_navigation_service.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
 import '../constants/app_constants.dart';
+import '../storage/token_storage.dart';
 import 'active_ride_navigator.dart';
 import 'booking_request_actions.dart';
 import 'ride_sounds.dart';
@@ -112,6 +113,7 @@ class PushNotificationService {
     await RideSounds.createChannels();
 
     _isInitialized = true;
+    unawaited(TokenStorage().syncOfferOverlayAuth());
 
     // Cold-start Accept/Reject — delay until navigator exists.
     Future<void>.delayed(const Duration(milliseconds: 800), () {
@@ -472,15 +474,39 @@ class PushNotificationService {
     } catch (_) {}
   }
 
+  /// Android "Display over other apps": lets a ride offer bring the app
+  /// forward with its full card. True elsewhere.
+  static Future<bool> canShowOffersOverApps() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return true;
+    try {
+      return await _bookingNotificationChannel.invokeMethod<bool>(
+            'canDrawOverApps',
+          ) ??
+          true;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  static Future<void> openOverAppsSettings() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+    try {
+      await _bookingNotificationChannel.invokeMethod('openDrawOverAppsSettings');
+    } catch (_) {}
+  }
+
+  /// [keepRing]: the offer card is taking over, so the music the notification
+  /// started carries on rather than restarting.
   static Future<void> cancelAndroidInstantOfferNotification(
-    String offerId,
-  ) async {
+    String offerId, {
+    bool keepRing = false,
+  }) async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
     if (offerId.isEmpty) return;
     try {
       await _bookingNotificationChannel.invokeMethod(
         'cancelInstantOfferNotification',
-        {'offerId': offerId},
+        {'offerId': offerId, 'keepRing': keepRing},
       );
     } catch (e) {
       if (kDebugMode) {

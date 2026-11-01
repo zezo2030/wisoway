@@ -8348,6 +8348,60 @@ abstract class AppLocalizations {
   /// **'المسافة'**
   String get tripSummaryDistance;
 
+  /// No description provided for @fareBreakdownTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تفصيل الأجرة'**
+  String get fareBreakdownTitle;
+
+  /// No description provided for @fareBreakdownBase.
+  ///
+  /// In ar, this message translates to:
+  /// **'فتحة العداد'**
+  String get fareBreakdownBase;
+
+  /// No description provided for @fareBreakdownDistance.
+  ///
+  /// In ar, this message translates to:
+  /// **'المسافة المقطوعة ({km} كم)'**
+  String fareBreakdownDistance(String km);
+
+  /// No description provided for @fareBreakdownTime.
+  ///
+  /// In ar, this message translates to:
+  /// **'مدة الرحلة ({minutes} د)'**
+  String fareBreakdownTime(int minutes);
+
+  /// No description provided for @fareBreakdownMinimum.
+  ///
+  /// In ar, this message translates to:
+  /// **'الحد الأدنى للأجرة'**
+  String get fareBreakdownMinimum;
+
+  /// No description provided for @fareBreakdownMinimumNote.
+  ///
+  /// In ar, this message translates to:
+  /// **'مجموع البنود أقل من الحد الأدنى، فاحتُسب الحد الأدنى بدلاً منها.'**
+  String get fareBreakdownMinimumNote;
+
+  /// No description provided for @fareBreakdownWaiting.
+  ///
+  /// In ar, this message translates to:
+  /// **'الانتظار عند الراكب ({minutes} د، أول {free} د مجاناً)'**
+  String fareBreakdownWaiting(int minutes, int free);
+
+  /// No description provided for @fareBreakdownRounding.
+  ///
+  /// In ar, this message translates to:
+  /// **'تقريب'**
+  String get fareBreakdownRounding;
+
+  /// No description provided for @fareBreakdownTotal.
+  ///
+  /// In ar, this message translates to:
+  /// **'الإجمالي'**
+  String get fareBreakdownTotal;
+
   /// No description provided for @tripSummaryDuration.
   ///
   /// In ar, this message translates to:
@@ -8431,6 +8485,72 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'المبلغ الصافي الذي ستحصل عليه'**
   String get tripSummaryNetAmount;
+
+  /// No description provided for @instantEarningsTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'أرباحك من الرحلة'**
+  String get instantEarningsTitle;
+
+  /// No description provided for @instantEarningsFare.
+  ///
+  /// In ar, this message translates to:
+  /// **'أجرة الرحلة'**
+  String get instantEarningsFare;
+
+  /// No description provided for @instantEarningsPaidCash.
+  ///
+  /// In ar, this message translates to:
+  /// **'استلمتها نقداً من الراكب'**
+  String get instantEarningsPaidCash;
+
+  /// No description provided for @instantEarningsPaidOnline.
+  ///
+  /// In ar, this message translates to:
+  /// **'دفعها الراكب إلكترونياً'**
+  String get instantEarningsPaidOnline;
+
+  /// No description provided for @instantEarningsPromoRefund.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعويض كود الخصم (تتحمّله المنصة)'**
+  String get instantEarningsPromoRefund;
+
+  /// No description provided for @instantEarningsCommission.
+  ///
+  /// In ar, this message translates to:
+  /// **'عمولة المنصة'**
+  String get instantEarningsCommission;
+
+  /// No description provided for @instantEarningsCommissionPercent.
+  ///
+  /// In ar, this message translates to:
+  /// **'عمولة المنصة ({percent}%)'**
+  String instantEarningsCommissionPercent(String percent);
+
+  /// No description provided for @instantEarningsNet.
+  ///
+  /// In ar, this message translates to:
+  /// **'صافي ربحك'**
+  String get instantEarningsNet;
+
+  /// No description provided for @instantEarningsCommissionPending.
+  ///
+  /// In ar, this message translates to:
+  /// **'تُخصم عمولة المنصة من محفظتك عند تأكيد استلام الأجرة.'**
+  String get instantEarningsCommissionPending;
+
+  /// No description provided for @instantEarningsWalletCash.
+  ///
+  /// In ar, this message translates to:
+  /// **'المبلغ النقدي ({cash}) معك، وحركة محفظتك في هذه الرحلة: {change} (العمولة مخصومة، وتعويض الخصم مضاف إن وُجد).'**
+  String instantEarningsWalletCash(String change, String cash);
+
+  /// No description provided for @instantEarningsWalletOnline.
+  ///
+  /// In ar, this message translates to:
+  /// **'أُضيف إلى محفظتك {change}: الأجرة بعد خصم عمولة المنصة.'**
+  String instantEarningsWalletOnline(String change);
 
   /// No description provided for @tripSummaryFeeDeducted.
   ///
@@ -9926,6 +10046,18 @@ abstract class AppLocalizations {
   /// **'ألغى السائق الرحلة — نبحث لك عن سائق آخر'**
   String get instantDriverCancelledSearching;
 
+  /// No description provided for @instantDriverCancelledTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'ألغى السائق الرحلة'**
+  String get instantDriverCancelledTitle;
+
+  /// No description provided for @instantDriverCancelledBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'اعتذر السائق عن رحلتك وتم خصم من تقييمه بسبب الإلغاء. نبحث لك الآن عن سائق آخر.'**
+  String get instantDriverCancelledBody;
+
   /// No description provided for @instantTripMovedTitle.
   ///
   /// In ar, this message translates to:
@@ -9973,6 +10105,18 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'فتح الإعدادات'**
   String get offersOverLockAction;
+
+  /// No description provided for @offersOverAppsTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'اسمح بظهور الطلبات فوق التطبيقات'**
+  String get offersOverAppsTitle;
+
+  /// No description provided for @offersOverAppsBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'حتى يظهر لك طلب الرحلة كاملاً وأنت في تطبيق آخر (مثل خرائط Google)، فعّل «الظهور فوق التطبيقات الأخرى» لـ VisionWay من الإعدادات.'**
+  String get offersOverAppsBody;
 
   /// No description provided for @instantTripPassengerOnBoard.
   ///

@@ -2,6 +2,9 @@ import 'location_model.dart';
 import 'trip_meeting_point.dart';
 import 'seat_layout_config.dart';
 import 'seat_data.dart';
+import 'trip_fare_breakdown.dart';
+
+export 'trip_fare_breakdown.dart';
 import '../core/utils/backend_url_resolver.dart';
 
 class TripModel {
@@ -52,6 +55,9 @@ class TripModel {
   final DateTime? tripStartedAt;
 
   final DateTime? tripCompletedAt;
+
+  /// Instant rides: how the metered fare was reached, once the ride ended.
+  final TripFareBreakdown? fareBreakdown;
 
   // Presence settlement (012)
   final DateTime? presenceSettledAt;
@@ -134,6 +140,7 @@ class TripModel {
     this.driverArrivedAt,
     this.tripStartedAt,
     this.tripCompletedAt,
+    this.fareBreakdown,
     this.presenceSettledAt,
     this.billableSeatCount,
     this.capturedFeeAmount,
@@ -264,6 +271,7 @@ class TripModel {
       tripCompletedAt: json['tripCompletedAt'] != null
           ? DateTime.tryParse(json['tripCompletedAt'].toString())
           : null,
+      fareBreakdown: TripFareBreakdown.tryParse(json['fareBreakdown']),
       presenceSettledAt: json['presenceSettledAt'] != null
           ? DateTime.tryParse(json['presenceSettledAt'].toString())
           : null,
@@ -364,6 +372,7 @@ class TripModel {
         'tripStartedAt': tripStartedAt!.toIso8601String(),
       if (tripCompletedAt != null)
         'tripCompletedAt': tripCompletedAt!.toIso8601String(),
+      if (fareBreakdown != null) 'fareBreakdown': fareBreakdown!.toJson(),
       if (presenceSettledAt != null)
         'presenceSettledAt': presenceSettledAt!.toIso8601String(),
       if (billableSeatCount != null) 'billableSeatCount': billableSeatCount,
@@ -474,6 +483,7 @@ class TripModel {
       driverArrivedAt: driverArrivedAt ?? this.driverArrivedAt,
       tripStartedAt: tripStartedAt ?? this.tripStartedAt,
       tripCompletedAt: tripCompletedAt ?? this.tripCompletedAt,
+      fareBreakdown: fareBreakdown,
       presenceSettledAt: presenceSettledAt ?? this.presenceSettledAt,
       billableSeatCount: billableSeatCount ?? this.billableSeatCount,
       capturedFeeAmount: capturedFeeAmount ?? this.capturedFeeAmount,

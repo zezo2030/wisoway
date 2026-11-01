@@ -22,13 +22,19 @@ class InstantOfferActions {
   static bool _dialogOpen = false;
   static String? _openDialogOfferId;
 
+  /// Offers answered from the notification. Opening the app for that answer
+  /// must not put the same offer's card up and ask the driver again.
+  static final Set<String> _answered = {};
+
   static bool get isDialogOpen => _dialogOpen;
   static String? get openDialogOfferId => _openDialogOfferId;
+  static bool wasAnswered(String offerId) => _answered.contains(offerId);
 
   static Future<void> handle(Map<String, dynamic> data) async {
     final action = data['action']?.toString() ?? 'open';
     final offerId = data['offerId']?.toString() ?? '';
     if (offerId.isEmpty) return;
+    if (action == 'accept' || action == 'decline') _answered.add(offerId);
 
     switch (action) {
       case 'accept':
@@ -49,6 +55,7 @@ class InstantOfferActions {
     Map<String, dynamic>? seed,
   }) async {
     if (_dialogOpen && _openDialogOfferId == offerId) return;
+    if (wasAnswered(offerId)) return;
     // The driver home poll may already have this offer's card up.
     if (InstantOfferDialog.visibleOfferId == offerId) return;
 
@@ -62,13 +69,13 @@ class InstantOfferActions {
       offer = _offerFromSeed(offerId, seed);
     }
     if (offer == null) return;
+    // The card takes the notification down itself, keeping its music going.
 
-    await _cancelNotification(offerId);
-
-    if (_dialogOpen || InstantOfferDialog.visibleOfferId != null) return;
+    if (_dialogOpen) return;
     final dialogContext =
         NotificationNavigationService.navigatorKey.currentContext;
     if (dialogContext == null || !dialogContext.mounted) return;
+    if (!InstantOfferDialog.claim(offerId)) return;
     _dialogOpen = true;
     _openDialogOfferId = offerId;
     try {
@@ -78,6 +85,10 @@ class InstantOfferActions {
         builder: (_) => InstantOfferDialog(offer: offer!, service: _service),
       );
     } finally {
+      // Normally cleared by the card's dispose; covers a card never built.
+      if (InstantOfferDialog.visibleOfferId == offerId) {
+        InstantOfferDialog.visibleOfferId = null;
+      }
       _dialogOpen = false;
       _openDialogOfferId = null;
     }

@@ -39,6 +39,8 @@ import 'widgets/driver_live_trip_view.dart';
 import '../../models/vehicle_art.dart';
 import '../../widgets/expandable_cabin_view.dart';
 import '../../core/services/active_ride_navigator.dart';
+import '../../core/services/error_localizations.dart';
+import '../../core/services/instant_ride_service.dart';
 import '../../core/services/ride_sounds.dart';
 import '../../utils/booking_seat_formatter.dart';
 
@@ -670,6 +672,11 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     }
   }
 
+  /// A started, finished or cancelled trip can't be deleted; the backend also
+  /// refuses once a passenger confirmed they are in the car.
+  bool _canDelete(TripModel trip) =>
+      trip.status != 'in_progress' && !trip.isCompleted && !trip.isCancelled;
+
   int _getBookedSeatsCount() {
     if (_trip == null) return 0;
     return _trip!.seats.where((seat) => seat.isBooked).length;
@@ -809,12 +816,13 @@ class _TripManagementScreenState extends State<TripManagementScreen>
                           onPressed: _showTrip,
                           tooltip: context.l10n.showTripTooltip,
                         ),
-                      IconButton(
-                        icon: const Icon(IconsaxPlusLinear.trash),
-                        onPressed: _deleteTrip,
-                        tooltip: context.l10n.deleteTripTooltip,
-                        color: AppColors.error,
-                      ),
+                      if (_canDelete(_trip!))
+                        IconButton(
+                          icon: const Icon(IconsaxPlusLinear.trash),
+                          onPressed: _deleteTrip,
+                          tooltip: context.l10n.deleteTripTooltip,
+                          color: AppColors.error,
+                        ),
                     ],
             ),
       body: FutureBuilder<List<BookingModel>>(
@@ -1023,6 +1031,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
                   : null;
             },
             onCall: _launchCall,
+            onCallBooking: trip.isInstant ? _callInstantPassenger : null,
             onNavigate: _launchNavigation,
             onGroupChat: trip.isInstant
                 ? null
@@ -1312,13 +1321,14 @@ class _TripManagementScreenState extends State<TripManagementScreen>
             value: 'show',
             child: Text(context.l10n.showTripTooltip),
           ),
-        PopupMenuItem(
-          value: 'delete',
-          child: Text(
-            context.l10n.deleteTripTooltip,
-            style: const TextStyle(color: AppColors.error),
+        if (_canDelete(_trip!))
+          PopupMenuItem(
+            value: 'delete',
+            child: Text(
+              context.l10n.deleteTripTooltip,
+              style: const TextStyle(color: AppColors.error),
+            ),
           ),
-        ),
       ],
     );
   }
@@ -1345,6 +1355,32 @@ class _TripManagementScreenState extends State<TripManagementScreen>
           ? null
           : () => _launchCall(entry.phoneNumber),
     );
+  }
+
+  bool _callBusy = false;
+
+  /// Instant ride: ask the server for the number to dial (a proxy, or the
+  /// passenger's own unless they hide it), as the passenger does for us.
+  Future<void> _callInstantPassenger(BookingModel booking) async {
+    if (_callBusy) return;
+    _callBusy = true;
+    try {
+      final number = await InstantRideService().initiateCall(booking.id);
+      final launched = await launchUrl(Uri(scheme: 'tel', path: number));
+      if (!launched) throw StateError('dialler unavailable');
+    } catch (e) {
+      if (!mounted) return;
+      final failure = ApiClient.mapError(e);
+      // The passenger hides their number: say so, rather than "try again".
+      final message = failure.messageKey == 'errorsPhoneHidden'
+          ? ErrorLocalizations.resolveFailure(context, failure)
+          : context.l10n.instantMatchedCallFailed;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } finally {
+      _callBusy = false;
+    }
   }
 
   Future<void> _launchCall(String phone) async {

@@ -2,15 +2,16 @@ package com.abdelaziz.visionway
 
 import android.content.Context
 import android.media.AudioAttributes
-import android.media.AudioManager
 import android.media.MediaPlayer
 import android.os.Handler
 import android.os.Looper
 
 /**
- * Loops the new-ride chime while the in-app offer card is up (the tray
- * notification rings on its own through its channel). Always armed with a
- * deadline, so a card that never says "stop" can't leave the phone ringing.
+ * Loops the new-ride music for an offer, from the tray notification and the
+ * in-app card alike. It plays on the alarm stream, so it rings on a silent or
+ * vibrating phone (the owner's call) and isn't muted or throttled the way
+ * back-to-back notification sounds are. Always armed with a deadline, so an
+ * offer that never says "stop" can't leave the phone ringing.
  */
 object InstantOfferRinger {
     private val handler = Handler(Looper.getMainLooper())
@@ -27,15 +28,11 @@ object InstantOfferRinger {
         }
         stop(null)
 
-        // Respect silent / vibrate the same way the notification channel does.
-        val audio = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-        if (audio != null && audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
-
         val mp =
             MediaPlayer().apply {
                 setAudioAttributes(
                     AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                        .setUsage(AudioAttributes.USAGE_ALARM)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                         .build(),
                 )

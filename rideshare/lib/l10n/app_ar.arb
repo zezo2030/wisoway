@@ -2796,6 +2796,39 @@
   "tripSummaryHelp": "مساعدة",
   "tripSummaryArrivalPlace": "مكان الوصول",
   "tripSummaryDistance": "المسافة",
+  "fareBreakdownTitle": "تفصيل الأجرة",
+  "fareBreakdownBase": "فتحة العداد",
+  "fareBreakdownDistance": "المسافة المقطوعة ({km} كم)",
+  "@fareBreakdownDistance": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "fareBreakdownTime": "مدة الرحلة ({minutes} د)",
+  "@fareBreakdownTime": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "fareBreakdownMinimum": "الحد الأدنى للأجرة",
+  "fareBreakdownMinimumNote": "مجموع البنود أقل من الحد الأدنى، فاحتُسب الحد الأدنى بدلاً منها.",
+  "fareBreakdownWaiting": "الانتظار عند الراكب ({minutes} د، أول {free} د مجاناً)",
+  "@fareBreakdownWaiting": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      },
+      "free": {
+        "type": "int"
+      }
+    }
+  },
+  "fareBreakdownRounding": "تقريب",
+  "fareBreakdownTotal": "الإجمالي",
   "tripSummaryDuration": "مدة الرحلة",
   "tripSummaryStartTime": "وقت البدء",
   "tripSummaryEndTime": "وقت الانتهاء",
@@ -2855,6 +2888,41 @@
     }
   },
   "tripSummaryNetAmount": "المبلغ الصافي الذي ستحصل عليه",
+  "instantEarningsTitle": "أرباحك من الرحلة",
+  "instantEarningsFare": "أجرة الرحلة",
+  "instantEarningsPaidCash": "استلمتها نقداً من الراكب",
+  "instantEarningsPaidOnline": "دفعها الراكب إلكترونياً",
+  "instantEarningsPromoRefund": "تعويض كود الخصم (تتحمّله المنصة)",
+  "instantEarningsCommission": "عمولة المنصة",
+  "instantEarningsCommissionPercent": "عمولة المنصة ({percent}%)",
+  "@instantEarningsCommissionPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "instantEarningsNet": "صافي ربحك",
+  "instantEarningsCommissionPending": "تُخصم عمولة المنصة من محفظتك عند تأكيد استلام الأجرة.",
+  "instantEarningsWalletCash": "المبلغ النقدي ({cash}) معك، وحركة محفظتك في هذه الرحلة: {change} (العمولة مخصومة، وتعويض الخصم مضاف إن وُجد).",
+  "@instantEarningsWalletCash": {
+    "placeholders": {
+      "change": {
+        "type": "String"
+      },
+      "cash": {
+        "type": "String"
+      }
+    }
+  },
+  "instantEarningsWalletOnline": "أُضيف إلى محفظتك {change}: الأجرة بعد خصم عمولة المنصة.",
+  "@instantEarningsWalletOnline": {
+    "placeholders": {
+      "change": {
+        "type": "String"
+      }
+    }
+  },
   "tripSummaryFeeDeducted": "تم خصم رسوم الرحلة ({amount}) من محفظتك عند انطلاق الرحلة. تأكد من وجود رصيد كافٍ في محفظتك لإنشاء رحلات جديدة.",
   "@tripSummaryFeeDeducted": {
     "placeholders": {
@@ -3256,6 +3324,8 @@
   "instantTripCancelKeep": "تراجع",
   "instantTripCancelled": "أُلغيت الرحلة",
   "instantDriverCancelledSearching": "ألغى السائق الرحلة — نبحث لك عن سائق آخر",
+  "instantDriverCancelledTitle": "ألغى السائق الرحلة",
+  "instantDriverCancelledBody": "اعتذر السائق عن رحلتك وتم خصم من تقييمه بسبب الإلغاء. نبحث لك الآن عن سائق آخر.",
   "instantTripMovedTitle": "هل بدأت الرحلة؟",
   "instantTripMovedBody": "تحرّكت من مكان الراكب ولم تبدأ الرحلة بعد. إذا كان الراكب معك فابدأ الرحلة الآن.",
   "instantTripNotYet": "ليس بعد",
@@ -3264,6 +3334,8 @@
   "offersOverLockTitle": "اسمح بظهور الطلبات على الشاشة المقفلة",
   "offersOverLockBody": "حتى تظهر لك طلبات الرحلات فوراً وتوقظ الشاشة وهي مقفلة، فعّل «إشعارات ملء الشاشة» لـ VisionWay من الإعدادات.",
   "offersOverLockAction": "فتح الإعدادات",
+  "offersOverAppsTitle": "اسمح بظهور الطلبات فوق التطبيقات",
+  "offersOverAppsBody": "حتى يظهر لك طلب الرحلة كاملاً وأنت في تطبيق آخر (مثل خرائط Google)، فعّل «الظهور فوق التطبيقات الأخرى» لـ VisionWay من الإعدادات.",
   "instantTripPassengerOnBoard": "الراكب معك — في الطريق إلى الوجهة",
   "instantTripAway": "على بُعد {distance}",
   "@instantTripAway": {
