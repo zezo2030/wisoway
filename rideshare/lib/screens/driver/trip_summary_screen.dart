@@ -23,6 +23,7 @@ import '../../models/trip_model.dart';
 import '../../models/wallet_account_model.dart';
 import '../../screens/home/widgets/default_avatar.dart';
 import 'widgets/trip_fare_breakdown_card.dart';
+import '../../widgets/trip/metered_fare_card.dart';
 
 /// Resolves what the trip summary should show as the platform fee.
 ///
@@ -126,6 +127,25 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
     }
   }
 
+  Future<void> _refreshAfterSettlement() async {
+    try {
+      final trip = await _tripService.getTrip(widget.tripId);
+      WalletAccountModel? wallet;
+      try {
+        wallet = await _paymentService.getWalletAccountMe();
+      } catch (_) {
+        wallet = _wallet;
+      }
+      if (!mounted || trip == null) return;
+      setState(() {
+        _trip = trip;
+        _wallet = wallet;
+      });
+    } catch (_) {
+      // Pull to refresh shows it.
+    }
+  }
+
   Future<void> _confirmCash(
     RidePayment payment, {
     required bool received,
@@ -155,6 +175,10 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(context.l10n.instantPaymentReportedToast)),
         );
+      } else {
+        // Confirming the cash is when the commission comes off the wallet:
+        // re-read the trip and the wallet so the earnings card shows it.
+        unawaited(_refreshAfterSettlement());
       }
     } catch (e) {
       if (mounted) ErrorSurface.showFailure(context, ApiClient.mapError(e));
@@ -443,6 +467,22 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
                           const SizedBox(height: 20),
                           _buildRouteCard(_trip!),
                           const SizedBox(height: 16),
+                          // Instant ride: what the driver took home and what
+                          // it did to their wallet.
+                          if (_trip!.isInstant && _payments.isNotEmpty) ...[
+                            _buildInstantEarningsCard(_payments.first),
+                            const SizedBox(height: 16),
+                            if (_walletNegative) ...[
+                              _buildWalletBanner(),
+                              const SizedBox(height: 16),
+                            ],
+                          ],
+                          if (_trip!.fareBreakdown != null) ...[
+                            MeteredFareCard(
+                              breakdown: _trip!.fareBreakdown!,
+                            ),
+                            const SizedBox(height: 16),
+                          ],
                           // Shared trips only: the boarding roll-call and the
                           // seats-minus-fee breakdown. An instant ride has one
                           // passenger whose fare is the card above.
@@ -550,8 +590,13 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
   Widget _buildRouteCard(TripModel trip) {
     final endAt = trip.tripCompletedAt ?? DateTime.now();
     final startAt = trip.tripStartedAt ?? trip.departureTime;
-    final duration = endAt.difference(startAt);
-    final distance = trip.distanceKm;
+    // A metered ride shows what it was priced on: the distance driven, not
+    // the route planned when it was ordered.
+    final meter = trip.fareBreakdown;
+    final duration = meter != null
+        ? Duration(minutes: meter.durationMin)
+        : endAt.difference(startAt);
+    final distance = meter?.distanceKm ?? trip.distanceKm;
 
     return Container(
       decoration: BoxDecoration(
@@ -881,6 +926,116 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
             value: _money(_netAmount),
             valueColor: _successGreen,
             bold: true,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// «أرباحك من الرحلة» for an instant ride. The commission is a share of the
+  /// whole fare and is taken from the wallet when the ride ends; a promo the
+  /// passenger used is the platform's cost, paid back into the wallet. So:
+  /// cash — the driver holds what the passenger paid, the wallet moves by
+  /// −commission + promo; CliQ / wallet — the wallet gets fare − commission.
+  Widget _buildInstantEarningsCard(RidePayment payment) {
+    final l10n = context.l10n;
+    final fare = payment.originalAmount ?? payment.amount;
+    final discount = payment.discountAmount;
+    final commission = _trip?.capturedFeeAmount;
+    final commissionOrZero = commission ?? 0;
+    final net = ((fare - commissionOrZero) * 100).round() / 100;
+    final cash = !payment.isCliq && !payment.isWallet;
+    final walletChange = cash
+        ? ((discount - commissionOrZero) * 100).round() / 100
+        : net;
+    final percent = _feePercent;
+
+    String signed(double v) => v < 0 ? '−${_money(-v)}' : '+${_money(v)}';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            l10n.instantEarningsTitle,
+            style: AppTextStyles.titleSmall.copyWith(
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 14),
+          _financeRow(
+            icon: IconsaxPlusBold.receipt_item,
+            label: l10n.instantEarningsFare,
+            value: _money(fare),
+            valueColor: const Color(0xFF111827),
+          ),
+          const SizedBox(height: 12),
+          _financeRow(
+            icon: cash ? IconsaxPlusBold.money_4 : IconsaxPlusBold.card,
+            label: cash
+                ? l10n.instantEarningsPaidCash
+                : l10n.instantEarningsPaidOnline,
+            value: _money(payment.amount),
+            valueColor: _successGreen,
+          ),
+          if (discount > 0) ...[
+            const SizedBox(height: 12),
+            _financeRow(
+              icon: IconsaxPlusBold.ticket_discount,
+              label: l10n.instantEarningsPromoRefund,
+              value: '+${_money(discount)}',
+              valueColor: _successGreen,
+            ),
+          ],
+          const SizedBox(height: 12),
+          _financeRow(
+            icon: IconsaxPlusBold.shield_tick,
+            label: percent == null
+                ? l10n.instantEarningsCommission
+                : l10n.instantEarningsCommissionPercent(
+                    TripFareBreakdownCard.formatPercent(percent),
+                  ),
+            value: commission == null ? '—' : '−${_money(commission)}',
+            valueColor: _feeRed,
+          ),
+          const SizedBox(height: 14),
+          const DottedDivider(),
+          const SizedBox(height: 14),
+          _financeRow(
+            icon: IconsaxPlusBold.wallet_1,
+            label: l10n.instantEarningsNet,
+            value: _money(net),
+            valueColor: _successGreen,
+            bold: true,
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3F4F6),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              commission == null
+                  ? l10n.instantEarningsCommissionPending
+                  : cash
+                  ? l10n.instantEarningsWalletCash(
+                      signed(walletChange),
+                      _money(payment.amount),
+                    )
+                  : l10n.instantEarningsWalletOnline(signed(walletChange)),
+              style: AppTextStyles.bodySmall.copyWith(
+                color: const Color(0xFF374151),
+                height: 1.45,
+              ),
+            ),
           ),
         ],
       ),

@@ -81,6 +81,55 @@ describe('PreTripReminderJob', () => {
   });
 });
 
+describe('PreTripReminderJob — time left', () => {
+  const now = new Date('2026-11-01T10:00:00Z');
+
+  async function remindAt(minutesAhead: number) {
+    const qb: any = {
+      update: () => qb,
+      set: () => qb,
+      where: () => qb,
+      andWhere: () => qb,
+      execute: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+    const tripRepo: any = {
+      findOne: jest.fn().mockResolvedValue({
+        id: 't1',
+        driverId: 'd1',
+        toName: 'العلا',
+        departureTime: new Date(now.getTime() + minutesAhead * 60_000),
+      }),
+      createQueryBuilder: () => qb,
+    };
+    const bookingRepo: any = {
+      find: jest.fn().mockResolvedValue([{ id: 'b1', userId: 'p1' }]),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+    const notifications: any = {
+      create: jest.fn().mockResolvedValue({}),
+      getPreferredLocale: jest.fn().mockResolvedValue('ar'),
+    };
+    await new PreTripReminderJob(tripRepo, bookingRepo, notifications).remind(
+      't1',
+      now,
+    );
+    return notifications.create.mock.calls.map((c: any[]) => c[0]);
+  }
+
+  it('tells a trip created five minutes ahead that it leaves in five minutes', async () => {
+    const [passenger, driver] = await remindAt(5);
+
+    expect(passenger.title).toBe('تذكير: رحلتك بعد 5 دقائق');
+    expect(passenger.body).toContain('تنطلق خلال 5 دقائق');
+    expect(driver.title).toBe('تذكير: رحلتك بعد 5 دقائق');
+  });
+
+  it('says an hour only when about an hour is left', async () => {
+    expect((await remindAt(60))[0].title).toBe('تذكير: رحلتك بعد ساعة');
+    expect((await remindAt(25))[0].title).toBe('تذكير: رحلتك بعد 25 دقيقة');
+  });
+});
+
 describe('PreTripReminderJob — per booking', () => {
   it('reminds a passenger who booked after the trip was reminded', async () => {
     const qb: any = {

@@ -55,7 +55,21 @@ class NotificationStrings private constructor(
     private val acceptWord: String,
     private val secondSuffix: String,
     private val currencySymbols: Map<String, String>,
+    // The over-other-apps offer card (InstantOfferOverlay), worded as in-app.
+    val cardTitle: String,
+    val expectedEarnings: String,
+    val cashNote: String,
+    val cliqNote: String,
+    val pickupDistance: String,
+    val tripDistance: String,
+    val openDetails: String,
+    val ignore: String,
+    val acceptTrip: String,
+    private val countdownTemplate: String,
 ) {
+    fun countdown(secondsLeft: Int): String =
+        countdownTemplate.replace("{seconds}", secondsLeft.toString())
+
     fun accept(secondsLeft: Int): String = "$acceptWord ($secondsLeft$secondSuffix)"
 
     fun passengers(count: Int): String = "$count $passengerWord"
@@ -115,6 +129,16 @@ class NotificationStrings private constructor(
                 acceptWord = "قبول",
                 secondSuffix = "ث",
                 currencySymbols = mapOf("JOD" to "د.أ", "د.أ" to "د.أ", "SAR" to "ر.س", "ر.س" to "ر.س"),
+                cardTitle = "طلب رحلة جديدة",
+                expectedEarnings = "الأرباح المتوقعة",
+                cashNote = "الدفع نقدًا للسائق · يشمل رسوم المنصة",
+                cliqNote = "يدفع الراكب عبر CliQ · تُضاف الأجرة إلى محفظتك",
+                pickupDistance = "المسافة إلى الراكب",
+                tripDistance = "مسافة الرحلة",
+                openDetails = "عرض تفاصيل الطلب ›",
+                ignore = "تجاهل",
+                acceptTrip = "قبول الرحلة",
+                countdownTemplate = "ينتهي خلال {seconds} ثانية",
             )
 
         val EN =
@@ -139,6 +163,16 @@ class NotificationStrings private constructor(
                 acceptWord = "Accept",
                 secondSuffix = "s",
                 currencySymbols = mapOf("JOD" to "JOD", "د.أ" to "JOD", "SAR" to "SAR", "ر.س" to "SAR"),
+                cardTitle = "New ride request",
+                expectedEarnings = "Expected earnings",
+                cashNote = "Cash to the driver · platform fees included",
+                cliqNote = "Passenger pays by CliQ · the fare goes to your wallet",
+                pickupDistance = "Distance to pickup",
+                tripDistance = "Trip distance",
+                openDetails = "View request details ›",
+                ignore = "Ignore",
+                acceptTrip = "Accept trip",
+                countdownTemplate = "Expires in {seconds}s",
             )
     }
 }

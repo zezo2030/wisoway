@@ -250,8 +250,10 @@ describe('InstantDispatchService.dispatchNext radius growth', () => {
 });
 
 describe('instant search length', () => {
-  it('caps the whole search at 60 seconds by default', () => {
-    expect(REQUEST_TTL_SECONDS).toBe(60);
+  it('caps the whole search at 75 seconds by default', () => {
+    expect(REQUEST_TTL_SECONDS).toBe(75);
+    // Room for two drivers at a full offer each.
+    expect(REQUEST_TTL_SECONDS).toBeGreaterThanOrEqual(2 * OFFER_TTL_SECONDS);
     expect(NO_DRIVER_SEARCH_SECONDS).toBeLessThanOrEqual(REQUEST_TTL_SECONDS);
   });
 

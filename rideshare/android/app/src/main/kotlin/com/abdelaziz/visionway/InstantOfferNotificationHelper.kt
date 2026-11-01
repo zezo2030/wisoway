@@ -1,5 +1,6 @@
 package com.abdelaziz.visionway
 
+import android.app.KeyguardManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -7,12 +8,11 @@ import android.app.PendingIntent
 import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
-import android.media.AudioAttributes
-import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -36,11 +36,16 @@ object InstantOfferNotificationHelper {
     private const val DEFAULT_OFFER_TTL_MS = 25_000L
 
     /**
-     * Ride offers ring on their own channel: a channel's sound is fixed once
-     * it is created, and the shared channel uses the default sound. Bump the id
-     * to change the sound on installed apps.
+     * Ride offers post on their own channel. The channel itself is silent:
+     * the music comes from [InstantOfferRinger], which rings on a silent phone
+     * and isn't throttled across back-to-back offers like channel sounds are.
+     * A channel's sound is fixed once created, hence the new id.
      */
-    const val CHANNEL_ID = "instant_offers_ring_v2"
+    const val CHANNEL_ID = "instant_offers_v3"
+    private val OLD_CHANNEL_IDS = listOf("instant_offers_ring_v2")
+
+    /** The tray entry while the offer card is drawn over other apps: no heads-up. */
+    private const val QUIET_CHANNEL_ID = "instant_offers_overlaid"
 
     private val VIBRATION = longArrayOf(0, 400, 250, 400, 900)
 
@@ -56,18 +61,25 @@ object InstantOfferNotificationHelper {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (manager.getNotificationChannel(CHANNEL_ID) != null) return
         val s = NotificationLocale.strings(context)
+        if (manager.getNotificationChannel(QUIET_CHANNEL_ID) == null) {
+            manager.createNotificationChannel(
+                NotificationChannel(
+                    QUIET_CHANNEL_ID,
+                    s.newInstantTrip,
+                    NotificationManager.IMPORTANCE_LOW,
+                ).apply {
+                    setSound(null, null)
+                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                },
+            )
+        }
+        if (manager.getNotificationChannel(CHANNEL_ID) != null) return
+        OLD_CHANNEL_IDS.forEach { manager.deleteNotificationChannel(it) }
         val channel =
             NotificationChannel(CHANNEL_ID, s.newInstantTrip, NotificationManager.IMPORTANCE_HIGH)
                 .apply {
-                    setSound(
-                        soundUri(context),
-                        AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
-                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                            .build(),
-                    )
+                    setSound(null, null)
                     enableVibration(true)
                     vibrationPattern = VIBRATION
                     lockscreenVisibility = Notification.VISIBILITY_PUBLIC
@@ -80,6 +92,9 @@ object InstantOfferNotificationHelper {
 
     /** Offers whose full-screen intent already fired. */
     private val launchedFullScreen = ConcurrentHashMap.newKeySet<String>()
+
+    /** Offers shown as the over-other-apps card; their tray entry is quiet. */
+    private val overlaid = ConcurrentHashMap.newKeySet<String>()
 
     /**
      * Android 14+ lets the user (or Play) withhold full-screen intents; without
@@ -104,15 +119,25 @@ object InstantOfferNotificationHelper {
             return
         }
 
+        // With the card over the screen, the tray entry stays quiet: a
+        // heads-up would sit on top of the card.
+        if (showOverlay(context, data, expiresAtMs)) overlaid.add(offerId)
         postNotification(context, data, secondsLeft)
+        InstantOfferRinger.start(context.applicationContext, offerId, expiresAtMs)
         startTicker(context, data, offerId, expiresAtMs)
     }
 
-    fun cancel(context: Context, offerId: String) {
+    /**
+     * Takes the offer's notification down. [keepRing] is for the in-app card
+     * taking over the same offer: the music carries on instead of restarting.
+     */
+    fun cancel(context: Context, offerId: String, keepRing: Boolean = false) {
         stopTicker(offerId)
         launchedFullScreen.remove(offerId)
+        overlaid.remove(offerId)
         offerByRequest.values.remove(offerId)
-        InstantOfferRinger.stop(offerId)
+        InstantOfferOverlay.dismiss(offerId)
+        if (!keepRing) InstantOfferRinger.stop(offerId)
         NotificationManagerCompat.from(context).cancel(notificationId(offerId))
     }
 
@@ -253,9 +278,10 @@ object InstantOfferNotificationHelper {
         // screen and opens the offer over the lock screen; on an unlocked one
         // Android shows it as a heads-up instead. Only on the first post — the
         // countdown refreshes must not relaunch the screen every second.
+        val quiet = overlaid.contains(offerId)
         val firstPost = launchedFullScreen.add(offerId)
         val fullScreenPending =
-            if (firstPost) {
+            if (firstPost && !quiet) {
                 PendingIntent.getActivity(
                     context,
                     notificationId(offerId) + 1,
@@ -267,7 +293,7 @@ object InstantOfferNotificationHelper {
             }
 
         val notification =
-            NotificationCompat.Builder(context, CHANNEL_ID)
+            NotificationCompat.Builder(context, if (quiet) QUIET_CHANNEL_ID else CHANNEL_ID)
                 .setSmallIcon(R.drawable.notification_icon)
                 .setColor(0xFF2DD4BF.toInt())
                 .setContentTitle(s.newInstantTrip)
@@ -284,8 +310,8 @@ object InstantOfferNotificationHelper {
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                // Pre-O has no channels: carry the same sound and buzz here.
-                .setSound(soundUri(context), AudioManager.STREAM_RING)
+                // Pre-O has no channels: buzz here; InstantOfferRinger plays the music.
+                .setSilent(false)
                 .setVibrate(VIBRATION)
                 .setOngoing(true)
                 .setAutoCancel(false)
@@ -301,7 +327,7 @@ object InstantOfferNotificationHelper {
                 )
                 .build()
                 .apply {
-                    // Ring until answered, cancelled or setTimeoutAfter expires.
+                    // Buzz until answered, cancelled or setTimeoutAfter expires.
                     // The once-a-second countdown refreshes don't restart it
                     // thanks to setOnlyAlertOnce.
                     flags = flags or Notification.FLAG_INSISTENT
@@ -310,6 +336,12 @@ object InstantOfferNotificationHelper {
         NotificationManagerCompat.from(context).notify(notificationId(offerId), notification)
     }
 
+    /**
+     * Accept / Reject open MainActivity directly. They used to go through a
+     * BroadcastReceiver that then started the activity — a notification
+     * trampoline Android 12+ blocks, so the tap only opened the app on the
+     * offer card and the driver had to accept a second time.
+     */
     private fun actionPendingIntent(
         context: Context,
         offerId: String,
@@ -317,18 +349,35 @@ object InstantOfferNotificationHelper {
         data: Map<String, String>,
     ): PendingIntent {
         val intent =
-            Intent(context, InstantOfferActionReceiver::class.java).apply {
+            Intent(context, MainActivity::class.java).apply {
                 this.action = "com.abdelaziz.visionway.INSTANT_OFFER_$action"
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
                 putExtra(EXTRA_OFFER_ACTION, action)
                 putExtra(EXTRA_OFFER_ID, offerId)
                 putExtra(EXTRA_PAYLOAD, JSONObject(data).toString())
             }
-        return PendingIntent.getBroadcast(
+        return PendingIntent.getActivity(
             context,
             (offerId + action).hashCode(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+    }
+
+    /** "Display over other apps" — lets an offer bring the app forward. */
+    fun canDrawOverApps(context: Context): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(context)
+
+    /**
+     * Outside the app the tray only has room for a small heads-up, so with
+     * the overlay permission the full offer card is drawn over the app the
+     * driver is in. A locked screen is left to the full-screen intent.
+     */
+    private fun showOverlay(context: Context, data: Map<String, String>, expiresAtMs: Long): Boolean {
+        val keyguard = context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+        if (keyguard?.isKeyguardLocked == true) return false
+        return InstantOfferOverlay.show(context, data, expiresAtMs)
     }
 
     fun notificationId(offerId: String): Int = ("instant_offer_$offerId").hashCode()

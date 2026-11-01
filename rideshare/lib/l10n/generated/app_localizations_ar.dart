@@ -4538,6 +4538,40 @@ class AppLocalizationsAr extends AppLocalizations {
   String get tripSummaryDistance => 'المسافة';
 
   @override
+  String get fareBreakdownTitle => 'تفصيل الأجرة';
+
+  @override
+  String get fareBreakdownBase => 'فتحة العداد';
+
+  @override
+  String fareBreakdownDistance(String km) {
+    return 'المسافة المقطوعة ($km كم)';
+  }
+
+  @override
+  String fareBreakdownTime(int minutes) {
+    return 'مدة الرحلة ($minutes د)';
+  }
+
+  @override
+  String get fareBreakdownMinimum => 'الحد الأدنى للأجرة';
+
+  @override
+  String get fareBreakdownMinimumNote =>
+      'مجموع البنود أقل من الحد الأدنى، فاحتُسب الحد الأدنى بدلاً منها.';
+
+  @override
+  String fareBreakdownWaiting(int minutes, int free) {
+    return 'الانتظار عند الراكب ($minutes د، أول $free د مجاناً)';
+  }
+
+  @override
+  String get fareBreakdownRounding => 'تقريب';
+
+  @override
+  String get fareBreakdownTotal => 'الإجمالي';
+
+  @override
   String get tripSummaryDuration => 'مدة الرحلة';
 
   @override
@@ -4590,6 +4624,46 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get tripSummaryNetAmount => 'المبلغ الصافي الذي ستحصل عليه';
+
+  @override
+  String get instantEarningsTitle => 'أرباحك من الرحلة';
+
+  @override
+  String get instantEarningsFare => 'أجرة الرحلة';
+
+  @override
+  String get instantEarningsPaidCash => 'استلمتها نقداً من الراكب';
+
+  @override
+  String get instantEarningsPaidOnline => 'دفعها الراكب إلكترونياً';
+
+  @override
+  String get instantEarningsPromoRefund => 'تعويض كود الخصم (تتحمّله المنصة)';
+
+  @override
+  String get instantEarningsCommission => 'عمولة المنصة';
+
+  @override
+  String instantEarningsCommissionPercent(String percent) {
+    return 'عمولة المنصة ($percent%)';
+  }
+
+  @override
+  String get instantEarningsNet => 'صافي ربحك';
+
+  @override
+  String get instantEarningsCommissionPending =>
+      'تُخصم عمولة المنصة من محفظتك عند تأكيد استلام الأجرة.';
+
+  @override
+  String instantEarningsWalletCash(String change, String cash) {
+    return 'المبلغ النقدي ($cash) معك، وحركة محفظتك في هذه الرحلة: $change (العمولة مخصومة، وتعويض الخصم مضاف إن وُجد).';
+  }
+
+  @override
+  String instantEarningsWalletOnline(String change) {
+    return 'أُضيف إلى محفظتك $change: الأجرة بعد خصم عمولة المنصة.';
+  }
 
   @override
   String tripSummaryFeeDeducted(String amount) {
@@ -5427,6 +5501,13 @@ class AppLocalizationsAr extends AppLocalizations {
       'ألغى السائق الرحلة — نبحث لك عن سائق آخر';
 
   @override
+  String get instantDriverCancelledTitle => 'ألغى السائق الرحلة';
+
+  @override
+  String get instantDriverCancelledBody =>
+      'اعتذر السائق عن رحلتك وتم خصم من تقييمه بسبب الإلغاء. نبحث لك الآن عن سائق آخر.';
+
+  @override
   String get instantTripMovedTitle => 'هل بدأت الرحلة؟';
 
   @override
@@ -5451,6 +5532,13 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get offersOverLockAction => 'فتح الإعدادات';
+
+  @override
+  String get offersOverAppsTitle => 'اسمح بظهور الطلبات فوق التطبيقات';
+
+  @override
+  String get offersOverAppsBody =>
+      'حتى يظهر لك طلب الرحلة كاملاً وأنت في تطبيق آخر (مثل خرائط Google)، فعّل «الظهور فوق التطبيقات الأخرى» لـ VisionWay من الإعدادات.';
 
   @override
   String get instantTripPassengerOnBoard => 'الراكب معك — في الطريق إلى الوجهة';

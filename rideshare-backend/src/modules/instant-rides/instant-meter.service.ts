@@ -2,9 +2,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BookingEntity, TripEntity } from '../../database/entities';
+import type { TripFareBreakdown } from '../../database/entities/trip.entity';
 import { haversineKm } from './instant-offer-labels';
 import { InstantFareTariffService } from './instant-fare-tariff.service';
-import { computeFare, waitingCharge } from './instant-rides.constants';
+import {
+  farePartsFor,
+  METER_MIN_FARE_FROM_KM,
+  waitingCharge,
+} from './instant-rides.constants';
 
 /** GPS fixes worse than this are left out of the driven distance. */
 const MAX_FIX_ACCURACY_METERS = 50;
@@ -48,21 +53,32 @@ export class InstantMeterService {
       ? startedAt.getTime() - new Date(trip.driverArrivedAt).getTime()
       : 0;
     const wait = waitingCharge(tariff, waitedMs);
-    const fare =
-      Math.round(
-        (computeFare(
-          meter.distanceKm,
-          meter.durationMin,
-          trip.currency,
-          tariff,
-        ) +
-          wait) *
-          100,
-      ) / 100;
+    const parts = farePartsFor(meter.distanceKm, meter.durationMin, tariff, {
+      applyMinimum: meter.distanceKm >= METER_MIN_FARE_FROM_KM,
+    });
+    const fare = Math.round((parts.fare + wait) * 100) / 100;
 
     const price = fare.toFixed(2);
+    // Kept for the ride summary, so the driver and the passenger can see how
+    // the amount was reached — the distance driven, not the planned route.
+    const fareBreakdown: TripFareBreakdown = {
+      currency: trip.currency,
+      distanceKm: Math.round(meter.distanceKm * 100) / 100,
+      durationMin: meter.durationMin,
+      waitingMin: Math.max(0, Math.ceil(waitedMs / 60_000 - 1e-9)),
+      freeWaitMin: tariff.freeWaitMin,
+      base: parts.base,
+      distanceCharge: parts.distanceCharge,
+      timeCharge: parts.timeCharge,
+      waitingCharge: wait,
+      minimumApplied: parts.minimumApplied,
+      minimum: parts.minimum,
+      rounding: parts.rounding,
+      total: fare,
+    };
     trip.price = price;
-    await this.tripRepo.update({ id: trip.id }, { price });
+    trip.fareBreakdown = fareBreakdown;
+    await this.tripRepo.update({ id: trip.id }, { price, fareBreakdown });
     const booking = await this.bookingRepo.findOne({
       where: { tripId: trip.id },
     });

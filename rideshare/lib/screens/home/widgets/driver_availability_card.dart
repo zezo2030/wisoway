@@ -300,8 +300,25 @@ class _DriverAvailabilityCardState extends State<DriverAvailabilityCard>
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       await _checkNotificationsAllowed();
       await _checkBatteryOptimization();
+      await _checkDrawOverApps();
     }
     await _checkOverLockScreen();
+  }
+
+  /// Without "Display over other apps" an offer that arrives while the
+  /// driver is in another app is only a small heads-up notification.
+  Future<void> _checkDrawOverApps() async {
+    try {
+      if (await PushNotificationService.canShowOffersOverApps()) return;
+      if (!mounted) return;
+      final l10n = context.l10n;
+      final open = await _askToFix(
+        title: l10n.offersOverAppsTitle,
+        body: l10n.offersOverAppsBody,
+        action: l10n.offersOverLockAction,
+      );
+      if (open) await PushNotificationService.openOverAppsSettings();
+    } catch (_) {}
   }
 
   Future<void> _checkNotificationsAllowed() async {
@@ -398,12 +415,19 @@ class _DriverAvailabilityCardState extends State<DriverAvailabilityCard>
     // notification for a dialog nobody can see — leave the offer to the
     // notification, and pick it up here once the driver is back.
     if (!_appVisible) return;
+    String? claimed;
     try {
+      // An Accept / Reject tapped on the notification is handled first, so
+      // the offer it answered isn't put up again.
+      await PushNotificationService.consumePendingInstantOfferAction();
       final offer = await _service.getPendingOffer();
       if (offer == null || offer.id.isEmpty || !mounted || !_appVisible) {
         return;
       }
-      if (InstantOfferDialog.visibleOfferId != null) return;
+      if (InstantOfferActions.wasAnswered(offer.id)) return;
+      if (InstantOfferActions.isDialogOpen) return;
+      if (!InstantOfferDialog.claim(offer.id)) return;
+      claimed = offer.id;
       _offerDialogOpen = true;
       await showDialog<void>(
         context: context,
@@ -413,6 +437,11 @@ class _DriverAvailabilityCardState extends State<DriverAvailabilityCard>
       _offerDialogOpen = false;
     } catch (_) {
       _offerDialogOpen = false;
+    } finally {
+      // Normally cleared by the card's dispose; covers a card never built.
+      if (claimed != null && InstantOfferDialog.visibleOfferId == claimed) {
+        InstantOfferDialog.visibleOfferId = null;
+      }
     }
   }
 

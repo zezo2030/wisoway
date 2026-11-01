@@ -2710,6 +2710,39 @@
   "tripSummaryHelp": "Help",
   "tripSummaryArrivalPlace": "Arrival place",
   "tripSummaryDistance": "Distance",
+  "fareBreakdownTitle": "Fare breakdown",
+  "fareBreakdownBase": "Base fare",
+  "fareBreakdownDistance": "Distance driven ({km} km)",
+  "@fareBreakdownDistance": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "fareBreakdownTime": "Ride time ({minutes} min)",
+  "@fareBreakdownTime": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "fareBreakdownMinimum": "Minimum fare",
+  "fareBreakdownMinimumNote": "The items came to less than the minimum fare, so the minimum was charged instead.",
+  "fareBreakdownWaiting": "Waiting at pickup ({minutes} min, first {free} free)",
+  "@fareBreakdownWaiting": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      },
+      "free": {
+        "type": "int"
+      }
+    }
+  },
+  "fareBreakdownRounding": "Rounding",
+  "fareBreakdownTotal": "Total",
   "tripSummaryDuration": "Trip duration",
   "tripSummaryStartTime": "Start time",
   "tripSummaryEndTime": "End time",
@@ -2769,6 +2802,41 @@
     }
   },
   "tripSummaryNetAmount": "Net amount you will receive",
+  "instantEarningsTitle": "Your earnings from this ride",
+  "instantEarningsFare": "Ride fare",
+  "instantEarningsPaidCash": "Received in cash from the passenger",
+  "instantEarningsPaidOnline": "Paid electronically by the passenger",
+  "instantEarningsPromoRefund": "Promo code refund (paid by the platform)",
+  "instantEarningsCommission": "Platform commission",
+  "instantEarningsCommissionPercent": "Platform commission ({percent}%)",
+  "@instantEarningsCommissionPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "instantEarningsNet": "Your net earnings",
+  "instantEarningsCommissionPending": "The platform commission is taken from your wallet once you confirm you received the fare.",
+  "instantEarningsWalletCash": "The cash ({cash}) is with you; your wallet moved by {change} for this ride (commission taken, any promo refund added).",
+  "@instantEarningsWalletCash": {
+    "placeholders": {
+      "change": {
+        "type": "String"
+      },
+      "cash": {
+        "type": "String"
+      }
+    }
+  },
+  "instantEarningsWalletOnline": "{change} was added to your wallet: the fare after the platform commission.",
+  "@instantEarningsWalletOnline": {
+    "placeholders": {
+      "change": {
+        "type": "String"
+      }
+    }
+  },
   "tripSummaryFeeDeducted": "Trip fees ({amount}) were deducted from your wallet when the trip started. Keep enough balance to create new trips.",
   "@tripSummaryFeeDeducted": {
     "placeholders": {
@@ -3118,6 +3186,8 @@
   "instantTripCancelKeep": "Keep ride",
   "instantTripCancelled": "Ride cancelled",
   "instantDriverCancelledSearching": "Your driver cancelled — finding you another driver",
+  "instantDriverCancelledTitle": "Your driver cancelled",
+  "instantDriverCancelledBody": "Your driver cancelled the ride and their rating was lowered for it. We're finding you another driver now.",
   "instantTripMovedTitle": "Has the trip started?",
   "instantTripMovedBody": "You've moved away from the pickup without starting the trip. If the passenger is with you, start it now.",
   "instantTripNotYet": "Not yet",
@@ -3126,6 +3196,8 @@
   "offersOverLockTitle": "Show requests on the lock screen",
   "offersOverLockBody": "To see ride requests instantly — waking a locked screen — turn on “Full-screen notifications” for VisionWay in Settings.",
   "offersOverLockAction": "Open settings",
+  "offersOverAppsTitle": "Show requests over other apps",
+  "offersOverAppsBody": "To see the full ride request while you're in another app (like Google Maps), turn on “Display over other apps” for VisionWay in Settings.",
   "instantTripPassengerOnBoard": "Passenger on board — heading to destination",
   "instantTripAway": "{distance} away",
   "@instantTripAway": {

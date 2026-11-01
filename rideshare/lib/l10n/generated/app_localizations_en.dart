@@ -4573,6 +4573,40 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tripSummaryDistance => 'Distance';
 
   @override
+  String get fareBreakdownTitle => 'Fare breakdown';
+
+  @override
+  String get fareBreakdownBase => 'Base fare';
+
+  @override
+  String fareBreakdownDistance(String km) {
+    return 'Distance driven ($km km)';
+  }
+
+  @override
+  String fareBreakdownTime(int minutes) {
+    return 'Ride time ($minutes min)';
+  }
+
+  @override
+  String get fareBreakdownMinimum => 'Minimum fare';
+
+  @override
+  String get fareBreakdownMinimumNote =>
+      'The items came to less than the minimum fare, so the minimum was charged instead.';
+
+  @override
+  String fareBreakdownWaiting(int minutes, int free) {
+    return 'Waiting at pickup ($minutes min, first $free free)';
+  }
+
+  @override
+  String get fareBreakdownRounding => 'Rounding';
+
+  @override
+  String get fareBreakdownTotal => 'Total';
+
+  @override
   String get tripSummaryDuration => 'Trip duration';
 
   @override
@@ -4625,6 +4659,48 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tripSummaryNetAmount => 'Net amount you will receive';
+
+  @override
+  String get instantEarningsTitle => 'Your earnings from this ride';
+
+  @override
+  String get instantEarningsFare => 'Ride fare';
+
+  @override
+  String get instantEarningsPaidCash => 'Received in cash from the passenger';
+
+  @override
+  String get instantEarningsPaidOnline =>
+      'Paid electronically by the passenger';
+
+  @override
+  String get instantEarningsPromoRefund =>
+      'Promo code refund (paid by the platform)';
+
+  @override
+  String get instantEarningsCommission => 'Platform commission';
+
+  @override
+  String instantEarningsCommissionPercent(String percent) {
+    return 'Platform commission ($percent%)';
+  }
+
+  @override
+  String get instantEarningsNet => 'Your net earnings';
+
+  @override
+  String get instantEarningsCommissionPending =>
+      'The platform commission is taken from your wallet once you confirm you received the fare.';
+
+  @override
+  String instantEarningsWalletCash(String change, String cash) {
+    return 'The cash ($cash) is with you; your wallet moved by $change for this ride (commission taken, any promo refund added).';
+  }
+
+  @override
+  String instantEarningsWalletOnline(String change) {
+    return '$change was added to your wallet: the fare after the platform commission.';
+  }
 
   @override
   String tripSummaryFeeDeducted(String amount) {
@@ -5475,6 +5551,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your driver cancelled — finding you another driver';
 
   @override
+  String get instantDriverCancelledTitle => 'Your driver cancelled';
+
+  @override
+  String get instantDriverCancelledBody =>
+      'Your driver cancelled the ride and their rating was lowered for it. We\'re finding you another driver now.';
+
+  @override
   String get instantTripMovedTitle => 'Has the trip started?';
 
   @override
@@ -5499,6 +5582,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get offersOverLockAction => 'Open settings';
+
+  @override
+  String get offersOverAppsTitle => 'Show requests over other apps';
+
+  @override
+  String get offersOverAppsBody =>
+      'To see the full ride request while you\'re in another app (like Google Maps), turn on “Display over other apps” for VisionWay in Settings.';
 
   @override
   String get instantTripPassengerOnBoard =>

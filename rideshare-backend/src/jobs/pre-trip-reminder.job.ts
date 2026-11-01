@@ -14,6 +14,39 @@ import { NotificationsService } from '../modules/notifications/notifications.ser
 export const PRE_TRIP_REMINDER_LEAD_MS = 60 * 60 * 1000;
 
 /**
+ * The time left before departure, as the reminder says it: «بعد ساعة» only
+ * when about an hour is left. A trip created five minutes ahead is reminded
+ * at once, and must not be told it leaves in an hour.
+ */
+export function timeLeftPhrase(
+  departure: Date | string | null | undefined,
+  now: Date,
+  ar: boolean,
+): { title: string; body: string } {
+  const minutes = departure
+    ? Math.round((new Date(departure).getTime() - now.getTime()) / 60_000)
+    : 60;
+  if (minutes >= 55) {
+    return ar
+      ? { title: 'بعد ساعة', body: 'خلال ساعة' }
+      : { title: 'in an hour', body: 'within the hour' };
+  }
+  if (minutes <= 1) {
+    return ar ? { title: 'الآن', body: 'الآن' } : { title: 'now', body: 'now' };
+  }
+  if (!ar) {
+    return { title: `in ${minutes} minutes`, body: `in ${minutes} minutes` };
+  }
+  const span =
+    minutes === 2
+      ? 'دقيقتين'
+      : minutes <= 10
+        ? `${minutes} دقائق`
+        : `${minutes} دقيقة`;
+  return { title: `بعد ${span}`, body: `خلال ${span}` };
+}
+
+/**
  * One-hour reminder for shared (scheduled) trips, to the driver and every
  * confirmed passenger. It doubles as the presence prompt: the passenger's
  * notification opens presence confirmation, the driver's the passenger roster.
@@ -57,7 +90,7 @@ export class PreTripReminderJob {
 
     let sent = 0;
     for (const { id } of due) {
-      if (await this.remind(id)) sent++;
+      if (await this.remind(id, now)) sent++;
     }
     if (sent > 0)
       this.logger.log(`Sent pre-trip reminders for ${sent} trip(s)`);
@@ -69,7 +102,7 @@ export class PreTripReminderJob {
    * once per booking, and the driver's once per trip. Returns whether anything
    * was sent.
    */
-  async remind(tripId: string): Promise<boolean> {
+  async remind(tripId: string, now: Date = new Date()): Promise<boolean> {
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
     if (!trip) return false;
 
@@ -90,16 +123,17 @@ export class PreTripReminderJob {
       const ar =
         (await this.notificationsService.getPreferredLocale(booking.userId)) ===
         'ar';
+      const left = timeLeftPhrase(trip.departureTime, now, ar);
       await this.notificationsService
         .create({
           userId: booking.userId,
           type: 'presence_prompt',
           title: ar
-            ? 'تذكير: رحلتك بعد ساعة'
-            : 'Reminder: your trip is in an hour',
+            ? `تذكير: رحلتك ${left.title}`
+            : `Reminder: your trip is ${left.title}`,
           body: ar
-            ? `رحلتك إلى ${trip.toName} تنطلق خلال ساعة. كن في مكان التجمع في الموعد، وأكّد ركوبك عندما تصعد إلى السيارة.`
-            : `Your trip to ${trip.toName} leaves within the hour. Be at the meeting point on time and confirm once you're in the car.`,
+            ? `رحلتك إلى ${trip.toName} تنطلق ${left.body}. كن في مكان التجمع في الموعد، وأكّد ركوبك عندما تصعد إلى السيارة.`
+            : `Your trip to ${trip.toName} leaves ${left.body}. Be at the meeting point on time and confirm once you're in the car.`,
           data: { tripId, bookingId: booking.id },
         })
         .catch((err: Error) =>
@@ -122,16 +156,17 @@ export class PreTripReminderJob {
       (await this.notificationsService.getPreferredLocale(trip.driverId)) ===
       'ar';
     const riders = bookings.length;
+    const driverLeft = timeLeftPhrase(trip.departureTime, now, driverAr);
     await this.notificationsService
       .create({
         userId: trip.driverId,
         type: 'presence_driver_prompt',
         title: driverAr
-          ? 'تذكير: رحلتك بعد ساعة'
-          : 'Reminder: your trip is in an hour',
+          ? `تذكير: رحلتك ${driverLeft.title}`
+          : `Reminder: your trip is ${driverLeft.title}`,
         body: driverAr
-          ? `رحلتك إلى ${trip.toName} تنطلق خلال ساعة (الركاب المؤكَّدون: ${riders}). فعّل الموقع وتوجّه إلى مكان التجمع. تبدأ الرحلة عندما يؤكد الركاب ركوبهم.`
-          : `Your trip to ${trip.toName} leaves within the hour with ${riders} passenger${riders === 1 ? '' : 's'}. Turn on location and head to the meeting point. The trip starts once passengers confirm they're on board.`,
+          ? `رحلتك إلى ${trip.toName} تنطلق ${driverLeft.body} (الركاب المؤكَّدون: ${riders}). فعّل الموقع وتوجّه إلى مكان التجمع. تبدأ الرحلة عندما يؤكد الركاب ركوبهم.`
+          : `Your trip to ${trip.toName} leaves ${driverLeft.body} with ${riders} passenger${riders === 1 ? '' : 's'}. Turn on location and head to the meeting point. The trip starts once passengers confirm they're on board.`,
         data: { tripId },
       })
       .catch((err: Error) =>

@@ -26,6 +26,24 @@ export interface TripMeetingPoint {
   note?: string | null;
 }
 
+/** An instant ride's metered fare, part by part. Amounts in `currency`. */
+export interface TripFareBreakdown {
+  currency: string;
+  /** Driven, from the tracked path — not the route planned at ordering. */
+  distanceKm: number;
+  durationMin: number;
+  waitingMin: number;
+  freeWaitMin: number;
+  base: number;
+  distanceCharge: number;
+  timeCharge: number;
+  waitingCharge: number;
+  minimumApplied: boolean;
+  minimum: number;
+  rounding: number;
+  total: number;
+}
+
 @Entity({ name: 'trips' })
 @Index('trips_driver_idx', ['driverId'])
 @Index('trips_status_departure_idx', ['status', 'departureTime'])
@@ -126,6 +144,10 @@ export class TripEntity {
   /** When the driver pressed "Start Trip". */
   @Column({ type: 'timestamptz', nullable: true })
   tripStartedAt: Date | null;
+
+  /** Instant rides: how the metered fare was reached (InstantMeterService). */
+  @Column({ type: 'jsonb', nullable: true })
+  fareBreakdown: TripFareBreakdown | null;
 
   /** When the driver pressed "Complete Trip". */
   @Column({ type: 'timestamptz', nullable: true })

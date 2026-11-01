@@ -1,4 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../providers/trip_provider.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../screens/driver/trip_management_screen.dart';
@@ -38,6 +43,22 @@ class ActiveRideNavigator {
   /// Called by the trip screen when it goes away (trip ended).
   static void left(String tripId) {
     if (_shownTripId == tripId) _shownTripId = null;
+    _refreshDriverTrips();
+  }
+
+  /// The driver home's «رحلاتك الحالية» lists the driver's trips; a ride
+  /// starting or ending changes them, so reload rather than wait for a
+  /// pull-to-refresh.
+  static void _refreshDriverTrips() {
+    final context = NotificationNavigationService.navigatorKey.currentContext;
+    if (context == null || !context.mounted) return;
+    try {
+      unawaited(
+        Provider.of<TripProvider>(context, listen: false).fetchDriverTrips(),
+      );
+    } catch (_) {
+      // No provider above the navigator (tests) — nothing to refresh.
+    }
   }
 
   /// Key under which a ride's payment screen is tracked, distinct from its
@@ -98,10 +119,25 @@ class ActiveRideNavigator {
         ),
         (route) => route.isFirst,
       );
+      // Say plainly what happened — a passing snackbar was easy to miss while
+      // the screen swapped under the passenger.
       final context = navigator.context;
       if (context.mounted) {
-        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-          SnackBar(content: Text(context.l10n.instantDriverCancelledSearching)),
+        unawaited(
+          showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              icon: const Icon(Icons.info_outline_rounded, size: 32),
+              title: Text(ctx.l10n.instantDriverCancelledTitle),
+              content: Text(ctx.l10n.instantDriverCancelledBody),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: Text(ctx.l10n.ok),
+                ),
+              ],
+            ),
+          ),
         );
       }
       return true;
@@ -145,5 +181,6 @@ class ActiveRideNavigator {
       ),
       (route) => route.isFirst,
     );
+    if (isDriver) _refreshDriverTrips();
   }
 }

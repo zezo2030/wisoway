@@ -59,11 +59,15 @@ import UserNotifications
   private func startOfferRing(id: String, until: TimeInterval) {
     let remaining = until - Date().timeIntervalSince1970
     guard remaining > 0 else { return }
+    // The card re-asserts the ring every few seconds: keep the one playing.
+    if ringingOfferId == id, offerPlayer?.isPlaying == true { return }
     stopOfferRing()
     guard let url = Bundle.main.url(forResource: "instant_offer_ring", withExtension: "wav") else { return }
     do {
-      // Ambient respects the silent switch and mixes with other audio.
-      try AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
+      // Playback rings through the silent switch, like an incoming call —
+      // the owner wants a ride request heard even on a muted phone.
+      try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
+      try AVAudioSession.sharedInstance().setActive(true)
       let player = try AVAudioPlayer(contentsOf: url)
       player.numberOfLoops = -1
       guard player.play() else { return }

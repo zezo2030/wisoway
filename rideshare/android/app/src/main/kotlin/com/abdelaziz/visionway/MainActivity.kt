@@ -42,10 +42,12 @@ class MainActivity : FlutterActivity() {
                             val offerId =
                                 (call.arguments as? Map<*, *>)?.get("offerId")?.toString()
                                     ?: call.argument<String>("offerId")
+                            val keepRing =
+                                (call.arguments as? Map<*, *>)?.get("keepRing") == true
                             if (offerId.isNullOrBlank()) {
                                 result.error("bad_args", "offerId required", null)
                             } else {
-                                InstantOfferNotificationHelper.cancel(this, offerId)
+                                InstantOfferNotificationHelper.cancel(this, offerId, keepRing)
                                 result.success(true)
                             }
                         }
@@ -84,6 +86,19 @@ class MainActivity : FlutterActivity() {
                         }
                         "openFullScreenIntentSettings" -> {
                             openFullScreenIntentSettings()
+                            result.success(true)
+                        }
+                        "setOfferApiAuth" -> {
+                            val args = call.arguments as? Map<*, *>
+                            InstantOfferOverlay.apiBaseUrl = args?.get("baseUrl")?.toString()
+                            InstantOfferOverlay.accessToken = args?.get("token")?.toString()
+                            result.success(true)
+                        }
+                        "canDrawOverApps" -> {
+                            result.success(InstantOfferNotificationHelper.canDrawOverApps(this))
+                        }
+                        "openDrawOverAppsSettings" -> {
+                            openDrawOverAppsSettings()
                             result.success(true)
                         }
                         "getPendingNotificationTap" -> {
@@ -172,6 +187,24 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    /** The "Display over other apps" switch for this app. */
+    private fun openDrawOverAppsSettings() {
+        try {
+            startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:$packageName"),
+                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        } catch (_: Exception) {
+            startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                    .setData(Uri.parse("package:$packageName"))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }
+    }
+
     /**
      * A tap on a rich notification we drew ourselves (booking requests) opens
      * this activity with the push data attached. FlutterFire never sees those
@@ -214,6 +247,11 @@ class MainActivity : FlutterActivity() {
                 ?: return
         val payloadJson =
             intent.getStringExtra(InstantOfferNotificationHelper.EXTRA_PAYLOAD)
+        // Answered from the notification: stop the ring now, not once Flutter
+        // has started and handled the tap.
+        if (action != InstantOfferNotificationHelper.ACTION_OPEN) {
+            InstantOfferNotificationHelper.cancel(this, offerId)
+        }
         val map = linkedMapOf(
             "action" to action,
             "offerId" to offerId,
