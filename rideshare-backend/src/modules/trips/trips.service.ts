@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  ConflictException,
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -960,6 +961,21 @@ export class TripsService {
     if (trip.driverId !== driverId) {
       throw new ForbiddenException('You are not the owner of this trip');
     }
+    // Hiding rewrites the status, which would knock a running or finished
+    // trip out of its lifecycle.
+    if (
+      [
+        TripStatus.IN_PROGRESS,
+        TripStatus.COMPLETED,
+        TripStatus.CANCELLED,
+      ].includes(trip.status)
+    ) {
+      throw new ConflictException({
+        statusCode: 409,
+        code: 'TRIP_NOT_HIDEABLE',
+        message: 'لا يمكن إخفاء هذه الرحلة الآن.',
+      });
+    }
     trip.status = TripStatus.HIDDEN;
     trip.isVisible = false;
     return this.tripRepo.save(trip);
@@ -990,12 +1006,37 @@ export class TripsService {
     if (trip.status === TripStatus.COMPLETED) {
       throw new BadRequestException('Cannot cancel a completed trip');
     }
+    // Once a passenger is in the car the trip has started; cancelling it then
+    // would void a ride that is happening and the fee charged at the start.
+    if (trip.status === TripStatus.IN_PROGRESS) {
+      throw new ConflictException({
+        statusCode: 409,
+        code: 'TRIP_ALREADY_STARTED',
+        message: 'لا يمكن حذف رحلة بدأت بالفعل.',
+      });
+    }
 
     // Read before cancelling: the query skips cancelled bookings, so reading
     // afterwards found nobody to notify.
     const activeBookings = (
       await this.bookingsService.findByTripInternal(tripId)
-    ).filter((b) => b.status === 'pending' || b.status === 'confirmed');
+    ).filter((b) =>
+      ['pending', 'confirmed', 'in_progress'].includes(b.status),
+    );
+
+    // A passenger who confirmed they are in the car (or the driver vouched
+    // for) can't have the trip pulled from under them, even before departure.
+    if (
+      activeBookings.some(
+        (b) => b.passengerPresenceConfirmedAt || b.driverConfirmedPassengerAt,
+      )
+    ) {
+      throw new ConflictException({
+        statusCode: 409,
+        code: 'PASSENGER_ON_BOARD',
+        message: 'لا يمكن حذف الرحلة بعد تأكيد الراكب وجوده في السيارة.',
+      });
+    }
 
     // The 24-hour window protects booked passengers; a trip nobody has booked
     // can be withdrawn at any time.

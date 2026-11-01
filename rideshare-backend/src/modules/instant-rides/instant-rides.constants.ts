@@ -36,13 +36,14 @@ export const MAX_RADIUS_KM = envKm('INSTANT_MAX_RADIUS_KM', 20);
  * [OFFER_TTL_SECONDS] each. With nobody around the search still ends after
  * [NO_DRIVER_SEARCH_SECONDS] — the owner's «don't search for nothing».
  */
-export const REQUEST_TTL_SECONDS = envKm('INSTANT_SEARCH_SECONDS', 60);
+export const REQUEST_TTL_SECONDS = envKm('INSTANT_SEARCH_SECONDS', 75);
 /**
- * How long a single driver has to respond to an offer: 30 seconds — the
- * owner asked for 25 or more; the push and reading the card eat into it.
+ * How long a single driver has to respond to an offer: as long as the offer
+ * ring (res/raw/instant_offer_ring, 36 s) plus a second for the push — the
+ * owner wants the notification to end with the music, not cut it off.
  * Never runs past the request's own end (see {@link offerTtlSeconds}).
  */
-export const OFFER_TTL_SECONDS = 30;
+export const OFFER_TTL_SECONDS = 37;
 /**
  * An offer with less time than this left on the request isn't worth sending:
  * the driver couldn't get the card and answer before the search ends. An
@@ -270,13 +271,51 @@ export function computeFare(
   currency: string,
   t: FareTariff = fareTariffFor(currency),
 ): number {
-  const raw = Math.max(
-    t.minimum,
-    t.base + distanceKm * t.perKm + durationMin * t.perMin,
-  );
+  return farePartsFor(distanceKm, durationMin, t).fare;
+}
+
+/** How {@link computeFare} arrives at its number, part by part. */
+export interface FareParts {
+  base: number;
+  distanceCharge: number;
+  timeCharge: number;
+  /** The tariff's floor, when the parts came to less. */
+  minimumApplied: boolean;
+  minimum: number;
+  /** Added to reach the next `step`. */
+  rounding: number;
+  fare: number;
+}
+
+/**
+ * A metered ride shorter than this never moved: the minimum fare is not
+ * charged for it (the owner's call), only the base, the time and the wait.
+ */
+export const METER_MIN_FARE_FROM_KM = 0.2;
+
+export function farePartsFor(
+  distanceKm: number,
+  durationMin: number,
+  t: FareTariff,
+  { applyMinimum = true }: { applyMinimum?: boolean } = {},
+): FareParts {
+  const cents = (n: number) => Math.round(n * 100) / 100;
+  const distanceCharge = cents(distanceKm * t.perKm);
+  const timeCharge = cents(durationMin * t.perMin);
+  const sum = t.base + distanceKm * t.perKm + durationMin * t.perMin;
+  const floored = applyMinimum ? Math.max(t.minimum, sum) : sum;
   // Round up to the step; the epsilon keeps 12.000000001 from becoming 13.
-  const steps = Math.ceil(raw / t.step - 1e-9);
-  return Math.round(steps * t.step * 100) / 100;
+  const steps = Math.ceil(floored / t.step - 1e-9);
+  const fare = cents(steps * t.step);
+  return {
+    base: t.base,
+    distanceCharge,
+    timeCharge,
+    minimumApplied: applyMinimum && sum < t.minimum,
+    minimum: t.minimum,
+    rounding: cents(fare - floored),
+    fare,
+  };
 }
 
 /**

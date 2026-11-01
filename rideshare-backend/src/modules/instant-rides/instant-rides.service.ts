@@ -1094,19 +1094,32 @@ export class InstantRidesService {
         tripId,
         requestId: next?.id ?? request.id,
         searching: next != null,
+        driverRatingCut: penaltyPercent > 0,
       };
       this.notifications.emitRealtime(
         request.passengerId,
         'instantDriverCancelled',
         data,
       );
-      this.notifications
-        .sendPush(request.passengerId, {
-          title: 'ألغى السائق الرحلة',
-          body: next
-            ? 'نبحث لك الآن عن سائق آخر.'
-            : 'يمكنك طلب رحلة جديدة الآن.',
+      // Stored as well as pushed, so it is in the passenger's notification
+      // list and not only a banner they may have missed.
+      const ar =
+        (await this.notifications.getPreferredLocale(request.passengerId)) ===
+        'ar';
+      const cut = penaltyPercent > 0;
+      const body = ar
+        ? `اعتذر السائق عن رحلتك${cut ? ' وتم خصم من تقييمه بسبب الإلغاء' : ''}. ` +
+          (next ? 'نبحث لك الآن عن سائق آخر.' : 'يمكنك طلب رحلة جديدة الآن.')
+        : `Your driver cancelled the ride${cut ? ' and their rating was lowered for it' : ''}. ` +
+          (next
+            ? "We're finding you another driver now."
+            : 'You can request a new ride now.');
+      await this.notifications
+        .create({
+          userId: request.passengerId,
           type: 'instant_driver_cancelled',
+          title: ar ? 'ألغى السائق الرحلة' : 'Your driver cancelled',
+          body,
           data,
         })
         .catch(() => undefined);

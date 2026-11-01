@@ -67,6 +67,8 @@ describe('InstantRidesService', () => {
     locations = { getDistance: jest.fn(), reverseGeocode: jest.fn() };
     notifications = {
       sendPush: jest.fn().mockResolvedValue(undefined),
+      create: jest.fn().mockResolvedValue({}),
+      getPreferredLocale: jest.fn().mockResolvedValue('ar'),
       emitRealtime: jest.fn(),
     };
     dispatch = { dispatchNext: jest.fn().mockResolvedValue(undefined) };
@@ -824,11 +826,19 @@ describe('InstantRidesService', () => {
         { currentRequestId: null },
       );
       expect(dispatch.dispatchNext).toHaveBeenCalledWith('r2');
-      expect(notifications.sendPush).toHaveBeenCalledWith(
-        'p1',
+      // Kept in the passenger's notifications, saying what happened and what
+      // comes next.
+      expect(notifications.create).toHaveBeenCalledWith(
         expect.objectContaining({
+          userId: 'p1',
           type: 'instant_driver_cancelled',
-          data: expect.objectContaining({ requestId: 'r2', searching: true }),
+          title: 'ألغى السائق الرحلة',
+          body: 'اعتذر السائق عن رحلتك وتم خصم من تقييمه بسبب الإلغاء. نبحث لك الآن عن سائق آخر.',
+          data: expect.objectContaining({
+            requestId: 'r2',
+            searching: true,
+            driverRatingCut: true,
+          }),
         }),
       );
       expect(result).toEqual({

@@ -39,15 +39,30 @@ describe('InstantMeterService', () => {
     service = new InstantMeterService(tripRepo, bookingRepo, tariffs as any);
   });
 
-  it('charges only the minimum for a ride started and ended at once', async () => {
+  it('charges no minimum for a ride that never moved', async () => {
     const result = await service.settle(trip(start), start);
 
     expect(result?.distanceKm).toBe(0);
-    expect(result?.fare).toBe(fareTariffFor('JOD').minimum);
+    // Only the flag fall — not the 1.25 minimum.
+    expect(result?.fare).toBe(fareTariffFor('JOD').base);
     expect(bookingRepo.update).toHaveBeenCalledWith(
       { id: 'b1' },
-      expect.objectContaining({ totalAmount: '1.25', originalAmount: '1.25' }),
+      expect.objectContaining({ totalAmount: '0.45', originalAmount: '0.45' }),
     );
+  });
+
+  it('charges the minimum once the car has moved', async () => {
+    // ~0.33 km: past the 200 m line, still under the minimum.
+    path = [
+      { lat: 31.9, lng: 35.9 },
+      { lat: 31.903, lng: 35.9 },
+    ];
+    const result = await service.settle(
+      trip(start),
+      new Date(start.getTime() + 2 * 60_000),
+    );
+
+    expect(result?.fare).toBe(fareTariffFor('JOD').minimum);
   });
 
   it('prices the road actually driven, not the estimate', async () => {
@@ -66,7 +81,39 @@ describe('InstantMeterService', () => {
     expect(result?.fare).toBe(4);
     expect(tripRepo.update).toHaveBeenCalledWith(
       { id: 't1' },
-      { price: '4.00' },
+      expect.objectContaining({ price: '4.00' }),
+    );
+  });
+
+  it('keeps the breakdown of the fare for the ride summary', async () => {
+    // The owner's case: started and ended on the spot after a 4-minute wait.
+    // It came to 12.30 with the minimum; without it, 7.30.
+    await service.settle(
+      trip(start, 4, 'SAR'),
+      new Date(start.getTime() + 60_000),
+    );
+
+    expect(tripRepo.update).toHaveBeenCalledWith(
+      { id: 't1' },
+      {
+        price: '7.30',
+        fareBreakdown: {
+          currency: 'SAR',
+          distanceKm: 0,
+          durationMin: 1,
+          waitingMin: 4,
+          freeWaitMin: 3,
+          base: 6,
+          distanceCharge: 0,
+          timeCharge: 0.3,
+          waitingCharge: 0.3,
+          // Never moved: no minimum, just 6.30 rounded up to the 1 SAR step.
+          minimumApplied: false,
+          minimum: 12,
+          rounding: 0.7,
+          total: 7.3,
+        },
+      },
     );
   });
 
@@ -75,21 +122,21 @@ describe('InstantMeterService', () => {
 
     // 6 minutes waited, 3 free → 3 × 0.065
     expect(result?.waitingCharge).toBe(0.2);
-    expect(result?.fare).toBe(1.45);
+    expect(result?.fare).toBe(0.65);
   });
 
   it('keeps a promo discount off the metered fare', async () => {
     bookingRepo.findOne.mockResolvedValue({
       id: 'b1',
       seatCount: 1,
-      discountAmount: '0.50',
+      discountAmount: '0.20',
     });
 
     await service.settle(trip(start), start);
 
     expect(bookingRepo.update).toHaveBeenCalledWith(
       { id: 'b1' },
-      expect.objectContaining({ originalAmount: '1.25', totalAmount: '0.75' }),
+      expect.objectContaining({ originalAmount: '0.45', totalAmount: '0.25' }),
     );
   });
 

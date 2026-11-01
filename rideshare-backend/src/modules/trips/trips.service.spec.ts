@@ -12,6 +12,7 @@ import { getQueueToken } from '@nestjs/bull';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
@@ -867,6 +868,49 @@ describe('TripsService (TypeORM)', () => {
         ForbiddenException,
       );
       expect(bookingsService.cancelAllForTrip).not.toHaveBeenCalled();
+    });
+
+    it('refuses to cancel a trip that has started', async () => {
+      jest.spyOn(service, 'findById').mockResolvedValue({
+        ...tripDepartingIn(-0.1),
+        status: 'in_progress',
+      } as any);
+
+      await expect(service.cancel('trip-uuid', DRIVER_ID)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(bookingsService.cancelAllForTrip).not.toHaveBeenCalled();
+    });
+
+    it('refuses once a passenger confirmed they are in the car', async () => {
+      jest
+        .spyOn(service, 'findById')
+        .mockResolvedValue(tripDepartingIn(48) as any);
+      bookingsService.findByTripInternal.mockResolvedValue([
+        {
+          userId: 'p1',
+          status: 'confirmed',
+          passengerPresenceConfirmedAt: new Date(),
+        },
+      ]);
+
+      await expect(service.cancel('trip-uuid', DRIVER_ID)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(bookingsService.cancelAllForTrip).not.toHaveBeenCalled();
+    });
+
+    it('counts boarded passengers as booked', async () => {
+      jest
+        .spyOn(service, 'findById')
+        .mockResolvedValue(tripDepartingIn(2) as any);
+      bookingsService.findByTripInternal.mockResolvedValue([
+        { userId: 'p1', status: 'in_progress' },
+      ]);
+
+      await expect(service.cancel('trip-uuid', DRIVER_ID)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('notifies the booked passengers when the trip is cancelled', async () => {
