@@ -32,6 +32,12 @@ const RIDE_MILESTONE_TYPES = new Set([
   'trip_started',
 ]);
 
+/** FCM's answer for a token whose app was reinstalled or signed out. */
+const DEAD_TOKEN_CODES = new Set([
+  'messaging/registration-token-not-registered',
+  'messaging/invalid-registration-token',
+]);
+
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
@@ -353,22 +359,35 @@ export class NotificationsService {
             }),
       };
 
-      if (tokenStrings.length === 1) {
-        await admin.messaging().send({
-          token: tokenStrings[0],
-          ...messageBase,
-        });
-        return { successCount: 1, failureCount: 0 };
-      } else {
-        const response = await admin.messaging().sendEachForMulticast({
-          tokens: tokenStrings,
-          ...messageBase,
-        });
-        return {
-          successCount: response.successCount,
-          failureCount: response.failureCount,
-        };
+      // Each device separately: a token from an old install must not hide
+      // whether the phone in use got the push.
+      const response = await admin.messaging().sendEachForMulticast({
+        tokens: tokenStrings,
+        ...messageBase,
+      });
+      const dead: string[] = [];
+      const errors: string[] = [];
+      response.responses.forEach((resp, idx) => {
+        if (resp.success) return;
+        const code = resp.error?.code ?? 'unknown';
+        if (DEAD_TOKEN_CODES.has(code)) dead.push(tokenStrings[idx]);
+        else errors.push(`${tokenStrings[idx].substring(0, 8)}…: ${code}`);
+      });
+      if (dead.length > 0) {
+        await this.deviceTokenRepo.update(
+          { token: In(dead) },
+          { isActive: false },
+        );
       }
+      this.logger.log(
+        `Push ${payload.type} to ${userId}: ${response.successCount} delivered to FCM` +
+          (dead.length ? `, ${dead.length} dead token(s) retired` : '') +
+          (errors.length ? `, failed: ${errors.join(', ')}` : ''),
+      );
+      return {
+        successCount: response.successCount,
+        failureCount: response.failureCount,
+      };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Failed to send push notification: ${message}`);
