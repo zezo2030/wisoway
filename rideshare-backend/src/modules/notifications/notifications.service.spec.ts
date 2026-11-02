@@ -1,7 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { getQueueToken } from '@nestjs/bull';
-import { NotificationsService } from './notifications.service';
+import {
+  NotificationsService,
+  notificationSoundFor,
+} from './notifications.service';
 import { NotificationsGateway } from './notifications.gateway';
 import { UsersService } from '../users/users.service';
 import { AuditService } from '../../common/audit/audit.service';
@@ -133,6 +136,33 @@ describe('NotificationsService', () => {
       });
 
       expect(result).toEqual({ successCount: 0, failureCount: 0 });
+    });
+  });
+
+  describe('notificationSoundFor', () => {
+    it('gives each ride event its own sound', () => {
+      expect(notificationSoundFor('instant_matched')).toBe(
+        'sound_ride_accepted',
+      );
+      expect(notificationSoundFor('instant_driver_arrived')).toBe(
+        'sound_driver_arrived',
+      );
+      expect(notificationSoundFor('trip_started')).toBe('sound_ride_started');
+      expect(notificationSoundFor('trip_completed')).toBe(
+        'sound_ride_completed',
+      );
+      expect(notificationSoundFor('instant_driver_cancelled')).toBe(
+        'sound_ride_cancelled',
+      );
+      expect(notificationSoundFor('chat_message')).toBe('sound_chat_message');
+      expect(notificationSoundFor('wallet_credited')).toBe(
+        'sound_payment_success',
+      );
+      expect(notificationSoundFor('ride_payment_failed')).toBe('sound_error');
+    });
+
+    it('falls back to the general sound', () => {
+      expect(notificationSoundFor('admin_broadcast')).toBe('sound_general');
     });
   });
 
