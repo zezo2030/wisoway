@@ -87,7 +87,10 @@ describe('PresenceService', () => {
       findOne: jest.fn(),
       save: jest.fn(async (t: TripEntity) => t),
       manager: {
-        getRepository: jest.fn(() => ({ find: jest.fn(async () => []) })),
+        getRepository: jest.fn(() => ({
+          find: jest.fn(async () => []),
+          findOne: jest.fn(async () => null),
+        })),
       },
     };
     bookingRepo = {
@@ -241,6 +244,34 @@ describe('PresenceService', () => {
           status: PassengerDeclaredStatus.IN_VEHICLE,
         }),
       ).rejects.toThrow();
+    });
+
+    it('confirms a companion booked separately on the same trip', async () => {
+      // The owner's case: one booking for themselves, a second a minute later
+      // for the person travelling with them.
+      const own = makeSeat({ seatNumber: '0-0', displayName: 'محمد' });
+      const companion = makeSeat({
+        bookingId: 'b2',
+        seatNumber: '1-1',
+        displayName: 'mohammad',
+      });
+      const trip = makeTrip();
+      const first = makeBooking([own]);
+      (first as any).trip = trip;
+      const second = { ...makeBooking([companion]), id: 'b2' } as BookingEntity;
+      bookingRepo.findOne.mockResolvedValue(first);
+      bookingRepo.find.mockResolvedValue([first, second]);
+
+      const prompt = await service.getPresencePrompt('b1', 'u-passenger');
+      expect(prompt.seats.map((s) => s.seatNumber)).toEqual(['0-0', '1-1']);
+
+      await service.passengerDeclare('b1', 'u-passenger', {
+        status: PassengerDeclaredStatus.IN_VEHICLE,
+        seatNumbers: ['0-0', '1-1'],
+      });
+      expect(own.passengerSelfConfirmedAt).toBeTruthy();
+      expect(companion.passengerSelfConfirmedAt).toBeTruthy();
+      expect(second.passengerPresenceConfirmedAt).toBeTruthy();
     });
 
     it('records self-confirmation as the billable presence signal', async () => {
