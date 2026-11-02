@@ -31,14 +31,6 @@ class PushNotificationService {
     'com.abdelaziz.visionway/booking_notification',
   );
 
-  static const AndroidNotificationChannel _androidChannel =
-      AndroidNotificationChannel(
-        'rideshare_notifications',
-        'إشعارات VisionWay',
-        description: 'إشعارات الحجوزات والرحلات والمدفوعات والمحادثات',
-        importance: Importance.max,
-      );
-
   static bool _isInitialized = false;
   static String? _currentToken;
   static StreamSubscription<RemoteMessage>? _foregroundSubscription;
@@ -104,12 +96,7 @@ class PushNotificationService {
           sound: true,
         );
 
-    await _localNotifications
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.createNotificationChannel(_androidChannel);
-    // Before any push names them: arrival / start chimes, forgot-start alarm.
+    // Before any push names them: one channel per sound, forgot-start alarm.
     await RideSounds.createChannels();
 
     _isInitialized = true;
@@ -369,10 +356,13 @@ class PushNotificationService {
         ? collapseKey.hashCode
         : (message.messageId?.hashCode ?? message.hashCode);
 
+    final sound = NotificationSound.fromResource(data['sound']?.toString());
+    final channel = sound.channel;
     final androidDetails = AndroidNotificationDetails(
-      'rideshare_notifications',
-      'إشعارات VisionWay',
-      channelDescription: 'إشعارات الحجوزات والرحلات والمدفوعات والمحادثات',
+      channel.id,
+      channel.name,
+      channelDescription: channel.description,
+      sound: channel.sound,
       icon: 'notification_icon',
       color: const Color(0xFF7C6AF5),
       importance: Importance.max,
@@ -384,7 +374,10 @@ class PushNotificationService {
       ),
     );
 
-    final iosDetails = DarwinNotificationDetails(threadIdentifier: collapseKey);
+    final iosDetails = DarwinNotificationDetails(
+      threadIdentifier: collapseKey,
+      sound: sound.iosFile,
+    );
 
     await _localNotifications.show(
       notificationId,

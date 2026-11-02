@@ -973,6 +973,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
                 ? () {
                     if (!_nearPickupOrWarn(trip)) return;
                     _advanceInstantStage(
+                      chimeSound: NotificationSound.driverArrived,
                       chimeTitle: context.l10n.rideChimeArrivedTitle,
                       chimeBody: context.l10n.rideChimeArrivedBody,
                       () => _tripService.markArrivedAtPickup(
@@ -2059,6 +2060,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
   /// the live view moves on to it.
   Future<void> _advanceInstantStage(
     Future<void> Function() call, {
+    NotificationSound chimeSound = NotificationSound.rideStarted,
     String? chimeTitle,
     String? chimeBody,
   }) async {
@@ -2067,7 +2069,13 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     try {
       await call();
       if (chimeTitle != null) {
-        unawaited(RideSounds.chime(title: chimeTitle, body: chimeBody ?? ''));
+        unawaited(
+          RideSounds.chime(
+            sound: chimeSound,
+            title: chimeTitle,
+            body: chimeBody ?? '',
+          ),
+        );
       }
       await _reloadTrip();
     } catch (e) {
