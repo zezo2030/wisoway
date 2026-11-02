@@ -406,7 +406,12 @@ export class PresenceService {
       });
     }
 
-    const allSeats = booking.seats ?? [];
+    const bookings = await this.passengerBookingsOnTrip(booking);
+    const bookingOfSeat = new Map<BookingSeatEntity, BookingEntity>();
+    for (const b of bookings) {
+      for (const s of b.seats ?? []) bookingOfSeat.set(s, b);
+    }
+    const allSeats = [...bookingOfSeat.keys()];
     const targets = dto.seatNumbers?.length
       ? allSeats.filter((s) => dto.seatNumbers!.includes(s.seatNumber))
       : allSeats;
@@ -448,9 +453,11 @@ export class PresenceService {
       await this.seatRepo.save(seat);
     }
 
-    booking.passengerPresenceConfirmedAt =
-      dto.status === PassengerDeclaredStatus.IN_VEHICLE ? now : null;
-    await this.bookingRepo.save(booking);
+    for (const b of new Set(targets.map((s) => bookingOfSeat.get(s)!))) {
+      b.passengerPresenceConfirmedAt =
+        dto.status === PassengerDeclaredStatus.IN_VEHICLE ? now : null;
+      await this.bookingRepo.save(b);
+    }
 
     // A trip waiting at departure starts with its first rider on board.
     if (dto.status === PassengerDeclaredStatus.IN_VEHICLE) {
@@ -611,6 +618,26 @@ export class PresenceService {
     }
   }
 
+  /**
+   * [booking] and the passenger's other live bookings on the same trip. A
+   * companion's seat is sometimes booked separately, from the same account; it
+   * is confirmed with the passenger's own, or it would stay unconfirmed.
+   */
+  private async passengerBookingsOnTrip(
+    booking: BookingEntity,
+  ): Promise<BookingEntity[]> {
+    const others =
+      (await this.bookingRepo.find({
+        where: {
+          tripId: booking.tripId,
+          userId: booking.userId,
+          status: In([BookingStatus.CONFIRMED, BookingStatus.IN_PROGRESS]),
+        },
+        relations: ['seats'],
+      })) ?? [];
+    return [booking, ...others.filter((b) => b.id !== booking.id)];
+  }
+
   // ── Passenger prompt payload ──────────────────────────────────────────────
 
   async getPresencePrompt(bookingId: string, userId: string) {
@@ -671,13 +698,15 @@ export class PresenceService {
               updatedAt: trip.lastDriverLocationAt,
             }
           : null,
-      seats: (booking.seats ?? []).map((s) => ({
-        seatNumber: s.seatNumber,
-        displayName: s.displayName,
-        isMainBooker: s.isMainBooker,
-        declaredStatus: s.passengerDeclaredStatus,
-        selfConfirmedAt: s.passengerSelfConfirmedAt,
-      })),
+      seats: (await this.passengerBookingsOnTrip(booking))
+        .flatMap((b) => b.seats ?? [])
+        .map((s) => ({
+          seatNumber: s.seatNumber,
+          displayName: s.displayName,
+          isMainBooker: s.isMainBooker,
+          declaredStatus: s.passengerDeclaredStatus,
+          selfConfirmedAt: s.passengerSelfConfirmedAt,
+        })),
       window: this.passengerWindow(trip, now),
     };
   }
