@@ -25,12 +25,62 @@ import { AuditService } from '../../common/audit/audit.service';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 
-/** Pushes that play the ride chime: the driver arrived, the ride began. */
-const RIDE_MILESTONE_TYPES = new Set([
-  'instant_driver_arrived',
-  'instant_ride_started',
-  'trip_started',
-]);
+/**
+ * The app's notification sounds: a WAV of this name in the app (Android
+ * res/raw, iOS bundle) and, on Android, a channel with the same id.
+ */
+const SOUND_GENERAL = 'sound_general';
+const SOUND_BY_TYPE: Record<string, string> = {
+  chat_message: 'sound_chat_message',
+
+  instant_matched: 'sound_ride_accepted',
+  booking_confirmed: 'sound_ride_accepted',
+
+  instant_driver_arrived: 'sound_driver_arrived',
+  driver_arrived: 'sound_driver_arrived',
+
+  instant_ride_started: 'sound_ride_started',
+  trip_started: 'sound_ride_started',
+
+  trip_completed: 'sound_ride_completed',
+  trip_auto_completed: 'sound_ride_completed',
+  ride_payment_due: 'sound_ride_completed',
+  ride_payment_requested: 'sound_ride_completed',
+
+  trip_cancelled: 'sound_ride_cancelled',
+  trip_cancelled_by_admin: 'sound_ride_cancelled',
+  booking_cancelled: 'sound_ride_cancelled',
+  booking_canceled_by_passenger: 'sound_ride_cancelled',
+  instant_passenger_cancelled: 'sound_ride_cancelled',
+  instant_driver_cancelled: 'sound_ride_cancelled',
+  instant_offer_cancelled: 'sound_ride_cancelled',
+
+  ride_payment_paid: 'sound_payment_success',
+  payment_approved: 'sound_payment_success',
+  wallet_credited: 'sound_payment_success',
+  ride_fare_credited: 'sound_payment_success',
+  settlement_marked_paid: 'sound_payment_success',
+  payout_approved: 'sound_payment_success',
+  payout_paid: 'sound_payment_success',
+
+  ride_payment_failed: 'sound_error',
+  ride_payment_disputed: 'sound_error',
+  payment_rejected: 'sound_error',
+  payout_rejected: 'sound_error',
+  booking_rejected: 'sound_error',
+  booking_expired: 'sound_error',
+  instant_no_drivers: 'sound_error',
+  instant_pickup_late: 'sound_error',
+  wallet_recharge_required: 'sound_error',
+  driver_rejected: 'sound_error',
+  driver_fine_issued: 'sound_error',
+  penalty_charged: 'sound_error',
+  account_banned: 'sound_error',
+};
+
+export function notificationSoundFor(type: string): string {
+  return SOUND_BY_TYPE[type] ?? SOUND_GENERAL;
+}
 
 /** FCM's answer for a token whose app was reinstalled or signed out. */
 const DEAD_TOKEN_CODES = new Set([
@@ -276,25 +326,26 @@ export class NotificationsService {
       }
 
       const tokenStrings = targetTokens.map((t) => t.token);
+      // The app creates a channel per sound at start-up; `data.sound` lets it
+      // ring the same one when it shows the push itself (app open).
+      const sound = notificationSoundFor(payload.type);
       const data = this.buildFcmData(userId, {
         ...payload,
         data: {
           ...(payload.data ?? {}),
           title: payload.title,
           ...(payload.body ? { body: payload.body } : {}),
+          sound,
         },
       });
 
       const collapseKey = this.resolveCollapseKey(payload);
       const isAndroidCustomRich =
         payload.type === 'booking_created' || payload.type === 'instant_offer';
-      // The ride's milestones ring with the app's chime (res/raw/ride_chime);
-      // the app creates the ride_updates channel at start-up.
-      const isRideMilestone = RIDE_MILESTONE_TYPES.has(payload.type);
-      const androidNotification: admin.messaging.AndroidNotification =
-        isRideMilestone
-          ? { channelId: 'ride_updates', sound: 'ride_chime' }
-          : { channelId: 'rideshare_notifications' };
+      const androidNotification: admin.messaging.AndroidNotification = {
+        channelId: sound,
+        sound,
+      };
       if (collapseKey) {
         androidNotification.tag = collapseKey;
       }
@@ -348,7 +399,9 @@ export class NotificationsService {
           payload: {
             aps: {
               alert: { title: payload.title, body: payload.body },
-              sound: isAndroidCustomRich ? 'instant_offer_ring.wav' : 'default',
+              sound: isAndroidCustomRich
+                ? 'instant_offer_ring.wav'
+                : `${sound}.wav`,
             },
           },
         },
@@ -910,10 +963,10 @@ export class NotificationsService {
             data,
             android: {
               priority: 'high',
-              notification: { channelId: 'rideshare_notifications' },
+              notification: { channelId: SOUND_GENERAL, sound: SOUND_GENERAL },
             },
             apns: {
-              payload: { aps: { sound: 'default' } },
+              payload: { aps: { sound: `${SOUND_GENERAL}.wav` } },
             },
           });
 

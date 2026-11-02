@@ -4,8 +4,10 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.os.Build
@@ -20,8 +22,9 @@ import java.util.Locale
 import java.util.TimeZone
 
 object BookingNotificationHelper {
-    const val CHANNEL_ID = "rideshare_notifications"
-    private const val CHANNEL_NAME = "إشعارات VisionWay"
+    /** Same id, name and sound as NotificationSound.general on the Dart side. */
+    const val CHANNEL_ID = "sound_general"
+    private const val CHANNEL_NAME = "إشعارات عامة"
 
     /** Booking requests chime on their own channel (a channel's sound is fixed). */
     private const val REQUEST_CHANNEL_ID = "booking_requests_v2"
@@ -42,7 +45,16 @@ object BookingNotificationHelper {
                     CHANNEL_NAME,
                     NotificationManager.IMPORTANCE_HIGH,
                 ).apply {
-                    description = "إشعارات الحجوزات والرحلات والمدفوعات والمحادثات"
+                    description = "الإشعارات التي ليس لها صوت خاص"
+                    setSound(
+                        Uri.parse(
+                            "${ContentResolver.SCHEME_ANDROID_RESOURCE}://${context.packageName}/raw/sound_general",
+                        ),
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build(),
+                    )
                 },
             )
         }

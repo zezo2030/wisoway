@@ -8,6 +8,16 @@
 
 /* Begin PBXBuildFile section */
 		A01820260000000000000001 /* instant_offer_ring.wav in Resources */ = {isa = PBXBuildFile; fileRef = A01820260000000000000002 /* instant_offer_ring.wav */; };
+		A01820260000000000000010 /* forgot_start_alarm.wav in Resources */ = {isa = PBXBuildFile; fileRef = A01820260000000000000011 /* forgot_start_alarm.wav */; };
+		A01820260000000000000012 /* sound_general.wav in Resources */ = {isa = PBXBuildFile; fileRef = A01820260000000000000013 /* sound_general.wav */; };
+		A01820260000000000000014 /* sound_chat_message.wav in Resources */ = {isa = PBXBuildFile; fileRef = A01820260000000000000015 /* sound_chat_message.wav */; };
+		A01820260000000000000016 /* sound_ride_accepted.wav in Resources */ = {isa = PBXBuildFile; fileRef = A01820260000000000000017 /* sound_ride_accepted.wav */; };
+		A01820260000000000000018 /* sound_driver_arrived.wav in Resources */ = {isa = PBXBuildFile; fileRef = A01820260000000000000019 /* sound_driver_arrived.wav */; };
+		A01820260000000000000020 /* sound_ride_started.wav in Resources */ = {isa = PBXBuildFile; fileRef = A01820260000000000000021 /* sound_ride_started.wav */; };
+		A01820260000000000000022 /* sound_ride_completed.wav in Resources */ = {isa = PBXBuildFile; fileRef = A01820260000000000000023 /* sound_ride_completed.wav */; };
+		A01820260000000000000024 /* sound_ride_cancelled.wav in Resources */ = {isa = PBXBuildFile; fileRef = A01820260000000000000025 /* sound_ride_cancelled.wav */; };
+		A01820260000000000000026 /* sound_payment_success.wav in Resources */ = {isa = PBXBuildFile; fileRef = A01820260000000000000027 /* sound_payment_success.wav */; };
+		A01820260000000000000028 /* sound_error.wav in Resources */ = {isa = PBXBuildFile; fileRef = A01820260000000000000029 /* sound_error.wav */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
@@ -42,6 +52,16 @@
 
 /* Begin PBXFileReference section */
 		A01820260000000000000002 /* instant_offer_ring.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = instant_offer_ring.wav; sourceTree = "<group>"; };
+		A01820260000000000000011 /* forgot_start_alarm.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = forgot_start_alarm.wav; sourceTree = "<group>"; };
+		A01820260000000000000013 /* sound_general.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = sound_general.wav; sourceTree = "<group>"; };
+		A01820260000000000000015 /* sound_chat_message.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = sound_chat_message.wav; sourceTree = "<group>"; };
+		A01820260000000000000017 /* sound_ride_accepted.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = sound_ride_accepted.wav; sourceTree = "<group>"; };
+		A01820260000000000000019 /* sound_driver_arrived.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = sound_driver_arrived.wav; sourceTree = "<group>"; };
+		A01820260000000000000021 /* sound_ride_started.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = sound_ride_started.wav; sourceTree = "<group>"; };
+		A01820260000000000000023 /* sound_ride_completed.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = sound_ride_completed.wav; sourceTree = "<group>"; };
+		A01820260000000000000025 /* sound_ride_cancelled.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = sound_ride_cancelled.wav; sourceTree = "<group>"; };
+		A01820260000000000000027 /* sound_payment_success.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = sound_payment_success.wav; sourceTree = "<group>"; };
+		A01820260000000000000029 /* sound_error.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = sound_error.wav; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
@@ -113,6 +133,16 @@
 			children = (
 				97C146FA1CF9000F007C117D /* Main.storyboard */,
 				A01820260000000000000002 /* instant_offer_ring.wav */,
+				A01820260000000000000011 /* forgot_start_alarm.wav */,
+				A01820260000000000000013 /* sound_general.wav */,
+				A01820260000000000000015 /* sound_chat_message.wav */,
+				A01820260000000000000017 /* sound_ride_accepted.wav */,
+				A01820260000000000000019 /* sound_driver_arrived.wav */,
+				A01820260000000000000021 /* sound_ride_started.wav */,
+				A01820260000000000000023 /* sound_ride_completed.wav */,
+				A01820260000000000000025 /* sound_ride_cancelled.wav */,
+				A01820260000000000000027 /* sound_payment_success.wav */,
+				A01820260000000000000029 /* sound_error.wav */,
 				97C146FD1CF9000F007C117D /* Assets.xcassets */,
 				97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */,
 				97C147021CF9000F007C117D /* Info.plist */,
@@ -219,6 +249,16 @@
 				3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */,
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				A01820260000000000000001 /* instant_offer_ring.wav in Resources */,
+				A01820260000000000000010 /* forgot_start_alarm.wav in Resources */,
+				A01820260000000000000012 /* sound_general.wav in Resources */,
+				A01820260000000000000014 /* sound_chat_message.wav in Resources */,
+				A01820260000000000000016 /* sound_ride_accepted.wav in Resources */,
+				A01820260000000000000018 /* sound_driver_arrived.wav in Resources */,
+				A01820260000000000000020 /* sound_ride_started.wav in Resources */,
+				A01820260000000000000022 /* sound_ride_completed.wav in Resources */,
+				A01820260000000000000024 /* sound_ride_cancelled.wav in Resources */,
+				A01820260000000000000026 /* sound_payment_success.wav in Resources */,
+				A01820260000000000000028 /* sound_error.wav in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

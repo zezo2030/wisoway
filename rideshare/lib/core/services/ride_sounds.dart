@@ -2,26 +2,65 @@ import 'dart:convert';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+/// The app's notification sounds. Each is a WAV in Android's res/raw and in
+/// the iOS bundle under the same name, and rings on an Android channel whose
+/// id is that name too (a channel's sound is fixed once created).
+///
+/// The server names the sound of every push in `data.sound`, so a push shown
+/// by the app while it is open rings the same as one shown by the system.
+enum NotificationSound {
+  general('إشعارات عامة', 'الإشعارات التي ليس لها صوت خاص'),
+  chatMessage('الرسائل', 'رسائل المحادثات الفردية والجماعية'),
+  rideAccepted('قبول الرحلة', 'قبول السائق للرحلة أو للحجز'),
+  driverArrived('وصول السائق', 'وصول السائق إلى نقطة الالتقاء'),
+  rideStarted('بدء الرحلة', 'بدء الرحلة'),
+  rideCompleted('انتهاء الرحلة', 'الوصول وانتهاء الرحلة'),
+  rideCancelled('إلغاء الرحلة', 'إلغاء الرحلة من الراكب أو السائق'),
+  paymentSuccess('الدفع والمحفظة', 'نجاح الدفع وتأكيده وشحن المحفظة'),
+  error('الأخطاء', 'فشل الدفع أو رفض طلب وما شابه');
+
+  const NotificationSound(this.channelName, this.channelDescription);
+
+  final String channelName;
+  final String channelDescription;
+
+  /// File name without extension; also the Android channel id.
+  String get resource =>
+      'sound_${name.replaceAllMapped(RegExp('[A-Z]'), (m) => '_${m[0]!.toLowerCase()}')}';
+
+  String get iosFile => '$resource.wav';
+
+  AndroidNotificationChannel get channel => AndroidNotificationChannel(
+    resource,
+    channelName,
+    description: channelDescription,
+    importance: Importance.high,
+    sound: RawResourceAndroidNotificationSound(resource),
+  );
+
+  /// The sound the server named, or [general] for none / one this build
+  /// doesn't ship.
+  static NotificationSound fromResource(String? resource) {
+    for (final sound in values) {
+      if (sound.resource == resource) return sound;
+    }
+    return general;
+  }
+}
+
 /// The sounds of a ride's milestones, played through notifications so they
 /// ring whether the app is open or the driver is in Google Maps.
-///
-/// Android only for the custom sounds (res/raw); iOS plays its default.
 class RideSounds {
   RideSounds._();
 
   static final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
 
-  /// The driver arrived or the ride began — a soft chime. The server sends
-  /// the passenger's «وصل السائق» and «بدأت الرحلة» on this channel too.
-  static const AndroidNotificationChannel rideUpdates =
-      AndroidNotificationChannel(
-        'ride_updates',
-        'تحديثات الرحلة',
-        description: 'وصول السائق وبدء الرحلة',
-        importance: Importance.high,
-        sound: RawResourceAndroidNotificationSound('ride_chime'),
-      );
+  /// Channels of older builds, replaced by the [NotificationSound] ones.
+  static const List<String> _oldChannelIds = [
+    'rideshare_notifications',
+    'ride_updates',
+  ];
 
   /// The driver left the pickup without starting the ride — loud on purpose.
   static const AndroidNotificationChannel forgotStart =
@@ -41,15 +80,24 @@ class RideSounds {
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >();
-    await android?.createNotificationChannel(rideUpdates);
-    await android?.createNotificationChannel(forgotStart);
+    if (android == null) return;
+    for (final sound in NotificationSound.values) {
+      await android.createNotificationChannel(sound.channel);
+    }
+    await android.createNotificationChannel(forgotStart);
+    for (final id in _oldChannelIds) {
+      await android.deleteNotificationChannel(id);
+    }
   }
 
-  /// A short-lived notice with the chime, confirming the driver's tap.
+  /// A short-lived notice with the milestone's sound, confirming the
+  /// driver's tap.
   static Future<void> chime({
+    required NotificationSound sound,
     required String title,
     required String body,
   }) async {
+    final channel = sound.channel;
     try {
       await _plugin.show(
         _chimeId,
@@ -57,16 +105,19 @@ class RideSounds {
         body,
         NotificationDetails(
           android: AndroidNotificationDetails(
-            rideUpdates.id,
-            rideUpdates.name,
-            channelDescription: rideUpdates.description,
+            channel.id,
+            channel.name,
+            channelDescription: channel.description,
             importance: Importance.high,
             priority: Priority.high,
-            sound: rideUpdates.sound,
+            sound: channel.sound,
             timeoutAfter: 4000,
             onlyAlertOnce: false,
           ),
-          iOS: const DarwinNotificationDetails(presentSound: true),
+          iOS: DarwinNotificationDetails(
+            presentSound: true,
+            sound: sound.iosFile,
+          ),
         ),
       );
     } catch (_) {
@@ -98,6 +149,7 @@ class RideSounds {
           ),
           iOS: const DarwinNotificationDetails(
             presentSound: true,
+            sound: 'forgot_start_alarm.wav',
             interruptionLevel: InterruptionLevel.timeSensitive,
           ),
         ),
