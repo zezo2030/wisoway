@@ -87,12 +87,12 @@ void main() {
     expect(find.textContaining('10'), findsWidgets);
   });
 
-  testWidgets('the fee notice says at trip start, not at trip end', (
+  testWidgets('the fee notice says at trip end, not at trip start', (
     tester,
   ) async {
     await tester.pumpWidget(wrap(const TripFeeNotice()));
 
-    expect(find.textContaining('عند انطلاق الرحلة'), findsOneWidget);
-    expect(find.textContaining('عند انتهاء الرحلة'), findsNothing);
+    expect(find.textContaining('عند انتهاء الرحلة'), findsOneWidget);
+    expect(find.textContaining('عند انطلاق الرحلة'), findsNothing);
   });
 }

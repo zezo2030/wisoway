@@ -1,3 +1,5 @@
+// Values mirror the backend wire format (sent via `.name`).
+// ignore_for_file: constant_identifier_names
 enum PaymentMethod { wallet, paymob, manual, communication_fee, cliq_a2a }
 
 enum PaymentStatus { pending, approved, rejected, refunded }

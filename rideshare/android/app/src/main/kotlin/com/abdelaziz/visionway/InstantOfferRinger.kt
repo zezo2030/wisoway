@@ -19,6 +19,9 @@ object InstantOfferRinger {
     private var ringingOfferId: String? = null
     private val stopAtDeadline = Runnable { stop(null) }
 
+    /** What is ringing now (an offer id or a booking key), or null. */
+    val ringingId: String? get() = ringingOfferId
+
     fun start(context: Context, offerId: String, untilMs: Long) {
         val remainingMs = untilMs - System.currentTimeMillis()
         if (remainingMs <= 0) return

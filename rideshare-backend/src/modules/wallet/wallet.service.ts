@@ -204,6 +204,89 @@ export class WalletService {
     return manager ? grant(manager) : this.dataSource.transaction(grant);
   }
 
+  /**
+   * Approval grants the welcome credit in the phone number's currency, which
+   * is wrong for a driver who works elsewhere (a Jordanian number driving in
+   * Saudi Arabia got dinars, and so was never offered riyal rides). Once the
+   * device reports the country, the credit moves there — re-issued at that
+   * currency's minimum — but only while it is the only entry on its account,
+   * and only once.
+   */
+  async relocateDriverWelcome(driverId: string, currency: string) {
+    const key = `driver-welcome:${driverId}`;
+    const movedKey = `driver-welcome-moved:${driverId}`;
+    const welcome = await this.walletTxRepo.findOne({
+      where: { idempotencyKey: key },
+    });
+    if (!welcome || welcome.currency === currency) return false;
+    if (
+      await this.walletTxRepo.findOne({ where: { idempotencyKey: movedKey } })
+    )
+      return false;
+    const amount = await this.policy.minimum(currency);
+    return this.dataSource.transaction(async (m) => {
+      await m.findOneOrFail(UserEntity, {
+        where: { id: driverId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (
+        await m.findOne(WalletTransactionEntity, {
+          where: { idempotencyKey: movedKey },
+        })
+      )
+        return false;
+      const from = await this.lockedAccount(
+        m,
+        driverId,
+        WalletAccountType.DRIVER,
+        welcome.currency,
+      );
+      const entries = await m.count(WalletTransactionEntity, {
+        where: { accountId: from.id },
+      });
+      if (
+        entries !== 1 ||
+        Number(from.balance) !== Number(welcome.amount) ||
+        Number(from.reservedBalance ?? 0) !== 0
+      )
+        return false;
+      const to = await this.lockedAccount(
+        m,
+        driverId,
+        WalletAccountType.DRIVER,
+        currency,
+      );
+      await this.post(
+        m,
+        from,
+        -Number(welcome.amount),
+        movedKey,
+        WalletTransactionType.ADJUSTMENT,
+        driverId,
+        { reason: 'driver_welcome_moved', toCurrency: currency },
+      );
+      await this.post(
+        m,
+        to,
+        amount,
+        `${key}:${currency}`,
+        WalletTransactionType.ADJUSTMENT,
+        driverId,
+        {
+          reason: 'driver_welcome_credit',
+          minimumAtGrant: amount,
+          movedFrom: welcome.currency,
+        },
+      );
+      await this.syncUserLegacyWalletMirror(
+        driverId,
+        WalletAccountType.DRIVER,
+        m,
+      );
+      return true;
+    });
+  }
+
   /** Actual completed bookings only. Driver debit + system credit + stamp commit together. */
   async chargeCompletedTripCommission(tripId: string) {
     const outcome = await this.dataSource.transaction(async (m) => {

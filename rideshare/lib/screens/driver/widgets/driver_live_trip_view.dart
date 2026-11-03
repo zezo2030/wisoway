@@ -1116,8 +1116,12 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
             child: OutlinedButton.icon(
               onPressed: () => widget.onNavigate(target),
               icon: const Icon(IconsaxPlusLinear.routing_2),
-              label: Text(context.l10n.instantTripNavigate),
+              label: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(context.l10n.instantTripNavigate, maxLines: 1),
+              ),
               style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 foregroundColor: T.primary(context),
                 side: BorderSide(color: T.primary(context)),
                 shape: RoundedRectangleBorder(
@@ -1144,11 +1148,18 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
                       ),
                     )
                   : Icon(icon),
-              label: Text(
-                label,
-                style: const TextStyle(fontWeight: FontWeight.bold),
+              // A fixed-height button: keep the label on one line and shrink
+              // it rather than wrap it out of view.
+              label: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
               style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 backgroundColor: _stage == _Stage.onBoard
                     ? AppColors.success
                     : T.primary(context),

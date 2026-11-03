@@ -444,8 +444,9 @@ class _InstantRideRequestScreenState extends State<InstantRideRequestScreen>
         _quote = quote;
         _quoteLoading = false;
         // A route outside Jordan can't be paid by CliQ.
-        if (!quote.allowsCliq && _paymentMethod == 'cliq')
+        if (!quote.allowsCliq && _paymentMethod == 'cliq') {
           _paymentMethod = 'cash';
+        }
       });
     } catch (_) {
       if (!mounted || seq != _quoteSeq) return;

@@ -63,8 +63,9 @@ class LiveRouteGeometry {
         b == null ||
         a.offsetMeters > 60 ||
         b.offsetMeters > 60 ||
-        b.segment < a.segment)
+        b.segment < a.segment) {
       return [from, to];
+    }
     return [from, ...route.sublist(a.segment + 1, b.segment + 1), to];
   }
 

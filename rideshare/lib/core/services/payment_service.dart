@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import '../../models/payment_model.dart';
@@ -47,7 +48,7 @@ class PaymentService {
       final data = response['data'] ?? response;
       return PaymentModel.fromJson(data);
     } catch (e) {
-      print('❌ Error creating payment: $e');
+      debugPrint('❌ Error creating payment: $e');
       rethrow;
     }
   }
@@ -82,7 +83,7 @@ class PaymentService {
       final data = response['data'] ?? response;
       return PaymentModel.fromJson(data);
     } catch (e) {
-      print('❌ Error paying communication fee: $e');
+      debugPrint('❌ Error paying communication fee: $e');
       rethrow;
     }
   }
@@ -94,7 +95,7 @@ class PaymentService {
       final data = response['data'] ?? response;
       return PaymentModel.fromJson(data);
     } catch (e) {
-      print('❌ Error getting payment: $e');
+      debugPrint('❌ Error getting payment: $e');
       return null;
     }
   }
@@ -119,7 +120,7 @@ class PaymentService {
       final res = response['data'] ?? response;
       return PaymentModel.fromJson(res);
     } catch (e) {
-      print('❌ Error updating manual payment: $e');
+      debugPrint('❌ Error updating manual payment: $e');
       rethrow;
     }
   }
@@ -242,7 +243,7 @@ class PaymentService {
       final data = response['data'] as List? ?? [];
       return data.map((json) => PaymentModel.fromJson(json)).toList();
     } catch (e) {
-      print('❌ Error getting payments: $e');
+      debugPrint('❌ Error getting payments: $e');
       return [];
     }
   }
@@ -266,7 +267,7 @@ class PaymentService {
       final data = response['data'] ?? response;
       return PaymentModel.fromJson(data);
     } catch (e) {
-      print('❌ Error initiating CliQ payment: $e');
+      debugPrint('❌ Error initiating CliQ payment: $e');
       rethrow;
     }
   }
@@ -286,7 +287,7 @@ class PaymentService {
           : Map<String, dynamic>.from(raw as Map);
       return PaymentModel.fromJson(data);
     } catch (e) {
-      print('❌ Error refreshing CliQ payment status: $e');
+      debugPrint('❌ Error refreshing CliQ payment status: $e');
       rethrow;
     }
   }
@@ -296,7 +297,7 @@ class PaymentService {
     try {
       await _api.patch(ApiEndpoints.approvePayment(paymentId));
     } catch (e) {
-      print('❌ Error approving payment: $e');
+      debugPrint('❌ Error approving payment: $e');
       rethrow;
     }
   }
@@ -309,7 +310,7 @@ class PaymentService {
         data: {'adminNote': adminNote},
       );
     } catch (e) {
-      print('❌ Error rejecting payment: $e');
+      debugPrint('❌ Error rejecting payment: $e');
       rethrow;
     }
   }

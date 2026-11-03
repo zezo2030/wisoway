@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../../models/notification_model.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
@@ -31,7 +32,7 @@ class NotificationService {
 
       return notifications;
     } catch (e) {
-      print('❌ Error getting notifications: $e');
+      debugPrint('❌ Error getting notifications: $e');
       return [];
     }
   }
@@ -92,7 +93,7 @@ class NotificationService {
     try {
       await _api.patch(ApiEndpoints.readAll);
     } catch (e) {
-      print('❌ Error marking notifications as read: $e');
+      debugPrint('❌ Error marking notifications as read: $e');
     }
   }
 
@@ -101,7 +102,7 @@ class NotificationService {
     try {
       await _api.patch(ApiEndpoints.readNotification(id));
     } catch (e) {
-      print('❌ Error marking notification $id as read: $e');
+      debugPrint('❌ Error marking notification $id as read: $e');
     }
   }
 }

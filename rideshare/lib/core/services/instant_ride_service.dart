@@ -171,11 +171,16 @@ class InstantRideService {
   /// Start an in-app call on the matched booking; the backend allocates a
   /// proxy number so neither side sees the other's real phone. Returns the
   /// E.164 number to dial.
-  Future<String> initiateCall(String bookingId) async {
-    final response = await _api.post(
-      '/bookings/$bookingId/calls/initiate',
-      data: const <String, dynamic>{},
-    );
+  Future<String> initiateCall(String bookingId) =>
+      _initiateCall('/bookings/$bookingId/calls/initiate');
+
+  /// The passenger calling the driver of [tripId]; the backend finds their
+  /// booking on it.
+  Future<String> initiateCallForTrip(String tripId) =>
+      _initiateCall('/trips/$tripId/calls/initiate');
+
+  Future<String> _initiateCall(String path) async {
+    final response = await _api.post(path, data: const <String, dynamic>{});
     final number = _unwrap(response)['proxyNumberE164']?.toString() ?? '';
     if (number.isEmpty) throw StateError('no proxy number');
     return number;

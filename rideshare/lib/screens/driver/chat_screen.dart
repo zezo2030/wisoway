@@ -122,6 +122,7 @@ class _DriverChatScreenState extends State<DriverChatScreen> {
           chat = await _chatService.getOrCreateRoomForTrip(widget.tripId);
         }
         chatId = chat.id;
+        if (!mounted) return;
         setState(() {
           _chatId = chatId;
           _isReadOnly = chat.isClosedForSending;

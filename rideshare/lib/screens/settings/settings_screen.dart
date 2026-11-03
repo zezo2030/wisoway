@@ -54,51 +54,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                context.l10n.selectTheme,
-                style: Theme.of(context).textTheme.titleMedium,
+        child: RadioGroup<ThemeMode>(
+          groupValue: currentMode,
+          onChanged: (value) {
+            if (value != null) {
+              themeService.setThemeMode(value);
+              Navigator.pop(context);
+            }
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  context.l10n.selectTheme,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
               ),
-            ),
-            RadioListTile<ThemeMode>(
-              title: Text(context.l10n.themeSystem),
-              value: ThemeMode.system,
-              groupValue: currentMode,
-              onChanged: (value) {
-                if (value != null) {
-                  themeService.setThemeMode(value);
-                  Navigator.pop(context);
-                }
-              },
-            ),
-            RadioListTile<ThemeMode>(
-              title: Text(context.l10n.themeLight),
-              value: ThemeMode.light,
-              groupValue: currentMode,
-              onChanged: (value) {
-                if (value != null) {
-                  themeService.setThemeMode(value);
-                  Navigator.pop(context);
-                }
-              },
-            ),
-            RadioListTile<ThemeMode>(
-              title: Text(context.l10n.themeDark),
-              value: ThemeMode.dark,
-              groupValue: currentMode,
-              onChanged: (value) {
-                if (value != null) {
-                  themeService.setThemeMode(value);
-                  Navigator.pop(context);
-                }
-              },
-            ),
-            const SizedBox(height: 8),
-          ],
+              RadioListTile<ThemeMode>(
+                title: Text(context.l10n.themeSystem),
+                value: ThemeMode.system,
+              ),
+              RadioListTile<ThemeMode>(
+                title: Text(context.l10n.themeLight),
+                value: ThemeMode.light,
+              ),
+              RadioListTile<ThemeMode>(
+                title: Text(context.l10n.themeDark),
+                value: ThemeMode.dark,
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
     );
@@ -113,40 +101,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                context.l10n.selectLanguage,
-                style: Theme.of(context).textTheme.titleMedium,
+        child: RadioGroup<String>(
+          groupValue: localizationService.locale.languageCode,
+          onChanged: (value) {
+            if (value != null) {
+              localizationService.setLanguage(value);
+              Navigator.pop(context);
+            }
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  context.l10n.selectLanguage,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
               ),
-            ),
-            RadioListTile<String>(
-              title: const Text('Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©'),
-              value: 'ar',
-              groupValue: localizationService.locale.languageCode,
-              onChanged: (value) {
-                if (value != null) {
-                  localizationService.setLanguage(value);
-                  Navigator.pop(context);
-                }
-              },
-            ),
-            RadioListTile<String>(
-              title: const Text('English'),
-              value: 'en',
-              groupValue: localizationService.locale.languageCode,
-              onChanged: (value) {
-                if (value != null) {
-                  localizationService.setLanguage(value);
-                  Navigator.pop(context);
-                }
-              },
-            ),
-            const SizedBox(height: 8),
-          ],
+              RadioListTile<String>(title: const Text('العربية'), value: 'ar'),
+              RadioListTile<String>(title: const Text('English'), value: 'en'),
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
     );
@@ -205,6 +182,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final authProvider = context.read<AuthProvider>();
       await authProvider.signOut();
     } catch (_) {
+      if (!context.mounted) return;
       _showContactSupportDialog(context);
     }
   }

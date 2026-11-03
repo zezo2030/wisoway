@@ -3362,5 +3362,9 @@
   "offersBatteryBody": "To get ride requests while the app is closed or the screen is locked, let VisionWay ignore battery optimization. Otherwise your phone may stop the app and requests won't reach you.",
   "offersBatteryAction": "Allow",
   "offersNotificationsTitle": "Turn on notifications",
-  "offersNotificationsBody": "Notifications are off for VisionWay, so ride requests can't reach you. Turn them on in Settings."
+  "offersNotificationsBody": "Notifications are off for VisionWay, so ride requests can't reach you. Turn them on in Settings.",
+  "createTripDateToday": "Today",
+  "createTripDateTomorrow": "Tomorrow",
+  "chooseTime": "Choose time",
+  "boardingNoPassengers": "No confirmed passengers yet. Accept booking requests to be able to start the trip; with nobody confirmed at departure time, the trip is cancelled automatically."
 }

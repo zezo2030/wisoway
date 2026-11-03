@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../../models/chat_model.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
@@ -12,7 +13,7 @@ class ChatService {
       final data = response['data'] as List? ?? [];
       return data.map((json) => ChatModel.fromJson(json)).toList();
     } catch (e) {
-      print('❌ Error getting chat rooms: $e');
+      debugPrint('❌ Error getting chat rooms: $e');
       return [];
     }
   }
@@ -27,7 +28,7 @@ class ChatService {
       final data = response['data'] ?? response;
       return ChatModel.fromJson(data);
     } catch (e) {
-      print('Error getting chat room by ID: $e');
+      debugPrint('Error getting chat room by ID: $e');
       rethrow;
     }
   }
@@ -39,7 +40,7 @@ class ChatService {
       final data = response['data'] ?? response;
       return ChatModel.fromJson(data);
     } catch (e) {
-      print('❌ Error getting chat room: $e');
+      debugPrint('❌ Error getting chat room: $e');
       rethrow;
     }
   }
@@ -56,7 +57,7 @@ class ChatService {
       final data = response['data'] ?? response;
       return ChatModel.fromJson(data);
     } catch (e) {
-      print('❌ Error getting driver-passenger chat room: $e');
+      debugPrint('❌ Error getting driver-passenger chat room: $e');
       rethrow;
     }
   }
@@ -70,7 +71,7 @@ class ChatService {
       final data = response['data'] ?? response;
       return ChatModel.fromJson(data);
     } catch (e) {
-      print('❌ Error getting group chat room: $e');
+      debugPrint('❌ Error getting group chat room: $e');
       rethrow;
     }
   }
@@ -91,7 +92,7 @@ class ChatService {
       }
       return list.map((json) => MessageModel.fromJson(json)).toList();
     } catch (e) {
-      print('❌ Error getting messages: $e');
+      debugPrint('❌ Error getting messages: $e');
       return [];
     }
   }
@@ -110,7 +111,7 @@ class ChatService {
       final data = response['data'] ?? response;
       return MessageModel.fromJson(data);
     } catch (e) {
-      print('❌ Error sending message: $e');
+      debugPrint('❌ Error sending message: $e');
       rethrow;
     }
   }

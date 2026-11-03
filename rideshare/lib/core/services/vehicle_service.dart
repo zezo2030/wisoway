@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
@@ -109,7 +110,7 @@ class VehicleService {
       final data = response['data'] ?? response;
       return VehicleModel.fromJson(data);
     } catch (e) {
-      print('❌ Error adding vehicle: $e');
+      debugPrint('❌ Error adding vehicle: $e');
       rethrow;
     }
   }
@@ -126,7 +127,7 @@ class VehicleService {
       }
       rethrow;
     } catch (e) {
-      print('❌ Error getting vehicle: $e');
+      debugPrint('❌ Error getting vehicle: $e');
       return null;
     }
   }

@@ -129,6 +129,57 @@ describe('CallsService', () => {
         response: expect.objectContaining({ code: 'PHONE_HIDDEN' }),
       });
     });
+
+    it('always reaches the driver, even one flagged to hide their number', async () => {
+      userRepo.findOne
+        .mockResolvedValueOnce({ id: 'rider-1', phoneNumber: '+962700000002' })
+        .mockResolvedValueOnce({
+          id: 'driver-1',
+          phoneNumber: '+962700000001',
+          hidePhoneNumber: true,
+        });
+
+      const result = await service.initiate('b-1', 'rider-1');
+
+      expect(result.proxyNumberE164).toBe('+962700000001');
+    });
+  });
+
+  describe('initiateForTrip', () => {
+    it("calls through the passenger's own booking on the trip", async () => {
+      mockProxyPoolService.isConfigured = false;
+      bookingRepo.findOne
+        .mockResolvedValueOnce({ id: 'b-1' })
+        .mockResolvedValueOnce({
+          id: 'b-1',
+          userId: 'rider-1',
+          status: 'in_progress',
+          trip: { driverId: 'driver-1' },
+        });
+      userRepo.findOne
+        .mockResolvedValueOnce({ id: 'rider-1', phoneNumber: '+962700000002' })
+        .mockResolvedValueOnce({
+          id: 'driver-1',
+          phoneNumber: '+962700000001',
+        });
+
+      const result = await service.initiateForTrip('t-1', 'rider-1');
+
+      expect(result.proxyNumberE164).toBe('+962700000001');
+      expect(bookingRepo.findOne.mock.calls[0][0].where).toMatchObject({
+        tripId: 't-1',
+        userId: 'rider-1',
+      });
+      mockProxyPoolService.isConfigured = true;
+    });
+
+    it('refuses a caller with no active booking on the trip', async () => {
+      bookingRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.initiateForTrip('t-1', 'stranger'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
   });
 
   it('throws NotFoundException when the booking does not exist', async () => {

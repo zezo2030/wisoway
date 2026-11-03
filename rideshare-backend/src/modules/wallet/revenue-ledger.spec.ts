@@ -94,6 +94,10 @@ describe('Revenue ledger', () => {
         if (!rows(type).includes(row)) rows(type).push(row);
         return row;
       }),
+      count: jest.fn(
+        async (type, opts) =>
+          rows(type).filter((r) => matches(r, opts.where)).length,
+      ),
       update: jest.fn(),
       query: jest.fn(async (sql, params) => {
         if (sql.startsWith('UPDATE driver_availability')) return [];
@@ -313,6 +317,28 @@ describe('Revenue ledger', () => {
     await service.grantDriverWelcome('d', 'SAR');
     expect(account('d', 'driver').balance).toBe('5.00');
     expect(rows(WalletTransactionEntity)).toHaveLength(1);
+  });
+  it('moves an untouched welcome credit to the local currency once', async () => {
+    account('d', 'driver').balance = '0';
+    await service.grantDriverWelcome('d', 'JOD');
+    await Promise.all([
+      service.relocateDriverWelcome('d', 'SAR'),
+      service.relocateDriverWelcome('d', 'SAR'),
+    ]);
+    await service.relocateDriverWelcome('d', 'EGP');
+    const sar = rows(WalletAccountEntity).find(
+      (a) => a.userId === 'd' && a.currency === 'SAR',
+    );
+    expect(account('d', 'driver').balance).toBe('0.00');
+    expect(sar.balance).toBe('25.00');
+    expect(rows(WalletTransactionEntity)).toHaveLength(3);
+  });
+  it('leaves a welcome credit that has been spent from', async () => {
+    account('d', 'driver').balance = '0';
+    await service.grantDriverWelcome('d', 'JOD');
+    await service.chargeCompletedTripCommission('t');
+    expect(await service.relocateDriverWelcome('d', 'SAR')).toBe(false);
+    expect(account('d', 'driver').balance).toBe('4.00');
   });
   it('allows 45 from 50, reserves it, and prevents a second withdrawal', async () => {
     account('d', 'driver').balance = '50';

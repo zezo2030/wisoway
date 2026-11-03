@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
@@ -19,7 +20,7 @@ class StorageService {
       );
       return image;
     } catch (e) {
-      print('❌ Error picking image: $e');
+      debugPrint('❌ Error picking image: $e');
       return null;
     }
   }
@@ -44,7 +45,7 @@ class StorageService {
       final response = await _api.post(ApiEndpoints.uploads, data: formData);
       return response['url'] ?? response['data']['url'];
     } catch (e) {
-      print('❌ Error uploading image: $e');
+      debugPrint('❌ Error uploading image: $e');
       return null;
     }
   }

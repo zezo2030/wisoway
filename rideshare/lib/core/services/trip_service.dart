@@ -98,7 +98,7 @@ class TripService {
       final data = response['data'] ?? response;
       return data['_id'] ?? data['id'];
     } catch (e) {
-      print('❌ Error creating trip: $e');
+      debugPrint('❌ Error creating trip: $e');
       rethrow;
     }
   }
@@ -110,7 +110,7 @@ class TripService {
       final data = response['data'] ?? response;
       return TripModel.fromJson(data);
     } catch (e) {
-      print('❌ Error getting trip: $e');
+      debugPrint('❌ Error getting trip: $e');
       return null;
     }
   }
@@ -124,7 +124,7 @@ class TripService {
       if (data is Map) return Map<String, dynamic>.from(data);
       return null;
     } catch (e) {
-      print('❌ Error getting pricing preview: $e');
+      debugPrint('❌ Error getting pricing preview: $e');
       return null;
     }
   }
@@ -251,7 +251,7 @@ class TripService {
           ? trips
           : trips.where((trip) => trip.inDriverTab(status)).toList();
     } catch (e) {
-      print('❌ Error getting driver trips: $e');
+      debugPrint('❌ Error getting driver trips: $e');
       if (driverId != null && driverId.isNotEmpty) {
         try {
           return await fallbackFromPublicTrips();
@@ -299,7 +299,7 @@ class TripService {
       );
       return _extractTrips(response);
     } catch (e) {
-      print('❌ Error getting active trips: $e');
+      debugPrint('❌ Error getting active trips: $e');
       return [];
     }
   }
@@ -320,7 +320,7 @@ class TripService {
       );
       return _extractTrips(response);
     } catch (e) {
-      print('❌ Error getting nearby trips: $e');
+      debugPrint('❌ Error getting nearby trips: $e');
       return [];
     }
   }
@@ -341,7 +341,7 @@ class TripService {
       );
       return _extractTrips(response);
     } catch (e) {
-      print('❌ Error getting preferred trips: $e');
+      debugPrint('❌ Error getting preferred trips: $e');
       return [];
     }
   }

@@ -549,6 +549,7 @@ class _FakeInstantRideService extends InstantRideService {
     int seatCount = 1,
     String paymentMethod = 'cash',
     String? payerCliqAlias,
+    String? promoCode,
   }) async {
     createdRequests++;
     lastPaymentMethod = paymentMethod;

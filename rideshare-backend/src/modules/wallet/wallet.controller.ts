@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 import { PayoutStatus } from '../../database/entities';
+import { knownCurrencyForCountry } from '../../common/currency/country-currency';
 
 class ProcessPayoutDto {
   @IsEnum(PayoutStatus)
@@ -41,12 +42,15 @@ export class WalletController {
 
   @Get('driver/trip-eligibility')
   @Roles('driver')
-  @ApiOperation({ summary: 'Check wallet eligibility before opening shared-trip creation' })
+  @ApiOperation({
+    summary: 'Check wallet eligibility before opening shared-trip creation',
+  })
   async tripEligibility(
     @CurrentUser('id') id: string,
     @Query('country') country?: string,
   ) {
-    const currency = (await this.walletService.resolveLocalCurrency(id, country)) || 'JOD';
+    const currency =
+      (await this.walletService.resolveLocalCurrency(id, country)) || 'JOD';
     await this.walletService.assertNonNegativeDriverBalance(id, currency);
     return { eligible: true, currency };
   }
@@ -95,6 +99,11 @@ export class WalletController {
       userId,
       country,
     );
+    // Only a device-reported country says where the driver works.
+    const located = knownCurrencyForCountry(country);
+    if (role === 'driver' && located) {
+      await this.walletService.relocateDriverWelcome(userId, located);
+    }
     return this.walletService.getWalletSummary(userId, role, currency);
   }
 

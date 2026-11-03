@@ -209,8 +209,9 @@ class _TripManagementScreenState extends State<TripManagementScreen>
       if (!mounted) return;
       _startDriverLocationStream();
       if (_lastLocationPublished != null &&
-          DateTime.now().difference(_lastLocationPublished!).inSeconds < 6)
+          DateTime.now().difference(_lastLocationPublished!).inSeconds < 6) {
         return;
+      }
       final position = await _locationService.getCurrentPosition(
         checkPrivacyPreference: false,
       );
@@ -262,8 +263,9 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     final trip = _trip;
     if (!mounted || trip == null || !trip.isDriverLiveTrackingRequired) return;
     if (_lastDriverFixTimestamp != null &&
-        position.timestamp.isBefore(_lastDriverFixTimestamp!))
+        position.timestamp.isBefore(_lastDriverFixTimestamp!)) {
       return;
+    }
     _lastDriverFixTimestamp = position.timestamp;
     _lastLocationPublished = DateTime.now();
     _webSocketService.updateDriverLocation(
@@ -568,7 +570,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
       ),
     );
 
-    if (confirmed == true && _trip != null) {
+    if (confirmed == true && _trip != null && mounted) {
       final tripProvider = Provider.of<TripProvider>(context, listen: false);
       final success = await tripProvider.hideTrip(_trip!.id);
 
@@ -653,7 +655,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
       ),
     );
 
-    if (confirmed == true && _trip != null) {
+    if (confirmed == true && _trip != null && mounted) {
       final tripProvider = Provider.of<TripProvider>(context, listen: false);
       final failure = await tripProvider.deleteTrip(_trip!.id);
       if (!mounted) return;
@@ -2273,7 +2275,9 @@ class _TripManagementScreenState extends State<TripManagementScreen>
   /// car; the button covers riders who are in but didn't tap.
   Widget _buildBoardingCard(TripModel trip, List<BookingModel> riders) {
     final l10n = context.l10n;
-    final canStart = _awaitingBoarding(trip);
+    // A request still waiting for an answer is not a passenger: with nobody
+    // confirmed the trip can't start (the server refuses it too).
+    final canStart = _awaitingBoarding(trip) && riders.isNotEmpty;
     return Container(
       key: const ValueKey('boarding-card'),
       width: double.infinity,
@@ -2317,7 +2321,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            l10n.boardingCardBody,
+            riders.isEmpty ? l10n.boardingNoPassengers : l10n.boardingCardBody,
             style: AppTextStyles.bodySmall.copyWith(
               color: T.onPrimaryContainer(context),
               height: 1.5,

@@ -9,9 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.media.AudioAttributes
-import android.media.AudioManager
 import android.os.Build
-import android.os.SystemClock
 import android.view.View
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
@@ -26,9 +24,18 @@ object BookingNotificationHelper {
     const val CHANNEL_ID = "sound_general"
     private const val CHANNEL_NAME = "إشعارات عامة"
 
-    /** Booking requests chime on their own channel (a channel's sound is fixed). */
-    private const val REQUEST_CHANNEL_ID = "booking_requests_v2"
-    private val REQUEST_VIBRATION = longArrayOf(0, 300, 200, 300)
+    /**
+     * Booking requests post on their own channel. Like ride offers, the
+     * channel is silent and [InstantOfferRinger] plays the music, which rings
+     * on a silent or vibrating phone where a channel sound stays mute. A
+     * channel's sound is fixed once created, hence the new id.
+     */
+    private const val REQUEST_CHANNEL_ID = "booking_requests_v3"
+    private val OLD_REQUEST_CHANNEL_IDS = listOf("booking_requests_v2")
+    private val REQUEST_VIBRATION = longArrayOf(0, 400, 250, 400, 900)
+
+    /** How long the music plays; the request itself stays up until answered. */
+    private const val RING_MS = 60_000L
 
     const val EXTRA_BOOKING_ACTION = "bookingAction"
     const val ACTION_ACCEPT = "accept"
@@ -59,6 +66,7 @@ object BookingNotificationHelper {
             )
         }
         if (manager.getNotificationChannel(REQUEST_CHANNEL_ID) == null) {
+            OLD_REQUEST_CHANNEL_IDS.forEach { manager.deleteNotificationChannel(it) }
             manager.createNotificationChannel(
                 NotificationChannel(
                     REQUEST_CHANNEL_ID,
@@ -66,13 +74,7 @@ object BookingNotificationHelper {
                     NotificationManager.IMPORTANCE_HIGH,
                 ).apply {
                     description = "طلبات الركاب للانضمام إلى رحلاتك المشتركة"
-                    setSound(
-                        InstantOfferNotificationHelper.soundUri(context),
-                        AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
-                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                            .build(),
-                    )
+                    setSound(null, null)
                     enableVibration(true)
                     vibrationPattern = REQUEST_VIBRATION
                     lockscreenVisibility = Notification.VISIBILITY_PUBLIC
@@ -120,7 +122,7 @@ object BookingNotificationHelper {
         val footerSubtitle =
             requestLine.takeIf { it.isNotBlank() }
                 ?: data["footerSubtitle"]?.takeIf { it.isNotBlank() }
-                ?: "اقبل الطلب أو ارفضه قبل انتهاء المهلة"
+                ?: "اقبل الطلب أو ارفضه"
 
         val collapsed =
             RemoteViews(context.packageName, R.layout.notification_booking_collapsed).apply {
@@ -143,22 +145,13 @@ object BookingNotificationHelper {
         val bookingKey = data["bookingId"] ?: data["entityId"] ?: title
         val notificationId = notificationId(bookingKey)
 
-        // The request has to be answered, so it sits pinned with the time left
-        // until the server's acceptance window closes, then removes itself.
+        // The request waits for the driver: no countdown on screen. It only
+        // leaves the tray, quietly, once the server's window has closed.
+        collapsed.setViewVisibility(R.id.notif_countdown_collapsed, View.GONE)
+        expanded.setViewVisibility(R.id.notif_countdown, View.GONE)
         val expiresAtMs = parseIsoMs(data["expiresAt"])
         val nowMs = System.currentTimeMillis()
         if (expiresAtMs != null && expiresAtMs <= nowMs) return
-        if (expiresAtMs != null) {
-            // Chronometer base is on the elapsed-realtime clock.
-            val base = SystemClock.elapsedRealtime() + (expiresAtMs - nowMs)
-            collapsed.setChronometer(R.id.notif_countdown_collapsed, base, "⏱ %s", true)
-            collapsed.setChronometerCountDown(R.id.notif_countdown_collapsed, true)
-            expanded.setChronometer(R.id.notif_countdown, base, "ينتهي خلال %s", true)
-            expanded.setChronometerCountDown(R.id.notif_countdown, true)
-        } else {
-            collapsed.setViewVisibility(R.id.notif_countdown_collapsed, View.GONE)
-            expanded.setViewVisibility(R.id.notif_countdown, View.GONE)
-        }
 
         // Both buttons open the app straight onto the answer, where accept can
         // still fail on wallet balance and be reported properly.
@@ -171,8 +164,15 @@ object BookingNotificationHelper {
             launchPendingIntent(context, data, bookingKey, ACTION_REJECT),
         )
 
+        // As with a ride offer: the card over whatever app is open, else a
+        // full-screen launch that wakes the phone over the lock screen. With
+        // the card up, the tray entry stays quiet so no heads-up covers it.
+        val overlaid = InstantOfferOverlay.showBooking(context, data)
         val builder =
-            NotificationCompat.Builder(context, REQUEST_CHANNEL_ID)
+            NotificationCompat.Builder(
+                context,
+                if (overlaid) InstantOfferNotificationHelper.QUIET_CHANNEL_ID else REQUEST_CHANNEL_ID,
+            )
                 .setSmallIcon(R.drawable.notification_icon)
                 .setColor(0xFF7C6AF5.toInt())
                 .setContentTitle(title)
@@ -182,23 +182,53 @@ object BookingNotificationHelper {
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setSound(InstantOfferNotificationHelper.soundUri(context), AudioManager.STREAM_RING)
                 .setVibrate(REQUEST_VIBRATION)
                 .setOngoing(true)
                 .setAutoCancel(false)
                 .setOnlyAlertOnce(true)
                 .setContentIntent(launchPendingIntent(context, data, bookingKey, null))
+        if (!overlaid) {
+            builder.setFullScreenIntent(fullScreenPendingIntent(context, data, bookingKey), true)
+        }
         if (expiresAtMs != null) {
-            builder
-                .setWhen(expiresAtMs)
-                .setTimeoutAfter((expiresAtMs - nowMs).coerceAtLeast(1000L))
+            builder.setTimeoutAfter((expiresAtMs - nowMs).coerceAtLeast(1000L))
         }
 
         NotificationManagerCompat.from(context).notify(notificationId, builder.build())
+
+        // A ride offer that is ringing keeps the music: it is gone in seconds.
+        val ringing = InstantOfferRinger.ringingId
+        if (ringing == null || ringing.startsWith(InstantOfferOverlay.bookingKey(""))) {
+            InstantOfferRinger.start(
+                context.applicationContext,
+                InstantOfferOverlay.bookingKey(bookingKey),
+                nowMs + RING_MS,
+            )
+        }
     }
 
-    /** The request was answered, cancelled or expired elsewhere. */
-    fun cancel(context: Context, bookingId: String) {
+    /** Opens the app on the request (and the driver's choice), taking it down here. */
+    fun open(
+        context: Context,
+        data: Map<String, String>,
+        action: String?,
+    ) {
+        val bookingKey = data["bookingId"] ?: data["entityId"] ?: return
+        cancel(context, bookingKey)
+        try {
+            context.startActivity(launchIntent(context, data, action))
+        } catch (_: Exception) {
+        }
+    }
+
+    /**
+     * The request was answered, cancelled or expired elsewhere. [keepRing] is
+     * for the in-app card taking over the same request.
+     */
+    fun cancel(context: Context, bookingId: String, keepRing: Boolean = false) {
+        val key = InstantOfferOverlay.bookingKey(bookingId)
+        if (!keepRing) InstantOfferRinger.stop(key)
+        InstantOfferOverlay.dismiss(key)
         NotificationManagerCompat.from(context).cancel(notificationId(bookingId))
     }
 
@@ -209,19 +239,37 @@ object BookingNotificationHelper {
         data: Map<String, String>,
         bookingKey: String,
         action: String?,
-    ): PendingIntent {
-        val payload = if (action == null) data else data + (EXTRA_BOOKING_ACTION to action)
-        val intent =
-            Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                putExtra("notification_payload", JSONObject(payload).toString())
-            }
-        return PendingIntent.getActivity(
+    ): PendingIntent =
+        PendingIntent.getActivity(
             context,
             (bookingKey + (action ?: "open")).hashCode(),
-            intent,
+            launchIntent(context, data, action),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+
+    private fun fullScreenPendingIntent(
+        context: Context,
+        data: Map<String, String>,
+        bookingKey: String,
+    ): PendingIntent =
+        PendingIntent.getActivity(
+            context,
+            (bookingKey + "fullscreen").hashCode(),
+            launchIntent(context, data, null)
+                .putExtra(InstantOfferNotificationHelper.EXTRA_OVER_LOCK_SCREEN, true),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+    private fun launchIntent(
+        context: Context,
+        data: Map<String, String>,
+        action: String?,
+    ): Intent {
+        val payload = if (action == null) data else data + (EXTRA_BOOKING_ACTION to action)
+        return Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("notification_payload", JSONObject(payload).toString())
+        }
     }
 
     private fun parseIsoMs(raw: String?): Long? {

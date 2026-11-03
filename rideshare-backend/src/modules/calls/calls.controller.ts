@@ -35,6 +35,16 @@ export class CallsController {
     return this.callsService.initiate(bookingId, callerId);
   }
 
+  /** POST /trips/:id/calls/initiate — a passenger calling their driver */
+  @Post('trips/:id/calls/initiate')
+  @HttpCode(HttpStatus.CREATED)
+  async initiateForTrip(
+    @Param('id') tripId: string,
+    @CurrentUser('id') callerId: string,
+  ) {
+    return this.callsService.initiateForTrip(tripId, callerId);
+  }
+
   /**
    * POST /calls/twilio-webhook — public endpoint, validated with Twilio signature.
    *

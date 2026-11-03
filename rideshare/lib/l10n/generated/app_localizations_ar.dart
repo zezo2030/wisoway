@@ -5916,4 +5916,17 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get offersNotificationsBody =>
       'الإشعارات متوقفة لـ VisionWay، فلن تصلك طلبات الرحلات. فعّلها من الإعدادات.';
+
+  @override
+  String get createTripDateToday => 'اليوم';
+
+  @override
+  String get createTripDateTomorrow => 'غداً';
+
+  @override
+  String get chooseTime => 'اختر الوقت';
+
+  @override
+  String get boardingNoPassengers =>
+      'لا يوجد ركاب مؤكَّدون بعد. اقبل طلبات الحجز لتتمكن من بدء الرحلة، وإن لم يكن هناك ركاب عند موعد الانطلاق تُلغى الرحلة تلقائياً.';
 }

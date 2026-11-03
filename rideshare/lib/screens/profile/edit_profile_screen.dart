@@ -104,7 +104,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         gender: _selectedGender,
         role: authProvider.userModel?.role ?? AppConstants.rolePassenger,
         profileImage: _profileImage,
-        hidePhoneNumber: _hidePhoneNumber,
+        hidePhoneNumber: authProvider.userModel?.isDriver == true
+            ? false
+            : _hidePhoneNumber,
         // Passengers only (drivers are paid into their wallet).
         cliqAlias: authProvider.userModel?.isDriver == true
             ? null
@@ -364,8 +366,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         const SectionTitle(title: AppStrings.gender, isRequired: true),
         const SizedBox(height: 12),
         _buildGenderCards(),
-        const SizedBox(height: 28),
-        _buildHidePhoneToggle(),
+        // Passengers only: a passenger must always be able to call the driver.
+        if (user != null && !user.isDriver) ...[
+          const SizedBox(height: 28),
+          _buildHidePhoneToggle(),
+        ],
         // Where CliQ fare requests go when the passenger pays by CliQ.
         if (user != null && !user.isDriver) ...[
           const SizedBox(height: 28),
@@ -446,7 +451,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
           value: _hidePhoneNumber,
           onChanged: (val) => setState(() => _hidePhoneNumber = val),
-          activeColor: T.primary(context),
+          activeThumbColor: T.primary(context),
         ),
       ),
     );

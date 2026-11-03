@@ -39,7 +39,8 @@ export const DRIVER_START_LEAD_MS = 30 * 60 * 1000;
  * When a shared trip starts. Not on the clock alone: a trip that leaves with
  * nobody confirmed on board isn't under way. So, at departure:
  * - a passenger already confirmed «أنا في السيارة» → it starts;
- * - nobody booked → it starts (nothing to wait for);
+ * - no confirmed booking at all → it is cancelled: a shared trip with no
+ *   passengers isn't a trip, and requests still unanswered are closed;
  * - otherwise it waits, and every passenger is asked «هل أنت في السيارة؟».
  * The first confirmation after departure starts it, and the driver can start
  * it themselves («بدء الرحلة») when the riders are in but didn't tap.
@@ -74,14 +75,67 @@ export class TripStartService {
     if (!STARTABLE.includes(trip.status)) return;
 
     const bookings = await this.confirmedBookings(tripId);
-    if (
-      bookings.length === 0 ||
-      bookings.some((b) => b.passengerPresenceConfirmedAt != null)
-    ) {
+    if (bookings.length === 0) {
+      await this.cancelEmpty(trip);
+      return;
+    }
+    if (bookings.some((b) => b.passengerPresenceConfirmedAt != null)) {
       await this.start(trip.id, 'departure');
       return;
     }
     await this.askToBoard(trip, bookings);
+  }
+
+  /**
+   * Departure came with no confirmed passenger: the trip is called off, the
+   * requests the driver never answered are closed, and everyone is told.
+   */
+  private async cancelEmpty(trip: TripEntity) {
+    const claim = await this.tripRepo.update(
+      { id: trip.id, status: In(STARTABLE) },
+      { status: TripStatus.CANCELLED },
+    );
+    if (!claim.affected) return;
+
+    const pending = await this.bookingRepo.find({
+      where: { tripId: trip.id, status: BookingStatus.PENDING },
+    });
+    if (pending.length > 0) {
+      await this.bookingRepo.update(
+        { id: In(pending.map((b) => b.id)) },
+        {
+          status: BookingStatus.CANCELLED,
+          cancellationReason: 'Trip departed with no confirmed passengers',
+          cancelledAt: new Date(),
+          cancelledBy: 'system',
+        },
+      );
+    }
+    for (const booking of pending) {
+      const ar =
+        (await this.notifications.getPreferredLocale(booking.userId)) === 'ar';
+      this.notify(booking.userId, {
+        type: 'trip_cancelled',
+        title: ar ? 'تم إلغاء الرحلة' : 'Trip cancelled',
+        body: ar
+          ? `لم يقبل السائق طلبك قبل موعد الرحلة إلى ${trip.toName}، فأُلغيت الرحلة.`
+          : `The driver didn't accept your request before the trip to ${trip.toName} was due, so it was cancelled.`,
+        data: { tripId: trip.id, bookingId: booking.id },
+      });
+    }
+    const driverAr =
+      (await this.notifications.getPreferredLocale(trip.driverId)) === 'ar';
+    this.notify(trip.driverId, {
+      type: 'trip_cancelled',
+      title: driverAr ? 'أُلغيت الرحلة' : 'Trip cancelled',
+      body: driverAr
+        ? `حان موعد رحلتك إلى ${trip.toName} ولا يوجد ركاب مؤكَّدون، فأُلغيت الرحلة.`
+        : `Your trip to ${trip.toName} was due with no confirmed passengers, so it was cancelled.`,
+      data: { tripId: trip.id },
+    });
+    this.logger.log(
+      `trip-start: trip ${trip.id} cancelled at departure — no confirmed passengers (${pending.length} pending request(s) closed)`,
+    );
   }
 
   /**
@@ -121,6 +175,15 @@ export class TripStartService {
         statusCode: 409,
         code: 'TRIP_START_TOO_EARLY',
         message: 'يمكنك بدء الرحلة قبل موعدها بـ 30 دقيقة كحد أقصى.',
+      });
+    }
+    // A request still waiting for the driver's answer is not a passenger.
+    if ((await this.confirmedBookings(tripId)).length === 0) {
+      throw new ConflictException({
+        statusCode: 409,
+        code: 'TRIP_NO_PASSENGERS',
+        message:
+          'لا يوجد ركاب مؤكَّدون في هذه الرحلة. اقبل طلبات الحجز أولاً لتتمكن من بدء الرحلة.',
       });
     }
     await this.start(trip.id, 'driver');

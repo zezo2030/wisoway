@@ -283,7 +283,7 @@ class _RouteSearchScreenState extends State<RouteSearchScreen> {
           : await (_countryLookups[key] ??= _locationService
                 .getCountryCodeFromCoordinates(
                   latitude: context!.latitude,
-                  longitude: context!.longitude,
+                  longitude: context.longitude,
                 ));
       if (country == null && key != null) _countryLookups.remove(key);
       if (!mounted || sequence != _sequence || field != _active) return;

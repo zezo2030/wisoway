@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../../models/rating_model.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
@@ -41,7 +42,7 @@ class RatingService {
       final data = response['data'] ?? response;
       return RatingModel.fromJson(data);
     } catch (e) {
-      print('❌ Error rating user: $e');
+      debugPrint('❌ Error rating user: $e');
       rethrow;
     }
   }
@@ -71,7 +72,7 @@ class RatingService {
       final response = await _api.get(ApiEndpoints.userRatings(userId));
       return _ratingsListFromResponse(response);
     } catch (e) {
-      print('❌ Error getting user ratings: $e');
+      debugPrint('❌ Error getting user ratings: $e');
       return [];
     }
   }
@@ -82,7 +83,7 @@ class RatingService {
       final response = await _api.get(ApiEndpoints.myRatings);
       return _ratingsListFromResponse(response);
     } catch (e) {
-      print('❌ Error getting my ratings: $e');
+      debugPrint('❌ Error getting my ratings: $e');
       return [];
     }
   }
@@ -93,7 +94,7 @@ class RatingService {
       final response = await _api.get(ApiEndpoints.tripRatings(tripId));
       return _ratingsListFromResponse(response);
     } catch (e) {
-      print('❌ Error getting trip ratings: $e');
+      debugPrint('❌ Error getting trip ratings: $e');
       return [];
     }
   }

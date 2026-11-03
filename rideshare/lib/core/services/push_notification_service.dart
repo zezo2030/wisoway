@@ -122,7 +122,7 @@ class PushNotificationService {
         );
       }
     } catch (e) {
-      if (kDebugMode) print('Failed to consume pending notification tap: $e');
+      if (kDebugMode) debugPrint('Failed to consume pending notification tap: $e');
     }
   }
 
@@ -140,7 +140,7 @@ class PushNotificationService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Failed to consume pending instant offer action: $e');
+        debugPrint('Failed to consume pending instant offer action: $e');
       }
     }
   }
@@ -183,7 +183,7 @@ class PushNotificationService {
       _currentToken = token;
       return token;
     } catch (e) {
-      if (kDebugMode) print('Failed to get FCM token: $e');
+      if (kDebugMode) debugPrint('Failed to get FCM token: $e');
       return null;
     }
   }
@@ -232,7 +232,7 @@ class PushNotificationService {
       );
       return response['registered'] == true;
     } catch (e) {
-      if (kDebugMode) print('Failed to register device token: $e');
+      if (kDebugMode) debugPrint('Failed to register device token: $e');
       return false;
     }
   }
@@ -254,7 +254,7 @@ class PushNotificationService {
         locale: languageCode,
       );
     } catch (e) {
-      if (kDebugMode) print('Failed to sync device language: $e');
+      if (kDebugMode) debugPrint('Failed to sync device language: $e');
     }
   }
 
@@ -263,7 +263,7 @@ class PushNotificationService {
       await ApiClient().delete(ApiEndpoints.notificationDevice(token));
       return true;
     } catch (e) {
-      if (kDebugMode) print('Failed to deregister device token: $e');
+      if (kDebugMode) debugPrint('Failed to deregister device token: $e');
       return false;
     }
   }
@@ -290,7 +290,7 @@ class PushNotificationService {
             data.map((k, v) => MapEntry(k, v?.toString() ?? '')),
           );
         } catch (e) {
-          if (kDebugMode) print('Failed to show booking notification: $e');
+          if (kDebugMode) debugPrint('Failed to show booking notification: $e');
         }
         return;
       }
@@ -314,8 +314,9 @@ class PushNotificationService {
             data.map((k, v) => MapEntry(k, v?.toString() ?? '')),
           );
         } catch (e) {
-          if (kDebugMode)
-            print('Failed to show instant offer notification: $e');
+          if (kDebugMode) {
+            debugPrint('Failed to show instant offer notification: $e');
+          }
         }
         return;
       }
@@ -410,21 +411,25 @@ class PushNotificationService {
         'untilMs': until.millisecondsSinceEpoch,
       });
     } catch (e) {
-      if (kDebugMode) print('Failed to start instant offer ring: $e');
+      if (kDebugMode) debugPrint('Failed to start instant offer ring: $e');
     }
   }
 
   /// Takes down the pinned booking-request notification once it is answered.
-  static Future<void> cancelBookingRequestNotification(String bookingId) async {
+  /// [keepRing] is for the in-app card taking over: the music carries on.
+  static Future<void> cancelBookingRequestNotification(
+    String bookingId, {
+    bool keepRing = false,
+  }) async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
     if (bookingId.isEmpty) return;
     try {
       await _bookingNotificationChannel.invokeMethod(
         'cancelBookingNotification',
-        {'bookingId': bookingId},
+        {'bookingId': bookingId, 'keepRing': keepRing},
       );
     } catch (e) {
-      if (kDebugMode) print('Failed to cancel booking notification: $e');
+      if (kDebugMode) debugPrint('Failed to cancel booking notification: $e');
     }
   }
 
@@ -439,7 +444,7 @@ class PushNotificationService {
         'offerId': offerId,
       });
     } catch (e) {
-      if (kDebugMode) print('Failed to stop instant offer ring: $e');
+      if (kDebugMode) debugPrint('Failed to stop instant offer ring: $e');
     }
   }
 
@@ -503,7 +508,7 @@ class PushNotificationService {
       );
     } catch (e) {
       if (kDebugMode) {
-        print('Failed to cancel instant offer notification: $e');
+        debugPrint('Failed to cancel instant offer notification: $e');
       }
     }
   }

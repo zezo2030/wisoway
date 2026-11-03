@@ -471,6 +471,8 @@ export class AuthService {
 
       user.role = PgUserRole.DRIVER;
       user.isDriverApproved = false;
+      // A driver's number is never hidden from their passengers.
+      user.hidePhoneNumber = false;
       if (dto.name) user.name = dto.name;
       if (dto.gender) user.gender = dto.gender;
       if (dto.photoUrl) user.photoUrl = dto.photoUrl;

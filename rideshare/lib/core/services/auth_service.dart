@@ -73,7 +73,7 @@ class AuthService {
   // ===== OTP / Phone Auth =====
   Future<void> sendOTP(String phoneNumber) async {
     if (AppConstants.skipOTP) {
-      if (kDebugMode) print('Development mode: Skipping actual SMS generation');
+      if (kDebugMode) debugPrint('Development mode: Skipping actual SMS generation');
       return;
     }
 
@@ -335,7 +335,7 @@ class AuthService {
       await _api.patch(ApiEndpoints.meFcmToken, data: {'fcmToken': fcmToken});
       _currentUser = _currentUser?.copyWith(fcmToken: fcmToken);
     } catch (e) {
-      if (kDebugMode) print('Failed to update FCM token on server');
+      if (kDebugMode) debugPrint('Failed to update FCM token on server');
     }
   }
 

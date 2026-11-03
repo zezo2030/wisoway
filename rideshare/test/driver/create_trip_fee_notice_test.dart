@@ -34,6 +34,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('1.60'), findsOneWidget);
-    expect(find.textContaining('عند انطلاق الرحلة'), findsOneWidget);
+    expect(find.textContaining('عند انتهائها'), findsOneWidget);
   });
 }

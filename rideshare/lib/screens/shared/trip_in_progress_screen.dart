@@ -65,6 +65,7 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
   TripModel? _trip;
   bool _loading = true;
   bool _emergencyLoading = false;
+  bool _callBusy = false;
   bool _shareLoading = false;
   bool _cancelling = false;
   GoogleMapController? _mapController;
@@ -305,8 +306,9 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
     if (trip == null ||
         car == null ||
         _phase != _RidePhase.approaching ||
-        _approachRequestInFlight)
+        _approachRequestInFlight) {
       return;
+    }
     final age = _approachRequestedAt == null
         ? const Duration(days: 1)
         : DateTime.now().difference(_approachRequestedAt!);
@@ -317,8 +319,9 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
         LiveRouteGeometry.project(_approachRoute, car)?.offsetMeters ??
         double.infinity;
     if (age.inSeconds < 15 ||
-        (age.inSeconds < 45 && moved < 80 && offRoad < 60))
+        (age.inSeconds < 45 && moved < 80 && offRoad < 60)) {
       return;
+    }
     _approachRequestInFlight = true;
     _approachRequestedAt = DateTime.now();
     try {
@@ -350,8 +353,9 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
       );
       if (mounted) unawaited(_socketService.connect());
       final data = response is Map ? (response['data'] ?? response) : null;
-      if (mounted && data is Map)
+      if (mounted && data is Map) {
         _applyTracking(Map<String, dynamic>.from(data));
+      }
     } catch (_) {
       // The live socket remains primary; this also recovers missed updates.
     } finally {
@@ -366,18 +370,21 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
     final recorded = DateTime.tryParse(payload['recordedAt']?.toString() ?? '');
     if (recorded != null &&
         _lastTrackingAt != null &&
-        !recorded.isAfter(_lastTrackingAt!))
+        !recorded.isAfter(_lastTrackingAt!)) {
       return;
+    }
     _lastTrackingAt = recorded ?? _lastTrackingAt;
     setState(() {
       final km = payload['remainingDistanceKm'],
           seconds = payload['remainingDurationSeconds'];
       if (km is num) _remainingDistanceKm = km.toDouble();
       if (seconds is num) _remainingDurationSeconds = seconds.toInt();
-      if (payload['etaAt'] != null)
+      if (payload['etaAt'] != null) {
         _etaAt = DateTime.tryParse(payload['etaAt'].toString());
-      if (payload['routeProgressPercent'] is num)
+      }
+      if (payload['routeProgressPercent'] is num) {
         _progressPercent = (payload['routeProgressPercent'] as num).toDouble();
+      }
     });
     final raw = LatLng(lat.toDouble(), lng.toDouble());
     _latestDriverFix = raw;
@@ -394,8 +401,9 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
     } else {
       _carMotion.stop();
       _liveDriverLocation = next;
-      if (payload['heading'] is num)
+      if (payload['heading'] is num) {
         _carHeading = (payload['heading'] as num).toDouble();
+      }
       _rebuildMapOverlays();
     }
     unawaited(_refreshApproachRoute());
@@ -718,6 +726,27 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
       );
     } finally {
       if (mounted) setState(() => _emergencyLoading = false);
+    }
+  }
+
+  /// Calls the driver (through a proxy number when the server has one), then
+  /// hands off to the phone dialler.
+  Future<void> _callDriver() async {
+    if (_callBusy) return;
+    setState(() => _callBusy = true);
+    try {
+      final number = await InstantRideService().initiateCallForTrip(
+        widget.tripId,
+      );
+      final launched = await launchUrl(Uri(scheme: 'tel', path: number));
+      if (!launched) throw StateError('dialler unavailable');
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.instantMatchedCallFailed)),
+      );
+    } finally {
+      if (mounted) setState(() => _callBusy = false);
     }
   }
 
@@ -1200,6 +1229,44 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
     );
   }
 
+  Widget _driverCardAction({
+    required IconData icon,
+    required String label,
+    required VoidCallback? onTap,
+    bool busy = false,
+  }) {
+    return Column(
+      children: [
+        Material(
+          color: AppColors.teal50,
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(14),
+            child: SizedBox(
+              width: 52,
+              height: 52,
+              child: busy
+                  ? const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.teal700,
+                      ),
+                    )
+                  : Icon(icon, color: AppColors.teal700),
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 11, color: AppColors.slate500),
+        ),
+      ],
+    );
+  }
+
   Widget _buildDriverCard(BuildContext context, TripModel trip) {
     final name = trip.driverName?.trim().isNotEmpty == true
         ? trip.driverName!
@@ -1229,30 +1296,17 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
       ),
       child: Row(
         children: [
-          Column(
-            children: [
-              Material(
-                color: AppColors.teal50,
-                borderRadius: BorderRadius.circular(14),
-                child: InkWell(
-                  onTap: () => _openDriverChat(trip),
-                  borderRadius: BorderRadius.circular(14),
-                  child: const SizedBox(
-                    width: 52,
-                    height: 52,
-                    child: Icon(
-                      Icons.chat_bubble_outline_rounded,
-                      color: AppColors.teal700,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                context.l10n.chatLabel,
-                style: const TextStyle(fontSize: 11, color: AppColors.slate500),
-              ),
-            ],
+          _driverCardAction(
+            icon: Icons.chat_bubble_outline_rounded,
+            label: context.l10n.chatLabel,
+            onTap: () => _openDriverChat(trip),
+          ),
+          const SizedBox(width: 8),
+          _driverCardAction(
+            icon: Icons.call_outlined,
+            label: context.l10n.call,
+            onTap: _callBusy ? null : _callDriver,
+            busy: _callBusy,
           ),
           const SizedBox(width: 10),
           Expanded(

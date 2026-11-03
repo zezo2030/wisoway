@@ -485,9 +485,7 @@ class _BookingsTabState extends State<BookingsTab> {
   Future<void> _showCancelDialog(BookingModel booking, TripModel? trip) async {
     final now = DateTime.now();
     final departureTime = trip?.departureTime;
-    final hoursUntilDeparture = departureTime != null
-        ? departureTime.difference(now).inHours
-        : null;
+    final hoursUntilDeparture = departureTime?.difference(now).inHours;
 
     // Check 12-hour restriction client-side
     if (hoursUntilDeparture != null && hoursUntilDeparture < 12) {

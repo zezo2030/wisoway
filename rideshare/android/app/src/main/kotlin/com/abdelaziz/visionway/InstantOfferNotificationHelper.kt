@@ -45,7 +45,7 @@ object InstantOfferNotificationHelper {
     private val OLD_CHANNEL_IDS = listOf("instant_offers_ring_v2")
 
     /** The tray entry while the offer card is drawn over other apps: no heads-up. */
-    private const val QUIET_CHANNEL_ID = "instant_offers_overlaid"
+    const val QUIET_CHANNEL_ID = "instant_offers_overlaid"
 
     private val VIBRATION = longArrayOf(0, 400, 250, 400, 900)
 

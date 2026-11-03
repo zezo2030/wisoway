@@ -678,7 +678,7 @@ export class NotificationsService {
       // A request the driver still has to answer — not a done booking.
       const title = 'طلب حجز جديد في رحلتك المشتركة';
       const footerTitle = 'راكب يطلب الانضمام إلى رحلتك';
-      const footerSubtitle = 'اقبل الطلب أو ارفضه قبل انتهاء المهلة';
+      const footerSubtitle = 'اقبل الطلب أو ارفضه';
 
       await this.create({
         userId: trip.driverId,

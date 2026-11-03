@@ -59,7 +59,7 @@ class _TripsListScreenState extends State<TripsListScreen> {
       _reloadTrips();
     } catch (e) {
       if (!mounted) return;
-      print('❌ Error loading location: $e');
+      debugPrint('❌ Error loading location: $e');
       setState(() => _isLoadingLocation = false);
 
       String message = context.l10n.locationUnavailable;

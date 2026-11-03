@@ -110,7 +110,7 @@ class InstantOfferActions {
       if (context != null && context.mounted) {
         ErrorSurface.showFailure(context, ApiClient.mapError(e));
       } else if (kDebugMode) {
-        print('instant offer accept failed: $e');
+        debugPrint('instant offer accept failed: $e');
       }
     }
   }

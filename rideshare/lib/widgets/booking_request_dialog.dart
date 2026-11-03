@@ -29,8 +29,9 @@ enum BookingRequestInitialAction {
 }
 
 /// A passenger's request to join one of the driver's shared trips, shown over
-/// whatever the driver is doing. It cannot be dismissed: the driver answers it,
-/// or it closes itself when the request's acceptance window runs out.
+/// whatever the driver is doing. It cannot be dismissed: the driver answers it.
+/// No countdown is shown; the card only closes by itself, quietly, once the
+/// server's acceptance window has run out and an answer could no longer count.
 class BookingRequestDialog extends StatefulWidget {
   const BookingRequestDialog({
     super.key,
@@ -56,33 +57,25 @@ class BookingRequestDialog extends StatefulWidget {
 
 class _BookingRequestDialogState extends State<BookingRequestDialog> {
   Timer? _ticker;
-  late int _secondsLeft;
-  late final int _totalSeconds;
   bool _busy = false;
 
   @override
   void initState() {
     super.initState();
     final expiresAt = widget.request.expiresAt;
-    _secondsLeft = expiresAt == null
-        ? 0
-        : expiresAt.difference(DateTime.now()).inSeconds;
-    final window = expiresAt == null
-        ? 0
-        : expiresAt.difference(widget.request.createdAt).inSeconds;
-    _totalSeconds = window > 0 ? window : _secondsLeft.clamp(1, 1 << 30);
     if (expiresAt != null) {
-      _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      final left = expiresAt.difference(DateTime.now());
+      _ticker = Timer(left.isNegative ? Duration.zero : left, () {
         if (!mounted) return;
-        setState(() => _secondsLeft -= 1);
-        if (_secondsLeft <= 0) {
-          _ticker?.cancel();
-          Navigator.of(context).pop(BookingRequestOutcome.expired);
-        }
+        Navigator.of(context).pop(BookingRequestOutcome.expired);
       });
     }
-    // Answered on screen now, so the pinned tray entry is redundant.
-    PushNotificationService.cancelBookingRequestNotification(widget.request.id);
+    // Answered on screen now, so the pinned tray entry is redundant — but the
+    // music carries on until the driver answers, as it does for ride offers.
+    PushNotificationService.cancelBookingRequestNotification(
+      widget.request.id,
+      keepRing: true,
+    );
     final action = widget.initialAction;
     if (action != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -154,15 +147,6 @@ class _BookingRequestDialogState extends State<BookingRequestDialog> {
       setState(() => _busy = false);
       ErrorSurface.showFailure(context, ApiClient.mapError(e));
     }
-  }
-
-  String _formatLeft(int seconds) {
-    final s = seconds.clamp(0, 1 << 30);
-    final h = s ~/ 3600;
-    final m = (s % 3600) ~/ 60;
-    final sec = s % 60;
-    String two(int v) => v.toString().padLeft(2, '0');
-    return h > 0 ? '$h:${two(m)}:${two(sec)}' : '${two(m)}:${two(sec)}';
   }
 
   @override
@@ -238,23 +222,6 @@ class _BookingRequestDialogState extends State<BookingRequestDialog> {
                     ],
                   ),
                 ),
-                if (r.expiresAt != null) ...[
-                  const SizedBox(height: 14),
-                  Text(
-                    l10n.bookingRequestExpiresIn(_formatLeft(_secondsLeft)),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: T.textSecondary(context),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  InstantCountdownBar(
-                    secondsLeft: _secondsLeft,
-                    totalSeconds: _totalSeconds,
-                  ),
-                ],
                 const SizedBox(height: 16),
                 Row(
                   children: [

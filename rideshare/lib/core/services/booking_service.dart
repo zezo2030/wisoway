@@ -55,7 +55,7 @@ class BookingService {
     try {
       if (data.isNotEmpty) return BookingModel.fromJson(data);
     } catch (e) {
-      print('Booking created but response parsing failed: $e');
+      debugPrint('Booking created but response parsing failed: $e');
     }
 
     final now = DateTime.now();
@@ -98,9 +98,9 @@ class BookingService {
       return res['_id'] ?? res['id'];
     } catch (e) {
       if (e is Failure) {
-        print('Error creating booking: ${e.developerDetail}');
+        debugPrint('Error creating booking: ${e.developerDetail}');
       } else {
-        print('Error creating booking: $e');
+        debugPrint('Error creating booking: $e');
       }
       rethrow;
     }
@@ -141,7 +141,7 @@ class BookingService {
         sharePhoneWithDriver: sharePhoneWithDriver,
       );
     } catch (e) {
-      if (e is Failure) print('Error createMultiSeat: ${e.developerDetail}');
+      if (e is Failure) debugPrint('Error createMultiSeat: ${e.developerDetail}');
       rethrow;
     }
   }
@@ -184,7 +184,7 @@ class BookingService {
         sharePhoneWithDriver: sharePhoneWithDriver,
       );
     } catch (e) {
-      if (e is Failure) print('Error autoPick: ${e.developerDetail}');
+      if (e is Failure) debugPrint('Error autoPick: ${e.developerDetail}');
       rethrow;
     }
   }
@@ -196,7 +196,7 @@ class BookingService {
       final res = response['data'] ?? response;
       return BookingModel.fromJson(res as Map<String, dynamic>);
     } catch (e) {
-      if (e is Failure) print('Error acceptBooking: ${e.developerDetail}');
+      if (e is Failure) debugPrint('Error acceptBooking: ${e.developerDetail}');
       rethrow;
     }
   }
@@ -223,7 +223,7 @@ class BookingService {
       final res = response['data'] ?? response;
       return BookingModel.fromJson(res as Map<String, dynamic>);
     } catch (e) {
-      if (e is Failure) print('Error rejectBooking: ${e.developerDetail}');
+      if (e is Failure) debugPrint('Error rejectBooking: ${e.developerDetail}');
       rethrow;
     }
   }
@@ -234,7 +234,7 @@ class BookingService {
     try {
       await _api.patch(ApiEndpoints.confirmBooking(bookingId));
     } catch (e) {
-      print('Error confirming booking: $e');
+      debugPrint('Error confirming booking: $e');
       rethrow;
     }
   }
@@ -247,7 +247,7 @@ class BookingService {
       );
       notifyChanged();
     } catch (e) {
-      print('Error cancelling booking: $e');
+      debugPrint('Error cancelling booking: $e');
       rethrow;
     }
   }
@@ -258,7 +258,7 @@ class BookingService {
       final data = response['data'] ?? response;
       return BookingModel.fromJson(data);
     } catch (e) {
-      print('Error getting booking: $e');
+      debugPrint('Error getting booking: $e');
       return null;
     }
   }
@@ -286,7 +286,7 @@ class BookingService {
           .map((json) => BookingModel.fromJson(json as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      print('Error getting trip bookings: $e');
+      debugPrint('Error getting trip bookings: $e');
       return [];
     }
   }
@@ -325,7 +325,7 @@ class BookingService {
           .map((json) => BookingModel.fromJson(json as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      print('Error getting user bookings: $e');
+      debugPrint('Error getting user bookings: $e');
       return [];
     }
   }
@@ -350,7 +350,7 @@ class BookingService {
       }
       return [];
     } catch (e) {
-      print('Error getting pending charges: $e');
+      debugPrint('Error getting pending charges: $e');
       return [];
     }
   }

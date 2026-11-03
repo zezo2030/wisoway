@@ -66,7 +66,16 @@ class NotificationStrings private constructor(
     val ignore: String,
     val acceptTrip: String,
     private val countdownTemplate: String,
+    // Shared-trip booking request card.
+    val bookingCardTitle: String,
+    val tripTypeShared: String,
+    val bookingAmount: String,
+    val departureTime: String,
+    val acceptBooking: String,
+    private val seatWord: String,
 ) {
+    fun seats(count: String): String = "$count $seatWord"
+
     fun countdown(secondsLeft: Int): String =
         countdownTemplate.replace("{seconds}", secondsLeft.toString())
 
@@ -139,6 +148,12 @@ class NotificationStrings private constructor(
                 ignore = "تجاهل",
                 acceptTrip = "قبول الرحلة",
                 countdownTemplate = "ينتهي خلال {seconds} ثانية",
+                bookingCardTitle = "طلب حجز جديد",
+                tripTypeShared = "رحلة مشتركة",
+                bookingAmount = "قيمة الحجز",
+                departureTime = "موعد الرحلة",
+                acceptBooking = "قبول الحجز",
+                seatWord = "مقعد",
             )
 
         val EN =
@@ -173,6 +188,12 @@ class NotificationStrings private constructor(
                 ignore = "Ignore",
                 acceptTrip = "Accept trip",
                 countdownTemplate = "Expires in {seconds}s",
+                bookingCardTitle = "New booking request",
+                tripTypeShared = "Shared trip",
+                bookingAmount = "Booking amount",
+                departureTime = "Departure",
+                acceptBooking = "Accept booking",
+                seatWord = "seat(s)",
             )
     }
 }

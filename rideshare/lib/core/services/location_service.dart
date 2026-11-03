@@ -1,6 +1,5 @@
-import 'dart:ui';
-
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
@@ -139,8 +138,10 @@ class LocationService {
     }
 
     return Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-      timeLimit: const Duration(seconds: 10),
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 10),
+      ),
     );
   }
 
@@ -170,15 +171,15 @@ class LocationService {
     } on PlatformException catch (e) {
       if (e.code == 'IO_ERROR' ||
           (e.message?.contains('Service not Available') ?? false)) {
-        print(
+        debugPrint(
           'Warning: geocoding unavailable (Google Play Services or network).',
         );
       } else {
-        print('Error getting address from coordinates: $e');
+        debugPrint('Error getting address from coordinates: $e');
       }
       return _unknownLocationLabel;
     } catch (e) {
-      print('Error getting address from coordinates: $e');
+      debugPrint('Error getting address from coordinates: $e');
       return _unknownLocationLabel;
     }
   }
@@ -555,21 +556,6 @@ class LocationService {
 
   bool _hasText(String? value) {
     return value != null && value.trim().isNotEmpty;
-  }
-
-  String? get _preferredLocaleIdentifier {
-    final locale = PlatformDispatcher.instance.locale;
-    final languageCode = locale.languageCode.trim();
-    if (languageCode.isEmpty) {
-      return null;
-    }
-
-    final countryCode = locale.countryCode?.trim();
-    if (countryCode == null || countryCode.isEmpty) {
-      return languageCode;
-    }
-
-    return '${languageCode}_$countryCode';
   }
 
   bool get _isArabicLocale {

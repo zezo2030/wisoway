@@ -302,22 +302,6 @@ class _TripCardState extends State<_TripCard> {
       }
     }
 
-    IconData getStatusIcon() {
-      switch (trip.status) {
-        case 'active':
-        case 'published':
-          return Icons.circle;
-        case 'hidden':
-          return Icons.visibility_off;
-        case 'cancelled':
-          return Icons.cancel;
-        case 'in_progress':
-          return Icons.directions_car;
-        default:
-          return Icons.check_circle;
-      }
-    }
-
     final statusColor = getStatusColor();
 
     final String fromName = trip.from.name.isNotEmpty
@@ -345,10 +329,7 @@ class _TripCardState extends State<_TripCard> {
         borderRadius: BorderRadius.circular(20),
         child: Semantics(
           button: true,
-          label: context.l10n.tripFromToSemantic(
-            trip.from.name,
-            trip.to.name,
-          ),
+          label: context.l10n.tripFromToSemantic(trip.from.name, trip.to.name),
           child: InkWell(
             borderRadius: BorderRadius.circular(20),
             onTap: () {
@@ -358,8 +339,8 @@ class _TripCardState extends State<_TripCard> {
                 arguments: trip.id,
               );
             },
-            splashColor: statusColor.withOpacity(0.08),
-            highlightColor: statusColor.withOpacity(0.04),
+            splashColor: statusColor.withValues(alpha: 0.08),
+            highlightColor: statusColor.withValues(alpha: 0.04),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -376,7 +357,7 @@ class _TripCardState extends State<_TripCard> {
                           vertical: 5,
                         ),
                         decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.1),
+                          color: statusColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
@@ -447,7 +428,7 @@ class _TripCardState extends State<_TripCard> {
                           Container(
                             width: 2,
                             height: 28,
-                            color: T.primary(context).withOpacity(0.25),
+                            color: T.primary(context).withValues(alpha: 0.25),
                           ),
                           Container(
                             width: 10,
@@ -524,7 +505,7 @@ class _TripCardState extends State<_TripCard> {
                 // ---------------- FOOTER: Price & Seats ----------------
                 Container(
                   decoration: BoxDecoration(
-                    color: T.surfaceVariant(context).withOpacity(0.4),
+                    color: T.surfaceVariant(context).withValues(alpha: 0.4),
                     borderRadius: const BorderRadius.only(
                       bottomLeft: Radius.circular(20),
                       bottomRight: Radius.circular(20),

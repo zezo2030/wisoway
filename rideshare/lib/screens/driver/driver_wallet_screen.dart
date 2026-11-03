@@ -52,13 +52,14 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
       _loadTransactions();
       final response = await ApiClient().get('/wallet/driver/payout-requests');
       final rows = response is Map ? response['data'] : response;
-      if (mounted && rows is List)
+      if (mounted && rows is List) {
         setState(
           () => _payouts = rows
               .whereType<Map>()
               .map((r) => Map<String, dynamic>.from(r))
               .toList(),
         );
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);

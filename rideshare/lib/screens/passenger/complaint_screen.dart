@@ -174,7 +174,7 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                     ),
                   ),
                   child: DropdownButtonFormField<String>(
-                    value: _category,
+                    initialValue: _category,
                     decoration: const InputDecoration(
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.symmetric(

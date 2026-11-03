@@ -268,7 +268,7 @@ class _CreateTripScreenState extends State<CreateTripScreen>
     final today = DateTime(now.year, now.month, now.day);
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: current ?? today.add(const Duration(days: 1)),
+      initialDate: current ?? today,
       firstDate: today,
       lastDate: today.add(const Duration(days: 365)),
       builder: _pickerTheme,

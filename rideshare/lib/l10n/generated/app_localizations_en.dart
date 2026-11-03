@@ -5974,4 +5974,17 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get offersNotificationsBody =>
       'Notifications are off for VisionWay, so ride requests can\'t reach you. Turn them on in Settings.';
+
+  @override
+  String get createTripDateToday => 'Today';
+
+  @override
+  String get createTripDateTomorrow => 'Tomorrow';
+
+  @override
+  String get chooseTime => 'Choose time';
+
+  @override
+  String get boardingNoPassengers =>
+      'No confirmed passengers yet. Accept booking requests to be able to start the trip; with nobody confirmed at departure time, the trip is cancelled automatically.';
 }

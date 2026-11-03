@@ -813,7 +813,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                   .hasUserRatedTrip(trip.id);
 
                               if (hasRated) {
-                                if (mounted) {
+                                if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
@@ -825,6 +825,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                 }
                                 return;
                               }
+                              if (!context.mounted) return;
 
                               final result = await Navigator.pushNamed(
                                 context,
@@ -837,7 +838,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                 },
                               );
 
-                              if (result == true && mounted) {
+                              if (result == true && context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(context.l10n.thanksForRating),
@@ -846,7 +847,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                 );
                               }
                             } else {
-                              if (mounted) {
+                              if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(

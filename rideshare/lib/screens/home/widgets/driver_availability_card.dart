@@ -399,8 +399,9 @@ class _DriverAvailabilityCardState extends State<DriverAvailabilityCard>
         ],
       ),
     );
-    if (open == true)
+    if (open == true) {
       await PushNotificationService.openOverLockScreenSettings();
+    }
   }
 
   Future<void> _pollForOffer() async {

@@ -1,5 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'dart:async';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../storage/token_storage.dart';
 import 'api_endpoints.dart';
 
@@ -8,10 +9,10 @@ class WebSocketService {
   factory WebSocketService() => _instance;
   WebSocketService._internal();
 
-  IO.Socket? _chatSocket;
-  IO.Socket? _tripsSocket;
-  IO.Socket? _notificationsSocket;
-  IO.Socket? _trackingSocket;
+  io.Socket? _chatSocket;
+  io.Socket? _tripsSocket;
+  io.Socket? _notificationsSocket;
+  io.Socket? _trackingSocket;
   String? _trackingAccessToken;
   final Set<String> _trackingTrips = {};
   final Map<String, Map<String, dynamic>> _pendingDriverLocations = {};
@@ -80,9 +81,9 @@ class WebSocketService {
     // Use baseUrl but remove /api/v1 to get the root domain
     final baseUrl = ApiEndpoints.baseUrl.replaceAll('/api/v1', '');
 
-    IO.Socket createSocket(String namespace) => IO.io(
+    io.Socket createSocket(String namespace) => io.io(
       '$baseUrl$namespace',
-      IO.OptionBuilder()
+      io.OptionBuilder()
           .setTransports(['websocket'])
           .disableAutoConnect()
           .setExtraHeaders({'Authorization': 'Bearer $token'})
@@ -113,10 +114,10 @@ class WebSocketService {
     _notificationsSocket!.off('newNotification');
     _notificationsSocket!.off('instantOffer');
     _notificationsSocket!.off('instantOfferClosed');
-    _chatSocket!.onConnect((_) => print('✅ Connected to Chat WS'));
-    _tripsSocket!.onConnect((_) => print('✅ Connected to Trips WS'));
+    _chatSocket!.onConnect((_) => debugPrint('✅ Connected to Chat WS'));
+    _tripsSocket!.onConnect((_) => debugPrint('✅ Connected to Trips WS'));
     _notificationsSocket!.onConnect((_) {
-      print('✅ Connected to Notifications WS');
+      debugPrint('✅ Connected to Notifications WS');
       _notificationsSocket!.emit('subscribe');
     });
     _trackingSocket!.off('connect');
@@ -156,8 +157,9 @@ class WebSocketService {
 
     // Instant-ride offers reach an open driver app here first; FCM can lag.
     _notificationsSocket!.on('instantOffer', (data) {
-      if (data is Map)
+      if (data is Map) {
         _instantOfferController.add(Map<String, dynamic>.from(data));
+      }
     });
     _notificationsSocket!.on('instantOfferClosed', (data) {
       if (data is Map) {
@@ -223,8 +225,9 @@ class WebSocketService {
         ack: (response) {
           if (!_trackingTrips.contains(tripId)) return;
           final snapshot = response is Map ? response['snapshot'] : null;
-          if (snapshot is Map)
+          if (snapshot is Map) {
             _trackingController.add(Map<String, dynamic>.from(snapshot));
+          }
         },
       );
     }

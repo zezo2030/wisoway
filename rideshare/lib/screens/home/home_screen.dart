@@ -93,7 +93,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       });
     } catch (e) {
       if (!mounted) return;
-      print('❌ Error loading location: $e');
+      debugPrint('❌ Error loading location: $e');
       setState(() => _isLoadingLocation = false);
 
       final errorStr = e.toString();

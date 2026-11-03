@@ -52,9 +52,14 @@ class MainActivity : FlutterActivity() {
                             }
                         }
                         "cancelBookingNotification" -> {
-                            val bookingId = (call.arguments as? Map<*, *>)?.get("bookingId")?.toString()
+                            val args = call.arguments as? Map<*, *>
+                            val bookingId = args?.get("bookingId")?.toString()
                             if (!bookingId.isNullOrBlank()) {
-                                BookingNotificationHelper.cancel(this, bookingId)
+                                BookingNotificationHelper.cancel(
+                                    this,
+                                    bookingId,
+                                    keepRing = args["keepRing"] == true,
+                                )
                             }
                             result.success(true)
                         }

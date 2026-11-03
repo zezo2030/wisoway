@@ -115,12 +115,20 @@ describe('TripStartService', () => {
       expect(autoComplete.add).toHaveBeenCalled();
     });
 
-    it('starts a trip nobody booked — there is no one to wait for', async () => {
-      bookings = [];
+    it('cancels a trip with no confirmed passenger, closing unanswered requests', async () => {
+      bookings = [{ id: 'b3', userId: 'p3', status: BookingStatus.PENDING }];
 
       await service.onDeparture('t1');
 
-      expect(trip.status).toBe(TripStatus.IN_PROGRESS);
+      expect(trip.status).toBe(TripStatus.CANCELLED);
+      expect(bookings[0].status).toBe(BookingStatus.CANCELLED);
+      expect(driverTripFee.chargeAtTripStart).not.toHaveBeenCalled();
+      expect(sent('trip_cancelled')).toEqual(['p3', 'd1']);
+
+      // The lifecycle sweep runs it again: nothing more happens.
+      notifications.create.mockClear();
+      await service.onDeparture('t1');
+      expect(notifications.create).not.toHaveBeenCalled();
     });
 
     it('leaves a cancelled trip alone', async () => {
@@ -186,6 +194,15 @@ describe('TripStartService', () => {
       expect(trip.status).toBe(TripStatus.PUBLISHED);
     });
 
+    it('refuses while no passenger is confirmed — a pending request is not one', async () => {
+      bookings = [{ id: 'b3', userId: 'p3', status: BookingStatus.PENDING }];
+
+      await expect(
+        service.startByDriver('t1', 'd1', departure),
+      ).rejects.toThrow(ConflictException);
+      expect(trip.status).toBe(TripStatus.PUBLISHED);
+    });
+
     it("refuses another driver's trip", async () => {
       await expect(
         service.startByDriver('t1', 'd2', departure),
@@ -195,7 +212,7 @@ describe('TripStartService', () => {
 
   it('still starts the trip when the fee charge throws', async () => {
     driverTripFee.chargeAtTripStart.mockRejectedValue(new Error('ledger down'));
-    bookings = [];
+    bookings[0].passengerPresenceConfirmedAt = new Date();
 
     await service.onDeparture('t1');
 

@@ -10801,6 +10801,30 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'الإشعارات متوقفة لـ VisionWay، فلن تصلك طلبات الرحلات. فعّلها من الإعدادات.'**
   String get offersNotificationsBody;
+
+  /// No description provided for @createTripDateToday.
+  ///
+  /// In ar, this message translates to:
+  /// **'اليوم'**
+  String get createTripDateToday;
+
+  /// No description provided for @createTripDateTomorrow.
+  ///
+  /// In ar, this message translates to:
+  /// **'غداً'**
+  String get createTripDateTomorrow;
+
+  /// No description provided for @chooseTime.
+  ///
+  /// In ar, this message translates to:
+  /// **'اختر الوقت'**
+  String get chooseTime;
+
+  /// No description provided for @boardingNoPassengers.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا يوجد ركاب مؤكَّدون بعد. اقبل طلبات الحجز لتتمكن من بدء الرحلة، وإن لم يكن هناك ركاب عند موعد الانطلاق تُلغى الرحلة تلقائياً.'**
+  String get boardingNoPassengers;
 }
 
 class _AppLocalizationsDelegate

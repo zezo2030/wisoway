@@ -71,12 +71,6 @@ object InstantOfferOverlay {
             if (s.isRtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
         bind(root, s, data)
 
-        val totalSeconds =
-            ((expiresAtMs - System.currentTimeMillis()) / 1000).toInt().coerceAtLeast(1)
-        val progress = root.findViewById<ProgressBar>(R.id.overlay_progress)
-        progress.max = totalSeconds * 10
-        val countdown = root.findViewById<TextView>(R.id.overlay_countdown)
-
         root.findViewById<View>(R.id.overlay_accept).setOnClickListener {
             answer(app, data, offerId, InstantOfferNotificationHelper.ACTION_ACCEPT)
         }
@@ -88,32 +82,47 @@ object InstantOfferOverlay {
             answer(app, data, offerId, InstantOfferNotificationHelper.ACTION_OPEN)
         }
 
-        val params =
-            WindowManager.LayoutParams(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                } else {
-                    @Suppress("DEPRECATION")
-                    WindowManager.LayoutParams.TYPE_PHONE
-                },
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                    WindowManager.LayoutParams.FLAG_DIM_BEHIND,
-                PixelFormat.TRANSLUCENT,
-            ).apply {
-                gravity = Gravity.CENTER
-                dimAmount = 0.45f
-            }
         try {
-            windowManager(app).addView(root, params)
+            windowManager(app).addView(root, overlayParams())
         } catch (_: Exception) {
             return false
         }
         view = root
         shownOfferId = offerId
+        startTicker(root, s, offerId, expiresAtMs)
+        return true
+    }
 
+    private fun overlayParams(): WindowManager.LayoutParams =
+        WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            } else {
+                @Suppress("DEPRECATION")
+                WindowManager.LayoutParams.TYPE_PHONE
+            },
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_DIM_BEHIND,
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.CENTER
+            dimAmount = 0.45f
+        }
+
+    private fun startTicker(
+        root: View,
+        s: NotificationStrings,
+        offerId: String,
+        expiresAtMs: Long,
+    ) {
+        val totalSeconds =
+            ((expiresAtMs - System.currentTimeMillis()) / 1000).toInt().coerceAtLeast(1)
+        val progress = root.findViewById<ProgressBar>(R.id.overlay_progress)
+        progress.max = totalSeconds * 10
+        val countdown = root.findViewById<TextView>(R.id.overlay_countdown)
         val tick =
             object : Runnable {
                 override fun run() {
@@ -129,8 +138,66 @@ object InstantOfferOverlay {
             }
         ticker = tick
         tick.run()
+    }
+
+    /**
+     * A shared-trip booking request on the same card. It has no countdown: the
+     * request waits for the driver. Every button opens the app on the answer,
+     * where accepting can still fail on wallet balance and be reported.
+     */
+    fun showBooking(
+        context: Context,
+        data: Map<String, String>,
+    ): Boolean {
+        if (!InstantOfferNotificationHelper.canDrawOverApps(context)) return false
+        val bookingId = data["bookingId"]?.takeIf { it.isNotBlank() } ?: return false
+        val key = bookingKey(bookingId)
+        // A ride offer on screen goes first: it is gone in seconds.
+        if (view != null && shownOfferId?.startsWith(BOOKING_PREFIX) != true) return false
+        val app = context.applicationContext
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            handler.post { showBooking(app, data) }
+            return true
+        }
+        if (shownOfferId == key && view != null) return true
+        dismiss(null)
+
+        val s = NotificationLocale.strings(app)
+        val root =
+            try {
+                LayoutInflater.from(app).inflate(R.layout.overlay_instant_offer, null)
+            } catch (_: Exception) {
+                return false
+            }
+        root.layoutDirection =
+            if (s.isRtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
+        bindBooking(root, s, data)
+        root.findViewById<View>(R.id.overlay_countdown).visibility = View.GONE
+        root.findViewById<View>(R.id.overlay_progress).visibility = View.GONE
+
+        root.findViewById<View>(R.id.overlay_accept).setOnClickListener {
+            BookingNotificationHelper.open(app, data, BookingNotificationHelper.ACTION_ACCEPT)
+        }
+        root.findViewById<View>(R.id.overlay_ignore).setOnClickListener {
+            BookingNotificationHelper.open(app, data, BookingNotificationHelper.ACTION_REJECT)
+        }
+        root.findViewById<View>(R.id.overlay_details).setOnClickListener {
+            BookingNotificationHelper.open(app, data, null)
+        }
+
+        try {
+            windowManager(app).addView(root, overlayParams())
+        } catch (_: Exception) {
+            return false
+        }
+        view = root
+        shownOfferId = key
         return true
     }
+
+    private const val BOOKING_PREFIX = "booking:"
+
+    fun bookingKey(bookingId: String): String = BOOKING_PREFIX + bookingId
 
     /** Takes the card down; with an [offerId], only if it is that offer's. */
     fun dismiss(offerId: String?) {
@@ -203,6 +270,52 @@ object InstantOfferOverlay {
         text(R.id.overlay_details, s.openDetails)
         text(R.id.overlay_ignore, s.ignore)
         text(R.id.overlay_accept, s.acceptTrip)
+    }
+
+    private fun bindBooking(
+        root: View,
+        s: NotificationStrings,
+        data: Map<String, String>,
+    ) {
+        fun text(
+            id: Int,
+            value: String,
+        ) {
+            root.findViewById<TextView>(id).text = value
+        }
+        val amount = data["totalAmount"]?.takeIf { it.isNotBlank() }
+        val who =
+            listOfNotNull(
+                data["passengerName"]?.takeIf { it.isNotBlank() },
+                data["seatCount"]?.takeIf { it.isNotBlank() }?.let { s.seats(it) },
+            ).joinToString(" · ")
+
+        text(R.id.overlay_title, s.bookingCardTitle)
+        text(R.id.overlay_badge, s.tripTypeShared)
+        text(R.id.overlay_earnings_label, s.bookingAmount)
+        text(R.id.overlay_fare, if (amount != null) s.earningsLabel(amount, data["currency"]) else "—")
+        if (who.isNotBlank()) {
+            text(R.id.overlay_payment_note, who)
+        } else {
+            root.findViewById<View>(R.id.overlay_payment_note).visibility = View.GONE
+        }
+        text(R.id.overlay_from_label, s.from)
+        text(R.id.overlay_from, data["fromName"]?.takeIf { it.isNotBlank() } ?: "—")
+        text(R.id.overlay_to_label, s.to)
+        text(R.id.overlay_to, data["toName"]?.takeIf { it.isNotBlank() } ?: "—")
+        root.findViewById<View>(R.id.overlay_pickup_cell).visibility = View.GONE
+        text(R.id.overlay_distance_label, s.tripDistance)
+        text(
+            R.id.overlay_distance,
+            data["distanceKm"]?.toDoubleOrNull()?.let { s.distanceLabel(it) }
+                ?: data["distanceLabel"]?.takeIf { it.isNotBlank() }
+                ?: "—",
+        )
+        text(R.id.overlay_duration_label, s.departureTime)
+        text(R.id.overlay_duration, data["departureLabel"]?.takeIf { it.isNotBlank() } ?: "—")
+        text(R.id.overlay_details, s.openDetails)
+        text(R.id.overlay_ignore, s.reject)
+        text(R.id.overlay_accept, s.acceptBooking)
     }
 
     /** Hands the answer to the app, which opens on it (accept / details). */

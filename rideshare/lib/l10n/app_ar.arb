@@ -3500,5 +3500,9 @@
   "offersBatteryBody": "حتى تصلك طلبات الرحلات والتطبيق مغلق أو الشاشة مقفلة، اسمح لـ VisionWay بتجاهل «تحسين البطارية». بدون ذلك قد يوقف الهاتف التطبيق ولا تصلك الطلبات.",
   "offersBatteryAction": "السماح",
   "offersNotificationsTitle": "فعّل الإشعارات",
-  "offersNotificationsBody": "الإشعارات متوقفة لـ VisionWay، فلن تصلك طلبات الرحلات. فعّلها من الإعدادات."
+  "offersNotificationsBody": "الإشعارات متوقفة لـ VisionWay، فلن تصلك طلبات الرحلات. فعّلها من الإعدادات.",
+  "createTripDateToday": "اليوم",
+  "createTripDateTomorrow": "غداً",
+  "chooseTime": "اختر الوقت",
+  "boardingNoPassengers": "لا يوجد ركاب مؤكَّدون بعد. اقبل طلبات الحجز لتتمكن من بدء الرحلة، وإن لم يكن هناك ركاب عند موعد الانطلاق تُلغى الرحلة تلقائياً."
 }

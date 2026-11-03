@@ -107,7 +107,7 @@ void main() {
     return outcome;
   }
 
-  testWidgets('shows the passenger, amount, seats and time left', (
+  testWidgets('shows the passenger, amount and seats, with no countdown', (
     tester,
   ) async {
     await open(tester, request(), _FakeBookingService());
@@ -116,7 +116,7 @@ void main() {
     expect(find.text('ayat'), findsOneWidget);
     expect(find.text('10.00 JOD'), findsOneWidget);
     expect(find.text('2'), findsOneWidget);
-    expect(find.textContaining('ينتهي الطلب خلال'), findsOneWidget);
+    expect(find.textContaining('ينتهي'), findsNothing);
   });
 
   testWidgets('lists each seat by its seat-map number, companion marked', (

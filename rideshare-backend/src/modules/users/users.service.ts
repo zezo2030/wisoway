@@ -73,6 +73,8 @@ export class UsersService {
     };
 
     this.userRepo.merge(user, rest as Partial<UserEntity>);
+    // Passengers must always be able to call their driver.
+    if (user.role === PgUserRole.DRIVER) user.hidePhoneNumber = false;
 
     if (city !== undefined) {
       const trimmed = typeof city === 'string' ? city.trim() : '';

@@ -5,7 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import {
   BookingEntity,
   BookingStatus,
@@ -51,6 +51,25 @@ export class CallsService {
     private proxyPoolService: ProxyPoolService,
   ) {}
 
+  /**
+   * A passenger calling the driver of the ride they're on, from screens that
+   * know the trip but not the booking.
+   */
+  async initiateForTrip(tripId: string, callerId: string) {
+    const booking = await this.bookingRepo.findOne({
+      where: {
+        tripId,
+        userId: callerId,
+        status: In([...CALLABLE_BOOKING_STATUSES]),
+      },
+      order: { createdAt: 'DESC' },
+    });
+    if (!booking) {
+      throw new NotFoundException('No active booking of yours on this trip');
+    }
+    return this.initiate(booking.id, callerId);
+  }
+
   async initiate(
     bookingId: string,
     callerId: string,
@@ -87,10 +106,13 @@ export class CallsService {
 
     if (!caller || !callee) throw new NotFoundException('User not found');
 
+    // Only a passenger may hide their number; the driver is always reachable.
+    const calleeHidden = isDriver && callee.hidePhoneNumber;
+
     // Without proxy numbers the caller dials the other party directly — but
     // only when they have not chosen to hide their number; then it is chat.
     if (!this.proxyPoolService.isConfigured) {
-      if (callee.hidePhoneNumber || !callee.phoneNumber) {
+      if (calleeHidden || !callee.phoneNumber) {
         throw new ForbiddenException({
           code: ErrorCodes.PHONE_HIDDEN,
           message:
@@ -115,7 +137,7 @@ export class CallsService {
         calleeUserId: calleeId,
         proxyNumber,
         callerRealNumber: caller.phoneNumber,
-        calleeRealNumber: callee.hidePhoneNumber ? null : callee.phoneNumber,
+        calleeRealNumber: calleeHidden ? null : callee.phoneNumber,
         status: CallSessionStatus.INITIATED,
       }),
     );

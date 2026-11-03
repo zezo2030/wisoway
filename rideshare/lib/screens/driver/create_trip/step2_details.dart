@@ -84,12 +84,26 @@ class Step2Details extends StatelessWidget {
     final date = wizard.departureDate;
     final clock = wizard.departureClock;
 
-    // Designs use Western digits and the wide day-period word, neither of
-    // which the Arabic locale data produces on its own. Each slot shows only
-    // what the driver has picked.
-    final dateText = date == null
-        ? ''
-        : toWesternDigits(DateFormat.yMMMMEEEEd(locale).format(date));
+    // The day leads (today / tomorrow / weekday) so the driver sees at a
+    // glance when the trip leaves; the calendar date sits under it. Designs
+    // use Western digits and the wide day-period word, neither of which the
+    // Arabic locale data produces on its own.
+    String dayText = '';
+    String dateText = '';
+    if (date != null) {
+      final now = DateTime.now();
+      final days = DateTime(
+        date.year,
+        date.month,
+        date.day,
+      ).difference(DateTime(now.year, now.month, now.day)).inDays;
+      dayText = switch (days) {
+        0 => context.l10n.createTripDateToday,
+        1 => context.l10n.createTripDateTomorrow,
+        _ => DateFormat.EEEE(locale).format(date),
+      };
+      dateText = toWesternDigits(DateFormat.yMMMMd(locale).format(date));
+    }
     final period = clock == null
         ? ''
         : (clock.hour < 12
@@ -99,28 +113,28 @@ class Step2Details extends StatelessWidget {
         ? ''
         : '${toWesternDigits(DateFormat('hh:mm').format(DateTime(2000, 1, 1, clock.hour, clock.minute)))} $period';
 
-    // Two slots share one card, split by a hairline as in the mockup.
     return CreateTripCard(
       child: IntrinsicHeight(
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
               child: _buildScheduleSlot(
                 context,
                 label: context.l10n.dateLabel,
-                value: dateText,
+                prompt: context.l10n.chooseDate,
+                value: dayText,
+                detail: dateText,
                 icon: IconsaxPlusBroken.calendar_1,
                 onTap: onPickDate,
               ),
             ),
-            const SizedBox(width: 6),
-            VerticalDivider(width: 1, thickness: 1, color: T.outline(context)),
-            const SizedBox(width: 6),
+            const SizedBox(width: 10),
             Expanded(
               child: _buildScheduleSlot(
                 context,
                 label: context.l10n.departureTimeLabel,
+                prompt: context.l10n.chooseTime,
                 value: timeText,
                 icon: IconsaxPlusBroken.clock,
                 onTap: onPickTime,
@@ -132,60 +146,86 @@ class Step2Details extends StatelessWidget {
     );
   }
 
+  /// One tappable, brand-tinted box. Empty, it asks to be picked (stronger
+  /// border); filled, the value is large and in the brand colour.
   Widget _buildScheduleSlot(
     BuildContext context, {
     required String label,
+    required String prompt,
     required String value,
+    String detail = '',
     required IconData icon,
     required VoidCallback onTap,
   }) {
     final isEmpty = value.isEmpty;
+    final primary = T.primary(context);
 
     return Semantics(
       button: true,
       label: label,
-      value: value,
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Row(
-          children: [
-            _iconChip(context, icon),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    label,
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      fontSize: 12,
-                      color: T.onSurfaceVariant(context),
+      value: isEmpty ? prompt : '$value $detail'.trim(),
+      child: Material(
+        color: primary.withValues(alpha: isEmpty ? 0.05 : 0.10),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: primary.withValues(alpha: isEmpty ? 0.6 : 0.35),
+            width: isEmpty ? 1.4 : 1,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    _iconChip(context, icon),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontSize: 12,
+                          color: T.onSurfaceVariant(context),
+                        ),
+                      ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  isEmpty ? prompt : value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    fontSize: isEmpty ? 13 : 16,
+                    fontWeight: FontWeight.bold,
+                    color: primary,
                   ),
-                  const SizedBox(height: 4),
+                ),
+                if (!isEmpty && detail.isNotEmpty) ...[
+                  const SizedBox(height: 2),
                   Text(
-                    isEmpty ? label : value,
+                    detail,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.bodyLarge.copyWith(
+                    style: AppTextStyles.bodyMedium.copyWith(
                       fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: isEmpty
-                          ? T.textSecondary(context)
-                          : T.onSurface(context),
+                      fontWeight: FontWeight.w600,
+                      color: T.onSurface(context),
                     ),
                   ),
                 ],
-              ),
+              ],
             ),
-            Icon(
-              Icons.chevron_right_rounded,
-              size: 16,
-              color: T.outlineVariant(context),
-            ),
-          ],
+          ),
         ),
       ),
     );

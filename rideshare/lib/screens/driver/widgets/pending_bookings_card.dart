@@ -56,7 +56,7 @@ class _PendingBookingItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final seatText = booking.seatSummary.isNotEmpty ? booking.seatSummary : '-';
-    final titleText = booking.userPopulated?.name?.isNotEmpty == true
+    final titleText = booking.userPopulated?.name.isNotEmpty == true
         ? booking.userPopulated!.name
         : context.l10n.seatLabelWithValue(seatText);
 

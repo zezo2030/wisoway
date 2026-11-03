@@ -154,7 +154,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
 
-    if (picked != null) {
+    if (picked != null && mounted) {
       final TimeOfDay? time = await showTimePicker(
         context: context,
         initialTime: _departureTime != null
@@ -171,6 +171,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
           time.minute,
         );
 
+        if (!mounted) return;
         if (!allowPastDates && selectedDateTime.isBefore(DateTime.now())) {
           final confirmed = await showDialog<bool>(
             context: context,
@@ -300,6 +301,7 @@ class _EditTripScreenState extends State<EditTripScreen> {
       }
     }
 
+    if (!mounted) return;
     setState(() => _isLoading = true);
 
     try {
