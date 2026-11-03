@@ -37,61 +37,43 @@ interface SearchContext {
   city?: CityDto;
 }
 
-/**
- * Radius of the extra "nearby" search run alongside the biased one, so places
- * around the passenger are always among the candidates.
- */
+/** Radius the search is biased to around the passenger. */
 const LOCAL_SEARCH_RADIUS_KM = 50;
 
-/** Subset of a Photon GeoJSON feature's address properties we consume. */
-interface PhotonProperties {
-  name?: string;
-  street?: string;
-  district?: string;
-  city?: string;
-  county?: string;
-  state?: string;
-  country?: string;
-  countrycode?: string;
-  /** OSM identity, used to deduplicate the same place across query variants. */
-  osm_type?: string;
-  osm_id?: number;
-  /** OSM classification, used to push transit furniture below real places. */
-  osm_key?: string;
-  osm_value?: string;
+/** A Google plus code ("7VJX+2VM", "7VJX+4P"), which names no place. */
+const PLUS_CODE =
+  /^[23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{0,3}\s*/i;
+
+/** Places API (New) autocomplete prediction, the fields we read. */
+interface GooglePlacePrediction {
+  placeId: string;
+  text?: { text?: string };
+  structuredFormat?: {
+    mainText?: { text?: string };
+    secondaryText?: { text?: string };
+  };
+  distanceMeters?: number;
 }
 
-interface PhotonFeature {
-  geometry?: { coordinates?: number[] };
-  properties?: PhotonProperties;
+/** Places API (New) place, as asked for by the field mask. */
+interface GooglePlace {
+  id?: string;
+  displayName?: { text?: string };
+  formattedAddress?: string;
+  location?: { latitude?: number; longitude?: number };
 }
 
-interface PhotonResponse {
-  features?: PhotonFeature[];
+interface GoogleAddressComponent {
+  long_name?: string;
+  short_name?: string;
+  types?: string[];
 }
 
-/**
- * OSM classifications that are technically named places but almost never what
- * someone searching for a pickup point means.
- *
- * Measured on a Jordanian sample: searching "الجامعة الاردنية" returned the
- * bus stop *outside* the university above the university itself. These are
- * demoted rather than dropped, so a user who really did search for a bus stop
- * can still find one.
- */
-const DEMOTED_OSM_TYPES = new Set<string>([
-  'highway:bus_stop',
-  'highway:crossing',
-  'highway:traffic_signals',
-  'highway:turning_circle',
-  'highway:stop',
-  'highway:give_way',
-  'public_transport:platform',
-  'public_transport:stop_position',
-  'amenity:bench',
-  'amenity:waste_basket',
-  'amenity:shelter',
-]);
+interface GoogleGeocodeResult {
+  formatted_address?: string;
+  types?: string[];
+  address_components?: GoogleAddressComponent[];
+}
 
 @Injectable()
 export class LocationsService {
@@ -100,15 +82,13 @@ export class LocationsService {
   private readonly googleMapsBaseUrl = 'https://maps.googleapis.com/maps/api';
   private readonly osrmBaseUrl = 'https://router.project-osrm.org';
   /**
-   * Free OpenStreetMap-based Photon geocoder used for place autocomplete +
-   * detail so the inDrive-style type-ahead works without a billed Google
-   * Places key. Photon is purpose-built for prefix/type-ahead search (unlike
-   * Nominatim, which only matches whole words) and indexes Arabic names well.
-   * Defaults to the public instance; set PHOTON_BASE_URL to a self-hosted
-   * mirror to lift the public instance's rate limits.
+   * Place search and lookup: Google Places API (New), on the same key as the
+   * maps. It replaced the free public OpenStreetMap geocoder, which refused
+   * our server's requests at busy times and left search saying «تعذر البحث».
    */
-  private readonly photonBaseUrl: string;
-  private readonly geocoderUserAgent: string;
+  private readonly placesBaseUrl = 'https://places.googleapis.com/v1';
+  /** The list wording of recent suggestions, by placeId, for their lookup. */
+  private readonly labels = new Map<string, string>();
   /**
    * ISO country codes that place suggestions are restricted to. Empty means
    * suggestions are global (still biased toward the user's coordinates when
@@ -140,12 +120,8 @@ export class LocationsService {
   private readonly breakerCooldownMs = 30_000;
   private providerFailures = 0;
   private breakerOpenUntil = 0;
-  /**
-   * Suggestions returned to the app. Photon has no country/city restriction
-   * parameter, so we over-fetch and filter down to this many locally.
-   */
+  /** Suggestions returned to the app. */
   private readonly suggestionLimit = 6;
-  private readonly providerFetchLimit = 50;
 
   constructor(
     private configService: ConfigService,
@@ -155,14 +131,6 @@ export class LocationsService {
       'GOOGLE_MAPS_API_KEY',
       '',
     );
-    this.photonBaseUrl = (
-      this.configService.get<string>('PHOTON_BASE_URL') ||
-      'https://photon.komoot.io'
-    ).replace(/\/+$/, '');
-    // OSM geocoders ask for an identifiable User-Agent header (app + contact).
-    this.geocoderUserAgent =
-      this.configService.get<string>('GEOCODER_USER_AGENT') ||
-      'WisowayRideshare/1.0 (+https://wisoway.app)';
     // Comma-separated ISO country codes (e.g. "jo,eg,sa") to scope place
     // suggestions to. Unset → global suggestions.
     this.autocompleteCountries = (
@@ -208,114 +176,130 @@ export class LocationsService {
 
     this.assertProviderAvailable();
 
+    let predictions: GooglePlacePrediction[];
     try {
-      const features = await this.searchPhoton(q, lang, context);
-      this.recordProviderSuccess();
-
-      const ranked = this.rankSuggestions(
-        features
-          .filter((feature) => this.matchesCountryFilter(feature, country))
-          .map((feature) => ({
-            suggestion: this.toSuggestion(feature, context),
-            demoted: this.isDemotedType(feature),
-          }))
-          .filter((entry) => entry.suggestion.placeId)
-          // The nearby and the wide search overlap; features without an OSM
-          // id escape mergeFeatureLists, so drop repeats by placeId too.
-          .filter(
-            (entry, index, all) =>
-              all.findIndex(
-                (other) =>
-                  other.suggestion.placeId === entry.suggestion.placeId,
-              ) === index,
-          ),
-        context,
-      );
-      const suggestions = this.promoteCityMatches(
-        ranked,
+      predictions = await this.googleAutocomplete(
         q,
+        lang,
+        sessionToken,
         context,
-        country,
-      ).slice(0, this.suggestionLimit);
-
-      this.setCached(this.autocompleteCache, cacheKey, suggestions);
-      return { sessionToken, suggestions };
+        this.regionCodes(country),
+      );
+      this.recordProviderSuccess();
     } catch (error) {
       this.recordProviderFailure();
       this.logger.warn(
-        `Photon autocomplete request failed: ${
-          (error as Error)?.message ?? 'unknown error'
-        }`,
+        `Google Places autocomplete failed: ${this.googleErrorMessage(error)}`,
       );
       throw new BadGatewayException('Places provider unavailable');
     }
+
+    const ranked = this.rankSuggestions(
+      predictions
+        .map((prediction) => this.toSuggestion(prediction))
+        .filter((suggestion) => suggestion.placeId)
+        .map((suggestion) => ({ suggestion, demoted: false })),
+      context,
+    );
+    const suggestions = this.promoteCityMatches(
+      ranked,
+      q,
+      context,
+      country,
+    ).slice(0, this.suggestionLimit);
+
+    // The place lookup that follows a tap returns Google's own address; the
+    // passenger should see the same words they picked from the list.
+    for (const suggestion of suggestions) {
+      this.rememberLabel(suggestion.placeId, suggestion.description);
+    }
+    this.setCached(this.autocompleteCache, cacheKey, suggestions);
+    return { sessionToken, suggestions };
   }
 
   /**
-   * Run the query against Photon once per spelling variant and merge.
-   *
-   * Arabic input varies in ways the index does not. Measured on a Jordanian
-   * sample: "الجامعة الاردنية" spelled correctly returned the university's bus
-   * stop but not the university, while the same words with ه for ة returned it
-   * first; and "اربد" typed without its hamza missed the city entirely.
-   * Searching the variants alongside the raw text recovers both.
-   *
-   * The raw query decides success. Variants are best-effort, so one failing
-   * variant can never turn a working search into an error.
+   * Places API (New) autocomplete. Biased to 50 km around the passenger and,
+   * when the country is known, restricted to it: from Al-Ula, «مستشفى» must
+   * not list hospitals in another country.
    */
-  private async searchPhoton(
+  private async googleAutocomplete(
     q: string,
     lang: 'ar' | 'en',
+    sessionToken: string,
     context?: SearchContext,
-  ): Promise<PhotonFeature[]> {
-    const forms = this.queryVariants(q);
-    // With a context, one extra search confined to the surrounding area. A
-    // proximity bias alone still lets famous far-away places fill every slot:
-    // from Al-Ula, "مستشفى" returned hospitals 1,000 km away and missed the
-    // one 6 km from the passenger. Local results go first; the final order is
-    // nearest-first anyway.
-    const local = context
-      ? this.photonRequest(q, lang, context, this.localBbox(context)).catch(
-          () => [] as PhotonFeature[],
-        )
-      : Promise.resolve([] as PhotonFeature[]);
-    const settled = await Promise.allSettled(
-      forms.map((form) => this.photonRequest(form, lang, context)),
+    regionCodes?: string[],
+  ): Promise<GooglePlacePrediction[]> {
+    const center = context
+      ? { latitude: context.lat, longitude: context.lng }
+      : undefined;
+    const response = await axios.post<{
+      suggestions?: Array<{ placePrediction?: GooglePlacePrediction }>;
+    }>(
+      `${this.placesBaseUrl}/places:autocomplete`,
+      {
+        input: q,
+        languageCode: lang,
+        sessionToken,
+        ...(regionCodes?.length ? { includedRegionCodes: regionCodes } : {}),
+        ...(center
+          ? {
+              locationBias: {
+                circle: { center, radius: LOCAL_SEARCH_RADIUS_KM * 1000 },
+              },
+              // Gives each suggestion its distance from the passenger.
+              origin: center,
+            }
+          : {}),
+      },
+      {
+        headers: { 'X-Goog-Api-Key': this.googleMapsApiKey },
+        timeout: this.providerTimeoutMs,
+      },
     );
-
-    const raw = settled[0];
-    if (raw.status === 'rejected') {
-      throw raw.reason instanceof Error
-        ? raw.reason
-        : new Error(String(raw.reason));
-    }
-
-    const nearby = await local;
-    return this.mergeFeatureLists([
-      ...(nearby.length > 0 ? [nearby] : []),
-      ...settled
-        .filter(
-          (entry): entry is PromiseFulfilledResult<PhotonFeature[]> =>
-            entry.status === 'fulfilled',
-        )
-        .map((entry) => entry.value),
-    ]);
+    return (response.data?.suggestions ?? [])
+      .map((entry) => entry.placePrediction)
+      .filter((p): p is GooglePlacePrediction => !!p?.placeId);
   }
 
-  /** Box of roughly ±LOCAL_SEARCH_RADIUS_KM around the search context. */
-  private localBbox(context: SearchContext): string {
-    const dLat = LOCAL_SEARCH_RADIUS_KM / 111;
-    const dLng =
-      LOCAL_SEARCH_RADIUS_KM /
-      (111 * Math.max(Math.cos((context.lat * Math.PI) / 180), 0.2));
-    return [
-      context.lng - dLng,
-      context.lat - dLat,
-      context.lng + dLng,
-      context.lat + dLat,
-    ]
-      .map((v) => v.toFixed(4))
-      .join(',');
+  /** Google's place prediction as the two lines the app renders. */
+  private toSuggestion(prediction: GooglePlacePrediction): PlaceSuggestionDto {
+    const primaryText = (
+      prediction.structuredFormat?.mainText?.text ??
+      prediction.text?.text ??
+      ''
+    ).trim();
+    const secondaryText = (
+      prediction.structuredFormat?.secondaryText?.text ?? ''
+    ).trim();
+    return {
+      placeId: primaryText ? prediction.placeId : '',
+      primaryText,
+      secondaryText,
+      description: (
+        prediction.text?.text ??
+        [primaryText, secondaryText].filter(Boolean).join('، ')
+      ).trim(),
+      distanceMeters:
+        typeof prediction.distanceMeters === 'number'
+          ? prediction.distanceMeters
+          : null,
+    };
+  }
+
+  /** Countries a search may return: the passenger's, within the configured set. */
+  private regionCodes(country?: string): string[] | undefined {
+    if (country) {
+      if (
+        this.autocompleteCountries.length > 0 &&
+        !this.autocompleteCountries.includes(country)
+      ) {
+        return this.autocompleteCountries;
+      }
+      return [country];
+    }
+    return this.autocompleteCountries.length > 0
+      ? this.autocompleteCountries
+      : undefined;
   }
 
   /** ISO country of a search context (lower case), or undefined if unknown. */
@@ -325,7 +309,7 @@ export class LocationsService {
     const key = `${context.lat.toFixed(2)},${context.lng.toFixed(2)}`;
     const cached = this.contextCountryCache.get(key);
     if (cached) return cached;
-    const geo = await this.reverseGeocodePhoton(context.lat, context.lng).catch(
+    const geo = await this.reverseGeocodeGoogle(context.lat, context.lng).catch(
       () => null,
     );
     const code = geo?.countryCode ? geo.countryCode.toLowerCase() : undefined;
@@ -337,88 +321,6 @@ export class LocationsService {
       this.contextCountryCache.set(key, code);
     }
     return code;
-  }
-
-  private async photonRequest(
-    q: string,
-    lang: 'ar' | 'en',
-    context?: SearchContext,
-    bbox?: string,
-  ): Promise<PhotonFeature[]> {
-    const response = await axios.get<PhotonResponse>(
-      `${this.photonBaseUrl}/api/`,
-      {
-        params: {
-          q,
-          // Over-fetch: country and city filtering happens locally, so asking
-          // for exactly `suggestionLimit` would let a single foreign hit empty
-          // the list.
-          limit: this.providerFetchLimit,
-          // Photon only localizes output for a few languages; for Arabic we
-          // omit `lang` so it returns the native (Arabic) place names.
-          lang: lang === 'en' ? 'en' : undefined,
-          lat: context?.lat,
-          lon: context?.lng,
-          // Weight proximity heavily so the provider's candidate set is
-          // already local; the final nearest-first order is applied here.
-          // In Photon a LOWER scale means prominence counts for less against
-          // distance; 0.8 let national landmarks crowd out nearby places.
-          location_bias_scale: context ? 0.1 : undefined,
-          zoom: context ? 12 : undefined,
-          bbox,
-        },
-        headers: { 'User-Agent': this.geocoderUserAgent },
-        timeout: this.providerTimeoutMs,
-      },
-    );
-    return response.data?.features ?? [];
-  }
-
-  /**
-   * Arabic spelling variants worth searching alongside the text as typed.
-   *
-   * Returns the raw query first; callers rely on that ordering. Most queries
-   * produce no variant at all, so the extra request only happens when the
-   * spelling is actually ambiguous.
-   */
-  private queryVariants(q: string): string[] {
-    const variants = [q];
-
-    // Users routinely type ه for ة and ي for ى.
-    const taMarbuta = q.replace(/ة/g, 'ه').replace(/ى/g, 'ي');
-    if (taMarbuta !== q) variants.push(taMarbuta);
-
-    // A word-initial bare alef is often a dropped hamza ("اربد" → "إربد").
-    // The definite article "ال" is excluded: "إلجامعة" is not a word.
-    const hamza = q.replace(/(^|\s)ا(?!ل)/g, '$1إ');
-    if (hamza !== q) variants.push(hamza);
-
-    return [...new Set(variants)];
-  }
-
-  /**
-   * Interleave the per-variant result lists so no single spelling owns the
-   * head of the list, dropping places already contributed by an earlier list.
-   */
-  private mergeFeatureLists(lists: PhotonFeature[][]): PhotonFeature[] {
-    if (lists.length === 1) return lists[0];
-
-    const seen = new Set<string>();
-    const merged: PhotonFeature[] = [];
-    const depth = Math.max(...lists.map((list) => list.length), 0);
-
-    for (let index = 0; index < depth; index++) {
-      for (const list of lists) {
-        const feature = list[index];
-        if (!feature) continue;
-        const id = this.featureKey(feature);
-        if (id && seen.has(id)) continue;
-        if (id) seen.add(id);
-        merged.push(feature);
-      }
-    }
-
-    return merged;
   }
 
   /**
@@ -454,9 +356,6 @@ export class LocationsService {
     if (!city) return suggestions;
 
     const cityName = this.normalizeForSearch(city.nameAr);
-    // Name alone is not enough: searching "العقبه" surfaced a same-named place
-    // 2,190 km away, which would have been promoted as if it were Aqaba. The
-    // match must also sit where the city actually is.
     const alreadyFound = suggestions.findIndex(
       (suggestion) =>
         this.normalizeForSearch(suggestion.primaryText) === cityName &&
@@ -475,12 +374,13 @@ export class LocationsService {
   }
 
   /**
-   * True when a suggestion lies within the sprawl of a catalog city, using the
-   * coordinates carried in its own placeId so no extra lookup is needed.
+   * True when a same-named suggestion is that city. Google's are filtered to
+   * the passenger's country, so the name is enough; the catalog's own entries
+   * carry coordinates and must sit where the city is.
    */
   private isNearCity(suggestion: PlaceSuggestionDto, city: CityDto): boolean {
     const point = this.decodePlaceId(suggestion.placeId);
-    if (!point) return false;
+    if (!point) return true;
     return (
       this.haversineMeters(point.lat, point.lng, city.lat, city.lng) <= 25_000
     );
@@ -509,23 +409,7 @@ export class LocationsService {
     };
   }
 
-  /** OSM identity of a feature, used to deduplicate across query variants. */
-  private featureKey(feature: PhotonFeature): string | null {
-    const props = feature.properties;
-    if (!props?.osm_type || props.osm_id === undefined) return null;
-    return `${props.osm_type}:${props.osm_id}`;
-  }
-
-  private isDemotedType(feature: PhotonFeature): boolean {
-    const props = feature.properties;
-    if (!props?.osm_key || !props.osm_value) return false;
-    return DEMOTED_OSM_TYPES.has(`${props.osm_key}:${props.osm_value}`);
-  }
-
-  /**
-   * Resolve a point-on-map to a display address, using the same provider as
-   * search so the picker's label matches what the suggestion list would show.
-   */
+  /** Resolve a point-on-map to a display address (Google Geocoding). */
   async reverse(
     query: ReverseGeocodeQueryDto,
     userId: string,
@@ -546,56 +430,52 @@ export class LocationsService {
 
     this.assertProviderAvailable();
 
+    let results: GoogleGeocodeResult[];
     try {
-      const response = await axios.get<PhotonResponse>(
-        `${this.photonBaseUrl}/reverse`,
-        {
-          params: {
-            lat,
-            lon: lng,
-            limit: 1,
-            lang: lang === 'en' ? 'en' : undefined,
-          },
-          headers: { 'User-Agent': this.geocoderUserAgent },
-          timeout: this.providerTimeoutMs,
-        },
-      );
-
+      results = await this.googleGeocodeResults(lat, lng, lang);
       this.recordProviderSuccess();
-
-      const feature = response.data?.features?.[0];
-      const texts = feature
-        ? this.buildAddressTexts(feature.properties ?? {})
-        : { primaryText: '', secondaryText: '', description: '' };
-
-      const result: ReverseGeocodeResponseDto = {
-        primaryText: texts.primaryText,
-        secondaryText: texts.secondaryText,
-        label: texts.description,
-        city: this.cityName(feature?.properties),
-        lat,
-        lng,
-      };
-      this.setCached(this.reverseCache, cacheKey, result);
-      return result;
     } catch (error) {
       this.recordProviderFailure();
       this.logger.warn(
-        `Photon reverse request failed: ${
-          (error as Error)?.message ?? 'unknown error'
-        }`,
+        `Google reverse geocode failed: ${this.googleErrorMessage(error)}`,
       );
       throw new BadGatewayException('Places provider unavailable');
     }
+
+    // A plus code ("8G3Q+2X عمان") names no place a passenger would know.
+    const best =
+      results.find((r) => !r.types?.includes('plus_code')) ?? results[0];
+    const parts = (best?.formatted_address ?? '')
+      .split(/[،,]\s*/)
+      // Rural points come back as "7VJX+2VM، جرش، الأردن": keep the town.
+      .map((part) => part.replace(PLUS_CODE, '').trim())
+      .filter(Boolean);
+    const result: ReverseGeocodeResponseDto = {
+      primaryText: parts[0] ?? '',
+      secondaryText: parts.slice(1).join('، '),
+      label: parts.join('، '),
+      city: this.cityName(best?.address_components),
+      lat,
+      lng,
+    };
+    this.setCached(this.reverseCache, cacheKey, result);
+    return result;
   }
 
   /**
-   * The town a point is in, for a profile's city field: the OSM city, else
-   * the county, else the region — without the administrative prefix, so
+   * The town a point is in, for a profile's city field: the locality, else
+   * the district, else the region — without the administrative prefix, so
    * "محافظة العلا" reads "العلا".
    */
-  private cityName(props?: PhotonProperties): string {
-    const raw = (props?.city ?? props?.county ?? props?.state ?? '').trim();
+  private cityName(components?: GoogleAddressComponent[]): string {
+    const of = (type: string) =>
+      components?.find((c) => c.types?.includes(type))?.long_name;
+    const raw = (
+      of('locality') ??
+      of('administrative_area_level_2') ??
+      of('administrative_area_level_1') ??
+      ''
+    ).trim();
     return raw
       .replace(/^(محافظة|منطقة|مدينة)\s+/, '')
       .replace(/\s+(Governorate|Province|Region)$/i, '')
@@ -654,11 +534,9 @@ export class LocationsService {
   }
 
   /**
-   * Order suggestions the way inDrive does: strictly nearest first. Every
-   * suggestion carries its own coordinates, so the sort key is the straight
-   * line from the search context (the user's device location). Provider
-   * relevance only breaks ties, and decides the whole order when no context
-   * was sent.
+   * Order suggestions the way inDrive does: strictly nearest first. Google
+   * returns each suggestion's distance from the passenger; its own relevance
+   * only breaks ties, and decides the whole order when no context was sent.
    */
   private rankSuggestions(
     entries: Array<{ suggestion: PlaceSuggestionDto; demoted: boolean }>,
@@ -687,118 +565,91 @@ export class LocationsService {
   }
 
   /**
-   * Photon has no country-restriction parameter, so honour
-   * LOCATION_AUTOCOMPLETE_COUNTRIES by filtering on each feature's countrycode.
+   * Coordinates of a picked suggestion. Catalog cities carry theirs in the
+   * id; a Google place is looked up once, in the same billing session as the
+   * search that listed it.
    */
-  private matchesCountryFilter(
-    feature: PhotonFeature,
-    country?: string,
-  ): boolean {
-    const code = feature.properties?.countrycode?.toLowerCase();
-    if (country)
-      return (
-        code === country &&
-        (this.autocompleteCountries.length === 0 ||
-          this.autocompleteCountries.includes(code))
-      );
-    if (this.autocompleteCountries.length === 0) return true;
-    return code !== undefined && this.autocompleteCountries.includes(code);
-  }
-
-  placeDetail(placeId: string): Promise<PlaceDetailResponseDto> {
+  async placeDetail(
+    placeId: string,
+    sessionToken?: string,
+  ): Promise<PlaceDetailResponseDto> {
     const id = placeId?.trim();
-    // Coordinates + label are encoded into the suggestion's placeId, so the
-    // lookup is local and needs no second network round-trip.
-    const decoded = id ? this.decodePlaceId(id) : null;
-    if (!decoded) {
-      return Promise.reject(new NotFoundException('Place not found'));
+    if (!id) throw new NotFoundException('Place not found');
+
+    const decoded = this.decodePlaceId(id);
+    if (decoded) {
+      return {
+        placeId: id,
+        label: decoded.label,
+        lat: decoded.lat,
+        lng: decoded.lng,
+      };
+    }
+    if (id.startsWith('osm:') || !/^[A-Za-z0-9_-]+$/.test(id)) {
+      throw new NotFoundException('Place not found');
     }
 
-    return Promise.resolve({
-      placeId: id,
-      label: decoded.label,
-      lat: decoded.lat,
-      lng: decoded.lng,
-    });
-  }
+    let place: GooglePlace;
+    try {
+      const response = await axios.get<GooglePlace>(
+        `${this.placesBaseUrl}/places/${id}`,
+        {
+          params: sessionToken ? { sessionToken } : undefined,
+          headers: {
+            'X-Goog-Api-Key': this.googleMapsApiKey,
+            'X-Goog-FieldMask': 'id,displayName,formattedAddress,location',
+          },
+          timeout: this.providerTimeoutMs,
+        },
+      );
+      place = response?.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        throw new NotFoundException('Place not found');
+      }
+      this.logger.warn(
+        `Google place details failed: ${this.googleErrorMessage(error)}`,
+      );
+      throw new BadGatewayException('Places provider unavailable');
+    }
 
-  /**
-   * Map a single Photon GeoJSON feature to the suggestion shape the app
-   * expects, packing the resolved coordinates into the placeId.
-   */
-  private toSuggestion(
-    feature: PhotonFeature,
-    context?: SearchContext,
-  ): PlaceSuggestionDto {
-    const empty: PlaceSuggestionDto = {
-      placeId: '',
-      primaryText: '',
-      secondaryText: '',
-      description: '',
-      distanceMeters: null,
-    };
-
-    const coordinates = feature.geometry?.coordinates;
-    if (!Array.isArray(coordinates) || coordinates.length < 2) return empty;
-    const lng = Number(coordinates[0]);
-    const lat = Number(coordinates[1]);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return empty;
-
-    const texts = this.buildAddressTexts(feature.properties ?? {});
-    if (!texts.primaryText) return empty;
-
+    const lat = Number(place?.location?.latitude);
+    const lng = Number(place?.location?.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      throw new NotFoundException('Place not found');
+    }
+    const name = place.displayName?.text?.trim() ?? '';
+    const address = place.formattedAddress?.trim() ?? '';
     return {
-      placeId: this.encodePlaceId({ lat, lng, label: texts.description }),
-      primaryText: texts.primaryText,
-      secondaryText: texts.secondaryText,
-      description: texts.description,
-      // Photon returns coordinates with every suggestion, so the distance
-      // label costs no extra request — no per-row place-details lookup.
-      distanceMeters: context
-        ? Math.round(this.haversineMeters(context.lat, context.lng, lat, lng))
-        : null,
+      placeId: id,
+      label:
+        this.labels.get(id) ??
+        (name && !address.startsWith(name)
+          ? [name, address].filter(Boolean).join('، ')
+          : address || name),
+      lat,
+      lng,
     };
   }
 
-  /**
-   * Split a Photon feature's address properties into the two lines the app
-   * renders: a bold place name and a grey street/district/city line. Shared by
-   * autocomplete and reverse geocoding so both read identically.
-   */
-  private buildAddressTexts(props: PhotonProperties): {
-    primaryText: string;
-    secondaryText: string;
-    description: string;
-  } {
-    const primaryText = (props.name ?? props.street ?? '').trim();
-    if (!primaryText) {
-      return { primaryText: '', secondaryText: '', description: '' };
-    }
+  /** Remember the list wording of a suggestion for its place lookup. */
+  private rememberLabel(placeId: string, label: string) {
+    if (!label || this.decodePlaceId(placeId)) return;
+    if (this.labels.size >= this.cacheMaxEntries * 4) this.labels.clear();
+    this.labels.set(placeId, label);
+  }
 
-    // Build the secondary line from the surrounding address parts, dropping any
-    // that repeat the primary text or each other.
-    const seen = new Set<string>([primaryText]);
-    const secondaryParts: string[] = [];
-    for (const value of [
-      props.street,
-      props.district,
-      props.city,
-      props.county,
-      props.state,
-      props.country,
-    ]) {
-      const part = (value ?? '').trim();
-      if (part && !seen.has(part)) {
-        seen.add(part);
-        secondaryParts.push(part);
+  /** Google's reason for a refusal (key, billing, API not enabled), if any. */
+  private googleErrorMessage(error: unknown): string {
+    if (axios.isAxiosError(error)) {
+      const data = error.response?.data as
+        | { error?: { status?: string; message?: string } }
+        | undefined;
+      if (data?.error) {
+        return `${data.error.status ?? error.response?.status}: ${data.error.message ?? ''}`;
       }
     }
-
-    return {
-      primaryText,
-      secondaryText: secondaryParts.join('، '),
-      description: [primaryText, ...secondaryParts].join('، '),
-    };
+    return (error as Error)?.message ?? 'unknown error';
   }
 
   /** Great-circle distance in metres, for the suggestion distance label. */
@@ -841,6 +692,7 @@ export class LocationsService {
     return Number.isFinite(value) && value >= -180 && value <= 180;
   }
 
+  /** Catalog cities need no lookup: their coordinates travel in the id. */
   private encodePlaceId(detail: {
     lat: number;
     lng: number;
@@ -874,8 +726,8 @@ export class LocationsService {
   }
 
   /**
-   * Parse a query-string coordinate into a finite number, biasing Photon
-   * results toward the user. Returns undefined when absent or invalid.
+   * Parse a query-string coordinate into a finite number. Returns undefined
+   * when absent or invalid.
    */
   private coordinate(value?: string): number | undefined {
     const parsed = Number(value);
@@ -913,80 +765,66 @@ export class LocationsService {
     }
   }
 
-  /**
-   * Address + country for a point. Google first; when it fails — e.g. the
-   * project's billing is off, which made every lookup REQUEST_DENIED and every
-   * trip fall back to JOD — Photon (OpenStreetMap) answers instead.
-   */
+  /** Address + country for a point (used for the trip's currency). */
   async reverseGeocode(latitude: number, longitude: number) {
-    try {
-      return await this.reverseGeocodeGoogle(latitude, longitude);
-    } catch (googleError) {
-      const osm = await this.reverseGeocodePhoton(latitude, longitude).catch(
-        () => null,
-      );
-      if (osm?.countryCode) return osm;
-      throw googleError;
-    }
+    return this.reverseGeocodeGoogle(latitude, longitude);
   }
 
-  private async reverseGeocodePhoton(latitude: number, longitude: number) {
-    const response = await axios.get<PhotonResponse>(
-      `${this.photonBaseUrl}/reverse`,
-      { params: { lat: latitude, lon: longitude }, timeout: 5000 },
-    );
-    const p = response.data.features?.[0]?.properties;
-    if (!p) throw new BadRequestException('Location not found');
-    const address = [p.name, p.street, p.district, p.city, p.state, p.country]
-      .filter((part, i, all) => !!part && all.indexOf(part) === i)
-      .join('، ');
-    return {
-      address,
-      city: p.city || p.county || p.district || '',
-      country: p.country || '',
-      countryCode: (p.countrycode || '').toUpperCase(),
-    };
+  private async googleGeocodeResults(
+    latitude: number,
+    longitude: number,
+    lang: 'ar' | 'en' = 'ar',
+  ): Promise<GoogleGeocodeResult[]> {
+    const response = await axios.get<{
+      status?: string;
+      error_message?: string;
+      results?: GoogleGeocodeResult[];
+    }>(`${this.googleMapsBaseUrl}/geocode/json`, {
+      params: {
+        latlng: `${latitude},${longitude}`,
+        language: lang,
+        key: this.googleMapsApiKey,
+      },
+      timeout: this.providerTimeoutMs,
+    });
+    const status = response.data?.status;
+    if (status === 'ZERO_RESULTS') return [];
+    if (status !== 'OK') {
+      throw new Error(
+        `${status ?? 'UNKNOWN'}: ${response.data?.error_message ?? ''}`,
+      );
+    }
+    return response.data.results ?? [];
   }
 
   private async reverseGeocodeGoogle(latitude: number, longitude: number) {
+    let results: GoogleGeocodeResult[];
     try {
-      const response = await axios.get(
-        `${this.googleMapsBaseUrl}/geocode/json`,
-        {
-          params: {
-            latlng: `${latitude},${longitude}`,
-            key: this.googleMapsApiKey,
-          },
-        },
-      );
-
-      if (response.data.status !== 'OK') {
-        throw new BadRequestException('Location not found');
-      }
-
-      const result = response.data.results[0];
-      const addressComponents = result.address_components;
-
-      const findComponent = (types: string[]) =>
-        addressComponents.find((component: any) =>
-          types.every((type) => component.types.includes(type)),
-        );
-      const getAddressComponent = (types: string[]) =>
-        findComponent(types)?.long_name || '';
-
-      return {
-        address: result.formatted_address,
-        city: getAddressComponent(['locality', 'administrative_area_level_2']),
-        country: getAddressComponent(['country']),
-        // ISO 3166-1 alpha-2 code (e.g. "JO"), used for currency resolution.
-        countryCode: findComponent(['country'])?.short_name || '',
-      };
+      results = await this.googleGeocodeResults(latitude, longitude);
     } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
+      this.logger.warn(
+        `Google reverse geocode failed: ${this.googleErrorMessage(error)}`,
+      );
       throw new BadRequestException('Failed to reverse geocode location');
     }
+    const result = results[0];
+    if (!result) throw new BadRequestException('Location not found');
+
+    const components = result.address_components ?? [];
+    const findComponent = (types: string[]) =>
+      components.find((component) =>
+        types.every((type) => component.types?.includes(type)),
+      );
+    const getAddressComponent = (types: string[]) =>
+      findComponent(types)?.long_name || '';
+
+    return {
+      address: result.formatted_address ?? '',
+      city: getAddressComponent(['locality']) || this.cityName(components),
+      country: getAddressComponent(['country']),
+      // ISO 3166-1 alpha-2 code (e.g. "JO"), used for currency resolution.
+      countryCode: findComponent(['country'])?.short_name || '',
+    };
   }
 
   async getDistance(

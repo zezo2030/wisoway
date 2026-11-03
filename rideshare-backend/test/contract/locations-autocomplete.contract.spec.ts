@@ -50,16 +50,17 @@ describe('GET /locations/autocomplete (Contract)', () => {
   });
 
   it('returns the documented suggestion shape for a valid query', async () => {
-    mockedAxios.get.mockResolvedValueOnce({
+    mockedAxios.post.mockResolvedValueOnce({
       data: {
-        features: [
+        suggestions: [
           {
-            geometry: { type: 'Point', coordinates: [35.9932, 31.7226] },
-            properties: {
-              name: 'Queen Alia International Airport',
-              city: 'Amman',
-              country: 'Jordan',
-              countrycode: 'JO',
+            placePrediction: {
+              placeId: 'ChIJqueenAlia',
+              text: { text: 'Queen Alia International Airport، Amman، Jordan' },
+              structuredFormat: {
+                mainText: { text: 'Queen Alia International Airport' },
+                secondaryText: { text: 'Amman، Jordan' },
+              },
             },
           },
         ],
@@ -67,7 +68,6 @@ describe('GET /locations/autocomplete (Contract)', () => {
     } as never);
     const service = new LocationsService(configService, rateLimiter);
 
-    const label = 'Queen Alia International Airport، Amman، Jordan';
     await expect(
       service.autocomplete(
         { q: 'qa', lang: 'en', sessionToken: 'session-1' },
@@ -77,10 +77,10 @@ describe('GET /locations/autocomplete (Contract)', () => {
       sessionToken: 'session-1',
       suggestions: [
         {
-          placeId: encodePlaceId({ lat: 31.7226, lng: 35.9932, label }),
+          placeId: 'ChIJqueenAlia',
           primaryText: 'Queen Alia International Airport',
           secondaryText: 'Amman، Jordan',
-          description: label,
+          description: 'Queen Alia International Airport، Amman، Jordan',
           // Part of PlaceSuggestionDto; null when the caller sends no lat/lng
           // to measure from.
           distanceMeters: null,
@@ -90,7 +90,7 @@ describe('GET /locations/autocomplete (Contract)', () => {
   });
 
   it('maps provider failures to 502', async () => {
-    mockedAxios.get.mockRejectedValueOnce(new Error('network down'));
+    mockedAxios.post.mockRejectedValueOnce(new Error('network down'));
     const service = new LocationsService(configService, rateLimiter);
 
     await expect(

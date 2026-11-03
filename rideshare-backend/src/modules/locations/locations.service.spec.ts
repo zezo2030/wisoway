@@ -36,570 +36,169 @@ describe('LocationsService', () => {
     } as unknown as PlacesRateLimiter;
   });
 
+  /** A Places API (New) autocomplete answer. */
+  const predictions = (
+    ...items: Array<{
+      id: string;
+      main: string;
+      secondary?: string;
+      distanceMeters?: number;
+    }>
+  ) => ({
+    data: {
+      suggestions: items.map((item) => ({
+        placePrediction: {
+          placeId: item.id,
+          text: {
+            text: [item.main, item.secondary].filter(Boolean).join('، '),
+          },
+          structuredFormat: {
+            mainText: { text: item.main },
+            ...(item.secondary
+              ? { secondaryText: { text: item.secondary } }
+              : {}),
+          },
+          ...(item.distanceMeters !== undefined
+            ? { distanceMeters: item.distanceMeters }
+            : {}),
+        },
+      })),
+    },
+  });
+
+  /** A Geocoding answer naming a point in [countryCode]. */
+  const geocoded = (formatted: string, countryCode = 'JO', locality = '') => ({
+    data: {
+      status: 'OK',
+      results: [
+        {
+          formatted_address: formatted,
+          types: ['street_address'],
+          address_components: [
+            ...(locality
+              ? [
+                  {
+                    long_name: locality,
+                    short_name: locality,
+                    types: ['locality'],
+                  },
+                ]
+              : []),
+            {
+              long_name: countryCode,
+              short_name: countryCode,
+              types: ['country', 'political'],
+            },
+          ],
+        },
+      ],
+    },
+  });
+
   describe('autocomplete', () => {
-    it('maps Photon features into suggestions with a resolvable placeId', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get.mockResolvedValue({
-        data: {
-          features: [
-            {
-              geometry: { type: 'Point', coordinates: [35.9106, 31.9539] },
-              properties: {
-                name: 'عمان',
-                state: 'محافظة العاصمة',
-                country: 'الأردن',
-                countrycode: 'JO',
-              },
-            },
-          ],
-        },
-      } as never);
+    beforeEach(() => {
+      (configService.get as jest.Mock).mockImplementation((key: string) =>
+        key === 'GOOGLE_MAPS_API_KEY' ? 'test-key' : undefined,
+      );
+    });
 
-      const service = build();
+    it('searches Google Places and maps predictions to the two lines the app shows', async () => {
+      mockedAxios.post.mockResolvedValue(
+        predictions({ id: 'ChIJjerash', main: 'جرش', secondary: 'الأردن' }),
+      );
 
-      const result = await service.autocomplete(
-        { q: 'عما', lang: 'ar' },
+      const result = await build().autocomplete(
+        { q: 'جرش', lang: 'ar', sessionToken: 'session-1', country: 'JO' },
         'user-1',
       );
 
-      expect(result.suggestions).toHaveLength(1);
-      const [suggestion] = result.suggestions;
-      expect(suggestion.primaryText).toBe('عمان');
-      expect(suggestion.secondaryText).toBe('محافظة العاصمة، الأردن');
-      expect(suggestion.placeId.startsWith('osm:')).toBe(true);
-      // No search context was sent, so there is no distance to show.
-      expect(suggestion.distanceMeters).toBeNull();
-
-      // placeId round-trips through placeDetail with no extra network call.
-      mockedAxios.get.mockClear();
-      const detail = await service.placeDetail(suggestion.placeId);
-      expect(detail).toEqual({
-        placeId: suggestion.placeId,
-        label: 'عمان، محافظة العاصمة، الأردن',
-        lat: 31.9539,
-        lng: 35.9106,
+      expect(result).toEqual({
+        sessionToken: 'session-1',
+        suggestions: [
+          {
+            placeId: 'ChIJjerash',
+            primaryText: 'جرش',
+            secondaryText: 'الأردن',
+            description: 'جرش، الأردن',
+            distanceMeters: null,
+          },
+        ],
       });
+      const [url, body, config] = mockedAxios.post.mock.calls[0];
+      expect(url).toBe('https://places.googleapis.com/v1/places:autocomplete');
+      expect(body).toMatchObject({
+        input: 'جرش',
+        languageCode: 'ar',
+        sessionToken: 'session-1',
+        includedRegionCodes: ['jo'],
+      });
+      expect(config?.headers).toMatchObject({ 'X-Goog-Api-Key': 'test-key' });
+      // Search no longer touches the free OpenStreetMap geocoder.
       expect(mockedAxios.get).not.toHaveBeenCalled();
     });
 
-    it('drops features outside the configured country filter', async () => {
-      (configService.get as jest.Mock).mockImplementation((key: string) =>
-        key === 'LOCATION_AUTOCOMPLETE_COUNTRIES' ? 'jo' : undefined,
-      );
-      mockedAxios.get.mockResolvedValue({
-        data: {
-          features: [
-            {
-              geometry: { type: 'Point', coordinates: [35.9106, 31.9539] },
-              properties: { name: 'عمان', countrycode: 'JO' },
-            },
-            {
-              geometry: { type: 'Point', coordinates: [31.2357, 30.0444] },
-              properties: { name: 'القاهرة', countrycode: 'EG' },
-            },
-          ],
-        },
-      } as never);
-
-      const service = build();
-
-      const result = await service.autocomplete({ q: 'ا' + 'ل' }, 'user-1');
-
-      expect(result.suggestions).toHaveLength(1);
-      expect(result.suggestions[0].primaryText).toBe('عمان');
-    });
-
-    it('over-fetches from the provider so local filtering cannot empty the list', async () => {
-      (configService.get as jest.Mock).mockImplementation((key: string) =>
-        key === 'LOCATION_AUTOCOMPLETE_COUNTRIES' ? 'jo' : undefined,
-      );
-      mockedAxios.get.mockResolvedValue({ data: { features: [] } } as never);
-
-      await build().autocomplete({ q: 'عما' }, 'user-1');
-
-      const params = mockedAxios.get.mock.calls[0][1]?.params as {
-        limit: number;
-      };
-      expect(params.limit).toBeGreaterThan(6);
-    });
-
-    it('skips the provider for queries shorter than two characters', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      const service = build();
-
-      const result = await service.autocomplete({ q: 'a' }, 'user-1');
-
-      expect(result.suggestions).toEqual([]);
-      expect(mockedAxios.get).not.toHaveBeenCalled();
-    });
-
-    it('returns a distance for each suggestion when a search context is sent', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get.mockResolvedValue({
-        data: {
-          features: [
-            {
-              // ~2 km north of the context point.
-              geometry: { type: 'Point', coordinates: [35.9106, 31.9719] },
-              properties: { name: 'الدوار السابع', countrycode: 'JO' },
-            },
-          ],
-        },
-      } as never);
-
-      const result = await build().autocomplete(
-        { q: 'الدوار', lat: '31.9539', lng: '35.9106' },
-        'user-1',
-      );
-
-      const distance = result.suggestions[0].distanceMeters;
-      expect(distance).not.toBeNull();
-      expect(distance).toBeGreaterThan(1_800);
-      expect(distance).toBeLessThan(2_200);
-    });
-
-    it('ignores a half-sent coordinate pair instead of biasing on it', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get.mockResolvedValue({ data: { features: [] } } as never);
-
-      await build().autocomplete({ q: 'عما', lat: '31.9539' }, 'user-1');
-
-      const params = mockedAxios.get.mock.calls[0][1]?.params as {
-        lat?: number;
-        lon?: number;
-      };
-      expect(params.lat).toBeUndefined();
-      expect(params.lon).toBeUndefined();
-    });
-
-    it('biases the search on the chosen city when no coordinates are sent', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get.mockResolvedValue({ data: { features: [] } } as never);
-
-      await build().autocomplete({ q: 'شارع', cityId: 'jo-irbid' }, 'user-1');
-
-      const params = mockedAxios.get.mock.calls[0][1]?.params as {
-        lat?: number;
-        lon?: number;
-      };
-      expect(params.lat).toBeCloseTo(32.5556, 3);
-      expect(params.lon).toBeCloseTo(35.85, 3);
-    });
-
-    it('ranks results inside the chosen city above distant ones', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get.mockResolvedValue({
-        data: {
-          features: [
-            {
-              // Aqaba: far from Irbid, but first in the provider's own order.
-              geometry: { type: 'Point', coordinates: [35.0063, 29.5321] },
-              properties: { name: 'شارع البحر', countrycode: 'JO' },
-            },
-            {
-              geometry: { type: 'Point', coordinates: [35.852, 32.5561] },
-              properties: { name: 'شارع الجامعة', countrycode: 'JO' },
-            },
-          ],
-        },
-      } as never);
-
-      const result = await build().autocomplete(
-        { q: 'شارع', cityId: 'jo-irbid' },
-        'user-1',
-      );
-
-      expect(result.suggestions[0].primaryText).toBe('شارع الجامعة');
-      expect(result.suggestions[1].primaryText).toBe('شارع البحر');
-    });
-
-    it('keeps only the requested country and orders all matches by distance', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get.mockResolvedValue({
-        data: {
-          features: [
-            {
-              geometry: { coordinates: [39.5, 24.5] },
-              properties: { name: 'بعيد', countrycode: 'SA' },
-            },
-            {
-              geometry: { coordinates: [35.0, 31.0] },
-              properties: { name: 'خارج الدولة', countrycode: 'JO' },
-            },
-            {
-              geometry: { coordinates: [39.001, 24.001] },
-              properties: {
-                name: 'قريب',
-                countrycode: 'SA',
-                osm_key: 'highway',
-                osm_value: 'bus_stop',
-              },
-            },
-            {
-              geometry: { coordinates: [39.002, 24.002] },
-              properties: { name: 'مجهول الدولة' },
-            },
-          ],
-        },
-      } as never);
-
-      const result = await build().autocomplete(
-        { q: 'مكان', lat: '24', lng: '39', country: 'SA' },
-        'user-1',
-      );
-      expect(result.suggestions.map((s) => s.primaryText)).toEqual([
-        'قريب',
-        'بعيد',
-      ]);
-    });
-
-    it('infers the country from the context when the app sends none', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get.mockImplementation(async (url: string) =>
-        url.endsWith('/reverse')
-          ? ({
-              data: { features: [{ properties: { countrycode: 'sa' } }] },
-            } as never)
-          : ({
-              data: {
-                features: [
-                  {
-                    geometry: { coordinates: [39.01, 24.01] },
-                    properties: { name: 'محلي', countrycode: 'SA' },
-                  },
-                  {
-                    geometry: { coordinates: [35.0, 31.0] },
-                    properties: { name: 'أجنبي', countrycode: 'JO' },
-                  },
-                ],
-              },
-            } as never),
+    it('biases to the passenger and orders the results nearest first', async () => {
+      mockedAxios.post.mockResolvedValue(
+        predictions(
+          { id: 'far', main: 'مستشفى الملك', distanceMeters: 300_000 },
+          { id: 'near', main: 'مستشفى العلا', distanceMeters: 6_000 },
+        ),
       );
 
       const result = await build().autocomplete(
-        { q: 'مكان', lat: '24', lng: '39' },
-        'user-1',
-      );
-
-      expect(result.suggestions.map((s) => s.primaryText)).toEqual(['محلي']);
-    });
-
-    it('also searches a box around the passenger so nearby places are candidates', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get.mockResolvedValue({ data: { features: [] } } as never);
-
-      await build().autocomplete(
         { q: 'مستشفى', lat: '26.6', lng: '37.9', country: 'SA' },
         'user-1',
       );
 
-      const searches = mockedAxios.get.mock.calls
-        .filter(([url]) => String(url).endsWith('/api/'))
-        .map(
-          ([, config]) =>
-            (config as { params: Record<string, unknown> }).params,
-        );
-      const boxed = searches.find((p) => p.bbox);
-      expect(boxed).toBeDefined();
-      const [minLng, minLat, maxLng, maxLat] = String(boxed!.bbox)
-        .split(',')
-        .map(Number);
-      expect(minLat).toBeLessThan(26.6);
-      expect(maxLat).toBeGreaterThan(26.6);
-      expect(minLng).toBeLessThan(37.9);
-      expect(maxLng).toBeGreaterThan(37.9);
-      // ~50 km either side, not the whole country.
-      expect(maxLat - minLat).toBeLessThan(1.1);
-      // The unboxed search weights distance over prominence.
-      expect(searches.find((p) => !p.bbox)?.location_bias_scale).toBe(0.1);
-    });
-
-    it('orders results nearest first when a search context is sent', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get.mockResolvedValue({
-        data: {
-          features: [
-            {
-              geometry: { type: 'Point', coordinates: [35.9106, 31.9719] },
-              properties: { name: 'الأول', countrycode: 'JO' },
-            },
-            {
-              // Closer to the context, but ranked lower by the provider.
-              geometry: { type: 'Point', coordinates: [35.9106, 31.9549] },
-              properties: { name: 'الثاني', countrycode: 'JO' },
-            },
-          ],
-        },
-      } as never);
-
-      const result = await build().autocomplete(
-        { q: 'شا', lat: '31.9539', lng: '35.9106' },
-        'user-1',
-      );
-
-      expect(result.suggestions.map((s) => s.primaryText)).toEqual([
-        'الثاني',
-        'الأول',
-      ]);
-    });
-
-    it('keeps provider relevance order when no search context is sent', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get.mockResolvedValue({
-        data: {
-          features: [
-            {
-              geometry: { type: 'Point', coordinates: [35.9106, 31.9719] },
-              properties: { name: 'الأول', countrycode: 'JO' },
-            },
-            {
-              geometry: { type: 'Point', coordinates: [35.9106, 31.9549] },
-              properties: { name: 'الثاني', countrycode: 'JO' },
-            },
-          ],
-        },
-      } as never);
-
-      const result = await build().autocomplete({ q: 'شا' }, 'user-1');
-
-      expect(result.suggestions.map((s) => s.primaryText)).toEqual([
-        'الأول',
-        'الثاني',
-      ]);
-    });
-
-    it('searches a ta-marbuta variant alongside the text as typed', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get.mockResolvedValue({ data: { features: [] } } as never);
-
-      await build().autocomplete({ q: 'الجامعة الاردنية' }, 'user-1');
-
-      const sent = mockedAxios.get.mock.calls.map(
-        (call) => (call[1]?.params as { q: string }).q,
-      );
-      // Raw first: callers rely on that one deciding success.
-      expect(sent[0]).toBe('الجامعة الاردنية');
-      expect(sent).toContain('الجامعه الاردنيه');
-    });
-
-    it('searches a restored-hamza variant for a bare initial alef', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get.mockResolvedValue({ data: { features: [] } } as never);
-
-      await build().autocomplete({ q: 'اربد' }, 'user-1');
-
-      const sent = mockedAxios.get.mock.calls.map(
-        (call) => (call[1]?.params as { q: string }).q,
-      );
-      expect(sent).toEqual(['اربد', 'إربد']);
-    });
-
-    it('never rewrites the definite article into a non-word', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get.mockResolvedValue({ data: { features: [] } } as never);
-
-      await build().autocomplete({ q: 'الجاردنز' }, 'user-1');
-
-      const sent = mockedAxios.get.mock.calls.map(
-        (call) => (call[1]?.params as { q: string }).q,
-      );
-      // "إلجاردنز" is not a word, so no variant is worth a second request.
-      expect(sent).toEqual(['الجاردنز']);
-    });
-
-    it('lists the same place once when two variants both return it', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      const university = {
-        geometry: { type: 'Point', coordinates: [35.8721, 32.0125] },
-        properties: {
-          name: 'الجامعة الأردنية',
-          countrycode: 'JO',
-          osm_type: 'W',
-          osm_id: 111,
-        },
-      };
-      mockedAxios.get.mockResolvedValue({
-        data: { features: [university] },
-      } as never);
-
-      const result = await build().autocomplete(
-        { q: 'الجامعة الاردنية' },
-        'user-1',
-      );
-
-      expect(mockedAxios.get).toHaveBeenCalledTimes(2);
-      expect(result.suggestions).toHaveLength(1);
-    });
-
-    it('still answers when a spelling variant fails but the raw query works', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get
-        .mockResolvedValueOnce({
-          data: {
-            features: [
-              {
-                geometry: { type: 'Point', coordinates: [35.85, 32.5556] },
-                properties: { name: 'إربد', countrycode: 'JO' },
-              },
-            ],
+      expect(result.suggestions.map((s) => s.placeId)).toEqual(['near', 'far']);
+      expect(mockedAxios.post.mock.calls[0][1]).toMatchObject({
+        locationBias: {
+          circle: {
+            center: { latitude: 26.6, longitude: 37.9 },
+            radius: 50_000,
           },
-        } as never)
-        .mockRejectedValueOnce(new Error('variant timed out'));
-
-      const result = await build().autocomplete({ q: 'اربد' }, 'user-1');
-
-      expect(result.suggestions[0].primaryText).toBe('إربد');
-    });
-
-    it('fails when the raw query fails, even if a variant succeeded', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get
-        .mockRejectedValueOnce(new Error('provider down'))
-        .mockResolvedValueOnce({ data: { features: [] } } as never);
-
-      await expect(
-        build().autocomplete({ q: 'اربد' }, 'user-1'),
-      ).rejects.toBeInstanceOf(BadGatewayException);
-    });
-
-    it('sinks a bus stop below the place it stands outside', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get.mockResolvedValue({
-        data: {
-          features: [
-            {
-              // Ranked first by the provider, but not what anyone searched for.
-              geometry: { type: 'Point', coordinates: [35.8724, 32.0128] },
-              properties: {
-                name: 'موقف باص مسجد الجامعة الاردنية',
-                countrycode: 'JO',
-                osm_type: 'N',
-                osm_id: 1,
-                osm_key: 'highway',
-                osm_value: 'bus_stop',
-              },
-            },
-            {
-              geometry: { type: 'Point', coordinates: [35.8721, 32.0125] },
-              properties: {
-                name: 'الجامعة الأردنية',
-                countrycode: 'JO',
-                osm_type: 'W',
-                osm_id: 2,
-                osm_key: 'amenity',
-                osm_value: 'university',
-              },
-            },
-          ],
         },
-      } as never);
+        origin: { latitude: 26.6, longitude: 37.9 },
+        includedRegionCodes: ['sa'],
+      });
+    });
 
-      const result = await build().autocomplete({ q: 'الجامعه' }, 'user-1');
+    it('infers the country from the passenger when the app sends none', async () => {
+      mockedAxios.get.mockResolvedValue(geocoded('العلا', 'SA') as never);
+      mockedAxios.post.mockResolvedValue(predictions());
 
-      expect(result.suggestions[0].primaryText).toBe('الجامعة الأردنية');
-      // Demoted, not dropped: someone really looking for the stop still finds it.
-      expect(result.suggestions[1].primaryText).toBe(
-        'موقف باص مسجد الجامعة الاردنية',
+      await build().autocomplete({ q: 'مطار', lat: '26.6', lng: '37.9' }, 'u');
+
+      expect(mockedAxios.get.mock.calls[0][0]).toContain('/geocode/json');
+      expect(mockedAxios.post.mock.calls[0][1]).toMatchObject({
+        includedRegionCodes: ['sa'],
+      });
+    });
+
+    it('skips the provider for queries shorter than two characters', async () => {
+      const result = await build().autocomplete({ q: 'ع' }, 'user-1');
+
+      expect(result.suggestions).toEqual([]);
+      expect(mockedAxios.post).not.toHaveBeenCalled();
+    });
+
+    it('lifts a city above nearby places when the query names it', async () => {
+      mockedAxios.post.mockResolvedValue(
+        predictions(
+          { id: 'shop', main: 'محل العقبة', distanceMeters: 4_000 },
+          { id: 'aqaba', main: 'العقبة', distanceMeters: 300_000 },
+        ),
       );
-    });
-
-    it('lifts a city above nearby noise when the query names it', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get.mockResolvedValue({
-        data: {
-          features: [
-            {
-              // A shop 4 km from the searcher, which proximity ranking loves.
-              geometry: { type: 'Point', coordinates: [35.88, 31.99] },
-              properties: { name: 'العوده', countrycode: 'JO' },
-            },
-            {
-              // Aqaba itself, 300 km south.
-              geometry: { type: 'Point', coordinates: [35.0063, 29.5321] },
-              properties: { name: 'العقبة', countrycode: 'JO' },
-            },
-          ],
-        },
-      } as never);
 
       const result = await build().autocomplete(
-        { q: 'العقبه', lat: '31.9539', lng: '35.9106' },
+        { q: 'العقبه', lat: '31.95', lng: '35.91', country: 'JO' },
         'user-1',
       );
 
-      expect(result.suggestions[0].primaryText).toBe('العقبة');
-    });
-
-    it('never promotes a same-named place that is nowhere near the city', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get.mockResolvedValue({
-        data: {
-          features: [
-            {
-              // Named "العقبة" but thousands of km away, so not Aqaba.
-              geometry: { type: 'Point', coordinates: [10.0, 36.0] },
-              properties: { name: 'العقبة', countrycode: 'JO' },
-            },
-          ],
-        },
-      } as never);
-
-      const result = await build().autocomplete(
-        { q: 'العقبه', lat: '31.9539', lng: '35.9106' },
-        'user-1',
-      );
-
-      const [top] = result.suggestions;
-      const detail = await build().placeDetail(top.placeId);
-      // The catalog entry was added instead of promoting the impostor.
-      expect(detail.lat).toBeCloseTo(29.5321, 2);
-      expect(detail.lng).toBeCloseTo(35.0063, 2);
-    });
-
-    it('adds the city the app knows when the provider misses it', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get.mockResolvedValue({
-        data: {
-          features: [
-            {
-              geometry: { type: 'Point', coordinates: [35.72, 32.05] },
-              properties: { name: 'اربد القديم', countrycode: 'JO' },
-            },
-          ],
-        },
-      } as never);
-
-      const result = await build().autocomplete({ q: 'اربد' }, 'user-1');
-
-      expect(result.suggestions[0].primaryText).toBe('إربد');
-      // The provider's own result is kept below it, not discarded.
-      expect(result.suggestions[1].primaryText).toBe('اربد القديم');
-    });
-
-    it('leaves address search alone once a city has been chosen', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get.mockResolvedValue({
-        data: {
-          features: [
-            {
-              geometry: { type: 'Point', coordinates: [35.852, 32.5561] },
-              properties: { name: 'شارع الجامعة', countrycode: 'JO' },
-            },
-          ],
-        },
-      } as never);
-
-      const result = await build().autocomplete(
-        // "السلط" names a city, but the user is searching inside Irbid.
-        { q: 'السلط', cityId: 'jo-irbid' },
-        'user-1',
-      );
-
-      expect(result.suggestions[0].primaryText).toBe('شارع الجامعة');
+      expect(result.suggestions[0].placeId).toBe('aqaba');
     });
 
     it('rejects the request when the rate limiter refuses it', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
       (rateLimiter.consume as jest.Mock).mockResolvedValue({
         allowed: false,
         retryAfterSeconds: 42,
@@ -608,14 +207,11 @@ describe('LocationsService', () => {
       await expect(
         build().autocomplete({ q: 'عما' }, 'user-1'),
       ).rejects.toBeInstanceOf(HttpException);
-      expect(mockedAxios.get).not.toHaveBeenCalled();
+      expect(mockedAxios.post).not.toHaveBeenCalled();
     });
 
-    it('surfaces a provider outage as 502 without leaking the provider error', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get.mockRejectedValue(
-        new Error('connect ECONNREFUSED 10.0.0.1:2322'),
-      );
+    it('surfaces a Google refusal as 502 without leaking the provider error', async () => {
+      mockedAxios.post.mockRejectedValue(new Error('403 PERMISSION_DENIED'));
 
       await expect(
         build().autocomplete({ q: 'عما' }, 'user-1'),
@@ -623,8 +219,7 @@ describe('LocationsService', () => {
     });
 
     it('stops calling a repeatedly failing provider until the breaker cools down', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get.mockRejectedValue(new Error('provider down'));
+      mockedAxios.post.mockRejectedValue(new Error('provider down'));
       const service = build();
 
       // Distinct queries so the cache cannot mask the calls.
@@ -633,92 +228,142 @@ describe('LocationsService', () => {
           service.autocomplete({ q }, 'user-1'),
         ).rejects.toBeInstanceOf(BadGatewayException);
       }
-      expect(mockedAxios.get).toHaveBeenCalledTimes(5);
+      expect(mockedAxios.post).toHaveBeenCalledTimes(5);
 
-      mockedAxios.get.mockClear();
+      mockedAxios.post.mockClear();
       await expect(
         service.autocomplete({ q: 'ff' }, 'user-1'),
       ).rejects.toBeInstanceOf(BadGatewayException);
+      expect(mockedAxios.post).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('placeDetail', () => {
+    beforeEach(() => {
+      (configService.get as jest.Mock).mockImplementation((key: string) =>
+        key === 'GOOGLE_MAPS_API_KEY' ? 'test-key' : undefined,
+      );
+    });
+
+    it('looks a picked place up in the same session, keeping the wording of the list', async () => {
+      const service = build();
+      mockedAxios.post.mockResolvedValue(
+        predictions({ id: 'ChIJjerash', main: 'جرش', secondary: 'الأردن' }),
+      );
+      await service.autocomplete({ q: 'جرش', country: 'JO' }, 'user-1');
+      mockedAxios.get.mockResolvedValue({
+        data: {
+          id: 'ChIJjerash',
+          displayName: { text: 'Jerash' },
+          formattedAddress: 'Jerash, Jordan',
+          location: { latitude: 32.28, longitude: 35.89 },
+        },
+      } as never);
+
+      await expect(
+        service.placeDetail('ChIJjerash', 'session-1'),
+      ).resolves.toEqual({
+        placeId: 'ChIJjerash',
+        label: 'جرش، الأردن',
+        lat: 32.28,
+        lng: 35.89,
+      });
+      const [url, config] = mockedAxios.get.mock.calls[0];
+      expect(url).toBe('https://places.googleapis.com/v1/places/ChIJjerash');
+      expect(config?.params).toEqual({ sessionToken: 'session-1' });
+      expect(config?.headers).toMatchObject({
+        'X-Goog-FieldMask': 'id,displayName,formattedAddress,location',
+      });
+    });
+
+    it('resolves a catalog city from its id without a lookup', async () => {
+      mockedAxios.post.mockResolvedValue(predictions());
+      const service = build();
+      const { suggestions } = await service.autocomplete(
+        { q: 'اربد', country: 'JO' },
+        'user-1',
+      );
+
+      const city = await service.placeDetail(suggestions[0].placeId);
+
+      expect(city.label).toBe('إربد');
       expect(mockedAxios.get).not.toHaveBeenCalled();
+    });
+
+    it('maps a place Google does not know to 404', async () => {
+      mockedAxios.get.mockRejectedValue(
+        Object.assign(new Error('Not Found'), {
+          isAxiosError: true,
+          response: { status: 404 },
+        }),
+      );
+      mockedAxios.isAxiosError.mockReturnValue(true);
+
+      await expect(build().placeDetail('ChIJgone')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
     });
   });
 
   describe('reverse', () => {
+    beforeEach(() => {
+      (configService.get as jest.Mock).mockReturnValue(undefined);
+    });
+
     it('resolves a map point to primary and secondary address lines', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get.mockResolvedValue({
-        data: {
-          features: [
-            {
-              geometry: { type: 'Point', coordinates: [35.9106, 31.9539] },
-              properties: {
-                name: 'شارع الرينبو',
-                district: 'جبل عمان',
-                city: 'عمان',
-                countrycode: 'JO',
-              },
-            },
-          ],
-        },
-      } as never);
+      mockedAxios.get.mockResolvedValue(
+        geocoded('شارع الرينبو، جبل عمان، عمان، الأردن', 'JO', 'عمان') as never,
+      );
 
       const result = await build().reverse(
-        { lat: '31.9539', lng: '35.9106' },
+        { lat: '31.9539', lng: '35.9106', lang: 'ar' },
         'user-1',
       );
 
-      expect(result.primaryText).toBe('شارع الرينبو');
-      expect(result.secondaryText).toBe('جبل عمان، عمان');
-      expect(result.label).toBe('شارع الرينبو، جبل عمان، عمان');
-      expect(result.city).toBe('عمان');
-      expect(result.lat).toBeCloseTo(31.9539, 4);
-      expect(result.lng).toBeCloseTo(35.9106, 4);
+      expect(result).toEqual({
+        primaryText: 'شارع الرينبو',
+        secondaryText: 'جبل عمان، عمان، الأردن',
+        label: 'شارع الرينبو، جبل عمان، عمان، الأردن',
+        city: 'عمان',
+        lat: 31.9539,
+        lng: 35.9106,
+      });
+      expect(mockedAxios.get.mock.calls[0][1]?.params).toMatchObject({
+        latlng: '31.9539,35.9106',
+        language: 'ar',
+      });
     });
 
-    it('falls back to the county, then the region, for the city', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get.mockResolvedValue({
-        data: {
-          features: [
-            {
-              geometry: { type: 'Point', coordinates: [37.92, 26.6] },
-              properties: {
-                name: 'سوق',
-                county: 'محافظة العلا',
-                state: 'منطقة المدينة المنورة',
-              },
-            },
-          ],
-        },
-      } as never);
+    it('drops the plus code Google gives a rural point', async () => {
+      mockedAxios.get.mockResolvedValue(
+        geocoded('7VJX+2VM، جرش، الأردن', 'JO', 'جرش') as never,
+      );
 
       const result = await build().reverse(
-        { lat: '26.6', lng: '37.92' },
+        { lat: '32.2803', lng: '35.8993' },
         'user-1',
       );
 
-      expect(result.city).toBe('العلا');
+      expect(result).toMatchObject({
+        primaryText: 'جرش',
+        secondaryText: 'الأردن',
+        label: 'جرش، الأردن',
+      });
     });
 
-    it('returns the point with empty text when the provider knows no address', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get.mockResolvedValue({ data: { features: [] } } as never);
+    it('returns the point with empty text when Google knows no address', async () => {
+      mockedAxios.get.mockResolvedValue({
+        data: { status: 'ZERO_RESULTS', results: [] },
+      } as never);
 
-      const result = await build().reverse(
-        { lat: '31.0', lng: '35.0' },
-        'user-1',
-      );
+      const result = await build().reverse({ lat: '0', lng: '0' }, 'user-1');
 
-      // The app still lets the user confirm the point, so this is not an error.
-      expect(result.label).toBe('');
-      expect(result.lat).toBe(31);
+      expect(result).toMatchObject({ primaryText: '', label: '', lat: 0 });
     });
 
     it('rejects out-of-range coordinates before calling the provider', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-
       await expect(
-        build().reverse({ lat: '99.5', lng: '35.0' }, 'user-1'),
+        build().reverse({ lat: '95', lng: '10' }, 'user-1'),
       ).rejects.toBeInstanceOf(BadRequestException);
       expect(mockedAxios.get).not.toHaveBeenCalled();
     });
@@ -757,17 +402,6 @@ describe('LocationsService', () => {
       );
 
       expect(build().cities({}).cities).toEqual([]);
-    });
-  });
-
-  describe('placeDetail', () => {
-    it('rejects an unrecognised placeId', async () => {
-      (configService.get as jest.Mock).mockReturnValue(undefined);
-      const service = build();
-
-      await expect(service.placeDetail('ChIJgoogleId')).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
     });
   });
 
@@ -893,44 +527,28 @@ describe('LocationsService', () => {
   });
 
   describe('reverseGeocode', () => {
-    it('falls back to Photon when Google refuses (billing off)', async () => {
+    it('reads the country from Google for the trip currency', async () => {
       (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get
-        .mockResolvedValueOnce({
-          data: { status: 'REQUEST_DENIED', results: [] },
-        } as never)
-        .mockResolvedValueOnce({
-          data: {
-            features: [
-              {
-                properties: {
-                  district: 'العلا',
-                  state: 'منطقة المدينة المنورة',
-                  country: 'السعودية',
-                  countrycode: 'sa',
-                },
-              },
-            ],
-          },
-        } as never);
+      mockedAxios.get.mockResolvedValue(
+        geocoded('العلا، السعودية', 'SA', 'العلا') as never,
+      );
 
       const result = await build().reverseGeocode(26.6086, 37.9232);
 
-      expect(result.countryCode).toBe('SA');
-      expect(mockedAxios.get.mock.calls[1][0]).toContain('/reverse');
+      expect(result).toMatchObject({ countryCode: 'SA', city: 'العلا' });
+      expect(mockedAxios.get).toHaveBeenCalledTimes(1);
     });
 
-    it('keeps the Google error when Photon has no answer either', async () => {
+    it('fails when Google refuses, with no free fallback', async () => {
       (configService.get as jest.Mock).mockReturnValue(undefined);
-      mockedAxios.get
-        .mockResolvedValueOnce({
-          data: { status: 'REQUEST_DENIED', results: [] },
-        } as never)
-        .mockResolvedValueOnce({ data: { features: [] } } as never);
+      mockedAxios.get.mockResolvedValue({
+        data: { status: 'REQUEST_DENIED', results: [] },
+      } as never);
 
       await expect(build().reverseGeocode(0, 0)).rejects.toBeInstanceOf(
         BadRequestException,
       );
+      expect(mockedAxios.get).toHaveBeenCalledTimes(1);
     });
   });
 });

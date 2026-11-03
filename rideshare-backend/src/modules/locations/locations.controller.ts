@@ -9,6 +9,7 @@ import { LocationsService } from './locations.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { LocationAutocompleteQueryDto } from './dto/location-autocomplete.dto';
 import { ReverseGeocodeQueryDto } from './dto/reverse-geocode.dto';
+import { PlaceDetailQueryDto } from './dto/place-detail.dto';
 import { CitiesQueryDto } from './dto/cities.dto';
 
 @ApiTags('locations')
@@ -39,9 +40,12 @@ export class LocationsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Place not found' })
   @ApiResponse({ status: 502, description: 'Places provider failed' })
-  async placeDetail(@Param('id') placeId: string) {
-    // Coordinates are encoded in the placeId, so no sessionToken is needed.
-    return this.locationsService.placeDetail(placeId);
+  async placeDetail(
+    @Param('id') placeId: string,
+    @Query() query: PlaceDetailQueryDto,
+  ) {
+    // The search's sessionToken bills the search and this lookup as one.
+    return this.locationsService.placeDetail(placeId, query.sessionToken);
   }
 
   @Get('reverse')
