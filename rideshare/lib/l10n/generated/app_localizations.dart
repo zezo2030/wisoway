@@ -8921,7 +8921,7 @@ abstract class AppLocalizations {
   /// No description provided for @vehicleRegistrationFormRequired.
   ///
   /// In ar, this message translates to:
-  /// **'الاستمارة *'**
+  /// **'الرخصة / الاستمارة *'**
   String get vehicleRegistrationFormRequired;
 
   /// No description provided for @insuranceDocumentLabel.
@@ -8987,7 +8987,7 @@ abstract class AppLocalizations {
   /// No description provided for @driverDocRegistration.
   ///
   /// In ar, this message translates to:
-  /// **'الاستمارة'**
+  /// **'الرخصة / الاستمارة'**
   String get driverDocRegistration;
 
   /// No description provided for @driverDocInsurance.

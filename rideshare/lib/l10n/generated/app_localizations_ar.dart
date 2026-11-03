@@ -4868,7 +4868,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get driverLicenseUploadHint => 'اضغط لرفع صورة الرخصة';
 
   @override
-  String get vehicleRegistrationFormRequired => 'الاستمارة *';
+  String get vehicleRegistrationFormRequired => 'الرخصة / الاستمارة *';
 
   @override
   String get insuranceDocumentLabel => 'التأمين *';
@@ -4902,7 +4902,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get driverDocLicense => 'الرخصة';
 
   @override
-  String get driverDocRegistration => 'الاستمارة';
+  String get driverDocRegistration => 'الرخصة / الاستمارة';
 
   @override
   String get driverDocInsurance => 'التأمين';
