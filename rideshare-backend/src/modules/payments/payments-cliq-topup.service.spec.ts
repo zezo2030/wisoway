@@ -39,7 +39,6 @@ describe('PaymentsService – CliQ wallet top-up', () => {
     paymentRepo = makeRepo();
     a2aCliqService = {
       purchase: jest.fn(),
-      purchaseAndAwait: jest.fn(),
       paymentInquiry: jest.fn(),
       getToken: jest.fn(),
     } as unknown as jest.Mocked<A2aCliqService>;
@@ -47,7 +46,7 @@ describe('PaymentsService – CliQ wallet top-up', () => {
       creditPostedTopup: jest.fn(),
       assertDriverTopup: jest.fn().mockResolvedValue(undefined),
     };
-    cliqPollQueue = { add: jest.fn(), remove: jest.fn() };
+    cliqPollQueue = { add: jest.fn().mockResolvedValue({}), remove: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -79,8 +78,6 @@ describe('PaymentsService – CliQ wallet top-up', () => {
             notifyWalletTopup: jest.fn().mockResolvedValue(undefined),
           },
         },
-        // PaymentsService enqueues CliQ polling jobs; the suites here never
-        // reach that path, so an inert queue is enough.
         {
           provide: getQueueToken('cliq-poll'),
           useValue: cliqPollQueue,
@@ -96,12 +93,11 @@ describe('PaymentsService – CliQ wallet top-up', () => {
   describe('createWalletTopup', () => {
     describe('the number sent to CliQ', () => {
       beforeEach(() => {
-        a2aCliqService.purchaseAndAwait.mockResolvedValue({
+        a2aCliqService.purchase.mockResolvedValue({
           MSGID: 'msg-1',
-          StatusCode: '0',
-          isSuccess: true,
-          isTerminal: true,
-        } as never);
+          errorCode: '0',
+          description: 'Accepted',
+        });
       });
 
       it.each([['0791234567'], ['٠٧٩١٢٣٤٥٦٧'], ['+962 79 123 4567']])(
@@ -114,7 +110,7 @@ describe('PaymentsService – CliQ wallet top-up', () => {
             aliasValue,
           });
 
-          expect(a2aCliqService.purchaseAndAwait).toHaveBeenCalledWith(
+          expect(a2aCliqService.purchase).toHaveBeenCalledWith(
             expect.objectContaining({
               aliasType: 'MOBL',
               aliasValue: '00962791234567',
@@ -131,7 +127,7 @@ describe('PaymentsService – CliQ wallet top-up', () => {
           aliasValue: ' ahmad@cliq ',
         });
 
-        expect(a2aCliqService.purchaseAndAwait).toHaveBeenCalledWith(
+        expect(a2aCliqService.purchase).toHaveBeenCalledWith(
           expect.objectContaining({
             aliasType: 'ALIAS',
             aliasValue: 'ahmad@cliq',
@@ -149,7 +145,7 @@ describe('PaymentsService – CliQ wallet top-up', () => {
           }),
         ).rejects.toThrow(BadRequestException);
 
-        expect(a2aCliqService.purchaseAndAwait).not.toHaveBeenCalled();
+        expect(a2aCliqService.purchase).not.toHaveBeenCalled();
         expect(paymentRepo.save).not.toHaveBeenCalled();
       });
     });
@@ -183,15 +179,11 @@ describe('PaymentsService – CliQ wallet top-up', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('creates the payment and drives it through purchaseAndAwait for cliq_a2a', async () => {
-      // Still pending after the foreground poll: the service keeps the payment
-      // pending and hands it to the background queue.
-      a2aCliqService.purchaseAndAwait.mockResolvedValue({
+    it('answers once the request is sent, leaving the approval to polling', async () => {
+      a2aCliqService.purchase.mockResolvedValue({
         MSGID: 'msg-abc',
-        StatusCode: '3011',
-        StatusDescription: 'Pending',
-        isTerminal: false,
-        isSuccess: false,
+        errorCode: '0',
+        description: 'Accepted',
       });
 
       const result = await service.createWalletTopup('user-1', {
@@ -201,20 +193,39 @@ describe('PaymentsService – CliQ wallet top-up', () => {
         aliasValue: '00962777000000',
       });
 
-      expect(a2aCliqService.purchaseAndAwait).toHaveBeenCalledTimes(1);
-      expect(paymentRepo.save).toHaveBeenCalledTimes(2); // initial + gateway ref
-      expect(result.method).toBe('cliq_a2a');
+      expect(a2aCliqService.purchase).toHaveBeenCalledTimes(1);
+      expect(a2aCliqService.paymentInquiry).not.toHaveBeenCalled();
+      expect(result.status).toBe('pending');
+      expect(result.paymentGatewayRef).toBe('msg-abc');
+      expect(cliqPollQueue.add).toHaveBeenCalledTimes(1);
+      expect(walletService.creditPostedTopup).not.toHaveBeenCalled();
+    });
+
+    it('stays inside the app limit even when the gateway is slow', async () => {
+      a2aCliqService.purchase.mockResolvedValue({
+        MSGID: null,
+        errorCode: 'TIMEOUT',
+        description: 'Timed out',
+      });
+
+      const result = await service.createWalletTopup('user-1', {
+        amount: 5,
+        method: 'cliq_a2a',
+        aliasType: 'MOBL',
+        aliasValue: '00962777000000',
+      });
+
+      const { timeoutMs } = a2aCliqService.purchase.mock.calls[0][0];
+      expect(timeoutMs).toBeLessThan(10_000);
       expect(result.status).toBe('pending');
       expect(cliqPollQueue.add).toHaveBeenCalledTimes(1);
     });
 
-    it('marks payment as rejected on a terminal gateway refusal', async () => {
-      a2aCliqService.purchaseAndAwait.mockResolvedValue({
+    it('marks payment as rejected on an outright gateway refusal', async () => {
+      a2aCliqService.purchase.mockResolvedValue({
         MSGID: 'msg-bad',
-        StatusCode: '3010',
-        StatusDescription: 'Self payment is not allowed',
-        isTerminal: true,
-        isSuccess: false,
+        errorCode: '3010',
+        description: 'Self payment is not allowed',
       });
 
       await expect(
@@ -228,6 +239,26 @@ describe('PaymentsService – CliQ wallet top-up', () => {
 
       const lastSave = paymentRepo.save.mock.calls.at(-1)?.[0];
       expect(lastSave?.status).toBe('rejected');
+      expect(cliqPollQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('tells the user when sending fails but keeps checking the payment', async () => {
+      a2aCliqService.purchase.mockRejectedValue(
+        new BadRequestException('Failed to create A2A CliQ purchase'),
+      );
+
+      await expect(
+        service.createWalletTopup('user-1', {
+          amount: 5,
+          method: 'cliq_a2a',
+          aliasType: 'MOBL',
+          aliasValue: '00962777000000',
+        }),
+      ).rejects.toThrow('تعذر إرسال طلب الدفع إلى CliQ');
+
+      const lastSave = paymentRepo.save.mock.calls.at(-1)?.[0];
+      expect(lastSave?.status).toBe('pending');
+      expect(cliqPollQueue.add).toHaveBeenCalledTimes(1);
     });
 
     it('creates manual top-up correctly with proof URL', async () => {
@@ -237,7 +268,7 @@ describe('PaymentsService – CliQ wallet top-up', () => {
         proofImageUrl: 'https://cdn.example.com/proof.jpg',
       });
 
-      expect(a2aCliqService.purchaseAndAwait).not.toHaveBeenCalled();
+      expect(a2aCliqService.purchase).not.toHaveBeenCalled();
       expect(result.method).toBe('manual');
       expect(result.status).toBe('pending');
     });
@@ -304,6 +335,23 @@ describe('PaymentsService – CliQ wallet top-up', () => {
       expect(result.status).toBe('rejected');
       expect(walletService.creditPostedTopup).not.toHaveBeenCalled();
     });
+
+    it.each(['300', '306', '310'])(
+      'keeps a payment open on %s, which a late approval can still turn into 0',
+      async (StatusCode) => {
+        paymentRepo.findOne.mockResolvedValue({ ...pendingCliQ });
+        a2aCliqService.paymentInquiry.mockResolvedValue({
+          MessageTrxID: 'trx-ref-001',
+          StatusCode,
+          StatusDescription: 'Not settled',
+        });
+
+        const result = await service.refreshCliqPaymentStatus('pay-123');
+
+        expect(result.status).toBe('pending');
+        expect(paymentRepo.save).not.toHaveBeenCalled();
+      },
+    );
 
     it('throws ForbiddenException when requesting user is not the owner', async () => {
       paymentRepo.findOne.mockResolvedValue({ ...pendingCliQ });

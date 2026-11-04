@@ -32,6 +32,10 @@ interface A2aCliqInquiryResponse {
   description?: string;
 }
 
+/** No gateway call may hold a caller open for long: the app gives up at 15s. */
+const TOKEN_TIMEOUT_MS = 5_000;
+const INQUIRY_TIMEOUT_MS = 10_000;
+
 function isHttp401(error: unknown): boolean {
   if (typeof error !== 'object' || error === null) return false;
   const status = (error as { response?: { status?: number } }).response?.status;
@@ -112,7 +116,7 @@ export class A2aCliqService {
       const response = await axios.post<A2aCliqTokenResponse>(
         url,
         { SecurityKey: this.securityKey },
-        { headers: this.getBaseHeaders() },
+        { headers: this.getBaseHeaders(), timeout: TOKEN_TIMEOUT_MS },
       );
 
       const data = response.data;
@@ -192,7 +196,7 @@ export class A2aCliqService {
 
   /**
    * يبدأ عملية Purchase. لا يفشل إذا حدث timeout — الـ uWallet قد يكمل العملية في الخلفية.
-   * الحالة النهائية لازم تُحدد عبر paymentInquiry/awaitFinalStatus.
+   * الحالة النهائية لازم تُحدد عبر paymentInquiry.
    *
    * يُعيد:
    *  - errorCode: '0' أو 'TIMEOUT' للحالات اللي لسه pending
@@ -239,7 +243,7 @@ export class A2aCliqService {
       return data;
     } catch (error: unknown) {
       // إذا كان timeout أو network error — العملية قد تكمل في الخلفية، فلا نعتبرها فشل نهائي.
-      // المستدعي لازم يستخدم awaitFinalStatus لتحديد الحالة الفعلية عبر PaymentInquiry.
+      // المستدعي لازم يحدد الحالة الفعلية عبر PaymentInquiry.
       const isTimeout =
         (error as { code?: string })?.code === 'ECONNABORTED' ||
         (error instanceof Error && /timeout/i.test(error.message ?? ''));
@@ -271,121 +275,6 @@ export class A2aCliqService {
   }
 
   /**
-   * يستعلم بشكل دوري عن حالة العملية حتى:
-   *   - يأتي StatusCode = "0" (نجاح أكيد ونهائي) → نخرج فوراً، أو
-   *   - ينتهي الـ maxWaitMs → نُرجع آخر حالة معروفة (مع isTerminal=false إذا غير "0").
-   *
-   * ملاحظة مهمة: في uWallet، أكواد مثل "300" و "310" مش نهائية فعلاً —
-   * شوهدت معاملات تنتقل من 310 → 300 → 0 بعد موافقة العميل المتأخرة.
-   * لذلك نعتبر "0" فقط هي الحالة النهائية الإيجابية، وباقي الأكواد
-   * نُبلغ عنها كـ "آخر حالة معروفة" بعد انتهاء الـ polling.
-   * لو احتاج المستدعي يعتبر 200/300/310 رفض نهائي، يمكن فحص StatusCode بنفسه.
-   *
-   * @param messageTrxId الـ TrxID اللي بعتناه في Purchase
-   * @param options.maxWaitMs الحد الأقصى لإجمالي وقت الانتظار (افتراضي 120 ثانية)
-   * @param options.intervalMs الفترة بين كل استعلام (افتراضي 3 ثوانٍ)
-   */
-  async awaitFinalStatus(
-    messageTrxId: string,
-    options: { maxWaitMs?: number; intervalMs?: number } = {},
-  ): Promise<
-    A2aCliqInquiryResponse & { isTerminal: boolean; isSuccess: boolean }
-  > {
-    const maxWait = options.maxWaitMs ?? 120_000;
-    const interval = options.intervalMs ?? 3_000;
-
-    const deadline = Date.now() + maxWait;
-    let lastResult: A2aCliqInquiryResponse | null = null;
-
-    while (true) {
-      try {
-        lastResult = await this.paymentInquiry(messageTrxId);
-        const code = String(lastResult.StatusCode ?? '');
-        // فقط "0" هو terminal-success مؤكد
-        if (code === '0') {
-          return { ...lastResult, isTerminal: true, isSuccess: true };
-        }
-      } catch (e) {
-        this.logger.warn(
-          `awaitFinalStatus inquiry failed for ${messageTrxId}: ${e instanceof Error ? e.message : String(e)}`,
-        );
-      }
-
-      if (Date.now() + interval > deadline) break;
-      await new Promise((r) => setTimeout(r, interval));
-    }
-
-    // انتهى الوقت بدون نجاح. نُرجع آخر حالة. المستدعي يقرر هل يعيد المحاولة لاحقاً
-    // (مثلاً يضع المعاملة في job يستعلم كل 5 دقائق لـ 24 ساعة) أم يعتبرها مرفوضة.
-    return {
-      MessageTrxID: messageTrxId,
-      StatusCode: lastResult?.StatusCode ?? 'PENDING',
-      StatusDescription:
-        lastResult?.StatusDescription ??
-        'Final status not reached within timeout',
-      StatusDescription_ar: lastResult?.StatusDescription_ar,
-      MSGID: lastResult?.MSGID,
-      isTerminal: false,
-      isSuccess: false,
-    };
-  }
-
-  /**
-   * يبدأ Purchase وينتظر الحالة النهائية عبر PaymentInquiry.
-   * هذه هي الطريقة الموصى بها للاستخدام من الـ services الأعلى.
-   */
-  async purchaseAndAwait(params: {
-    messageTrxId: string;
-    aliasType: 'ALIAS' | 'MOBL';
-    aliasValue: string;
-    amount: number;
-    callbackUrl?: string;
-    purchaseTimeoutMs?: number;
-    inquiryMaxWaitMs?: number;
-    inquiryIntervalMs?: number;
-  }): Promise<
-    A2aCliqInquiryResponse & { isTerminal: boolean; isSuccess: boolean }
-  > {
-    const {
-      purchaseTimeoutMs,
-      inquiryMaxWaitMs,
-      inquiryIntervalMs,
-      ...purchaseParams
-    } = params;
-
-    // 1. ابعت Purchase (لا نهتم لو timeout)
-    const purchaseResp = await this.purchase({
-      ...purchaseParams,
-      timeoutMs: purchaseTimeoutMs ?? 30_000,
-    });
-
-    // لو الـ Purchase رد فوراً بـ validation rejection (مثلاً 3010 self-payment، أو
-    // أكواد رفض فورية محددة)، نعتبرها رفض نهائي بدون polling. الفرق عن أكواد
-    // PaymentInquiry (300/310) إن دي بترجع من Purchase نفسه قبل ما PSP يشتغل.
-    const purchaseErrorCode = String(purchaseResp.errorCode ?? '');
-    const IMMEDIATE_REJECT_CODES = new Set([
-      '3010', // CdtrAcct and DbtrAcct matched
-    ]);
-    if (IMMEDIATE_REJECT_CODES.has(purchaseErrorCode)) {
-      return {
-        MessageTrxID: params.messageTrxId,
-        StatusCode: purchaseErrorCode,
-        StatusDescription: purchaseResp.description || 'Purchase rejected',
-        StatusDescription_ar: purchaseResp.description_ar,
-        MSGID: purchaseResp.MSGID ?? undefined,
-        isTerminal: true,
-        isSuccess: false,
-      };
-    }
-
-    // 2. استعلم لحد ما تجي حالة نهائية
-    return this.awaitFinalStatus(params.messageTrxId, {
-      maxWaitMs: inquiryMaxWaitMs,
-      intervalMs: inquiryIntervalMs,
-    });
-  }
-
-  /**
    * استعلام حالة الدفع. يستخدم validateStatus مرنًا حتى لا يفشل الطلب عند 400 مع errorCode 306 في الجسم.
    * عند 401 يُعاد طلب توكن جديد ومحاولة واحدة فقط.
    */
@@ -401,6 +290,7 @@ export class A2aCliqService {
         body,
         {
           headers: this.buildHeadersWithBearer(bearer),
+          timeout: INQUIRY_TIMEOUT_MS,
           validateStatus: () => true,
         },
       );

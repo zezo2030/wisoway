@@ -38,6 +38,13 @@ import {
 } from './processors/cliq-poll.processor';
 
 /**
+ * How long a top-up waits on the gateway to accept the request. With the token
+ * fetch it must stay under the app's 15 second limit; a slower gateway is not
+ * a failure, the payment just carries on as pending.
+ */
+const CLIQ_PURCHASE_TIMEOUT_MS = 8_000;
+
+/**
  * Maps raw A2A CliQ error codes / descriptions to user-friendly Arabic messages.
  * Falls back to the raw description when no mapping exists.
  */
@@ -159,8 +166,11 @@ export class PaymentsService {
       this.tellUser(topupCreditedNotice(payment));
       this.alertAdmins(payment);
     } else {
-      // StatusCode "310" = Rejected, "306" = error; "300" = processing — keep pending
-      const failureCodes = ['310', '306', 'FAILED', 'REJECTED'];
+      // The numeric codes are not final at uWallet: 300/310 have turned into 0
+      // after a late approval, and the app asks from the moment the request
+      // is sent. Rejecting on them would keep money we then never credit. The
+      // background poll gives up once the window runs out.
+      const failureCodes = ['FAILED', 'REJECTED'];
       if (failureCodes.includes(statusCode)) {
         payment.status = 'rejected';
         payment.adminNote =
@@ -489,124 +499,50 @@ export class PaymentsService {
       });
       const saved = await this.paymentRepo.save(p);
 
+      // The customer approves in their bank app, which can take minutes, so
+      // this only sends the request. The app then polls the payment, and the
+      // queue keeps checking after it stops.
+      let sent: Awaited<ReturnType<A2aCliqService['purchase']>>;
       try {
-        // المنطق الجديد:
-        //   1. purchaseAndAwait يبعت Purchase + يـ poll لمدة ~120 ثانية
-        //   2. لو StatusCode=0 → نشحن المحفظة ونعتبرها approved
-        //   3. لو رفض نهائي فوري (مثل 3010) → status=rejected
-        //   4. لو لسه pending بعد الـ 120s → نسيب status=pending ونضيف
-        //      job للـ background polling لمدة 24 ساعة
-        const result = await this.a2aCliqService.purchaseAndAwait({
+        sent = await this.a2aCliqService.purchase({
           messageTrxId,
           aliasType: recipient.type,
           aliasValue: recipient.value,
           amount: dto.amount,
-          // foreground polling: 120s إجمالي، كل 3 ثوانٍ
-          inquiryMaxWaitMs: 120_000,
-          inquiryIntervalMs: 3_000,
+          timeoutMs: CLIQ_PURCHASE_TIMEOUT_MS,
         });
-
-        if (result.MSGID) {
-          saved.paymentGatewayRef = result.MSGID;
-          await this.paymentRepo.save(saved);
-        }
-
-        // (1) نجاح مؤكد
-        if (result.isSuccess) {
-          const user = await this.userRepo.findOne({ where: { id: userId } });
-          if (user) {
-            const accountType =
-              user.role === PgUserRole.DRIVER
-                ? WalletAccountType.DRIVER
-                : WalletAccountType.RIDER;
-            try {
-              await this.walletService.creditPostedTopup({
-                userId,
-                accountType,
-                amount: dto.amount,
-                currency: dto.currency ?? 'JOD',
-                idempotencyKey: `cliq-topup:${saved.id}`,
-                note: `CliQ A2A wallet top-up ${saved.id}`,
-              });
-              saved.status = 'approved';
-              await this.paymentRepo.save(saved);
-              this.tellUser(topupCreditedNotice(saved));
-              this.alertAdmins(saved);
-              this.logger.log(
-                `CliQ payment ${saved.id} succeeded immediately (StatusCode=0)`,
-              );
-            } catch (creditErr) {
-              // العملية ناجحة عند uWallet لكن شحن المحفظة فشل — admin يحلها يدوياً
-              this.logger.error(
-                `CliQ payment ${saved.id} succeeded but wallet credit failed: ${creditErr instanceof Error ? creditErr.message : String(creditErr)}`,
-              );
-              saved.adminNote =
-                `CliQ succeeded but wallet credit failed: ${creditErr instanceof Error ? creditErr.message : String(creditErr)}`.slice(
-                  0,
-                  500,
-                );
-              await this.paymentRepo.save(saved);
-            }
-          }
-          return saved;
-        }
-
-        // (2) رفض نهائي مؤكد (مثلاً 3010 self-payment) — terminal بدون نجاح
-        if (result.isTerminal && !result.isSuccess) {
-          const code = String(result.StatusCode ?? '');
-          const userMessage = resolveCliqError(code, result.StatusDescription);
-          saved.status = 'rejected';
-          saved.adminNote = `[${code}] ${result.StatusDescription ?? ''}`
-            .trim()
-            .slice(0, 500);
-          await this.paymentRepo.save(saved);
-          throw new BadRequestException(userMessage);
-        }
-
-        // (3) لسه pending — نضيف Job للـ background polling لـ ~24 ساعة
-        // كل 10 دقائق × 144 محاولة = 24 ساعة
-        await this.cliqPollQueue.add(
-          CLIQ_POLL_JOB,
-          {
-            paymentId: saved.id,
-            messageTrxId,
-            attempt: 1,
-            maxAttempts: 144,
-            intervalSeconds: 600,
-          },
-          {
-            delay: 60_000, // أول محاولة بعد دقيقة من نهاية الـ foreground polling
-            removeOnComplete: true,
-            removeOnFail: false,
-          },
-        );
-        this.logger.log(
-          `CliQ payment ${saved.id} is pending (last StatusCode=${result.StatusCode}); background polling enqueued`,
-        );
-        // المعاملة هترجع للمستخدم بـ status='pending' وهيشوفها معلقة لحد ما تتأكد
       } catch (err) {
-        if (err instanceof BadRequestException) throw err;
-        // خطأ شبكة أو نظام — مش معناه فشل المعاملة. نسيبها pending ونعمل polling.
+        // A failed call doesn't prove the request never arrived, so the
+        // payment stays pending and is still checked.
         this.logger.error(
-          `CliQ purchaseAndAwait threw for payment ${saved.id}: ${err instanceof Error ? err.message : String(err)}`,
+          `CliQ purchase failed for payment ${saved.id}: ${err instanceof Error ? err.message : String(err)}`,
         );
-        await this.cliqPollQueue.add(
-          CLIQ_POLL_JOB,
-          {
-            paymentId: saved.id,
-            messageTrxId,
-            attempt: 1,
-            maxAttempts: 144,
-            intervalSeconds: 600,
-          },
-          {
-            delay: 60_000,
-            removeOnComplete: true,
-            removeOnFail: false,
-          },
+        await this.pollCliqTopup(saved.id, messageTrxId);
+        throw new BadRequestException(
+          'تعذر إرسال طلب الدفع إلى CliQ الآن. حاول مرة أخرى بعد قليل.',
         );
       }
 
+      if (sent.MSGID) {
+        saved.paymentGatewayRef = sent.MSGID;
+        await this.paymentRepo.save(saved);
+      }
+
+      const code = String(sent.errorCode ?? '');
+      // Refused outright (paying yourself): nothing will ever settle.
+      if (code === '3010') {
+        saved.status = 'rejected';
+        saved.adminNote = `[${code}] ${sent.description ?? ''}`
+          .trim()
+          .slice(0, 500);
+        await this.paymentRepo.save(saved);
+        throw new BadRequestException(resolveCliqError(code, sent.description));
+      }
+
+      await this.pollCliqTopup(saved.id, messageTrxId);
+      this.logger.log(
+        `CliQ payment ${saved.id} sent (errorCode=${code}); awaiting approval`,
+      );
       return saved;
     }
 
@@ -626,6 +562,30 @@ export class PaymentsService {
     const pending = await this.paymentRepo.save(p);
     this.alertAdmins(pending);
     return pending;
+  }
+
+  /** Hands a top-up to the background poll: every 10 minutes for 24 hours. */
+  private async pollCliqTopup(
+    paymentId: string,
+    messageTrxId: string,
+  ): Promise<void> {
+    await this.cliqPollQueue
+      .add(
+        CLIQ_POLL_JOB,
+        {
+          paymentId,
+          messageTrxId,
+          attempt: 1,
+          maxAttempts: 144,
+          intervalSeconds: 600,
+        },
+        { delay: 60_000, removeOnComplete: true, removeOnFail: false },
+      )
+      .catch((err: Error) =>
+        this.logger.error(
+          `Failed to enqueue CliQ poll for ${paymentId}: ${err.message}`,
+        ),
+      );
   }
 
   /** Tell the user how their payment went; never fails the payment. */
