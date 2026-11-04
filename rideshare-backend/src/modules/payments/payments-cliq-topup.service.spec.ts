@@ -94,6 +94,66 @@ describe('PaymentsService – CliQ wallet top-up', () => {
   // ─── createWalletTopup ──────────────────────────────────────────────────────
 
   describe('createWalletTopup', () => {
+    describe('the number sent to CliQ', () => {
+      beforeEach(() => {
+        a2aCliqService.purchaseAndAwait.mockResolvedValue({
+          MSGID: 'msg-1',
+          StatusCode: '0',
+          isSuccess: true,
+          isTerminal: true,
+        } as never);
+      });
+
+      it.each([['0791234567'], ['٠٧٩١٢٣٤٥٦٧'], ['+962 79 123 4567']])(
+        'sends the mobile %s in the gateway format',
+        async (aliasValue) => {
+          await service.createWalletTopup('user-1', {
+            amount: 10,
+            method: 'cliq_a2a',
+            aliasType: 'MOBL',
+            aliasValue,
+          });
+
+          expect(a2aCliqService.purchaseAndAwait).toHaveBeenCalledWith(
+            expect.objectContaining({
+              aliasType: 'MOBL',
+              aliasValue: '00962791234567',
+            }),
+          );
+        },
+      );
+
+      it('keeps an alias as typed', async () => {
+        await service.createWalletTopup('user-1', {
+          amount: 10,
+          method: 'cliq_a2a',
+          aliasType: 'ALIAS',
+          aliasValue: ' ahmad@cliq ',
+        });
+
+        expect(a2aCliqService.purchaseAndAwait).toHaveBeenCalledWith(
+          expect.objectContaining({
+            aliasType: 'ALIAS',
+            aliasValue: 'ahmad@cliq',
+          }),
+        );
+      });
+
+      it('refuses a non-Jordanian mobile before reaching the gateway', async () => {
+        await expect(
+          service.createWalletTopup('user-1', {
+            amount: 10,
+            method: 'cliq_a2a',
+            aliasType: 'MOBL',
+            aliasValue: '0501234567',
+          }),
+        ).rejects.toThrow(BadRequestException);
+
+        expect(a2aCliqService.purchaseAndAwait).not.toHaveBeenCalled();
+        expect(paymentRepo.save).not.toHaveBeenCalled();
+      });
+    });
+
     it('rejects cliq_a2a when aliasType is missing', async () => {
       await expect(
         service.createWalletTopup('user-1', {

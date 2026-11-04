@@ -8,6 +8,9 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 
+/** Nest's own exception body keys, and those this filter writes itself. */
+const ENVELOPE_KEYS = new Set(['statusCode', 'message', 'error', 'success']);
+
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(HttpExceptionFilter.name);
@@ -31,6 +34,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const isDev = process.env.NODE_ENV !== 'production';
     const errorResponse: Record<string, unknown> = {
       success: false,
+      ...this.getBusinessFields(exception),
       error: {
         code: status,
         message,
@@ -57,6 +61,24 @@ export class HttpExceptionFilter implements ExceptionFilter {
     );
 
     response.status(status).json(errorResponse);
+  }
+
+  /**
+   * The string `code` a service threw, with the fields that go with it (ban
+   * reason, charge totals…). Clients branch on these at the top of the body;
+   * `error.code` stays the HTTP status.
+   */
+  private getBusinessFields(exception: unknown): Record<string, unknown> {
+    if (!(exception instanceof HttpException)) return {};
+    const response = exception.getResponse();
+    if (typeof response !== 'object' || response === null) return {};
+
+    const fields = response as Record<string, unknown>;
+    if (typeof fields['code'] !== 'string') return {};
+
+    return Object.fromEntries(
+      Object.entries(fields).filter(([key]) => !ENVELOPE_KEYS.has(key)),
+    );
   }
 
   private getErrorDetails(exception: unknown): any {

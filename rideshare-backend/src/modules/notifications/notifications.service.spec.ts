@@ -161,6 +161,23 @@ describe('NotificationsService', () => {
       expect(notificationSoundFor('ride_payment_failed')).toBe('sound_error');
     });
 
+    it.each([
+      ['driver_approved', 'sound_ride_accepted'],
+      ['account_verified', 'sound_ride_accepted'],
+      ['account_unbanned', 'sound_ride_accepted'],
+      ['presence_prompt', 'sound_driver_arrived'],
+      ['presence_driver_prompt', 'sound_driver_arrived'],
+      ['presence_passenger_declared', 'sound_driver_arrived'],
+      ['trip_awaiting_boarding', 'sound_driver_arrived'],
+      ['ride_payment_cash_switch', 'sound_ride_completed'],
+      ['refund_resolved', 'sound_payment_success'],
+      ['refund_rejected', 'sound_error'],
+      ['presence_marked_absent', 'sound_error'],
+      ['passenger_reported_driver_absent', 'sound_error'],
+    ])('rings %s with %s', (type, sound) => {
+      expect(notificationSoundFor(type)).toBe(sound);
+    });
+
     it('falls back to the general sound', () => {
       expect(notificationSoundFor('admin_broadcast')).toBe('sound_general');
     });

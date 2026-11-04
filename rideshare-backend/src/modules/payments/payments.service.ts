@@ -22,6 +22,7 @@ import {
 } from './dto/update-payment-status.dto';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 import { A2aCliqService } from './a2a-cliq.service';
+import { resolveCliqRecipient } from '../ride-payments/cliq-payer';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { CreateNotificationDto } from '../notifications/dto/create-notification.dto';
 import { PlatformPricingService } from './platform-pricing.service';
@@ -469,6 +470,7 @@ export class PaymentsService {
           'aliasType and aliasValue are required for CliQ A2A top-up',
         );
       }
+      const recipient = resolveCliqRecipient(dto.aliasType, dto.aliasValue);
 
       const messageTrxId = randomUUID();
       const p = this.paymentRepo.create({
@@ -481,8 +483,8 @@ export class PaymentsService {
         status: 'pending',
         paymentType: 'wallet_topup',
         direction: 'credit',
-        recipientAliasType: dto.aliasType,
-        recipientAliasValue: dto.aliasValue,
+        recipientAliasType: recipient.type,
+        recipientAliasValue: recipient.value,
         transactionId: messageTrxId,
       });
       const saved = await this.paymentRepo.save(p);
@@ -496,8 +498,8 @@ export class PaymentsService {
         //      job للـ background polling لمدة 24 ساعة
         const result = await this.a2aCliqService.purchaseAndAwait({
           messageTrxId,
-          aliasType: dto.aliasType,
-          aliasValue: dto.aliasValue,
+          aliasType: recipient.type,
+          aliasValue: recipient.value,
           amount: dto.amount,
           // foreground polling: 120s إجمالي، كل 3 ثوانٍ
           inquiryMaxWaitMs: 120_000,

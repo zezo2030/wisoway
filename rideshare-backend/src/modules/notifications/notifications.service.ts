@@ -35,9 +35,16 @@ const SOUND_BY_TYPE: Record<string, string> = {
 
   instant_matched: 'sound_ride_accepted',
   booking_confirmed: 'sound_ride_accepted',
+  driver_approved: 'sound_ride_accepted',
+  account_verified: 'sound_ride_accepted',
+  account_unbanned: 'sound_ride_accepted',
 
   instant_driver_arrived: 'sound_driver_arrived',
   driver_arrived: 'sound_driver_arrived',
+  presence_prompt: 'sound_driver_arrived',
+  presence_driver_prompt: 'sound_driver_arrived',
+  presence_passenger_declared: 'sound_driver_arrived',
+  trip_awaiting_boarding: 'sound_driver_arrived',
 
   instant_ride_started: 'sound_ride_started',
   trip_started: 'sound_ride_started',
@@ -46,6 +53,7 @@ const SOUND_BY_TYPE: Record<string, string> = {
   trip_auto_completed: 'sound_ride_completed',
   ride_payment_due: 'sound_ride_completed',
   ride_payment_requested: 'sound_ride_completed',
+  ride_payment_cash_switch: 'sound_ride_completed',
 
   trip_cancelled: 'sound_ride_cancelled',
   trip_cancelled_by_admin: 'sound_ride_cancelled',
@@ -62,6 +70,7 @@ const SOUND_BY_TYPE: Record<string, string> = {
   settlement_marked_paid: 'sound_payment_success',
   payout_approved: 'sound_payment_success',
   payout_paid: 'sound_payment_success',
+  refund_resolved: 'sound_payment_success',
 
   ride_payment_failed: 'sound_error',
   ride_payment_disputed: 'sound_error',
@@ -76,6 +85,10 @@ const SOUND_BY_TYPE: Record<string, string> = {
   driver_fine_issued: 'sound_error',
   penalty_charged: 'sound_error',
   account_banned: 'sound_error',
+  refund_rejected: 'sound_error',
+  complaint_rejected: 'sound_error',
+  presence_marked_absent: 'sound_error',
+  passenger_reported_driver_absent: 'sound_error',
 };
 
 export function notificationSoundFor(type: string): string {

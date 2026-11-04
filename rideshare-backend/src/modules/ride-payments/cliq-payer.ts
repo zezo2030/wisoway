@@ -5,18 +5,27 @@ export const CLIQ_CURRENCIES: readonly string[] = ['JOD'];
 
 /**
  * Where a CliQ request-to-pay is sent: a CliQ alias (e.g. `ahmad@cliq`) or a
- * Jordanian mobile in the `00962XXXXXXXXX` form uWallet expects. Passengers
- * type numbers every which way, so local and international forms are folded
- * into that one shape.
+ * Jordanian mobile in the `00962XXXXXXXXX` form uWallet expects. People type
+ * numbers every which way, so local and international forms, Arabic numerals
+ * and the invisible marks a pasted number carries are folded into that shape.
  */
 export type CliqPayer = { type: 'ALIAS' | 'MOBL'; value: string };
 
 const ALIAS_PATTERN = /^[A-Za-z0-9._@-]{3,100}$/;
 
+function cleanCliqInput(raw: string): string {
+  return raw
+    .replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '')
+    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+    .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
+    .trim();
+}
+
 export function parseCliqPayer(
   raw: string | null | undefined,
 ): CliqPayer | null {
-  const text = raw?.trim().replace(/[\s-]/g, '') ?? '';
+  const cleaned = cleanCliqInput(raw ?? '');
+  const text = cleaned.replace(/[\s-]/g, '');
   if (!text) return null;
 
   if (/^(\+|00)?\d{9,15}$/.test(text)) {
@@ -27,9 +36,26 @@ export function parseCliqPayer(
     return { type: 'MOBL', value: `00${digits}` };
   }
 
-  return ALIAS_PATTERN.test(raw!.trim())
-    ? { type: 'ALIAS', value: raw!.trim() }
-    : null;
+  return ALIAS_PATTERN.test(cleaned) ? { type: 'ALIAS', value: cleaned } : null;
+}
+
+/**
+ * The recipient of a request where the user chose the kind themselves (wallet
+ * top-up); a mobile is refused here rather than by the bank.
+ */
+export function resolveCliqRecipient(
+  type: CliqPayer['type'],
+  value: string,
+): CliqPayer {
+  if (type === 'ALIAS') return { type, value: cleanCliqInput(value) };
+
+  const payer = parseCliqPayer(value);
+  if (payer?.type !== 'MOBL') {
+    throw new BadRequestException(
+      'أدخل رقم جوال أردنياً مسجّلاً في CliQ، مثل 0791234567.',
+    );
+  }
+  return payer;
 }
 
 /**
@@ -57,7 +83,7 @@ export function resolvePaymentChoice(
   const payer = parseCliqPayer(payerAlias);
   if (!payer) {
     throw new BadRequestException(
-      'أدخل اسم CliQ أو رقم جوالك المسجّل في CliQ لإرسال طلب الدفع.',
+      'أدخل اسم CliQ أو رقم جوال أردنياً مسجّلاً في CliQ لإرسال طلب الدفع.',
     );
   }
   return { method: 'cliq', payerCliqAlias: payer.value };
