@@ -10,7 +10,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Cron } from '@nestjs/schedule';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
-import { randomUUID } from 'crypto';
 import { In, Repository } from 'typeorm';
 import {
   BookingEntity,
@@ -18,7 +17,10 @@ import {
 } from '../../database/entities/booking.entity';
 import { PaymentEntity } from '../../database/entities/payment.entity';
 import { TripEntity } from '../../database/entities/trip.entity';
-import { A2aCliqService } from '../payments/a2a-cliq.service';
+import {
+  A2aCliqService,
+  newCliqMessageTrxId,
+} from '../payments/a2a-cliq.service';
 import { WalletService } from '../wallet/wallet.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ComplaintsService } from '../complaints/complaints.service';
@@ -170,7 +172,7 @@ export class RidePaymentsService {
       return;
     }
 
-    const messageTrxId = randomUUID();
+    const messageTrxId = newCliqMessageTrxId();
     const payment = await this.paymentRepo.save(
       this.paymentRepo.create({
         userId: booking.userId,

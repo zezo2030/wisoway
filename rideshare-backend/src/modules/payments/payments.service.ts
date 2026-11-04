@@ -21,7 +21,7 @@ import {
   QueryPaymentsDto,
 } from './dto/update-payment-status.dto';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
-import { A2aCliqService } from './a2a-cliq.service';
+import { A2aCliqService, newCliqMessageTrxId } from './a2a-cliq.service';
 import { resolveCliqRecipient } from '../ride-payments/cliq-payer';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { CreateNotificationDto } from '../notifications/dto/create-notification.dto';
@@ -482,7 +482,7 @@ export class PaymentsService {
       }
       const recipient = resolveCliqRecipient(dto.aliasType, dto.aliasValue);
 
-      const messageTrxId = randomUUID();
+      const messageTrxId = newCliqMessageTrxId();
       const p = this.paymentRepo.create({
         userId,
         tripId: null,
@@ -540,6 +540,19 @@ export class PaymentsService {
       }
 
       await this.pollCliqTopup(saved.id, messageTrxId);
+
+      // A timeout only means the answer was slow. Any other code means no
+      // request is on its way, but it isn't proof enough to close the payment.
+      if (code !== '0' && code !== 'TIMEOUT') {
+        this.logger.error(
+          `CliQ refused payment ${saved.id}: [${code}] ${sent.description ?? ''}`.slice(
+            0,
+            500,
+          ),
+        );
+        throw new BadRequestException(resolveCliqError(code));
+      }
+
       this.logger.log(
         `CliQ payment ${saved.id} sent (errorCode=${code}); awaiting approval`,
       );

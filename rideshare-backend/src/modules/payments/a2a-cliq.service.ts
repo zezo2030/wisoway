@@ -1,6 +1,7 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
+import { randomUUID } from 'crypto';
 
 interface A2aCliqTokenResponse {
   TokenInfo: {
@@ -35,6 +36,14 @@ interface A2aCliqInquiryResponse {
 /** No gateway call may hold a caller open for long: the app gives up at 15s. */
 const TOKEN_TIMEOUT_MS = 5_000;
 const INQUIRY_TIMEOUT_MS = 10_000;
+
+/**
+ * A new MessageTrxID. uWallet passes it on as a 35-character ISO field and
+ * refuses anything longer with error 5053, so a UUID has to lose its dashes.
+ */
+export function newCliqMessageTrxId(): string {
+  return randomUUID().replace(/-/g, '');
+}
 
 function isHttp401(error: unknown): boolean {
   if (typeof error !== 'object' || error === null) return false;

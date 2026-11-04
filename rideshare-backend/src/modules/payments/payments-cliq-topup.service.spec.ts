@@ -201,6 +201,45 @@ describe('PaymentsService – CliQ wallet top-up', () => {
       expect(walletService.creditPostedTopup).not.toHaveBeenCalled();
     });
 
+    it('sends a transaction id the gateway accepts', async () => {
+      a2aCliqService.purchase.mockResolvedValue({
+        MSGID: null,
+        errorCode: '0',
+        description: 'Accepted',
+      });
+
+      await service.createWalletTopup('user-1', {
+        amount: 5,
+        method: 'cliq_a2a',
+        aliasType: 'MOBL',
+        aliasValue: '00962777000000',
+      });
+
+      const { messageTrxId } = a2aCliqService.purchase.mock.calls[0][0];
+      expect(messageTrxId.length).toBeLessThanOrEqual(35);
+    });
+
+    it('says so at once when the gateway refuses the request', async () => {
+      a2aCliqService.purchase.mockResolvedValue({
+        MSGID: null,
+        errorCode: '5053',
+        description: 'Transaction Failed - Bad request / invalid payload',
+      });
+
+      await expect(
+        service.createWalletTopup('user-1', {
+          amount: 5,
+          method: 'cliq_a2a',
+          aliasType: 'MOBL',
+          aliasValue: '00962777000000',
+        }),
+      ).rejects.toThrow('فشلت عملية الدفع عبر CliQ');
+
+      const lastSave = paymentRepo.save.mock.calls.at(-1)?.[0];
+      expect(lastSave?.status).toBe('pending');
+      expect(cliqPollQueue.add).toHaveBeenCalledTimes(1);
+    });
+
     it('stays inside the app limit even when the gateway is slow', async () => {
       a2aCliqService.purchase.mockResolvedValue({
         MSGID: null,
