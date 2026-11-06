@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { UploadsModule } from '../uploads/uploads.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -22,6 +23,7 @@ import {
   imports: [
     UsersModule,
     NotificationsModule,
+    UploadsModule,
     PassportModule,
     TypeOrmModule.forFeature([
       UserDeviceEntity,

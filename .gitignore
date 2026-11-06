@@ -159,6 +159,7 @@ rideshare-backend/config/firebase-adminsdk.json
 
 # Runtime-uploaded files (not source)
 rideshare-backend/uploads/
+rideshare-backend/private-documents/
 
 # QA fixtures holding live auth tokens — never commit
 rideshare-backend/qa/accounts.json

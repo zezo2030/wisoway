@@ -1,8 +1,10 @@
 import {
   Controller,
+  Get,
   Post,
   Delete,
   Param,
+  Res,
   Body,
   UseGuards,
   UseInterceptors,
@@ -13,6 +15,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
 import { DRIVER_REGISTRATION_TOKEN_PURPOSE } from '../auth/dto/register-driver.dto';
@@ -24,6 +27,7 @@ import {
   ApiConsumes,
 } from '@nestjs/swagger';
 import { UploadsService } from './uploads.service';
+import { PrivateDocumentsService } from './private-documents.service';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -36,6 +40,7 @@ import { UserRole } from '../users/schemas/user.schema';
 export class UploadsController {
   constructor(
     private readonly uploadsService: UploadsService,
+    private readonly privateDocuments: PrivateDocumentsService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -70,6 +75,75 @@ export class UploadsController {
       ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
       10 * 1024 * 1024, // 10MB
     );
+  }
+
+  /** A driver document uploaded during registration, kept private. */
+  @Post('registration/documents')
+  @Public()
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload a private driver document (pre-account)' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'File stored' })
+  async uploadRegistrationDocument(
+    @Body('registrationToken') registrationToken: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    this.assertValidRegistrationToken(registrationToken);
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+    return this.privateDocuments.store(file);
+  }
+
+  /** A document or payment receipt from a signed-in account, kept private. */
+  @Post('documents')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload a private document or payment receipt' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'File stored' })
+  async uploadDocument(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+    return this.privateDocuments.store(file);
+  }
+
+  /**
+   * Opens a private document. Public because images load without an auth
+   * header; the signature is what authorizes it, and only owners and admins
+   * are ever handed one.
+   */
+  @Get('documents/:expires/:signature/:name')
+  @Public()
+  @ApiOperation({ summary: 'Open a private document by signed link' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'The document' })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Unknown, tampered or expired link',
+  })
+  openDocument(
+    @Param('expires') expires: string,
+    @Param('signature') signature: string,
+    @Param('name') name: string,
+    @Res() res: Response,
+  ) {
+    const { filePath, contentType, expiresAt } = this.privateDocuments.resolve(
+      expires,
+      signature,
+      name,
+    );
+    const maxAgeSeconds = Math.floor((expiresAt - Date.now()) / 1000);
+    res.set({
+      'Content-Type': contentType,
+      'Content-Disposition': 'inline',
+      'Cache-Control': `private, max-age=${maxAgeSeconds}`,
+      // The dashboard may sit on another origin; helmet defaults to same-origin.
+      'Cross-Origin-Resource-Policy': 'cross-origin',
+      'Referrer-Policy': 'no-referrer',
+    });
+    res.sendFile(filePath);
   }
 
   private assertValidRegistrationToken(token: string): void {
@@ -286,7 +360,8 @@ export class UploadsController {
   }
 
   @Delete(':key')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete file by key' })

@@ -12,6 +12,7 @@ const validPayload = {
   model: 'Camry',
   carImageUrl: 'https://cdn/car.jpg',
   insuranceImageUrl: 'https://cdn/ins.jpg',
+  nationalIdImageUrl: 'https://cdn/id.jpg',
 };
 
 describe('RegisterDriverDto', () => {
@@ -49,4 +50,9 @@ describe('RegisterDriverDto', () => {
     expect(errors.some((e) => e.property === 'insuranceImageUrl')).toBe(true);
   });
 
+  it('rejects register payload without nationalIdImageUrl', async () => {
+    const { nationalIdImageUrl: _omitted, ...payload } = validPayload;
+    const errors = await validate(plainToInstance(RegisterDriverDto, payload));
+    expect(errors.some((e) => e.property === 'nationalIdImageUrl')).toBe(true);
+  });
 });

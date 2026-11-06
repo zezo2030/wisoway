@@ -15,6 +15,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { VehiclesService } from './vehicles.service';
+import { PrivateDocumentsService } from '../uploads/private-documents.service';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -28,7 +29,10 @@ import { Public } from '../../common/decorators/public.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class VehiclesController {
-  constructor(private readonly vehiclesService: VehiclesService) {}
+  constructor(
+    private readonly vehiclesService: VehiclesService,
+    private readonly privateDocuments: PrivateDocumentsService,
+  ) {}
 
   /**
    * Public: driver sign-up asks for the vehicle type in step 2, before the
@@ -59,7 +63,9 @@ export class VehiclesController {
     @CurrentUser('id') driverId: string,
     @CurrentUser('name') driverName: string,
   ) {
-    return this.vehiclesService.create(createVehicleDto, driverId);
+    return this.privateDocuments.presentVehicle(
+      await this.vehiclesService.create(createVehicleDto, driverId),
+    );
   }
 
   @Get('my')
@@ -67,7 +73,9 @@ export class VehiclesController {
   @ApiOperation({ summary: 'Get current driver vehicle' })
   @ApiResponse({ status: 200, description: 'Vehicle found' })
   async getMyVehicle(@CurrentUser('id') driverId: string) {
-    return this.vehiclesService.findByDriver(driverId);
+    return this.privateDocuments.presentVehicle(
+      await this.vehiclesService.findByDriver(driverId),
+    );
   }
 
   @Patch(':id')
@@ -81,7 +89,9 @@ export class VehiclesController {
     @Body() updateVehicleDto: UpdateVehicleDto,
     @CurrentUser('id') driverId: string,
   ) {
-    return this.vehiclesService.update(id, updateVehicleDto, driverId);
+    return this.privateDocuments.presentVehicle(
+      await this.vehiclesService.update(id, updateVehicleDto, driverId),
+    );
   }
 
   @Delete(':id')

@@ -17,6 +17,7 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { AdminDashboardService } from './admin-dashboard.service';
+import { PrivateDocumentsService } from '../uploads/private-documents.service';
 import { AdminAlertsService } from './admin-alerts.service';
 import { UpdateAlertPreferenceDto } from './dto/alert-preferences.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -49,6 +50,7 @@ export class AdminDashboardController {
   constructor(
     private readonly adminDashboardService: AdminDashboardService,
     private readonly adminAlertsService: AdminAlertsService,
+    private readonly privateDocuments: PrivateDocumentsService,
   ) {}
 
   /**
@@ -133,10 +135,16 @@ export class AdminDashboardController {
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiResponse({ status: 200, description: 'Pending payments retrieved' })
   async getPendingPayments(@Query() query: AdminPaymentsQueryDto) {
-    return this.adminDashboardService.getPendingPayments({
+    const result = await this.adminDashboardService.getPendingPayments({
       page: query.page,
       limit: query.limit,
     });
+    return {
+      ...result,
+      data: result.data.map((payment) =>
+        this.privateDocuments.presentPayment(payment),
+      ),
+    };
   }
 
   @Get('vehicles')
@@ -147,12 +155,18 @@ export class AdminDashboardController {
   @ApiQuery({ name: 'driverId', required: false, type: String })
   @ApiResponse({ status: 200, description: 'Vehicles retrieved successfully' })
   async getVehicles(@Query() query: AdminVehiclesQueryDto) {
-    return this.adminDashboardService.getVehicles({
+    const result = await this.adminDashboardService.getVehicles({
       page: query.page,
       limit: query.limit,
       isVerified: query.isVerified,
       driverId: query.driverId,
     });
+    return {
+      ...result,
+      data: result.data.map((vehicle) =>
+        this.privateDocuments.presentVehicle(vehicle),
+      ),
+    };
   }
 
   /**
@@ -169,11 +183,18 @@ export class AdminDashboardController {
   @ApiQuery({ name: 'search', required: false, type: String })
   @ApiResponse({ status: 200, description: 'Pending drivers retrieved' })
   async getPendingDrivers(@Query() query: AdminUsersQueryDto) {
-    return this.adminDashboardService.getPendingDrivers({
+    const result = await this.adminDashboardService.getPendingDrivers({
       page: query.page,
       limit: query.limit,
       search: query.search,
     });
+    return {
+      ...result,
+      data: result.data.map((driver) => ({
+        ...driver,
+        vehicle: this.privateDocuments.presentVehicle(driver.vehicle),
+      })),
+    };
   }
 
   @Patch('vehicles/:id/verify')
@@ -188,9 +209,11 @@ export class AdminDashboardController {
     @Param('id') vehicleId: string,
     @Body() verifyVehicleDto: VerifyVehicleDto,
   ) {
-    return this.adminDashboardService.verifyVehicle(
-      vehicleId,
-      verifyVehicleDto.isVerified,
+    return this.privateDocuments.presentVehicle(
+      await this.adminDashboardService.verifyVehicle(
+        vehicleId,
+        verifyVehicleDto.isVerified,
+      ),
     );
   }
 
@@ -222,7 +245,7 @@ export class AdminDashboardController {
   @ApiQuery({ name: 'walletOnly', required: false, type: Boolean })
   @ApiResponse({ status: 200, description: 'Payments retrieved successfully' })
   async getPayments(@Query() query: AdminPaymentsQueryDto) {
-    return this.adminDashboardService.getPayments({
+    const result = await this.adminDashboardService.getPayments({
       page: query.page,
       limit: query.limit,
       status: query.status,
@@ -230,6 +253,12 @@ export class AdminDashboardController {
       paymentType: query.paymentType,
       walletOnly: query.walletOnly,
     });
+    return {
+      ...result,
+      data: result.data.map((payment) =>
+        this.privateDocuments.presentPayment(payment),
+      ),
+    };
   }
 
   @Get('wallets')

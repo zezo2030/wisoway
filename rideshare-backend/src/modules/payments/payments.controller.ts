@@ -16,6 +16,7 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
+import { PrivateDocumentsService } from '../uploads/private-documents.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { CreateCommunicationFeeDto } from './dto/create-communication-fee.dto';
 import {
@@ -24,6 +25,7 @@ import {
   QueryPaymentsDto,
 } from './dto/update-payment-status.dto';
 import { CreateWalletTopupDto } from './dto/create-wallet-topup.dto';
+import { UpdateManualPaymentDto } from './dto/update-manual-payment.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -34,7 +36,10 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('payments')
 export class PaymentsController {
-  constructor(private readonly paymentsService: PaymentsService) {}
+  constructor(
+    private readonly paymentsService: PaymentsService,
+    private readonly privateDocuments: PrivateDocumentsService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a payment for a trip booking' })
@@ -123,7 +128,13 @@ export class PaymentsController {
     @CurrentUser('id') userId: string,
     @Query() query: QueryPaymentsDto,
   ) {
-    return this.paymentsService.findByUser(userId, query);
+    const result = await this.paymentsService.findByUser(userId, query);
+    return {
+      ...result,
+      data: result.data.map((payment) =>
+        this.privateDocuments.presentPayment(payment),
+      ),
+    };
   }
 
   @Get('wallet/me')
@@ -160,7 +171,9 @@ export class PaymentsController {
     @Body() dto: CreateWalletTopupDto,
     @CurrentUser('id') userId: string,
   ) {
-    return this.paymentsService.createWalletTopup(userId, dto);
+    return this.privateDocuments.presentPayment(
+      await this.paymentsService.createWalletTopup(userId, dto),
+    );
   }
 
   @Get(':id')
@@ -178,7 +191,29 @@ export class PaymentsController {
     @CurrentUser('role') role: string,
   ) {
     const isAdmin = role === 'admin';
-    return this.paymentsService.findById(paymentId, userId, isAdmin);
+    return this.privateDocuments.presentPayment(
+      await this.paymentsService.findById(paymentId, userId, isAdmin),
+    );
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Add the receipt to your own manual payment' })
+  @ApiParam({ name: 'id', description: 'Payment ID' })
+  @ApiResponse({ status: 200, description: 'Payment updated' })
+  @ApiResponse({
+    status: 400,
+    description: 'Not a pending manual payment, or nothing to update',
+  })
+  @ApiResponse({ status: 403, description: 'Not your payment' })
+  @ApiResponse({ status: 404, description: 'Payment not found' })
+  async updateManualPayment(
+    @Param('id') paymentId: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: UpdateManualPaymentDto,
+  ) {
+    return this.privateDocuments.presentPayment(
+      await this.paymentsService.updateManualPayment(paymentId, userId, dto),
+    );
   }
 
   @Get(':id/cliq-status')
@@ -200,9 +235,11 @@ export class PaymentsController {
     @CurrentUser('role') role: string,
   ) {
     const requestingUserId = role === 'admin' ? undefined : userId;
-    return this.paymentsService.refreshCliqPaymentStatus(
-      paymentId,
-      requestingUserId,
+    return this.privateDocuments.presentPayment(
+      await this.paymentsService.refreshCliqPaymentStatus(
+        paymentId,
+        requestingUserId,
+      ),
     );
   }
 
@@ -221,7 +258,9 @@ export class PaymentsController {
     @CurrentUser('id') adminId: string,
     @Body() approveDto: ApprovePaymentDto,
   ) {
-    return this.paymentsService.approve(paymentId, adminId, approveDto);
+    return this.privateDocuments.presentPayment(
+      await this.paymentsService.approve(paymentId, adminId, approveDto),
+    );
   }
 
   @Patch(':id/reject')
@@ -239,6 +278,8 @@ export class PaymentsController {
     @CurrentUser('id') adminId: string,
     @Body() rejectDto: RejectPaymentDto,
   ) {
-    return this.paymentsService.reject(paymentId, adminId, rejectDto);
+    return this.privateDocuments.presentPayment(
+      await this.paymentsService.reject(paymentId, adminId, rejectDto),
+    );
   }
 }

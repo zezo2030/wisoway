@@ -87,8 +87,11 @@ export class UploadsService {
   }
 
   async deleteFile(key: string, userId: string): Promise<{ message: string }> {
+    const filePath = path.resolve(this.localUploadPath, key);
+    if (!filePath.startsWith(this.localUploadPath + path.sep)) {
+      throw new BadRequestException('Invalid file key');
+    }
     try {
-      const filePath = path.join(this.localUploadPath, key);
       if (fs.existsSync(filePath)) {
         await fsPromises.unlink(filePath);
       }

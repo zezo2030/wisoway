@@ -169,6 +169,21 @@ class ExceptionMapper {
           outstandingTotal: total,
         );
       }
+      const identityErrors = {
+        'EMAIL_TAKEN': 'errorsEmailTaken',
+        'EMAIL_REQUIRED': 'errorsEmailRequired',
+        'EMAIL_LOCKED': 'errorsEmailLocked',
+        'NAME_LOCKED': 'errorsNameLocked',
+      };
+      final identityError = identityErrors[code];
+      if (identityError != null) {
+        return Failure(
+          category: FailureCategory.validation,
+          messageKey: identityError,
+          severity: FailureSeverity.warning,
+          developerDetail: detail,
+        );
+      }
       if (code == 'PHONE_HIDDEN') {
         return Failure(
           category: FailureCategory.permission,

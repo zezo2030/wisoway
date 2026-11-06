@@ -123,6 +123,12 @@ export class RegisterDriverDto {
   @Max(50)
   seats?: number;
 
+  /** National ID photo — mandatory for every new driver registration. */
+  @IsString()
+  @IsNotEmpty({ message: 'National ID image is required' })
+  @MaxLength(500)
+  nationalIdImageUrl: string;
+
   @IsOptional()
   @IsString()
   @MaxLength(500)

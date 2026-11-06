@@ -15,6 +15,7 @@ import { PgUserRole, WalletAccountType } from '../../database/entities';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { CreateCommunicationFeeDto } from './dto/create-communication-fee.dto';
 import { CreateWalletTopupDto } from './dto/create-wallet-topup.dto';
+import { UpdateManualPaymentDto } from './dto/update-manual-payment.dto';
 import {
   ApprovePaymentDto,
   RejectPaymentDto,
@@ -232,6 +233,48 @@ export class PaymentsService {
     throw new BadRequestException(
       'Approval for this payment type is not implemented yet',
     );
+  }
+
+  /**
+   * Lets a user add the receipt or transfer details to their own manual
+   * payment. Once an admin has decided, the payment is frozen.
+   */
+  async updateManualPayment(
+    paymentId: string,
+    userId: string,
+    dto: UpdateManualPaymentDto,
+  ): Promise<PaymentEntity> {
+    const hasAny = Object.values(dto).some((value) => value !== undefined);
+    if (!hasAny) {
+      throw new BadRequestException('At least one field is required');
+    }
+
+    const payment = await this.paymentRepo.findOne({
+      where: { id: paymentId },
+    });
+    if (!payment) {
+      throw new NotFoundException('Payment not found');
+    }
+    if (payment.userId !== userId) {
+      throw new ForbiddenException('Not authorized to update this payment');
+    }
+    if (payment.method !== 'manual') {
+      throw new BadRequestException('Only manual payments can be updated');
+    }
+    if (payment.status !== 'pending') {
+      throw new BadRequestException('Only pending payments can be updated');
+    }
+
+    if (dto.proofImageUrl !== undefined) {
+      payment.proofImageUrl = dto.proofImageUrl;
+    }
+    if (dto.walletNumber !== undefined) {
+      payment.walletNumber = dto.walletNumber;
+    }
+    if (dto.transactionId !== undefined) {
+      payment.transactionId = dto.transactionId;
+    }
+    return this.paymentRepo.save(payment);
   }
 
   async reject(

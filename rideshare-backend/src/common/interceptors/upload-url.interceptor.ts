@@ -22,9 +22,10 @@ import { map } from 'rxjs/operators';
  */
 @Injectable()
 export class UploadUrlInterceptor implements NestInterceptor {
-  // Matches an absolute http(s) URL whose path is under /uploads or /public.
+  // Matches an absolute http(s) URL whose path is under /uploads or /public,
+  // or a signed private-document link, which is served by the API itself.
   private static readonly ABSOLUTE_UPLOAD_URL =
-    /^https?:\/\/[^/]+(\/(?:uploads|public)\/.*)$/i;
+    /^https?:\/\/[^/]+(\/(?:uploads|public|api\/v\d+\/uploads\/documents)\/.*)$/i;
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     if (context.getType() !== 'http') {

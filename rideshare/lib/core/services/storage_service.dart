@@ -50,6 +50,22 @@ class StorageService {
     }
   }
 
+  /// Uploads a driver document to private storage. The returned value is a
+  /// reference for the registration payload, not a viewable link.
+  Future<String> uploadDriverDocument(File file) async {
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(
+        file.path,
+        filename: file.path.split('/').last,
+      ),
+    });
+    final response = await _api.post(
+      ApiEndpoints.uploadsDocuments,
+      data: formData,
+    );
+    return response['url'] ?? response['data']['url'];
+  }
+
   // Upload profile picture
   Future<String?> uploadProfilePicture({
     required File imageFile,

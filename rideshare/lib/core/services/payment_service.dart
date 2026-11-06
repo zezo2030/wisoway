@@ -324,6 +324,8 @@ class PaymentService {
   }
 
   // Helper method for file uploads
+  /// Receipts go to private storage: the result is a reference for the payment
+  /// payload, not a viewable link.
   Future<String> uploadFile(File file) async {
     try {
       final fileName = file.path.split('/').last;
@@ -331,7 +333,10 @@ class PaymentService {
         'file': await MultipartFile.fromFile(file.path, filename: fileName),
       });
 
-      final response = await _api.post(ApiEndpoints.uploads, data: formData);
+      final response = await _api.post(
+        ApiEndpoints.uploadsDocuments,
+        data: formData,
+      );
       return response['url'] ?? response['data']['url'];
     } catch (e) {
       // Rethrown, not replaced: callers run this through ApiClient.mapError,

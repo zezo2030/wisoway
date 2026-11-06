@@ -18,6 +18,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
+import { PrivateDocumentsService } from '../uploads/private-documents.service';
 import { DeviceFingerprintService } from './device-fingerprint.service';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
@@ -44,6 +45,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly deviceFingerprintService: DeviceFingerprintService,
+    private readonly privateDocuments: PrivateDocumentsService,
   ) {}
 
   // ── Active endpoints ────────────────────────────────────────────────────
@@ -149,7 +151,14 @@ export class AuthController {
     @CurrentUser('id') userId: string,
     @Body() dto: UpdatePendingDriverRegistrationDto,
   ) {
-    return this.authService.updatePendingRegistration(userId, dto);
+    const result = await this.authService.updatePendingRegistration(
+      userId,
+      dto,
+    );
+    return {
+      ...result,
+      vehicle: this.privateDocuments.presentVehicle(result.vehicle),
+    };
   }
 
   @Post('refresh')

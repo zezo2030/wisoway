@@ -361,6 +361,7 @@ export class AuthService {
           color: dto.color?.trim() || null,
           seats,
           seatLayout,
+          nationalIdImageUrl: dto.nationalIdImageUrl,
           licenseImageUrl: dto.licenseImageUrl ?? null,
           vehicleLicenseImageUrl: dto.vehicleLicenseImageUrl ?? null,
           carImageUrl: dto.carImageUrl,
@@ -499,6 +500,7 @@ export class AuthService {
           color: dto.color?.trim() || null,
           seats,
           seatLayout,
+          nationalIdImageUrl: dto.nationalIdImageUrl,
           licenseImageUrl: dto.licenseImageUrl ?? null,
           vehicleLicenseImageUrl: dto.vehicleLicenseImageUrl ?? null,
           carImageUrl: dto.carImageUrl,
@@ -582,6 +584,9 @@ export class AuthService {
       if (dto.model !== undefined) vehicle.model = dto.model;
       if (dto.color !== undefined) vehicle.color = dto.color.trim() || null;
       if (dto.seats !== undefined) vehicle.seats = dto.seats;
+      if (dto.nationalIdImageUrl !== undefined) {
+        vehicle.nationalIdImageUrl = dto.nationalIdImageUrl;
+      }
       if (dto.licenseImageUrl !== undefined) {
         vehicle.licenseImageUrl = dto.licenseImageUrl;
       }

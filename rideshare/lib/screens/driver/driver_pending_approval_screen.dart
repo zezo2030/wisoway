@@ -297,6 +297,11 @@ class _DriverPendingApprovalScreenState
             Row(
               children: [
                 _docTile(
+                  IconsaxPlusLinear.user_square,
+                  l10n.driverDocNationalId,
+                  _vehicle?.nationalIdImageUrl,
+                ),
+                _docTile(
                   IconsaxPlusLinear.personalcard,
                   l10n.driverDocLicense,
                   _vehicle?.licenseImageUrl,

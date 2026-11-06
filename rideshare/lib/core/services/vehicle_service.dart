@@ -7,11 +7,13 @@ import '../../models/vehicle_model.dart';
 import '../../models/seat_layout_config.dart';
 import '../../models/vehicle_type_template.dart';
 import '../api/api_client.dart';
+import 'storage_service.dart';
 import '../api/api_endpoints.dart';
 
 class VehicleService {
   static const String _vehicleTypesCacheKey = 'vehicle_type_templates';
   final ApiClient _api = ApiClient();
+  final StorageService _storage = StorageService();
 
   Future<List<VehicleTypeTemplate>> getVehicleTypes({
     bool allowCachedFallback = true,
@@ -84,11 +86,13 @@ class VehicleService {
       String? vehicleLicenseImageUrl;
 
       if (licenseImage != null) {
-        licenseImageUrl = await uploadFile(licenseImage);
+        licenseImageUrl = await _storage.uploadDriverDocument(licenseImage);
       }
 
       if (vehicleLicenseImage != null) {
-        vehicleLicenseImageUrl = await uploadFile(vehicleLicenseImage);
+        vehicleLicenseImageUrl = await _storage.uploadDriverDocument(
+          vehicleLicenseImage,
+        );
       }
 
       final carImageUrl = await uploadFile(carImage);

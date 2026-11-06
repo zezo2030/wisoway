@@ -50,6 +50,7 @@ describe('AuthService — driver registration', () => {
     licenseImageUrl: 'https://cdn/lic.jpg',
     vehicleLicenseImageUrl: 'https://cdn/form.jpg',
     insuranceImageUrl: 'https://cdn/ins.jpg',
+    nationalIdImageUrl: 'https://cdn/id.jpg',
   };
 
   let assertEmailAvailable: jest.Mock;
@@ -171,6 +172,17 @@ describe('AuthService — driver registration', () => {
     );
   });
 
+  it('persists nationalIdImageUrl on the vehicle', async () => {
+    await service.registerDriver({
+      ...baseDto,
+      registrationToken: registrationToken(),
+    } as never);
+
+    expect(vehicleCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ nationalIdImageUrl: 'https://cdn/id.jpg' }),
+    );
+  });
+
   it('stores a null insurance url when the client omits it', async () => {
     const { insuranceImageUrl: _omitted, ...withoutInsurance } = baseDto;
 
@@ -225,6 +237,7 @@ describe('AuthService — driver registration', () => {
           driverId: 'user-1',
           plateNumber: 'ABC123',
           insuranceImageUrl: 'https://cdn/ins.jpg',
+          nationalIdImageUrl: 'https://cdn/id.jpg',
         }),
       );
     });
@@ -336,10 +349,12 @@ describe('AuthService — pending driver registration update', () => {
 
     await service.updatePendingRegistration('user-1', {
       insuranceImageUrl: 'https://cdn/new-ins.jpg',
+      nationalIdImageUrl: 'https://cdn/new-id.jpg',
       plateNumber: 'NEW1',
     });
 
     expect(vehicle.insuranceImageUrl).toBe('https://cdn/new-ins.jpg');
+    expect(vehicle.nationalIdImageUrl).toBe('https://cdn/new-id.jpg');
     expect(vehicle.plateNumber).toBe('NEW1');
     expect(vehicleSave).toHaveBeenCalled();
     expect(user.isDriverApproved).toBe(false);

@@ -4257,7 +4257,33 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your location is shared with this trip\'s passengers during pickup and the ride.';
 
   @override
-  String get tripInProgressTripDetails => 'Trip details';
+  String get tripPresenceConsentTitle => 'Confirm you are on board by location';
+
+  @override
+  String get tripPresenceConsentBody =>
+      'During the trip we compare your location with the driver\'s to confirm you are in the car, even if you forget to confirm. This stops by itself once confirmed or when the trip ends, and we do not store your route.';
+
+  @override
+  String get tripPresenceConsentAccept => 'Allow';
+
+  @override
+  String get tripPresenceConsentDecline => 'Not now';
+
+  @override
+  String get tripPresenceTrackingTitle => 'Confirming you are on board';
+
+  @override
+  String get tripPresenceTrackingBody =>
+      'We compare your location with the driver\'s during the trip.';
+
+  @override
+  String get tripInProgressDetails => 'Details';
+
+  @override
+  String get tripInProgressMessage => 'Message';
+
+  @override
+  String get tripInProgressYourDriverNow => 'Your driver now';
 
   @override
   String get tripInProgressShareTracking => 'Share tracking';
@@ -4936,6 +4962,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get driverLicenseUploadHint => 'Tap to upload the license photo';
 
   @override
+  String get nationalIdRequiredLabel => 'National ID *';
+
+  @override
+  String get nationalIdUploadHint => 'Tap to upload your national ID photo';
+
+  @override
+  String get nationalIdImageRequired => 'The national ID photo is required';
+
+  @override
   String get vehicleRegistrationFormRequired => 'Registration form *';
 
   @override
@@ -4967,6 +5002,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get driverSubmittedDocs => 'Submitted documents';
+
+  @override
+  String get driverDocNationalId => 'National ID';
 
   @override
   String get driverDocLicense => 'License';
@@ -5059,13 +5097,18 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String tripFeeOfSeatsLabel(String percent, int seats) {
-    return 'Trip commission ($percent%, capacity $seats seats)';
+  String tripFeeOnBookingsLabel(String percent) {
+    return 'Expected commission ($percent% of booked fares)';
+  }
+
+  @override
+  String tripFeeOnConfirmedLabel(String percent) {
+    return 'Trip commission ($percent% of confirmed fares)';
   }
 
   @override
   String get tripFeeChargedAtStartNotice =>
-      'Commission is charged on completed booking fares when the trip ends and credited to the platform wallet.';
+      'Commission is charged after the trip, only for passengers confirmed on board, and credited to the platform wallet.';
 
   @override
   String get contactPassengersTitle => 'Contact passengers';
@@ -5971,6 +6014,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get rideChimeStartedBody => 'Have a good ride!';
+
+  @override
+  String get rideChimeCompletedTitle => 'Trip ended';
+
+  @override
+  String get rideChimeCompletedBody =>
+      'Thanks, you have reached the destination.';
 
   @override
   String get forgotStartTitle => 'Did you forget to start the ride?';

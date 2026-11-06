@@ -12,6 +12,10 @@ import '../../core/theme/colors.dart';
 import '../../core/services/storage_service.dart';
 import '../../widgets/common/form_components.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../core/api/api_client.dart';
+import '../../core/ui/error_surface.dart';
+import '../../utils/email_format.dart';
+import '../../utils/western_digits.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -23,6 +27,7 @@ class EditProfileScreen extends StatefulWidget {
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _cliqAliasController = TextEditingController();
   final _storageService = StorageService();
 
@@ -40,6 +45,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _emailController.dispose();
     _cliqAliasController.dispose();
     super.dispose();
   }
@@ -100,7 +106,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final authProvider = context.read<AuthProvider>();
       await authProvider.saveUserProfile(
         name: _nameController.text.trim(),
-        email: authProvider.userModel?.email ?? '',
+        email: _emailController.text.trim(),
         gender: _selectedGender,
         role: authProvider.userModel?.role ?? AppConstants.rolePassenger,
         profileImage: _profileImage,
@@ -110,7 +116,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         // Passengers only (drivers are paid into their wallet).
         cliqAlias: authProvider.userModel?.isDriver == true
             ? null
-            : _cliqAliasController.text.trim(),
+            : toWesternDigits(_cliqAliasController.text.trim()),
       );
 
       if (mounted) {
@@ -118,9 +124,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         Navigator.pop(context);
       }
     } catch (e) {
-      if (mounted) {
-        _showSnackBar(e.toString(), T.error(context));
-      }
+      if (mounted) ErrorSurface.showFailure(context, ApiClient.mapError(e));
     }
   }
 
@@ -289,79 +293,112 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
+  Widget _buildLockedField({
+    required String label,
+    required String value,
+    required IconData icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      decoration: BoxDecoration(
+        color: T.surface(context),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            margin: const EdgeInsets.only(left: 12),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: T.primary(context).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: T.primary(context), size: 20),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: T.onSurfaceVariant(context),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: T.onSurface(context),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            IconsaxPlusLinear.lock,
+            size: 18,
+            color: T.onSurfaceVariant(context),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildFormFields() {
     final user = context.watch<AuthProvider>().userModel;
 
     return Column(
       children: [
-        ModernInputField(
-          controller: _nameController,
-          label: AppStrings.fullName,
-          hint: AppStrings.fullNameHint,
-          icon: IconsaxPlusLinear.user,
-          validator: (v) =>
-              (v == null || v.trim().isEmpty) ? AppStrings.nameRequired : null,
-        ),
+        // Fixed at registration, except a phone number standing in for a name.
+        if (user != null && user.name != user.phoneNumber)
+          _buildLockedField(
+            label: AppStrings.fullName,
+            value: user.name,
+            icon: IconsaxPlusLinear.user,
+          )
+        else
+          ModernInputField(
+            controller: _nameController,
+            label: AppStrings.fullName,
+            hint: AppStrings.fullNameHint,
+            icon: IconsaxPlusLinear.user,
+            validator: (v) => (v == null || v.trim().isEmpty)
+                ? AppStrings.nameRequired
+                : null,
+          ),
         const SizedBox(height: 20),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-          decoration: BoxDecoration(
-            color: T.surface(context),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.black.withValues(alpha: 0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
+        if ((user?.email ?? '').isNotEmpty)
+          _buildLockedField(
+            label: AppStrings.email,
+            value: user!.email,
+            icon: IconsaxPlusLinear.sms,
+          )
+        else
+          ModernInputField(
+            controller: _emailController,
+            label: AppStrings.email,
+            hint: AppStrings.emailHint,
+            icon: IconsaxPlusLinear.sms,
+            keyboardType: TextInputType.emailAddress,
+            textDirection: TextDirection.ltr,
+            validator: (v) {
+              final text = v?.trim() ?? '';
+              return text.isEmpty || isValidEmail(text)
+                  ? null
+                  : AppStrings.emailInvalid;
+            },
           ),
-          child: Row(
-            children: [
-              Container(
-                margin: const EdgeInsets.only(left: 12),
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: T.primary(context).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  IconsaxPlusLinear.sms,
-                  color: T.primary(context),
-                  size: 20,
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      AppStrings.email,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: T.onSurfaceVariant(context),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      user?.email ?? '',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: T.onSurface(context),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                IconsaxPlusLinear.lock,
-                size: 18,
-                color: T.onSurfaceVariant(context),
-              ),
-            ],
-          ),
-        ),
         const SizedBox(height: 28),
         const SectionTitle(title: AppStrings.gender, isRequired: true),
         const SizedBox(height: 12),
@@ -381,7 +418,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             icon: IconsaxPlusLinear.wallet_money,
             textDirection: TextDirection.ltr,
             validator: (v) {
-              final text = v?.trim() ?? '';
+              final text = toWesternDigits(v?.trim() ?? '');
               if (text.isEmpty) return null;
               return RegExp(r'^[A-Za-z0-9._@\-+ ]{3,100}$').hasMatch(text)
                   ? null

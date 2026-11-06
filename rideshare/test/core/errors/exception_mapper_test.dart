@@ -10,6 +10,26 @@ import 'package:rideshare/core/errors/failure.dart';
 void main() {
   group('ExceptionMapper.fromError', () {
     group('DioException mapping', () {
+      test('403 PHONE_HIDDEN in the server envelope → phone hidden failure', () {
+        final error = DioException(
+          type: DioExceptionType.badResponse,
+          requestOptions: RequestOptions(path: '/bookings/b-1/calls/initiate'),
+          response: Response(
+            requestOptions: RequestOptions(path: '/bookings/b-1/calls/initiate'),
+            statusCode: 403,
+            data: {
+              'success': false,
+              'code': 'PHONE_HIDDEN',
+              'error': {'code': 403, 'message': 'hidden'},
+            },
+          ),
+        );
+
+        final failure = ExceptionMapper.fromError(error);
+
+        expect(failure.messageKey, 'errorsPhoneHidden');
+      });
+
       test('connectionTimeout → network timeout failure', () {
         final error = DioException(
           type: DioExceptionType.connectionTimeout,

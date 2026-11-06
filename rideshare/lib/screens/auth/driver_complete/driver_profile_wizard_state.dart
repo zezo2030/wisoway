@@ -18,12 +18,14 @@ class DriverProfileWizardState extends ChangeNotifier {
   final bool isEditMode;
 
   File? profileImage;
+  File? nationalIdImage;
   File? licenseImage;
   File? vehicleLicenseImage;
   File? insuranceImage;
   File? carImage;
 
   String? existingPhotoUrl;
+  String? existingNationalIdUrl;
   String? existingLicenseUrl;
   String? existingVehicleLicenseUrl;
   String? existingInsuranceUrl;
@@ -43,6 +45,8 @@ class DriverProfileWizardState extends ChangeNotifier {
 
   bool get hasProfilePhoto =>
       profileImage != null || (existingPhotoUrl?.isNotEmpty ?? false);
+  bool get hasNationalId =>
+      nationalIdImage != null || (existingNationalIdUrl?.isNotEmpty ?? false);
   bool get hasLicense =>
       licenseImage != null || (existingLicenseUrl?.isNotEmpty ?? false);
   bool get hasVehicleLicense =>

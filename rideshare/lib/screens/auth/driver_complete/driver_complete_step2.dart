@@ -9,7 +9,8 @@ import '../../../widgets/auth/document_upload_box.dart';
 import '../../../widgets/vehicle_color_dropdown.dart';
 import 'driver_profile_wizard_state.dart';
 
-/// Driver wizard — step 2 of 3: photo, vehicle basics and the driving license.
+/// Driver wizard — step 2 of 3: photo, vehicle basics, national ID and the
+/// driving license.
 ///
 /// Nothing is sent to the backend here; [onContinue] only advances to step 3
 /// once this step's own fields validate.
@@ -19,6 +20,7 @@ class DriverCompleteStep2 extends StatelessWidget {
     required this.state,
     required this.formKey,
     required this.onPickProfilePhoto,
+    required this.onPickNationalId,
     required this.onPickLicense,
     required this.onSelectVehicleType,
     required this.onContinue,
@@ -27,6 +29,7 @@ class DriverCompleteStep2 extends StatelessWidget {
   final DriverProfileWizardState state;
   final GlobalKey<FormState> formKey;
   final VoidCallback onPickProfilePhoto;
+  final VoidCallback onPickNationalId;
   final VoidCallback onPickLicense;
   final VoidCallback onSelectVehicleType;
   final VoidCallback onContinue;
@@ -104,6 +107,14 @@ class DriverCompleteStep2 extends StatelessWidget {
           const SizedBox(height: 14),
           _buildSeatsSummary(context),
           const SizedBox(height: 22),
+          DocumentUploadBox(
+            label: l10n.nationalIdRequiredLabel,
+            hint: l10n.nationalIdUploadHint,
+            file: state.nationalIdImage,
+            previewUrl: state.existingNationalIdUrl,
+            onTap: onPickNationalId,
+          ),
+          const SizedBox(height: 18),
           DocumentUploadBox(
             label: l10n.driverLicenseRequired,
             hint: l10n.driverLicenseUploadHint,

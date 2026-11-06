@@ -7784,11 +7784,59 @@ abstract class AppLocalizations {
   /// **'تتم مشاركة موقعك مع ركاب الرحلة أثناء التوجه إليهم وخلال الرحلة.'**
   String get tripLiveLocationBody;
 
-  /// No description provided for @tripInProgressTripDetails.
+  /// No description provided for @tripPresenceConsentTitle.
   ///
   /// In ar, this message translates to:
-  /// **'تفاصيل الرحلة'**
-  String get tripInProgressTripDetails;
+  /// **'تأكيد حضورك بالموقع'**
+  String get tripPresenceConsentTitle;
+
+  /// No description provided for @tripPresenceConsentBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'أثناء الرحلة نقارن موقعك بموقع السائق لنتأكد أنك في السيارة، حتى لو نسيت تأكيد حضورك. تتوقف المقارنة تلقائياً بعد التأكد أو عند انتهاء الرحلة، ولا نحفظ مسارك.'**
+  String get tripPresenceConsentBody;
+
+  /// No description provided for @tripPresenceConsentAccept.
+  ///
+  /// In ar, this message translates to:
+  /// **'موافق'**
+  String get tripPresenceConsentAccept;
+
+  /// No description provided for @tripPresenceConsentDecline.
+  ///
+  /// In ar, this message translates to:
+  /// **'ليس الآن'**
+  String get tripPresenceConsentDecline;
+
+  /// No description provided for @tripPresenceTrackingTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تأكيد الحضور'**
+  String get tripPresenceTrackingTitle;
+
+  /// No description provided for @tripPresenceTrackingBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'نقارن موقعك بموقع السائق أثناء الرحلة.'**
+  String get tripPresenceTrackingBody;
+
+  /// No description provided for @tripInProgressDetails.
+  ///
+  /// In ar, this message translates to:
+  /// **'التفاصيل'**
+  String get tripInProgressDetails;
+
+  /// No description provided for @tripInProgressMessage.
+  ///
+  /// In ar, this message translates to:
+  /// **'رسالة'**
+  String get tripInProgressMessage;
+
+  /// No description provided for @tripInProgressYourDriverNow.
+  ///
+  /// In ar, this message translates to:
+  /// **'سائقك الآن'**
+  String get tripInProgressYourDriverNow;
 
   /// No description provided for @tripInProgressShareTracking.
   ///
@@ -8972,6 +9020,24 @@ abstract class AppLocalizations {
   /// **'اضغط لرفع صورة الرخصة'**
   String get driverLicenseUploadHint;
 
+  /// No description provided for @nationalIdRequiredLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'الهوية الشخصية *'**
+  String get nationalIdRequiredLabel;
+
+  /// No description provided for @nationalIdUploadHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'اضغط لرفع صورة الهوية الشخصية'**
+  String get nationalIdUploadHint;
+
+  /// No description provided for @nationalIdImageRequired.
+  ///
+  /// In ar, this message translates to:
+  /// **'صورة الهوية الشخصية مطلوبة'**
+  String get nationalIdImageRequired;
+
   /// No description provided for @vehicleRegistrationFormRequired.
   ///
   /// In ar, this message translates to:
@@ -9031,6 +9097,12 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'المستندات المرسلة'**
   String get driverSubmittedDocs;
+
+  /// No description provided for @driverDocNationalId.
+  ///
+  /// In ar, this message translates to:
+  /// **'الهوية'**
+  String get driverDocNationalId;
 
   /// No description provided for @driverDocLicense.
   ///
@@ -9188,16 +9260,22 @@ abstract class AppLocalizations {
   /// **'المجموع من الركاب ({count}) ركاب'**
   String passengersTotalLabel(int count);
 
-  /// No description provided for @tripFeeOfSeatsLabel.
+  /// No description provided for @tripFeeOnBookingsLabel.
   ///
   /// In ar, this message translates to:
-  /// **'عمولة الرحلة ({percent}%، سعة الرحلة {seats} مقاعد)'**
-  String tripFeeOfSeatsLabel(String percent, int seats);
+  /// **'العمولة المتوقعة ({percent}% من أجرة الحجوزات)'**
+  String tripFeeOnBookingsLabel(String percent);
+
+  /// No description provided for @tripFeeOnConfirmedLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'عمولة الرحلة ({percent}% من أجرة الركاب المؤكدين)'**
+  String tripFeeOnConfirmedLabel(String percent);
 
   /// No description provided for @tripFeeChargedAtStartNotice.
   ///
   /// In ar, this message translates to:
-  /// **'تُخصم العمولة عند انتهاء الرحلة من أجرة الحجوزات المكتملة، وتُضاف إلى محفظة التطبيق.'**
+  /// **'تُخصم العمولة بعد انتهاء الرحلة عن الركاب المؤكد حضورهم فقط، وتُضاف إلى محفظة التطبيق.'**
   String get tripFeeChargedAtStartNotice;
 
   /// No description provided for @contactPassengersTitle.
@@ -10807,6 +10885,18 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'رحلة موفقة!'**
   String get rideChimeStartedBody;
+
+  /// No description provided for @rideChimeCompletedTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'انتهت الرحلة'**
+  String get rideChimeCompletedTitle;
+
+  /// No description provided for @rideChimeCompletedBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'شكراً لك، وصلت إلى الوجهة.'**
+  String get rideChimeCompletedBody;
 
   /// No description provided for @forgotStartTitle.
   ///

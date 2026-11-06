@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api/api_client.dart';
@@ -16,6 +16,7 @@ import '../../core/api/websocket_service.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/services/active_ride_navigator.dart';
 import '../../core/services/instant_ride_service.dart';
+import '../../core/services/passenger_trip_location_reporter.dart';
 import '../../core/services/route_service.dart';
 import '../../core/services/share_link_service.dart';
 import '../../core/services/trip_emergency_service.dart';
@@ -26,6 +27,7 @@ import '../../models/booking_model.dart';
 import '../../models/trip_model.dart';
 import '../../providers/trip_provider.dart';
 import '../../widgets/trip/share_tracking_sheet.dart';
+import '../../widgets/trip/trip_driver_card.dart';
 import '../../utils/live_route_geometry.dart';
 
 /// Where an instant ride stands. The trip is `in_progress` from the moment a
@@ -56,10 +58,6 @@ class TripInProgressScreen extends StatefulWidget {
 
 class _TripInProgressScreenState extends State<TripInProgressScreen>
     with SingleTickerProviderStateMixin {
-  static const _vehicleFallback =
-      'assets/images/trip_in_progress/vehicle_fallback.png';
-  static const _avatarFallback =
-      'assets/images/trip_in_progress/driver_avatar.png';
   static const _mapCarAsset = 'assets/images/presence_map_car.png';
 
   TripModel? _trip;
@@ -68,6 +66,7 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
   bool _callBusy = false;
   bool _shareLoading = false;
   bool _cancelling = false;
+  bool _askingToReportLocation = false;
   GoogleMapController? _mapController;
   BitmapDescriptor? _carIcon;
   LatLng? _liveDriverLocation;
@@ -233,6 +232,93 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
     }
   }
 
+  /// Once a shared trip is moving, compares the passenger's position with the
+  /// car's so the ride counts for commission without a confirmation tap.
+  Future<void> _reportPresenceByLocation(TripModel trip) async {
+    final reporter = PassengerTripLocationReporter.instance;
+    if (_askingToReportLocation ||
+        trip.tripType == 'instant' ||
+        trip.tripStartedAt == null ||
+        reporter.isHandled(trip.id)) {
+      return;
+    }
+    _askingToReportLocation = true;
+    try {
+      if (!await _hasLocationConsent() ||
+          !await _hasLocationPermission() ||
+          !mounted) {
+        reporter.skip(trip.id);
+        return;
+      }
+      final l10n = context.l10n;
+      final platform = Theme.of(context).platform;
+      reporter.start(
+        tripId: trip.id,
+        settings: platform == TargetPlatform.android
+            ? AndroidSettings(
+                accuracy: LocationAccuracy.high,
+                distanceFilter: 50,
+                intervalDuration: const Duration(seconds: 30),
+                foregroundNotificationConfig: ForegroundNotificationConfig(
+                  notificationTitle: l10n.tripPresenceTrackingTitle,
+                  notificationText: l10n.tripPresenceTrackingBody,
+                  notificationChannelName: l10n.tripPresenceTrackingTitle,
+                  enableWakeLock: true,
+                  setOngoing: true,
+                ),
+              )
+            : const LocationSettings(
+                accuracy: LocationAccuracy.high,
+                distanceFilter: 50,
+              ),
+      );
+    } catch (_) {
+      // Without location the passenger's confirmation still decides.
+      reporter.skip(trip.id);
+    } finally {
+      _askingToReportLocation = false;
+    }
+  }
+
+  Future<bool> _hasLocationConsent() async {
+    const key = 'trip_presence_location_consent';
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(key) == true) return true;
+    if (!mounted) return false;
+    final l10n = context.l10n;
+    final accepted = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.tripPresenceConsentTitle),
+        content: Text(l10n.tripPresenceConsentBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(l10n.tripPresenceConsentDecline),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(l10n.tripPresenceConsentAccept),
+          ),
+        ],
+      ),
+    );
+    if (accepted != true) return false;
+    await prefs.setBool(key, true);
+    return true;
+  }
+
+  Future<bool> _hasLocationPermission() async {
+    if (!await Geolocator.isLocationServiceEnabled()) return false;
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    return permission == LocationPermission.whileInUse ||
+        permission == LocationPermission.always;
+  }
+
   Future<void> _loadTrip() async {
     try {
       final tripProvider = Provider.of<TripProvider>(context, listen: false);
@@ -261,6 +347,7 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
       _rebuildMapOverlays();
       _fitBounds();
       _loadRoadRoute(loaded);
+      unawaited(_reportPresenceByLocation(loaded));
       unawaited(_refreshApproachRoute());
       unawaited(_pollTracking());
       if (widget.showTrackingShare) {
@@ -482,6 +569,7 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
       if (!mounted || trip == null) return;
       if (!trip.isCompleted && !trip.isCancelled) {
         _sawTripLive = true;
+        unawaited(_reportPresenceByLocation(trip));
         // The driver marked arrival or started the ride: move the header
         // and the map on to the next stage.
         final previous = _trip;
@@ -934,7 +1022,7 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
             ),
             Positioned(
               right: 16,
-              bottom: 290,
+              bottom: 340,
               child: Column(
                 children: [
                   _MapFab(
@@ -966,7 +1054,13 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _buildDriverCard(context, trip),
+                    TripDriverCard(
+                      trip: trip,
+                      onDetails: _openTripDetails,
+                      onChat: () => _openDriverChat(trip),
+                      onCall: _callDriver,
+                      callBusy: _callBusy,
+                    ),
                     const SizedBox(height: 12),
                     _buildActionButtons(context),
                     const SizedBox(height: 8),
@@ -1223,186 +1317,6 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
                 ),
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _driverCardAction({
-    required IconData icon,
-    required String label,
-    required VoidCallback? onTap,
-    bool busy = false,
-  }) {
-    return Column(
-      children: [
-        Material(
-          color: AppColors.teal50,
-          borderRadius: BorderRadius.circular(14),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(14),
-            child: SizedBox(
-              width: 52,
-              height: 52,
-              child: busy
-                  ? const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.teal700,
-                      ),
-                    )
-                  : Icon(icon, color: AppColors.teal700),
-            ),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 11, color: AppColors.slate500),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDriverCard(BuildContext context, TripModel trip) {
-    final name = trip.driverName?.trim().isNotEmpty == true
-        ? trip.driverName!
-        : '—';
-    final rating = trip.driverRating;
-    final model = trip.vehicleModel?.trim().isNotEmpty == true
-        ? trip.vehicleModel!
-        : '—';
-    final plate = trip.vehiclePlateNumber?.trim().isNotEmpty == true
-        ? trip.vehiclePlateNumber!
-        : '—';
-    final photo = trip.driverPhotoUrl;
-    final carUrl = trip.carImageUrl;
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          _driverCardAction(
-            icon: Icons.chat_bubble_outline_rounded,
-            label: context.l10n.chatLabel,
-            onTap: () => _openDriverChat(trip),
-          ),
-          const SizedBox(width: 8),
-          _driverCardAction(
-            icon: Icons.call_outlined,
-            label: context.l10n.call,
-            onTap: _callBusy ? null : _callDriver,
-            busy: _callBusy,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    if (rating != null && rating > 0) ...[
-                      const SizedBox(width: 6),
-                      const Icon(
-                        Icons.star,
-                        size: 16,
-                        color: Color(0xFFFBBF24),
-                      ),
-                      const SizedBox(width: 2),
-                      Text(
-                        rating.toStringAsFixed(1),
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  model,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.slate600,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: AppColors.slate300),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    plate,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: _openTripDetails,
-                  icon: const Icon(Icons.receipt_long_outlined, size: 18),
-                  label: Text(context.l10n.tripInProgressTripDetails),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.teal700,
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 78,
-            height: 52,
-            child: carUrl != null && carUrl.isNotEmpty
-                ? CachedNetworkImage(
-                    imageUrl: carUrl,
-                    fit: BoxFit.contain,
-                    errorWidget: (_, __, ___) =>
-                        Image.asset(_vehicleFallback, fit: BoxFit.contain),
-                  )
-                : Image.asset(_vehicleFallback, fit: BoxFit.contain),
-          ),
-          const SizedBox(width: 8),
-          CircleAvatar(
-            radius: 26,
-            backgroundColor: AppColors.slate200,
-            backgroundImage: photo != null && photo.isNotEmpty
-                ? CachedNetworkImageProvider(photo)
-                : const AssetImage(_avatarFallback) as ImageProvider,
           ),
         ],
       ),

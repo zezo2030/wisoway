@@ -13,6 +13,7 @@ class VehicleModel {
   final String? color;
   final int seats;
   final SeatLayoutConfig? seatLayout;
+  final String? nationalIdImageUrl; // Driver's national ID
   final String? licenseImageUrl; // Driver's license image
   final String? vehicleLicenseImageUrl; // Vehicle license image
   final String? carImageUrl; // Photo of the car itself
@@ -30,6 +31,7 @@ class VehicleModel {
     this.color,
     required this.seats,
     this.seatLayout,
+    this.nationalIdImageUrl,
     this.licenseImageUrl,
     this.vehicleLicenseImageUrl,
     this.carImageUrl,
@@ -57,6 +59,7 @@ class VehicleModel {
           : json['color'].toString().trim(),
       seats: json['seats'] ?? 4,
       seatLayout: layout,
+      nationalIdImageUrl: json['nationalIdImageUrl'],
       licenseImageUrl: json['licenseImageUrl'],
       vehicleLicenseImageUrl: json['vehicleLicenseImageUrl'],
       carImageUrl: json['carImageUrl'],
@@ -81,6 +84,7 @@ class VehicleModel {
       if (color != null) 'color': color,
       'seats': seats,
       'seatLayout': seatLayout?.toMap(),
+      'nationalIdImageUrl': nationalIdImageUrl,
       'licenseImageUrl': licenseImageUrl,
       'vehicleLicenseImageUrl': vehicleLicenseImageUrl,
       'carImageUrl': carImageUrl,
@@ -102,6 +106,7 @@ class VehicleModel {
     String? color,
     int? seats,
     SeatLayoutConfig? seatLayout,
+    String? nationalIdImageUrl,
     String? licenseImageUrl,
     String? vehicleLicenseImageUrl,
     String? carImageUrl,
@@ -119,6 +124,7 @@ class VehicleModel {
       color: color ?? this.color,
       seats: seats ?? this.seats,
       seatLayout: seatLayout ?? this.seatLayout,
+      nationalIdImageUrl: nationalIdImageUrl ?? this.nationalIdImageUrl,
       licenseImageUrl: licenseImageUrl ?? this.licenseImageUrl,
       vehicleLicenseImageUrl:
           vehicleLicenseImageUrl ?? this.vehicleLicenseImageUrl,

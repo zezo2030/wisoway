@@ -48,8 +48,12 @@ export interface Vehicle {
   model: string
   plateNumber: string
   seats: number
+  /** Null for drivers who registered before the ID was required. */
+  nationalIdImageUrl?: string | null
   licenseImageUrl: string
   vehicleLicenseImageUrl: string
+  insuranceImageUrl?: string | null
+  carImageUrl?: string | null
   isVerified: boolean
   createdAt: string
   updatedAt: string

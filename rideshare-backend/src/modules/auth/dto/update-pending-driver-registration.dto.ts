@@ -49,6 +49,11 @@ export class UpdatePendingDriverRegistrationDto {
   @IsOptional()
   @IsString()
   @MaxLength(500)
+  nationalIdImageUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
   licenseImageUrl?: string;
 
   @IsOptional()

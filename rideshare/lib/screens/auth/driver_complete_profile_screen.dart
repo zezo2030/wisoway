@@ -147,6 +147,7 @@ class _DriverCompleteProfileScreenState
             // corrects an old vehicle row instead of carrying it forward.
             seats: _seatsForType(vehicle.vehicleType) ?? vehicle.seats,
           );
+          _state.existingNationalIdUrl = vehicle.nationalIdImageUrl;
           _state.existingLicenseUrl = vehicle.licenseImageUrl;
           _state.existingVehicleLicenseUrl = vehicle.vehicleLicenseImageUrl;
           _state.existingInsuranceUrl = vehicle.insuranceImageUrl;
@@ -228,6 +229,10 @@ class _DriverCompleteProfileScreenState
       _showValidation('Personal photo not uploaded');
       return;
     }
+    if (!_state.hasNationalId) {
+      _showSnackBar(context.l10n.nationalIdImageRequired, T.error(context));
+      return;
+    }
     if (!_state.hasLicense) {
       _showValidation('Driver license photo not uploaded');
       return;
@@ -280,6 +285,7 @@ class _DriverCompleteProfileScreenState
           model: _state.modelController.text.trim(),
           color: _state.colorController.text.trim(),
           seats: int.tryParse(_state.seatsController.text.trim()),
+          nationalIdImage: _state.nationalIdImage,
           driverLicenseImage: _state.licenseImage,
           vehicleLicenseImage: _state.vehicleLicenseImage,
           insuranceImage: _state.insuranceImage,
@@ -307,6 +313,7 @@ class _DriverCompleteProfileScreenState
           model: _state.modelController.text.trim(),
           color: _state.colorController.text.trim(),
           seats: int.parse(_state.seatsController.text.trim()),
+          nationalIdImage: _state.nationalIdImage!,
           driverLicenseImage: _state.licenseImage!,
           vehicleLicenseImage: _state.vehicleLicenseImage!,
           insuranceImage: _state.insuranceImage!,
@@ -329,6 +336,7 @@ class _DriverCompleteProfileScreenState
         model: _state.modelController.text.trim(),
         color: _state.colorController.text.trim(),
         seats: int.parse(_state.seatsController.text.trim()),
+        nationalIdImage: _state.nationalIdImage!,
         driverLicenseImage: _state.licenseImage!,
         vehicleLicenseImage: _state.vehicleLicenseImage!,
         insuranceImage: _state.insuranceImage!,
@@ -427,6 +435,9 @@ class _DriverCompleteProfileScreenState
                                   formKey: _step2FormKey,
                                   onPickProfilePhoto: () =>
                                       _pickFile((f) => _state.profileImage = f),
+                                  onPickNationalId: () => _pickFile(
+                                    (f) => _state.nationalIdImage = f,
+                                  ),
                                   onPickLicense: () =>
                                       _pickFile((f) => _state.licenseImage = f),
                                   onSelectVehicleType: _selectVehicleType,

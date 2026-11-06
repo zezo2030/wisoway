@@ -47,6 +47,12 @@ export class VehicleEntity {
     preventGenderMixing?: boolean;
   } | null;
 
+  /** The driver's national ID. Kept here, not on users, because GET /users/:id
+   * returns the whole user row to any signed-in account. Required for
+   * registrations from this release on; null for older drivers. */
+  @Column({ type: 'text', nullable: true })
+  nationalIdImageUrl: string | null;
+
   @Column({ type: 'text', nullable: true })
   licenseImageUrl: string | null;
 

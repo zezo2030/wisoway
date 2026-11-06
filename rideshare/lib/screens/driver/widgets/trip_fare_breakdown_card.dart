@@ -11,31 +11,25 @@ import '../../../l10n/l10n_extensions.dart';
 /// Takes plain values rather than a `TripModel` so it stays testable without
 /// model fixtures.
 ///
-/// [feePercent] and [feeAmount] come from `GET /trips/fee-quote`, never from a
-/// literal — the two invoice dialogs deleted earlier both hardcoded `'5%'`
-/// while the backend charged a different rate. When the quote is unavailable
-/// the fee row renders a neutral placeholder instead of guessing.
+/// [feePercent] comes from `GET /trips/fee-quote`, never from a literal — the
+/// two invoice dialogs deleted earlier both hardcoded `'5%'` while the backend
+/// charged a different rate. When the quote is unavailable the fee row renders
+/// a neutral placeholder instead of guessing.
+///
+/// The fee shown is what the current bookings would cost. The real charge
+/// comes after the trip, on the seats whose passengers confirmed they rode.
 class TripFareBreakdownCard extends StatelessWidget {
   const TripFareBreakdownCard({
     super.key,
     required this.seatPrice,
     required this.bookedSeats,
-    required this.feeAmount,
     required this.feePercent,
-    required this.feeSeats,
     required this.currency,
   });
 
   final double seatPrice;
   final int bookedSeats;
-  final double? feeAmount;
   final double? feePercent;
-
-  /// Seat count the fee is actually charged on — the whole car, not the
-  /// passengers listed above. Naming it in the row stops the driver from
-  /// dividing the fee by a total it was never a percentage of.
-  final int feeSeats;
-
   final String currency;
 
   static String formatPercent(double percent) =>
@@ -49,7 +43,7 @@ class TripFareBreakdownCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final percent = feePercent;
-    final amount = feeAmount;
+    final faresTotal = seatPrice * bookedSeats;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -69,14 +63,13 @@ class TripFareBreakdownCard extends StatelessWidget {
           _FareRow(label: l10n.passengerFareLabel, value: _money(seatPrice)),
           _FareRow(
             label: l10n.passengersTotalLabel(bookedSeats),
-            value: _money(seatPrice * bookedSeats),
+            value: _money(faresTotal),
           ),
           _FareRow(
-            label: l10n.tripFeeOfSeatsLabel(
+            label: l10n.tripFeeOnBookingsLabel(
               percent == null ? '—' : formatPercent(percent),
-              feeSeats,
             ),
-            value: amount == null ? '—' : _money(amount),
+            value: percent == null ? '—' : _money(faresTotal * percent / 100),
             valueColor: T.error(context),
           ),
         ],

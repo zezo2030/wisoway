@@ -18,6 +18,11 @@ class ErrorLocalizations {
     'errorsWalletInsufficientBalance':
         'Your wallet balance is not enough to complete this booking. Please top up your wallet and try again.',
     'errorsUnknownGeneric': 'An unexpected error occurred. Please try again.',
+    'errorsEmailTaken':
+        'This email is already used by another account. Enter a different one.',
+    'errorsEmailRequired': 'Enter your email to finish creating your account.',
+    'errorsEmailLocked': 'The email cannot be changed once it is set.',
+    'errorsNameLocked': 'The name cannot be changed after registration.',
     'errorsPhoneHidden':
         'This person keeps their number private. Reach them through the in-app chat.',
     'errorsRouteUnavailable':
@@ -52,6 +57,11 @@ class ErrorLocalizations {
     'errorsWalletInsufficientBalance':
         'رصيد المحفظة غير كافٍ لإتمام الحجز. يرجى شحن المحفظة ثم المحاولة مرة أخرى.',
     'errorsUnknownGeneric': 'حدث خطأ غير متوقع. حاول مرة أخرى.',
+    'errorsEmailTaken':
+        'هذا البريد الإلكتروني مستخدم في حساب آخر. أدخل بريداً مختلفاً.',
+    'errorsEmailRequired': 'أدخل بريدك الإلكتروني لإكمال إنشاء الحساب.',
+    'errorsEmailLocked': 'لا يمكن تغيير البريد الإلكتروني بعد حفظه.',
+    'errorsNameLocked': 'لا يمكن تغيير الاسم بعد التسجيل.',
     'errorsPhoneHidden':
         'هذا المستخدم يُخفي رقم هاتفه. تواصل معه عبر المحادثة في التطبيق.',
     'errorsRouteUnavailable': 'تعذّر تحميل المسار. نعرض نقاط الانطلاق والوصول.',

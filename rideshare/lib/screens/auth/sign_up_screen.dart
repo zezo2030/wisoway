@@ -4,6 +4,7 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../core/constants/route_names.dart';
+import '../../utils/email_format.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/countries.dart';
 import '../../core/theme/colors.dart';
@@ -36,6 +37,7 @@ class _SignUpScreenState extends State<SignUpScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -65,6 +67,7 @@ class _SignUpScreenState extends State<SignUpScreen>
   @override
   void dispose() {
     _nameController.dispose();
+    _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -102,6 +105,7 @@ class _SignUpScreenState extends State<SignUpScreen>
             'role': role,
             'accountType': role,
             'name': _nameController.text.trim(),
+            'email': _emailController.text.trim(),
             'gender': _selectedGender,
             'password': _passwordController.text,
             'afterVerifyRoute': RouteNames.profileSetup,
@@ -168,6 +172,17 @@ class _SignUpScreenState extends State<SignUpScreen>
                           validator: (v) => (v == null || v.trim().length < 3)
                               ? l10n.validNameRequired
                               : null,
+                        ),
+                        const SizedBox(height: 14),
+                        AuthTextField(
+                          controller: _emailController,
+                          label: l10n.emailLabel,
+                          hint: l10n.emailHint,
+                          icon: IconsaxPlusLinear.sms,
+                          keyboardType: TextInputType.emailAddress,
+                          textDirection: TextDirection.ltr,
+                          validator: (v) =>
+                              isValidEmail(v ?? '') ? null : l10n.invalidEmail,
                         ),
                         const SizedBox(height: 14),
                         AuthPhoneField(

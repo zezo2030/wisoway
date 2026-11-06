@@ -172,6 +172,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         phoneNumber: widget.phoneNumber,
         smsCode: otpCode,
         name: composedName.isEmpty ? null : composedName,
+        email: (args?['email'] as String?)?.trim(),
         gender: args?['gender'] as String?,
         role: args?['role'] as String?,
         password: args?['password'] as String?,

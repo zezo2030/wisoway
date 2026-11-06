@@ -72,6 +72,35 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
+function DriverDocument({ label, url }: { label: string; url?: string | null }) {
+  const { t } = useLanguage()
+
+  return (
+    <div className="space-y-2 p-4 rounded-xl bg-muted/20 border border-border/40 sm:col-span-2">
+      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+      {!url ? (
+        <span className="text-sm text-muted-foreground">{t("noImageUploaded")}</span>
+      ) : url.toLowerCase().endsWith(".pdf") ? (
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 dark:bg-blue-950/30 px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-900/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+        >
+          <FileText className="h-4 w-4" />
+          {t("pdfDocument")}
+        </a>
+      ) : (
+        <ImagePreview
+          imageUrl={url}
+          alt={label}
+          thumbnailClassName="h-24 w-auto max-w-[200px] rounded-lg shadow-sm border border-border/50 object-cover cursor-zoom-in hover:opacity-90 transition-opacity"
+        />
+      )}
+    </div>
+  )
+}
+
 export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -699,56 +728,12 @@ export default function UserDetailPage() {
                         {vehicle.isVerified ? t("verified") : t("vehiclePendingRejected")}
                       </p>
                     </div>
-                    {/* Driver License Image */}
-                    <div className="space-y-2 p-4 rounded-xl bg-muted/20 border border-border/40 sm:col-span-2">
-                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("driverLicense")}</p>
-                      {vehicle.licenseImageUrl ? (
-                        vehicle.licenseImageUrl.toLowerCase().endsWith(".pdf") ? (
-                          <a
-                            href={vehicle.licenseImageUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 dark:bg-blue-950/30 px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-900/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
-                          >
-                            <FileText className="h-4 w-4" />
-                            {t("pdfDocument")}
-                          </a>
-                        ) : (
-                          <ImagePreview
-                            imageUrl={vehicle.licenseImageUrl}
-                            alt={t("driverLicense")}
-                            thumbnailClassName="h-24 w-auto max-w-[200px] rounded-lg shadow-sm border border-border/50 object-cover cursor-zoom-in hover:opacity-90 transition-opacity"
-                          />
-                        )
-                      ) : (
-                        <span className="text-sm text-muted-foreground">{t("noImageUploaded")}</span>
-                      )}
-                    </div>
-                    {/* Vehicle Registration Image */}
-                    <div className="space-y-2 p-4 rounded-xl bg-muted/20 border border-border/40 sm:col-span-2">
-                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("vehicleRegistration")}</p>
-                      {vehicle.vehicleLicenseImageUrl ? (
-                        vehicle.vehicleLicenseImageUrl.toLowerCase().endsWith(".pdf") ? (
-                          <a
-                            href={vehicle.vehicleLicenseImageUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 dark:bg-blue-950/30 px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-900/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
-                          >
-                            <FileText className="h-4 w-4" />
-                            {t("pdfDocument")}
-                          </a>
-                        ) : (
-                          <ImagePreview
-                            imageUrl={vehicle.vehicleLicenseImageUrl}
-                            alt={t("vehicleRegistration")}
-                            thumbnailClassName="h-24 w-auto max-w-[200px] rounded-lg shadow-sm border border-border/50 object-cover cursor-zoom-in hover:opacity-90 transition-opacity"
-                          />
-                        )
-                      ) : (
-                        <span className="text-sm text-muted-foreground">{t("noImageUploaded")}</span>
-                      )}
-                    </div>
+                    <DriverDocument label={t("driverPhoto")} url={user.photoUrl} />
+                    <DriverDocument label={t("nationalId")} url={vehicle.nationalIdImageUrl} />
+                    <DriverDocument label={t("driverLicense")} url={vehicle.licenseImageUrl} />
+                    <DriverDocument label={t("vehicleRegistration")} url={vehicle.vehicleLicenseImageUrl} />
+                    <DriverDocument label={t("insuranceDocument")} url={vehicle.insuranceImageUrl} />
+                    <DriverDocument label={t("carPhoto")} url={vehicle.carImageUrl} />
                   </div>
                 ) : (
                   <div className="p-6 rounded-xl bg-muted/20 border border-border/40 text-sm text-muted-foreground">

@@ -1173,12 +1173,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
       TripFareBreakdownCard(
         seatPrice: trip.price,
         bookedSeats: entries.length,
-        feeAmount: _feeQuote?.amount,
         feePercent: _feeQuote?.percent,
-        // The fee is charged on the whole car, not on the passengers listed
-        // above, so the row names its own basis rather than leaving the
-        // driver to divide the fee by a total it does not match.
-        feeSeats: trip.totalSeats,
         currency: _feeQuote?.currency ?? trip.currency,
       ),
       const SizedBox(height: 16),
@@ -2454,6 +2449,13 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     try {
       final result = await _tripService.markTripArrived(trip.id);
       if (!mounted) return;
+      unawaited(
+        RideSounds.chime(
+          sound: NotificationSound.rideCompleted,
+          title: context.l10n.rideChimeCompletedTitle,
+          body: context.l10n.rideChimeCompletedBody,
+        ),
+      );
       final settlement = result['settlement'] is Map
           ? Map<String, dynamic>.from(result['settlement'] as Map)
           : null;

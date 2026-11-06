@@ -34,8 +34,19 @@ class NotificationProvider with ChangeNotifier {
     }
   }
 
+  StreamSubscription<RemoteMessage>? _foregroundSubscription;
+
   Future<void> initialize() async {
     if (_isInitialized) return;
+
+    // First, and outside the try: a failed token registration below must not
+    // leave the open app silent. A later retry reuses this subscription.
+    _foregroundSubscription ??= FirebaseMessaging.onMessage.listen((
+      message,
+    ) async {
+      await PushNotificationService.showForegroundNotification(message);
+      await fetchNotifications();
+    });
 
     try {
       await FirebaseMessaging.instance.requestPermission(
@@ -67,12 +78,6 @@ class NotificationProvider with ChangeNotifier {
         );
         await _authService.updateFcmToken(newToken);
         notifyListeners();
-      });
-
-      // Listen to foreground messages
-      FirebaseMessaging.onMessage.listen((message) async {
-        await PushNotificationService.showForegroundNotification(message);
-        await fetchNotifications();
       });
 
       // Check if app was opened from terminated state

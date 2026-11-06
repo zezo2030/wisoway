@@ -137,6 +137,7 @@ class AuthProvider extends ChangeNotifier {
     required String phoneNumber,
     required String smsCode,
     String? name,
+    String? email,
     String? gender,
     String? role,
     String? password,
@@ -163,6 +164,7 @@ class AuthProvider extends ChangeNotifier {
         smsCode,
         device: devicePayload,
         name: name,
+        email: email,
         gender: gender,
         role: role,
         password: password,
@@ -201,7 +203,11 @@ class AuthProvider extends ChangeNotifier {
       _setLoading(true);
       _setError(null);
 
-      final result = await _authService.verifyDriverPhone(phoneNumber, code);
+      final result = await _authService.verifyDriverPhone(
+        phoneNumber,
+        code,
+        email: email,
+      );
 
       final pending = PendingDriverRegistration(
         registrationToken: result.registrationToken,
@@ -235,6 +241,7 @@ class AuthProvider extends ChangeNotifier {
     required String model,
     String? color,
     required int seats,
+    required File nationalIdImage,
     required File driverLicenseImage,
     required File vehicleLicenseImage,
     required File insuranceImage,
@@ -257,17 +264,25 @@ class AuthProvider extends ChangeNotifier {
         profileImage,
         token,
       );
+      final nationalIdUrl = await _authService.uploadRegistrationFile(
+        nationalIdImage,
+        token,
+        isPrivateDocument: true,
+      );
       final driverLicenseUrl = await _authService.uploadRegistrationFile(
         driverLicenseImage,
         token,
+        isPrivateDocument: true,
       );
       final vehicleLicenseUrl = await _authService.uploadRegistrationFile(
         vehicleLicenseImage,
         token,
+        isPrivateDocument: true,
       );
       final insuranceUrl = await _authService.uploadRegistrationFile(
         insuranceImage,
         token,
+        isPrivateDocument: true,
       );
       final carImageUrl = await _authService.uploadRegistrationFile(
         carImage,
@@ -290,6 +305,7 @@ class AuthProvider extends ChangeNotifier {
       final result = await _authService.registerDriver(
         registrationToken: token,
         name: name.isEmpty ? pending.phoneNumber : name,
+        email: pending.email,
         password: pending.password,
         gender: pending.gender,
         photoUrl: photoUrl,
@@ -300,6 +316,7 @@ class AuthProvider extends ChangeNotifier {
         seats: seats,
         carImageUrl: carImageUrl,
         insuranceImageUrl: insuranceUrl,
+        nationalIdImageUrl: nationalIdUrl,
         licenseImageUrl: driverLicenseUrl,
         vehicleLicenseImageUrl: vehicleLicenseUrl,
         device: devicePayload,
@@ -335,6 +352,7 @@ class AuthProvider extends ChangeNotifier {
     required String model,
     String? color,
     required int seats,
+    required File nationalIdImage,
     required File driverLicenseImage,
     required File vehicleLicenseImage,
     required File insuranceImage,
@@ -367,12 +385,18 @@ class AuthProvider extends ChangeNotifier {
         'seats': seats,
         if (profileImage != null)
           'photoUrl': await upload(profileImage, 'profiles'),
-        'licenseImageUrl': await upload(driverLicenseImage, 'driver_licenses'),
-        'vehicleLicenseImageUrl': await upload(
-          vehicleLicenseImage,
-          'vehicle_licenses',
+        'nationalIdImageUrl': await _storageService.uploadDriverDocument(
+          nationalIdImage,
         ),
-        'insuranceImageUrl': await upload(insuranceImage, 'insurance'),
+        'licenseImageUrl': await _storageService.uploadDriverDocument(
+          driverLicenseImage,
+        ),
+        'vehicleLicenseImageUrl': await _storageService.uploadDriverDocument(
+          vehicleLicenseImage,
+        ),
+        'insuranceImageUrl': await _storageService.uploadDriverDocument(
+          insuranceImage,
+        ),
         'carImageUrl': await upload(carImage, 'vehicles'),
       };
 
@@ -396,6 +420,7 @@ class AuthProvider extends ChangeNotifier {
     String? model,
     String? color,
     int? seats,
+    File? nationalIdImage,
     File? driverLicenseImage,
     File? vehicleLicenseImage,
     File? insuranceImage,
@@ -424,20 +449,24 @@ class AuthProvider extends ChangeNotifier {
       if (profileImage != null) {
         data['photoUrl'] = await upload(profileImage, 'profiles');
       }
+      if (nationalIdImage != null) {
+        data['nationalIdImageUrl'] = await _storageService.uploadDriverDocument(
+          nationalIdImage,
+        );
+      }
       if (driverLicenseImage != null) {
-        data['licenseImageUrl'] = await upload(
+        data['licenseImageUrl'] = await _storageService.uploadDriverDocument(
           driverLicenseImage,
-          'driver_licenses',
         );
       }
       if (vehicleLicenseImage != null) {
-        data['vehicleLicenseImageUrl'] = await upload(
-          vehicleLicenseImage,
-          'vehicle_licenses',
-        );
+        data['vehicleLicenseImageUrl'] = await _storageService
+            .uploadDriverDocument(vehicleLicenseImage);
       }
       if (insuranceImage != null) {
-        data['insuranceImageUrl'] = await upload(insuranceImage, 'insurance');
+        data['insuranceImageUrl'] = await _storageService.uploadDriverDocument(
+          insuranceImage,
+        );
       }
       if (carImage != null) {
         data['carImageUrl'] = await upload(carImage, 'vehicles');

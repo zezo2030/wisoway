@@ -6,6 +6,7 @@ import type { User } from "@/types/models"
 import { DataTable, type Column } from "@/components/data-table"
 import { SimpleStatusBadge } from "@/components/status-badge"
 import { ConfirmDialog } from "@/components/confirm-dialog"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -90,9 +91,12 @@ export default function PendingDriversPage() {
       header: t("name"),
       cell: (driver) => (
         <div className="flex items-center gap-3 py-1">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm shadow-sm border border-primary/20">
-            {driver.name.charAt(0).toUpperCase()}
-          </div>
+          <Avatar className="h-9 w-9 shadow-sm border border-primary/20">
+            <AvatarImage src={driver.photoUrl} alt={driver.name} className="object-cover" />
+            <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
+              {driver.name.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
           <div className="font-semibold text-foreground">{driver.name}</div>
         </div>
       ),

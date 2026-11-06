@@ -35,6 +35,7 @@ import { AdminFinesService } from './admin-fines.service';
 import { AdminNoShowController } from './admin-no-show.controller';
 import { AdminNoShowService } from './admin-no-show.service';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { UploadsModule } from '../uploads/uploads.module';
 import { BookingsModule } from '../bookings/bookings.module';
 import { WalletModule } from '../wallet/wallet.module';
 import { AuthModule } from '../auth/auth.module';
@@ -70,6 +71,7 @@ import { PendingChargesModule } from '../pending-charges/pending-charges.module'
     BookingsModule,
     WalletModule,
     AuthModule,
+    UploadsModule,
     ComplaintsModule,
     RefundsModule,
     PendingChargesModule,

@@ -229,7 +229,8 @@ const _privacyAr = LegalDocumentContent(
   sections: [
     LegalSection('١. البيانات التي نجمعها', [
       'بيانات الحساب: الاسم، رقم الهاتف، الجنس، المدينة، والصورة الشخصية.',
-      'بيانات السائق: رخصة القيادة، رخصة المركبة، نوع المركبة ولونها ورقم '
+      'بيانات السائق: الهوية الشخصية، رخصة القيادة، رخصة المركبة، نوع المركبة '
+          'ولونها ورقم '
           'لوحتها، وصور الوثائق المرفوعة للمراجعة.',
       'بيانات الموقع: موقعك عند البحث عن رحلة أو طلبها، ومسار السائق وموقعه '
           'أثناء الرحلة لعرضه للركاب. لا نتتبع موقعك خارج استخدام هذه الميزات.',
@@ -293,7 +294,8 @@ const _privacyEn = LegalDocumentContent(
   sections: [
     LegalSection('1. Data we collect', [
       'Account data: name, phone number, gender, city and profile photo.',
-      "Driver data: driving licence, vehicle licence, vehicle type, colour and "
+      "Driver data: national ID, driving licence, vehicle licence, vehicle type, "
+          "colour and "
           'plate number, and the document photos uploaded for review.',
       'Location: your location when you search for or request a trip, and the '
           "driver's location and route during a trip so passengers can follow it. "

@@ -152,6 +152,8 @@ class ApiEndpoints {
   // Tracking
   static String trackingLatest(String tripId) => '/tracking/$tripId/latest';
   static const String trackingLocation = '/tracking/location';
+  static const String trackingPassengerLocation =
+      '/tracking/passenger-location';
   static String trackingHistory(String tripId) => '/tracking/$tripId/history';
   static const String trackingNearbyTrips = '/tracking/nearby/trips';
 
@@ -216,6 +218,9 @@ class ApiEndpoints {
   // Pre-account image upload during driver registration (authorized by the
   // short-lived registration token instead of a session access token).
   static const String uploadsRegistration = '/uploads/registration';
+  static const String uploadsDocuments = '/uploads/documents';
+  static const String uploadsRegistrationDocuments =
+      '/uploads/registration/documents';
 
   // Devices (Phase 3 — account security)
   static const String devices = '/auth/devices';

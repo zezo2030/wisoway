@@ -314,11 +314,14 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
         .fold<int>(0, (sum, r) => sum + r.seatCount);
   }
 
-  /// What the platform actually took from the wallet at trip start.
+  /// What the platform took from the wallet when the trip ended. Until that
+  /// is known, the same percentage of the confirmed seats' fares.
   double? get _serviceFee => resolveTripSummaryFee(
     capturedFromSettlement: _settlement?['captured'],
     capturedOnTrip: _trip?.capturedFeeAmount,
-    quotedAmount: _feeQuote?.amount,
+    quotedAmount: _feePercent == null
+        ? null
+        : _seatPrice * _billableSeats * _feePercent! / 100,
   );
 
   /// Whatever the fee actually was, for arithmetic that must not show a blank.
@@ -905,14 +908,10 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
           const SizedBox(height: 14),
           _financeRow(
             icon: IconsaxPlusBold.shield_tick,
-            // Names the seat count the fee was actually charged on — the whole
-            // car — so the driver does not try to divide it by the ridden-seat
-            // fare total above and get a percentage that was never charged.
-            label: context.l10n.tripFeeOfSeatsLabel(
+            label: context.l10n.tripFeeOnConfirmedLabel(
               _feePercent == null
                   ? '—'
                   : TripFareBreakdownCard.formatPercent(_feePercent!),
-              _trip?.totalSeats ?? 0,
             ),
             value: _serviceFee == null ? '—' : _money(_serviceFee!),
             valueColor: _feeRed,

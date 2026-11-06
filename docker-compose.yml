@@ -85,6 +85,7 @@ services:
         condition: service_healthy
     volumes:
       - backend_uploads:/app/uploads
+      - backend_private_documents:/app/private-documents
       # FCM: service account JSON stays on the host (not baked into the image)
       - ./rideshare-backend/config/firebase-adminsdk.json:/app/config/firebase-adminsdk.json:ro
     networks:
@@ -163,6 +164,7 @@ volumes:
   postgres_data:
   redis_data:
   backend_uploads:
+  backend_private_documents:
   nginx_logs:
   certbot_conf:
   certbot_www:

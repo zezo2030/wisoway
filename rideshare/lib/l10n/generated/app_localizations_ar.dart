@@ -4227,7 +4227,33 @@ class AppLocalizationsAr extends AppLocalizations {
       'تتم مشاركة موقعك مع ركاب الرحلة أثناء التوجه إليهم وخلال الرحلة.';
 
   @override
-  String get tripInProgressTripDetails => 'تفاصيل الرحلة';
+  String get tripPresenceConsentTitle => 'تأكيد حضورك بالموقع';
+
+  @override
+  String get tripPresenceConsentBody =>
+      'أثناء الرحلة نقارن موقعك بموقع السائق لنتأكد أنك في السيارة، حتى لو نسيت تأكيد حضورك. تتوقف المقارنة تلقائياً بعد التأكد أو عند انتهاء الرحلة، ولا نحفظ مسارك.';
+
+  @override
+  String get tripPresenceConsentAccept => 'موافق';
+
+  @override
+  String get tripPresenceConsentDecline => 'ليس الآن';
+
+  @override
+  String get tripPresenceTrackingTitle => 'تأكيد الحضور';
+
+  @override
+  String get tripPresenceTrackingBody =>
+      'نقارن موقعك بموقع السائق أثناء الرحلة.';
+
+  @override
+  String get tripInProgressDetails => 'التفاصيل';
+
+  @override
+  String get tripInProgressMessage => 'رسالة';
+
+  @override
+  String get tripInProgressYourDriverNow => 'سائقك الآن';
 
   @override
   String get tripInProgressShareTracking => 'مشاركة التتبع';
@@ -4891,6 +4917,15 @@ class AppLocalizationsAr extends AppLocalizations {
   String get driverLicenseUploadHint => 'اضغط لرفع صورة الرخصة';
 
   @override
+  String get nationalIdRequiredLabel => 'الهوية الشخصية *';
+
+  @override
+  String get nationalIdUploadHint => 'اضغط لرفع صورة الهوية الشخصية';
+
+  @override
+  String get nationalIdImageRequired => 'صورة الهوية الشخصية مطلوبة';
+
+  @override
   String get vehicleRegistrationFormRequired => 'الرخصة / الاستمارة *';
 
   @override
@@ -4920,6 +4955,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get driverSubmittedDocs => 'المستندات المرسلة';
+
+  @override
+  String get driverDocNationalId => 'الهوية';
 
   @override
   String get driverDocLicense => 'الرخصة';
@@ -5012,13 +5050,18 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String tripFeeOfSeatsLabel(String percent, int seats) {
-    return 'عمولة الرحلة ($percent%، سعة الرحلة $seats مقاعد)';
+  String tripFeeOnBookingsLabel(String percent) {
+    return 'العمولة المتوقعة ($percent% من أجرة الحجوزات)';
+  }
+
+  @override
+  String tripFeeOnConfirmedLabel(String percent) {
+    return 'عمولة الرحلة ($percent% من أجرة الركاب المؤكدين)';
   }
 
   @override
   String get tripFeeChargedAtStartNotice =>
-      'تُخصم العمولة عند انتهاء الرحلة من أجرة الحجوزات المكتملة، وتُضاف إلى محفظة التطبيق.';
+      'تُخصم العمولة بعد انتهاء الرحلة عن الركاب المؤكد حضورهم فقط، وتُضاف إلى محفظة التطبيق.';
 
   @override
   String get contactPassengersTitle => 'التواصل مع الركاب';
@@ -5912,6 +5955,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get rideChimeStartedBody => 'رحلة موفقة!';
+
+  @override
+  String get rideChimeCompletedTitle => 'انتهت الرحلة';
+
+  @override
+  String get rideChimeCompletedBody => 'شكراً لك، وصلت إلى الوجهة.';
 
   @override
   String get forgotStartTitle => 'هل نسيت بدء الرحلة؟';

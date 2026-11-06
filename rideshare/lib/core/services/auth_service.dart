@@ -73,7 +73,8 @@ class AuthService {
   // ===== OTP / Phone Auth =====
   Future<void> sendOTP(String phoneNumber) async {
     if (AppConstants.skipOTP) {
-      if (kDebugMode) debugPrint('Development mode: Skipping actual SMS generation');
+      if (kDebugMode)
+        debugPrint('Development mode: Skipping actual SMS generation');
       return;
     }
 
@@ -93,6 +94,7 @@ class AuthService {
     String code, {
     DevicePayload? device,
     String? name,
+    String? email,
     String? gender,
     String? role,
     String? password,
@@ -108,6 +110,9 @@ class AuthService {
       // First-time sign-up bootstrap fields. Backend ignores them when an
       // account already exists for the phone.
       if (name != null && name.trim().isNotEmpty) body['name'] = name.trim();
+      if (email != null && email.trim().isNotEmpty) {
+        body['email'] = email.trim();
+      }
       if (gender != null && gender.isNotEmpty) body['gender'] = gender;
       if (role != null && role.isNotEmpty) body['role'] = role;
       if (password != null && password.isNotEmpty) {
@@ -165,11 +170,16 @@ class AuthService {
   /// Returns a short-lived registration token used by the final register call.
   Future<({String registrationToken, int expiresIn})> verifyDriverPhone(
     String phoneNumber,
-    String code,
-  ) async {
+    String code, {
+    String? email,
+  }) async {
     final response = await _api.post(
       ApiEndpoints.driverVerifyPhone,
-      data: {'phoneNumber': phoneNumber, 'code': code.trim()},
+      data: {
+        'phoneNumber': phoneNumber,
+        'code': code.trim(),
+        if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
+      },
     );
     final data = response['data'] ?? response;
     final token = data['registrationToken'] as String?;
@@ -186,15 +196,18 @@ class AuthService {
   /// registration token instead of a session access token.
   Future<String> uploadRegistrationFile(
     File file,
-    String registrationToken,
-  ) async {
+    String registrationToken, {
+    bool isPrivateDocument = false,
+  }) async {
     final fileName = file.path.split('/').last;
     final formData = FormData.fromMap({
       'file': await MultipartFile.fromFile(file.path, filename: fileName),
       'registrationToken': registrationToken,
     });
     final response = await _api.post(
-      ApiEndpoints.uploadsRegistration,
+      isPrivateDocument
+          ? ApiEndpoints.uploadsRegistrationDocuments
+          : ApiEndpoints.uploadsRegistration,
       data: formData,
     );
     final url = response['url'] ?? response['data']?['url'];
@@ -209,6 +222,7 @@ class AuthService {
   Future<VerifyOtpResult> registerDriver({
     required String registrationToken,
     required String name,
+    String? email,
     required String password,
     required String vehicleType,
     required String plateNumber,
@@ -217,6 +231,7 @@ class AuthService {
     required int seats,
     required String carImageUrl,
     required String insuranceImageUrl,
+    required String nationalIdImageUrl,
     String? gender,
     String? photoUrl,
     String? licenseImageUrl,
@@ -226,6 +241,7 @@ class AuthService {
     final body = <String, dynamic>{
       'registrationToken': registrationToken,
       'name': name,
+      if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
       'password': password,
       'vehicleType': vehicleType,
       'plateNumber': plateNumber,
@@ -234,6 +250,7 @@ class AuthService {
       'seats': seats,
       'carImageUrl': carImageUrl,
       'insuranceImageUrl': insuranceImageUrl,
+      'nationalIdImageUrl': nationalIdImageUrl,
     };
     if (gender != null && gender.isNotEmpty) body['gender'] = gender;
     if (photoUrl != null) body['photoUrl'] = photoUrl;
@@ -306,6 +323,9 @@ class AuthService {
     if (name != null) {
       data['name'] = name;
     }
+    if (email != null && email.trim().isNotEmpty) {
+      data['email'] = email.trim();
+    }
     if (gender != null) {
       data['gender'] = gender;
     }
@@ -322,7 +342,6 @@ class AuthService {
       // Empty clears it on the server.
       data['cliqAlias'] = cliqAlias.trim();
     }
-    // Note: email update is not supported in UpdateUserDto (read-only after registration)
 
     await _api.patch(ApiEndpoints.me, data: data);
 

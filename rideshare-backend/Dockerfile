@@ -51,7 +51,7 @@ RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint.sh && chmod +x /usr/local/
 # Create the uploads directory owned by the runtime user. This ownership is
 # inherited by the backend_uploads named volume on first initialization, so the
 # non-root nestjs process can write driver-registration / profile images, etc.
-RUN mkdir -p /app/uploads && chown -R nestjs:nodejs /app/uploads
+RUN mkdir -p /app/uploads /app/private-documents && chown -R nestjs:nodejs /app/uploads /app/private-documents
 
 # Set environment variables
 ENV NODE_ENV=production

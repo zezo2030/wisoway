@@ -2616,7 +2616,15 @@
   "tripInProgressDriverArrivesIn": "وصول السائق خلال",
   "tripLiveLocationTitle": "تتبع الرحلة",
   "tripLiveLocationBody": "تتم مشاركة موقعك مع ركاب الرحلة أثناء التوجه إليهم وخلال الرحلة.",
-  "tripInProgressTripDetails": "تفاصيل الرحلة",
+  "tripPresenceConsentTitle": "تأكيد حضورك بالموقع",
+  "tripPresenceConsentBody": "أثناء الرحلة نقارن موقعك بموقع السائق لنتأكد أنك في السيارة، حتى لو نسيت تأكيد حضورك. تتوقف المقارنة تلقائياً بعد التأكد أو عند انتهاء الرحلة، ولا نحفظ مسارك.",
+  "tripPresenceConsentAccept": "موافق",
+  "tripPresenceConsentDecline": "ليس الآن",
+  "tripPresenceTrackingTitle": "تأكيد الحضور",
+  "tripPresenceTrackingBody": "نقارن موقعك بموقع السائق أثناء الرحلة.",
+  "tripInProgressDetails": "التفاصيل",
+  "tripInProgressMessage": "رسالة",
+  "tripInProgressYourDriverNow": "سائقك الآن",
   "tripInProgressShareTracking": "مشاركة التتبع",
   "tripInProgressEmergency": "الطوارئ",
   "tripInProgressLayers": "طبقات",
@@ -3004,6 +3012,9 @@
   "vehicleSeatsAutoHint": "يُحسب تلقائيًا حسب نوع المركبة",
   "vehicleSeatsPickTypeFirst": "اختر نوع المركبة أولًا",
   "driverLicenseUploadHint": "اضغط لرفع صورة الرخصة",
+  "nationalIdRequiredLabel": "الهوية الشخصية *",
+  "nationalIdUploadHint": "اضغط لرفع صورة الهوية الشخصية",
+  "nationalIdImageRequired": "صورة الهوية الشخصية مطلوبة",
   "vehicleRegistrationFormRequired": "الرخصة / الاستمارة *",
   "insuranceDocumentLabel": "التأمين *",
   "insuranceImageRequired": "وثيقة التأمين مطلوبة",
@@ -3014,6 +3025,7 @@
   "driverPendingStatusLabel": "حالة الطلب",
   "driverPendingBadge": "قيد المراجعة",
   "driverSubmittedDocs": "المستندات المرسلة",
+  "driverDocNationalId": "الهوية",
   "driverDocLicense": "الرخصة",
   "driverDocRegistration": "الرخصة / الاستمارة",
   "driverDocInsurance": "التأمين",
@@ -3081,18 +3093,23 @@
       }
     }
   },
-  "tripFeeOfSeatsLabel": "عمولة الرحلة ({percent}%، سعة الرحلة {seats} مقاعد)",
-  "@tripFeeOfSeatsLabel": {
+  "tripFeeOnBookingsLabel": "العمولة المتوقعة ({percent}% من أجرة الحجوزات)",
+  "@tripFeeOnBookingsLabel": {
     "placeholders": {
       "percent": {
         "type": "String"
-      },
-      "seats": {
-        "type": "int"
       }
     }
   },
-  "tripFeeChargedAtStartNotice": "تُخصم العمولة عند انتهاء الرحلة من أجرة الحجوزات المكتملة، وتُضاف إلى محفظة التطبيق.",
+  "tripFeeOnConfirmedLabel": "عمولة الرحلة ({percent}% من أجرة الركاب المؤكدين)",
+  "@tripFeeOnConfirmedLabel": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "tripFeeChargedAtStartNotice": "تُخصم العمولة بعد انتهاء الرحلة عن الركاب المؤكد حضورهم فقط، وتُضاف إلى محفظة التطبيق.",
   "contactPassengersTitle": "التواصل مع الركاب",
   "contactPassengersSubtitle": "اتصال أو دردشة حية",
   "confirmYourPresenceCta": "قم بتأكيد تواجدك في الوقت والمكان المحدد",
@@ -3486,6 +3503,8 @@
   "rideChimeArrivedBody": "أبلغنا الراكب بوصولك.",
   "rideChimeStartedTitle": "بدأت الرحلة",
   "rideChimeStartedBody": "رحلة موفقة!",
+  "rideChimeCompletedTitle": "انتهت الرحلة",
+  "rideChimeCompletedBody": "شكراً لك، وصلت إلى الوجهة.",
   "forgotStartTitle": "هل نسيت بدء الرحلة؟",
   "forgotStartBody": "تحرّكت من مكان الراكب ولم تبدأ الرحلة. اضغط «بدء الرحلة» الآن.",
   "forgotStartAction": "بدء الرحلة",

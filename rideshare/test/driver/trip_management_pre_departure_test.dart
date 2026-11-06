@@ -73,9 +73,7 @@ void main() {
         const TripFareBreakdownCard(
           seatPrice: 4.0,
           bookedSeats: 4,
-          feeAmount: 1.6,
           feePercent: 10,
-          feeSeats: 4,
           currency: 'JOD',
         ),
       ),
@@ -87,12 +85,31 @@ void main() {
     expect(find.textContaining('10'), findsWidgets);
   });
 
+  testWidgets('one booking on a four-seat trip shows the fee for one seat', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      wrap(
+        const TripFareBreakdownCard(
+          seatPrice: 250,
+          bookedSeats: 1,
+          feePercent: 10,
+          currency: 'SAR',
+        ),
+      ),
+    );
+
+    expect(find.textContaining('25.00'), findsOneWidget);
+    expect(find.textContaining('100.00'), findsNothing);
+    expect(find.textContaining('مقاعد'), findsNothing);
+  });
+
   testWidgets('the fee notice says at trip end, not at trip start', (
     tester,
   ) async {
     await tester.pumpWidget(wrap(const TripFeeNotice()));
 
-    expect(find.textContaining('عند انتهاء الرحلة'), findsOneWidget);
+    expect(find.textContaining('بعد انتهاء الرحلة'), findsOneWidget);
     expect(find.textContaining('عند انطلاق الرحلة'), findsNothing);
   });
 }

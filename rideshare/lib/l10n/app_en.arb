@@ -2564,7 +2564,15 @@
   "tripInProgressDriverArrivesIn": "Driver arrives in",
   "tripLiveLocationTitle": "Trip tracking",
   "tripLiveLocationBody": "Your location is shared with this trip's passengers during pickup and the ride.",
-  "tripInProgressTripDetails": "Trip details",
+  "tripPresenceConsentTitle": "Confirm you are on board by location",
+  "tripPresenceConsentBody": "During the trip we compare your location with the driver's to confirm you are in the car, even if you forget to confirm. This stops by itself once confirmed or when the trip ends, and we do not store your route.",
+  "tripPresenceConsentAccept": "Allow",
+  "tripPresenceConsentDecline": "Not now",
+  "tripPresenceTrackingTitle": "Confirming you are on board",
+  "tripPresenceTrackingBody": "We compare your location with the driver's during the trip.",
+  "tripInProgressDetails": "Details",
+  "tripInProgressMessage": "Message",
+  "tripInProgressYourDriverNow": "Your driver now",
   "tripInProgressShareTracking": "Share tracking",
   "tripInProgressEmergency": "Emergency",
   "tripInProgressLayers": "Layers",
@@ -2907,6 +2915,9 @@
   "vehicleSeatsAutoHint": "Calculated automatically from the vehicle type",
   "vehicleSeatsPickTypeFirst": "Select the vehicle type first",
   "driverLicenseUploadHint": "Tap to upload the license photo",
+  "nationalIdRequiredLabel": "National ID *",
+  "nationalIdUploadHint": "Tap to upload your national ID photo",
+  "nationalIdImageRequired": "The national ID photo is required",
   "vehicleRegistrationFormRequired": "Registration form *",
   "insuranceDocumentLabel": "Insurance *",
   "insuranceImageRequired": "The insurance document is required",
@@ -2917,6 +2928,7 @@
   "driverPendingStatusLabel": "Application status",
   "driverPendingBadge": "Under review",
   "driverSubmittedDocs": "Submitted documents",
+  "driverDocNationalId": "National ID",
   "driverDocLicense": "License",
   "driverDocRegistration": "Registration form",
   "driverDocInsurance": "Insurance",
@@ -2953,8 +2965,23 @@
   "seatChipLabel": "Seat {number}",
   "passengerFareLabel": "Passenger fare",
   "passengersTotalLabel": "Total from passengers ({count})",
-  "tripFeeOfSeatsLabel": "Trip commission ({percent}%, capacity {seats} seats)",
-  "tripFeeChargedAtStartNotice": "Commission is charged on completed booking fares when the trip ends and credited to the platform wallet.",
+  "tripFeeOnBookingsLabel": "Expected commission ({percent}% of booked fares)",
+  "@tripFeeOnBookingsLabel": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "tripFeeOnConfirmedLabel": "Trip commission ({percent}% of confirmed fares)",
+  "@tripFeeOnConfirmedLabel": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "tripFeeChargedAtStartNotice": "Commission is charged after the trip, only for passengers confirmed on board, and credited to the platform wallet.",
   "contactPassengersTitle": "Contact passengers",
   "contactPassengersSubtitle": "Call or live chat",
   "confirmYourPresenceCta": "Please be present at the specified time and place",
@@ -3348,6 +3375,8 @@
   "rideChimeArrivedBody": "We let the passenger know you are here.",
   "rideChimeStartedTitle": "Ride started",
   "rideChimeStartedBody": "Have a good ride!",
+  "rideChimeCompletedTitle": "Trip ended",
+  "rideChimeCompletedBody": "Thanks, you have reached the destination.",
   "forgotStartTitle": "Did you forget to start the ride?",
   "forgotStartBody": "You left the pickup without starting the ride. Tap “Start ride” now.",
   "forgotStartAction": "Start ride",

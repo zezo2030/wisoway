@@ -48,6 +48,25 @@ void main() {
       }
     });
 
+    testWidgets('asks for the national ID above the driving license', (
+      tester,
+    ) async {
+      await _pump(tester);
+
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(DriverCompleteProfileScreen)),
+      );
+      final nationalId = find.text(l10n.nationalIdRequiredLabel);
+      final license = find.text(l10n.driverLicenseRequired);
+
+      expect(nationalId, findsOneWidget);
+      expect(license, findsOneWidget);
+      expect(
+        tester.getTopLeft(nationalId).dy,
+        lessThan(tester.getTopLeft(license).dy),
+      );
+    });
+
     testWidgets('moves the stepper captions onto the form sheet', (
       tester,
     ) async {
