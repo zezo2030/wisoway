@@ -171,7 +171,22 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
                     _buildPendingChargesShortcut(context),
                     const SizedBox(height: 16),
                     _buildEarningsCard(),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: TextButton.icon(
+                        onPressed: () => Navigator.pushNamed(
+                          context,
+                          RouteNames.paymentHistory,
+                        ),
+                        icon: const Icon(
+                          IconsaxPlusLinear.receipt_item,
+                          size: 20,
+                        ),
+                        label: Text(context.l10n.paymentHistory),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [

@@ -3457,7 +3457,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paymentStatusPending => 'Pending';
 
   @override
-  String get paymentStatusApproved => 'Approved';
+  String get paymentStatusApproved => 'Successful';
 
   @override
   String get paymentStatusRejected => 'Rejected';
@@ -3704,43 +3704,67 @@ class AppLocalizationsEn extends AppLocalizations {
       'Top-up request sent. The balance will be added after the transfer is verified';
 
   @override
-  String get verifyingPaymentStatus => 'Verifying payment status...';
-
-  @override
-  String verifyingPaymentStatusProgress(int attempt, int total) {
-    return 'Verifying payment status... ($attempt/$total)';
-  }
-
-  @override
   String get walletToppedUpViaCliq => 'Wallet topped up successfully via CliQ';
 
   @override
   String get cliqPaymentFailed => 'CliQ payment failed';
 
   @override
-  String cliqPaymentFailedWithNote(String note) {
-    return 'Payment failed: $note';
+  String minimumTopupAmount(String amount, String currency) {
+    return 'Minimum top-up: $amount $currency';
   }
 
   @override
-  String connectionTemporarilyFailed(int attempt, int total) {
-    return 'Connection temporarily failed ($attempt/$total). Retrying...';
-  }
+  String get cliqApproveInBankTitle => 'Approve the request in your bank app';
 
   @override
-  String cannotVerifyPayment(String detail) {
-    return 'Could not verify payment: $detail';
-  }
+  String get cliqApproveInBankBody =>
+      'We sent a payment request to your CliQ account. Open your bank app and approve it to finish the top-up.';
 
   @override
-  String get verificationTimedOut =>
-      'Verification timed out. If the payment completed in CliQ, the balance will appear within minutes, or check your payment history.';
+  String get cliqAmountLabel => 'Amount';
+
+  @override
+  String get cliqAccountLabel => 'CliQ account';
+
+  @override
+  String get cliqTimeRemaining => 'Time remaining';
+
+  @override
+  String get cliqPaidCheckNow => 'I approved it, check now';
+
+  @override
+  String get cliqCheckNow => 'Check now';
+
+  @override
+  String get cliqKeepsFollowing =>
+      'You can go to your bank app and come back. We keep following the request.';
+
+  @override
+  String get cliqNotConfirmedYet =>
+      'No confirmation yet. We keep following the request.';
+
+  @override
+  String get cliqConnectionRetrying => 'Connection failed. Trying again...';
+
+  @override
+  String get cliqNewBalance => 'Current balance';
+
+  @override
+  String get cliqBackToWallet => 'Back to wallet';
+
+  @override
+  String get cliqNotCredited => 'Nothing was added to your wallet.';
+
+  @override
+  String get cliqNotConfirmedTitle => 'No confirmation yet';
+
+  @override
+  String get cliqNotConfirmedBody =>
+      'If you approved the request in your bank app, the balance is added automatically and you will get a notification.';
 
   @override
   String get walletTopupTitle => 'Top Up Wallet';
-
-  @override
-  String get pleaseWaitDoNotClose => 'Please wait and do not close the screen';
 
   @override
   String get topupMethodManual => 'Manual Transfer';

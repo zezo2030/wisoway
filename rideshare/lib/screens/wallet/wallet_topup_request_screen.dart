@@ -2,18 +2,25 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../core/api/api_client.dart';
+import '../../core/services/error_localizations.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/text_styles.dart';
 import '../../core/services/payment_service.dart';
-import '../../models/payment_model.dart';
 import '../../l10n/l10n_extensions.dart';
+import 'cliq_topup_waiting_screen.dart';
 
 enum _TopupMethod { manual, cliqA2a }
 
 class WalletTopupRequestScreen extends StatefulWidget {
-  const WalletTopupRequestScreen({super.key, this.preferCliq = false});
+  const WalletTopupRequestScreen({
+    super.key,
+    this.preferCliq = false,
+    this.paymentService,
+  });
 
   final bool preferCliq;
+  final PaymentService? paymentService;
 
   @override
   State<WalletTopupRequestScreen> createState() =>
@@ -25,7 +32,8 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
   final _amountController = TextEditingController();
   final _walletRefController = TextEditingController();
   final _aliasValueController = TextEditingController();
-  final PaymentService _paymentService = PaymentService();
+  late final PaymentService _paymentService =
+      widget.paymentService ?? PaymentService();
 
   _TopupMethod _selectedMethod = _TopupMethod.manual;
   String _aliasType = 'MOBL';
@@ -34,14 +42,13 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
   /// requested in it so they land in the wallet the screen shows.
   String _currency = 'JOD';
   double _minimumTopup = 0.01;
+  bool _minimumKnown = false;
 
   /// CliQ is a Jordanian rail, so it only funds a dinar wallet.
   bool get _cliqAvailable => _currency == 'JOD';
 
   File? _proofImage;
   bool _isLoading = false;
-  bool _isPolling = false;
-  String? _pollingStatus;
 
   @override
   void initState() {
@@ -57,6 +64,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
       setState(() {
         _currency = account.currency;
         _minimumTopup = account.minimumTopup > 0 ? account.minimumTopup : 0.01;
+        _minimumKnown = true;
         if (!_cliqAvailable) _selectedMethod = _TopupMethod.manual;
       });
     } catch (_) {
@@ -84,10 +92,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
     if (!_formKey.currentState!.validate()) return;
     final amount = double.tryParse(_amountController.text.trim());
     if (amount == null || !amount.isFinite || amount < _minimumTopup) {
-      _showSnack(
-        '${Localizations.localeOf(context).languageCode == 'ar' ? 'الحد الأدنى للشحن' : 'Minimum top-up'}: $_minimumTopup $_currency',
-        isError: true,
-      );
+      _showSnack(_minimumTopupText, isError: true);
       return;
     }
 
@@ -123,102 +128,46 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        _showSnack(context.l10n.errorWithDetail(e.toString()), isError: true);
+        _showSnack(
+          ErrorLocalizations.resolveFailure(context, ApiClient.mapError(e)),
+          isError: true,
+        );
       }
     }
   }
 
   Future<void> _submitCliq(double amount) async {
+    final account = _aliasValueController.text.trim();
     final payment = await _paymentService.createWalletTopup(
       amount: amount,
       currency: 'JOD',
       method: 'cliq_a2a',
       aliasType: _aliasType,
-      aliasValue: _aliasValueController.text.trim(),
+      aliasValue: account,
     );
 
     if (!mounted) return;
-    setState(() {
-      _isLoading = false;
-      _isPolling = true;
-      _pollingStatus = context.l10n.verifyingPaymentStatus;
-    });
+    setState(() => _isLoading = false);
 
-    await _pollStatus(payment.id);
+    final outcome = await Navigator.push<CliqTopupOutcome>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CliqTopupWaitingScreen(
+          payment: payment,
+          account: account,
+          paymentService: _paymentService,
+        ),
+      ),
+    );
+
+    if (!mounted || outcome == CliqTopupOutcome.retry) return;
+    Navigator.pop(context, outcome == CliqTopupOutcome.credited);
   }
 
-  Future<void> _pollStatus(String paymentId) async {
-    const maxAttempts = 24;
-    const interval = Duration(seconds: 5);
-    var consecutiveErrors = 0;
-
-    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
-      if (attempt > 1) {
-        await Future.delayed(interval);
-      }
-      if (!mounted) return;
-
-      setState(() {
-        _pollingStatus = context.l10n.verifyingPaymentStatusProgress(
-          attempt,
-          maxAttempts,
-        );
-      });
-
-      try {
-        final updated = await _paymentService.refreshCliqPaymentStatus(
-          paymentId,
-        );
-        consecutiveErrors = 0;
-        if (!mounted) return;
-
-        if (updated.status == PaymentStatus.approved) {
-          setState(() => _isPolling = false);
-          _showSnack(context.l10n.walletToppedUpViaCliq, isSuccess: true);
-          Navigator.pop(context, true);
-          return;
-        } else if (updated.status == PaymentStatus.rejected) {
-          setState(() {
-            _isPolling = false;
-            _pollingStatus = null;
-          });
-          final note = (updated.adminNote ?? '').trim();
-          _showSnack(
-            note.isEmpty
-                ? context.l10n.cliqPaymentFailed
-                : context.l10n.cliqPaymentFailedWithNote(note),
-            isError: true,
-          );
-          Navigator.pop(context, false);
-          return;
-        }
-      } catch (e) {
-        consecutiveErrors++;
-        if (!mounted) return;
-        setState(() {
-          _pollingStatus = context.l10n.connectionTemporarilyFailed(
-            attempt,
-            maxAttempts,
-          );
-        });
-        if (consecutiveErrors >= 5) {
-          setState(() => _isPolling = false);
-          _showSnack(
-            context.l10n.cannotVerifyPayment(e.toString()),
-            isError: true,
-          );
-          Navigator.pop(context, false);
-          return;
-        }
-      }
-    }
-
-    if (mounted) {
-      setState(() => _isPolling = false);
-      _showSnack(context.l10n.verificationTimedOut, isWarning: true);
-      Navigator.pop(context, false);
-    }
-  }
+  String get _minimumTopupText => context.l10n.minimumTopupAmount(
+    _minimumTopup.toStringAsFixed(2),
+    _currency,
+  );
 
   void _showSnack(
     String message, {
@@ -253,35 +202,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
           style: AppTextStyles.titleMedium.copyWith(fontSize: 20),
         ),
       ),
-      body: _isPolling ? _buildPollingView() : _buildForm(),
-    );
-  }
-
-  Widget _buildPollingView() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 24),
-            Text(
-              _pollingStatus ?? context.l10n.verifyingPaymentStatus,
-              style: AppTextStyles.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              context.l10n.pleaseWaitDoNotClose,
-              style: AppTextStyles.bodySmall.copyWith(
-                color: T.onSurfaceVariant(context),
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
+      body: _buildForm(),
     );
   }
 
@@ -410,6 +331,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       decoration: InputDecoration(
         labelText: context.l10n.amountWithCurrency(currency),
+        helperText: _minimumKnown ? _minimumTopupText : null,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         prefixIcon: const Icon(IconsaxPlusLinear.dollar_circle),
       ),
@@ -618,6 +540,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
                     ? context.l10n.submitTopupRequest
                     : context.l10n.payViaCliq,
                 style: AppTextStyles.titleSmall.copyWith(
+                  color: AppColors.white,
                   fontWeight: FontWeight.bold,
                 ),
               ),

@@ -6431,19 +6431,19 @@ abstract class AppLocalizations {
   /// No description provided for @paymentStatusPending.
   ///
   /// In ar, this message translates to:
-  /// **'قيد المراجعة'**
+  /// **'معلق'**
   String get paymentStatusPending;
 
   /// No description provided for @paymentStatusApproved.
   ///
   /// In ar, this message translates to:
-  /// **'مقبولة'**
+  /// **'ناجح'**
   String get paymentStatusApproved;
 
   /// No description provided for @paymentStatusRejected.
   ///
   /// In ar, this message translates to:
-  /// **'مرفوضة'**
+  /// **'مرفوض'**
   String get paymentStatusRejected;
 
   /// No description provided for @paymentStatusRefunded.
@@ -6878,18 +6878,6 @@ abstract class AppLocalizations {
   /// **'تم إرسال طلب الشحن. سيُضاف الرصيد بعد التحقق من التحويل'**
   String get topupRequestSent;
 
-  /// No description provided for @verifyingPaymentStatus.
-  ///
-  /// In ar, this message translates to:
-  /// **'جاري التحقق من حالة الدفع...'**
-  String get verifyingPaymentStatus;
-
-  /// No description provided for @verifyingPaymentStatusProgress.
-  ///
-  /// In ar, this message translates to:
-  /// **'جاري التحقق من حالة الدفع... ({attempt}/{total})'**
-  String verifyingPaymentStatusProgress(int attempt, int total);
-
   /// No description provided for @walletToppedUpViaCliq.
   ///
   /// In ar, this message translates to:
@@ -6902,41 +6890,107 @@ abstract class AppLocalizations {
   /// **'فشلت عملية الدفع عبر CliQ'**
   String get cliqPaymentFailed;
 
-  /// No description provided for @cliqPaymentFailedWithNote.
+  /// No description provided for @minimumTopupAmount.
   ///
   /// In ar, this message translates to:
-  /// **'فشلت عملية الدفع: {note}'**
-  String cliqPaymentFailedWithNote(String note);
+  /// **'الحد الأدنى للشحن: {amount} {currency}'**
+  String minimumTopupAmount(String amount, String currency);
 
-  /// No description provided for @connectionTemporarilyFailed.
+  /// No description provided for @cliqApproveInBankTitle.
   ///
   /// In ar, this message translates to:
-  /// **'تعذّر الاتصال مؤقتاً ({attempt}/{total}). إعادة المحاولة...'**
-  String connectionTemporarilyFailed(int attempt, int total);
+  /// **'وافق على الطلب في تطبيق البنك'**
+  String get cliqApproveInBankTitle;
 
-  /// No description provided for @cannotVerifyPayment.
+  /// No description provided for @cliqApproveInBankBody.
   ///
   /// In ar, this message translates to:
-  /// **'تعذّر التحقق من الدفع: {detail}'**
-  String cannotVerifyPayment(String detail);
+  /// **'أرسلنا طلب دفع إلى حساب CliQ الخاص بك. افتح تطبيق البنك ووافق عليه لإتمام الشحن.'**
+  String get cliqApproveInBankBody;
 
-  /// No description provided for @verificationTimedOut.
+  /// No description provided for @cliqAmountLabel.
   ///
   /// In ar, this message translates to:
-  /// **'انتهى وقت التحقق. إذا اكتمل الدفع عند CliQ سيظهر الرصيد خلال دقائق، أو تحقق من سجل المدفوعات.'**
-  String get verificationTimedOut;
+  /// **'المبلغ'**
+  String get cliqAmountLabel;
+
+  /// No description provided for @cliqAccountLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'حساب CliQ'**
+  String get cliqAccountLabel;
+
+  /// No description provided for @cliqTimeRemaining.
+  ///
+  /// In ar, this message translates to:
+  /// **'الوقت المتبقي'**
+  String get cliqTimeRemaining;
+
+  /// No description provided for @cliqPaidCheckNow.
+  ///
+  /// In ar, this message translates to:
+  /// **'تمت الموافقة، تحقق الآن'**
+  String get cliqPaidCheckNow;
+
+  /// No description provided for @cliqCheckNow.
+  ///
+  /// In ar, this message translates to:
+  /// **'تحقق الآن'**
+  String get cliqCheckNow;
+
+  /// No description provided for @cliqKeepsFollowing.
+  ///
+  /// In ar, this message translates to:
+  /// **'يمكنك الانتقال إلى تطبيق البنك والعودة، وسنتابع الطلب تلقائياً.'**
+  String get cliqKeepsFollowing;
+
+  /// No description provided for @cliqNotConfirmedYet.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم يصلنا التأكيد بعد. سنواصل المتابعة.'**
+  String get cliqNotConfirmedYet;
+
+  /// No description provided for @cliqConnectionRetrying.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذر الاتصال. نحاول مرة أخرى...'**
+  String get cliqConnectionRetrying;
+
+  /// No description provided for @cliqNewBalance.
+  ///
+  /// In ar, this message translates to:
+  /// **'رصيدك الحالي'**
+  String get cliqNewBalance;
+
+  /// No description provided for @cliqBackToWallet.
+  ///
+  /// In ar, this message translates to:
+  /// **'العودة إلى المحفظة'**
+  String get cliqBackToWallet;
+
+  /// No description provided for @cliqNotCredited.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم يُضَف أي مبلغ إلى محفظتك.'**
+  String get cliqNotCredited;
+
+  /// No description provided for @cliqNotConfirmedTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم يصلنا التأكيد بعد'**
+  String get cliqNotConfirmedTitle;
+
+  /// No description provided for @cliqNotConfirmedBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'إذا وافقت على الطلب في تطبيق البنك، سيُضاف الرصيد تلقائياً وسيصلك إشعار.'**
+  String get cliqNotConfirmedBody;
 
   /// No description provided for @walletTopupTitle.
   ///
   /// In ar, this message translates to:
   /// **'شحن المحفظة'**
   String get walletTopupTitle;
-
-  /// No description provided for @pleaseWaitDoNotClose.
-  ///
-  /// In ar, this message translates to:
-  /// **'يرجى الانتظار وعدم إغلاق الشاشة'**
-  String get pleaseWaitDoNotClose;
 
   /// No description provided for @topupMethodManual.
   ///

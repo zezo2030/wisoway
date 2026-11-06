@@ -3411,13 +3411,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get paymentTabAll => 'الكل';
 
   @override
-  String get paymentStatusPending => 'قيد المراجعة';
+  String get paymentStatusPending => 'معلق';
 
   @override
-  String get paymentStatusApproved => 'مقبولة';
+  String get paymentStatusApproved => 'ناجح';
 
   @override
-  String get paymentStatusRejected => 'مرفوضة';
+  String get paymentStatusRejected => 'مرفوض';
 
   @override
   String get paymentStatusRefunded => 'مستردة';
@@ -3655,43 +3655,66 @@ class AppLocalizationsAr extends AppLocalizations {
       'تم إرسال طلب الشحن. سيُضاف الرصيد بعد التحقق من التحويل';
 
   @override
-  String get verifyingPaymentStatus => 'جاري التحقق من حالة الدفع...';
-
-  @override
-  String verifyingPaymentStatusProgress(int attempt, int total) {
-    return 'جاري التحقق من حالة الدفع... ($attempt/$total)';
-  }
-
-  @override
   String get walletToppedUpViaCliq => 'تم شحن المحفظة بنجاح عبر CliQ';
 
   @override
   String get cliqPaymentFailed => 'فشلت عملية الدفع عبر CliQ';
 
   @override
-  String cliqPaymentFailedWithNote(String note) {
-    return 'فشلت عملية الدفع: $note';
+  String minimumTopupAmount(String amount, String currency) {
+    return 'الحد الأدنى للشحن: $amount $currency';
   }
 
   @override
-  String connectionTemporarilyFailed(int attempt, int total) {
-    return 'تعذّر الاتصال مؤقتاً ($attempt/$total). إعادة المحاولة...';
-  }
+  String get cliqApproveInBankTitle => 'وافق على الطلب في تطبيق البنك';
 
   @override
-  String cannotVerifyPayment(String detail) {
-    return 'تعذّر التحقق من الدفع: $detail';
-  }
+  String get cliqApproveInBankBody =>
+      'أرسلنا طلب دفع إلى حساب CliQ الخاص بك. افتح تطبيق البنك ووافق عليه لإتمام الشحن.';
 
   @override
-  String get verificationTimedOut =>
-      'انتهى وقت التحقق. إذا اكتمل الدفع عند CliQ سيظهر الرصيد خلال دقائق، أو تحقق من سجل المدفوعات.';
+  String get cliqAmountLabel => 'المبلغ';
+
+  @override
+  String get cliqAccountLabel => 'حساب CliQ';
+
+  @override
+  String get cliqTimeRemaining => 'الوقت المتبقي';
+
+  @override
+  String get cliqPaidCheckNow => 'تمت الموافقة، تحقق الآن';
+
+  @override
+  String get cliqCheckNow => 'تحقق الآن';
+
+  @override
+  String get cliqKeepsFollowing =>
+      'يمكنك الانتقال إلى تطبيق البنك والعودة، وسنتابع الطلب تلقائياً.';
+
+  @override
+  String get cliqNotConfirmedYet => 'لم يصلنا التأكيد بعد. سنواصل المتابعة.';
+
+  @override
+  String get cliqConnectionRetrying => 'تعذر الاتصال. نحاول مرة أخرى...';
+
+  @override
+  String get cliqNewBalance => 'رصيدك الحالي';
+
+  @override
+  String get cliqBackToWallet => 'العودة إلى المحفظة';
+
+  @override
+  String get cliqNotCredited => 'لم يُضَف أي مبلغ إلى محفظتك.';
+
+  @override
+  String get cliqNotConfirmedTitle => 'لم يصلنا التأكيد بعد';
+
+  @override
+  String get cliqNotConfirmedBody =>
+      'إذا وافقت على الطلب في تطبيق البنك، سيُضاف الرصيد تلقائياً وسيصلك إشعار.';
 
   @override
   String get walletTopupTitle => 'شحن المحفظة';
-
-  @override
-  String get pleaseWaitDoNotClose => 'يرجى الانتظار وعدم إغلاق الشاشة';
 
   @override
   String get topupMethodManual => 'تحويل يدوي';

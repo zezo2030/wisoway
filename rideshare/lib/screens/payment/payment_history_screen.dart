@@ -11,7 +11,9 @@ import '../../widgets/common/empty_state.dart';
 import '../../l10n/l10n_extensions.dart';
 
 class PaymentHistoryScreen extends StatefulWidget {
-  const PaymentHistoryScreen({super.key});
+  const PaymentHistoryScreen({super.key, this.paymentService});
+
+  final PaymentService? paymentService;
 
   @override
   State<PaymentHistoryScreen> createState() => _PaymentHistoryScreenState();
@@ -19,7 +21,10 @@ class PaymentHistoryScreen extends StatefulWidget {
 
 class _PaymentHistoryScreenState extends State<PaymentHistoryScreen>
     with SingleTickerProviderStateMixin {
-  final PaymentService _paymentService = PaymentService();
+  late final PaymentService _paymentService =
+      widget.paymentService ?? PaymentService();
+  late Stream<List<PaymentModel>> _payments = _paymentService
+      .getPaymentHistoryStream();
   late TabController _tabController;
   PaymentStatus? _selectedStatus;
 
@@ -101,7 +106,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen>
         ),
       ),
       body: StreamBuilder<List<PaymentModel>>(
-        stream: _paymentService.getPaymentHistoryStream(),
+        stream: _payments,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -145,7 +150,9 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen>
 
           return RefreshIndicator(
             onRefresh: () async {
-              setState(() {});
+              setState(() {
+                _payments = _paymentService.getPaymentHistoryStream();
+              });
             },
             child: ListView.builder(
               padding: const EdgeInsets.all(16),
@@ -221,6 +228,11 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen>
     }
 
     final dateFormat = DateFormat('yyyy-MM-dd HH:mm');
+    final purpose = switch (payment.paymentType) {
+      'wallet_topup' => context.l10n.walletTopupTitle,
+      'communication_fee' => context.l10n.communicationUnlockFee,
+      _ => null,
+    };
 
     return Semantics(
       label:
@@ -325,25 +337,26 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen>
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    context.l10n.purposeLabel,
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: T.onSurfaceVariant(context),
+              if (purpose != null) ...[
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      context.l10n.purposeLabel,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: T.onSurfaceVariant(context),
+                      ),
                     ),
-                  ),
-                  Text(
-                    context.l10n.communicationUnlockFee,
-                    style: AppTextStyles.labelLarge.copyWith(
-                      color: T.onSurface(context),
+                    Text(
+                      purpose,
+                      style: AppTextStyles.labelLarge.copyWith(
+                        color: T.onSurface(context),
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
 
               if (payment.isManualPayment && payment.walletNumber != null) ...[
                 const SizedBox(height: 12),

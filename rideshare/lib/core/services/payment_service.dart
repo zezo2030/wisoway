@@ -128,7 +128,11 @@ class PaymentService {
   /// تيار قائمة المدفوعات (استدعاء دوري).
   Stream<List<PaymentModel>> getPaymentHistoryStream() async* {
     while (true) {
-      yield await getMyPayments();
+      try {
+        yield await getMyPayments();
+      } catch (error, stackTrace) {
+        yield* Stream.error(error, stackTrace);
+      }
       await Future.delayed(const Duration(seconds: 10));
     }
   }
@@ -238,14 +242,18 @@ class PaymentService {
 
   // Get user payments
   Future<List<PaymentModel>> getMyPayments() async {
-    try {
-      final response = await _api.get(ApiEndpoints.myPayments);
-      final data = response['data'] as List? ?? [];
-      return data.map((json) => PaymentModel.fromJson(json)).toList();
-    } catch (e) {
-      debugPrint('❌ Error getting payments: $e');
-      return [];
-    }
+    return paymentsFromResponse(await _api.get(ApiEndpoints.myPayments));
+  }
+
+  /// The API wraps the paginated `{data, meta}` result in its own `data`.
+  @visibleForTesting
+  static List<PaymentModel> paymentsFromResponse(dynamic response) {
+    final page = response['data'] as Map;
+    return (page['data'] as List)
+        .map(
+          (json) => PaymentModel.fromJson(Map<String, dynamic>.from(json as Map)),
+        )
+        .toList();
   }
 
   // Initiate CliQ A2A communication fee

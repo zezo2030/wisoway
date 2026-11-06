@@ -2160,9 +2160,9 @@
   "additionalNotesHint": "أي معلومات إضافية...",
   "submitPaymentRequest": "إرسال طلب الدفع",
   "paymentTabAll": "الكل",
-  "paymentStatusPending": "قيد المراجعة",
-  "paymentStatusApproved": "مقبولة",
-  "paymentStatusRejected": "مرفوضة",
+  "paymentStatusPending": "معلق",
+  "paymentStatusApproved": "ناجح",
+  "paymentStatusRejected": "مرفوض",
   "paymentStatusRefunded": "مستردة",
   "errorLoadingData": "حدث خطأ في تحميل البيانات",
   "noPayments": "لا توجد مدفوعات",
@@ -2249,50 +2249,35 @@
   "uploadTransferProofRequired": "يرجى رفع صورة إثبات التحويل",
   "enterCliqAliasValue": "أدخل قيمة الـ CliQ alias",
   "topupRequestSent": "تم إرسال طلب الشحن. سيُضاف الرصيد بعد التحقق من التحويل",
-  "verifyingPaymentStatus": "جاري التحقق من حالة الدفع...",
-  "verifyingPaymentStatusProgress": "جاري التحقق من حالة الدفع... ({attempt}/{total})",
-  "@verifyingPaymentStatusProgress": {
-    "placeholders": {
-      "attempt": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
   "walletToppedUpViaCliq": "تم شحن المحفظة بنجاح عبر CliQ",
   "cliqPaymentFailed": "فشلت عملية الدفع عبر CliQ",
-  "cliqPaymentFailedWithNote": "فشلت عملية الدفع: {note}",
-  "@cliqPaymentFailedWithNote": {
+  "minimumTopupAmount": "الحد الأدنى للشحن: {amount} {currency}",
+  "@minimumTopupAmount": {
     "placeholders": {
-      "note": {
+      "amount": {
         "type": "String"
-      }
-    }
-  },
-  "connectionTemporarilyFailed": "تعذّر الاتصال مؤقتاً ({attempt}/{total}). إعادة المحاولة...",
-  "@connectionTemporarilyFailed": {
-    "placeholders": {
-      "attempt": {
-        "type": "int"
       },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
-  "cannotVerifyPayment": "تعذّر التحقق من الدفع: {detail}",
-  "@cannotVerifyPayment": {
-    "placeholders": {
-      "detail": {
+      "currency": {
         "type": "String"
       }
     }
   },
-  "verificationTimedOut": "انتهى وقت التحقق. إذا اكتمل الدفع عند CliQ سيظهر الرصيد خلال دقائق، أو تحقق من سجل المدفوعات.",
+  "cliqApproveInBankTitle": "وافق على الطلب في تطبيق البنك",
+  "cliqApproveInBankBody": "أرسلنا طلب دفع إلى حساب CliQ الخاص بك. افتح تطبيق البنك ووافق عليه لإتمام الشحن.",
+  "cliqAmountLabel": "المبلغ",
+  "cliqAccountLabel": "حساب CliQ",
+  "cliqTimeRemaining": "الوقت المتبقي",
+  "cliqPaidCheckNow": "تمت الموافقة، تحقق الآن",
+  "cliqCheckNow": "تحقق الآن",
+  "cliqKeepsFollowing": "يمكنك الانتقال إلى تطبيق البنك والعودة، وسنتابع الطلب تلقائياً.",
+  "cliqNotConfirmedYet": "لم يصلنا التأكيد بعد. سنواصل المتابعة.",
+  "cliqConnectionRetrying": "تعذر الاتصال. نحاول مرة أخرى...",
+  "cliqNewBalance": "رصيدك الحالي",
+  "cliqBackToWallet": "العودة إلى المحفظة",
+  "cliqNotCredited": "لم يُضَف أي مبلغ إلى محفظتك.",
+  "cliqNotConfirmedTitle": "لم يصلنا التأكيد بعد",
+  "cliqNotConfirmedBody": "إذا وافقت على الطلب في تطبيق البنك، سيُضاف الرصيد تلقائياً وسيصلك إشعار.",
   "walletTopupTitle": "شحن المحفظة",
-  "pleaseWaitDoNotClose": "يرجى الانتظار وعدم إغلاق الشاشة",
   "topupMethodManual": "تحويل يدوي",
   "topupManualDescription": "حوّل المبلغ إلى حساب المنصة ثم أدخل المبلغ وارفع صورة واضحة للتحويل. لا يُضاف رصيد تلقائياً قبل مراجعة الطلب.",
   "topupCliqDescription": "سيتم الدفع مباشرة عبر نظام CliQ. أدخل المبلغ وبيانات حسابك في CliQ وسيُضاف الرصيد تلقائياً عند تأكيد الدفع.",
@@ -3156,7 +3141,9 @@
   "profileRatingCount": "({count} تقييم)",
   "@profileRatingCount": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "profileNoRatingsYet": "لا توجد تقييمات بعد",
@@ -3312,7 +3299,9 @@
   "notAtPickupBody": "أنت على بُعد {distance} من نقطة الانطلاق. يمكنك الضغط على «وصلت إلى الراكب» عندما تكون على بُعد 500 متر أو أقل.",
   "@notAtPickupBody": {
     "placeholders": {
-      "distance": { "type": "String" }
+      "distance": {
+        "type": "String"
+      }
     }
   },
   "passengerCancelRideAction": "إلغاء",
@@ -3412,8 +3401,12 @@
   "boardingConfirmedCount": "أكّد {boarded} من {total}",
   "@boardingConfirmedCount": {
     "placeholders": {
-      "boarded": { "type": "int" },
-      "total": { "type": "int" }
+      "boarded": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "boardingCardTitle": "ركوب الركاب",
