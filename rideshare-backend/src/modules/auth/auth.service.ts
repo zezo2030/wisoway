@@ -13,7 +13,7 @@ import * as bcrypt from 'bcrypt';
 import { randomInt, randomUUID } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, MoreThan, Repository } from 'typeorm';
-import { UsersService } from '../users/users.service';
+import { hasPlaceholderName, UsersService } from '../users/users.service';
 import { UserEntity } from '../../database/entities/user.entity';
 import { VehicleEntity } from '../../database/entities/vehicle.entity';
 import {
@@ -177,7 +177,7 @@ export class AuthService {
   }
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto): Promise<AuthResponse> {
-    const { phoneNumber, code, device, name, gender, role, password } =
+    const { phoneNumber, code, device, name, email, gender, role, password } =
       verifyOtpDto;
 
     await this.verifyPhoneOtp(phoneNumber, code);
@@ -216,12 +216,21 @@ export class AuthService {
           'Password is required when creating a new account.',
         );
       }
+      if (!email) {
+        throw new BadRequestException({
+          statusCode: 400,
+          code: 'EMAIL_REQUIRED',
+          message: 'Email is required when creating a new account.',
+        });
+      }
+      await this.usersService.assertEmailAvailable(email);
 
       const resolvedRole =
         role === 'driver' ? PgUserRole.DRIVER : PgUserRole.PASSENGER;
       user = await this.usersService.create({
         phoneNumber,
         name: name && name.trim().length > 0 ? name.trim() : phoneNumber,
+        email,
         gender: gender ?? null,
         passwordHash: password,
         role: resolvedRole,
@@ -278,7 +287,7 @@ export class AuthService {
   async driverVerifyPhone(
     dto: DriverVerifyPhoneDto,
   ): Promise<{ registrationToken: string; expiresIn: number }> {
-    const { phoneNumber, code } = dto;
+    const { phoneNumber, code, email } = dto;
 
     await this.verifyPhoneOtp(phoneNumber, code);
 
@@ -288,6 +297,7 @@ export class AuthService {
         'Phone number is already registered. Please sign in instead.',
       );
     }
+    if (email) await this.usersService.assertEmailAvailable(email);
 
     return {
       registrationToken: this.signRegistrationToken(phoneNumber),
@@ -308,6 +318,7 @@ export class AuthService {
         'Phone number is already registered. Please sign in instead.',
       );
     }
+    await this.usersService.assertEmailAvailable(dto.email);
 
     // Resolve the seat layout from the chosen vehicle type so the seat count is
     // always consistent with the catalog (mirrors VehiclesService.create).
@@ -330,6 +341,7 @@ export class AuthService {
             dto.name && dto.name.trim().length > 0
               ? dto.name.trim()
               : phoneNumber,
+          email: dto.email,
           gender: dto.gender ?? null,
           photoUrl: dto.photoUrl ?? null,
           passwordHash,
@@ -473,7 +485,7 @@ export class AuthService {
       user.isDriverApproved = false;
       // A driver's number is never hidden from their passengers.
       user.hidePhoneNumber = false;
-      if (dto.name) user.name = dto.name;
+      if (dto.name && hasPlaceholderName(user)) user.name = dto.name;
       if (dto.gender) user.gender = dto.gender;
       if (dto.photoUrl) user.photoUrl = dto.photoUrl;
       const savedUser = await em.getRepository(UserEntity).save(user);

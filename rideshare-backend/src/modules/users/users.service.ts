@@ -21,6 +21,11 @@ export interface UserStats {
   memberSince: Date;
 }
 
+/** Sign-up falls back to the phone number when it gets no name. */
+export function hasPlaceholderName(user: UserEntity): boolean {
+  return user.name === user.phoneNumber;
+}
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -36,6 +41,16 @@ export class UsersService {
     }
     const user = this.userRepo.create(userData);
     return this.userRepo.save(user);
+  }
+
+  async assertEmailAvailable(email: string): Promise<void> {
+    if (await this.findByEmail(email)) {
+      throw new ConflictException({
+        statusCode: 409,
+        code: 'EMAIL_TAKEN',
+        message: 'This email is already used by another account.',
+      });
+    }
   }
 
   async findByEmail(email: string): Promise<UserEntity | null> {
@@ -67,12 +82,37 @@ export class UsersService {
   async update(id: string, updateUserDto: UpdateUserDto): Promise<UserEntity> {
     const user = await this.findById(id);
 
-    const { city, cliqAlias, ...rest } = updateUserDto as UpdateUserDto & {
-      city?: string | null;
-      cliqAlias?: string | null;
-    };
+    const { city, cliqAlias, name, email, ...rest } =
+      updateUserDto as UpdateUserDto & {
+        city?: string | null;
+        cliqAlias?: string | null;
+      };
 
     this.userRepo.merge(user, rest as Partial<UserEntity>);
+
+    // Older apps send the name on every save, so only a change is refused.
+    if (name !== undefined && name.trim() !== user.name) {
+      if (!hasPlaceholderName(user)) {
+        throw new ForbiddenException({
+          statusCode: 403,
+          code: 'NAME_LOCKED',
+          message: 'The name cannot be changed after registration.',
+        });
+      }
+      user.name = name.trim();
+    }
+    if (email !== undefined && email !== user.email?.toLowerCase()) {
+      if (user.email) {
+        throw new ForbiddenException({
+          statusCode: 403,
+          code: 'EMAIL_LOCKED',
+          message: 'The email cannot be changed once it is set.',
+        });
+      }
+      await this.assertEmailAvailable(email);
+      user.email = email;
+    }
+
     // Passengers must always be able to call their driver.
     if (user.role === PgUserRole.DRIVER) user.hidePhoneNumber = false;
 

@@ -19,9 +19,10 @@ export class BecomeDriverDto extends OmitType(RegisterDriverDto, [
   'registrationToken',
   'password',
   'name',
+  'email',
   'device',
 ] as const) {
-  /** Optional: keeps the account's current name when omitted. */
+  /** Only replaces a phone-number placeholder; a real name is final. */
   @IsOptional()
   @IsString()
   @IsNotEmpty()

@@ -1,4 +1,8 @@
-import { ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -36,6 +40,7 @@ describe('AuthService — driver registration', () => {
 
   const baseDto = {
     name: 'Driver',
+    email: 'driver@example.com',
     password: 'Password1',
     vehicleType: 'sedan',
     plateNumber: 'ABC123',
@@ -47,7 +52,10 @@ describe('AuthService — driver registration', () => {
     insuranceImageUrl: 'https://cdn/ins.jpg',
   };
 
+  let assertEmailAvailable: jest.Mock;
+
   beforeEach(async () => {
+    assertEmailAvailable = jest.fn().mockResolvedValue(undefined);
     vehicleCreate = jest.fn((v: Partial<VehicleEntity>) => v);
     vehicleSave = jest.fn((v: Partial<VehicleEntity>) => Promise.resolve(v));
 
@@ -85,6 +93,7 @@ describe('AuthService — driver registration', () => {
             findByPhone: jest.fn().mockResolvedValue(null),
             findById: jest.fn(),
             updateRefreshToken: jest.fn().mockResolvedValue(undefined),
+            assertEmailAvailable,
           },
         },
         {
@@ -115,6 +124,40 @@ describe('AuthService — driver registration', () => {
     }).compile();
 
     service = module.get<AuthService>(AuthService);
+  });
+
+  it('stops at a taken email before creating anything', async () => {
+    assertEmailAvailable.mockRejectedValue(new ConflictException('taken'));
+
+    await expect(
+      service.registerDriver({
+        ...baseDto,
+        registrationToken: registrationToken(),
+      } as never),
+    ).rejects.toThrow(ConflictException);
+
+    expect(assertEmailAvailable).toHaveBeenCalledWith('driver@example.com');
+    expect(userRepo.manager.transaction).not.toHaveBeenCalled();
+  });
+
+  it('stops at sign-up without an email', async () => {
+    jest
+      .spyOn(service as never as { verifyPhoneOtp: jest.Mock }, 'verifyPhoneOtp')
+      .mockResolvedValue(undefined);
+    jest
+      .spyOn(
+        service as never as { findUserByPhoneWithPassword: jest.Mock },
+        'findUserByPhoneWithPassword',
+      )
+      .mockResolvedValue(null);
+
+    await expect(
+      service.verifyOtp({
+        phoneNumber: '+962790000000',
+        code: '123456',
+        password: 'Password1',
+      }),
+    ).rejects.toThrow(BadRequestException);
   });
 
   it('persists insuranceImageUrl on the vehicle', async () => {

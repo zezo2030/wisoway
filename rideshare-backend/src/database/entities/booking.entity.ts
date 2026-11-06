@@ -94,6 +94,27 @@ export class BookingEntity {
   passengerPresenceConfirmedAt: Date | null;
 
   /**
+   * Set when the passenger's position followed the moving car long enough to
+   * prove they rode. Counts for commission even without their confirmation.
+   */
+  @Column({ type: 'timestamptz', nullable: true })
+  locationVerifiedAt: Date | null;
+
+  // Running proof, reset when the passenger and the car separate. Holds the
+  // car's last matched position, never the passenger's.
+  @Column({ type: 'timestamptz', nullable: true })
+  locationMatchStartedAt: Date | null;
+
+  @Column({ type: 'double precision', nullable: true })
+  locationMatchLat: number | null;
+
+  @Column({ type: 'double precision', nullable: true })
+  locationMatchLng: number | null;
+
+  @Column({ type: 'double precision', default: 0 })
+  locationMatchMeters: number;
+
+  /**
    * The hour-before reminder reached this booking. Per booking, so a seat
    * booked after the trip's reminder went out still gets one.
    */

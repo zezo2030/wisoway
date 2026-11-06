@@ -14,6 +14,7 @@ import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import {
   BookingEntity,
   BookingStatus,
+  seatCountsForCommission,
   PayoutRequestEntity,
   TripEntity,
   UserEntity,
@@ -333,12 +334,11 @@ export class WalletService {
         // Driver confirmation alone never authorizes shared-trip commission.
         // Legacy bookings without seat rows use the passenger's booking confirmation.
         if (!b.seats?.length) {
-          return sum + (b.passengerPresenceConfirmedAt ? fareCents : 0);
+          const rode = b.passengerPresenceConfirmedAt || b.locationVerifiedAt;
+          return sum + (rode ? fareCents : 0);
         }
-        const confirmed = b.seats.filter(
-          (seat) =>
-            seat.passengerSelfConfirmedAt != null &&
-            seat.billableOverride !== false,
+        const confirmed = b.seats.filter((seat) =>
+          seatCountsForCommission(seat, b.locationVerifiedAt != null),
         ).length;
         const seatCount = Number(b.seatCount);
         if (!Number.isInteger(seatCount) || seatCount < b.seats.length) {

@@ -11,6 +11,7 @@ import { EntityManager, In, Repository } from 'typeorm';
 import {
   BookingEntity,
   BookingStatus,
+  seatCountsForCommission,
   BookingSeatEntity,
   PassengerDeclaredStatus,
   SeatAbsenceReason,
@@ -344,6 +345,7 @@ export class PresenceService {
   private async notifyConflicts(
     trip: TripEntity,
     seats: BookingSeatEntity[],
+    message?: string,
   ): Promise<void> {
     try {
       const admins = await this.tripRepo.manager
@@ -356,7 +358,9 @@ export class PresenceService {
             userId: admin.id,
             type: 'presence_conflict_admin',
             title: 'تعارض في تأكيد التواجد',
-            body: `السائق علّم ${seats.length} راكبًا كغائب رغم تأكيدهم التواجد في الرحلة إلى ${trip.toName}.`,
+            body:
+              message ??
+              `السائق علّم ${seats.length} راكبًا كغائب رغم تأكيدهم التواجد في الرحلة إلى ${trip.toName}.`,
             data: {
               tripId: trip.id,
               driverId: trip.driverId,
@@ -459,6 +463,24 @@ export class PresenceService {
       await this.bookingRepo.save(b);
     }
 
+    // Claiming "did not ride" after the location proved otherwise.
+    if (dto.status === PassengerDeclaredStatus.NOT_RIDING) {
+      const contradicted = targets.filter(
+        (s) => bookingOfSeat.get(s)!.locationVerifiedAt != null,
+      );
+      if (contradicted.length > 0) {
+        for (const seat of contradicted) {
+          seat.presenceDisputedAt = now;
+          await this.seatRepo.save(seat);
+        }
+        void this.notifyConflicts(
+          trip,
+          contradicted,
+          `موقع الراكب أثبت وجوده مع السائق رغم إعلانه عدم الركوب في ${contradicted.length} مقعد. العمولة ستُحتسب، ويرجى مراجعة الرحلة.`,
+        );
+      }
+    }
+
     // A trip waiting at departure starts with its first rider on board.
     if (dto.status === PassengerDeclaredStatus.IN_VEHICLE) {
       await this.tripStart
@@ -553,9 +575,12 @@ export class PresenceService {
     });
     const seats = bookings.flatMap((b) => b.seats ?? []);
 
-    // Passenger confirmation is still the record of who actually rode —
-    // it just no longer drives a charge or refund.
-    const billableSeats = seats.filter((seat) => seat.isBillable).length;
+    // The same rule the commission uses, so the summary and the charge agree.
+    const billableSeats = bookings.flatMap((b) =>
+      (b.seats ?? []).filter((seat) =>
+        seatCountsForCommission(seat, b.locationVerifiedAt != null),
+      ),
+    ).length;
 
     const now = new Date();
     trip.presenceSettledAt = now;

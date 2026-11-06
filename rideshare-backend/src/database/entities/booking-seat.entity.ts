@@ -146,3 +146,26 @@ export class BookingSeatEntity {
     );
   }
 }
+
+/**
+ * Location proof of the booking outweighs a "did not ride" from either side.
+ * It places the booker's phone in the car, so the driver can still mark a
+ * companion's seat absent.
+ */
+export function seatCountsForCommission(
+  seat: Pick<
+    BookingSeatEntity,
+    | 'isMainBooker'
+    | 'markedAbsentAt'
+    | 'passengerSelfConfirmedAt'
+    | 'billableOverride'
+  >,
+  bookingLocationVerified: boolean,
+): boolean {
+  if (bookingLocationVerified) {
+    return seat.isMainBooker || seat.markedAbsentAt == null;
+  }
+  return (
+    seat.passengerSelfConfirmedAt != null && seat.billableOverride !== false
+  );
+}

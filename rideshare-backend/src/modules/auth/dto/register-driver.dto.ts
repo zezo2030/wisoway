@@ -12,6 +12,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
+import { NormalizedEmail } from '../../../common/decorators/normalized-email.decorator';
 import { VerifyOtpDeviceDto } from './verify-otp.dto';
 
 /**
@@ -44,6 +45,11 @@ export class DriverVerifyPhoneDto {
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @Matches(/^\d{4,6}$/, { message: 'OTP code must be 4 to 6 digits' })
   code: string;
+
+  /** Lets a taken email fail here, not after the whole onboarding. */
+  @IsOptional()
+  @NormalizedEmail()
+  email?: string;
 }
 
 /**
@@ -64,6 +70,10 @@ export class RegisterDriverDto {
   @MaxLength(120)
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   name: string;
+
+  @IsNotEmpty({ message: 'Email is required' })
+  @NormalizedEmail()
+  email: string;
 
   @IsOptional()
   @IsString()

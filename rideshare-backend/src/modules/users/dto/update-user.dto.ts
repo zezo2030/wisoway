@@ -7,6 +7,7 @@ import {
   MinLength,
   MaxLength,
 } from 'class-validator';
+import { NormalizedEmail } from '../../../common/decorators/normalized-email.decorator';
 
 export class UpdateUserDto {
   @IsOptional()
@@ -14,6 +15,11 @@ export class UpdateUserDto {
   @MinLength(2)
   @MaxLength(100)
   name?: string;
+
+  /** Accounts from before email was required can add it once. */
+  @IsOptional()
+  @NormalizedEmail()
+  email?: string;
 
   @IsOptional()
   @IsString()

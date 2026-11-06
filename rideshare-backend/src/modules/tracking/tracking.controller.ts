@@ -8,9 +8,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { PassengerLocationDto } from './dto/passenger-location.dto';
 import { UpdateDriverLocationDto } from './dto/update-driver-location.dto';
+import { PassengerLocationService } from './passenger-location.service';
 import { TrackingGateway } from './tracking.gateway';
 import { TrackingService } from './tracking.service';
 
@@ -22,6 +25,7 @@ export class TrackingController {
   constructor(
     private readonly trackingService: TrackingService,
     private readonly trackingGateway: TrackingGateway,
+    private readonly passengerLocationService: PassengerLocationService,
   ) {}
 
   /**
@@ -44,6 +48,20 @@ export class TrackingController {
       ?.to(`trip:${dto.tripId}`)
       .emit('trip:tracking:update', saved);
     return saved;
+  }
+
+  /**
+   * The passenger's position during a shared trip, compared with the car's to
+   * prove they rode. The reply tells the app when to stop sending.
+   */
+  @Post('passenger-location')
+  @Throttle({ default: { ttl: 60000, limit: 12 } })
+  @ApiOperation({ summary: 'Passenger location check during a trip' })
+  async passengerLocation(
+    @CurrentUser('id') userId: string,
+    @Body() dto: PassengerLocationDto,
+  ) {
+    return this.passengerLocationService.record(userId, dto);
   }
 
   @Get(':tripId/latest')

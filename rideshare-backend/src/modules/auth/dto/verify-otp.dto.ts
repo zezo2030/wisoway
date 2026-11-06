@@ -10,6 +10,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
+import { NormalizedEmail } from '../../../common/decorators/normalized-email.decorator';
 import { UserDevicePlatform } from '../../../database/entities/user-device.entity';
 
 export class VerifyOtpDeviceDto {
@@ -85,6 +86,11 @@ export class VerifyOtpDto {
   @MaxLength(120)
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   name?: string;
+
+  /** Required by the service when this call creates the account. */
+  @IsOptional()
+  @NormalizedEmail()
+  email?: string;
 
   @IsOptional()
   @IsString()
