@@ -150,10 +150,6 @@
   "@darkMode": {
     "description": "خيار تبديل الوضع الداكن"
   },
-  "darkModeSubtitle": "تفعيل الوضع الداكن",
-  "@darkModeSubtitle": {
-    "description": "وصف خيار الوضع الداكن"
-  },
   "themeMode": "سمة التطبيق",
   "@themeMode": {
     "description": "خيار اختيار سمة التطبيق"

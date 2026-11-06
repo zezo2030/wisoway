@@ -2579,13 +2579,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: () {
-              Navigator.pushNamed(
-                context,
-                RouteNames.tripInProgress,
-                arguments: trip.id,
-              );
-            },
+            onPressed: () => setState(() => _showFullDetails = false),
             icon: const Icon(IconsaxPlusLinear.map),
             label: Text(context.l10n.tripInProgressTitle),
           ),

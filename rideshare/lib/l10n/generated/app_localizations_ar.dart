@@ -122,9 +122,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get darkMode => 'الوضع الليلي';
 
   @override
-  String get darkModeSubtitle => 'تفعيل الوضع الداكن';
-
-  @override
   String get themeMode => 'سمة التطبيق';
 
   @override

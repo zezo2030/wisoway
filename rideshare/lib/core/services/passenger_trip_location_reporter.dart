@@ -30,6 +30,12 @@ class PassengerTripLocationReporter {
   DateTime? _lastSentAt;
   bool _sending = false;
 
+  /// The trip screen is shared, so its driver opens it too. Compares against
+  /// this trip rather than the account role: a driver can ride as a passenger
+  /// on someone else's trip.
+  static bool isPassengerOf(String tripDriverId, String? userId) =>
+      userId != null && userId != tripDriverId;
+
   /// Whether this trip needs nothing more: running, finished or declined.
   bool isHandled(String tripId) =>
       _tripId == tripId || _settledTrips.contains(tripId);

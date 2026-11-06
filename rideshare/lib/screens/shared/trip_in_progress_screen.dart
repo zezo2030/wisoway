@@ -25,6 +25,7 @@ import '../../core/ui/error_surface.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/booking_model.dart';
 import '../../models/trip_model.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/trip_provider.dart';
 import '../../widgets/trip/share_tracking_sheet.dart';
 import '../../widgets/trip/trip_driver_card.dart';
@@ -236,7 +237,9 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
   /// car's so the ride counts for commission without a confirmation tap.
   Future<void> _reportPresenceByLocation(TripModel trip) async {
     final reporter = PassengerTripLocationReporter.instance;
+    final userId = context.read<AuthProvider>().userModel?.id;
     if (_askingToReportLocation ||
+        !PassengerTripLocationReporter.isPassengerOf(trip.driverId, userId) ||
         trip.tripType == 'instant' ||
         trip.tripStartedAt == null ||
         reporter.isHandled(trip.id)) {
@@ -326,6 +329,18 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
       if (!mounted) return;
       if (loaded == null) {
         setState(() => _loading = false);
+        return;
+      }
+      // This is the passenger's view. A driver reaches it from the trip-started
+      // notification or a trip's details, and belongs on their own live screen.
+      if (loaded.driverId == context.read<AuthProvider>().userModel?.id) {
+        unawaited(
+          Navigator.pushReplacementNamed(
+            context,
+            RouteNames.tripManagement,
+            arguments: loaded.id,
+          ),
+        );
         return;
       }
       setState(() {

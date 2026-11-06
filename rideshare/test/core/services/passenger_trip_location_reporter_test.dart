@@ -30,4 +30,13 @@ void main() {
     reporter.skip('trip-declined');
     expect(reporter.isHandled('trip-declined'), isTrue);
   });
+
+  test('only someone other than the trip driver is asked', () {
+    bool asked(String? userId) =>
+        PassengerTripLocationReporter.isPassengerOf('driver-1', userId);
+
+    expect(asked('driver-1'), isFalse);
+    expect(asked('passenger-1'), isTrue);
+    expect(asked(null), isFalse);
+  });
 }

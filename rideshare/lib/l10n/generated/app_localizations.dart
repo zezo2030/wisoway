@@ -320,12 +320,6 @@ abstract class AppLocalizations {
   /// **'الوضع الليلي'**
   String get darkMode;
 
-  /// وصف خيار الوضع الداكن
-  ///
-  /// In ar, this message translates to:
-  /// **'تفعيل الوضع الداكن'**
-  String get darkModeSubtitle;
-
   /// خيار اختيار سمة التطبيق
   ///
   /// In ar, this message translates to:

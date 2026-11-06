@@ -150,10 +150,6 @@
   "@darkMode": {
     "description": "Dark mode toggle option"
   },
-  "darkModeSubtitle": "Turn on the dark theme",
-  "@darkModeSubtitle": {
-    "description": "Dark mode option description"
-  },
   "themeMode": "App Theme",
   "@themeMode": {
     "description": "App theme selection option"

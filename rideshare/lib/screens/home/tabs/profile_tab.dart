@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/route_names.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/services/payment_service.dart';
-import '../../../core/services/theme_service.dart';
 import '../../../core/services/localization_service.dart';
 import '../../../core/theme/colors.dart';
 import '../../../models/user_model.dart';
@@ -192,7 +191,6 @@ class _ProfileTabState extends State<ProfileTab> {
 
   @override
   Widget build(BuildContext context) {
-    final themeService = context.watch<ThemeService>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -330,29 +328,6 @@ class _ProfileTabState extends State<ProfileTab> {
                               title: context.l10n.language,
                               subtitle: context.l10n.languageSubtitle,
                               onTap: _showLanguageBottomSheet,
-                            ),
-                            _divider(context),
-                            _buildMenuRow(
-                              context,
-                              icon: IconsaxPlusLinear.moon,
-                              title: context.l10n.darkMode,
-                              subtitle: context.l10n.darkModeSubtitle,
-                              trailing: Switch.adaptive(
-                                value: themeService.themeMode == ThemeMode.dark,
-                                activeTrackColor: T.primary(context),
-                                onChanged: (value) {
-                                  context.read<ThemeService>().setThemeMode(
-                                    value ? ThemeMode.dark : ThemeMode.light,
-                                  );
-                                },
-                              ),
-                              onTap: () {
-                                final dark =
-                                    themeService.themeMode == ThemeMode.dark;
-                                context.read<ThemeService>().setThemeMode(
-                                  dark ? ThemeMode.light : ThemeMode.dark,
-                                );
-                              },
                             ),
                           ],
                         ),
@@ -1030,7 +1005,6 @@ class _ProfileTabState extends State<ProfileTab> {
     required String title,
     required String subtitle,
     VoidCallback? onTap,
-    Widget? trailing,
   }) {
     return InkWell(
       onTap: onTap,
@@ -1075,12 +1049,7 @@ class _ProfileTabState extends State<ProfileTab> {
               ),
             ),
             const SizedBox(width: 8),
-            trailing ??
-                Icon(
-                  _chevronIcon,
-                  size: 22,
-                  color: T.onSurfaceVariant(context),
-                ),
+            Icon(_chevronIcon, size: 22, color: T.onSurfaceVariant(context)),
           ],
         ),
       ),
