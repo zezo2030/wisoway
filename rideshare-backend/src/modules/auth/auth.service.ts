@@ -487,7 +487,7 @@ export class AuthService {
       // A driver's number is never hidden from their passengers.
       user.hidePhoneNumber = false;
       if (dto.name && hasPlaceholderName(user)) user.name = dto.name;
-      if (dto.gender) user.gender = dto.gender;
+      if (dto.gender && !user.gender) user.gender = dto.gender;
       if (dto.photoUrl) user.photoUrl = dto.photoUrl;
       const savedUser = await em.getRepository(UserEntity).save(user);
 
@@ -1022,7 +1022,7 @@ export class AuthService {
       email: user.email ?? '',
       phoneNumber: user.phoneNumber ?? '',
       name: user.name,
-      gender: user.gender ?? 'male',
+      gender: user.gender,
       role: user.role,
       photoUrl: user.photoUrl,
       rating: Number(user.rating),

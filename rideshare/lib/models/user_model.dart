@@ -7,6 +7,10 @@ class UserModel {
   final String email;
   final String name;
   final String gender; // 'male' or 'female'
+
+  /// False for an older account that never chose, where [gender] is only the
+  /// fallback. Once true the server refuses any change.
+  final bool hasChosenGender;
   final String role; // 'passenger', 'driver', or 'admin'
   final bool isPhoneVerified;
   final bool isEmailVerified;
@@ -41,6 +45,7 @@ class UserModel {
     required this.email,
     required this.name,
     required this.gender,
+    this.hasChosenGender = true,
     required this.role,
     this.isPhoneVerified = false,
     this.isEmailVerified = false,
@@ -78,6 +83,7 @@ class UserModel {
       email: json['email']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
       gender: json['gender']?.toString() ?? AppConstants.genderMale,
+      hasChosenGender: (json['gender']?.toString() ?? '').isNotEmpty,
       role: json['role']?.toString() ?? AppConstants.rolePassenger,
       isPhoneVerified: json['isPhoneVerified'] == true,
       isEmailVerified: json['isEmailVerified'] == true,
@@ -112,7 +118,7 @@ class UserModel {
       'phoneNumber': phoneNumber,
       'email': email,
       'name': name,
-      'gender': gender,
+      'gender': hasChosenGender ? gender : null,
       'role': role,
       'isPhoneVerified': isPhoneVerified,
       'isEmailVerified': isEmailVerified,
@@ -169,6 +175,7 @@ class UserModel {
       email: email ?? this.email,
       name: name ?? this.name,
       gender: gender ?? this.gender,
+      hasChosenGender: gender != null || hasChosenGender,
       role: role ?? this.role,
       isPhoneVerified: isPhoneVerified ?? this.isPhoneVerified,
       isEmailVerified: isEmailVerified ?? this.isEmailVerified,

@@ -174,6 +174,7 @@ class ExceptionMapper {
         'EMAIL_REQUIRED': 'errorsEmailRequired',
         'EMAIL_LOCKED': 'errorsEmailLocked',
         'NAME_LOCKED': 'errorsNameLocked',
+        'GENDER_LOCKED': 'errorsGenderLocked',
       };
       final identityError = identityErrors[code];
       if (identityError != null) {

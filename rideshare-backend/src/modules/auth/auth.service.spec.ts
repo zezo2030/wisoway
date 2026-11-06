@@ -143,7 +143,10 @@ describe('AuthService — driver registration', () => {
 
   it('stops at sign-up without an email', async () => {
     jest
-      .spyOn(service as never as { verifyPhoneOtp: jest.Mock }, 'verifyPhoneOtp')
+      .spyOn(
+        service as never as { verifyPhoneOtp: jest.Mock },
+        'verifyPhoneOtp',
+      )
       .mockResolvedValue(undefined);
     jest
       .spyOn(
@@ -240,6 +243,42 @@ describe('AuthService — driver registration', () => {
           nationalIdImageUrl: 'https://cdn/id.jpg',
         }),
       );
+    });
+
+    it('keeps the gender already on the account', async () => {
+      userRepo.findOne.mockResolvedValue({
+        id: 'user-1',
+        name: 'Rider',
+        gender: 'female',
+        role: PgUserRole.PASSENGER,
+        isActive: true,
+      });
+      withOpenRides(0, 0);
+
+      const result = await service.becomeDriver('user-1', {
+        ...vehicleDto,
+        gender: 'male',
+      } as never);
+
+      expect(result.user.gender).toBe('female');
+    });
+
+    it('takes the gender when the account has none', async () => {
+      userRepo.findOne.mockResolvedValue({
+        id: 'user-1',
+        name: 'Rider',
+        gender: null,
+        role: PgUserRole.PASSENGER,
+        isActive: true,
+      });
+      withOpenRides(0, 0);
+
+      const result = await service.becomeDriver('user-1', {
+        ...vehicleDto,
+        gender: 'female',
+      } as never);
+
+      expect(result.user.gender).toBe('female');
     });
 
     it('refuses a non-passenger', async () => {

@@ -54,7 +54,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final user = context.read<AuthProvider>().userModel;
     if (user != null) {
       _nameController.text = user.name;
-      _selectedGender = user.gender;
+      _selectedGender = user.hasChosenGender ? user.gender : null;
       _currentPhotoUrl = user.photoUrl;
       _hidePhoneNumber = user.hidePhoneNumber;
       _cliqAliasController.text = user.cliqAlias ?? '';
@@ -399,10 +399,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   : AppStrings.emailInvalid;
             },
           ),
-        const SizedBox(height: 28),
-        const SectionTitle(title: AppStrings.gender, isRequired: true),
-        const SizedBox(height: 12),
-        _buildGenderCards(),
+        // Fixed once set: it decides seat placement, and the server refuses it.
+        if (user != null && user.hasChosenGender) ...[
+          const SizedBox(height: 20),
+          _buildLockedField(
+            label: AppStrings.gender,
+            value: user.isFemale ? AppStrings.female : AppStrings.male,
+            icon: user.isFemale
+                ? IconsaxPlusLinear.woman
+                : IconsaxPlusLinear.man,
+          ),
+        ] else ...[
+          const SizedBox(height: 28),
+          const SectionTitle(title: AppStrings.gender, isRequired: true),
+          const SizedBox(height: 12),
+          _buildGenderCards(),
+        ],
         // Passengers only: a passenger must always be able to call the driver.
         if (user != null && !user.isDriver) ...[
           const SizedBox(height: 28),

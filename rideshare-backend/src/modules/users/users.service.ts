@@ -82,7 +82,7 @@ export class UsersService {
   async update(id: string, updateUserDto: UpdateUserDto): Promise<UserEntity> {
     const user = await this.findById(id);
 
-    const { city, cliqAlias, name, email, ...rest } =
+    const { city, cliqAlias, name, email, gender, ...rest } =
       updateUserDto as UpdateUserDto & {
         city?: string | null;
         cliqAlias?: string | null;
@@ -111,6 +111,16 @@ export class UsersService {
       }
       await this.assertEmailAvailable(email);
       user.email = email;
+    }
+    if (gender !== undefined && gender !== user.gender) {
+      if (user.gender) {
+        throw new ForbiddenException({
+          statusCode: 403,
+          code: 'GENDER_LOCKED',
+          message: 'The gender cannot be changed once it is set.',
+        });
+      }
+      user.gender = gender;
     }
 
     // Passengers must always be able to call their driver.

@@ -23,6 +23,7 @@ class ErrorLocalizations {
     'errorsEmailRequired': 'Enter your email to finish creating your account.',
     'errorsEmailLocked': 'The email cannot be changed once it is set.',
     'errorsNameLocked': 'The name cannot be changed after registration.',
+    'errorsGenderLocked': 'The gender cannot be changed once it is set.',
     'errorsPhoneHidden':
         'This person keeps their number private. Reach them through the in-app chat.',
     'errorsRouteUnavailable':
@@ -62,6 +63,7 @@ class ErrorLocalizations {
     'errorsEmailRequired': 'أدخل بريدك الإلكتروني لإكمال إنشاء الحساب.',
     'errorsEmailLocked': 'لا يمكن تغيير البريد الإلكتروني بعد حفظه.',
     'errorsNameLocked': 'لا يمكن تغيير الاسم بعد التسجيل.',
+    'errorsGenderLocked': 'لا يمكن تغيير الجنس بعد حفظه.',
     'errorsPhoneHidden':
         'هذا المستخدم يُخفي رقم هاتفه. تواصل معه عبر المحادثة في التطبيق.',
     'errorsRouteUnavailable': 'تعذّر تحميل المسار. نعرض نقاط الانطلاق والوصول.',

@@ -2,9 +2,9 @@ import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { PgUserRole } from '../../database/entities/shared.enums';
 
-describe('UsersService.update — name and email are final', () => {
+describe('UsersService.update — name, email and gender are final', () => {
   const build = (
-    account: { name?: string; email?: string | null },
+    account: { name?: string; email?: string | null; gender?: string | null },
     emailOwner: unknown = null,
   ) => {
     const user = {
@@ -13,6 +13,7 @@ describe('UsersService.update — name and email are final', () => {
       phoneNumber: '+962790000000',
       name: 'Mohammad Khader',
       email: 'mohammad@example.com' as string | null,
+      gender: 'male' as string | null,
       ...account,
     };
     const userRepo = {
@@ -69,5 +70,26 @@ describe('UsersService.update — name and email are final', () => {
       service.update('u1', { email: 'taken@example.com' }),
     ).rejects.toThrow(ConflictException);
     expect(userRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('refuses a different gender once one is set', async () => {
+    const { service, userRepo, user } = build({});
+    await expect(service.update('u1', { gender: 'female' })).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(user.gender).toBe('male');
+    expect(userRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('accepts the same gender, which the app sends on every save', async () => {
+    const { service, user } = build({ gender: 'female' });
+    await service.update('u1', { gender: 'female' });
+    expect(user.gender).toBe('female');
+  });
+
+  it('lets an account with no gender choose one', async () => {
+    const { service, user } = build({ gender: null });
+    await service.update('u1', { gender: 'female' });
+    expect(user.gender).toBe('female');
   });
 });
