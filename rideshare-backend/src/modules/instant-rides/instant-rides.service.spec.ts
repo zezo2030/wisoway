@@ -11,6 +11,7 @@ describe('InstantRidesService', () => {
   let availabilityRepo: any;
   let tripRepo: any;
   let unpaidBooking: jest.Mock;
+  let dueSharedBookings: jest.Mock;
   let users: any;
   let vehicles: any;
   let locations: any;
@@ -39,6 +40,7 @@ describe('InstantRidesService', () => {
     };
     availabilityRepo = { update: jest.fn().mockResolvedValue({ affected: 1 }) };
     unpaidBooking = jest.fn().mockResolvedValue(null);
+    dueSharedBookings = jest.fn().mockResolvedValue([]);
     tripRepo = {
       manager: {
         getRepository: () => ({
@@ -46,6 +48,8 @@ describe('InstantRidesService', () => {
             const qb: any = {};
             for (const m of [
               'innerJoin',
+              'innerJoinAndSelect',
+              'leftJoinAndSelect',
               'where',
               'andWhere',
               'orderBy',
@@ -54,6 +58,7 @@ describe('InstantRidesService', () => {
               qb[m] = () => qb;
             }
             qb.getOne = () => unpaidBooking();
+            qb.getMany = () => dueSharedBookings();
             return qb;
           },
         }),
@@ -355,6 +360,56 @@ describe('InstantRidesService', () => {
       });
 
       await expect(service.getActiveRide('p1')).resolves.toBeNull();
+    });
+
+    describe('a shared trip the passenger is due on', () => {
+      beforeEach(() => {
+        tripRepo.findOne = jest.fn().mockResolvedValue(null);
+        requestRepo.findOne.mockResolvedValue(null);
+      });
+
+      it('takes them to it', async () => {
+        dueSharedBookings.mockResolvedValue([
+          { tripId: 't9', seats: [{ passengerDeclaredStatus: null }] },
+        ]);
+
+        await expect(service.getActiveRide('p1')).resolves.toEqual({
+          tripId: 't9',
+          role: 'passenger',
+          requestId: null,
+          stage: 'ride',
+        });
+      });
+
+      it('keeps them while one companion is still riding', async () => {
+        dueSharedBookings.mockResolvedValue([
+          {
+            tripId: 't9',
+            seats: [
+              { passengerDeclaredStatus: 'not_riding' },
+              { passengerDeclaredStatus: 'on_my_way' },
+            ],
+          },
+        ]);
+
+        await expect(service.getActiveRide('p1')).resolves.toMatchObject({
+          tripId: 't9',
+        });
+      });
+
+      it('lets them go once nobody on the booking is riding', async () => {
+        dueSharedBookings.mockResolvedValue([
+          {
+            tripId: 't9',
+            seats: [
+              { passengerDeclaredStatus: 'not_riding' },
+              { passengerDeclaredStatus: 'not_riding' },
+            ],
+          },
+        ]);
+
+        await expect(service.getActiveRide('p1')).resolves.toBeNull();
+      });
     });
 
     it('returns null while the passenger is still searching', async () => {

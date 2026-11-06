@@ -17,6 +17,7 @@ import '../../core/constants/route_names.dart';
 import '../../core/services/active_ride_navigator.dart';
 import '../../core/services/instant_ride_service.dart';
 import '../../core/services/passenger_trip_location_reporter.dart';
+import '../../core/services/presence_service.dart';
 import '../../core/services/route_service.dart';
 import '../../core/services/share_link_service.dart';
 import '../../core/services/trip_emergency_service.dart';
@@ -24,9 +25,11 @@ import '../../core/theme/colors.dart';
 import '../../core/ui/error_surface.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/booking_model.dart';
+import '../../models/presence_models.dart';
 import '../../models/trip_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/trip_provider.dart';
+import '../passenger/widgets/seat_presence_panel.dart';
 import '../../widgets/trip/share_tracking_sheet.dart';
 import '../../widgets/trip/trip_driver_card.dart';
 import '../../utils/live_route_geometry.dart';
@@ -103,6 +106,10 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
   final WebSocketService _socketService = WebSocketService();
   final ShareLinkService _shareLinkService = ShareLinkService();
   final TripEmergencyService _emergencyService = TripEmergencyService();
+  final PresenceService _presence = PresenceService();
+
+  /// Who on this passenger's booking is riding, on a shared trip.
+  PresencePrompt? _presencePrompt;
   final RouteService _routeService = RouteService();
   StreamSubscription<Map<String, dynamic>>? _trackingSubscription;
   Timer? _statusPoll;
@@ -363,6 +370,7 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
       _fitBounds();
       _loadRoadRoute(loaded);
       unawaited(_reportPresenceByLocation(loaded));
+      unawaited(_loadPresence(loaded));
       unawaited(_refreshApproachRoute());
       unawaited(_pollTracking());
       if (widget.showTrackingShare) {
@@ -375,6 +383,27 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
       setState(() => _loading = false);
       ErrorSurface.showFailure(context, ApiClient.mapError(e));
     }
+  }
+
+  Future<void> _loadPresence(TripModel trip) async {
+    if (trip.tripType == 'instant') return;
+    try {
+      final prompt = await _presence.getPromptForTrip(trip.id);
+      if (mounted) _applyPresence(prompt);
+    } catch (_) {
+      // The next time the screen opens asks again.
+    }
+  }
+
+  void _applyPresence(PresencePrompt? prompt) {
+    setState(() => _presencePrompt = prompt);
+    if (prompt == null || !prompt.nobodyRiding) return;
+
+    // Nobody on the booking rides, so the trip has no more claim on them.
+    _leaving = true;
+    _statusPoll?.cancel();
+    PassengerTripLocationReporter.instance.skip(widget.tripId);
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   Future<void> _loadRoadRoute(TripModel trip) async {
@@ -1069,13 +1098,17 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    TripDriverCard(
-                      trip: trip,
-                      onDetails: _openTripDetails,
-                      onChat: () => _openDriverChat(trip),
-                      onCall: _callDriver,
-                      callBusy: _callBusy,
-                    ),
+                    if (_presencePrompt?.needsAnswers == true) ...[
+                      _buildPresenceCard(context),
+                      const SizedBox(height: 8),
+                    ] else
+                      TripDriverCard(
+                        trip: trip,
+                        onDetails: _openTripDetails,
+                        onChat: () => _openDriverChat(trip),
+                        onCall: _callDriver,
+                        callBusy: _callBusy,
+                      ),
                     const SizedBox(height: 12),
                     _buildActionButtons(context),
                     const SizedBox(height: 8),
@@ -1084,6 +1117,26 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPresenceCard(BuildContext context) {
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.62,
+      ),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: T.background(context),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: SingleChildScrollView(
+        child: SeatPresencePanel(
+          prompt: _presencePrompt!,
+          gateway: _presence,
+          onChanged: _applyPresence,
         ),
       ),
     );
@@ -1112,7 +1165,9 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
     return Row(
       children: [
         // Until the ride starts the passenger may still cancel it.
-        if (widget.lockedUntilEnd && phase != _RidePhase.riding)
+        if (widget.lockedUntilEnd &&
+            phase != _RidePhase.riding &&
+            _trip?.tripType == 'instant')
           TextButton(
             key: const ValueKey('passenger-cancel-ride'),
             onPressed: _cancelling ? null : _cancelRide,

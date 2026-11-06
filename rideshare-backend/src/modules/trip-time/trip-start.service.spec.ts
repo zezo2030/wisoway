@@ -36,6 +36,8 @@ describe('TripStartService', () => {
       tripType: 'scheduled',
       status: TripStatus.PUBLISHED,
       departureTime: departure,
+      fromPoint: { coordinates: [35.9, 31.9] },
+      toPoint: { coordinates: [35.6, 31.1] },
       toName: 'تبوك',
       tripStartedAt: null,
       boardingPromptSentAt: null,

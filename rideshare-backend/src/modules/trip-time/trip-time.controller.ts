@@ -114,6 +114,18 @@ export class TripTimeController {
     return this.presenceService.getPresencePrompt(bookingId, userId);
   }
 
+  @Get('trips/:id/presence-prompt')
+  @ApiOperation({
+    summary:
+      "The same prompt, found from the trip the passenger's screen is on",
+  })
+  async tripPresencePrompt(
+    @Param('id') tripId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.presenceService.getPresencePromptForTrip(tripId, userId);
+  }
+
   @Post('bookings/:id/presence-declare')
   @ApiOperation({
     summary: 'Passenger declares whether they are in the vehicle',

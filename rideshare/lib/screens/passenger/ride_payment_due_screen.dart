@@ -14,7 +14,7 @@ import '../../core/ui/error_surface.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/ride_payment.dart';
 import '../../models/trip_model.dart';
-import '../../providers/trip_provider.dart';
+import '../../providers/trip_provider.dart';
 import '../../widgets/trip/metered_fare_card.dart';
 
 /// The passenger's end of a ride — instant or shared: the fare and how it is

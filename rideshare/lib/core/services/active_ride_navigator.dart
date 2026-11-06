@@ -15,13 +15,14 @@ import '../constants/route_names.dart';
 import 'instant_ride_service.dart';
 import 'notification_navigation_service.dart';
 
-/// Puts the user on their instant ride's trip screen and keeps them there.
+/// Puts the user on their ride's trip screen and keeps them there.
 ///
-/// Once a ride is matched, the driver and the passenger both see only the trip
-/// screen until it ends: every other route above the root is cleared, and the
+/// Once an instant ride is matched, the driver and the passenger both see only
+/// the trip screen until it ends, and so does a shared trip's passenger from
+/// its departure time: every other route above the root is cleared, and the
 /// trip screens block back navigation. Entry points — accepting an offer, a
-/// match landing on the passenger, the match push, app launch and resume — all
-/// come through here so the rule lives in one place.
+/// match landing on the passenger, the match and trip pushes, app launch and
+/// resume — all come through here so the rule lives in one place.
 class ActiveRideNavigator {
   ActiveRideNavigator._();
 

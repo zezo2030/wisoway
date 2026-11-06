@@ -1,5 +1,6 @@
 import { RidePaymentsService } from '../../ride-payments/ride-payments.service';
 import { Test, TestingModule } from '@nestjs/testing';
+import { getQueueToken } from '@nestjs/bull';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { TripEntity } from '../../../database/entities/trip.entity';
 import {
@@ -19,8 +20,10 @@ describe('TripAutoCompleteProcessor — fee reconciliation sweep', () => {
   let presenceService: { settleTripPresence: jest.Mock };
   /** Mutable booking store, so status flips are observable in call order. */
   let bookings: any[];
+  let queue: { add: jest.Mock };
 
   beforeEach(async () => {
+    queue = { add: jest.fn().mockResolvedValue(undefined) };
     bookings = [];
     trip = {
       id: 'trip-1',
@@ -55,6 +58,7 @@ describe('TripAutoCompleteProcessor — fee reconciliation sweep', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TripAutoCompleteProcessor,
+        { provide: getQueueToken('trip-auto-complete'), useValue: queue },
         {
           provide: RidePaymentsService,
           useValue: { openForTrip: jest.fn().mockResolvedValue(undefined) },
@@ -106,6 +110,49 @@ describe('TripAutoCompleteProcessor — fee reconciliation sweep', () => {
     expect(payments.openForTrip).toHaveBeenCalledWith('trip-1');
     expect(driverTripFee.chargeAtTripStart).not.toHaveBeenCalled();
   });
+  it('gives a car still driving to a distant destination more time', async () => {
+    trip.departureTime = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    trip.lastDriverLocationAt = new Date();
+    trip.remainingDistanceKm = 40;
+
+    await processor.handle({ data: { tripId: 'trip-1' } } as any);
+
+    expect(trip.status).toBe(TripStatus.IN_PROGRESS);
+    expect(queue.add).toHaveBeenCalledWith(
+      'enforce',
+      { tripId: 'trip-1' },
+      expect.objectContaining({ delay: 15 * 60 * 1000 }),
+    );
+  });
+
+  it('ends a trip whose car has gone quiet', async () => {
+    trip.lastDriverLocationAt = new Date(Date.now() - 30 * 60 * 1000);
+    trip.remainingDistanceKm = 40;
+
+    await processor.handle({ data: { tripId: 'trip-1' } } as any);
+
+    expect(trip.status).toBe(TripStatus.COMPLETED);
+  });
+
+  it('ends a trip that has reached the destination', async () => {
+    trip.lastDriverLocationAt = new Date();
+    trip.remainingDistanceKm = 1;
+
+    await processor.handle({ data: { tripId: 'trip-1' } } as any);
+
+    expect(trip.status).toBe(TripStatus.COMPLETED);
+  });
+
+  it('never waits past the fallback after departure', async () => {
+    trip.departureTime = new Date(Date.now() - 25 * 60 * 60 * 1000);
+    trip.lastDriverLocationAt = new Date();
+    trip.remainingDistanceKm = 40;
+
+    await processor.handle({ data: { tripId: 'trip-1' } } as any);
+
+    expect(trip.status).toBe(TripStatus.COMPLETED);
+  });
+
   it('does not open payments for a trip that is not in progress', async () => {
     trip.status = TripStatus.CANCELLED;
     await processor.handle({ data: { tripId: 'trip-1' } } as any);

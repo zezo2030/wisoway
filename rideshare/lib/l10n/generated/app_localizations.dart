@@ -1271,62 +1271,50 @@ abstract class AppLocalizations {
   /// No description provided for @presenceQuestionSubtitle.
   ///
   /// In ar, this message translates to:
-  /// **'يرجى تأكيد تواجدك لتوثيق الرحلة وبدئها بشكل صحيح'**
+  /// **'أكّد لكل راكب على حدة. لا يمكن تغيير الإجابة بعد تأكيدها.'**
   String get presenceQuestionSubtitle;
 
-  /// No description provided for @presenceInfoBody.
+  /// No description provided for @presenceSeatInVehicle.
   ///
   /// In ar, this message translates to:
-  /// **'يساعد تأكيد تواجدك داخل السيارة على توثيق الرحلة واحتسابها ضمن سجل رحلاتك وتقييم موثوقية حسابك.\nلن يتم خصم أي رسوم من محفظة السائق في حال عدم التأكيد.'**
-  String get presenceInfoBody;
+  /// **'داخل السيارة'**
+  String get presenceSeatInVehicle;
 
-  /// No description provided for @presenceInVehicleTitle.
+  /// No description provided for @presenceSeatArrived.
   ///
   /// In ar, this message translates to:
-  /// **'نعم، أنا داخل السيارة'**
-  String get presenceInVehicleTitle;
+  /// **'وصلت، داخل السيارة'**
+  String get presenceSeatArrived;
 
-  /// No description provided for @presenceInVehicleSubtitle.
+  /// No description provided for @presenceSeatOnMyWay.
   ///
   /// In ar, this message translates to:
-  /// **'تأكيد التواجد'**
-  String get presenceInVehicleSubtitle;
+  /// **'في الطريق'**
+  String get presenceSeatOnMyWay;
 
-  /// No description provided for @presenceOnMyWayTitle.
+  /// No description provided for @presenceSeatNotRiding.
   ///
   /// In ar, this message translates to:
-  /// **'أنا في طريقي لمقابلة السائق'**
-  String get presenceOnMyWayTitle;
+  /// **'لن يستقل الرحلة'**
+  String get presenceSeatNotRiding;
 
-  /// No description provided for @presenceOnMyWaySubtitle.
+  /// No description provided for @presenceNotRidingConfirmBody.
   ///
   /// In ar, this message translates to:
-  /// **'سأصل خلال دقائق'**
-  String get presenceOnMyWaySubtitle;
+  /// **'لا يمكن التراجع عن هذا الاختيار.'**
+  String get presenceNotRidingConfirmBody;
 
-  /// No description provided for @presenceNotRidingTitle.
+  /// No description provided for @presenceNotRidingConfirmAction.
   ///
   /// In ar, this message translates to:
-  /// **'لست داخل السيارة'**
-  String get presenceNotRidingTitle;
+  /// **'نعم، لن يستقلها'**
+  String get presenceNotRidingConfirmAction;
 
-  /// No description provided for @presenceNotRidingSubtitle.
+  /// No description provided for @presenceNotRidingConfirmTitle.
   ///
   /// In ar, this message translates to:
-  /// **'لن أستقل هذه الرحلة'**
-  String get presenceNotRidingSubtitle;
-
-  /// No description provided for @presencePrivacyLine.
-  ///
-  /// In ar, this message translates to:
-  /// **'بياناتك آمنة ويتم استخدامها فقط لتحسين تجربة الرحلة'**
-  String get presencePrivacyLine;
-
-  /// No description provided for @presenceRequestEndsAfter.
-  ///
-  /// In ar, this message translates to:
-  /// **'سينتهي طلب التأكيد تلقائيًا بعد'**
-  String get presenceRequestEndsAfter;
+  /// **'{name} لن يستقل هذه الرحلة؟'**
+  String presenceNotRidingConfirmTitle(String name);
 
   /// No description provided for @presenceConfirmedTitle.
   ///
@@ -1339,12 +1327,6 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'شكرًا لك، تم تسجيل اختيارك لهذه الرحلة.'**
   String get presenceConfirmedBody;
-
-  /// No description provided for @presenceEdit.
-  ///
-  /// In ar, this message translates to:
-  /// **'تعديل'**
-  String get presenceEdit;
 
   /// No description provided for @presenceWindowClosedTitle.
   ///
@@ -6991,6 +6973,12 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'تحويل يدوي'**
   String get topupMethodManual;
+
+  /// No description provided for @topupManualToPlatformCliq.
+  ///
+  /// In ar, this message translates to:
+  /// **'يمكنك التحويل يدوياً إلى حساب كليك للتطبيق (ALROYA26) ورفع صورة التحويل ليتم اعتماده من قبل إدارة التطبيق وشحن المبلغ في محفظتك.'**
+  String get topupManualToPlatformCliq;
 
   /// No description provided for @topupManualDescription.
   ///

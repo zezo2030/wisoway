@@ -13,13 +13,8 @@ import 'cliq_topup_waiting_screen.dart';
 enum _TopupMethod { manual, cliqA2a }
 
 class WalletTopupRequestScreen extends StatefulWidget {
-  const WalletTopupRequestScreen({
-    super.key,
-    this.preferCliq = false,
-    this.paymentService,
-  });
+  const WalletTopupRequestScreen({super.key, this.paymentService});
 
-  final bool preferCliq;
   final PaymentService? paymentService;
 
   @override
@@ -35,7 +30,7 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
   late final PaymentService _paymentService =
       widget.paymentService ?? PaymentService();
 
-  _TopupMethod _selectedMethod = _TopupMethod.manual;
+  _TopupMethod _selectedMethod = _TopupMethod.cliqA2a;
   String _aliasType = 'MOBL';
 
   /// The wallet's currency — the local one where the user is. Top-ups are
@@ -53,7 +48,6 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.preferCliq) _selectedMethod = _TopupMethod.cliqA2a;
     _loadCurrency();
   }
 
@@ -313,9 +307,11 @@ class _WalletTopupRequestScreenState extends State<WalletTopupRequestScreen> {
   }
 
   Widget _buildDescription() {
-    final text = _selectedMethod == _TopupMethod.manual
-        ? context.l10n.topupManualDescription
-        : context.l10n.topupCliqDescription;
+    final text = _selectedMethod == _TopupMethod.cliqA2a
+        ? context.l10n.topupCliqDescription
+        : _cliqAvailable
+        ? context.l10n.topupManualToPlatformCliq
+        : context.l10n.topupManualDescription;
     return Text(
       text,
       style: AppTextStyles.bodyMedium.copyWith(

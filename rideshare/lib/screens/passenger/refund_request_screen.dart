@@ -20,11 +20,7 @@ class RefundRequestScreen extends StatefulWidget {
   final String bookingId;
   final String? tripRef;
 
-  const RefundRequestScreen({
-    super.key,
-    required this.bookingId,
-    this.tripRef,
-  });
+  const RefundRequestScreen({super.key, required this.bookingId, this.tripRef});
 
   @override
   State<RefundRequestScreen> createState() => _RefundRequestScreenState();

@@ -27,6 +27,21 @@ export const PassengerDeclaredStatus = {
 export type PassengerDeclaredStatus =
   (typeof PassengerDeclaredStatus)[keyof typeof PassengerDeclaredStatus];
 
+/**
+ * The answers a seat can still move to. «In the car» and «not riding» are final;
+ * someone on the way can only go on to be in the car.
+ */
+export function canDeclareSeat(
+  current: PassengerDeclaredStatus | null,
+  next: PassengerDeclaredStatus,
+): boolean {
+  if (current == null) return true;
+  return (
+    current === PassengerDeclaredStatus.ON_MY_WAY &&
+    next === PassengerDeclaredStatus.IN_VEHICLE
+  );
+}
+
 /** Why the driver marked a seat absent. */
 export const SeatAbsenceReason = {
   NO_SHOW: 'no_show',
@@ -158,12 +173,18 @@ export function seatCountsForCommission(
     | 'isMainBooker'
     | 'markedAbsentAt'
     | 'passengerSelfConfirmedAt'
+    | 'passengerDeclaredStatus'
     | 'billableOverride'
   >,
   bookingLocationVerified: boolean,
 ): boolean {
   if (bookingLocationVerified) {
-    return seat.isMainBooker || seat.markedAbsentAt == null;
+    if (seat.isMainBooker) return true;
+    // The booker's phone says nothing about a companion who said they stayed.
+    return (
+      seat.markedAbsentAt == null &&
+      seat.passengerDeclaredStatus !== PassengerDeclaredStatus.NOT_RIDING
+    );
   }
   return (
     seat.passengerSelfConfirmedAt != null && seat.billableOverride !== false

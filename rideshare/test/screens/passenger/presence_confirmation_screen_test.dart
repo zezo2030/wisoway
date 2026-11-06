@@ -9,12 +9,15 @@ import 'package:rideshare/screens/passenger/presence_confirmation_screen.dart';
 class _FakePresenceGateway implements PresenceGateway {
   _FakePresenceGateway(this.prompt);
 
-  final PresencePrompt prompt;
+  PresencePrompt prompt;
   PassengerPresenceStatus? declaredStatus;
   List<String> declaredSeats = const [];
 
   @override
   Future<PresencePrompt> getPrompt(String bookingId) async => prompt;
+
+  @override
+  Future<PresencePrompt?> getPromptForTrip(String tripId) async => prompt;
 
   @override
   Future<void> declare(
@@ -24,36 +27,97 @@ class _FakePresenceGateway implements PresenceGateway {
   ) async {
     declaredStatus = status;
     declaredSeats = seatNumbers;
+    prompt = _withStatus(prompt, seatNumbers, status);
   }
 }
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('Arabic passenger can confirm every seat in the booking', (
-    tester,
-  ) async {
-    final gateway = _FakePresenceGateway(_openPrompt());
-    tester.view.physicalSize = const Size(887, 1280);
+  Future<_FakePresenceGateway> open(
+    WidgetTester tester, {
+    PresencePrompt? prompt,
+  }) async {
+    final gateway = _FakePresenceGateway(prompt ?? _openPrompt());
+    tester.view.physicalSize = const Size(887, 1600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-
     await tester.pumpWidget(_testApp(gateway));
     await tester.pump();
+    return gateway;
+  }
 
-    expect(find.text('تأكيد التواجد في السيارة'), findsOneWidget);
-    expect(find.text('هل أنت داخل السيارة؟'), findsOneWidget);
-    expect(find.text('نعم، أنا داخل السيارة'), findsOneWidget);
-    expect(find.text('أنا في طريقي لمقابلة السائق'), findsOneWidget);
-    expect(find.text('لست داخل السيارة'), findsOneWidget);
+  testWidgets('each passenger on the booking answers separately', (
+    tester,
+  ) async {
+    await open(tester);
 
-    await tester.tap(find.text('نعم، أنا داخل السيارة'));
+    expect(find.text('أحمد'), findsOneWidget);
+    expect(find.text('محمود'), findsOneWidget);
+    expect(find.text('داخل السيارة'), findsNWidgets(2));
+    expect(find.text('في الطريق'), findsNWidgets(2));
+    expect(find.text('لن يستقل الرحلة'), findsNWidgets(2));
+  });
+
+  testWidgets('confirming one passenger leaves the other unanswered', (
+    tester,
+  ) async {
+    final gateway = await open(tester);
+
+    await tester.tap(find.text('داخل السيارة').first);
+    await tester.pump();
     await tester.pump();
 
     expect(gateway.declaredStatus, PassengerPresenceStatus.inVehicle);
-    expect(gateway.declaredSeats, ['1A', '1B']);
+    expect(gateway.declaredSeats, ['1A']);
+    expect(find.text('في الطريق'), findsOneWidget);
+    expect(find.text('لن يستقل الرحلة'), findsOneWidget);
+  });
+
+  testWidgets('someone on the way can only say they arrived', (tester) async {
+    await open(
+      tester,
+      prompt: _withStatus(_openPrompt(), [
+        '1A',
+      ], PassengerPresenceStatus.onMyWay),
+    );
+
+    expect(find.text('وصلت، داخل السيارة'), findsOneWidget);
+    expect(find.text('لن يستقل الرحلة'), findsOneWidget);
+    expect(find.text('داخل السيارة'), findsOneWidget);
+  });
+
+  testWidgets('not riding asks first, because it cannot be undone', (
+    tester,
+  ) async {
+    final gateway = await open(tester);
+
+    await tester.tap(find.text('لن يستقل الرحلة').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('لا يمكن التراجع عن هذا الاختيار.'), findsOneWidget);
+    expect(gateway.declaredStatus, isNull);
+
+    await tester.tap(find.text('نعم، لن يستقلها'));
+    await tester.pumpAndSettle();
+
+    expect(gateway.declaredStatus, PassengerPresenceStatus.notRiding);
+    expect(gateway.declaredSeats, ['1A']);
+  });
+
+  testWidgets('with every answer final, no question remains', (tester) async {
+    await open(
+      tester,
+      prompt: _withStatus(
+        _withStatus(_openPrompt(), ['1A'], PassengerPresenceStatus.inVehicle),
+        ['1B'],
+        PassengerPresenceStatus.notRiding,
+      ),
+    );
+
     expect(find.text('تم تأكيد تواجدك'), findsOneWidget);
+    expect(find.text('هل أنت داخل السيارة؟'), findsNothing);
   });
 
   testWidgets('closed confirmation window disables presence actions', (
@@ -65,7 +129,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('انتهى وقت التأكيد'), findsOneWidget);
-    expect(find.text('نعم، أنا داخل السيارة'), findsNothing);
+    expect(find.text('داخل السيارة'), findsNothing);
   });
 }
 
@@ -83,6 +147,34 @@ Widget _testApp(PresenceGateway gateway) {
       bookingId: 'booking-1',
       presenceGateway: gateway,
     ),
+  );
+}
+
+PresencePrompt _withStatus(
+  PresencePrompt prompt,
+  List<String> seatNumbers,
+  PassengerPresenceStatus status,
+) {
+  return PresencePrompt(
+    bookingId: prompt.bookingId,
+    tripId: prompt.tripId,
+    driver: prompt.driver,
+    vehicle: prompt.vehicle,
+    pickup: prompt.pickup,
+    departureTime: prompt.departureTime,
+    secondsUntilDeparture: prompt.secondsUntilDeparture,
+    window: prompt.window,
+    seats: [
+      for (final seat in prompt.seats)
+        PresencePromptSeat(
+          seatNumber: seat.seatNumber,
+          displayName: seat.displayName,
+          isMainBooker: seat.isMainBooker,
+          declaredStatus: seatNumbers.contains(seat.seatNumber)
+              ? status
+              : seat.declaredStatus,
+        ),
+    ],
   );
 }
 

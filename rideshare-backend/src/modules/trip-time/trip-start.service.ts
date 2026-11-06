@@ -21,7 +21,7 @@ import {
   TripFeeChargeResult,
 } from '../driver-trip-fee/driver-trip-fee.service';
 import {
-  computeTripAutoCompleteDelayMs,
+  computeTripAutoEndDelayMs,
   TRIP_AUTO_COMPLETE_JOB_ID_PREFIX,
 } from '../trips/trip-auto-start.util';
 
@@ -329,7 +329,7 @@ export class TripStartService {
   }
 
   private async scheduleAutoComplete(trip: TripEntity): Promise<void> {
-    const delay = computeTripAutoCompleteDelayMs(new Date(trip.departureTime));
+    const delay = computeTripAutoEndDelayMs(trip);
     try {
       await this.autoCompleteQueue.add(
         'enforce',

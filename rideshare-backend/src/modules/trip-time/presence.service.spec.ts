@@ -228,7 +228,7 @@ describe('PresenceService', () => {
       ).resolves.toMatchObject({ status: PassengerDeclaredStatus.IN_VEHICLE });
     });
 
-    it('closes the window 30 min after a started trip began', async () => {
+    it('stays open until a started trip ends', async () => {
       const longAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
       const trip = makeTrip({
         departureTime: longAgo,
@@ -243,7 +243,111 @@ describe('PresenceService', () => {
         service.passengerDeclare('b1', 'u-passenger', {
           status: PassengerDeclaredStatus.IN_VEHICLE,
         }),
+      ).resolves.toMatchObject({ status: PassengerDeclaredStatus.IN_VEHICLE });
+    });
+
+    it('closes the window once the trip is over', async () => {
+      const longAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      const trip = makeTrip({
+        departureTime: longAgo,
+        status: 'completed' as any,
+        tripStartedAt: longAgo,
+      });
+      const booking = makeBooking([makeSeat()]);
+      (booking as any).trip = trip;
+      bookingRepo.findOne.mockResolvedValue(booking);
+
+      await expect(
+        service.passengerDeclare('b1', 'u-passenger', {
+          status: PassengerDeclaredStatus.IN_VEHICLE,
+        }),
       ).rejects.toThrow();
+    });
+
+    describe('each seat answers for itself', () => {
+      const openBooking = (seats: unknown[]) => {
+        const booking = makeBooking(seats as never);
+        (booking as any).trip = makeTrip({
+          departureTime: new Date(Date.now() - 60 * 1000),
+          status: 'in_progress' as any,
+          tripStartedAt: new Date(),
+        });
+        bookingRepo.findOne.mockResolvedValue(booking);
+        return booking;
+      };
+      const answer = (status: PassengerDeclaredStatus, seatNumbers: string[]) =>
+        service.passengerDeclare('b1', 'u-passenger', { status, seatNumbers });
+
+      it('confirms only the seat that was chosen', async () => {
+        const mine = makeSeat({ seatNumber: 'A1', isMainBooker: true });
+        const companion = makeSeat({ seatNumber: 'A2', isMainBooker: false });
+        openBooking([mine, companion]);
+
+        await answer(PassengerDeclaredStatus.IN_VEHICLE, ['A1']);
+
+        expect(mine.passengerSelfConfirmedAt).not.toBeNull();
+        expect(companion.passengerSelfConfirmedAt ?? null).toBeNull();
+      });
+
+      it('keeps the booking confirmed when a companion is still on the way', async () => {
+        const mine = makeSeat({ seatNumber: 'A1' });
+        const companion = makeSeat({ seatNumber: 'A2' });
+        const booking = openBooking([mine, companion]);
+
+        await answer(PassengerDeclaredStatus.IN_VEHICLE, ['A1']);
+        await answer(PassengerDeclaredStatus.ON_MY_WAY, ['A2']);
+
+        expect(booking.passengerPresenceConfirmedAt).not.toBeNull();
+      });
+
+      it.each([
+        [PassengerDeclaredStatus.IN_VEHICLE, PassengerDeclaredStatus.ON_MY_WAY],
+        [
+          PassengerDeclaredStatus.IN_VEHICLE,
+          PassengerDeclaredStatus.NOT_RIDING,
+        ],
+        [
+          PassengerDeclaredStatus.NOT_RIDING,
+          PassengerDeclaredStatus.IN_VEHICLE,
+        ],
+        [PassengerDeclaredStatus.ON_MY_WAY, PassengerDeclaredStatus.NOT_RIDING],
+      ])('refuses moving from %s to %s', async (from, to) => {
+        openBooking([
+          makeSeat({ seatNumber: 'A1', passengerDeclaredStatus: from }),
+        ]);
+
+        await expect(answer(to, ['A1'])).rejects.toMatchObject({
+          response: expect.objectContaining({ code: 'PRESENCE_SEAT_FINAL' }),
+        });
+      });
+
+      it('lets someone on the way get in the car', async () => {
+        const seat = makeSeat({
+          seatNumber: 'A1',
+          passengerDeclaredStatus: PassengerDeclaredStatus.ON_MY_WAY,
+        });
+        openBooking([seat]);
+
+        await answer(PassengerDeclaredStatus.IN_VEHICLE, ['A1']);
+
+        expect(seat.passengerDeclaredStatus).toBe(
+          PassengerDeclaredStatus.IN_VEHICLE,
+        );
+      });
+
+      it('treats the same answer again as nothing new', async () => {
+        const first = new Date('2026-01-01T00:00:00Z');
+        const seat = makeSeat({
+          seatNumber: 'A1',
+          passengerDeclaredStatus: PassengerDeclaredStatus.IN_VEHICLE,
+          passengerSelfConfirmedAt: first,
+        });
+        openBooking([seat]);
+
+        await answer(PassengerDeclaredStatus.IN_VEHICLE, ['A1']);
+
+        expect(seat.passengerSelfConfirmedAt).toBe(first);
+      });
     });
 
     it('confirms a companion booked separately on the same trip', async () => {

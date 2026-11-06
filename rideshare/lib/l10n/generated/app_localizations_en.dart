@@ -636,37 +636,30 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get presenceQuestionSubtitle =>
-      'Confirm your presence so the trip can be recorded and started correctly';
+      'Confirm for each passenger. An answer cannot be changed once confirmed.';
 
   @override
-  String get presenceInfoBody =>
-      'Confirming that you are in the vehicle documents the trip and includes it in your trip history and account reliability.\nNo fee is deducted from the driver\'s wallet when presence is not confirmed.';
+  String get presenceSeatInVehicle => 'In the car';
 
   @override
-  String get presenceInVehicleTitle => 'Yes, I am in the vehicle';
+  String get presenceSeatArrived => 'Arrived, in the car';
 
   @override
-  String get presenceInVehicleSubtitle => 'Confirm presence';
+  String get presenceSeatOnMyWay => 'On the way';
 
   @override
-  String get presenceOnMyWayTitle => 'I am on my way to the driver';
+  String get presenceSeatNotRiding => 'Not riding';
 
   @override
-  String get presenceOnMyWaySubtitle => 'I will arrive in a few minutes';
+  String get presenceNotRidingConfirmBody => 'This choice cannot be undone.';
 
   @override
-  String get presenceNotRidingTitle => 'I am not in the vehicle';
+  String get presenceNotRidingConfirmAction => 'Yes, not riding';
 
   @override
-  String get presenceNotRidingSubtitle => 'I will not take this trip';
-
-  @override
-  String get presencePrivacyLine =>
-      'Your data is safe and used only to improve the trip experience';
-
-  @override
-  String get presenceRequestEndsAfter =>
-      'The confirmation request ends automatically after';
+  String presenceNotRidingConfirmTitle(String name) {
+    return '$name is not taking this trip?';
+  }
 
   @override
   String get presenceConfirmedTitle => 'Presence confirmed';
@@ -674,9 +667,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get presenceConfirmedBody =>
       'Thank you. Your choice has been recorded for this trip.';
-
-  @override
-  String get presenceEdit => 'Edit';
 
   @override
   String get presenceWindowClosedTitle => 'Confirmation time ended';
@@ -3765,6 +3755,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get topupMethodManual => 'Manual Transfer';
+
+  @override
+  String get topupManualToPlatformCliq =>
+      'You can transfer manually to the app\'s CliQ account (ALROYA26) and upload an image of the transfer. Once the app\'s administration approves it, the amount is added to your wallet.';
 
   @override
   String get topupManualDescription =>

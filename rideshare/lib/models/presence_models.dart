@@ -124,6 +124,19 @@ class PresencePromptSeat {
   final PassengerPresenceStatus? declaredStatus;
   final DateTime? selfConfirmedAt;
 
+  /// What this seat can still answer. Mirrors the server, which refuses the
+  /// rest: «in the car» and «not riding» are final, and someone on the way can
+  /// only go on to be in the car.
+  List<PassengerPresenceStatus> get openAnswers => switch (declaredStatus) {
+    null => PassengerPresenceStatus.values,
+    PassengerPresenceStatus.onMyWay => const [
+      PassengerPresenceStatus.inVehicle,
+    ],
+    _ => const [],
+  };
+
+  bool get isSettled => openAnswers.isEmpty;
+
   factory PresencePromptSeat.fromJson(Map<String, dynamic> json) {
     return PresencePromptSeat(
       seatNumber: json['seatNumber']?.toString() ?? '',
@@ -182,13 +195,14 @@ class PresencePrompt {
   final PresenceWindow window;
   final PresenceDriverLocation? driverLocation;
 
-  PassengerPresenceStatus? get declaredStatus {
-    if (seats.isEmpty) return null;
-    final firstStatus = seats.first.declaredStatus;
-    return seats.every((seat) => seat.declaredStatus == firstStatus)
-        ? firstStatus
-        : null;
-  }
+  bool get needsAnswers => seats.any((seat) => !seat.isSettled);
+
+  /// Nobody on the booking is taking this trip, so it no longer holds them.
+  bool get nobodyRiding =>
+      seats.isNotEmpty &&
+      seats.every(
+        (seat) => seat.declaredStatus == PassengerPresenceStatus.notRiding,
+      );
 
   factory PresencePrompt.fromJson(Map<String, dynamic> json) {
     final rawDriverLocation = json['driverLocation'];

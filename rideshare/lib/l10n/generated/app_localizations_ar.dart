@@ -625,45 +625,36 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get presenceQuestionSubtitle =>
-      'يرجى تأكيد تواجدك لتوثيق الرحلة وبدئها بشكل صحيح';
+      'أكّد لكل راكب على حدة. لا يمكن تغيير الإجابة بعد تأكيدها.';
 
   @override
-  String get presenceInfoBody =>
-      'يساعد تأكيد تواجدك داخل السيارة على توثيق الرحلة واحتسابها ضمن سجل رحلاتك وتقييم موثوقية حسابك.\nلن يتم خصم أي رسوم من محفظة السائق في حال عدم التأكيد.';
+  String get presenceSeatInVehicle => 'داخل السيارة';
 
   @override
-  String get presenceInVehicleTitle => 'نعم، أنا داخل السيارة';
+  String get presenceSeatArrived => 'وصلت، داخل السيارة';
 
   @override
-  String get presenceInVehicleSubtitle => 'تأكيد التواجد';
+  String get presenceSeatOnMyWay => 'في الطريق';
 
   @override
-  String get presenceOnMyWayTitle => 'أنا في طريقي لمقابلة السائق';
+  String get presenceSeatNotRiding => 'لن يستقل الرحلة';
 
   @override
-  String get presenceOnMyWaySubtitle => 'سأصل خلال دقائق';
+  String get presenceNotRidingConfirmBody => 'لا يمكن التراجع عن هذا الاختيار.';
 
   @override
-  String get presenceNotRidingTitle => 'لست داخل السيارة';
+  String get presenceNotRidingConfirmAction => 'نعم، لن يستقلها';
 
   @override
-  String get presenceNotRidingSubtitle => 'لن أستقل هذه الرحلة';
-
-  @override
-  String get presencePrivacyLine =>
-      'بياناتك آمنة ويتم استخدامها فقط لتحسين تجربة الرحلة';
-
-  @override
-  String get presenceRequestEndsAfter => 'سينتهي طلب التأكيد تلقائيًا بعد';
+  String presenceNotRidingConfirmTitle(String name) {
+    return '$name لن يستقل هذه الرحلة؟';
+  }
 
   @override
   String get presenceConfirmedTitle => 'تم تأكيد تواجدك';
 
   @override
   String get presenceConfirmedBody => 'شكرًا لك، تم تسجيل اختيارك لهذه الرحلة.';
-
-  @override
-  String get presenceEdit => 'تعديل';
 
   @override
   String get presenceWindowClosedTitle => 'انتهى وقت التأكيد';
@@ -3715,6 +3706,10 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get topupMethodManual => 'تحويل يدوي';
+
+  @override
+  String get topupManualToPlatformCliq =>
+      'يمكنك التحويل يدوياً إلى حساب كليك للتطبيق (ALROYA26) ورفع صورة التحويل ليتم اعتماده من قبل إدارة التطبيق وشحن المبلغ في محفظتك.';
 
   @override
   String get topupManualDescription =>

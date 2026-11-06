@@ -5,6 +5,9 @@ import '../api/api_endpoints.dart';
 abstract class PresenceGateway {
   Future<PresencePrompt> getPrompt(String bookingId);
 
+  /// The prompt for the signed-in passenger's booking, or null without one.
+  Future<PresencePrompt?> getPromptForTrip(String tripId);
+
   Future<void> declare(
     String bookingId,
     PassengerPresenceStatus status,
@@ -24,6 +27,17 @@ class PresenceService implements PresenceGateway {
       ApiEndpoints.presencePrompt(bookingId),
     );
     return PresencePrompt.fromJson(_unwrapMap(response));
+  }
+
+  @override
+  Future<PresencePrompt?> getPromptForTrip(String tripId) async {
+    final response = await _apiClient.get(
+      ApiEndpoints.tripPresencePrompt(tripId),
+    );
+    final payload = response is Map ? response['data'] : response;
+    return payload == null
+        ? null
+        : PresencePrompt.fromJson(_unwrapMap(payload));
   }
 
   @override

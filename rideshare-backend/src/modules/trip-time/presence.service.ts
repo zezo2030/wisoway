@@ -11,6 +11,7 @@ import { EntityManager, In, Repository } from 'typeorm';
 import {
   BookingEntity,
   BookingStatus,
+  canDeclareSeat,
   seatCountsForCommission,
   BookingSeatEntity,
   PassengerDeclaredStatus,
@@ -428,9 +429,25 @@ export class PresenceService {
       });
     }
 
+    // Repeating an answer changes nothing: a retry, or a double tap.
+    const changing = targets.filter(
+      (s) => s.passengerDeclaredStatus !== dto.status,
+    );
+    if (
+      changing.some(
+        (s) => !canDeclareSeat(s.passengerDeclaredStatus, dto.status),
+      )
+    ) {
+      throw new ConflictException({
+        statusCode: 409,
+        code: ErrorCodes.PRESENCE_SEAT_FINAL,
+        message: 'This answer can no longer be changed',
+      });
+    }
+
     const raisedConflicts: BookingSeatEntity[] = [];
 
-    for (const seat of targets) {
+    for (const seat of changing) {
       seat.passengerDeclaredStatus = dto.status;
       seat.presenceUpdatedAt = now;
 
@@ -457,15 +474,19 @@ export class PresenceService {
       await this.seatRepo.save(seat);
     }
 
-    for (const b of new Set(targets.map((s) => bookingOfSeat.get(s)!))) {
-      b.passengerPresenceConfirmedAt =
-        dto.status === PassengerDeclaredStatus.IN_VEHICLE ? now : null;
+    // One companion's answer must not undo another's on the same booking.
+    for (const b of new Set(changing.map((s) => bookingOfSeat.get(s)!))) {
+      b.passengerPresenceConfirmedAt = (b.seats ?? []).some(
+        (s) => s.passengerSelfConfirmedAt != null,
+      )
+        ? (b.passengerPresenceConfirmedAt ?? now)
+        : null;
       await this.bookingRepo.save(b);
     }
 
     // Claiming "did not ride" after the location proved otherwise.
     if (dto.status === PassengerDeclaredStatus.NOT_RIDING) {
-      const contradicted = targets.filter(
+      const contradicted = changing.filter(
         (s) => bookingOfSeat.get(s)!.locationVerifiedAt != null,
       );
       if (contradicted.length > 0) {
@@ -665,6 +686,19 @@ export class PresenceService {
 
   // ── Passenger prompt payload ──────────────────────────────────────────────
 
+  /** The prompt for this passenger's booking on a trip, or null if none. */
+  async getPresencePromptForTrip(tripId: string, userId: string) {
+    const booking = await this.bookingRepo.findOne({
+      where: {
+        tripId,
+        userId,
+        status: In([BookingStatus.CONFIRMED, BookingStatus.IN_PROGRESS]),
+      },
+      order: { createdAt: 'ASC' },
+    });
+    return booking ? this.getPresencePrompt(booking.id, userId) : null;
+  }
+
   async getPresencePrompt(bookingId: string, userId: string) {
     const booking = await this.bookingRepo.findOne({
       where: { id: bookingId },
@@ -738,9 +772,9 @@ export class PresenceService {
 
   /**
    * When the passenger may say whether they are in the car: from an hour
-   * before departure until 30 min after the trip started. A trip still
-   * waiting for its riders to board (it no longer starts on the clock alone)
-   * keeps it open, shown as 30 min from now.
+   * before departure until the trip ends. The trip screen holds them until
+   * they answer, so it stays open while the trip is live, shown as 30 min from
+   * now.
    */
   private passengerWindow(
     trip: TripEntity,
@@ -748,11 +782,10 @@ export class PresenceService {
   ): { opensAt: Date; closesAt: Date; isOpen: boolean } {
     const departure = new Date(trip.departureTime).getTime();
     const opensAt = departure - PASSENGER_WINDOW_BEFORE_MS;
-    const waiting =
-      trip.tripStartedAt == null &&
+    const live =
       trip.status !== TripStatus.COMPLETED &&
       trip.status !== TripStatus.CANCELLED;
-    const closesAt = waiting
+    const closesAt = live
       ? Math.max(departure, now) + PASSENGER_WINDOW_AFTER_MS
       : Math.max(
           departure,

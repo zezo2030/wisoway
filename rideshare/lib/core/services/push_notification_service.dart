@@ -122,7 +122,8 @@ class PushNotificationService {
         );
       }
     } catch (e) {
-      if (kDebugMode) debugPrint('Failed to consume pending notification tap: $e');
+      if (kDebugMode)
+        debugPrint('Failed to consume pending notification tap: $e');
     }
   }
 
@@ -156,7 +157,9 @@ class PushNotificationService {
       // A matched ride takes over the screen on both phones, even when the
       // app is open somewhere else.
       final type = message.data['type']?.toString();
-      if (type == 'instant_matched') {
+      if (type == 'instant_matched' ||
+          type == 'presence_prompt' ||
+          type == 'trip_started') {
         ActiveRideNavigator.resume();
       } else if (type == 'instant_driver_cancelled') {
         // The driver backed out; the server is already finding another.
@@ -489,7 +492,9 @@ class PushNotificationService {
   static Future<void> openOverAppsSettings() async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
     try {
-      await _bookingNotificationChannel.invokeMethod('openDrawOverAppsSettings');
+      await _bookingNotificationChannel.invokeMethod(
+        'openDrawOverAppsSettings',
+      );
     } catch (_) {}
   }
 

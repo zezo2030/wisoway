@@ -9,13 +9,13 @@ import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import '../../core/constants/app_spacing.dart';
 import '../../core/constants/route_names.dart';
 import '../../core/api/websocket_service.dart';
 import '../../core/services/presence_service.dart';
 import '../../core/theme/colors.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/presence_models.dart';
+import 'widgets/seat_presence_panel.dart';
 
 class PresenceConfirmationScreen extends StatefulWidget {
   const PresenceConfirmationScreen({
@@ -37,11 +37,8 @@ class _PresenceConfirmationScreenState
   late final PresenceGateway _presenceGateway;
   late final Timer _clock;
   PresencePrompt? _prompt;
-  PassengerPresenceStatus? _selectedStatus;
-  PassengerPresenceStatus? _submittingStatus;
   DateTime? _loadedAt;
   Object? _loadError;
-  bool _isEditing = true;
 
   @override
   void initState() {
@@ -66,35 +63,10 @@ class _PresenceConfirmationScreenState
       if (!mounted) return;
       setState(() {
         _prompt = prompt;
-        _selectedStatus = prompt.declaredStatus;
         _loadedAt = DateTime.now();
-        _isEditing = prompt.declaredStatus == null;
       });
     } catch (error) {
       if (mounted) setState(() => _loadError = error);
-    }
-  }
-
-  Future<void> _submit(PassengerPresenceStatus status) async {
-    final prompt = _prompt;
-    if (prompt == null || !_windowIsOpen(prompt)) return;
-    setState(() => _submittingStatus = status);
-
-    try {
-      final seatNumbers = prompt.seats.map((seat) => seat.seatNumber).toList();
-      await _presenceGateway.declare(widget.bookingId, status, seatNumbers);
-      if (!mounted) return;
-      setState(() {
-        _selectedStatus = status;
-        _submittingStatus = null;
-        _isEditing = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _submittingStatus = null);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.presenceSubmitFailed)),
-      );
     }
   }
 
@@ -111,11 +83,6 @@ class _PresenceConfirmationScreenState
     return Duration(
       seconds: math.max(prompt.secondsUntilDeparture - elapsed, 0),
     );
-  }
-
-  Duration _windowRemaining(PresencePrompt prompt) {
-    final seconds = prompt.window.closesAt.difference(DateTime.now()).inSeconds;
-    return Duration(seconds: math.max(seconds, 0));
   }
 
   @override
@@ -156,21 +123,12 @@ class _PresenceConfirmationScreenState
   }
 
   Widget _buildQuestionSection(PresencePrompt prompt) {
-    final windowOpen = _windowIsOpen(prompt);
-    if (!windowOpen) {
-      return _PresenceClosedCard(selectedStatus: _selectedStatus);
-    }
-    if (_selectedStatus != null && !_isEditing) {
-      return _PresenceConfirmedCard(
-        status: _selectedStatus!,
-        onEdit: () => setState(() => _isEditing = true),
-      );
-    }
-    return _PresenceQuestionSection(
-      selectedStatus: _selectedStatus,
-      submittingStatus: _submittingStatus,
-      windowRemaining: _windowRemaining(prompt),
-      onSelected: _submit,
+    if (!prompt.needsAnswers) return const _PresenceConfirmedCard();
+    if (!_windowIsOpen(prompt)) return const _PresenceClosedCard();
+    return SeatPresencePanel(
+      prompt: prompt,
+      gateway: _presenceGateway,
+      onChanged: (prompt) => setState(() => _prompt = prompt),
     );
   }
 }
@@ -246,9 +204,7 @@ class _RoundIconButton extends StatelessWidget {
       label: semanticsLabel,
       child: Material(
         color: T.surface(context),
-        shape: CircleBorder(
-          side: BorderSide(color: T.outlineVariant(context)),
-        ),
+        shape: CircleBorder(side: BorderSide(color: T.outlineVariant(context))),
         child: InkWell(
           customBorder: const CircleBorder(),
           onTap: onPressed,
@@ -305,10 +261,7 @@ class _HelpChip extends StatelessWidget {
 // ── Driver card ──────────────────────────────────────────────────────────────
 
 class _DriverCard extends StatelessWidget {
-  const _DriverCard({
-    required this.prompt,
-    required this.departureRemaining,
-  });
+  const _DriverCard({required this.prompt, required this.departureRemaining});
 
   final PresencePrompt prompt;
   final Duration departureRemaining;
@@ -363,9 +316,9 @@ class _DriverIdentity extends StatelessWidget {
                 driver?.name.isNotEmpty == true ? driver!.name : '—',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 2),
               Row(
@@ -407,9 +360,9 @@ class _DriverIdentity extends StatelessWidget {
                       ? vehicle!.plateNumber
                       : '—',
                   textDirection: TextDirection.ltr,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
             ],
@@ -682,7 +635,9 @@ class _PresenceMapState extends State<_PresenceMap> {
         targetWidth: 84,
       );
       final frame = await codec.getNextFrame();
-      final bytes = await frame.image.toByteData(format: ui.ImageByteFormat.png);
+      final bytes = await frame.image.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
       if (bytes == null || !mounted) return;
       setState(() {
         _carIcon = BitmapDescriptor.bytes(
@@ -711,7 +666,9 @@ class _PresenceMapState extends State<_PresenceMap> {
 
         final next = LatLng(lat.toDouble(), lng.toDouble());
         final headingRaw = payload['heading'];
-        final heading = headingRaw is num ? headingRaw.toDouble() : _driverHeading;
+        final heading = headingRaw is num
+            ? headingRaw.toDouble()
+            : _driverHeading;
 
         if (!mounted) return;
         setState(() {
@@ -830,340 +787,10 @@ class _PresenceMapState extends State<_PresenceMap> {
   }
 }
 
-// ── Question + actions ───────────────────────────────────────────────────────
-
-class _PresenceQuestionSection extends StatelessWidget {
-  const _PresenceQuestionSection({
-    required this.selectedStatus,
-    required this.submittingStatus,
-    required this.windowRemaining,
-    required this.onSelected,
-  });
-
-  final PassengerPresenceStatus? selectedStatus;
-  final PassengerPresenceStatus? submittingStatus;
-  final Duration windowRemaining;
-  final ValueChanged<PassengerPresenceStatus> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: T.primary(context).withValues(alpha: 0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            IconsaxPlusBold.notification,
-            color: T.primary(context),
-            size: 24,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          context.l10n.presenceQuestionTitle,
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          context.l10n.presenceQuestionSubtitle,
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: T.textSecondary(context),
-          ),
-        ),
-        const SizedBox(height: 12),
-        const _PresenceInfoBox(),
-        const SizedBox(height: 12),
-        _PresenceActions(
-          selectedStatus: selectedStatus,
-          submittingStatus: submittingStatus,
-          onSelected: onSelected,
-        ),
-        const SizedBox(height: 14),
-        const _PrivacyLine(),
-        const SizedBox(height: 10),
-        _RequestCountdown(remaining: windowRemaining),
-      ],
-    );
-  }
-}
-
-class _PresenceInfoBox extends StatelessWidget {
-  const _PresenceInfoBox();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: T.surfaceVariant(context),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Text(
-              context.l10n.presenceInfoBody,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                height: 1.5,
-                color: T.textSecondary(context),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            width: 22,
-            height: 22,
-            decoration: BoxDecoration(
-              color: T.primary(context),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.info_outline, size: 13, color: Colors.white),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PresenceActions extends StatelessWidget {
-  const _PresenceActions({
-    required this.selectedStatus,
-    required this.submittingStatus,
-    required this.onSelected,
-  });
-
-  final PassengerPresenceStatus? selectedStatus;
-  final PassengerPresenceStatus? submittingStatus;
-  final ValueChanged<PassengerPresenceStatus> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final actions = [
-      _PresenceActionSpec.inVehicle(context),
-      _PresenceActionSpec.onMyWay(context),
-      _PresenceActionSpec.notRiding(context),
-    ];
-
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (var i = 0; i < actions.length; i++) ...[
-            if (i > 0) const SizedBox(width: 8),
-            Expanded(
-              child: _PresenceActionCard(
-                spec: actions[i],
-                selectedStatus: selectedStatus,
-                submittingStatus: submittingStatus,
-                onPressed: () => onSelected(actions[i].status),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _PresenceActionCard extends StatelessWidget {
-  const _PresenceActionCard({
-    required this.spec,
-    required this.selectedStatus,
-    required this.submittingStatus,
-    required this.onPressed,
-  });
-
-  final _PresenceActionSpec spec;
-  final PassengerPresenceStatus? selectedStatus;
-  final PassengerPresenceStatus? submittingStatus;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final selected = selectedStatus == spec.status;
-    final submitting = submittingStatus == spec.status;
-    final disabled = submittingStatus != null;
-    final filled = spec.status == PassengerPresenceStatus.inVehicle;
-    final foreground = filled ? Colors.white : T.onSurface(context);
-
-    return Semantics(
-      button: true,
-      selected: selected,
-      child: Material(
-        color: filled
-            ? T.primary(context)
-            : selected
-            ? T.primary(context).withValues(alpha: 0.08)
-            : T.surface(context),
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          onTap: disabled ? null : onPressed,
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: filled || selected
-                    ? T.primary(context)
-                    : T.outlineVariant(context),
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: filled
-                        ? Colors.transparent
-                        : spec.tintColor,
-                    shape: BoxShape.circle,
-                    border: filled
-                        ? Border.all(color: Colors.white, width: 1.5)
-                        : null,
-                  ),
-                  child: submitting
-                      ? Padding(
-                          padding: const EdgeInsets.all(7),
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: filled ? Colors.white : spec.iconColor,
-                          ),
-                        )
-                      : Icon(
-                          filled ? Icons.check_rounded : spec.icon,
-                          size: 17,
-                          color: filled ? Colors.white : spec.iconColor,
-                        ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  spec.title,
-                  textAlign: TextAlign.center,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: foreground,
-                    fontWeight: FontWeight.w700,
-                    height: 1.2,
-                    fontSize: 11.5,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  spec.subtitle,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: filled
-                        ? Colors.white.withValues(alpha: 0.85)
-                        : T.textSecondary(context),
-                    height: 1.2,
-                    fontSize: 10,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PrivacyLine extends StatelessWidget {
-  const _PrivacyLine();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.shield_outlined, size: 16, color: T.textSecondary(context)),
-        const SizedBox(width: 6),
-        Flexible(
-          child: Text(
-            context.l10n.presencePrivacyLine,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: T.textSecondary(context),
-              fontSize: 11,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _RequestCountdown extends StatelessWidget {
-  const _RequestCountdown({required this.remaining});
-
-  final Duration remaining;
-
-  @override
-  Widget build(BuildContext context) {
-    final label = _durationLabel(remaining);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      decoration: BoxDecoration(
-        color: T.surfaceVariant(context),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            IconsaxPlusLinear.clock,
-            size: 16,
-            color: T.textSecondary(context),
-          ),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              context.l10n.presenceRequestEndsAfter,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Semantics(
-            liveRegion: true,
-            child: Text(
-              label,
-              textDirection: TextDirection.ltr,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: T.primary(context),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ── States ───────────────────────────────────────────────────────────────────
 
 class _PresenceConfirmedCard extends StatelessWidget {
-  const _PresenceConfirmedCard({required this.status, required this.onEdit});
-
-  final PassengerPresenceStatus status;
-  final VoidCallback onEdit;
+  const _PresenceConfirmedCard();
 
   @override
   Widget build(BuildContext context) {
@@ -1172,39 +799,23 @@ class _PresenceConfirmedCard extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: T.primary(context).withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                IconsaxPlusBold.tick_circle,
-                size: 34,
-                color: T.primary(context),
-              ),
+            Icon(
+              IconsaxPlusBold.tick_circle,
+              size: 48,
+              color: T.primary(context),
             ),
             const SizedBox(height: 12),
             Text(
               context.l10n.presenceConfirmedTitle,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 6),
             Text(
               context.l10n.presenceConfirmedBody,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 12),
-            _PresenceStatusPill(status: status),
-            const SizedBox(height: 14),
-            OutlinedButton.icon(
-              onPressed: onEdit,
-              icon: const Icon(Icons.edit_outlined),
-              label: Text(context.l10n.presenceEdit),
             ),
           ],
         ),
@@ -1214,9 +825,7 @@ class _PresenceConfirmedCard extends StatelessWidget {
 }
 
 class _PresenceClosedCard extends StatelessWidget {
-  const _PresenceClosedCard({required this.selectedStatus});
-
-  final PassengerPresenceStatus? selectedStatus;
+  const _PresenceClosedCard();
 
   @override
   Widget build(BuildContext context) {
@@ -1241,44 +850,8 @@ class _PresenceClosedCard extends StatelessWidget {
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
-            if (selectedStatus != null) ...[
-              const SizedBox(height: 14),
-              _PresenceStatusPill(status: selectedStatus!),
-            ],
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _PresenceStatusPill extends StatelessWidget {
-  const _PresenceStatusPill({required this.status});
-
-  final PassengerPresenceStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    final spec = _PresenceActionSpec.forStatus(context, status);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: spec.tintColor,
-        borderRadius: BorderRadius.circular(AppRadius.full),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(spec.icon, size: 18, color: spec.iconColor),
-          const SizedBox(width: 6),
-          Text(
-            spec.title,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: spec.iconColor,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1364,87 +937,6 @@ class _CardShell extends StatelessWidget {
       child: child,
     );
   }
-}
-
-class _PresenceActionSpec {
-  const _PresenceActionSpec({
-    required this.status,
-    required this.title,
-    required this.subtitle,
-    required this.appearance,
-  });
-
-  final PassengerPresenceStatus status;
-  final String title;
-  final String subtitle;
-  final _PresenceActionAppearance appearance;
-  IconData get icon => appearance.icon;
-  Color get iconColor => appearance.iconColor;
-  Color get tintColor => appearance.tintColor;
-
-  factory _PresenceActionSpec.inVehicle(BuildContext context) {
-    return _PresenceActionSpec(
-      status: PassengerPresenceStatus.inVehicle,
-      title: context.l10n.presenceInVehicleTitle,
-      subtitle: context.l10n.presenceInVehicleSubtitle,
-      appearance: _PresenceActionAppearance(
-        icon: Icons.check_rounded,
-        iconColor: T.primary(context),
-        tintColor: T.primary(context).withValues(alpha: 0.1),
-      ),
-    );
-  }
-
-  factory _PresenceActionSpec.onMyWay(BuildContext context) {
-    return _PresenceActionSpec(
-      status: PassengerPresenceStatus.onMyWay,
-      title: context.l10n.presenceOnMyWayTitle,
-      subtitle: context.l10n.presenceOnMyWaySubtitle,
-      appearance: _PresenceActionAppearance(
-        icon: Icons.directions_walk_rounded,
-        iconColor: AppColors.warningDark,
-        tintColor: AppColors.warning.withValues(alpha: 0.13),
-      ),
-    );
-  }
-
-  factory _PresenceActionSpec.notRiding(BuildContext context) {
-    return _PresenceActionSpec(
-      status: PassengerPresenceStatus.notRiding,
-      title: context.l10n.presenceNotRidingTitle,
-      subtitle: context.l10n.presenceNotRidingSubtitle,
-      appearance: _PresenceActionAppearance(
-        icon: Icons.close_rounded,
-        iconColor: AppColors.errorDark,
-        tintColor: AppColors.error.withValues(alpha: 0.12),
-      ),
-    );
-  }
-
-  factory _PresenceActionSpec.forStatus(
-    BuildContext context,
-    PassengerPresenceStatus status,
-  ) {
-    return switch (status) {
-      PassengerPresenceStatus.inVehicle =>
-        _PresenceActionSpec.inVehicle(context),
-      PassengerPresenceStatus.onMyWay => _PresenceActionSpec.onMyWay(context),
-      PassengerPresenceStatus.notRiding =>
-        _PresenceActionSpec.notRiding(context),
-    };
-  }
-}
-
-class _PresenceActionAppearance {
-  const _PresenceActionAppearance({
-    required this.icon,
-    required this.iconColor,
-    required this.tintColor,
-  });
-
-  final IconData icon;
-  final Color iconColor;
-  final Color tintColor;
 }
 
 String _durationLabel(Duration duration) {

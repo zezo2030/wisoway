@@ -182,11 +182,29 @@ describe('PassengerLocationService', () => {
   });
 });
 
+describe('seatCountsForCommission — a companion who said they stayed', () => {
+  it('is not counted because the booker rode', () => {
+    expect(
+      seatCountsForCommission(
+        {
+          isMainBooker: false,
+          markedAbsentAt: null,
+          passengerSelfConfirmedAt: null,
+          passengerDeclaredStatus: 'not_riding',
+          billableOverride: false,
+        },
+        true,
+      ),
+    ).toBe(false);
+  });
+});
+
 describe('seatCountsForCommission', () => {
   const seat = (over: Partial<BookingSeatEntity> = {}) => ({
     isMainBooker: true,
     markedAbsentAt: null,
     passengerSelfConfirmedAt: null,
+    passengerDeclaredStatus: null,
     billableOverride: null,
     ...over,
   });

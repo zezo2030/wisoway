@@ -22,6 +22,7 @@ import {
   InstantRideOfferEntity,
   InstantRideRequestEntity,
   InstantTerminalReason,
+  PassengerDeclaredStatus,
   TripEntity,
   TripStatus,
   TripType,
@@ -76,6 +77,9 @@ import {
 
 type LatLng = { latitude: number; longitude: number };
 type DriverPosition = DriverPositionDto;
+
+/** How long a shared trip nobody has started keeps holding its passengers. */
+const DUE_TRIP_WAITS_MS = 6 * 60 * 60 * 1000;
 
 /** «350 متر» / «2.4 كم» for the not-at-pickup message. */
 function formatMeters(meters: number): string {
@@ -286,10 +290,60 @@ export class InstantRidesService {
     }
 
     const request = await this.findLiveRequest(userId);
-    if (request?.status !== InstantRequestStatus.ACCEPTED || !request.tripId) {
-      return null;
+    if (request?.status === InstantRequestStatus.ACCEPTED && request.tripId) {
+      return {
+        tripId: request.tripId,
+        role: 'passenger',
+        requestId: request.id,
+      };
     }
-    return { tripId: request.tripId, role: 'passenger', requestId: request.id };
+
+    const sharedTripId = await this.findDueSharedTrip(userId);
+    return sharedTripId
+      ? { tripId: sharedTripId, role: 'passenger', requestId: null }
+      : null;
+  }
+
+  /**
+   * The shared trip this passenger is due on: under way, or past its departure
+   * and waiting for riders. Saying nobody on the booking is riding lets them go.
+   */
+  private async findDueSharedTrip(userId: string): Promise<string | null> {
+    const now = new Date();
+    const bookings = await this.tripRepo.manager
+      .getRepository(BookingEntity)
+      .createQueryBuilder('b')
+      .innerJoinAndSelect('b.trip', 't')
+      .leftJoinAndSelect('b.seats', 's')
+      .where('b."userId" = :userId', { userId })
+      .andWhere('b.status IN (:...live)', {
+        live: [BookingStatus.CONFIRMED, BookingStatus.IN_PROGRESS],
+      })
+      .andWhere('t."tripType" = :shared', { shared: TripType.SCHEDULED })
+      .andWhere(
+        `(t.status = :running OR (t.status IN (:...waiting)
+          AND t."departureTime" BETWEEN :oldest AND :now))`,
+        {
+          running: TripStatus.IN_PROGRESS,
+          waiting: [
+            TripStatus.ACTIVE,
+            TripStatus.PUBLISHED,
+            TripStatus.FULLY_BOOKED,
+          ],
+          oldest: new Date(now.getTime() - DUE_TRIP_WAITS_MS),
+          now,
+        },
+      )
+      .orderBy('t."departureTime"', 'DESC')
+      .getMany();
+
+    const riding = bookings.find((booking) =>
+      (booking.seats ?? []).some(
+        (seat) =>
+          seat.passengerDeclaredStatus !== PassengerDeclaredStatus.NOT_RIDING,
+      ),
+    );
+    return riding?.tripId ?? null;
   }
 
   async createRequest(passengerId: string, dto: CreateInstantRequestDto) {

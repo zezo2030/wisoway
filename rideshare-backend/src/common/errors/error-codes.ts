@@ -115,6 +115,9 @@ export const ErrorCodes = {
   /** A submitted seat number does not belong to the referenced booking. */
   PRESENCE_SEAT_NOT_FOUND: 'PRESENCE_SEAT_NOT_FOUND',
 
+  /** The seat's answer is final, or the new one is not open to it. */
+  PRESENCE_SEAT_FINAL: 'PRESENCE_SEAT_FINAL',
+
   /**
    * Wallet balance minus funds reserved by active holds is not enough to place
    * a new hold.

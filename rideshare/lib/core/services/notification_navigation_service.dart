@@ -69,6 +69,10 @@ class NotificationNavigationService {
         break;
 
       case 'presence_prompt':
+        // The answers live on the trip screen, which now holds the passenger.
+        ActiveRideNavigator.resume();
+        break;
+
       case 'presence_marked_absent':
         _navigateToPresenceConfirmation(data);
         break;

@@ -25,8 +25,7 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
   final WebSocketService _socketService = WebSocketService();
   StreamSubscription<Map<String, dynamic>>? _trackingSubscription;
 
-  final RouteService _routeService = RouteService(
-  );
+  final RouteService _routeService = RouteService();
 
   Set<Polyline> _polylines = {};
   Set<Marker> _markers = {};
@@ -127,7 +126,12 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
     if (!mounted) return;
 
     switch (result) {
-      case RouteOk(:final polyline, :final bounds, :final distance, :final duration):
+      case RouteOk(
+        :final polyline,
+        :final bounds,
+        :final distance,
+        :final duration,
+      ):
         setState(() {
           _distance = distance;
           _duration = duration;
@@ -151,11 +155,7 @@ class _TripRouteMapScreenState extends State<TripRouteMapScreen>
         setState(() {
           _isLoadingRoute = false;
         });
-        ErrorSurface.showFailure(
-          context,
-          failure,
-          onRetry: _fetchRoute,
-        );
+        ErrorSurface.showFailure(context, failure, onRetry: _fetchRoute);
     }
   }
 

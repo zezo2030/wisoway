@@ -83,11 +83,10 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
     }
   }
 
-  Future<void> _openTopUp({bool viaCliq = false}) async {
+  Future<void> _openTopUp() async {
     final result = await Navigator.pushNamed(
       context,
       RouteNames.driverWalletTopup,
-      arguments: viaCliq ? 'cliq' : null,
     );
     if (result == true && mounted) _load();
   }
@@ -159,7 +158,7 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton.icon(
-                          onPressed: () => _openTopUp(viaCliq: true),
+                          onPressed: _openTopUp,
                           icon: const Icon(IconsaxPlusLinear.flash),
                           label: Text(
                             _ar ? 'شحن عبر كليك' : 'Top up with CliQ',
