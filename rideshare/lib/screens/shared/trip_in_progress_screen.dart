@@ -219,7 +219,7 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
     _statusPoll?.cancel();
     _trackingPoll?.cancel();
     _carMotion.dispose();
-    ActiveRideNavigator.left(widget.tripId);
+    ActiveRideNavigator.left(widget.tripId, owned: widget.lockedUntilEnd);
     _trackingSubscription?.cancel();
     _socketService.unsubscribeFromTripTracking(widget.tripId);
     _mapController?.dispose();

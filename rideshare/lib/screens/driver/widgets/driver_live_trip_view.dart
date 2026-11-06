@@ -46,7 +46,6 @@ class DriverLiveTripView extends StatefulWidget {
     this.onCallBooking,
     required this.onNavigate,
     this.onGroupChat,
-    this.onBack,
     this.onOpenDetails,
     this.routeService,
   });
@@ -90,9 +89,6 @@ class DriverLiveTripView extends StatefulWidget {
 
   /// Shared trips only.
   final VoidCallback? onGroupChat;
-
-  /// Null when the page is locked until the trip ends (instant rides).
-  final VoidCallback? onBack;
 
   /// Opens the full trip-management page (shared trips).
   final VoidCallback? onOpenDetails;
@@ -477,14 +473,6 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
     final l10n = context.l10n;
     return Row(
       children: [
-        if (widget.onBack != null) ...[
-          _RoundButton(
-            icon: const BackButtonIcon(),
-            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-            onTap: widget.onBack!,
-          ),
-          const SizedBox(width: 8),
-        ],
         Expanded(
           child: Container(
             height: 44,

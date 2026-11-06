@@ -70,7 +70,6 @@ void main() {
     required TripModel trip,
     List<BookingModel> bookings = const [],
     LatLng? driver,
-    VoidCallback? onBack,
     VoidCallback? onStartRide,
     void Function(LatLng target)? onNavigate,
     VoidCallback? onCancelRide,
@@ -102,7 +101,6 @@ void main() {
             phoneOf: (_) => null,
             onCall: (_) {},
             onNavigate: onNavigate ?? (_) {},
-            onBack: onBack,
             onGroupChat: trip.isInstant ? null : () {},
             routeService: RouteService(
               routeFetcher: ({required origin, required destination}) async =>
@@ -279,7 +277,6 @@ void main() {
         booking('b2', 'sara', '5.00'),
       ],
       driver: const LatLng(26.58, 37.91),
-      onBack: () {},
     );
 
     expect(find.byType(Scrollable), findsNothing);
@@ -288,7 +285,8 @@ void main() {
     expect(find.text('الركاب: 3 · أكّد 0 من 2'), findsOneWidget);
     expect(find.text('15.00 JOD'), findsOneWidget);
     expect(find.text('الإيرادات'), findsOneWidget);
-    expect(find.byType(BackButtonIcon), findsOneWidget);
+    // Locked until the trip ends, like an instant ride.
+    expect(find.byType(BackButtonIcon), findsNothing);
 
     await tester.tap(find.text('الركاب: 3 · أكّد 0 من 2'));
     await tester.pumpAndSettle();
@@ -306,7 +304,6 @@ void main() {
         trip: trip(type: 'scheduled'),
         bookings: [booking('b1', 'ayat', '10.00')],
         driver: const LatLng(26.58, 37.91),
-        onBack: () {},
         onConfirmAboard: (b) => vouched = b,
       );
 

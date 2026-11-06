@@ -287,7 +287,7 @@ describe('InstantRidesService', () => {
   });
 
   describe('getActiveRide', () => {
-    it('returns the in-progress instant trip the user is driving', async () => {
+    it('returns the trip the user is driving, instant or shared', async () => {
       tripRepo.findOne = jest.fn().mockResolvedValue({ id: 't1' });
       requestRepo.findOne.mockResolvedValue({ id: 'r1' });
 
@@ -301,7 +301,6 @@ describe('InstantRidesService', () => {
         expect.objectContaining({
           where: {
             driverId: 'd1',
-            tripType: 'instant',
             status: 'in_progress',
           },
         }),

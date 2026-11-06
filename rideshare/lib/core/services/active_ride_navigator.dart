@@ -18,9 +18,9 @@ import 'notification_navigation_service.dart';
 /// Puts the user on their ride's trip screen and keeps them there.
 ///
 /// Once an instant ride is matched, the driver and the passenger both see only
-/// the trip screen until it ends, and so does a shared trip's passenger from
-/// its departure time: every other route above the root is cleared, and the
-/// trip screens block back navigation. Entry points — accepting an offer, a
+/// the trip screen until it ends. A shared trip holds its driver from the moment
+/// it starts and its passengers from departure time: every other route above
+/// the root is cleared, and the trip screens block back navigation. Entry points — accepting an offer, a
 /// match landing on the passenger, the match and trip pushes, app launch and
 /// resume — all come through here so the rule lives in one place.
 class ActiveRideNavigator {
@@ -41,9 +41,10 @@ class ActiveRideNavigator {
   static void enterAsPassenger(String tripId) =>
       _enter(tripId, isDriver: false);
 
-  /// Called by the trip screen when it goes away (trip ended).
-  static void left(String tripId) {
-    if (_shownTripId == tripId) _shownTripId = null;
+  /// Called by a trip screen when it goes away. [owned] is false for a screen
+  /// opened by hand: taking its place must not forget the one shown here.
+  static void left(String tripId, {bool owned = true}) {
+    if (owned && _shownTripId == tripId) _shownTripId = null;
     _refreshDriverTrips();
   }
 
@@ -177,7 +178,7 @@ class ActiveRideNavigator {
           arguments: tripId,
         ),
         builder: (_) => isDriver
-            ? TripManagementScreen(tripId: tripId)
+            ? TripManagementScreen(tripId: tripId, lockedUntilEnd: true)
             : TripInProgressScreen(tripId: tripId, lockedUntilEnd: true),
       ),
       (route) => route.isFirst,

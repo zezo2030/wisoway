@@ -185,9 +185,9 @@ export class InstantRidesService {
   }
 
   /**
-   * The instant ride this user is in the middle of, as driver or passenger.
-   * Once a ride is matched both apps stay on its trip screen until it ends, so
-   * they ask this on launch / resume to put the user back there.
+   * The ride this user is in the middle of, as driver or passenger. A matched
+   * instant ride and a started shared trip hold their apps on the trip screen
+   * until it ends, so they ask this on launch / resume to go back there.
    */
   async getActiveRide(userId: string): Promise<{
     tripId: string;
@@ -270,11 +270,7 @@ export class InstantRidesService {
     requestId: string | null;
   } | null> {
     const drivenTrip = await this.tripRepo.findOne({
-      where: {
-        driverId: userId,
-        tripType: TripType.INSTANT,
-        status: TripStatus.IN_PROGRESS,
-      },
+      where: { driverId: userId, status: TripStatus.IN_PROGRESS },
       order: { createdAt: 'DESC' },
     });
     if (drivenTrip) {

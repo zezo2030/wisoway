@@ -47,6 +47,9 @@ import '../../utils/booking_seat_formatter.dart';
 class TripManagementScreen extends StatefulWidget {
   final String tripId;
 
+  /// Opened by [ActiveRideNavigator], which tracks this screen.
+  final bool lockedUntilEnd;
+
   /// Test seam. When set, the screen renders this trip directly instead of
   /// fetching it, and skips the socket / location / wallet side effects that
   /// `_loadTrip` kicks off. Never set from production code.
@@ -61,6 +64,7 @@ class TripManagementScreen extends StatefulWidget {
   const TripManagementScreen({
     super.key,
     required this.tripId,
+    this.lockedUntilEnd = false,
     this.previewTrip,
     this.previewBookings,
   });
@@ -148,7 +152,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     _webSocketService.unsubscribeFromTripTracking(widget.tripId);
     _liveStatusPoll?.cancel();
     _boardingPoll?.cancel();
-    ActiveRideNavigator.left(widget.tripId);
+    ActiveRideNavigator.left(widget.tripId, owned: widget.lockedUntilEnd);
     super.dispose();
   }
 
@@ -380,7 +384,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
           _boardingPoll = null;
           _liveStatusPoll ??= Timer.periodic(
             const Duration(seconds: 15),
-            (_) => _checkInstantEnded(),
+            (_) => _checkTripEnded(),
           );
         } else if (trip != null && _awaitingBoarding(trip)) {
           // Watch for passengers confirming and the trip starting.
@@ -922,7 +926,9 @@ class _TripManagementScreenState extends State<TripManagementScreen>
 
   static bool _isEnded(TripModel trip) => trip.isCompleted || trip.isCancelled;
 
-  Future<void> _checkInstantEnded() async {
+  /// The server can end a trip without the driver (a cancelled ride, the
+  /// auto-end of a shared trip), and this screen holds them until it does.
+  Future<void> _checkTripEnded() async {
     if (!mounted || _markingArrived) return;
     try {
       final trip = await Provider.of<TripProvider>(
@@ -941,6 +947,8 @@ class _TripManagementScreenState extends State<TripManagementScreen>
           ),
         ),
       );
+      if (await ActiveRideNavigator.resumePaymentFor(widget.tripId)) return;
+      if (!mounted) return;
       Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (_) {
       // Transient — the next tick retries.
@@ -948,9 +956,9 @@ class _TripManagementScreenState extends State<TripManagementScreen>
   }
 
   Widget _buildLiveTrip(TripModel trip) {
-    // Locked until the ride ends: the driver leaves only through
-    // «تم الوصول للوجهة», which moves on to the trip summary.
-    return PopScope(canPop: !trip.isInstant, child: _buildLiveScaffold(trip));
+    // Locked until the trip ends: the driver leaves through
+    // «تم الوصول للوجهة», or when the server ends it for them.
+    return PopScope(canPop: false, child: _buildLiveScaffold(trip));
   }
 
   Widget _buildLiveScaffold(TripModel trip) {
@@ -1043,9 +1051,6 @@ class _TripManagementScreenState extends State<TripManagementScreen>
                     RouteNames.groupChat,
                     arguments: {'tripId': widget.tripId, 'trip': trip},
                   ),
-            onBack: trip.isInstant
-                ? null
-                : () => Navigator.of(context).maybePop(),
             onOpenDetails: trip.isInstant
                 ? null
                 : () => setState(() => _showFullDetails = true),

@@ -96,6 +96,37 @@ describe('getActiveRide — a due shared trip (real database)', () => {
     expect(await activeTrip(passenger)).toBe(trip);
   });
 
+  it('takes the driver to a shared trip that has started', async () => {
+    const driver = await makeUser('driver');
+    const trip = randomUUID();
+    await sql(
+      `INSERT INTO trips (id, "driverId", "fromName", "toName", "fromPoint", "toPoint",
+         "departureTime", price, status)
+       VALUES ($1, $2, 'A', 'B', ST_MakePoint(35, 31)::geography,
+         ST_MakePoint(36, 32)::geography, now(), 5, 'in_progress')`,
+      [trip, driver],
+    );
+
+    await expect(service.getActiveRide(driver)).resolves.toMatchObject({
+      tripId: trip,
+      role: 'driver',
+      stage: 'ride',
+    });
+  });
+
+  it('leaves a driver alone until the trip starts', async () => {
+    const driver = await makeUser('driver');
+    await sql(
+      `INSERT INTO trips (id, "driverId", "fromName", "toName", "fromPoint", "toPoint",
+         "departureTime", price, status)
+       VALUES ($1, $2, 'A', 'B', ST_MakePoint(35, 31)::geography,
+         ST_MakePoint(36, 32)::geography, now(), 5, 'published')`,
+      [randomUUID(), driver],
+    );
+
+    await expect(service.getActiveRide(driver)).resolves.toBeNull();
+  });
+
   it('takes them to a trip whose time has come', async () => {
     const { trip, passenger } = await makeBooking(
       'published',
