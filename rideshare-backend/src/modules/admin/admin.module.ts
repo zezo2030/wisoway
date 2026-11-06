@@ -28,6 +28,7 @@ import { AdminFlagsService } from './admin-flags.service';
 import { AdminRecurrenceController } from './admin-recurrence.controller';
 import { AdminBanController } from './admin-ban.controller';
 import { AdminBanService } from './admin-ban.service';
+import { AdminUserDeletionService } from './admin-user-deletion.service';
 import { AdminComplaintsController } from './admin-complaints.controller';
 import { AdminRefundsController } from './admin-refunds.controller';
 import { AdminFinesController } from './admin-fines.controller';
@@ -91,6 +92,7 @@ import { PendingChargesModule } from '../pending-charges/pending-charges.module'
     AdminDashboardService,
     AdminFlagsService,
     AdminBanService,
+    AdminUserDeletionService,
     AdminFinesService,
     AdminNoShowService,
   ],

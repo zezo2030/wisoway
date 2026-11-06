@@ -6,6 +6,7 @@ import {
   Delete,
   Query,
   Param,
+  ParseUUIDPipe,
   Body,
 } from '@nestjs/common';
 import {
@@ -19,6 +20,7 @@ import {
 import { AdminDashboardService } from './admin-dashboard.service';
 import { PrivateDocumentsService } from '../uploads/private-documents.service';
 import { AdminAlertsService } from './admin-alerts.service';
+import { AdminUserDeletionService } from './admin-user-deletion.service';
 import { UpdateAlertPreferenceDto } from './dto/alert-preferences.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -50,6 +52,7 @@ export class AdminDashboardController {
   constructor(
     private readonly adminDashboardService: AdminDashboardService,
     private readonly adminAlertsService: AdminAlertsService,
+    private readonly userDeletion: AdminUserDeletionService,
     private readonly privateDocuments: PrivateDocumentsService,
   ) {}
 
@@ -100,9 +103,20 @@ export class AdminDashboardController {
   @ApiResponse({ status: 200, description: 'User deleted successfully' })
   @ApiResponse({ status: 404, description: 'User not found' })
   @ApiResponse({ status: 400, description: 'Cannot delete admin users' })
-  async deleteUser(@Param('id') userId: string) {
-    await this.adminDashboardService.deleteUser(userId);
+  @ApiResponse({ status: 409, description: 'A ride or money is in flight' })
+  async deleteUser(
+    @Param('id', ParseUUIDPipe) userId: string,
+    @CurrentUser('id') adminId: string,
+  ) {
+    await this.userDeletion.delete(userId, adminId);
     return { success: true, data: { message: 'User deleted' } };
+  }
+
+  @Get('users/:id/deletion-preview')
+  @ApiOperation({ summary: 'What deleting this user would remove or block' })
+  @ApiParam({ name: 'id', description: 'User ID' })
+  getUserDeletionPreview(@Param('id', ParseUUIDPipe) userId: string) {
+    return this.userDeletion.preview(userId);
   }
 
   @Get('users')

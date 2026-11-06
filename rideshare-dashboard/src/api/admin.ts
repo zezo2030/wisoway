@@ -97,6 +97,36 @@ export async function deleteUser(userId: string): Promise<void> {
   await apiClient.delete(`/admin/users/${userId}`)
 }
 
+export type UserDeletionBlocker =
+  | "ACTIVE_TRIP"
+  | "ACTIVE_BOOKING"
+  | "INSTANT_SEARCH"
+  | "WALLET_NOT_EMPTY"
+  | "OPEN_PAYOUT"
+  | "RECENT_PAYMENT"
+
+export interface UserDeletionPreview {
+  blockers: UserDeletionBlocker[]
+  counts: {
+    trips: number
+    otherPassengersBookings: number
+    bookings: number
+    payments: number
+    messages: number
+    ratings: number
+  }
+}
+
+/**
+ * What deleting a user would remove, or what stops it
+ */
+export async function getUserDeletionPreview(userId: string): Promise<UserDeletionPreview> {
+  const response = await apiClient.get<ApiResponse<UserDeletionPreview>>(
+    `/admin/users/${userId}/deletion-preview`,
+  )
+  return response.data.data
+}
+
 /**
  * Get user by ID
  */

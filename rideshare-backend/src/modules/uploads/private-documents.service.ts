@@ -133,6 +133,14 @@ export class PrivateDocumentsService {
     };
   }
 
+  async remove(reference: string): Promise<void> {
+    const name = reference.slice(PRIVATE_DOCUMENT_PREFIX.length);
+    if (!NAME_PATTERN.test(name)) return;
+    await fs.promises.rm(path.join(PRIVATE_DOCUMENTS_DIR, name), {
+      force: true,
+    });
+  }
+
   private linkFor(value: string | null | undefined): string | null {
     if (!value) return null;
     // Files not yet moved here keep their old public link.

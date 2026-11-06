@@ -319,27 +319,6 @@ export class AdminDashboardService {
   /**
    * Delete a user account
    */
-  async deleteUser(userId: string): Promise<void> {
-    const uuidRegex =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (
-      !userId ||
-      userId === 'undefined' ||
-      userId === 'null' ||
-      !uuidRegex.test(userId)
-    ) {
-      throw new BadRequestException('Invalid user ID');
-    }
-    const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-    if (user.role === PgUserRole.ADMIN) {
-      throw new BadRequestException('Cannot delete admin users');
-    }
-    await this.userRepo.remove(user);
-  }
-
   async getUsers(query: AdminUsersQuery): Promise<PaginatedResult<UserEntity>> {
     const page = Math.max(1, query.page ?? 1);
     const limit = Math.min(100, Math.max(1, query.limit ?? 20));

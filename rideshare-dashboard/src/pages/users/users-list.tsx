@@ -4,10 +4,12 @@
 import { useState, useCallback, useEffect } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { getUsers, changeUserRole, toggleUserBan, confirmUser, deleteUser, approveDriver } from "@/api/admin"
+import { getUsers, changeUserRole, toggleUserBan, confirmUser, approveDriver } from "@/api/admin"
 import { DataTable, type Column } from "@/components/data-table"
 import { StatusBadge } from "@/components/status-badge"
 import { ConfirmDialog } from "@/components/confirm-dialog"
+import { DeleteUserDialog } from "@/components/delete-user-dialog"
+import type { DeleteUserTarget } from "@/components/delete-user-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -62,6 +64,8 @@ export default function UsersListPage() {
 
   // Local state for search input (debounced)
   const [searchInput, setSearchInput] = useState(search)
+
+  const [deleteTarget, setDeleteTarget] = useState<DeleteUserTarget | null>(null)
 
   // Confirmation dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -135,17 +139,6 @@ export default function UsersListPage() {
     },
     onError: () => {
       toast.error("Failed to confirm user")
-    },
-  })
-
-  const deleteUserMutation = useMutation({
-    mutationFn: (userId: string) => deleteUser(userId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.USERS] })
-      toast.success(t("userDeleted"))
-    },
-    onError: () => {
-      toast.error("Failed to delete user")
     },
   })
 
@@ -243,17 +236,7 @@ export default function UsersListPage() {
       toast.error("Cannot delete user: missing user ID")
       return
     }
-    setConfirmDialog({
-      open: true,
-      title: t("deleteConfirmTitle"),
-      description: t("deleteConfirmDesc"),
-      variant: "destructive",
-      pendingId: userId,
-      onConfirm: () => {
-        deleteUserMutation.mutate(userId)
-        setConfirmDialog((prev) => ({ ...prev, open: false }))
-      },
-    })
+    setDeleteTarget({ id: userId, name: user.name, phoneNumber: user.phoneNumber })
   }
 
   const handleApproveDriver = (user: User) => {
@@ -422,7 +405,7 @@ export default function UsersListPage() {
             )}
             <DropdownMenuItem
               onClick={() => handleDeleteUser(user)}
-              disabled={deleteUserMutation.isPending || user.role === UserRole.ADMIN}
+              disabled={user.role === UserRole.ADMIN}
               className="cursor-pointer font-medium text-rose-600 focus:text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-950/30"
             >
               <Trash2 className={cn("h-4 w-4", language === "ar" ? "ml-2" : "mr-2")} />
@@ -575,6 +558,15 @@ export default function UsersListPage() {
       </Card>
 
       {/* Confirmation Dialog */}
+      <DeleteUserDialog
+        target={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onDeleted={() => {
+          setDeleteTarget(null)
+          queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.USERS] })
+        }}
+      />
+
       <ConfirmDialog
         open={confirmDialog.open}
         onOpenChange={(open) =>

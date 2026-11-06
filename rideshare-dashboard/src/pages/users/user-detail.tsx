@@ -14,7 +14,6 @@ import {
   changeUserRole,
   confirmUser,
   approveDriver,
-  deleteUser,
   banUser,
   unbanUser,
   getUserDevices,
@@ -23,6 +22,8 @@ import { StatusBadge } from "@/components/status-badge"
 import { Badge } from "@/components/ui/badge"
 import { ImagePreview } from "@/components/image-preview"
 import { ConfirmDialog } from "@/components/confirm-dialog"
+import { DeleteUserDialog } from "@/components/delete-user-dialog"
+import type { DeleteUserTarget } from "@/components/delete-user-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -237,16 +238,7 @@ export default function UserDetailPage() {
     },
   })
 
-  const deleteUserMutation = useMutation({
-    mutationFn: (userId: string) => deleteUser(userId),
-    onSuccess: () => {
-      toast.success(t("userDeleted"))
-      navigate("/users")
-    },
-    onError: () => {
-      toast.error(t("failedToDeleteUser"))
-    },
-  })
+  const [deleteTarget, setDeleteTarget] = useState<DeleteUserTarget | null>(null)
 
   const handleRoleChange = (newRole: UserRole) => {
     if (!user) return
@@ -332,17 +324,7 @@ export default function UserDetailPage() {
       return
     }
 
-    setConfirmDialog({
-      open: true,
-      title: t("deleteConfirmTitle"),
-      description:
-        t("deleteConfirmDesc"),
-      variant: "destructive",
-      onConfirm: () => {
-        deleteUserMutation.mutate(userId)
-        setConfirmDialog((prev) => ({ ...prev, open: false }))
-      },
-    })
+    setDeleteTarget({ id: userId, name: user.name, phoneNumber: user.phoneNumber })
   }
 
   const handleApproveDriver = () => {
@@ -582,7 +564,7 @@ export default function UserDetailPage() {
             )}
             <DropdownMenuItem
               onClick={handleDeleteUser}
-              disabled={deleteUserMutation.isPending || user.role === UserRole.ADMIN}
+              disabled={user.role === UserRole.ADMIN}
               className="font-medium cursor-pointer text-rose-600 focus:text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-950/30"
             >
               <Trash2 className="mr-2 h-4 w-4" /> {t("deleteUser")}
@@ -1025,6 +1007,12 @@ export default function UserDetailPage() {
       </div>
 
       {/* Confirmation Dialog */}
+      <DeleteUserDialog
+        target={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onDeleted={() => navigate("/users")}
+      />
+
       <ConfirmDialog
         open={confirmDialog.open}
         onOpenChange={(open) =>
