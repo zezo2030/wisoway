@@ -1,6 +1,5 @@
 import { RidePaymentsService } from '../../ride-payments/ride-payments.service';
 import { Test, TestingModule } from '@nestjs/testing';
-import { getQueueToken } from '@nestjs/bull';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { TripEntity } from '../../../database/entities/trip.entity';
 import {
@@ -20,16 +19,16 @@ describe('TripAutoCompleteProcessor — fee reconciliation sweep', () => {
   let presenceService: { settleTripPresence: jest.Mock };
   /** Mutable booking store, so status flips are observable in call order. */
   let bookings: any[];
-  let queue: { add: jest.Mock };
 
   beforeEach(async () => {
-    queue = { add: jest.fn().mockResolvedValue(undefined) };
     bookings = [];
     trip = {
       id: 'trip-1',
       driverId: 'driver-1',
       status: TripStatus.IN_PROGRESS,
       departureTime: new Date(),
+      fromPoint: { coordinates: [35.9, 31.9] },
+      toPoint: { coordinates: [35.9, 31.9] },
       toName: 'الطفيلة',
       price: 4,
       totalSeats: 4,
@@ -58,7 +57,6 @@ describe('TripAutoCompleteProcessor — fee reconciliation sweep', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TripAutoCompleteProcessor,
-        { provide: getQueueToken('trip-auto-complete'), useValue: queue },
         {
           provide: RidePaymentsService,
           useValue: { openForTrip: jest.fn().mockResolvedValue(undefined) },
@@ -111,18 +109,23 @@ describe('TripAutoCompleteProcessor — fee reconciliation sweep', () => {
     expect(driverTripFee.chargeAtTripStart).not.toHaveBeenCalled();
   });
   it('gives a car still driving to a distant destination more time', async () => {
-    trip.departureTime = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    trip.tripStartedAt = new Date(Date.now() - 40 * 60 * 1000);
     trip.lastDriverLocationAt = new Date();
     trip.remainingDistanceKm = 40;
 
     await processor.handle({ data: { tripId: 'trip-1' } } as any);
 
     expect(trip.status).toBe(TripStatus.IN_PROGRESS);
-    expect(queue.add).toHaveBeenCalledWith(
-      'enforce',
-      { tripId: 'trip-1' },
-      expect.objectContaining({ delay: 15 * 60 * 1000 }),
-    );
+  });
+
+  it('stops waiting for a car still far away after twice the time given', async () => {
+    trip.tripStartedAt = new Date(Date.now() - 61 * 60 * 1000);
+    trip.lastDriverLocationAt = new Date();
+    trip.remainingDistanceKm = 40;
+
+    await processor.handle({ data: { tripId: 'trip-1' } } as any);
+
+    expect(trip.status).toBe(TripStatus.COMPLETED);
   });
 
   it('ends a trip whose car has gone quiet', async () => {

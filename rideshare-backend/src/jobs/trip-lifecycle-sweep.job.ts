@@ -9,7 +9,7 @@ import { TripStatus, TripType } from '../database/entities/shared.enums';
 import {
   TRIP_AUTO_COMPLETE_JOB_ID_PREFIX,
   TRIP_AUTO_START_JOB_ID_PREFIX,
-  tripAutoCompleteFallbackMs,
+  tripAutoEndTimes,
 } from '../modules/trips/trip-auto-start.util';
 
 /** How late a lifecycle job may be before the sweep steps in. */
@@ -55,17 +55,16 @@ export class TripLifecycleSweepJob {
       select: ['id'],
     });
 
-    const completeCutoff = new Date(
-      startCutoff.getTime() - tripAutoCompleteFallbackMs(),
-    );
-    const overdueCompletes = await this.tripRepo.find({
+    const inProgress = await this.tripRepo.find({
       where: {
         tripType: TripType.SCHEDULED,
         status: TripStatus.IN_PROGRESS,
-        departureTime: LessThan(completeCutoff),
       },
-      select: ['id'],
+      select: ['id', 'departureTime', 'tripStartedAt', 'fromPoint', 'toPoint'],
     });
+    const overdueCompletes = inProgress.filter(
+      (trip) => tripAutoEndTimes(trip).dueAt < startCutoff.getTime(),
+    );
 
     let requeued = 0;
     for (const { id } of overdueStarts) {
@@ -95,9 +94,10 @@ export class TripLifecycleSweepJob {
   }
 
   /**
-   * Makes sure the trip's job will run now. A job still waiting, delayed or
-   * running is left alone; a failed one is retried; a missing one is added
-   * (Bull ignores adding a jobId that still exists, hence the lookup).
+   * Makes sure the trip's job will run now. A job waiting or running is left
+   * alone; a delayed one is brought forward, because it may carry a later time
+   * than the trip is due; a failed one is retried; a missing one is added (Bull
+   * ignores adding a jobId that still exists, hence the lookup).
    * Returns whether anything was (re-)queued.
    */
   private async ensureJob(
@@ -111,6 +111,10 @@ export class TripLifecycleSweepJob {
         const state = await job.getState();
         if (state === 'failed') {
           await job.retry();
+          return true;
+        }
+        if (state === 'delayed') {
+          await job.promote();
           return true;
         }
         if (state !== 'completed') return false;

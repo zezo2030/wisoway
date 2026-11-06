@@ -1,4 +1,7 @@
-import { computeTripAutoEndDelayMs } from './trip-auto-start.util';
+import {
+  computeTripAutoEndDelayMs,
+  tripAutoEndTimes,
+} from './trip-auto-start.util';
 
 const HOUR = 60 * 60 * 1000;
 const MINUTE = 60 * 1000;
@@ -46,5 +49,47 @@ describe('computeTripAutoEndDelayMs', () => {
 
     expect(delay).toBeLessThanOrEqual(HOUR);
     expect(delay).toBeGreaterThan(HOUR - MINUTE);
+  });
+});
+
+describe('tripAutoEndTimes', () => {
+  // About 2 km apart, the size of the short trip reported on 2026-11-07.
+  const trip = {
+    departureTime: new Date('2026-11-06T20:53:00Z'),
+    tripStartedAt: new Date('2026-11-06T20:53:00Z'),
+    fromPoint: { coordinates: [37.9, 26.65] },
+    toPoint: { coordinates: [37.9, 26.668] },
+  };
+  const startedAt = trip.tripStartedAt.getTime();
+
+  it('makes a short trip due half an hour past its estimate', () => {
+    const { dueAt } = tripAutoEndTimes(trip);
+
+    expect(dueAt - startedAt).toBeGreaterThan(32 * MINUTE);
+    expect(dueAt - startedAt).toBeLessThan(35 * MINUTE);
+  });
+
+  it('holds a car still driving for at most twice that', () => {
+    const { lastCallAt } = tripAutoEndTimes(trip);
+
+    expect(lastCallAt - startedAt).toBeGreaterThan(64 * MINUTE);
+    expect(lastCallAt - startedAt).toBeLessThan(70 * MINUTE);
+  });
+
+  it('counts from departure when the start time is missing', () => {
+    expect(tripAutoEndTimes({ ...trip, tripStartedAt: null }).dueAt).toBe(
+      tripAutoEndTimes(trip).dueAt,
+    );
+  });
+
+  it('never runs past the fallback after departure', () => {
+    const { dueAt, lastCallAt } = tripAutoEndTimes({
+      ...trip,
+      tripStartedAt: new Date(trip.departureTime.getTime() + 23.9 * HOUR),
+    });
+    const fallbackAt = trip.departureTime.getTime() + 24 * HOUR;
+
+    expect(dueAt).toBe(fallbackAt);
+    expect(lastCallAt).toBe(fallbackAt);
   });
 });

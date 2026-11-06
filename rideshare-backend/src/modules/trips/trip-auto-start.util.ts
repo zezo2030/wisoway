@@ -33,6 +33,7 @@ const ROAD_FACTOR = 1.3;
 const FALLBACK_SPEED_KMH = 70;
 const AUTO_END_MIN_MARGIN_MS = 30 * 60 * 1000;
 const AUTO_END_MARGIN_SHARE = 0.25;
+const STILL_DRIVING_WINDOWS = 2;
 
 function straightLineKm(
   from: { coordinates: number[] },
@@ -49,6 +50,26 @@ function straightLineKm(
   return 2 * 6371 * Math.asin(Math.sqrt(h));
 }
 
+function plannedEstimateMs(trip: {
+  fromPoint: { coordinates: number[] };
+  toPoint: { coordinates: number[] };
+}): number {
+  return (
+    ((straightLineKm(trip.fromPoint, trip.toPoint) * ROAD_FACTOR) /
+      FALLBACK_SPEED_KMH) *
+    60 *
+    60 *
+    1000
+  );
+}
+
+function withMargin(estimateMs: number): number {
+  return (
+    estimateMs +
+    Math.max(AUTO_END_MIN_MARGIN_MS, estimateMs * AUTO_END_MARGIN_SHARE)
+  );
+}
+
 /**
  * Delay until a trip that just started is ended for the driver: the estimated
  * time left plus a margin, never past the fallback after departure.
@@ -62,19 +83,37 @@ export function computeTripAutoEndDelayMs(trip: {
   const estimateMs =
     trip.remainingDurationSeconds != null
       ? trip.remainingDurationSeconds * 1000
-      : ((straightLineKm(trip.fromPoint, trip.toPoint) * ROAD_FACTOR) /
-          FALLBACK_SPEED_KMH) *
-        60 *
-        60 *
-        1000;
-  const margin = Math.max(
-    AUTO_END_MIN_MARGIN_MS,
-    estimateMs * AUTO_END_MARGIN_SHARE,
-  );
+      : plannedEstimateMs(trip);
   return Math.min(
-    estimateMs + margin,
+    withMargin(estimateMs),
     computeTripAutoCompleteDelayMs(new Date(trip.departureTime)),
   );
+}
+
+/**
+ * When a started trip is due to end, and the latest a car still driving may
+ * hold it open. Built on the planned route, because the live estimate shrinks
+ * as the car moves and would keep pulling the due time earlier.
+ */
+export function tripAutoEndTimes(trip: {
+  departureTime: Date;
+  tripStartedAt?: Date | null;
+  fromPoint: { coordinates: number[] };
+  toPoint: { coordinates: number[] };
+}): { dueAt: number; lastCallAt: number } {
+  const startedAt = new Date(
+    trip.tripStartedAt ?? trip.departureTime,
+  ).getTime();
+  const fallbackAt =
+    new Date(trip.departureTime).getTime() + tripAutoCompleteFallbackMs();
+  const windowMs = withMargin(plannedEstimateMs(trip));
+  return {
+    dueAt: Math.min(startedAt + windowMs, fallbackAt),
+    lastCallAt: Math.min(
+      startedAt + windowMs * STILL_DRIVING_WINDOWS,
+      fallbackAt,
+    ),
+  };
 }
 
 export const TRIP_AUTO_COMPLETE_JOB_ID_PREFIX = 'trip-auto-complete-';

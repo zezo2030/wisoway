@@ -2,10 +2,11 @@
  * Runs once the trip's estimated time plus a margin has passed. If it is still
  * IN_PROGRESS — the driver never pressed "Arrived" — force COMPLETED so nobody
  * stays held on the trip screen. A car still driving towards a distant
- * destination gets more time, up to the fallback after departure.
+ * destination is left for the lifecycle sweep to try again, up to twice the
+ * time the trip was given.
  */
-import { Processor, Process, OnQueueFailed, InjectQueue } from '@nestjs/bull';
-import type { Job, Queue } from 'bull';
+import { Processor, Process, OnQueueFailed } from '@nestjs/bull';
+import type { Job } from 'bull';
 import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -20,14 +21,10 @@ import { PresenceService } from '../../trip-time/presence.service';
 import { hasBoarded } from '../../trip-time/trip-time.service';
 import { DriverTripFeeService } from '../../driver-trip-fee/driver-trip-fee.service';
 import { RidePaymentsService } from '../../ride-payments/ride-payments.service';
-import {
-  TRIP_AUTO_COMPLETE_JOB_ID_PREFIX,
-  tripAutoCompleteFallbackMs,
-} from '../../trips/trip-auto-start.util';
+import { tripAutoEndTimes } from '../../trips/trip-auto-start.util';
 
 const STILL_DRIVING_FIX_MS = 10 * 60 * 1000;
 const STILL_DRIVING_KM = 3;
-const RECHECK_MS = 15 * 60 * 1000;
 
 @Processor('trip-auto-complete')
 export class TripAutoCompleteProcessor {
@@ -41,8 +38,6 @@ export class TripAutoCompleteProcessor {
     private presenceService: PresenceService,
     private readonly driverTripFee: DriverTripFeeService,
     private readonly ridePayments: RidePaymentsService,
-    @InjectQueue('trip-auto-complete')
-    private readonly queue: Queue,
   ) {}
 
   @Process('enforce')
@@ -56,21 +51,7 @@ export class TripAutoCompleteProcessor {
     }
 
     const now = new Date();
-    if (this.stillDriving(trip, now)) {
-      // A job can't re-add its own id while it runs, hence the time in it.
-      await this.queue.add(
-        'enforce',
-        { tripId },
-        {
-          delay: RECHECK_MS,
-          jobId: `${TRIP_AUTO_COMPLETE_JOB_ID_PREFIX}${tripId}-${now.getTime()}`,
-          removeOnComplete: true,
-          attempts: 2,
-          backoff: { type: 'exponential', delay: 30000 },
-        },
-      );
-      return;
-    }
+    if (this.stillDriving(trip, now)) return;
 
     trip.status = TripStatus.COMPLETED;
     trip.tripCompletedAt = now;
@@ -122,13 +103,11 @@ export class TripAutoCompleteProcessor {
   }
 
   private stillDriving(trip: TripEntity, now: Date): boolean {
-    const deadline =
-      new Date(trip.departureTime).getTime() + tripAutoCompleteFallbackMs();
     const fixAt = trip.lastDriverLocationAt
       ? new Date(trip.lastDriverLocationAt).getTime()
       : 0;
     return (
-      now.getTime() < deadline &&
+      now.getTime() < tripAutoEndTimes(trip).lastCallAt &&
       now.getTime() - fixAt <= STILL_DRIVING_FIX_MS &&
       (trip.remainingDistanceKm ?? 0) > STILL_DRIVING_KM
     );
