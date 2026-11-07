@@ -195,6 +195,14 @@ export class TripEntity {
   @Column({ type: 'timestamptz', nullable: true })
   boardingPromptSentAt: Date | null;
 
+  /** The 15-minutes-before reminder went out (see PreTripReminderJob). */
+  @Column({ type: 'timestamptz', nullable: true })
+  soonReminderSentAt: Date | null;
+
+  /** The last nudge while the trip waits after departure (TripStartService). */
+  @Column({ type: 'timestamptz', nullable: true })
+  boardingReminderSentAt: Date | null;
+
   /** FK to the recurrence rule that spawned this trip, null for one-off trips. */
   @Column({ type: 'uuid', nullable: true })
   recurrenceRuleId: string | null;

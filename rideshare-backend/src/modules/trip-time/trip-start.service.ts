@@ -35,6 +35,11 @@ const STARTABLE: TripStatus[] = [
 /** The driver may start the trip themselves from this long before departure. */
 export const DRIVER_START_LEAD_MS = 30 * 60 * 1000;
 
+/** While a trip waits after departure, its reminders repeat this often… */
+export const BOARDING_NUDGE_EVERY_MS = 5 * 60 * 1000;
+/** …for this long. */
+export const BOARDING_NUDGES_FOR_MS = 60 * 60 * 1000;
+
 /**
  * When a shared trip starts. Not on the clock alone: a trip that leaves with
  * nobody confirmed on board isn't under way. So, at departure:
@@ -61,7 +66,7 @@ export class TripStartService {
   ) {}
 
   /** Departure time came (the auto-start job, or the sweep re-checking). */
-  async onDeparture(tripId: string): Promise<void> {
+  async onDeparture(tripId: string, now = new Date()): Promise<void> {
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
     if (!trip) {
       this.logger.warn(`trip-start: trip ${tripId} not found`);
@@ -83,7 +88,9 @@ export class TripStartService {
       await this.start(trip.id, 'departure');
       return;
     }
-    await this.askToBoard(trip, bookings);
+    if (!(await this.askToBoard(trip, bookings))) {
+      await this.nudgeToBoard(trip, bookings, now);
+    }
   }
 
   /**
@@ -269,13 +276,19 @@ export class TripStartService {
     return true;
   }
 
-  /** Departure, nobody on board: ask each passenger once, tell the driver. */
-  private async askToBoard(trip: TripEntity, bookings: BookingEntity[]) {
+  /**
+   * Departure, nobody on board: ask each passenger, tell the driver. Returns
+   * whether this call sent it (it goes out once per trip).
+   */
+  private async askToBoard(
+    trip: TripEntity,
+    bookings: BookingEntity[],
+  ): Promise<boolean> {
     const claim = await this.tripRepo.update(
       { id: trip.id, boardingPromptSentAt: IsNull() },
       { boardingPromptSentAt: new Date() },
     );
-    if (!claim.affected) return;
+    if (!claim.affected) return false;
 
     for (const booking of bookings) {
       const ar =
@@ -303,6 +316,66 @@ export class TripStartService {
     });
     this.logger.log(
       `trip-start: trip ${trip.id} waiting for boarding (${bookings.length} booking(s))`,
+    );
+    return true;
+  }
+
+  /**
+   * The trip is still waiting after departure: remind the driver to start it
+   * and whoever hasn't confirmed to do so, every few minutes for the first
+   * hour. The lifecycle sweep re-runs onDeparture every 5 minutes, which is
+   * what drives this.
+   */
+  private async nudgeToBoard(
+    trip: TripEntity,
+    bookings: BookingEntity[],
+    now: Date,
+  ): Promise<void> {
+    const lateMs = now.getTime() - new Date(trip.departureTime).getTime();
+    if (lateMs < 0 || lateMs > BOARDING_NUDGES_FOR_MS) return;
+
+    // A little under the interval, so a sweep tick a few seconds early still counts.
+    const cutoff = new Date(now.getTime() - BOARDING_NUDGE_EVERY_MS + 30_000);
+    const claim = await this.tripRepo
+      .createQueryBuilder()
+      .update(TripEntity)
+      .set({ boardingReminderSentAt: now })
+      .where('id = :id', { id: trip.id })
+      .andWhere('"boardingPromptSentAt" < :cutoff', { cutoff })
+      .andWhere(
+        '("boardingReminderSentAt" IS NULL OR "boardingReminderSentAt" < :cutoff)',
+        { cutoff },
+      )
+      .execute();
+    if (!claim.affected) return;
+
+    const minutes = Math.max(1, Math.round(lateMs / 60_000));
+    const driverAr =
+      (await this.notifications.getPreferredLocale(trip.driverId)) === 'ar';
+    this.notify(trip.driverId, {
+      type: 'trip_awaiting_boarding',
+      title: driverAr ? 'تذكير: ابدأ الرحلة' : 'Reminder: start your trip',
+      body: driverAr
+        ? `حان موعد رحلتك إلى ${trip.toName} منذ ${minutes} دقيقة. إذا صعد الركاب اضغط «بدء الرحلة»، وتبدأ تلقائيًا عند أول تأكيد من راكب.`
+        : `Your trip to ${trip.toName} was due ${minutes} min ago. If your passengers are in, tap Start trip; it also starts once a passenger confirms.`,
+      data: { tripId: trip.id },
+    });
+
+    for (const booking of bookings) {
+      if (booking.passengerPresenceConfirmedAt != null) continue;
+      const ar =
+        (await this.notifications.getPreferredLocale(booking.userId)) === 'ar';
+      this.notify(booking.userId, {
+        type: 'presence_prompt',
+        title: ar ? 'هل أنت في السيارة؟' : 'Are you in the car?',
+        body: ar
+          ? `رحلتك إلى ${trip.toName} تبدأ عندما تؤكد ركوبك. أكّد الآن إذا صعدت.`
+          : `Your trip to ${trip.toName} starts once you confirm you're on board. Confirm now if you're in.`,
+        data: { tripId: trip.id, bookingId: booking.id },
+      });
+    }
+    this.logger.log(
+      `trip-start: trip ${trip.id} still waiting ${minutes} min after departure, reminders sent`,
     );
   }
 

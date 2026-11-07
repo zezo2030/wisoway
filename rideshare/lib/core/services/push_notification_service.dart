@@ -159,6 +159,7 @@ class PushNotificationService {
       final type = message.data['type']?.toString();
       if (type == 'instant_matched' ||
           type == 'presence_prompt' ||
+          type == 'trip_awaiting_boarding' ||
           type == 'trip_started') {
         ActiveRideNavigator.resume();
       } else if (type == 'instant_driver_cancelled') {

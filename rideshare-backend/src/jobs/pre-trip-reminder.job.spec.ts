@@ -19,7 +19,12 @@ describe('PreTripReminderJob', () => {
       execute,
     };
     tripRepo = {
-      find: jest.fn().mockResolvedValue([{ id: 't1' }]),
+      // 45 minutes after the sweeps below: the hour reminder, not the 15-minute one.
+      find: jest
+        .fn()
+        .mockResolvedValue([
+          { id: 't1', departureTime: new Date('2026-09-30T10:45:00Z') },
+        ]),
       findOne: jest.fn().mockResolvedValue(trip),
       createQueryBuilder: () => qb,
     };

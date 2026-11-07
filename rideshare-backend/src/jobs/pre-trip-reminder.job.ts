@@ -13,6 +13,15 @@ import { NotificationsService } from '../modules/notifications/notifications.ser
 /** How long before departure the driver and passengers are reminded. */
 export const PRE_TRIP_REMINDER_LEAD_MS = 60 * 60 * 1000;
 
+/** The second reminder, close to departure. */
+export const SOON_REMINDER_LEAD_MS = 15 * 60 * 1000;
+
+/**
+ * The second reminder is skipped when the first went out this recently (a trip
+ * created shortly before its time): two in a row would say the same thing.
+ */
+export const SOON_REMINDER_MIN_GAP_MS = 20 * 60 * 1000;
+
 /**
  * The time left before departure, as the reminder says it: «بعد ساعة» only
  * when about an hour is left. A trip created five minutes ahead is reminded
@@ -85,12 +94,17 @@ export class PreTripReminderJob {
           new Date(now.getTime() + PRE_TRIP_REMINDER_LEAD_MS),
         ),
       },
-      select: ['id'],
+      select: ['id', 'departureTime'],
     });
 
     let sent = 0;
     for (const { id } of due) {
       if (await this.remind(id, now)) sent++;
+    }
+    const soonBefore = now.getTime() + SOON_REMINDER_LEAD_MS;
+    for (const { id, departureTime } of due) {
+      if (new Date(departureTime).getTime() > soonBefore) continue;
+      if (await this.remindSoon(id, now)) sent++;
     }
     if (sent > 0)
       this.logger.log(`Sent pre-trip reminders for ${sent} trip(s)`);
@@ -175,6 +189,76 @@ export class PreTripReminderJob {
         ),
       );
 
+    return true;
+  }
+
+  /**
+   * About 15 minutes before departure: the driver and every confirmed
+   * passenger, once per trip. Returns whether it was sent.
+   */
+  async remindSoon(tripId: string, now: Date = new Date()): Promise<boolean> {
+    const gapCutoff = new Date(now.getTime() - SOON_REMINDER_MIN_GAP_MS);
+    const claim = await this.tripRepo
+      .createQueryBuilder()
+      .update(TripEntity)
+      .set({ soonReminderSentAt: () => 'NOW()' })
+      .where('id = :tripId', { tripId })
+      .andWhere('"soonReminderSentAt" IS NULL')
+      .andWhere('"preTripConfirmSentAt" < :gapCutoff', { gapCutoff })
+      .execute();
+    if (!claim.affected) return false;
+
+    const trip = await this.tripRepo.findOne({ where: { id: tripId } });
+    if (!trip) return false;
+    const bookings = await this.bookingRepo.find({
+      where: { tripId, status: BookingStatus.CONFIRMED },
+    });
+
+    for (const booking of bookings) {
+      const ar =
+        (await this.notificationsService.getPreferredLocale(booking.userId)) ===
+        'ar';
+      const left = timeLeftPhrase(trip.departureTime, now, ar);
+      await this.notificationsService
+        .create({
+          userId: booking.userId,
+          type: 'trip_reminder',
+          title: ar
+            ? `تذكير: رحلتك ${left.title}`
+            : `Reminder: your trip is ${left.title}`,
+          body: ar
+            ? `رحلتك إلى ${trip.toName} تنطلق ${left.body}. توجّه إلى مكان التجمع، وأكّد ركوبك عندما تصعد إلى السيارة.`
+            : `Your trip to ${trip.toName} leaves ${left.body}. Head to the meeting point and confirm once you're in the car.`,
+          data: { tripId, bookingId: booking.id },
+        })
+        .catch((err: Error) =>
+          this.logger.warn(
+            `Soon reminder to passenger ${booking.userId} failed: ${err.message}`,
+          ),
+        );
+    }
+
+    const driverAr =
+      (await this.notificationsService.getPreferredLocale(trip.driverId)) ===
+      'ar';
+    const driverLeft = timeLeftPhrase(trip.departureTime, now, driverAr);
+    await this.notificationsService
+      .create({
+        userId: trip.driverId,
+        type: 'presence_driver_prompt',
+        title: driverAr
+          ? `تذكير: رحلتك ${driverLeft.title}`
+          : `Reminder: your trip is ${driverLeft.title}`,
+        body: driverAr
+          ? `رحلتك إلى ${trip.toName} تنطلق ${driverLeft.body}. كن في مكان التجمع، وعند صعود الركاب تبدأ الرحلة مع أول تأكيد أو اضغط «بدء الرحلة».`
+          : `Your trip to ${trip.toName} leaves ${driverLeft.body}. Be at the meeting point; once passengers are in, it starts with the first confirmation or tap Start trip.`,
+        data: { tripId },
+      })
+      .catch((err: Error) =>
+        this.logger.warn(
+          `Soon reminder to driver ${trip.driverId} failed: ${err.message}`,
+        ),
+      );
     return true;
   }
 }

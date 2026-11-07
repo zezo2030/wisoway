@@ -69,6 +69,8 @@ class NotificationNavigationService {
         break;
 
       case 'presence_prompt':
+      // The driver's «start your trip» reminder: the same held trip screen.
+      case 'trip_awaiting_boarding':
         // The answers live on the trip screen, which now holds the passenger.
         ActiveRideNavigator.resume();
         break;
