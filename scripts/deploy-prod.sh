@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploy vision-way.tech from origin/main. Run ON THE SERVER (76.13.55.4):
+# Deploy vision-way.com from origin/main. Run ON THE SERVER (76.13.55.4):
 #   ssh root@76.13.55.4 'bash -s' < scripts/deploy-prod.sh   # (no compose exec inside, so stdin is safe)
 # or copy the file over and run: bash /opt/wisoway/scripts/deploy-prod.sh
 set -euo pipefail
