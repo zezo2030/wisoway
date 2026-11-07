@@ -14,7 +14,7 @@ import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import {
   BookingEntity,
   BookingStatus,
-  seatCountsForCommission,
+  fareOwed,
   PayoutRequestEntity,
   TripEntity,
   UserEntity,
@@ -31,6 +31,7 @@ import {
   TripStatus,
   TripType,
 } from '../../database/entities';
+import { riddenSeats, riddenShare } from '../ride-payments/ridden-fare';
 import { CreateTopupDto } from './dto/create-topup.dto';
 import { CreatePayoutRequestDto } from './dto/create-payout-request.dto';
 import { PlatformPricingService } from '../payments/platform-pricing.service';
@@ -332,19 +333,17 @@ export class WalletService {
         );
         if (trip.tripType === TripType.INSTANT) return sum + fareCents;
         // Driver confirmation alone never authorizes shared-trip commission.
-        // Legacy bookings without seat rows use the passenger's booking confirmation.
-        if (!b.seats?.length) {
-          const rode = b.passengerPresenceConfirmedAt || b.locationVerifiedAt;
-          return sum + (rode ? fareCents : 0);
-        }
-        const confirmed = b.seats.filter((seat) =>
-          seatCountsForCommission(seat, b.locationVerifiedAt != null),
-        ).length;
+        // The same rule decides what the passenger pays (ridden-fare.ts).
         const seatCount = Number(b.seatCount);
-        if (!Number.isInteger(seatCount) || seatCount < b.seats.length) {
+        if (
+          b.seats?.length &&
+          (!Number.isInteger(seatCount) || seatCount < b.seats.length)
+        ) {
           throw new BadRequestException('Invalid booking seat count');
         }
-        return sum + Math.round((fareCents * confirmed) / seatCount);
+        return (
+          sum + Math.round(riddenShare(fareCents / 100, riddenSeats(b)) * 100)
+        );
       }, 0);
       const percent = await this.settings.getNumber(
         trip.tripType === TripType.INSTANT
@@ -390,11 +389,15 @@ export class WalletService {
       );
       // The platform funds promotions, so driver earnings never shrink.
       // Cash: reimburse the discount. Electronic: reimburse + collect the net fare.
+      // On a shared trip the promotion shrinks with the fare, to the seats that rode.
       const discount =
-        bookings.reduce(
-          (sum, b) => sum + Math.round(Number(b.discountAmount ?? 0) * 100),
-          0,
-        ) / 100;
+        bookings.reduce((sum, b) => {
+          const cents = Math.round(Number(b.discountAmount ?? 0) * 100);
+          if (trip.tripType === TripType.INSTANT) return sum + cents;
+          return (
+            sum + Math.round(riddenShare(cents / 100, riddenSeats(b)) * 100)
+          );
+        }, 0) / 100;
       if (discount > 0) {
         await this.post(
           m,
@@ -878,7 +881,8 @@ export class WalletService {
       const trip = await m.findOneOrFail(TripEntity, {
         where: { id: b.tripId },
       });
-      const amount = Number(b.totalAmount);
+      // A shared booking pays for the seats that rode (fareDue), not all booked.
+      const amount = Number(fareOwed(b));
       if (
         !Number.isFinite(amount) ||
         amount < 0 ||

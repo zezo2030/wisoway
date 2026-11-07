@@ -10,11 +10,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Cron } from '@nestjs/schedule';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import {
   BookingEntity,
   BookingStatus,
+  fareOwed,
 } from '../../database/entities/booking.entity';
+import { TripType } from '../../database/entities/shared.enums';
 import { PaymentEntity } from '../../database/entities/payment.entity';
 import { TripEntity } from '../../database/entities/trip.entity';
 import {
@@ -25,6 +27,7 @@ import { WalletService } from '../wallet/wallet.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ComplaintsService } from '../complaints/complaints.service';
 import { parseCliqPayer } from './cliq-payer';
+import { riddenSeats, riddenShare } from './ridden-fare';
 
 export const RIDE_FARE_CLIQ_QUEUE = 'ride-fare-cliq';
 export const RIDE_FARE_POLL_JOB = 'poll-ride-fare';
@@ -123,6 +126,7 @@ export class RidePaymentsService {
    * a payment problem must not undo the trip's completion.
    */
   async openForTrip(tripId: string): Promise<void> {
+    await this.fixRiddenFares(tripId);
     await this.wallet.chargeCompletedTripCommission(tripId);
     const bookings = await this.bookingRepo.find({
       where: {
@@ -133,7 +137,7 @@ export class RidePaymentsService {
     });
     for (const booking of bookings) {
       try {
-        if (Number(booking.totalAmount) === 0) {
+        if (Number(fareOwed(booking)) === 0) {
           await this.wallet.settleCollectedFare(
             booking.id,
             booking.paymentMethod as 'cash' | 'cliq' | 'wallet',
@@ -150,7 +154,7 @@ export class RidePaymentsService {
         } else {
           await this.push(booking.userId, {
             title: 'الرجاء دفع تكلفة الرحلة للسائق',
-            body: `المبلغ المطلوب ${booking.totalAmount}. سيؤكد السائق الاستلام.`,
+            body: `المبلغ المطلوب ${fareOwed(booking)}. سيؤكد السائق الاستلام.`,
             type: 'ride_payment_due',
             data: { tripId, bookingId: booking.id },
           });
@@ -160,6 +164,27 @@ export class RidePaymentsService {
           `Opening payment for booking ${booking.id} failed: ${(err as Error).message}`,
         );
       }
+    }
+  }
+
+  /**
+   * A shared booking is paid for the seats that rode, not every seat booked:
+   * four seats with one passenger in the car owe one seat's fare. Set once,
+   * when the trip ends; the presence roster is final by then.
+   */
+  private async fixRiddenFares(tripId: string): Promise<void> {
+    const trip = await this.tripRepo.findOne({ where: { id: tripId } });
+    if (!trip || trip.tripType === TripType.INSTANT) return;
+    const bookings = await this.bookingRepo.find({
+      where: { tripId, status: BookingStatus.COMPLETED, fareDue: IsNull() },
+      relations: ['seats'],
+    });
+    for (const booking of bookings) {
+      const due = riddenShare(booking.totalAmount, riddenSeats(booking));
+      await this.bookingRepo.update(
+        { id: booking.id, fareDue: IsNull() },
+        { fareDue: due.toFixed(2) },
+      );
     }
   }
 
@@ -178,7 +203,7 @@ export class RidePaymentsService {
         userId: booking.userId,
         tripId: booking.tripId,
         bookingId: booking.id,
-        amount: Number(booking.totalAmount),
+        amount: Number(fareOwed(booking)),
         currency: trip.currency,
         method: 'cliq_a2a',
         status: 'pending',
@@ -198,7 +223,7 @@ export class RidePaymentsService {
         messageTrxId,
         aliasType: payer.type,
         aliasValue: payer.value,
-        amount: Number(booking.totalAmount),
+        amount: Number(fareOwed(booking)),
       });
       if (result?.MSGID) {
         payment.paymentGatewayRef = result.MSGID;
@@ -222,7 +247,7 @@ export class RidePaymentsService {
 
     await this.push(booking.userId, {
       title: 'طلب دفع CliQ',
-      body: `وافق على طلب دفع ${booking.totalAmount} ${trip.currency} في تطبيق البنك.`,
+      body: `وافق على طلب دفع ${fareOwed(booking)} ${trip.currency} في تطبيق البنك.`,
       type: 'ride_payment_requested',
       data: { tripId: booking.tripId, bookingId: booking.id },
     });
@@ -313,7 +338,7 @@ export class RidePaymentsService {
     });
     await this.push(trip.driverId, {
       title: 'أُضيفت الأجرة إلى محفظتك',
-      body: `${booking.totalAmount} ${trip.currency} من رحلة دُفعت عبر CliQ.`,
+      body: `${fareOwed(booking)} ${trip.currency} من رحلة دُفعت عبر CliQ.`,
       type: 'ride_fare_credited',
       data: { tripId: trip.id, bookingId: booking.id },
     });
@@ -406,7 +431,7 @@ export class RidePaymentsService {
     if (trip) {
       await this.push(trip.driverId, {
         title: 'الراكب سيدفع نقداً',
-        body: `حصّل ${booking.totalAmount} ${trip.currency} نقداً وأكّد الاستلام.`,
+        body: `حصّل ${fareOwed(booking)} ${trip.currency} نقداً وأكّد الاستلام.`,
         type: 'ride_payment_cash_switch',
         data: { tripId: trip.id, bookingId: booking.id },
       });
@@ -531,14 +556,25 @@ export class RidePaymentsService {
     currency: string,
     passengerName: string | null,
   ): RidePaymentView {
+    // Once the ridden fare is set, the promotion shrinks with it.
+    const owed = Number(fareOwed(booking));
+    const booked = Number(booking.totalAmount);
+    const discount = Number(booking.discountAmount ?? 0);
+    const discountShown =
+      booking.fareDue == null || !(booked > 0)
+        ? discount
+        : Math.round((discount * 100 * owed) / booked) / 100;
     return {
       bookingId: booking.id,
       tripId: booking.tripId,
       passengerId: booking.userId,
       passengerName,
-      amount: booking.totalAmount,
-      originalAmount: booking.originalAmount ?? booking.totalAmount,
-      discountAmount: booking.discountAmount ?? '0.00',
+      amount: owed.toFixed(2),
+      originalAmount:
+        booking.fareDue == null
+          ? (booking.originalAmount ?? booking.totalAmount)
+          : (owed + discountShown).toFixed(2),
+      discountAmount: discountShown.toFixed(2),
       promoCode: booking.promoCode ?? null,
       currency,
       method: booking.paymentMethod ?? 'cash',

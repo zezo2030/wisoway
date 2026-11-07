@@ -65,7 +65,8 @@ describe('RidePaymentsService', () => {
   let pollQueue: any;
   let service: RidePaymentsService;
 
-  const trip = { id: 't1', driverId: 'd1', currency: 'JOD' };
+  // An instant ride: its fare is the whole booking. Shared trips are below.
+  let trip: any;
   const booking = (over: any = {}) => ({
     id: 'b1',
     tripId: 't1',
@@ -82,10 +83,12 @@ describe('RidePaymentsService', () => {
   });
 
   beforeEach(() => {
+    trip = { id: 't1', driverId: 'd1', currency: 'JOD', tripType: 'instant' };
     bookingRepo = {
       find: jest.fn().mockResolvedValue([]),
       findOne: jest.fn(),
       save: jest.fn().mockImplementation(async (b: any) => b),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
     tripRepo = { findOne: jest.fn().mockResolvedValue(trip) };
     paymentRepo = {
@@ -120,6 +123,85 @@ describe('RidePaymentsService', () => {
       complaints,
       pollQueue,
     );
+  });
+
+  describe('a shared trip is paid for the seats that rode', () => {
+    // The owner's case: four seats at 25, one passenger in the car.
+    const fourSeats = () =>
+      booking({
+        seatCount: 4,
+        totalAmount: '100.00',
+        fareDue: null,
+        seats: [
+          { isMainBooker: true, passengerSelfConfirmedAt: new Date() },
+          { passengerDeclaredStatus: 'not_riding' },
+          { passengerDeclaredStatus: 'not_riding' },
+          { passengerDeclaredStatus: 'not_riding' },
+        ],
+      });
+
+    beforeEach(() => {
+      trip.tripType = 'scheduled';
+    });
+
+    it('asks a cash passenger for one seat, not four', async () => {
+      const b = fourSeats();
+      bookingRepo.find.mockResolvedValue([b]);
+      bookingRepo.update.mockImplementation(async (_: unknown, patch: any) => {
+        Object.assign(b, patch);
+        return { affected: 1 };
+      });
+
+      await service.openForTrip('t1');
+
+      expect(bookingRepo.update).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'b1' }),
+        { fareDue: '25.00' },
+      );
+      expect(notifications.sendPush).toHaveBeenCalledWith(
+        'p1',
+        expect.objectContaining({
+          type: 'ride_payment_due',
+          body: expect.stringContaining('25.00'),
+        }),
+      );
+    });
+
+    it('sends CliQ the ridden fare', async () => {
+      const b = fourSeats();
+      Object.assign(b, { paymentMethod: 'cliq', payerCliqAlias: 'ahmad@cliq' });
+      bookingRepo.find.mockResolvedValue([b]);
+      bookingRepo.update.mockImplementation(async (_: unknown, patch: any) => {
+        Object.assign(b, patch);
+        return { affected: 1 };
+      });
+
+      await service.openForTrip('t1');
+
+      expect(cliq.purchase).toHaveBeenCalledWith(
+        expect.objectContaining({ amount: 25 }),
+      );
+    });
+
+    it('shows both sides the ridden fare', async () => {
+      bookingRepo.findOne.mockResolvedValue(
+        booking({ seatCount: 4, totalAmount: '100.00', fareDue: '25.00' }),
+      );
+
+      const view = await service.getMine('t1', 'p1');
+
+      expect(view.amount).toBe('25.00');
+      expect(view.originalAmount).toBe('25.00');
+    });
+
+    it('leaves an instant ride at its whole fare', async () => {
+      trip.tripType = 'instant';
+      bookingRepo.find.mockResolvedValue([fourSeats()]);
+
+      await service.openForTrip('t1');
+
+      expect(bookingRepo.update).not.toHaveBeenCalled();
+    });
   });
 
   describe('openForTrip', () => {

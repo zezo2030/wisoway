@@ -76,6 +76,14 @@ export class BookingEntity {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   totalAmount: string;
 
+  /**
+   * What the passenger owes once a shared trip ends: [totalAmount] cut to the
+   * seats that rode (see ridden-fare.ts). Null until then, and on instant
+   * rides, where [totalAmount] is the fare. Read it through [fareOwed].
+   */
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  fareDue: string | null;
+
   /** Populated by the booking-timeout BullMQ job delay; useful for display. */
   @Column({ type: 'timestamp', nullable: true })
   expiresAt: Date | null;
@@ -203,4 +211,11 @@ export class BookingEntity {
 
   @UpdateDateColumn()
   updatedAt: Date;
+}
+
+/** What the passenger pays for [booking] now: the ridden fare once known. */
+export function fareOwed(
+  booking: Pick<BookingEntity, 'fareDue' | 'totalAmount'>,
+) {
+  return booking.fareDue ?? booking.totalAmount;
 }
