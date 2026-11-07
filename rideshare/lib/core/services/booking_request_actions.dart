@@ -26,9 +26,11 @@ class BookingRequestActions {
 
   /// [focusBookingId] puts that request's card up first, and [initialAction]
   /// (from the notification's buttons) starts the driver's choice on it.
+  /// [ring] is for a request that just arrived: its card plays the music.
   static Future<void> showPending({
     String? focusBookingId,
     BookingRequestInitialAction? initialAction,
+    bool ring = false,
   }) async {
     if (_running) return;
     _running = true;
@@ -64,6 +66,7 @@ class BookingRequestActions {
             service: _service,
             waitingAfterThis: pending.length - 1,
             initialAction: action,
+            ring: ring,
           ),
         );
         _handled.add(request.id);

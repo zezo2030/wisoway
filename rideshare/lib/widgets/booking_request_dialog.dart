@@ -39,6 +39,7 @@ class BookingRequestDialog extends StatefulWidget {
     required this.service,
     this.waitingAfterThis = 0,
     this.initialAction,
+    this.ring = false,
   });
 
   final BookingRequest request;
@@ -50,6 +51,10 @@ class BookingRequestDialog extends StatefulWidget {
 
   /// Further requests queued behind this one, so the driver knows more follow.
   final int waitingAfterThis;
+
+  /// Plays the request music until the card is answered (a fresh push while
+  /// the app is open). Dismissing the card stops it.
+  final bool ring;
 
   @override
   State<BookingRequestDialog> createState() => _BookingRequestDialogState();
@@ -76,6 +81,9 @@ class _BookingRequestDialogState extends State<BookingRequestDialog> {
       widget.request.id,
       keepRing: true,
     );
+    if (widget.ring) {
+      PushNotificationService.startBookingRequestRing(widget.request.id);
+    }
     final action = widget.initialAction;
     if (action != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {

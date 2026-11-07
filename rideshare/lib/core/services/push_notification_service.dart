@@ -297,7 +297,8 @@ class PushNotificationService {
         }
         return;
       }
-      unawaited(BookingRequestActions.showPending());
+      // A request that just came in rings, as it does from the tray.
+      unawaited(BookingRequestActions.showPending(ring: true));
       return;
     }
 
@@ -435,6 +436,14 @@ class PushNotificationService {
       if (kDebugMode) debugPrint('Failed to cancel booking notification: $e');
     }
   }
+
+  /// The booking-request music while its card is up in the app. Same key as
+  /// the tray notification's, so answering either stops it.
+  static Future<void> startBookingRequestRing(String bookingId) =>
+      startInstantOfferRing(
+        'booking:$bookingId',
+        DateTime.now().add(const Duration(seconds: 60)),
+      );
 
   static Future<void> stopInstantOfferRing(String offerId) async {
     if (kIsWeb ||
