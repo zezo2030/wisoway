@@ -60,6 +60,12 @@ void main() {
     expect(find.text('لن يستقل الرحلة'), findsNWidgets(2));
   });
 
+  testWidgets('names the car with its colour', (tester) async {
+    await open(tester);
+
+    expect(find.text('سيدان • تويوتا كورولا • أبيض'), findsOneWidget);
+  });
+
   testWidgets('confirming one passenger leaves the other unanswered', (
     tester,
   ) async {
@@ -211,9 +217,10 @@ PresencePrompt _prompt(PresenceWindow window) {
       ratingCount: 128,
     ),
     vehicle: const PresenceVehicle(
-      vehicleType: 'أبيض',
+      vehicleType: 'سيدان',
       model: 'تويوتا كورولا',
       plateNumber: '22-12345',
+      color: 'white',
     ),
     pickup: const PresencePoint(
       name: 'دوار المدينة الرياضية',

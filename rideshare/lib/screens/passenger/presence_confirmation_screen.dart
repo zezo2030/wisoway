@@ -15,6 +15,7 @@ import '../../core/services/presence_service.dart';
 import '../../core/theme/colors.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/presence_models.dart';
+import '../../models/vehicle_colors.dart';
 import 'widgets/seat_presence_panel.dart';
 
 class PresenceConfirmationScreen extends StatefulWidget {
@@ -340,7 +341,7 @@ class _DriverIdentity extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                _vehicleLabel(vehicle),
+                _vehicleLabel(context, vehicle),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -378,10 +379,13 @@ class _DriverIdentity extends StatelessWidget {
     return '${rating.toStringAsFixed(1)} (${driver?.ratingCount ?? 0})';
   }
 
-  String _vehicleLabel(PresenceVehicle? vehicle) {
-    final parts = [
+  /// "سيدان • كامري • أبيض": the colour last, as the passenger looks for it.
+  String _vehicleLabel(BuildContext context, PresenceVehicle? vehicle) {
+    final color = vehicle?.color;
+    final parts = <String?>[
       vehicle?.vehicleType,
       vehicle?.model,
+      if (color != null) vehicleColorLabel(context.l10n, color),
     ].where((part) => part?.trim().isNotEmpty == true);
     return parts.map((part) => part!.trim()).join(' • ');
   }

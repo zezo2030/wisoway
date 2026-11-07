@@ -378,6 +378,26 @@ describe('PresenceService', () => {
       expect(second.passengerPresenceConfirmedAt).toBeTruthy();
     });
 
+    it("gives the car's colour, so the passenger can spot it", async () => {
+      const booking = makeBooking([makeSeat()]);
+      (booking as any).trip = makeTrip();
+      bookingRepo.findOne.mockResolvedValue(booking);
+      bookingRepo.find.mockResolvedValue([booking]);
+      tripRepo.manager.getRepository.mockReturnValue({
+        findOne: jest.fn(async () => ({
+          vehicleType: 'sedan',
+          model: 'كامري',
+          plateNumber: '12-3456',
+          color: 'white',
+          carImageUrl: null,
+        })),
+      });
+
+      const prompt = await service.getPresencePrompt('b1', 'u-passenger');
+
+      expect(prompt.vehicle).toMatchObject({ model: 'كامري', color: 'white' });
+    });
+
     it('records self-confirmation as the billable presence signal', async () => {
       const seat = await runDeclare(
         makeSeat(),

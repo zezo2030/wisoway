@@ -486,7 +486,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       ),
                       const Divider(),
                     ],
-                    if (trip.isInstant && trip.vehicleColor != null) ...[
+                    // Any trip: the colour is how a passenger spots the car.
+                    if (trip.vehicleColor != null) ...[
                       _DetailRow(
                         icon: Icons.palette_outlined,
                         label: context.l10n.vehicleColor,

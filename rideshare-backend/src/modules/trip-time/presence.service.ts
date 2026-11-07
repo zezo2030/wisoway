@@ -732,11 +732,11 @@ export class PresenceService {
         : null,
       vehicle: vehicle
         ? {
-            // VehicleEntity has no make/color columns — the mockup's
-            // "أبيض • تويوتا كورولا" line is rendered from vehicleType + model.
             vehicleType: vehicle.vehicleType,
             model: vehicle.model,
             plateNumber: vehicle.plateNumber,
+            // How the passenger spots the car; null when the driver gave none.
+            color: vehicle.color ?? null,
             carImageUrl: vehicle.carImageUrl ?? trip.carImageUrl ?? null,
           }
         : null,

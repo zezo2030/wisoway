@@ -46,19 +46,25 @@ class PresenceVehicle {
     required this.vehicleType,
     required this.model,
     required this.plateNumber,
+    this.color,
     this.carImageUrl,
   });
 
   final String vehicleType;
   final String model;
   final String plateNumber;
+
+  /// A colour key ("white") or the driver's own words; null when not given.
+  final String? color;
   final String? carImageUrl;
 
   factory PresenceVehicle.fromJson(Map<String, dynamic> json) {
+    final color = json['color']?.toString().trim();
     return PresenceVehicle(
       vehicleType: json['vehicleType']?.toString() ?? '',
       model: json['model']?.toString() ?? '',
       plateNumber: json['plateNumber']?.toString() ?? '',
+      color: color == null || color.isEmpty ? null : color,
       carImageUrl: json['carImageUrl']?.toString(),
     );
   }
