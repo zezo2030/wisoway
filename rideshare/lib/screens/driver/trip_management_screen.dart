@@ -393,6 +393,10 @@ class _TripManagementScreenState extends State<TripManagementScreen>
             (_) => _loadTrip(),
           );
         }
+        // A held trip cancelled or ended while waiting lets the driver go.
+        if (widget.lockedUntilEnd && trip != null && _isEnded(trip)) {
+          unawaited(_checkTripEnded());
+        }
         _loadFeeQuote();
       }
     } catch (e) {
@@ -707,7 +711,21 @@ class _TripManagementScreenState extends State<TripManagementScreen>
         child: _buildManagement(context),
       );
     }
-    return _buildManagement(context);
+    // From the trip's time on, waiting for riders included, the driver stays.
+    return PopScope(
+      canPop: !_heldBeforeStart,
+      child: _buildManagement(context),
+    );
+  }
+
+  /// Opened at the trip's time and not under way yet: no way back until it
+  /// starts (then the live page holds) or ends.
+  bool get _heldBeforeStart {
+    final trip = _trip;
+    return widget.lockedUntilEnd &&
+        trip != null &&
+        !_isLive(trip) &&
+        !_isEnded(trip);
   }
 
   Widget _buildManagement(BuildContext context) {
@@ -779,6 +797,7 @@ class _TripManagementScreenState extends State<TripManagementScreen>
           ? null
           : AppBar(
               elevation: 0,
+              automaticallyImplyLeading: !_heldBeforeStart,
               title: Text(
                 ended
                     ? context.l10n.tripDetailsTitle
@@ -1235,11 +1254,12 @@ class _TripManagementScreenState extends State<TripManagementScreen>
 
     return Row(
       children: [
-        CircleIconButton(
-          icon: const BackButtonIcon(),
-          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
+        if (!_heldBeforeStart)
+          CircleIconButton(
+            icon: const BackButtonIcon(),
+            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+            onPressed: () => Navigator.of(context).maybePop(),
+          ),
         Expanded(
           child: Column(
             children: [

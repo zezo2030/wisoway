@@ -12,6 +12,7 @@ describe('InstantRidesService', () => {
   let tripRepo: any;
   let unpaidBooking: jest.Mock;
   let dueSharedBookings: jest.Mock;
+  let dueDrivenTrip: jest.Mock;
   let users: any;
   let vehicles: any;
   let locations: any;
@@ -41,7 +42,14 @@ describe('InstantRidesService', () => {
     availabilityRepo = { update: jest.fn().mockResolvedValue({ affected: 1 }) };
     unpaidBooking = jest.fn().mockResolvedValue(null);
     dueSharedBookings = jest.fn().mockResolvedValue([]);
+    dueDrivenTrip = jest.fn().mockResolvedValue(null);
     tripRepo = {
+      createQueryBuilder: () => {
+        const qb: any = {};
+        for (const m of ['where', 'andWhere', 'orderBy']) qb[m] = () => qb;
+        qb.getOne = () => dueDrivenTrip();
+        return qb;
+      },
       manager: {
         getRepository: () => ({
           createQueryBuilder: () => {
@@ -359,6 +367,19 @@ describe('InstantRidesService', () => {
       });
 
       await expect(service.getActiveRide('p1')).resolves.toBeNull();
+    });
+
+    it('holds the driver from the time of a shared trip with riders', async () => {
+      tripRepo.findOne = jest.fn().mockResolvedValue(null);
+      requestRepo.findOne.mockResolvedValue(null);
+      dueDrivenTrip.mockResolvedValue({ id: 't7' });
+
+      await expect(service.getActiveRide('d1')).resolves.toEqual({
+        tripId: 't7',
+        role: 'driver',
+        requestId: null,
+        stage: 'ride',
+      });
     });
 
     describe('a shared trip the passenger is due on', () => {

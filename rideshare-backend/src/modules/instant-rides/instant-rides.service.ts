@@ -74,6 +74,7 @@ import {
   OfferLocale,
   tripRouteMetrics,
 } from './instant-offer-labels';
+import { sharedTripDutySql } from '../trips/shared-trip-duty';
 
 type LatLng = { latitude: number; longitude: number };
 type DriverPosition = DriverPositionDto;
@@ -273,13 +274,15 @@ export class InstantRidesService {
       where: { driverId: userId, status: TripStatus.IN_PROGRESS },
       order: { createdAt: 'DESC' },
     });
-    if (drivenTrip) {
+    const drivenTripId =
+      drivenTrip?.id ?? (await this.findDueDrivenTrip(userId));
+    if (drivenTripId) {
       const request = await this.requestRepo.findOne({
-        where: { tripId: drivenTrip.id },
+        where: { tripId: drivenTripId },
         select: ['id'],
       });
       return {
-        tripId: drivenTrip.id,
+        tripId: drivenTripId,
         role: 'driver',
         requestId: request?.id ?? null,
       };
@@ -298,6 +301,17 @@ export class InstantRidesService {
     return sharedTripId
       ? { tripId: sharedTripId, role: 'passenger', requestId: null }
       : null;
+  }
+
+  /** A shared trip of this driver's whose time has come, waiting for riders. */
+  private async findDueDrivenTrip(userId: string): Promise<string | null> {
+    const trip = await this.tripRepo
+      .createQueryBuilder('t')
+      .where('t."driverId" = :userId', { userId })
+      .andWhere(sharedTripDutySql('t'))
+      .orderBy('t."departureTime"', 'DESC')
+      .getOne();
+    return trip?.id ?? null;
   }
 
   /**

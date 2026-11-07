@@ -10,6 +10,10 @@ import {
   DISPATCH_STALE_MINUTES,
   lockIsFreeSql,
 } from './instant-rides.constants';
+import {
+  INSTANT_FREE_BEFORE_SHARED_MIN,
+  sharedTripDutySql,
+} from '../trips/shared-trip-duty';
 
 export type DriverAvailabilityStatus = {
   driverId: string;
@@ -32,6 +36,11 @@ export type NearbyDriverPin = {
   latitude: number;
   longitude: number;
 };
+
+/** Busy with a shared trip: under way, due, or leaving soon. */
+const ON_SHARED_TRIP_SQL = `NOT EXISTS (SELECT 1 FROM trips st
+  WHERE st."driverId" = a."driverId"
+  AND ${sharedTripDutySql('st', INSTANT_FREE_BEFORE_SHARED_MIN)})`;
 
 const FUNDED_DRIVER_SQL = `EXISTS (SELECT 1 FROM wallet_accounts w WHERE w."userId"=a."driverId"
   AND w."accountType"='driver' AND w."isActive"=true AND w.balance-w."reservedBalance">0)
@@ -146,6 +155,7 @@ export class DriverAvailabilityService {
       .andWhere('a."acceptsInstant" = true')
       .andWhere(lockIsFreeSql('a."currentRequestId"'))
       .andWhere(FUNDED_DRIVER_SQL)
+      .andWhere(ON_SHARED_TRIP_SQL)
       .andWhere('a."point" IS NOT NULL')
       .andWhere('a."lastSeenAt" >= :dispatchCutoff', { dispatchCutoff })
       .andWhere(

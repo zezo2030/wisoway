@@ -42,8 +42,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeNotifications();
-      // A matched instant ride owns the screen until it ends.
+      // A matched instant ride or a due shared trip owns the screen until it
+      // ends, also when its time comes while the app is open.
       ActiveRideNavigator.resume();
+      ActiveRideNavigator.watch();
       // Booking requests the driver hasn't answered yet.
       BookingRequestActions.showPending();
     });
@@ -52,6 +54,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    ActiveRideNavigator.stopWatching();
     super.dispose();
   }
 
@@ -413,10 +416,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         },
       ),
       bottomNavigationBar: _buildBottomNavigationBar(user, isDriver, safeIndex),
-      drawer: HomeDrawer(
-        user: user,
-        onTabSelect: _selectTab,
-      ),
+      drawer: HomeDrawer(user: user, onTabSelect: _selectTab),
     );
   }
 

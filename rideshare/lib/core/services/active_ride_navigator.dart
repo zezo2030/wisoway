@@ -28,6 +28,24 @@ class ActiveRideNavigator {
 
   static final InstantRideService _service = InstantRideService();
 
+  static Timer? _watch;
+
+  /// Asks the server every half minute while the app is open, so a trip whose
+  /// time comes takes over the screen without anyone opening its notification.
+  static void watch() {
+    _watch ??= Timer.periodic(const Duration(seconds: 30), (_) {
+      if (_shownTripId != null) return;
+      final state = WidgetsBinding.instance.lifecycleState;
+      if (state != null && state != AppLifecycleState.resumed) return;
+      resume(rideOnly: true);
+    });
+  }
+
+  static void stopWatching() {
+    _watch?.cancel();
+    _watch = null;
+  }
+
   /// The trip whose screen is currently on top, so repeated signals (poll,
   /// push, resume) don't stack it twice.
   static String? _shownTripId;
@@ -149,11 +167,13 @@ class ActiveRideNavigator {
   }
 
   /// Asks the server whether the user is mid-ride and, if so, takes them back.
-  static Future<void> resume() async {
+  /// [rideOnly] leaves a fare still being settled to the next launch or resume.
+  static Future<void> resume({bool rideOnly = false}) async {
     try {
       final ride = await _service.getActiveRide();
       if (ride == null) return;
       if (ride.awaitingPayment) {
+        if (rideOnly) return;
         enterPayment(ride.tripId, isDriver: ride.isDriver);
       } else {
         _enter(ride.tripId, isDriver: ride.isDriver);

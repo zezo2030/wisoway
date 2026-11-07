@@ -66,7 +66,7 @@ describe('getActiveRide — a due shared trip (real database)', () => {
        VALUES ($1, '1A', $2)`,
       [booking, seatStatus],
     );
-    return { trip, passenger };
+    return { trip, passenger, driver };
   };
 
   const activeTrip = async (userId: string) =>
@@ -114,7 +114,22 @@ describe('getActiveRide — a due shared trip (real database)', () => {
     });
   });
 
-  it('leaves a driver alone until the trip starts', async () => {
+  it('holds the driver from the time of a trip with confirmed riders', async () => {
+    const { trip, driver } = await makeBooking('published', '-1 minute', null);
+
+    await expect(service.getActiveRide(driver)).resolves.toMatchObject({
+      tripId: trip,
+      role: 'driver',
+    });
+  });
+
+  it('leaves the driver free before the trip is due', async () => {
+    const { driver } = await makeBooking('published', '1 hour', null);
+
+    await expect(service.getActiveRide(driver)).resolves.toBeNull();
+  });
+
+  it('leaves a driver alone when nobody is confirmed', async () => {
     const driver = await makeUser('driver');
     await sql(
       `INSERT INTO trips (id, "driverId", "fromName", "toName", "fromPoint", "toPoint",
