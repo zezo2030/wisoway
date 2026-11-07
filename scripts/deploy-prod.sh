@@ -32,7 +32,7 @@ docker compose up -d --force-recreate --no-deps nginx
 
 echo "== wait for backend (migrations run on start)"
 for i in $(seq 1 30); do
-  if curl -fsS http://127.0.0.1/api/v1/health >/dev/null 2>&1; then echo "backend healthy"; break; fi
+  if curl -fsS --resolve vision-way.com:443:127.0.0.1 https://vision-way.com/api/v1/health >/dev/null 2>&1; then echo "backend healthy"; break; fi
   sleep 5
 done
 docker compose ps

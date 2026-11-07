@@ -8,7 +8,7 @@
 #   docker compose build
 #   docker compose up -d
 #
-# Edge entry (HTTPS, Let's Encrypt cert for vision-way.com, also covering vision-way.tech):
+# Edge entry (HTTPS, Let's Encrypt cert for vision-way.com):
 #   https://<host>/            -> dashboard
 #   https://<host>/api/        -> backend
 #   https://<host>/socket.io/  -> backend WS
