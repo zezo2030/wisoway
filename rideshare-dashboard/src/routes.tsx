@@ -21,6 +21,7 @@ import OperationsSettingsPage from "@/pages/settings/operations-settings"
 import BookingsListPage from "@/pages/bookings/bookings-list"
 import RatingsListPage from "@/pages/ratings/ratings-list"
 import NotificationsPage from "@/pages/notifications/notifications"
+import MyNotificationsPage from "@/pages/notifications/my-notifications"
 import ChatRoomsPage from "@/pages/chat/chat-rooms"
 import TripChatLivePage from "@/pages/chat/trip-chat-live"
 import AccountFlagsPage from "@/pages/account-flags/account-flags"
@@ -129,6 +130,10 @@ export function AppRoutes() {
         {
           path: "notifications",
           element: <NotificationsPage />,
+        },
+        {
+          path: "notifications/inbox",
+          element: <MyNotificationsPage />,
         },
         {
           path: "chat",

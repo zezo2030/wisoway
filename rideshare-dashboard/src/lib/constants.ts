@@ -22,6 +22,7 @@ export const ROUTES = {
   BOOKINGS: "/bookings",
   RATINGS: "/ratings",
   NOTIFICATIONS: "/notifications",
+  MY_NOTIFICATIONS: "/notifications/inbox",
   CHAT: "/chat",
   REPORTS: "/reports",
   PRICING_SETTINGS: "/settings/pricing",

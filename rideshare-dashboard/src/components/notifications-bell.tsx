@@ -8,10 +8,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { useLanguage } from "@/providers/language-provider"
 import { QUERY_KEYS, ROUTES } from "@/lib/constants"
 import { cn, formatDate } from "@/lib/utils"
+import { notificationLink } from "@/lib/notification-link"
 import {
   getMyNotifications,
   getMyUnreadCount,
@@ -74,12 +74,7 @@ export function NotificationsBell() {
     if (!n.isRead) markReadMutation.mutate(n._id)
     setOpen(false)
 
-    const data = (n.data ?? {}) as { newUserId?: string }
-    if (n.type === "new_user_registered" && data.newUserId) {
-      navigate(`/users/${data.newUserId}`)
-      return
-    }
-    navigate(ROUTES.NOTIFICATIONS)
+    navigate(notificationLink(n) ?? ROUTES.MY_NOTIFICATIONS)
   }
 
   return (
@@ -116,7 +111,9 @@ export function NotificationsBell() {
           )}
         </div>
 
-        <ScrollArea className="max-h-[360px]">
+        {/* A plain scroller: ScrollArea's viewport ignored max-height, so a
+            long list spilled under «عرض كل الإشعارات». */}
+        <div className="max-h-[360px] overflow-y-auto overscroll-contain">
           {isLoading ? (
             <div className="p-6 text-center text-sm text-muted-foreground">
               {t("loading")}
@@ -180,7 +177,7 @@ export function NotificationsBell() {
               })}
             </ul>
           )}
-        </ScrollArea>
+        </div>
 
         <div className="border-t border-border/60 p-2">
           <Button
@@ -188,7 +185,7 @@ export function NotificationsBell() {
             className="w-full justify-center text-sm font-semibold"
             onClick={() => {
               setOpen(false)
-              navigate(ROUTES.NOTIFICATIONS)
+              navigate(ROUTES.MY_NOTIFICATIONS)
             }}
           >
             {t("viewAllNotifications")}

@@ -782,6 +782,8 @@ export const translations = {
     // Notifications bell + new user filter
     markAllRead: "Mark all read",
     viewAllNotifications: "View all notifications",
+    myNotificationsTitle: "My notifications",
+    myNotificationsSubtitle: "Alerts sent to you as an admin, newest first.",
     newUserRegistered: "New user registered",
     newUsersFilter: "New (last 7 days)",
     allConfirmation: "All accounts",
@@ -1567,6 +1569,8 @@ export const translations = {
     // Notifications bell + new user filter
     markAllRead: "تعليم الكل كمقروء",
     viewAllNotifications: "عرض كل الإشعارات",
+    myNotificationsTitle: "إشعاراتي",
+    myNotificationsSubtitle: "التنبيهات المرسلة إليك كمشرف، الأحدث أولًا.",
     newUserRegistered: "مستخدم جديد سجّل",
     newUsersFilter: "الجدد (آخر 7 أيام)",
     allConfirmation: "كل الحسابات",
