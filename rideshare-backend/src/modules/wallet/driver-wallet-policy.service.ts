@@ -2,6 +2,7 @@ import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PlatformSettingEntity } from '../../database/entities';
+import { PLATFORM_SETTINGS } from '../platform-settings/platform-settings.service';
 
 /** Rates are public market data, never a conversion of a customer's balance. */
 @Injectable()
@@ -11,9 +12,20 @@ export class DriverWalletPolicyService {
     private readonly settings: Repository<PlatformSettingEntity>,
   ) {}
 
+  /** The admin's floor (Operations settings), or its default when unset. */
+  private async floor(
+    name: 'minimumTopupJod' | 'minimumTopupSar',
+  ): Promise<number> {
+    const def = PLATFORM_SETTINGS[name];
+    const row = await this.settings.findOne({ where: { key: def.key } });
+    const value = Number(row?.value);
+    return row && Number.isFinite(value) && value > 0 ? value : def.default;
+  }
+
   async minimum(currency: string): Promise<number> {
-    if (currency === 'JOD') return 5;
-    if (currency === 'SAR') return 25;
+    if (currency === 'JOD') return this.floor('minimumTopupJod');
+    if (currency === 'SAR') return this.floor('minimumTopupSar');
+    const base = await this.floor('minimumTopupJod');
     const key = 'wallet.fx.JOD';
     const row = await this.settings.findOne({ where: { key } });
     let data: { rates?: Record<string, number>; updated?: number } | undefined;
@@ -63,6 +75,6 @@ export class DriverWalletPolicyService {
         'سعر صرف هذه العملة غير متاح حالياً.',
       );
     }
-    return Math.ceil(5 * rate * 100) / 100;
+    return Math.ceil(base * rate * 100) / 100;
   }
 }

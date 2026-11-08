@@ -385,8 +385,8 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
             const SizedBox(height: 8),
             Text(
               _ar
-                  ? 'رصيد ترحيبي عند اعتماد السائق: 5 دنانير أو 25 ريالاً أو ما يعادل 5 دنانير للعملات الأخرى. تُخصم العمولة من المحفظة عند انتهاء الرحلة.'
-                  : 'Approved drivers receive 5 JOD, 25 SAR, or the equivalent of 5 JOD in other currencies. Commission is charged at trip completion.',
+                  ? 'رصيد ترحيبي عند اعتماد السائق بقيمة الحد الأدنى للشحن. تُخصم العمولة من المحفظة عند انتهاء الرحلة.'
+                  : 'Approved drivers receive a welcome credit equal to the minimum top-up. Commission is charged at trip completion.',
             ),
             Text(
               '${_ar ? 'الحد الأدنى للشحن والرصيد المتبقي بعد السحب' : 'Minimum top-up and retained balance'}: ${a?.minimumRetainedBalance.toStringAsFixed(2) ?? '—'} $currency',

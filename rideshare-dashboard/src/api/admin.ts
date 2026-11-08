@@ -904,6 +904,10 @@ export interface PlatformSettings {
   lateRatingPenaltyPercent: number
   /** Rating cut (%) for cancelling an instant ride after it was accepted. */
   cancelRatingPenaltyPercent: number
+  /** Driver wallet floor in JOD: minimum top-up, welcome credit, balance kept after a payout. */
+  minimumTopupJod: number
+  /** The same floor for SAR wallets. */
+  minimumTopupSar: number
 }
 
 export async function getPlatformSettings(): Promise<PlatformSettings> {

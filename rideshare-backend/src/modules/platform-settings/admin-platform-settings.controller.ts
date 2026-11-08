@@ -53,6 +53,31 @@ export class AdminPatchPlatformSettingsDto {
   @Min(PLATFORM_SETTINGS.cancelRatingPenaltyPercent.min)
   @Max(PLATFORM_SETTINGS.cancelRatingPenaltyPercent.max)
   cancelRatingPenaltyPercent?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Driver wallet floor in JOD: minimum top-up, welcome credit, balance kept after a payout',
+    minimum: PLATFORM_SETTINGS.minimumTopupJod.min,
+    maximum: PLATFORM_SETTINGS.minimumTopupJod.max,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(PLATFORM_SETTINGS.minimumTopupJod.min)
+  @Max(PLATFORM_SETTINGS.minimumTopupJod.max)
+  minimumTopupJod?: number;
+
+  @ApiPropertyOptional({
+    description: 'The same floor for SAR wallets',
+    minimum: PLATFORM_SETTINGS.minimumTopupSar.min,
+    maximum: PLATFORM_SETTINGS.minimumTopupSar.max,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(PLATFORM_SETTINGS.minimumTopupSar.min)
+  @Max(PLATFORM_SETTINGS.minimumTopupSar.max)
+  minimumTopupSar?: number;
 }
 
 @ApiTags('Admin')

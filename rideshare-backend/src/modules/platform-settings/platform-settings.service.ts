@@ -40,6 +40,25 @@ export const PLATFORM_SETTINGS = {
     min: 0,
     max: 50,
   },
+  /**
+   * The driver wallet's floor in dinars: the smallest top-up, the welcome
+   * credit a newly approved driver gets, the balance a payout must leave, and
+   * the top-up that lifts a recharge stop. Other currencies (bar SAR) are this
+   * amount at the day's rate.
+   */
+  minimumTopupJod: {
+    key: 'wallet.minimumTopup.JOD',
+    default: 5,
+    min: 1,
+    max: 500,
+  },
+  /** The same floor for riyal wallets. */
+  minimumTopupSar: {
+    key: 'wallet.minimumTopup.SAR',
+    default: 25,
+    min: 5,
+    max: 2500,
+  },
 } as const;
 
 export type PlatformSettingName = keyof typeof PLATFORM_SETTINGS;
@@ -78,7 +97,8 @@ export class PlatformSettingsService {
     for (const [name, raw] of Object.entries(patch)) {
       const def = PLATFORM_SETTINGS[name as PlatformSettingName];
       if (!def || raw == null || !Number.isFinite(raw)) continue;
-      const value = Math.min(def.max, Math.max(def.min, raw));
+      const value =
+        Math.round(Math.min(def.max, Math.max(def.min, raw)) * 100) / 100;
       await this.repo.save({ key: def.key, value: String(value) });
     }
     return this.getAll();

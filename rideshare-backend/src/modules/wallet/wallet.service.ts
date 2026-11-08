@@ -551,7 +551,7 @@ export class WalletService {
           userId: outcome.driverId,
           type: 'wallet_recharge_required',
           title: 'اشحن محفظتك للاستمرار',
-          body: `توقف استقبال الرحلات وإنشاؤها. اشحن محفظتك بحد أدنى ${minimum ?? 'ما يعادل 5 دنانير'} ${minimum ? outcome.currency : ''} مع تسديد أي رصيد سالب.`,
+          body: `توقف استقبال الرحلات وإنشاؤها. اشحن محفظتك ${minimum != null ? `بحد أدنى ${minimum} ${outcome.currency}` : 'بالحد الأدنى للشحن'} مع تسديد أي رصيد سالب.`,
           data: { minimumTopup: minimum, currency: outcome.currency },
         })
         .catch(() => undefined);
@@ -721,10 +721,18 @@ export class WalletService {
           Number(a.balance) - Number(a.reservedBalance ?? 0) > 0,
       )
     ) {
+      const shown = inDebt?.currency ?? currency ?? accounts[0]?.currency;
+      const minimum = shown
+        ? await this.policy.minimum(shown).catch(() => null)
+        : null;
       throw new ForbiddenException({
         code: ErrorCodes.NEGATIVE_WALLET_BALANCE,
-        message:
-          'اشحن محفظتك بحد أدنى 5 دنانير أو 25 ريالاً أو ما يعادلها وسدد أي مستحقات للاستمرار في استقبال الرحلات وإنشائها.',
+        message: `اشحن محفظتك ${
+          minimum != null
+            ? `بحد أدنى ${minimum} ${shown}`
+            : 'بالحد الأدنى للشحن'
+        } وسدد أي مستحقات للاستمرار في استقبال الرحلات وإنشائها.`,
+        minimumTopup: minimum,
         balance: Number(inDebt?.balance ?? 0),
         currency: inDebt?.currency,
       });

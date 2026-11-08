@@ -71,6 +71,7 @@ export default function OperationsSettingsPage() {
       ))}
       <CommissionCard setting="instantCommissionPercent" saved={data.instantCommissionPercent} />
       <CommissionCard setting="sharedCommissionPercent" saved={data.sharedCommissionPercent} />
+      <MinimumTopupCard jod={data.minimumTopupJod} sar={data.minimumTopupSar} />
     </div>
   )
 }
@@ -95,6 +96,68 @@ function CommissionCard({ setting, saved }: { setting: "instantCommissionPercent
       <Input id={setting} type="number" min={0} max={100} step={0.1} value={value} onChange={e => setDraft(e.target.value)} />
       <Button disabled={mutation.isPending || !value.trim() || !Number.isFinite(percent) || percent < 0 || percent > 100} onClick={() => mutation.mutate()}>{ar ? "حفظ" : "Save"}</Button>
     </CardContent></Card>
+}
+
+/** Same bounds as the server (PLATFORM_SETTINGS). */
+const TOPUP_RANGE = { minimumTopupJod: [1, 500], minimumTopupSar: [5, 2500] } as const
+
+function MinimumTopupCard({ jod, sar }: { jod: number; sar: number }) {
+  const { language } = useLanguage()
+  const ar = language === "ar"
+  const qc = useQueryClient()
+  const [draft, setDraft] = useState<{ jod?: string; sar?: string }>({})
+  const jodValue = draft.jod ?? String(jod)
+  const sarValue = draft.sar ?? String(sar)
+  const inRange = (raw: string, [min, max]: readonly [number, number]) => {
+    const n = Number(raw)
+    return raw.trim() !== "" && Number.isFinite(n) && n >= min && n <= max
+  }
+  const valid =
+    inRange(jodValue, TOPUP_RANGE.minimumTopupJod) && inRange(sarValue, TOPUP_RANGE.minimumTopupSar)
+  const mutation = useMutation({
+    mutationFn: () =>
+      patchPlatformSettings({ minimumTopupJod: Number(jodValue), minimumTopupSar: Number(sarValue) }),
+    onSuccess: () => {
+      setDraft({})
+      qc.invalidateQueries({ queryKey: ["admin", "platform-settings"] })
+      toast.success(ar ? "تم الحفظ" : "Saved")
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{ar ? "أقل مبلغ للشحن" : "Minimum top-up"}</CardTitle>
+        <CardDescription>
+          {ar
+            ? "أقل مبلغ يُقبل في شحن المحفظة. هو نفسه الرصيد الترحيبي للسائق الجديد عند اعتماده، والرصيد الذي يجب أن يبقى في محفظة السائق بعد السحب، والشحن الذي يعيد السائق لاستقبال الرحلات بعد توقفه. العملات الأخرى تُحسب من مبلغ الدينار بسعر الصرف اليومي."
+            : "The smallest wallet top-up accepted. It is also a newly approved driver's welcome credit, the balance a driver must keep after a withdrawal, and the top-up that lets a stopped driver take rides again. Other currencies use the JOD amount at the day's rate."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="minimumTopupJod">{ar ? "بالدينار الأردني (JOD)" : "Jordanian dinar (JOD)"}</Label>
+            <Input id="minimumTopupJod" type="number" min={1} max={500} step={0.5} value={jodValue}
+              onChange={(e) => setDraft((d) => ({ ...d, jod: e.target.value }))} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="minimumTopupSar">{ar ? "بالريال السعودي (SAR)" : "Saudi riyal (SAR)"}</Label>
+            <Input id="minimumTopupSar" type="number" min={5} max={2500} step={1} value={sarValue}
+              onChange={(e) => setDraft((d) => ({ ...d, sar: e.target.value }))} />
+          </div>
+        </div>
+        {!valid && (
+          <p className="text-sm text-destructive">
+            {ar ? "الدينار من 1 إلى 500، والريال من 5 إلى 2500." : "JOD 1–500, SAR 5–2500."}
+          </p>
+        )}
+        <Button disabled={mutation.isPending || !valid} onClick={() => mutation.mutate()}>
+          {ar ? "حفظ" : "Save"}
+        </Button>
+      </CardContent>
+    </Card>
+  )
 }
 
 function PenaltyCard({ knob, saved }: { knob: PenaltyKnob; saved: number }) {

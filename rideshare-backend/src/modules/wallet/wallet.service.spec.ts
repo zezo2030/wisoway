@@ -248,4 +248,29 @@ describe('WalletService', () => {
       await expect(service.resolveLocalCurrency('u1')).resolves.toBeNull();
     });
   });
+  describe('assertNonNegativeDriverBalance', () => {
+    it("names the admin's current minimum in the wallet's currency", async () => {
+      const policy = (service as any).policy as { minimum: jest.Mock };
+      policy.minimum.mockResolvedValue(7.5);
+      walletAccountRepo.find.mockResolvedValue([
+        {
+          currency: 'JOD',
+          balance: '-2.00',
+          reservedBalance: '0',
+          isActive: true,
+          rechargeRequired: true,
+        } as WalletAccountEntity,
+      ]);
+      await expect(
+        service.assertNonNegativeDriverBalance('d1'),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({
+          code: 'NEGATIVE_WALLET_BALANCE',
+          minimumTopup: 7.5,
+          message: expect.stringContaining('بحد أدنى 7.5 JOD'),
+        }),
+      });
+      expect(policy.minimum).toHaveBeenCalledWith('JOD');
+    });
+  });
 });

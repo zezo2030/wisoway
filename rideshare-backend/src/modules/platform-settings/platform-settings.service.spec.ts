@@ -39,4 +39,19 @@ describe('PlatformSettingsService', () => {
     await service.update({ lateRatingPenaltyPercent: -3 });
     expect(await service.getNumber('lateRatingPenaltyPercent')).toBe(0);
   });
+  it('stores the wallet minimums to the cent and inside their range', async () => {
+    const all = await service.update({
+      minimumTopupJod: 7.456,
+      minimumTopupSar: 1,
+    });
+    expect(all.minimumTopupJod).toBe(7.46);
+    expect(all.minimumTopupSar).toBe(5);
+    expect(rows.get('wallet.minimumTopup.JOD')).toBe('7.46');
+  });
+
+  it('defaults the wallet minimums to 5 JOD and 25 SAR', async () => {
+    const all = await service.getAll();
+    expect(all.minimumTopupJod).toBe(5);
+    expect(all.minimumTopupSar).toBe(25);
+  });
 });

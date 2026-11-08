@@ -31,7 +31,7 @@ class ErrorLocalizations {
     'errorsOutstandingCharges':
         'You have {count} unpaid charge(s) totaling {total} JOD. Settle them before publishing a new trip.',
     'errorsNegativeWalletBalance':
-        'Top up your wallet with at least JOD 5, SAR 25, or the equivalent and settle any outstanding dues to continue receiving and creating trips.',
+        'Top up your wallet with at least the minimum top-up and settle any outstanding dues to continue receiving and creating trips.',
     'errorsInsufficientBalanceForTripFee':
         'Your wallet balance is not enough to cover the trip fee. Top up your wallet before publishing.',
     'errorsActionRetry': 'Retry',
@@ -70,7 +70,7 @@ class ErrorLocalizations {
     'errorsOutstandingCharges':
         'لديك {count} رسوم مستحقة بإجمالي {total} د.أ. يجب تسويتها قبل نشر رحلة جديدة.',
     'errorsNegativeWalletBalance':
-        'اشحن محفظتك بحد أدنى 5 دنانير أو 25 ريالاً أو ما يعادلها وسدد أي مستحقات للاستمرار في استقبال الرحلات وإنشائها.',
+        'اشحن محفظتك بالحد الأدنى للشحن وسدد أي مستحقات للاستمرار في استقبال الرحلات وإنشائها.',
     'errorsInsufficientBalanceForTripFee':
         'رصيد محفظتك لا يكفي لتغطية رسوم الرحلة. اشحن محفظتك قبل نشر الرحلة.',
     'errorsActionRetry': 'إعادة المحاولة',
