@@ -16,6 +16,13 @@ import { PaymentsService } from '../payments/payments.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 
+/**
+ * Bookings whose passenger may chat on the trip. In progress included: the
+ * trip's start flips confirmed bookings to it, and the ride is when the
+ * passenger and driver most need to talk (calls.service.ts allows the same).
+ */
+const CHAT_BOOKING_STATUSES = ['pending', 'confirmed', 'in_progress'] as const;
+
 @Injectable()
 export class ChatPostgresService {
   private readonly logger = new Logger(ChatPostgresService.name);
@@ -50,12 +57,12 @@ export class ChatPostgresService {
       where: {
         tripId,
         userId: passengerId,
-        status: In(['pending', 'confirmed']),
+        status: In([...CHAT_BOOKING_STATUSES]),
       },
     });
     if (!booking) {
       throw new ForbiddenException(
-        'Passenger must have a pending or confirmed booking for this trip',
+        'Passenger must have an active booking on this trip',
       );
     }
 
@@ -134,15 +141,15 @@ export class ChatPostgresService {
 
     const isDriver = trip.driverId === userId;
 
-    // Passengers must have a pending/confirmed booking for this trip. The
+    // Passengers must have an active booking on this trip. The
     // driver always has access.
     if (!isDriver) {
       const booking = await this.bookingRepo.findOne({
-        where: { tripId, userId, status: In(['pending', 'confirmed']) },
+        where: { tripId, userId, status: In([...CHAT_BOOKING_STATUSES]) },
       });
       if (!booking) {
         throw new ForbiddenException(
-          'You must have a pending or confirmed booking to access this chat',
+          'You must have an active booking on this trip to access this chat',
         );
       }
     }
@@ -188,12 +195,12 @@ export class ChatPostgresService {
     return room;
   }
 
-  /** Driver + every passenger with a pending/confirmed booking, for the group room. */
+  /** Driver + every passenger with an active booking, for the group room. */
   private async computeGroupParticipantIds(
     trip: TripEntity,
   ): Promise<string[]> {
     const bookings = await this.bookingRepo.find({
-      where: { tripId: trip.id, status: In(['pending', 'confirmed']) },
+      where: { tripId: trip.id, status: In([...CHAT_BOOKING_STATUSES]) },
     });
     const passengerIds = bookings.map((b) => b.userId);
     return [trip.driverId, ...new Set(passengerIds)];
@@ -211,11 +218,11 @@ export class ChatPostgresService {
     const isDriver = trip.driverId === userId;
     if (!isDriver) {
       const booking = await this.bookingRepo.findOne({
-        where: { tripId, userId, status: In(['pending', 'confirmed']) },
+        where: { tripId, userId, status: In([...CHAT_BOOKING_STATUSES]) },
       });
       if (!booking) {
         throw new ForbiddenException(
-          'You must have a pending or confirmed booking to access this chat',
+          'You must have an active booking on this trip to access this chat',
         );
       }
     }

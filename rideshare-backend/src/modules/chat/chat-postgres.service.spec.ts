@@ -118,13 +118,30 @@ describe('ChatPostgresService — contact is never gated on payment', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it('only accepts pending or confirmed bookings — the status guard stays', async () => {
+  it('accepts an active booking, the ride under way included', async () => {
     bookingRepo.findOne.mockResolvedValue(unpaidConfirmedBooking);
 
     await service['validateTripParticipation'](TRIP_ID, PASSENGER_ID);
 
     const where = bookingRepo.findOne.mock.calls[0][0].where;
-    // In(['pending','confirmed']) — a FindOperator, so assert on its values.
-    expect(where.status._value).toEqual(['pending', 'confirmed']);
+    // A FindOperator, so assert on its values. The trip's start turns
+    // confirmed bookings in_progress; chat must not close then.
+    expect(where.status._value).toEqual([
+      'pending',
+      'confirmed',
+      'in_progress',
+    ]);
+  });
+
+  it("opens the passenger's chat with the driver once the trip is under way", async () => {
+    bookingRepo.findOne.mockImplementation(async ({ where }: any) =>
+      where.status._value.includes('in_progress')
+        ? { ...unpaidConfirmedBooking, status: 'in_progress' }
+        : null,
+    );
+
+    await expect(
+      service['validateTripParticipation'](TRIP_ID, PASSENGER_ID),
+    ).resolves.toBeUndefined();
   });
 });
