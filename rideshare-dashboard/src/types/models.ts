@@ -19,6 +19,8 @@ import type {
 
 export interface User {
   _id: string
+  /** PG entity id (UUID); prefer `userIdOf` from lib/admin-user. */
+  id?: string
   name: string
   email?: string
   phoneNumber?: string
@@ -26,6 +28,9 @@ export interface User {
   gender?: Gender
   photoUrl?: string
   isActive: boolean
+  /** Set by the ban action; null once unbanned. */
+  bannedAt?: string | null
+  banReason?: string | null
   isPhoneVerified: boolean
   isEmailVerified: boolean
   isDriverApproved: boolean

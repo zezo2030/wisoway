@@ -31,6 +31,7 @@ import { QUERY_KEYS, DEFAULT_PAGE_SIZE } from "@/lib/constants"
 import { cn, formatDate, formatPhone } from "@/lib/utils"
 import { UserRole } from "@/types/enums"
 import type { User } from "@/types/models"
+import { apiErrorMessage, isBanned, looksBanned, userIdOf } from "@/lib/admin-user"
 import {
   Search,
   MoreHorizontal,
@@ -114,20 +115,20 @@ export default function UsersListPage() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.USERS] })
       toast.success(t("userRoleUpdated"))
     },
-    onError: () => {
-      toast.error("Failed to update user role")
+    onError: (error) => {
+      toast.error(apiErrorMessage(error) ?? t("failedToUpdateRole"))
     },
   })
 
   const toggleBanMutation = useMutation({
-    mutationFn: ({ userId, isActive }: { userId: string; isActive: boolean }) =>
-      toggleUserBan(userId, isActive),
+    mutationFn: ({ userId, ban }: { userId: string; ban: boolean }) =>
+      toggleUserBan(userId, ban),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN.USERS] })
-      toast.success(variables.isActive ? t("userUnbanned") : t("userBanned"))
+      toast.success(variables.ban ? t("userBanned") : t("userUnbanned"))
     },
-    onError: () => {
-      toast.error("Failed to update user status")
+    onError: (error) => {
+      toast.error(apiErrorMessage(error) ?? "Failed to update user status")
     },
   })
 
@@ -198,21 +199,21 @@ export default function UsersListPage() {
   }
 
   const handleBanToggle = (user: User) => {
-    const isBanning = user.isActive
+    const isBanning = !isBanned(user)
     setConfirmDialog({
       open: true,
       title: isBanning ? t("banConfirmTitle") : t("unbanConfirmTitle"),
       description: isBanning ? t("banConfirmDesc") : t("unbanConfirmDesc"),
       variant: isBanning ? "destructive" : "default",
       onConfirm: () => {
-        toggleBanMutation.mutate({ userId: user._id, isActive: !user.isActive })
+        toggleBanMutation.mutate({ userId: userIdOf(user), ban: isBanning })
         setConfirmDialog((prev) => ({ ...prev, open: false }))
       },
     })
   }
 
   const handleConfirmUser = (user: User) => {
-    const userId = user._id ?? (user as { id?: string }).id
+    const userId = userIdOf(user)
     if (!userId) {
       toast.error("Cannot confirm user: missing user ID")
       return
@@ -231,7 +232,7 @@ export default function UsersListPage() {
   }
 
   const handleDeleteUser = (user: User) => {
-    const userId = user._id ?? (user as { id?: string }).id
+    const userId = userIdOf(user)
     if (!userId) {
       toast.error("Cannot delete user: missing user ID")
       return
@@ -240,7 +241,7 @@ export default function UsersListPage() {
   }
 
   const handleApproveDriver = (user: User) => {
-    const userId = user._id ?? (user as { id?: string }).id
+    const userId = userIdOf(user)
     if (!userId) return
 
     const approving = !user.isDriverApproved
@@ -258,7 +259,7 @@ export default function UsersListPage() {
   }
 
   const handleRowClick = (user: User) => {
-    const userId = user._id ?? (user as { id?: string }).id
+    const userId = userIdOf(user)
     if (userId) navigate(`/users/${userId}`)
   }
 
@@ -302,7 +303,7 @@ export default function UsersListPage() {
       header: t("status"),
       cell: (user) => (
         <StatusBadge
-          status={user.isActive ? "active" : "banned"}
+          status={looksBanned(user) ? "banned" : "active"}
           type="user"
         />
       ),
@@ -336,7 +337,7 @@ export default function UsersListPage() {
           <DropdownMenuContent align={language === "ar" ? "start" : "end"} onClick={(e) => e.stopPropagation()} className="w-48 shadow-lg rounded-xl border-border/50 backdrop-blur-md bg-background/95">
             <div className="text-xs font-semibold px-2 py-1.5 text-muted-foreground uppercase tracking-wider">{t("roles")}</div>
             <DropdownMenuItem
-              onClick={() => handleRoleChange(user._id, UserRole.PASSENGER)}
+              onClick={() => handleRoleChange(userIdOf(user), UserRole.PASSENGER)}
               disabled={user.role === UserRole.PASSENGER || changeRoleMutation.isPending}
               className="cursor-pointer font-medium"
             >
@@ -344,7 +345,7 @@ export default function UsersListPage() {
               {t("makePassenger")}
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => handleRoleChange(user._id, UserRole.DRIVER)}
+              onClick={() => handleRoleChange(userIdOf(user), UserRole.DRIVER)}
               disabled={user.role === UserRole.DRIVER || changeRoleMutation.isPending}
               className="cursor-pointer font-medium"
             >
@@ -352,7 +353,7 @@ export default function UsersListPage() {
               {t("makeDriver")}
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => handleRoleChange(user._id, UserRole.ADMIN)}
+              onClick={() => handleRoleChange(userIdOf(user), UserRole.ADMIN)}
               disabled={user.role === UserRole.ADMIN || changeRoleMutation.isPending}
               className="cursor-pointer font-medium"
             >
@@ -363,9 +364,9 @@ export default function UsersListPage() {
             <DropdownMenuItem
               onClick={() => handleBanToggle(user)}
               disabled={toggleBanMutation.isPending}
-              className={cn("cursor-pointer font-medium", user.isActive ? "text-rose-600 focus:text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-950/30" : "text-emerald-600 focus:text-emerald-600 focus:bg-emerald-50 dark:focus:bg-emerald-950/30")}
+              className={cn("cursor-pointer font-medium", !isBanned(user) ? "text-rose-600 focus:text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-950/30" : "text-emerald-600 focus:text-emerald-600 focus:bg-emerald-50 dark:focus:bg-emerald-950/30")}
             >
-              {user.isActive ? (
+              {!isBanned(user) ? (
                 <>
                   <Ban className={cn("h-4 w-4", language === "ar" ? "ml-2" : "mr-2")} />
                   {t("banUser")}

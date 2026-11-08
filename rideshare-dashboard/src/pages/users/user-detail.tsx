@@ -48,6 +48,7 @@ import { cn, formatDate, formatLocationName, formatPhone, getUserRoleLabel, getT
 import { formatSeatDisplay } from "@/lib/seat-format"
 import { UserRole } from "@/types/enums"
 import type { Booking, TripSummary, UserSummary } from "@/types/models"
+import { isBanned, looksBanned } from "@/lib/admin-user"
 import {
   ArrowLeft,
   MoreHorizontal,
@@ -488,7 +489,7 @@ export default function UserDetailPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground/90 flex items-center">
               {t("userProfile")}
-              {user.isActive ? (
+              {!looksBanned(user) ? (
                 <CheckCircle className="ml-3 h-5 w-5 text-emerald-500" />
               ) : (
                 <Ban className="ml-3 h-5 w-5 text-rose-500" />
@@ -528,11 +529,11 @@ export default function UserDetailPage() {
             </DropdownMenuItem>
             <div className="h-px bg-border my-1" />
             <DropdownMenuItem
-              onClick={user.isActive ? handleBanClick : handleUnbanClick}
-              disabled={banMutation.isPending || unbanMutation.isPending || (user.role === UserRole.ADMIN && user.isActive)}
-              className={cn("font-medium cursor-pointer", user.isActive ? "text-rose-600 focus:text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-950/30" : "text-emerald-600 focus:text-emerald-600 focus:bg-emerald-50 dark:focus:bg-emerald-950/30")}
+              onClick={!isBanned(user) ? handleBanClick : handleUnbanClick}
+              disabled={banMutation.isPending || unbanMutation.isPending || (user.role === UserRole.ADMIN && !isBanned(user))}
+              className={cn("font-medium cursor-pointer", !isBanned(user) ? "text-rose-600 focus:text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-950/30" : "text-emerald-600 focus:text-emerald-600 focus:bg-emerald-50 dark:focus:bg-emerald-950/30")}
             >
-              {user.isActive ? (
+              {!isBanned(user) ? (
                 <><Ban className="mr-2 h-4 w-4" /> {t("banUser")}</>
               ) : (
                 <><CheckCircle className="mr-2 h-4 w-4" /> {t("unbanUser")}</>
@@ -598,7 +599,7 @@ export default function UserDetailPage() {
             </div>
 
             <div className="flex flex-wrap gap-2 justify-center mb-6">
-              <StatusBadge status={user.isActive ? "active" : "banned"} type="user" />
+              <StatusBadge status={looksBanned(user) ? "banned" : "active"} type="user" />
               {user.isPhoneVerified && (
                 <span className="inline-flex items-center rounded-full bg-emerald-100/80 px-3 py-1 text-xs font-bold text-emerald-700 shadow-sm border border-emerald-200">
                   <Phone className="w-3 h-3 mr-1" /> Phone

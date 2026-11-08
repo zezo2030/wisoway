@@ -73,13 +73,10 @@ export async function changeUserRole(
 }
 
 /**
- * Toggle user ban status (isActive: false = ban, true = unban)
+ * Ban or unban from the users list (POST /admin/users/:id/ban | unban).
  */
-export async function toggleUserBan(userId: string, isActive: boolean): Promise<User> {
-  const response = await apiClient.patch<ApiResponse<User>>(`/admin/users/${userId}/ban`, {
-    isActive,
-  })
-  return response.data.data
+export async function toggleUserBan(userId: string, ban: boolean): Promise<User> {
+  return ban ? banUser(userId) : unbanUser(userId)
 }
 
 /**
@@ -780,10 +777,13 @@ export async function getSettlementAudits(bookingId: string): Promise<Settlement
 
 // ─── Ban (Phase 8) ────────────────────────────────────────────────────────────
 
+/** The server requires a reason; this one is used when the admin gives none. */
+export const DEFAULT_BAN_REASON = "تم إيقاف الحساب من قبل الإدارة"
+
 export async function banUser(userId: string, banReason?: string): Promise<User> {
   const response = await apiClient.post<ApiResponse<User>>(
     `/admin/users/${userId}/ban`,
-    { banReason },
+    { reason: banReason?.trim() || DEFAULT_BAN_REASON },
   )
   return response.data.data
 }

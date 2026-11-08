@@ -11,6 +11,7 @@ import {
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { UserRole } from '../../users/schemas/user.schema';
+import { PgUserRole } from '../../../database/entities/shared.enums';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 /**
@@ -122,6 +123,12 @@ export class VerifyVehicleDto {
 export class ApproveDriverDto {
   @IsBoolean()
   approved: boolean;
+}
+
+/** PATCH /admin/users/:id/role — the account type to switch to. */
+export class ChangeUserRoleDto {
+  @IsEnum(PgUserRole)
+  role: PgUserRole;
 }
 
 /**

@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -233,6 +234,119 @@ export class AdminDashboardService {
   /**
    * Confirm user account (activate + mark phone/email as verified)
    */
+  /**
+   * The role menu on the users page («اجعله راكبًا / سائقًا / مشرفًا»).
+   *
+   * Refused while it would strand a ride: a driver with a trip under way or
+   * with passengers booked, or a passenger with a booking still open. A
+   * driver's remaining open trips (nobody booked) are withdrawn, since a
+   * passenger account can't run them. An admin can't change their own role.
+   */
+  async changeUserRole(
+    userId: string,
+    role: PgUserRole,
+    adminId: string,
+  ): Promise<UserEntity> {
+    if (userId === adminId) {
+      throw new BadRequestException('You cannot change your own role');
+    }
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+    if (user.role === role) return user;
+
+    const live = ['pending', 'confirmed', 'in_progress'];
+    let openTrips: TripEntity[] = [];
+    if (user.role === PgUserRole.DRIVER) {
+      openTrips = await this.tripRepo.find({
+        where: {
+          driverId: userId,
+          status: In([
+            TripStatus.ACTIVE,
+            TripStatus.DRAFT,
+            TripStatus.PUBLISHED,
+            TripStatus.FULLY_BOOKED,
+            TripStatus.HIDDEN,
+            TripStatus.IN_PROGRESS,
+          ]),
+        },
+        select: ['id', 'status'],
+      });
+      if (openTrips.some((t) => t.status === TripStatus.IN_PROGRESS)) {
+        throw new ConflictException({
+          code: 'ROLE_CHANGE_BLOCKED',
+          message:
+            'This driver has a trip under way. Change the role once it ends.',
+        });
+      }
+      const booked =
+        openTrips.length === 0
+          ? 0
+          : await this.bookingRepo.count({
+              where: {
+                tripId: In(openTrips.map((t) => t.id)),
+                status: In(live),
+              },
+            });
+      if (booked > 0) {
+        throw new ConflictException({
+          code: 'ROLE_CHANGE_BLOCKED',
+          message:
+            'This driver has passengers booked on an open trip. Cancel those trips first.',
+        });
+      }
+    } else {
+      const riding = await this.bookingRepo.count({
+        where: { userId, status: In(live) },
+      });
+      if (riding > 0) {
+        throw new ConflictException({
+          code: 'ROLE_CHANGE_BLOCKED',
+          message:
+            'This user has a booking still open. Change the role once it ends or is cancelled.',
+        });
+      }
+    }
+
+    const previous = user.role;
+    await this.userRepo.manager.transaction(async (manager) => {
+      if (openTrips.length > 0) {
+        await manager.update(
+          TripEntity,
+          { id: In(openTrips.map((t) => t.id)) },
+          { status: TripStatus.CANCELLED },
+        );
+      }
+      user.role = role;
+      await manager.save(user);
+    });
+
+    const ar =
+      (await this.notificationsService.getPreferredLocale(userId)) === 'ar';
+    const roleName = {
+      [PgUserRole.PASSENGER]: ar ? 'راكب' : 'passenger',
+      [PgUserRole.DRIVER]: ar ? 'سائق' : 'driver',
+      [PgUserRole.ADMIN]: ar ? 'مشرف' : 'admin',
+    }[role];
+    await this.notificationsService
+      .create({
+        userId,
+        type: 'role_changed',
+        title: ar ? 'تم تغيير نوع حسابك' : 'Your account type changed',
+        body: ar
+          ? `أصبح حسابك حساب ${roleName}. أعد فتح التطبيق إذا لم تظهر التغييرات.`
+          : `Your account is now a ${roleName} account. Reopen the app if you don't see the change.`,
+        data: { newRole: role, previousRole: previous },
+      })
+      .catch(() => undefined);
+    this.logger.log(
+      `Admin ${adminId} changed user ${userId} role ${previous} → ${role}` +
+        (openTrips.length
+          ? ` (withdrew ${openTrips.length} open trip(s))`
+          : ''),
+    );
+    return user;
+  }
+
   async confirmUser(userId: string): Promise<UserEntity> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
@@ -333,6 +447,8 @@ export class AdminDashboardService {
         'user.name',
         'user.role',
         'user.isActive',
+        'user.bannedAt',
+        'user.banReason',
         'user.rating',
         'user.totalRatings',
         'user.isPhoneVerified',

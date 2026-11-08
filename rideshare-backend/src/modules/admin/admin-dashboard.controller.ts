@@ -39,6 +39,7 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 import { AdminAdjustWalletDto } from './dto/admin-adjust-wallet.dto';
 import {
   ApproveDriverDto,
+  ChangeUserRoleDto,
   VerifyVehicleDto,
   BroadcastNotificationDto,
 } from './dto/admin-query.dto';
@@ -67,6 +68,27 @@ export class AdminDashboardController {
   @ApiResponse({ status: 404, description: 'User not found' })
   async confirmUser(@Param('id') userId: string) {
     return this.adminDashboardService.confirmUser(userId);
+  }
+
+  /**
+   * PATCH /admin/users/:id/role
+   * Make the user a passenger, a driver or an admin.
+   */
+  @Patch('users/:id/role')
+  @ApiOperation({ summary: 'Change user role' })
+  @ApiParam({ name: 'id', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'User role updated' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({
+    status: 409,
+    description: 'A ride is open (ROLE_CHANGE_BLOCKED)',
+  })
+  async changeUserRole(
+    @Param('id', ParseUUIDPipe) userId: string,
+    @Body() dto: ChangeUserRoleDto,
+    @CurrentUser('id') adminId: string,
+  ) {
+    return this.adminDashboardService.changeUserRole(userId, dto.role, adminId);
   }
 
   /**
