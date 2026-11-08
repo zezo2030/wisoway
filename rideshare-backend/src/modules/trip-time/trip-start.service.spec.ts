@@ -21,6 +21,8 @@ describe('TripStartService', () => {
   let notifications: { create: jest.Mock; getPreferredLocale: jest.Mock };
   let driverTripFee: { chargeAtTripStart: jest.Mock };
   let autoComplete: { add: jest.Mock };
+  let expiryJobs: Map<string, { isDelayed: jest.Mock; promote: jest.Mock }>;
+  let bookingsTimeout: { getJob: jest.Mock; add: jest.Mock };
   let service: TripStartService;
 
   const sent = (type: string) =>
@@ -77,13 +79,60 @@ describe('TripStartService', () => {
         .mockResolvedValue({ charged: 1.6, currency: 'SAR' }),
     };
     autoComplete = { add: jest.fn() };
+    expiryJobs = new Map();
+    bookingsTimeout = {
+      getJob: jest.fn(async (id: string) => expiryJobs.get(id) ?? null),
+      add: jest.fn(),
+    };
     service = new TripStartService(
       tripRepo as never,
       bookingRepo as never,
       autoComplete as never,
       notifications as never,
       driverTripFee as never,
+      bookingsTimeout as never,
     );
+  });
+
+  describe('requests still unanswered at departure', () => {
+    beforeEach(() => {
+      bookings.push(
+        { id: 'b3', userId: 'p3', status: BookingStatus.PENDING },
+        { id: 'b4', userId: 'p4', status: BookingStatus.PENDING },
+      );
+    });
+
+    it('are cancelled when the trip goes ahead without them', async () => {
+      const promote = jest.fn();
+      expiryJobs.set('booking-expire-b3', {
+        isDelayed: jest.fn(async () => true),
+        promote,
+      });
+
+      await service.onDeparture('t1');
+
+      // b3's 3-hour expiry runs now; b4 had lost its job, so it gets one.
+      expect(promote).toHaveBeenCalledTimes(1);
+      expect(bookingsTimeout.add).toHaveBeenCalledWith(
+        'expire-booking',
+        { bookingId: 'b4' },
+        expect.objectContaining({ jobId: 'booking-expire-b4' }),
+      );
+      expect(bookingsTimeout.add).toHaveBeenCalledTimes(1);
+      expect(trip.status).toBe(TripStatus.PUBLISHED);
+    });
+
+    it('are left to the cancelled trip when nobody was accepted', async () => {
+      bookings = bookings.filter((b) => b.status === BookingStatus.PENDING);
+
+      await service.onDeparture('t1');
+
+      expect(trip.status).toBe(TripStatus.CANCELLED);
+      expect(bookings.every((b) => b.status === BookingStatus.CANCELLED)).toBe(
+        true,
+      );
+      expect(bookingsTimeout.add).not.toHaveBeenCalled();
+    });
   });
 
   describe('at departure', () => {

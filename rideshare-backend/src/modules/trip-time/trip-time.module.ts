@@ -22,6 +22,7 @@ import { RidePaymentsModule } from '../ride-payments/ride-payments.module';
     BullModule.registerQueue(
       { name: 'trip-auto-start' },
       { name: 'trip-auto-complete' },
+      { name: 'bookings-timeout' },
     ),
     TypeOrmModule.forFeature([
       BookingEntity,

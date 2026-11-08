@@ -3335,6 +3335,24 @@
   "complaintCategoryRudeBehavior": "Rude behavior",
   "complaintCategoryNoShow": "No-show",
   "complaintCategoryNotOnTrip": "I wasn't on this trip",
+  "tripCancelTitle": "Cancel the trip",
+  "tripCancelAction": "Cancel the trip",
+  "tripCancelKeep": "Keep it",
+  "tripCancelFreeBody": "You haven't accepted any booking on this trip, so cancelling it is free.",
+  "tripCancelFeeBody": "Cancelling takes {amount} from your wallet as a cancellation fee: the trip's fee on the {seats} booked seat(s). The passengers will be told.",
+  "@tripCancelFeeBody": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "seats": {
+        "type": "int"
+      }
+    }
+  },
+  "tripCancelledSuccess": "Trip cancelled",
+  "createTripCancellationNote": "Cancelling is free while you haven't accepted any booking. Once you accept one, a fee applies if you cancel.",
+  "txTypeTripCancellationFee": "Trip cancellation fee",
   "boardingBookedBy": "Booked by {name}",
   "@boardingBookedBy": {
     "placeholders": {

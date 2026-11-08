@@ -612,61 +612,61 @@ class _TripManagementScreenState extends State<TripManagementScreen>
     }
   }
 
-  /// Same window as the backend's `DELETE /trips/:id`, which only applies it
-  /// once passengers are booked (a seat is `booked` from the request on).
-  static const int _driverCancelCutoffHours = 24;
-
+  /// «إلغاء الرحلة». A shared trip is free to cancel until the driver accepts
+  /// a booking; after that it costs the trip's fee on the accepted seats,
+  /// which the server works out and the dialog states before they confirm.
   Future<void> _deleteTrip() async {
-    final departure = _trip?.departureTime;
-    if (departure != null &&
-        _getBookedSeatsCount() > 0 &&
-        departure.difference(DateTime.now()).inMinutes <=
-            _driverCancelCutoffHours * 60) {
-      await showDialog<void>(
-        context: context,
-        builder: (context) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Text(context.l10n.cannotCancel),
-          content: Text(context.l10n.cannotDeleteTripWithin24Hours),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(context.l10n.ok),
-            ),
-          ],
-        ),
-      );
-      return;
+    final trip = _trip;
+    if (trip == null) return;
+    final l10n = context.l10n;
+
+    String body = l10n.deleteTripConfirm;
+    if (!trip.isInstant) {
+      try {
+        final quote = await _tripService.getCancellationFee(trip.id);
+        if (!mounted) return;
+        body = quote.fee > 0
+            ? l10n.tripCancelFeeBody(
+                '${quote.fee.toStringAsFixed(2)} ${quote.currency}',
+                quote.seats,
+              )
+            : l10n.tripCancelFreeBody;
+      } catch (e) {
+        if (!mounted) return;
+        ErrorSurface.showFailure(context, ApiClient.mapError(e));
+        return;
+      }
     }
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(context.l10n.deleteTripTitle),
-        content: Text(context.l10n.deleteTripConfirm),
+        title: Text(trip.isInstant ? l10n.deleteTripTitle : l10n.tripCancelTitle),
+        content: Text(body),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text(context.l10n.cancel),
+            child: Text(l10n.tripCancelKeep),
           ),
           ElevatedButton(
+            key: const ValueKey('trip-cancel-confirm'),
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
               foregroundColor: AppColors.white,
             ),
-            child: Text(context.l10n.deleteAction),
+            child: Text(
+              trip.isInstant ? l10n.deleteAction : l10n.tripCancelAction,
+            ),
           ),
         ],
       ),
     );
 
-    if (confirmed == true && _trip != null && mounted) {
+    if (confirmed == true && mounted) {
       final tripProvider = Provider.of<TripProvider>(context, listen: false);
-      final failure = await tripProvider.deleteTrip(_trip!.id);
+      final failure = await tripProvider.deleteTrip(trip.id);
       if (!mounted) return;
 
       if (failure != null) {
@@ -674,11 +674,20 @@ class _TripManagementScreenState extends State<TripManagementScreen>
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(context.l10n.tripDeletedSuccess),
+            content: Text(
+              trip.isInstant
+                  ? l10n.tripDeletedSuccess
+                  : l10n.tripCancelledSuccess,
+            ),
             backgroundColor: AppColors.success,
           ),
         );
-        Navigator.pop(context);
+        // A trip screen held at the trip's time lets the driver go now.
+        if (widget.lockedUntilEnd) {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        } else {
+          Navigator.pop(context);
+        }
       }
     }
   }
@@ -2417,6 +2426,29 @@ class _TripManagementScreenState extends State<TripManagementScreen>
               textAlign: TextAlign.center,
               style: AppTextStyles.bodySmall.copyWith(
                 color: T.textSecondary(context),
+              ),
+            ),
+          ],
+          // Until the trip starts the driver can still call it off — free
+          // with no accepted seat, else for the fee the dialog states.
+          if (_canDelete(trip)) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 44,
+              child: OutlinedButton.icon(
+                key: const ValueKey('boarding-cancel-trip'),
+                onPressed: _deleteTrip,
+                icon: const Icon(IconsaxPlusLinear.close_circle, size: 18),
+                label: Text(l10n.tripCancelAction),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.error,
+                  side: BorderSide(
+                    color: AppColors.error.withValues(alpha: 0.6),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
             ),
           ],

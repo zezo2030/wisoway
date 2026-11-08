@@ -141,6 +141,7 @@ describe('Revenue ledger', () => {
       find: (opts: any) => manager.find(type, opts),
       findOne: (opts: any) => manager.findOne(type, opts),
     });
+    ds.manager = manager;
     settings = { getNumber: jest.fn(async () => 10) };
     service = new WalletService(
       ds,
@@ -370,5 +371,85 @@ describe('Revenue ledger', () => {
     await service.processPayout(p.id, 'admin', PayoutStatus.REJECTED);
     expect(account('d', 'driver').balance).toBe('50');
     expect(account('d', 'driver').reservedBalance).toBe('0.00');
+  });
+
+  describe('cancelling a shared trip', () => {
+    beforeEach(() => {
+      Object.assign(rows(TripEntity)[0], {
+        tripType: 'scheduled',
+        status: 'published',
+        currency: 'SAR',
+      });
+      rows(BookingEntity).length = 0;
+      rows(WalletAccountEntity)[0].currency = 'SAR';
+    });
+    const book = (id: string, status: string, seats: number, fare: string) =>
+      rows(BookingEntity).push({
+        id,
+        tripId: 't',
+        userId: `u-${id}`,
+        status,
+        seatCount: seats,
+        totalAmount: fare,
+      });
+
+    it('is free while no seat is accepted', async () => {
+      book('asked', 'pending', 2, '50.00');
+
+      expect(await service.quoteTripCancellationFee('t')).toEqual({
+        fee: 0,
+        currency: 'SAR',
+        seats: 0,
+      });
+      await service.chargeTripCancellationFee('t');
+      expect(rows(WalletTransactionEntity)).toHaveLength(0);
+      expect(account('d', 'driver').balance).toBe('5.00');
+    });
+
+    it("costs the platform's cut of the accepted seats, taken once", async () => {
+      // One passenger at 25 and two seats at 25 each: 10% of 75.
+      book('one', 'confirmed', 1, '25.00');
+      book('two', 'confirmed', 2, '50.00');
+      book('asked', 'pending', 1, '25.00');
+      book('gone', 'cancelled', 1, '25.00');
+
+      expect(await service.quoteTripCancellationFee('t')).toEqual({
+        fee: 7.5,
+        currency: 'SAR',
+        seats: 3,
+      });
+      await Promise.all([
+        service.chargeTripCancellationFee('t'),
+        service.chargeTripCancellationFee('t'),
+      ]);
+
+      expect(account('d', 'driver').balance).toBe('-2.50');
+      expect(account(null, 'system').balance).toBe('7.50');
+      const debit = rows(WalletTransactionEntity).find(
+        (t) => t.idempotencyKey === 'cancel-fee:t',
+      );
+      expect(debit).toMatchObject({
+        amount: '7.50',
+        direction: 'debit',
+        referenceType: 'trip_cancellation',
+      });
+      expect(rows(WalletTransactionEntity)).toHaveLength(2);
+      expect(settings.getNumber).toHaveBeenCalledWith(
+        'sharedCommissionPercent',
+      );
+    });
+
+    it('charges a promoted booking on its full fare, like the commission', async () => {
+      rows(BookingEntity).push({
+        id: 'promo',
+        tripId: 't',
+        status: 'confirmed',
+        seatCount: 1,
+        totalAmount: '20.00',
+        originalAmount: '25.00',
+      });
+
+      expect((await service.quoteTripCancellationFee('t')).fee).toBe(2.5);
+    });
   });
 });

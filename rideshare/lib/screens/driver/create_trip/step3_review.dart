@@ -57,6 +57,21 @@ class Step3Review extends StatelessWidget {
             const SizedBox(height: _cardGap),
             feeNotice,
           ],
+          // The cancellation rule, without an amount: that depends on the
+          // seats accepted, and the cancel dialog states it.
+          const SizedBox(height: _cardGap),
+          KeyedSubtree(
+            key: const ValueKey('create-trip-cancellation-note'),
+            child: _noticeCard(
+              context,
+              leading: Icon(
+                IconsaxPlusBold.info_circle,
+                size: 20,
+                color: T.primary(context),
+              ),
+              body: context.l10n.createTripCancellationNote,
+            ),
+          ),
           const SizedBox(height: _cardGap),
           _buildExtrasCard(context),
           const SizedBox(height: _cardGap),

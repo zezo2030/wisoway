@@ -5903,6 +5903,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get complaintCategoryNotOnTrip => 'I wasn\'t on this trip';
 
   @override
+  String get tripCancelTitle => 'Cancel the trip';
+
+  @override
+  String get tripCancelAction => 'Cancel the trip';
+
+  @override
+  String get tripCancelKeep => 'Keep it';
+
+  @override
+  String get tripCancelFreeBody =>
+      'You haven\'t accepted any booking on this trip, so cancelling it is free.';
+
+  @override
+  String tripCancelFeeBody(String amount, int seats) {
+    return 'Cancelling takes $amount from your wallet as a cancellation fee: the trip\'s fee on the $seats booked seat(s). The passengers will be told.';
+  }
+
+  @override
+  String get tripCancelledSuccess => 'Trip cancelled';
+
+  @override
+  String get createTripCancellationNote =>
+      'Cancelling is free while you haven\'t accepted any booking. Once you accept one, a fee applies if you cancel.';
+
+  @override
+  String get txTypeTripCancellationFee => 'Trip cancellation fee';
+
+  @override
   String boardingBookedBy(String name) {
     return 'Booked by $name';
   }

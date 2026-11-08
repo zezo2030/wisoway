@@ -5848,6 +5848,34 @@ class AppLocalizationsAr extends AppLocalizations {
   String get complaintCategoryNotOnTrip => 'لم أكن في الرحلة';
 
   @override
+  String get tripCancelTitle => 'إلغاء الرحلة';
+
+  @override
+  String get tripCancelAction => 'إلغاء الرحلة';
+
+  @override
+  String get tripCancelKeep => 'تراجع';
+
+  @override
+  String get tripCancelFreeBody =>
+      'لم تقبل أي حجز في هذه الرحلة، فإلغاؤها مجاني.';
+
+  @override
+  String tripCancelFeeBody(String amount, int seats) {
+    return 'عند إلغاء الرحلة سيُخصم $amount من محفظتك كرسوم إلغاء، وهي رسوم الرحلة عن $seats من المقاعد المحجوزة. سيصل الركاب إشعار بالإلغاء.';
+  }
+
+  @override
+  String get tripCancelledSuccess => 'تم إلغاء الرحلة';
+
+  @override
+  String get createTripCancellationNote =>
+      'إلغاء الرحلة مجاني ما دمت لم تقبل أي حجز. بعد قبول أي حجز تُطبَّق رسوم عند الإلغاء.';
+
+  @override
+  String get txTypeTripCancellationFee => 'رسوم إلغاء رحلة';
+
+  @override
   String boardingBookedBy(String name) {
     return 'حجز $name';
   }

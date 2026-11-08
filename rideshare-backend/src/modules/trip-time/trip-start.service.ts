@@ -63,6 +63,8 @@ export class TripStartService {
     private readonly autoCompleteQueue: Queue,
     private readonly notifications: NotificationsService,
     private readonly driverTripFee: DriverTripFeeService,
+    @InjectQueue('bookings-timeout')
+    private readonly bookingsTimeoutQueue: Queue,
   ) {}
 
   /** Departure time came (the auto-start job, or the sweep re-checking). */
@@ -74,6 +76,7 @@ export class TripStartService {
     }
     if (trip.status === TripStatus.IN_PROGRESS) {
       // Already started (by a passenger, the driver, or an admin).
+      await this.expireUnanswered(trip.id);
       await this.scheduleAutoComplete(trip);
       return;
     }
@@ -84,12 +87,51 @@ export class TripStartService {
       await this.cancelEmpty(trip);
       return;
     }
+    // The trip goes ahead with the passengers the driver accepted; requests
+    // still unanswered at departure are cancelled.
+    await this.expireUnanswered(trip.id);
     if (bookings.some((b) => b.passengerPresenceConfirmedAt != null)) {
       await this.start(trip.id, 'departure');
       return;
     }
     if (!(await this.askToBoard(trip, bookings))) {
       await this.nudgeToBoard(trip, bookings, now);
+    }
+  }
+
+  /**
+   * Requests the driver never answered, on a trip leaving without them. Each
+   * has an expiry job (see BookingsTimeoutProcessor) that cancels it, frees
+   * its seats and tells the passenger; departure just runs it now.
+   */
+  private async expireUnanswered(tripId: string): Promise<void> {
+    const pending = await this.bookingRepo.find({
+      where: { tripId, status: BookingStatus.PENDING },
+      select: ['id'],
+    });
+    for (const { id } of pending) {
+      const jobId = `booking-expire-${id}`;
+      try {
+        const job = await this.bookingsTimeoutQueue.getJob(jobId);
+        if (job && (await job.isDelayed())) {
+          await job.promote();
+        } else if (!job) {
+          await this.bookingsTimeoutQueue.add(
+            'expire-booking',
+            { bookingId: id },
+            {
+              jobId,
+              attempts: 3,
+              backoff: { type: 'exponential', delay: 5000 },
+              removeOnComplete: true,
+            },
+          );
+        }
+      } catch (err) {
+        this.logger.warn(
+          `trip-start: expire request ${id} at departure: ${(err as Error).message}`,
+        );
+      }
     }
   }
 

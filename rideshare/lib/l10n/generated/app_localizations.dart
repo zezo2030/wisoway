@@ -10688,6 +10688,54 @@ abstract class AppLocalizations {
   /// **'لم أكن في الرحلة'**
   String get complaintCategoryNotOnTrip;
 
+  /// No description provided for @tripCancelTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'إلغاء الرحلة'**
+  String get tripCancelTitle;
+
+  /// No description provided for @tripCancelAction.
+  ///
+  /// In ar, this message translates to:
+  /// **'إلغاء الرحلة'**
+  String get tripCancelAction;
+
+  /// No description provided for @tripCancelKeep.
+  ///
+  /// In ar, this message translates to:
+  /// **'تراجع'**
+  String get tripCancelKeep;
+
+  /// No description provided for @tripCancelFreeBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم تقبل أي حجز في هذه الرحلة، فإلغاؤها مجاني.'**
+  String get tripCancelFreeBody;
+
+  /// No description provided for @tripCancelFeeBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'عند إلغاء الرحلة سيُخصم {amount} من محفظتك كرسوم إلغاء، وهي رسوم الرحلة عن {seats} من المقاعد المحجوزة. سيصل الركاب إشعار بالإلغاء.'**
+  String tripCancelFeeBody(String amount, int seats);
+
+  /// No description provided for @tripCancelledSuccess.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم إلغاء الرحلة'**
+  String get tripCancelledSuccess;
+
+  /// No description provided for @createTripCancellationNote.
+  ///
+  /// In ar, this message translates to:
+  /// **'إلغاء الرحلة مجاني ما دمت لم تقبل أي حجز. بعد قبول أي حجز تُطبَّق رسوم عند الإلغاء.'**
+  String get createTripCancellationNote;
+
+  /// No description provided for @txTypeTripCancellationFee.
+  ///
+  /// In ar, this message translates to:
+  /// **'رسوم إلغاء رحلة'**
+  String get txTypeTripCancellationFee;
+
   /// No description provided for @boardingBookedBy.
   ///
   /// In ar, this message translates to:

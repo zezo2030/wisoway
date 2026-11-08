@@ -3463,6 +3463,24 @@
   "complaintCategoryRudeBehavior": "سلوك غير لائق",
   "complaintCategoryNoShow": "عدم الحضور",
   "complaintCategoryNotOnTrip": "لم أكن في الرحلة",
+  "tripCancelTitle": "إلغاء الرحلة",
+  "tripCancelAction": "إلغاء الرحلة",
+  "tripCancelKeep": "تراجع",
+  "tripCancelFreeBody": "لم تقبل أي حجز في هذه الرحلة، فإلغاؤها مجاني.",
+  "tripCancelFeeBody": "عند إلغاء الرحلة سيُخصم {amount} من محفظتك كرسوم إلغاء، وهي رسوم الرحلة عن {seats} من المقاعد المحجوزة. سيصل الركاب إشعار بالإلغاء.",
+  "@tripCancelFeeBody": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "seats": {
+        "type": "int"
+      }
+    }
+  },
+  "tripCancelledSuccess": "تم إلغاء الرحلة",
+  "createTripCancellationNote": "إلغاء الرحلة مجاني ما دمت لم تقبل أي حجز. بعد قبول أي حجز تُطبَّق رسوم عند الإلغاء.",
+  "txTypeTripCancellationFee": "رسوم إلغاء رحلة",
   "boardingBookedBy": "حجز {name}",
   "@boardingBookedBy": {
     "placeholders": {

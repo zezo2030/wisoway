@@ -135,6 +135,21 @@ class TripService {
   /// Returns null on failure; the caller keeps the fee line in a neutral
   /// unavailable state rather than blocking publish.
   /// [currency] is the trip's; it picks that country's fee schedule.
+  /// What cancelling this shared trip now would cost the driver: the trip's
+  /// fee on the seats they accepted, or 0 with none accepted.
+  Future<({double fee, String currency, int seats})> getCancellationFee(
+    String tripId,
+  ) async {
+    final response = await _api.get(ApiEndpoints.tripCancellationFee(tripId));
+    final data = response is Map ? (response['data'] ?? response) : response;
+    final map = data is Map ? data : const {};
+    return (
+      fee: double.tryParse(map['fee']?.toString() ?? '') ?? 0,
+      currency: map['currency']?.toString() ?? '',
+      seats: int.tryParse(map['seats']?.toString() ?? '') ?? 0,
+    );
+  }
+
   Future<TripFeeQuote?> getTripFeeQuote({
     required double seatPrice,
     required int totalSeats,

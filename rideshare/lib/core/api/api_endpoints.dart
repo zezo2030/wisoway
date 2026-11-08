@@ -78,6 +78,8 @@ class ApiEndpoints {
   static String presenceConfirm(String tripId) =>
       '/trips/$tripId/presence-confirm';
   static String cancelTrip(String id) => '/trips/$id';
+  static String tripCancellationFee(String id) =>
+      '/trips/$id/cancellation-fee';
 
   // Bookings (v1 — legacy)
   static const String bookings = '/bookings';

@@ -564,7 +564,10 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _typeLabel(context, tx.type),
+                  tx.referenceType == 'trip_cancellation' &&
+                          tx.type == 'trip_debit'
+                      ? context.l10n.txTypeTripCancellationFee
+                      : _typeLabel(context, tx.type),
                   style: AppTextStyles.bodyLarge.copyWith(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,

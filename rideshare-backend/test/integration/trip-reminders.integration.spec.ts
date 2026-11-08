@@ -96,6 +96,7 @@ describe('Shared trip reminders (real database)', () => {
       { add: jest.fn() } as never,
       notifications as never,
       { chargeAtTripStart: jest.fn() } as never,
+      { getJob: jest.fn(async () => null), add: jest.fn() } as never,
     );
     reminders = new PreTripReminderJob(
       database.getRepository(TripEntity),

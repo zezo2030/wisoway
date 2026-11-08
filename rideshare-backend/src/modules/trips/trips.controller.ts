@@ -260,6 +260,19 @@ export class TripsController {
     return this.tripsService.show(id, driverId);
   }
 
+  @Get(':id/cancellation-fee')
+  @UseGuards(RolesGuard)
+  @Roles('driver')
+  @ApiOperation({
+    summary: 'What cancelling the trip now would cost the driver',
+  })
+  async cancellationFee(
+    @Param('id') id: string,
+    @CurrentUser('id') driverId: string,
+  ) {
+    return this.tripsService.cancellationFee(id, driverId);
+  }
+
   @Delete(':id')
   @UseGuards(RolesGuard)
   @Roles('driver')

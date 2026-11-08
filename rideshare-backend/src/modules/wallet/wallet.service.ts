@@ -111,6 +111,101 @@ export class WalletService {
     );
   }
 
+  /**
+   * What cancelling a shared trip costs its driver: the platform's cut of the
+   * seats they accepted — the commission the trip would have paid. Nothing
+   * when no seat is accepted (unanswered requests don't count).
+   */
+  async quoteTripCancellationFee(
+    tripId: string,
+    m: EntityManager = this.dataSource.manager,
+  ): Promise<{ fee: number; currency: string; seats: number }> {
+    const trip = await m.findOneOrFail(TripEntity, { where: { id: tripId } });
+    const accepted = await m.find(BookingEntity, {
+      where: { tripId, status: BookingStatus.CONFIRMED },
+    });
+    const seats = accepted.reduce(
+      (sum, b) => sum + Math.max(1, Number(b.seatCount) || 1),
+      0,
+    );
+    if (trip.tripType !== TripType.SCHEDULED || accepted.length === 0) {
+      return { fee: 0, currency: trip.currency, seats };
+    }
+    const grossCents = accepted.reduce(
+      (sum, b) =>
+        sum + Math.round(Number(b.originalAmount ?? b.totalAmount) * 100),
+      0,
+    );
+    const percent = await this.settings.getNumber('sharedCommissionPercent');
+    if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
+      throw new BadRequestException('Invalid commission basis');
+    }
+    return {
+      fee: Math.round((grossCents * percent) / 100) / 100,
+      currency: trip.currency,
+      seats,
+    };
+  }
+
+  /**
+   * Takes [quoteTripCancellationFee] from the driver's wallet, once per trip
+   * however often the cancel is retried. Call it before the trip is
+   * cancelled: it reads the bookings that are still accepted.
+   */
+  async chargeTripCancellationFee(
+    tripId: string,
+  ): Promise<{ fee: number; currency: string }> {
+    return this.dataSource.transaction(async (m) => {
+      const trip = await m.findOneOrFail(TripEntity, {
+        where: { id: tripId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      const key = `cancel-fee:${tripId}`;
+      const charged = await m.findOne(WalletTransactionEntity, {
+        where: { idempotencyKey: key },
+      });
+      if (charged) {
+        return { fee: Number(charged.amount), currency: charged.currency };
+      }
+      const quote = await this.quoteTripCancellationFee(tripId, m);
+      if (!(quote.fee > 0)) return { fee: 0, currency: quote.currency };
+
+      const driver = await this.lockedAccount(
+        m,
+        trip.driverId,
+        WalletAccountType.DRIVER,
+        quote.currency,
+      );
+      const system = await this.lockedAccount(
+        m,
+        null,
+        WalletAccountType.SYSTEM,
+        quote.currency,
+      );
+      await this.post(
+        m,
+        driver,
+        -quote.fee,
+        key,
+        WalletTransactionType.TRIP_DEBIT,
+        tripId,
+        { reason: 'trip_cancellation', seats: quote.seats },
+        'trip_cancellation',
+      );
+      await this.post(
+        m,
+        system,
+        quote.fee,
+        `cancel-fee-income:${tripId}`,
+        WalletTransactionType.TRIP_PAYMENT,
+        tripId,
+        { reason: 'trip_cancellation' },
+        'trip_cancellation',
+      );
+      return { fee: quote.fee, currency: quote.currency };
+    });
+  }
+
   /** The unique account insert and lock serialize all writers in a currency. */
   private async lockedAccount(
     manager: EntityManager,
@@ -142,6 +237,7 @@ export class WalletService {
     type: WalletTransactionType,
     referenceId: string,
     metadata: Record<string, unknown> = {},
+    referenceType = 'revenue',
   ) {
     account.balance = (Number(account.balance) + amount).toFixed(2);
     await manager.save(WalletAccountEntity, account);
@@ -156,7 +252,7 @@ export class WalletService {
         status: WalletTransactionStatus.POSTED,
         type,
         idempotencyKey: key,
-        referenceType: 'revenue',
+        referenceType,
         referenceId,
         metadata,
       }),

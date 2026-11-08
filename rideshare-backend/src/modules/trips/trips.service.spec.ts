@@ -25,6 +25,7 @@ import { BookingsService } from '../bookings/bookings.service';
 import { VehiclesService } from '../vehicles/vehicles.service';
 import { UsersService } from '../users/users.service';
 import { PlatformPricingService } from '../payments/platform-pricing.service';
+import { WalletService } from '../wallet/wallet.service';
 import { TripsGateway } from './trips.gateway';
 import { RecurrenceService } from '../recurrence/recurrence.service';
 import { PendingChargesService } from '../pending-charges/pending-charges.service';
@@ -135,6 +136,13 @@ describe('TripsService (TypeORM)', () => {
           },
         },
         { provide: PlatformPricingService, useValue: {} },
+        {
+          provide: WalletService,
+          useValue: {
+            chargeTripCancellationFee: jest.fn(),
+            quoteTripCancellationFee: jest.fn(),
+          },
+        },
         {
           provide: TripsGateway,
           useValue: { emitTripUpdated: jest.fn() },
@@ -826,9 +834,11 @@ describe('TripsService (TypeORM)', () => {
       id: 'trip-uuid',
       driverId: DRIVER_ID,
       status: 'published',
+      tripType: 'scheduled',
       toName: 'Irbid',
       departureTime: new Date(Date.now() + hours * 3600 * 1000),
     });
+    let wallet: any;
 
     beforeEach(() => {
       bookingsService = Object.assign(service['bookingsService'], {
@@ -840,6 +850,11 @@ describe('TripsService (TypeORM)', () => {
         getPreferredLocale: jest.fn().mockResolvedValue('ar'),
       });
       jest.spyOn(service, 'removeTripLifecycleJobs').mockResolvedValue();
+      wallet = service['wallet'];
+      wallet.chargeTripCancellationFee.mockResolvedValue({
+        fee: 0,
+        currency: 'SAR',
+      });
     });
 
     it('lets the driver withdraw a trip nobody booked, even near departure', async () => {
@@ -856,18 +871,51 @@ describe('TripsService (TypeORM)', () => {
       expect(notificationsService.create).not.toHaveBeenCalled();
     });
 
-    it('keeps the 24-hour window when passengers are booked', async () => {
+    it('lets the driver cancel a booked trip near departure, for the fee', async () => {
       jest
         .spyOn(service, 'findById')
         .mockResolvedValue(tripDepartingIn(2) as any);
       bookingsService.findByTripInternal.mockResolvedValue([
         { userId: 'p1', status: 'confirmed' },
       ]);
+      wallet.chargeTripCancellationFee.mockResolvedValue({
+        fee: 2.5,
+        currency: 'SAR',
+      });
+
+      const saved = await service.cancel('trip-uuid', DRIVER_ID);
+
+      expect(wallet.chargeTripCancellationFee).toHaveBeenCalledWith(
+        'trip-uuid',
+      );
+      expect(saved.status).toBe('cancelled');
+      expect(bookingsService.cancelAllForTrip).toHaveBeenCalled();
+    });
+
+    it('does not cancel when the fee cannot be taken', async () => {
+      jest
+        .spyOn(service, 'findById')
+        .mockResolvedValue(tripDepartingIn(2) as any);
+      bookingsService.findByTripInternal.mockResolvedValue([
+        { userId: 'p1', status: 'confirmed' },
+      ]);
+      wallet.chargeTripCancellationFee.mockRejectedValue(new Error('db down'));
 
       await expect(service.cancel('trip-uuid', DRIVER_ID)).rejects.toThrow(
-        ForbiddenException,
+        'db down',
       );
       expect(bookingsService.cancelAllForTrip).not.toHaveBeenCalled();
+    });
+
+    it('charges no fee for an instant ride', async () => {
+      jest.spyOn(service, 'findById').mockResolvedValue({
+        ...tripDepartingIn(2),
+        tripType: 'instant',
+      } as any);
+
+      await service.cancel('trip-uuid', DRIVER_ID);
+
+      expect(wallet.chargeTripCancellationFee).not.toHaveBeenCalled();
     });
 
     it('refuses to cancel a trip that has started', async () => {
@@ -898,19 +946,6 @@ describe('TripsService (TypeORM)', () => {
         ConflictException,
       );
       expect(bookingsService.cancelAllForTrip).not.toHaveBeenCalled();
-    });
-
-    it('counts boarded passengers as booked', async () => {
-      jest
-        .spyOn(service, 'findById')
-        .mockResolvedValue(tripDepartingIn(2) as any);
-      bookingsService.findByTripInternal.mockResolvedValue([
-        { userId: 'p1', status: 'in_progress' },
-      ]);
-
-      await expect(service.cancel('trip-uuid', DRIVER_ID)).rejects.toThrow(
-        ForbiddenException,
-      );
     });
 
     it('notifies the booked passengers when the trip is cancelled', async () => {

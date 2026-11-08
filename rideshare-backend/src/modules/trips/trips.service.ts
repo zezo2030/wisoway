@@ -39,6 +39,7 @@ import { RecurrenceFrequency } from '../../database/entities/trip-recurrence-rul
 import { PendingChargesService } from '../pending-charges/pending-charges.service';
 import { LocationsService } from '../locations/locations.service';
 import { DriverTripFeeService } from '../driver-trip-fee/driver-trip-fee.service';
+import { WalletService } from '../wallet/wallet.service';
 import {
   TripPassengerSummary,
   TripPassengerSummaryService,
@@ -128,6 +129,7 @@ export class TripsService {
     private locationsService: LocationsService,
     private driverTripFee: DriverTripFeeService,
     private tripPassengerSummary: TripPassengerSummaryService,
+    private wallet: WalletService,
   ) {}
 
   /**
@@ -998,6 +1000,18 @@ export class TripsService {
   // TripAutoCompleteProcessor) run. No client called it. Completion goes through
   // TripTimeService.completeTrip only.
 
+  /** What cancelling now would cost the driver, for the app to show first. */
+  async cancellationFee(
+    tripId: string,
+    driverId: string,
+  ): Promise<{ fee: number; currency: string; seats: number }> {
+    const trip = await this.findById(tripId);
+    if (trip.driverId !== driverId) {
+      throw new ForbiddenException('You are not the owner of this trip');
+    }
+    return this.wallet.quoteTripCancellationFee(tripId);
+  }
+
   async cancel(tripId: string, driverId: string): Promise<TripEntity> {
     const trip = await this.findById(tripId);
     if (trip.driverId !== driverId) {
@@ -1038,25 +1052,11 @@ export class TripsService {
       });
     }
 
-    // The 24-hour window protects booked passengers; a trip nobody has booked
-    // can be withdrawn at any time.
-    const hoursUntilDeparture =
-      (new Date(trip.departureTime).getTime() - Date.now()) / (1000 * 60 * 60);
-    if (activeBookings.length > 0 && hoursUntilDeparture <= 24) {
-      const windowSeconds = Math.max(
-        0,
-        Math.floor(
-          (new Date(trip.departureTime).getTime() -
-            24 * 60 * 60 * 1000 -
-            Date.now()) /
-            1000,
-        ),
-      );
-      throw new ForbiddenException({
-        message: 'Cannot cancel within 24 hours of departure',
-        code: ErrorCodes.CANCELLATION_WINDOW_CLOSED,
-        windowSeconds,
-      });
+    // Cancelling is free until a seat is accepted; after that the driver
+    // pays the platform's cut of the accepted seats (see the wallet). The app
+    // shows the amount (cancellationFee) before the driver confirms.
+    if (trip.tripType === TripType.SCHEDULED) {
+      await this.wallet.chargeTripCancellationFee(tripId);
     }
 
     trip.status = TripStatus.CANCELLED;
