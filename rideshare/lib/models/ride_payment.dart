@@ -22,6 +22,10 @@ class RidePayment {
   final String status;
   final String? payerCliqAlias;
 
+  /// False when nobody on the booking rode: it owes nothing, and its `paid`
+  /// status means nothing was left to collect, not that money was handed over.
+  final bool rode;
+
   const RidePayment({
     required this.bookingId,
     required this.tripId,
@@ -35,6 +39,7 @@ class RidePayment {
     required this.status,
     this.passengerName,
     this.payerCliqAlias,
+    this.rode = true,
   });
 
   bool get isCliq => method == 'cliq';
@@ -70,6 +75,8 @@ class RidePayment {
       method: text(json['method']) ?? 'cash',
       status: text(json['status']) ?? 'pending',
       payerCliqAlias: text(json['payerCliqAlias']),
+      // Older servers don't say; every booking they list rode.
+      rode: json['rode'] != false,
     );
   }
 }

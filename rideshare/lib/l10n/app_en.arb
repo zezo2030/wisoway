@@ -3367,6 +3367,7 @@
   "ridePaymentDisputedBody": "The driver reported they weren't paid. The VisionWay team will contact you.",
   "ridePaymentsCardTitle": "Trip fare",
   "ridePaymentDriverPaidCash": "Received in cash ✓",
+  "ridePaymentDriverNotRidden": "Didn't ride · no fare",
   "ridePaymentDriverPaidCliq": "Paid by CliQ · added to your wallet ✓",
   "ridePaymentDriverCliqPending": "Waiting for the passenger to approve CliQ",
   "ridePaymentDriverCliqFailed": "CliQ payment hasn't gone through yet",

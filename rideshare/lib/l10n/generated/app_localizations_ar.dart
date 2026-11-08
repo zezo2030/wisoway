@@ -5934,6 +5934,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get ridePaymentDriverPaidCash => 'استلمتها نقداً ✓';
 
   @override
+  String get ridePaymentDriverNotRidden => 'لم يركب · لا أجرة';
+
+  @override
   String get ridePaymentDriverPaidCliq =>
       'دُفعت عبر CliQ · أُضيفت إلى محفظتك ✓';
 

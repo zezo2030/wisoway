@@ -10838,6 +10838,12 @@ abstract class AppLocalizations {
   /// **'استلمتها نقداً ✓'**
   String get ridePaymentDriverPaidCash;
 
+  /// No description provided for @ridePaymentDriverNotRidden.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم يركب · لا أجرة'**
+  String get ridePaymentDriverNotRidden;
+
   /// No description provided for @ridePaymentDriverPaidCliq.
   ///
   /// In ar, this message translates to:

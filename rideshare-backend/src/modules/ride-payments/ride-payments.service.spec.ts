@@ -192,6 +192,35 @@ describe('RidePaymentsService', () => {
 
       expect(view.amount).toBe('25.00');
       expect(view.originalAmount).toBe('25.00');
+      expect(view.rode).toBe(true);
+    });
+
+    it('says a booking nobody rode on was not ridden, not paid in cash', async () => {
+      bookingRepo.findOne.mockResolvedValue(
+        booking({
+          seatCount: 1,
+          totalAmount: '100.00',
+          fareDue: '0.00',
+          paymentStatus: 'paid',
+        }),
+      );
+
+      const view = await service.getMine('t1', 'p1');
+
+      expect(view.amount).toBe('0.00');
+      expect(view.rode).toBe(false);
+    });
+
+    it('still counts a fully discounted booking as ridden', async () => {
+      bookingRepo.findOne.mockResolvedValue(
+        booking({
+          totalAmount: '0.00',
+          fareDue: '0.00',
+          paymentStatus: 'paid',
+        }),
+      );
+
+      expect((await service.getMine('t1', 'p1')).rode).toBe(true);
     });
 
     it('leaves an instant ride at its whole fare', async () => {

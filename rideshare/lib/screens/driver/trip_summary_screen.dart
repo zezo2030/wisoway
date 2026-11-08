@@ -1333,6 +1333,11 @@ extension on _TripSummaryScreenState {
     final l10n = context.l10n;
     final busy = _settlingBookingId == payment.bookingId;
     final (String status, Color color) = switch (payment.status) {
+      // Nobody on it rode: nothing was owed, so nothing was received.
+      _ when !payment.rode => (
+        l10n.ridePaymentDriverNotRidden,
+        _TripSummaryScreenState._muted,
+      ),
       'paid' when payment.isCliq => (
         l10n.ridePaymentDriverPaidCliq,
         _TripSummaryScreenState._successGreen,
@@ -1391,11 +1396,13 @@ extension on _TripSummaryScreenState {
           ),
           const SizedBox(height: 4),
           Text(
-            '${payment.isWallet
-                ? l10n.walletTitle
-                : payment.isCliq
-                ? l10n.paymentMethodCliq
-                : l10n.paymentMethodCash} · $status',
+            !payment.rode
+                ? status
+                : '${payment.isWallet
+                      ? l10n.walletTitle
+                      : payment.isCliq
+                      ? l10n.paymentMethodCliq
+                      : l10n.paymentMethodCash} · $status',
             style: AppTextStyles.bodySmall.copyWith(color: color),
           ),
           if (payment.awaitsDriver) ...[

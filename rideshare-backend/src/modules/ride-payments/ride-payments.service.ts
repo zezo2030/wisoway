@@ -58,6 +58,11 @@ export interface RidePaymentView {
   currency: string;
   method: string;
   status: PaymentStatus;
+  /**
+   * False when nobody on the booking rode, so it owes nothing. Its status
+   * reads `paid` (nothing is left to collect) but no money changed hands.
+   */
+  rode: boolean;
   payerCliqAlias: string | null;
   paidAt: Date | null;
   disputedAt: Date | null;
@@ -579,6 +584,9 @@ export class RidePaymentsService {
       currency,
       method: booking.paymentMethod ?? 'cash',
       status: (booking.paymentStatus ?? 'pending') as PaymentStatus,
+      // A ridden fare of nothing on a booking that cost something: no seat
+      // rode. (A free booking — fully discounted — still rode.)
+      rode: !(booking.fareDue != null && owed === 0 && booked > 0),
       payerCliqAlias: booking.payerCliqAlias,
       paidAt: booking.settledAt,
       disputedAt: booking.paymentDisputedAt,

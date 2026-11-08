@@ -5991,6 +5991,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ridePaymentDriverPaidCash => 'Received in cash ✓';
 
   @override
+  String get ridePaymentDriverNotRidden => 'Didn\'t ride · no fare';
+
+  @override
   String get ridePaymentDriverPaidCliq =>
       'Paid by CliQ · added to your wallet ✓';
 
