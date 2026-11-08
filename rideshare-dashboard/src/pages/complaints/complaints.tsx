@@ -38,13 +38,15 @@ const STATUS_COLORS: Record<ComplaintStatus, string> = {
   rejected:     "bg-red-50 text-red-700 border-red-200",
 }
 
+// Keyed on ComplaintCategory in the backend's complaint.entity.ts.
 const CATEGORY_LABELS: Record<string, string> = {
-  SAFETY:           "Safety",
-  PAYMENT:          "Payment",
-  VEHICLE_CONDITION: "Vehicle Condition",
-  DRIVER_BEHAVIOR:  "Driver Behavior",
-  APP_ISSUE:        "App Issue",
-  OTHER:            "Other",
+  safety:            "Safety",
+  rude_behavior:     "Rude behavior",
+  no_show:           "No-show",
+  payment:           "Payment",
+  vehicle_condition: "Vehicle condition",
+  not_on_trip:       "Wasn't on the trip (driver confirmed them)",
+  other:             "Other",
 }
 
 interface ReviewState {

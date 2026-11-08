@@ -18,6 +18,8 @@ export const ComplaintCategory = {
   NO_SHOW: 'no_show',
   PAYMENT: 'payment',
   VEHICLE_CONDITION: 'vehicle_condition',
+  /** The driver said «معي في السيارة» for a passenger who wasn't there. */
+  NOT_ON_TRIP: 'not_on_trip',
   OTHER: 'other',
 } as const;
 export type ComplaintCategory =

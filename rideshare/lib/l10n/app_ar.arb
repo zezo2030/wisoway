@@ -3462,6 +3462,8 @@
   "tripReportProblem": "الإبلاغ عن مشكلة في الرحلة",
   "complaintCategoryRudeBehavior": "سلوك غير لائق",
   "complaintCategoryNoShow": "عدم الحضور",
+  "complaintCategoryNotOnTrip": "لم أكن في الرحلة",
+  "tripVouchedByDriverNote": "أكّد السائق أنك في السيارة. إذا لم تكن في الرحلة، أبلغنا.",
   "instantOfferCliqNote": "يدفع الراكب عبر CliQ · تُضاف الأجرة إلى محفظتك",
   "instantTripCliqNote": "CliQ · تُضاف إلى محفظتك",
   "cliqPayerAliasLabel": "اسم CliQ أو رقم جوالك",

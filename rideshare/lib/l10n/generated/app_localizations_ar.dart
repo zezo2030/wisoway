@@ -5845,6 +5845,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get complaintCategoryNoShow => 'عدم الحضور';
 
   @override
+  String get complaintCategoryNotOnTrip => 'لم أكن في الرحلة';
+
+  @override
+  String get tripVouchedByDriverNote =>
+      'أكّد السائق أنك في السيارة. إذا لم تكن في الرحلة، أبلغنا.';
+
+  @override
   String get instantOfferCliqNote =>
       'يدفع الراكب عبر CliQ · تُضاف الأجرة إلى محفظتك';
 

@@ -75,6 +75,13 @@ class NotificationNavigationService {
         ActiveRideNavigator.resume();
         break;
 
+      case 'presence_driver_confirmed':
+        // The driver vouched for the passenger: their trip screen, refreshed,
+        // where they can report it if they weren't there.
+        ActiveRideNavigator.presenceChanged.value++;
+        ActiveRideNavigator.resume();
+        break;
+
       case 'presence_marked_absent':
         _navigateToPresenceConfirmation(data);
         break;

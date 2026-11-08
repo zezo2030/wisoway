@@ -5900,6 +5900,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get complaintCategoryNoShow => 'No-show';
 
   @override
+  String get complaintCategoryNotOnTrip => 'I wasn\'t on this trip';
+
+  @override
+  String get tripVouchedByDriverNote =>
+      'The driver confirmed you\'re in the car. If you weren\'t on this trip, let us know.';
+
+  @override
   String get instantOfferCliqNote =>
       'Passenger pays by CliQ · the fare goes to your wallet';
 

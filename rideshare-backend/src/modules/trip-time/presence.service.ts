@@ -235,6 +235,9 @@ export class PresenceService {
     const byId = new Map(bookings.map((b) => [b.id, b]));
 
     const conflicts: BookingSeatEntity[] = [];
+    // Seats the driver vouched for that their passenger hadn't confirmed:
+    // each booker hears about it, and can report it if they weren't there.
+    const vouched = new Map<BookingEntity, BookingSeatEntity[]>();
 
     for (const entry of dto.entries) {
       const booking = byId.get(entry.bookingId);
@@ -256,7 +259,15 @@ export class PresenceService {
         });
       }
 
+      const newlyVouched =
+        entry.present &&
+        seat.presenceConfirmedAt == null &&
+        seat.passengerSelfConfirmedAt == null &&
+        seat.passengerDeclaredStatus !== PassengerDeclaredStatus.IN_VEHICLE;
       this.applyDriverDecision(seat, entry, now);
+      if (newlyVouched) {
+        vouched.set(booking, [...(vouched.get(booking) ?? []), seat]);
+      }
       if (seat.presenceDisputedAt && !conflicts.includes(seat)) {
         conflicts.push(seat);
       }
@@ -269,6 +280,10 @@ export class PresenceService {
       trip.presenceReviewFlagged = true;
       await this.tripRepo.save(trip);
       void this.notifyConflicts(trip, conflicts);
+    }
+
+    for (const [booking, seats] of vouched) {
+      void this.notifyVouched(trip, booking, seats);
     }
 
     // «معي في السيارة» from the driver counts as boarding: a trip waiting at
@@ -340,6 +355,42 @@ export class PresenceService {
       booking.driverConfirmedPassengerAt = anyPresent ? now : null;
       booking.driverMarkedAbsentAt = allAbsent ? now : null;
       await this.bookingRepo.save(booking);
+    }
+  }
+
+  /**
+   * Tells a booker the driver said [seats] are in the car. Opens their trip
+   * screen, where «الإبلاغ عن مشكلة» reaches the admins if they weren't.
+   */
+  private async notifyVouched(
+    trip: TripEntity,
+    booking: BookingEntity,
+    seats: BookingSeatEntity[],
+  ): Promise<void> {
+    try {
+      const ar =
+        (await this.notifications.getPreferredLocale(booking.userId)) === 'ar';
+      const names = seats
+        .map((s) => s.displayName?.trim())
+        .filter((n): n is string => !!n);
+      const forYou = seats.length === 1 && seats[0].isMainBooker;
+      const who =
+        forYou || names.length === 0 ? null : names.join(ar ? '، ' : ', ');
+      await this.notifications.create({
+        userId: booking.userId,
+        type: 'presence_driver_confirmed',
+        title: ar
+          ? 'السائق أكّد تواجدك في السيارة'
+          : 'The driver confirmed you are in the car',
+        body: ar
+          ? `${who ? `أكّد السائق أن ${who} معه` : 'أكّد السائق أنك معه'} في الرحلة إلى ${trip.toName}. إذا لم يكن هذا صحيحًا، اضغط «الإبلاغ عن مشكلة» في شاشة الرحلة.`
+          : `The driver says ${who ? `${who} ${names.length > 1 ? 'are' : 'is'}` : 'you are'} with them on the trip to ${trip.toName}. If that's not right, tap "Report a problem" on the trip screen.`,
+        data: { tripId: trip.id, bookingId: booking.id },
+      });
+    } catch (err) {
+      this.logger.warn(
+        `presence_driver_confirmed ${booking.id}: ${(err as Error).message}`,
+      );
     }
   }
 
@@ -765,6 +816,8 @@ export class PresenceService {
           isMainBooker: s.isMainBooker,
           declaredStatus: s.passengerDeclaredStatus,
           selfConfirmedAt: s.passengerSelfConfirmedAt,
+          /** The driver said «معي في السيارة» for this seat. */
+          driverConfirmedAt: s.presenceConfirmedAt,
         })),
       window: this.passengerWindow(trip, now),
     };

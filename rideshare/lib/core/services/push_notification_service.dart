@@ -157,9 +157,13 @@ class PushNotificationService {
       // A matched ride takes over the screen on both phones, even when the
       // app is open somewhere else.
       final type = message.data['type']?.toString();
+      if (type == 'presence_driver_confirmed') {
+        ActiveRideNavigator.presenceChanged.value++;
+      }
       if (type == 'instant_matched' ||
           type == 'presence_prompt' ||
           type == 'trip_awaiting_boarding' ||
+          type == 'presence_driver_confirmed' ||
           type == 'trip_started') {
         ActiveRideNavigator.resume();
       } else if (type == 'instant_driver_cancelled') {

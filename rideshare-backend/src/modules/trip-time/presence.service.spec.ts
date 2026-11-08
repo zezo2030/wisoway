@@ -81,8 +81,13 @@ describe('PresenceService', () => {
   let tripRepo: any;
   let bookingRepo: any;
   let seatRepo: any;
+  let notifications: any;
 
   beforeEach(async () => {
+    notifications = {
+      create: jest.fn(async () => ({})),
+      getPreferredLocale: jest.fn(async () => 'ar'),
+    };
     tripRepo = {
       findOne: jest.fn(),
       save: jest.fn(async (t: TripEntity) => t),
@@ -106,10 +111,7 @@ describe('PresenceService', () => {
         { provide: getRepositoryToken(TripEntity), useValue: tripRepo },
         { provide: getRepositoryToken(BookingEntity), useValue: bookingRepo },
         { provide: getRepositoryToken(BookingSeatEntity), useValue: seatRepo },
-        {
-          provide: NotificationsService,
-          useValue: { create: jest.fn(async () => ({})) },
-        },
+        { provide: NotificationsService, useValue: notifications },
         {
           provide: TripStartService,
           useValue: { onPassengerBoarded: jest.fn(async () => undefined) },
@@ -185,6 +187,82 @@ describe('PresenceService', () => {
         true,
       );
       expect(seat.billableOverride).toBeNull();
+    });
+  });
+
+  // ── The passenger hears about the driver's «معي في السيارة» ──────────────
+
+  describe('telling the passenger the driver vouched for them', () => {
+    const flush = () => new Promise((r) => setImmediate(r));
+    const vouchedPushes = () =>
+      notifications.create.mock.calls
+        .map(([n]: [any]) => n)
+        .filter((n: any) => n.type === 'presence_driver_confirmed');
+
+    async function vouch(seats: BookingSeatEntity[], seatNumbers: string[]) {
+      tripRepo.findOne.mockResolvedValue(makeTrip());
+      bookingRepo.find.mockResolvedValue([makeBooking(seats)]);
+      await service.driverConfirm('t1', 'u-driver', {
+        entries: seatNumbers.map((seatNumber) => ({
+          bookingId: 'b1',
+          seatNumber,
+          present: true,
+        })),
+      });
+      await flush();
+    }
+
+    it('tells the booker, naming the companions vouched for', async () => {
+      await vouch(
+        [
+          makeSeat({ seatNumber: '1A', displayName: 'سنبل' }),
+          makeSeat({
+            seatNumber: '1B',
+            displayName: 'قصي',
+            isMainBooker: false,
+          }),
+          makeSeat({
+            seatNumber: '1C',
+            displayName: 'محمد',
+            isMainBooker: false,
+          }),
+        ],
+        ['1B', '1C'],
+      );
+
+      const [push] = vouchedPushes();
+      expect(vouchedPushes()).toHaveLength(1);
+      expect(push.userId).toBe('u-passenger');
+      expect(push.title).toBe('السائق أكّد تواجدك في السيارة');
+      expect(push.body).toContain('أكّد السائق أن قصي، محمد معه');
+      expect(push.body).toContain('الإبلاغ عن مشكلة');
+      expect(push.data).toEqual({ tripId: 't1', bookingId: 'b1' });
+    });
+
+    it('speaks to the booker directly about their own seat', async () => {
+      await vouch([makeSeat({ displayName: 'سنبل' })], ['1A']);
+      expect(vouchedPushes()[0].body).toContain('أكّد السائق أنك معه');
+    });
+
+    it('stays quiet for a seat its passenger already confirmed', async () => {
+      await vouch(
+        [
+          makeSeat({
+            passengerSelfConfirmedAt: new Date(),
+            passengerDeclaredStatus: PassengerDeclaredStatus.IN_VEHICLE,
+          }),
+        ],
+        ['1A'],
+      );
+      expect(vouchedPushes()).toHaveLength(0);
+    });
+
+    it('does not repeat itself when the driver vouches twice', async () => {
+      await vouch(
+        [makeSeat({ presenceConfirmedAt: new Date(Date.now() - 60_000) })],
+        ['1A'],
+      );
+      expect(vouchedPushes()).toHaveLength(0);
     });
   });
 

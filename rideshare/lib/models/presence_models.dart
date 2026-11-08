@@ -122,6 +122,7 @@ class PresencePromptSeat {
     required this.isMainBooker,
     this.declaredStatus,
     this.selfConfirmedAt,
+    this.driverConfirmedAt,
   });
 
   final String seatNumber;
@@ -129,6 +130,15 @@ class PresencePromptSeat {
   final bool isMainBooker;
   final PassengerPresenceStatus? declaredStatus;
   final DateTime? selfConfirmedAt;
+
+  /// The driver said «معي في السيارة» for this seat.
+  final DateTime? driverConfirmedAt;
+
+  /// Only the driver says this seat is in the car; its passenger never did.
+  bool get vouchedByDriverOnly =>
+      driverConfirmedAt != null &&
+      selfConfirmedAt == null &&
+      declaredStatus != PassengerPresenceStatus.inVehicle;
 
   /// What this seat can still answer. Mirrors the server, which refuses the
   /// rest: «in the car» and «not riding» are final, and someone on the way can
@@ -152,6 +162,7 @@ class PresencePromptSeat {
         json['declaredStatus']?.toString(),
       ),
       selfConfirmedAt: _dateOrNull(json['selfConfirmedAt']),
+      driverConfirmedAt: _dateOrNull(json['driverConfirmedAt']),
     );
   }
 }
@@ -202,6 +213,9 @@ class PresencePrompt {
   final PresenceDriverLocation? driverLocation;
 
   bool get needsAnswers => seats.any((seat) => !seat.isSettled);
+
+  /// The driver vouched for someone on this booking who never confirmed.
+  bool get vouchedByDriverOnly => seats.any((s) => s.vouchedByDriverOnly);
 
   /// Nobody on the booking is taking this trip, so it no longer holds them.
   bool get nobodyRiding =>

@@ -202,6 +202,7 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
     _loadCarIcon();
     _loadTrip();
     _initTracking();
+    ActiveRideNavigator.presenceChanged.addListener(_onPresenceChanged);
     _trackingPoll = Timer.periodic(
       const Duration(seconds: 5),
       (_) => _pollTracking(),
@@ -216,6 +217,7 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
 
   @override
   void dispose() {
+    ActiveRideNavigator.presenceChanged.removeListener(_onPresenceChanged);
     _statusPoll?.cancel();
     _trackingPoll?.cancel();
     _carMotion.dispose();
@@ -393,6 +395,29 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
     } catch (_) {
       // The next time the screen opens asks again.
     }
+  }
+
+  /// The driver vouched for someone on this booking: show it, and the way to
+  /// report it.
+  void _onPresenceChanged() {
+    final trip = _trip;
+    if (trip != null) unawaited(_loadPresence(trip));
+  }
+
+  /// «الإبلاغ عن مشكلة في الرحلة»: a complaint about this trip's driver, set
+  /// to «لم أكن في الرحلة» when the driver vouched for someone who never
+  /// confirmed — the case the button is there for.
+  void _reportProblem(TripModel trip) {
+    Navigator.pushNamed(
+      context,
+      RouteNames.complaint,
+      arguments: {
+        'tripId': trip.id,
+        'againstUserId': trip.driverId,
+        if (_presencePrompt?.vouchedByDriverOnly == true)
+          'category': 'not_on_trip',
+      },
+    );
   }
 
   void _applyPresence(PresencePrompt? prompt) {
@@ -1111,7 +1136,7 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
                       ),
                     const SizedBox(height: 12),
                     _buildActionButtons(context),
-                    const SizedBox(height: 8),
+                    _buildReportProblem(context, trip),
                   ],
                 ),
               ),
@@ -1387,6 +1412,48 @@ class _TripInProgressScreenState extends State<TripInProgressScreen>
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// «الإبلاغ عن مشكلة في الرحلة», under the actions. When the driver said
+  /// «معي في السيارة» for someone who never confirmed, a line says so first.
+  Widget _buildReportProblem(BuildContext context, TripModel trip) {
+    final vouched = _presencePrompt?.vouchedByDriverOnly == true;
+    return Container(
+      key: const ValueKey('trip-report-problem'),
+      margin: const EdgeInsets.only(top: 8, bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: T.background(context),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (vouched)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                context.l10n.tripVouchedByDriverNote,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.slate700,
+                ),
+              ),
+            ),
+          TextButton.icon(
+            onPressed: () => _reportProblem(trip),
+            icon: const Icon(Icons.flag_outlined, size: 20),
+            label: Text(
+              context.l10n.tripReportProblem,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
           ),
         ],
       ),

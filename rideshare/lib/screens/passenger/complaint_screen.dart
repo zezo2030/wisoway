@@ -23,6 +23,7 @@ const _kCategoryCodes = [
   'rude_behavior',
   'no_show',
   'vehicle_condition',
+  'not_on_trip',
   'other',
 ];
 
@@ -38,6 +39,8 @@ String _categoryLabel(BuildContext context, String code) {
       return context.l10n.complaintCategoryNoShow;
     case 'vehicle_condition':
       return context.l10n.complaintCategoryVehicleCondition;
+    case 'not_on_trip':
+      return context.l10n.complaintCategoryNotOnTrip;
     default:
       return context.l10n.complaintCategoryOther;
   }

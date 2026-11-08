@@ -28,6 +28,11 @@ class ActiveRideNavigator {
 
   static final InstantRideService _service = InstantRideService();
 
+  /// Bumped when a push says someone's boarding changed — the driver said
+  /// «معي في السيارة» — so an open trip screen reloads it. [resume] alone
+  /// leaves a screen that is already showing untouched.
+  static final ValueNotifier<int> presenceChanged = ValueNotifier(0);
+
   static Timer? _watch;
 
   /// Asks the server every half minute while the app is open, so a trip whose

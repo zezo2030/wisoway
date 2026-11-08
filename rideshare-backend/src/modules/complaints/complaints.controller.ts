@@ -25,6 +25,7 @@ import {
   MaxLength,
   ValidateIf,
 } from 'class-validator';
+import { ComplaintCategory } from '../../database/entities/complaint.entity';
 import { ComplaintsService } from './complaints.service';
 
 export class CreateComplaintDto {
@@ -41,14 +42,7 @@ export class CreateComplaintDto {
   bookingId?: string;
 
   @IsString()
-  @IsIn([
-    'safety',
-    'rude_behavior',
-    'no_show',
-    'payment',
-    'vehicle_condition',
-    'other',
-  ])
+  @IsIn(Object.values(ComplaintCategory))
   category: string;
 
   @IsString()

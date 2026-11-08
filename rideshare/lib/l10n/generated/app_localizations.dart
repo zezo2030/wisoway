@@ -10682,6 +10682,18 @@ abstract class AppLocalizations {
   /// **'عدم الحضور'**
   String get complaintCategoryNoShow;
 
+  /// No description provided for @complaintCategoryNotOnTrip.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم أكن في الرحلة'**
+  String get complaintCategoryNotOnTrip;
+
+  /// No description provided for @tripVouchedByDriverNote.
+  ///
+  /// In ar, this message translates to:
+  /// **'أكّد السائق أنك في السيارة. إذا لم تكن في الرحلة، أبلغنا.'**
+  String get tripVouchedByDriverNote;
+
   /// No description provided for @instantOfferCliqNote.
   ///
   /// In ar, this message translates to:
