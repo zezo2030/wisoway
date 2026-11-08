@@ -551,6 +551,25 @@ export class PresenceService {
           `موقع الراكب أثبت وجوده مع السائق رغم إعلانه عدم الركوب في ${contradicted.length} مقعد. العمولة ستُحتسب، ويرجى مراجعة الرحلة.`,
         );
       }
+      // The driver's «معي في السيارة» still counts the seat; an admin decides.
+      const vouched = changing.filter(
+        (s) =>
+          bookingOfSeat.get(s)!.locationVerifiedAt == null &&
+          s.presenceConfirmedAt != null,
+      );
+      if (vouched.length > 0) {
+        for (const seat of vouched) {
+          seat.presenceDisputedAt = now;
+          await this.seatRepo.save(seat);
+        }
+        trip.presenceReviewFlagged = true;
+        await this.tripRepo.save(trip);
+        void this.notifyConflicts(
+          trip,
+          vouched,
+          `أكّد السائق وجود ${vouched.length} راكب معه في الرحلة إلى ${trip.toName}، لكن الراكب أعلن أنه لن يركب. المقعد محسوب بالأجرة والعمولة حتى تتم المراجعة.`,
+        );
+      }
     }
 
     // A trip waiting at departure starts with its first rider on board.

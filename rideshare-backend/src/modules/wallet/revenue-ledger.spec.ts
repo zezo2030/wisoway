@@ -240,7 +240,7 @@ describe('Revenue ledger', () => {
     expect(account(null, 'system').balance).toBe('-9.00');
     expect(rows(BookingEntity)[0].paymentStatus).toBe('paid');
   });
-  it('charges shared commission only for passenger-confirmed seats, excluding driver-only confirmation and exemptions', async () => {
+  it('charges shared commission on seats either side confirmed, excluding exemptions', async () => {
     rows(TripEntity)[0].tripType = 'scheduled';
     Object.assign(rows(BookingEntity)[0], {
       seatCount: 4,
@@ -253,8 +253,9 @@ describe('Revenue ledger', () => {
       ],
     });
     await service.chargeCompletedTripCommission('t');
-    expect(account('d', 'driver').balance).toBe('4.00');
-    expect(account(null, 'system').balance).toBe('1.00');
+    // 2 of 4 seats rode: 20 of the 40 fare, 10% commission = 2.
+    expect(account('d', 'driver').balance).toBe('3.00');
+    expect(account(null, 'system').balance).toBe('2.00');
   });
   it('does not charge a completed shared booking without passenger confirmation', async () => {
     rows(TripEntity)[0].tripType = 'scheduled';

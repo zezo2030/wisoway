@@ -33,17 +33,17 @@ class BookingSeatModel {
     required this.createdAt,
   });
 
-  /// Passenger confirmed presence (or seat remains billable by default).
+  /// The seat rode and pays its fare: the passenger said «أنا في السيارة»
+  /// or the driver vouched «معي في السيارة», and nobody struck it off since
+  /// (the server's seatCountsForCommission, without location proof).
   bool get isPresenceConfirmed {
-    if (passengerSelfConfirmedAt != null && billableOverride != false) {
+    if (billableOverride == false) return false;
+    if (passengerSelfConfirmedAt != null ||
+        presenceConfirmedAt != null ||
+        passengerDeclaredStatus == 'in_vehicle') {
       return true;
     }
-    if (passengerDeclaredStatus == 'in_vehicle' && billableOverride != false) {
-      return true;
-    }
-    if (markedAbsentAt != null || billableOverride == false) return false;
-    if (billableOverride == true) return true;
-    return false;
+    return billableOverride == true;
   }
 
   /// This person is in the car: they said «أنا في السيارة» (or the booker

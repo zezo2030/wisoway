@@ -154,18 +154,22 @@ export class BookingSeatEntity {
   @CreateDateColumn()
   createdAt: Date;
 
-  /** Passenger confirmation is required; an admin override may still exempt it. */
+  /** See [seatCountsForCommission] without location proof. */
   get isBillable(): boolean {
-    return (
-      this.passengerSelfConfirmedAt != null && this.billableOverride !== false
-    );
+    return seatCountsForCommission(this, false);
   }
 }
 
 /**
+ * Whether a seat rode, for the fare and the commission alike.
+ *
  * Location proof of the booking outweighs a "did not ride" from either side.
  * It places the booker's phone in the car, so the driver can still mark a
  * companion's seat absent.
+ *
+ * Otherwise the seat rode once either side confirmed it: the passenger's
+ * «أنا في السيارة» or the driver's «معي في السيارة». A passenger the driver
+ * vouched for wrongly reports it from the trip screen and an admin settles it.
  */
 export function seatCountsForCommission(
   seat: Pick<
@@ -173,6 +177,7 @@ export function seatCountsForCommission(
     | 'isMainBooker'
     | 'markedAbsentAt'
     | 'passengerSelfConfirmedAt'
+    | 'presenceConfirmedAt'
     | 'passengerDeclaredStatus'
     | 'billableOverride'
   >,
@@ -187,6 +192,8 @@ export function seatCountsForCommission(
     );
   }
   return (
-    seat.passengerSelfConfirmedAt != null && seat.billableOverride !== false
+    (seat.passengerSelfConfirmedAt != null ||
+      seat.presenceConfirmedAt != null) &&
+    seat.billableOverride !== false
   );
 }

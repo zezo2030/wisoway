@@ -516,6 +516,17 @@ describe('PresenceService', () => {
       );
       expect(vouched.billableOverride).toBeNull();
     });
+
+    it('"not riding" after the driver vouched flags the seat for an admin', async () => {
+      const seat = await runDeclare(
+        makeSeat({ presenceConfirmedAt: new Date() }),
+        PassengerDeclaredStatus.NOT_RIDING,
+      );
+      expect(seat.presenceDisputedAt).toBeInstanceOf(Date);
+      expect(tripRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ presenceReviewFlagged: true }),
+      );
+    });
   });
 
   // ── Settlement ──────────────────────────────────────────────────────────
@@ -545,7 +556,8 @@ describe('PresenceService', () => {
       // Nothing was ever charged on this trip, so nothing to report.
       expect(outcome.captured).toBe(0);
       expect(outcome.released).toBe(0);
-      expect(outcome.billableSeats).toBe(1);
+      // The passenger's own confirmation and the driver's vouch both count.
+      expect(outcome.billableSeats).toBe(2);
       expect(trip.presenceSettledAt).toBeInstanceOf(Date);
     });
 
