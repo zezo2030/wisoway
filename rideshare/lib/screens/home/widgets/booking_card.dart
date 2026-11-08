@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../core/constants/route_names.dart';
+import '../../../core/services/instant_ride_service.dart';
 import '../../../core/theme/colors.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/booking_model.dart';
@@ -14,10 +17,10 @@ class BookingCard extends StatelessWidget {
   final bool isPastTrip;
   final VoidCallback? onTap;
 
-  /// Called when the user taps the Chat button (only shown once settled).
+  /// Chat: opens the chat with the trip's driver when not given.
   final VoidCallback? onChat;
 
-  /// Called when the user taps the Call button (only shown once settled).
+  /// Call: rings the trip's driver (through the masked number) when not given.
   final VoidCallback? onCall;
 
   /// Called when the user taps the Cancel booking button.
@@ -33,6 +36,41 @@ class BookingCard extends StatelessWidget {
     this.onCall,
     this.onCancel,
   });
+
+  /// The chat with this booking's driver. Without its own action the button
+  /// did nothing, and the tap fell through to the card (trip details).
+  VoidCallback? _defaultChat(BuildContext context) {
+    final t = trip;
+    if (t == null) return null;
+    return () => Navigator.pushNamed(
+      context,
+      RouteNames.chat,
+      arguments: {
+        'tripId': t.id,
+        'trip': t,
+        'driverId': t.driverId,
+        'driverName': t.driverName ?? '',
+      },
+    );
+  }
+
+  /// Rings the driver the way the trip screen does: the server hands back the
+  /// number to dial (a masked one when configured).
+  VoidCallback? _defaultCall(BuildContext context) {
+    final tripId = trip?.id ?? booking.tripId;
+    if (tripId.isEmpty) return null;
+    return () async {
+      final messenger = ScaffoldMessenger.of(context);
+      final failed = context.l10n.instantMatchedCallFailed;
+      try {
+        final number = await InstantRideService().initiateCallForTrip(tripId);
+        final launched = await launchUrl(Uri(scheme: 'tel', path: number));
+        if (!launched) throw StateError('dialler unavailable');
+      } catch (_) {
+        messenger.showSnackBar(SnackBar(content: Text(failed)));
+      }
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -266,7 +304,7 @@ class BookingCard extends StatelessWidget {
                           icon: IconsaxPlusBold.message,
                           label: context.l10n.chat,
                           color: T.primary(context),
-                          onTap: onChat,
+                          onTap: onChat ?? _defaultChat(context),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -275,7 +313,7 @@ class BookingCard extends StatelessWidget {
                           icon: IconsaxPlusBold.call,
                           label: context.l10n.call,
                           color: AppColors.success,
-                          onTap: onCall,
+                          onTap: onCall ?? _defaultCall(context),
                         ),
                       ),
                     ],
