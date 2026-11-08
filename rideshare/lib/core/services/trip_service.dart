@@ -403,11 +403,15 @@ class TripService {
     await _api.post(ApiEndpoints.startTrip(tripId));
   }
 
-  /// Shared trip: the driver vouches «معي في السيارة» for [booking]'s seats —
-  /// for a passenger who rode but didn't confirm. It counts as boarding: the
-  /// fare is asked of them at the end, and a waiting trip starts.
-  Future<void> confirmPassengerAboard(BookingModel booking) async {
-    final seats = booking.seats;
+  /// Shared trip: the driver vouches «معي في السيارة» for [seats] of
+  /// [booking] (all of them when omitted) — for a passenger who rode but
+  /// didn't confirm. It counts as boarding: the fare is asked for those seats
+  /// at the end, and a waiting trip starts.
+  Future<void> confirmPassengerAboard(
+    BookingModel booking, {
+    List<BookingSeatModel>? seats,
+  }) async {
+    seats ??= booking.seats;
     if (seats.isEmpty) return;
     await _api.post(
       ApiEndpoints.presenceConfirm(booking.tripId),

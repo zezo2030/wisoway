@@ -34,6 +34,7 @@ import '../../core/services/trip_service.dart';
 import '../../l10n/l10n_extensions.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' show LatLng;
+import 'widgets/boarding_people.dart';
 import 'widgets/boarding_status_chip.dart';
 import 'widgets/driver_live_trip_view.dart';
 import '../../models/vehicle_art.dart';
@@ -2237,9 +2238,16 @@ class _TripManagementScreenState extends State<TripManagementScreen>
 
   /// «معي في السيارة»: the driver vouches for a passenger who rode but didn't
   /// confirm — so they are asked for the fare, and a waiting trip starts.
-  Future<void> _confirmAboard(BookingModel booking) async {
+  /// With [seat], for that one person of the booking only.
+  Future<void> _confirmAboard(
+    BookingModel booking, {
+    BookingSeatModel? seat,
+  }) async {
     try {
-      await _tripService.confirmPassengerAboard(booking);
+      await _tripService.confirmPassengerAboard(
+        booking,
+        seats: seat == null ? null : [seat],
+      );
       if (!mounted) return;
       await _loadTrip();
       if (!mounted) return;
@@ -2295,6 +2303,9 @@ class _TripManagementScreenState extends State<TripManagementScreen>
   /// car; the button covers riders who are in but didn't tap.
   Widget _buildBoardingCard(TripModel trip, List<BookingModel> riders) {
     final l10n = context.l10n;
+    // One row per person booked for, under their own name.
+    final people = boardingPeople(riders);
+    final expected = people.where((p) => !p.isNotRiding).toList();
     // A request still waiting for an answer is not a passenger: with nobody
     // confirmed the trip can't start (the server refuses it too).
     final canStart = _awaitingBoarding(trip) && riders.isNotEmpty;
@@ -2326,11 +2337,11 @@ class _TripManagementScreenState extends State<TripManagementScreen>
                   ),
                 ),
               ),
-              if (riders.isNotEmpty)
+              if (expected.isNotEmpty)
                 Text(
                   l10n.boardingConfirmedCount(
-                    riders.where((b) => b.hasConfirmedBoarding).length,
-                    riders.length,
+                    expected.where((p) => p.hasBoarded).length,
+                    expected.length,
                   ),
                   style: AppTextStyles.bodySmall.copyWith(
                     fontWeight: FontWeight.w700,
@@ -2347,15 +2358,13 @@ class _TripManagementScreenState extends State<TripManagementScreen>
               height: 1.5,
             ),
           ),
-          for (final b in riders) ...[
+          for (final p in people) ...[
             const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
                   child: Text(
-                    b.userPopulated?.name.trim().isNotEmpty == true
-                        ? b.userPopulated!.name
-                        : l10n.passengerFallback,
+                    p.name(l10n.passengerFallback),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.bodyMedium.copyWith(
@@ -2364,10 +2373,20 @@ class _TripManagementScreenState extends State<TripManagementScreen>
                     ),
                   ),
                 ),
-                if (b.hasConfirmedBoarding)
+                if (p.hasBoarded)
                   const BoardingStatusChip(boarded: true)
+                else if (p.isNotRiding)
+                  Text(
+                    l10n.presenceSeatNotRiding,
+                    style: AppTextStyles.bodySmall.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: T.textSecondary(context),
+                    ),
+                  )
                 else
-                  _ConfirmAboardButton(onPressed: () => _confirmAboard(b)),
+                  _ConfirmAboardButton(
+                    onPressed: () => _confirmAboard(p.booking, seat: p.seat),
+                  ),
               ],
             ),
           ],

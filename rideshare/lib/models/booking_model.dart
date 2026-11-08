@@ -46,6 +46,16 @@ class BookingSeatModel {
     return false;
   }
 
+  /// This person is in the car: they said «أنا في السيارة» (or the booker
+  /// said it for them), or the driver vouched «معي في السيارة».
+  bool get hasBoarded =>
+      passengerSelfConfirmedAt != null ||
+      presenceConfirmedAt != null ||
+      passengerDeclaredStatus == 'in_vehicle';
+
+  /// The booker answered «لن يستقل الرحلة» for this person.
+  bool get isNotRiding => passengerDeclaredStatus == 'not_riding';
+
   factory BookingSeatModel.fromJson(Map<String, dynamic> json) {
     return BookingSeatModel(
       id: json['id']?.toString() ?? '',
@@ -292,12 +302,7 @@ class BookingModel {
 
   /// The passenger said «أنا في السيارة», or the driver vouched for them
   /// (any of their seats). Only they are asked for a fare at the end.
-  bool get hasConfirmedBoarding => seats.any(
-    (s) =>
-        s.passengerSelfConfirmedAt != null ||
-        s.presenceConfirmedAt != null ||
-        s.passengerDeclaredStatus == 'in_vehicle',
-  );
+  bool get hasConfirmedBoarding => seats.any((s) => s.hasBoarded);
   bool get isCancelled => status == 'cancelled';
   bool get isCompleted => status == 'completed';
   bool get isRejected => status == 'rejected';
