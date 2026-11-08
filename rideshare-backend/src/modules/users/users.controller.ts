@@ -6,6 +6,7 @@ import {
   Body,
   UseGuards,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -85,10 +86,18 @@ export class UsersController {
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get user by ID' })
+  @ApiOperation({ summary: 'Get user by ID (the account itself or an admin)' })
   @ApiResponse({ status: 200, description: 'Returns user details' })
+  @ApiResponse({ status: 403, description: "Another user's account" })
   @ApiResponse({ status: 404, description: 'User not found' })
-  async getUserById(@Param('id') id: string) {
+  async getUserById(
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string; role: UserRole },
+  ) {
+    // The record carries the phone number, wallet balance and CliQ alias.
+    if (user.id !== id && user.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('You can only view your own account');
+    }
     return this.usersService.findById(id);
   }
 
