@@ -1,12 +1,13 @@
 import {
   IsString,
+  IsNotEmpty,
   IsOptional,
   IsInt,
   MaxLength,
   Min,
   Max,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 
 /**
  * Body of `PATCH /auth/driver/registration`. Lets a driver fix their submitted
@@ -34,8 +35,11 @@ export class UpdatePendingDriverRegistrationDto {
   @MaxLength(100)
   model?: string;
 
+  /** May be left out, but a registration's colour can't be cleared. */
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsNotEmpty({ message: 'Vehicle color is required' })
   @MaxLength(40)
   color?: string;
 

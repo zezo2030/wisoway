@@ -10,6 +10,7 @@ const validPayload = {
   vehicleType: 'sedan',
   plateNumber: 'ABC123',
   model: 'Camry',
+  color: 'white',
   carImageUrl: 'https://cdn/car.jpg',
   insuranceImageUrl: 'https://cdn/ins.jpg',
   nationalIdImageUrl: 'https://cdn/id.jpg',
@@ -49,6 +50,16 @@ describe('RegisterDriverDto', () => {
     const errors = await validate(plainToInstance(RegisterDriverDto, payload));
     expect(errors.some((e) => e.property === 'insuranceImageUrl')).toBe(true);
   });
+
+  it.each([undefined, '', '   '])(
+    'rejects a registration without the car colour (%p)',
+    async (color) => {
+      const errors = await validate(
+        plainToInstance(RegisterDriverDto, { ...validPayload, color }),
+      );
+      expect(errors.some((e) => e.property === 'color')).toBe(true);
+    },
+  );
 
   it('rejects register payload without nationalIdImageUrl', async () => {
     const { nationalIdImageUrl: _omitted, ...payload } = validPayload;

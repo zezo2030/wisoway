@@ -111,10 +111,12 @@ export class RegisterDriverDto {
   @MaxLength(100)
   model: string;
 
-  @IsOptional()
+  /** The car's colour, so passengers can spot it — mandatory. */
   @IsString()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsNotEmpty({ message: 'Vehicle color is required' })
   @MaxLength(40)
-  color?: string;
+  color: string;
 
   @IsOptional()
   @Type(() => Number)

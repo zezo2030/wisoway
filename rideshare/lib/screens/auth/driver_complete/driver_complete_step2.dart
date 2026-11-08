@@ -103,6 +103,9 @@ class DriverCompleteStep2 extends StatelessWidget {
           VehicleColorDropdown(
             value: state.colorController.text,
             onChanged: (key) => state.colorController.text = key,
+            validator: (v) => (v == null || v.trim().isEmpty)
+                ? l10n.vehicleColorRequired
+                : null,
           ),
           const SizedBox(height: 14),
           _buildSeatsSummary(context),

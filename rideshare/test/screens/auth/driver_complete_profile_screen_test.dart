@@ -83,6 +83,22 @@ void main() {
       );
     });
   });
+
+  testWidgets('will not continue without the car colour', (tester) async {
+    await _pump(tester);
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(DriverCompleteProfileScreen)),
+    );
+    expect(find.text(l10n.vehicleColorRequired), findsNothing);
+
+    final next = find.text(l10n.continueLabel);
+    await tester.ensureVisible(next);
+    await tester.tap(next);
+    await tester.pump();
+
+    expect(find.text(l10n.vehicleColorRequired), findsOneWidget);
+  });
 }
 
 final Finder _heroArt = find.byWidgetPredicate(
