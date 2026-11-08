@@ -10688,6 +10688,12 @@ abstract class AppLocalizations {
   /// **'لم أكن في الرحلة'**
   String get complaintCategoryNotOnTrip;
 
+  /// No description provided for @boardingBookedBy.
+  ///
+  /// In ar, this message translates to:
+  /// **'حجز {name}'**
+  String boardingBookedBy(String name);
+
   /// No description provided for @tripVouchedByDriverNote.
   ///
   /// In ar, this message translates to:

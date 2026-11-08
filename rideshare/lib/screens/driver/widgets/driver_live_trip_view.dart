@@ -13,6 +13,7 @@ import '../../../core/theme/text_styles.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/booking_model.dart';
 import '../../../models/trip_model.dart';
+import 'boarding_people.dart';
 import 'boarding_status_chip.dart';
 
 /// The driver's page for a trip that is under way — instant or shared.
@@ -68,9 +69,10 @@ class DriverLiveTripView extends StatefulWidget {
   /// Instant rides: «إلغاء», offered only until the passenger is in the car.
   final VoidCallback? onCancelRide;
 
-  /// Shared trips: «معي في السيارة» for a passenger who rode but didn't
-  /// confirm boarding, so they are asked for the fare at the end.
-  final void Function(BookingModel booking)? onConfirmAboard;
+  /// Shared trips: «معي في السيارة» for one person booked ([seat]; the whole
+  /// booking when it has no seat rows) who rode but didn't confirm boarding.
+  final void Function(BookingModel booking, BookingSeatModel? seat)?
+  onConfirmAboard;
 
   /// One of the two pickup-stage calls is in flight.
   final bool stageBusy;
@@ -759,7 +761,12 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
     final bookings = widget.bookings;
     final seats = bookings.fold<int>(0, (sum, b) => sum + b.seatCount);
     final shown = bookings.take(4).toList();
-    final boarded = bookings.where((b) => b.hasConfirmedBoarding).length;
+    // Counted per person, as on the boarding card: a three-seat booking is
+    // three people to confirm.
+    final expected = boardingPeople(
+      bookings,
+    ).where((p) => !p.isNotRiding).toList();
+    final boarded = expected.where((p) => p.hasBoarded).length;
 
     return Material(
       color: T.surfaceVariant(context),
@@ -803,7 +810,7 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
                   bookings.isEmpty
                       ? context.l10n.liveTripNoPassengers
                       : '${context.l10n.liveTripPassengersCount(seats)}'
-                            ' · ${context.l10n.boardingConfirmedCount(boarded, bookings.length)}',
+                            ' · ${context.l10n.boardingConfirmedCount(boarded, expected.length)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.titleSmall.copyWith(
@@ -834,6 +841,13 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
   }
 
   Future<void> _showPassengers(BuildContext context) {
+    // Shared trips list each person booked; an instant ride is one booking.
+    final people = _isInstant
+        ? [
+            for (final b in widget.bookings)
+              BoardingPerson(booking: b, seat: null),
+          ]
+        : boardingPeople(widget.bookings);
     return showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -856,13 +870,23 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
               Flexible(
                 child: ListView.separated(
                   shrinkWrap: true,
-                  itemCount: widget.bookings.length,
+                  itemCount: people.length,
                   separatorBuilder: (_, __) =>
                       Divider(height: 1, color: T.outline(context)),
                   itemBuilder: (_, i) {
-                    final b = widget.bookings[i];
+                    final p = people[i];
+                    final b = p.booking;
                     final user = b.userPopulated;
                     final phone = widget.phoneOf(b);
+                    final booker = user?.name.trim() ?? '';
+                    final name = p.name(context.l10n.passengerFallback);
+                    // Chat and call reach whoever booked the seat; say who,
+                    // when it isn't the person named.
+                    final subtitle = p.seat == null
+                        ? context.l10n.instantOfferPassengerCount(b.seatCount)
+                        : booker.isNotEmpty && booker != name
+                        ? context.l10n.boardingBookedBy(booker)
+                        : null;
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       child: Row(
@@ -874,26 +898,31 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  user?.name.trim().isNotEmpty == true
-                                      ? user!.name
-                                      : context.l10n.passengerFallback,
+                                  name,
                                   style: AppTextStyles.bodyMedium.copyWith(
                                     fontWeight: FontWeight.w600,
                                     color: T.onSurface(context),
                                   ),
                                 ),
-                                Text(
-                                  context.l10n.instantOfferPassengerCount(
-                                    b.seatCount,
+                                if (subtitle != null)
+                                  Text(
+                                    subtitle,
+                                    style: AppTextStyles.bodySmall.copyWith(
+                                      color: T.textSecondary(context),
+                                    ),
                                   ),
-                                  style: AppTextStyles.bodySmall.copyWith(
-                                    color: T.textSecondary(context),
-                                  ),
-                                ),
-                                BoardingStatusChip(
-                                  boarded: b.hasConfirmedBoarding,
-                                ),
-                                if (!b.hasConfirmedBoarding &&
+                                if (p.isNotRiding && !p.hasBoarded)
+                                  Text(
+                                    context.l10n.presenceSeatNotRiding,
+                                    style: AppTextStyles.bodySmall.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: T.textSecondary(context),
+                                    ),
+                                  )
+                                else
+                                  BoardingStatusChip(boarded: p.hasBoarded),
+                                if (!p.hasBoarded &&
+                                    !p.isNotRiding &&
                                     widget.onConfirmAboard != null)
                                   TextButton(
                                     style: TextButton.styleFrom(
@@ -902,7 +931,7 @@ class _DriverLiveTripViewState extends State<DriverLiveTripView> {
                                     ),
                                     onPressed: () {
                                       Navigator.pop(sheetContext);
-                                      widget.onConfirmAboard!(b);
+                                      widget.onConfirmAboard!(b, p.seat);
                                     },
                                     child: Text(
                                       context.l10n.boardingVouchAction,

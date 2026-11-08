@@ -5848,6 +5848,11 @@ class AppLocalizationsAr extends AppLocalizations {
   String get complaintCategoryNotOnTrip => 'لم أكن في الرحلة';
 
   @override
+  String boardingBookedBy(String name) {
+    return 'حجز $name';
+  }
+
+  @override
   String get tripVouchedByDriverNote =>
       'أكّد السائق أنك في السيارة. إذا لم تكن في الرحلة، أبلغنا.';
 

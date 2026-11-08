@@ -44,6 +44,7 @@ void main() {
     String name,
     String amount, {
     int seats = 1,
+    List<BookingSeatModel> seatRows = const [],
   }) => BookingModel(
     id: id,
     tripId: 't-1',
@@ -51,6 +52,7 @@ void main() {
     seatCount: seats,
     totalAmount: amount,
     status: 'confirmed',
+    seats: seatRows,
     userPopulated: UserModel(
       id: 'u-$id',
       name: name,
@@ -73,7 +75,8 @@ void main() {
     VoidCallback? onStartRide,
     void Function(LatLng target)? onNavigate,
     VoidCallback? onCancelRide,
-    void Function(BookingModel booking)? onConfirmAboard,
+    void Function(BookingModel booking, BookingSeatModel? seat)?
+    onConfirmAboard,
   }) async {
     // A phone-shaped screen: everything must fit without scrolling.
     tester.view.physicalSize = const Size(1080, 2400);
@@ -304,7 +307,7 @@ void main() {
         trip: trip(type: 'scheduled'),
         bookings: [booking('b1', 'ayat', '10.00')],
         driver: const LatLng(26.58, 37.91),
-        onConfirmAboard: (b) => vouched = b,
+        onConfirmAboard: (b, _) => vouched = b,
       );
 
       await tester.tap(find.text('الركاب: 1 · أكّد 0 من 1'));
@@ -313,6 +316,54 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(vouched?.id, 'b1');
+    },
+  );
+
+  testWidgets(
+    'shared trip: each person booked is listed and vouched for on their own',
+    (tester) async {
+      BookingSeatModel seat(String n, String name, {bool main = false}) =>
+          BookingSeatModel(
+            id: 's-$n',
+            bookingId: 'b1',
+            seatNumber: n,
+            displayName: name,
+            gender: 'male',
+            isMainBooker: main,
+            passengerSelfConfirmedAt: main ? DateTime.now() : null,
+            createdAt: DateTime.now(),
+          );
+      BookingSeatModel? vouchedSeat;
+      await pump(
+        tester,
+        trip: trip(type: 'scheduled'),
+        bookings: [
+          booking(
+            'b1',
+            'سنبل',
+            '75.00',
+            seats: 3,
+            seatRows: [
+              seat('0-0', 'سنبل', main: true),
+              seat('1-0', 'قصي'),
+              seat('1-1', 'محمد'),
+            ],
+          ),
+        ],
+        driver: const LatLng(26.58, 37.91),
+        onConfirmAboard: (_, s) => vouchedSeat = s,
+      );
+
+      await tester.tap(find.text('الركاب: 3 · أكّد 1 من 3'));
+      await tester.pumpAndSettle();
+      expect(find.text('سنبل'), findsOneWidget);
+      expect(find.text('قصي'), findsOneWidget);
+      expect(find.text('محمد'), findsOneWidget);
+      expect(find.text('حجز سنبل'), findsNWidgets(2));
+
+      await tester.tap(find.text('معي في السيارة').first);
+      await tester.pumpAndSettle();
+      expect(vouchedSeat?.seatNumber, '1-0');
     },
   );
 

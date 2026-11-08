@@ -5903,6 +5903,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get complaintCategoryNotOnTrip => 'I wasn\'t on this trip';
 
   @override
+  String boardingBookedBy(String name) {
+    return 'Booked by $name';
+  }
+
+  @override
   String get tripVouchedByDriverNote =>
       'The driver confirmed you\'re in the car. If you weren\'t on this trip, let us know.';
 

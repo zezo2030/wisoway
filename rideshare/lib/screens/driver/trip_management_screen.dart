@@ -1035,7 +1035,9 @@ class _TripManagementScreenState extends State<TripManagementScreen>
             onCancelRide: trip.isInstant
                 ? () => _cancelInstantRide(trip)
                 : null,
-            onConfirmAboard: trip.isInstant ? null : _confirmAboard,
+            onConfirmAboard: trip.isInstant
+                ? null
+                : (booking, seat) => _confirmAboard(booking, seat: seat),
             onEnableTracking: () async {
               final ready = await _ensureTrackingReady();
               if (!ready) {

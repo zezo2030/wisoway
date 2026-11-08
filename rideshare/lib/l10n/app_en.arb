@@ -3335,6 +3335,14 @@
   "complaintCategoryRudeBehavior": "Rude behavior",
   "complaintCategoryNoShow": "No-show",
   "complaintCategoryNotOnTrip": "I wasn't on this trip",
+  "boardingBookedBy": "Booked by {name}",
+  "@boardingBookedBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "tripVouchedByDriverNote": "The driver confirmed you're in the car. If you weren't on this trip, let us know.",
   "instantOfferCliqNote": "Passenger pays by CliQ · the fare goes to your wallet",
   "instantTripCliqNote": "CliQ · paid into your wallet",
